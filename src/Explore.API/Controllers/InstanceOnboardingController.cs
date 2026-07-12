@@ -14,6 +14,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
+using Explore.Application.Hateoas;
 using Explore.Application.Onboarding;
 using Explore.Application.Responses;
 using MediatR;
@@ -60,17 +61,20 @@ public class InstanceOnboardingController : ExploreControllerBase
     private readonly ISetupSecretProvider _setupSecretProvider;
     private readonly IInstanceBootstrapAuditLogger _bootstrapAuditLogger;
     private readonly ILogger<InstanceOnboardingController> _logger;
+    private readonly IResourceAssembler<InstanceOnboardingStatusDto, InstanceOnboardingStatusDto> _statusAssembler;
 
     public InstanceOnboardingController(
         IMediator mediator,
         ISetupSecretProvider setupSecretProvider,
         IInstanceBootstrapAuditLogger bootstrapAuditLogger,
-        ILogger<InstanceOnboardingController> logger)
+        ILogger<InstanceOnboardingController> logger,
+        IResourceAssembler<InstanceOnboardingStatusDto, InstanceOnboardingStatusDto> statusAssembler)
     {
         _mediator = mediator;
         _setupSecretProvider = setupSecretProvider;
         _bootstrapAuditLogger = bootstrapAuditLogger;
         _logger = logger;
+        _statusAssembler = statusAssembler;
     }
 
     [AllowAnonymous]
@@ -78,11 +82,14 @@ public class InstanceOnboardingController : ExploreControllerBase
     [HttpGet("status", Name = RouteNames.GetInstanceOnboardingStatus)]
     [EndpointSummary("Get Instance Onboarding Status")]
     [EndpointDescription("Returns whether first-run onboarding is completed and whether the current user is instance admin.")]
-    [ProducesResponseType(typeof(InstanceOnboardingStatusDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<InstanceOnboardingStatusDto>> GetStatus(CancellationToken cancellationToken = default)
+    [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
+    [ProducesResponseType(typeof(HalResource<InstanceOnboardingStatusDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<HalResource<InstanceOnboardingStatusDto>>> GetStatus(CancellationToken cancellationToken = default)
     {
         var status = await _mediator.Send(new GetInstanceOnboardingStatusQuery(), cancellationToken);
-        return Ok(status);
+        var resource = await _statusAssembler.ToResource(status, HttpContext);
+        return Ok(resource);
     }
 
     [Authorize]

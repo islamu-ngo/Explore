@@ -20,6 +20,24 @@ public sealed class ConfigurationExtensionsTests
     }
 
     [Test]
+    public async Task AddInfisicalCompatibility_MapsKeycloakClientIdsForApiProviderManagement()
+    {
+        var canonical = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["KEYCLOAK_CLIENT_ID"] = "canonical-blazor"
+        });
+        var composeAlias = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["KEYCLOAK_BLAZOR_CLIENT_ID"] = "event-blazor",
+            ["KEYCLOAK_BLAZOR_CLIENT_SECRET"] = "server-only-secret"
+        });
+
+        await Assert.That(canonical["Keycloak:ClientId"]).IsEqualTo("canonical-blazor");
+        await Assert.That(composeAlias["Keycloak:ClientId"]).IsEqualTo("event-blazor");
+        await Assert.That(composeAlias["Keycloak:ClientSecret"]).IsEqualTo("server-only-secret");
+    }
+
+    [Test]
     public async Task AddInfisicalCompatibility_DoesNotOverrideCanonicalCerbosUsePolicyScope()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>

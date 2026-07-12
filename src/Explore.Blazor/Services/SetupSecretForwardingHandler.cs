@@ -22,14 +22,14 @@ public class SetupSecretForwardingHandler : DelegatingHandler
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        var pathAndQuery = request.RequestUri?.PathAndQuery ?? string.Empty;
+        var path = request.RequestUri?.AbsolutePath ?? string.Empty;
+        _ = request.Headers.Remove("X-Setup-Secret");
 
-        if (!RequiresSetupSecret(pathAndQuery))
+        if (!RequiresSetupSecret(path))
         {
             return base.SendAsync(request, cancellationToken);
         }
 
-        _ = request.Headers.Remove("X-Setup-Secret");
         var setupSecret = _setupSecretResolver.Resolve(outboundRequest: request);
         if (setupSecret.Found && !string.IsNullOrWhiteSpace(setupSecret.Secret))
         {
@@ -39,12 +39,24 @@ public class SetupSecretForwardingHandler : DelegatingHandler
         return base.SendAsync(request, cancellationToken);
     }
 
-    private static bool RequiresSetupSecret(string pathAndQuery)
+    private static bool RequiresSetupSecret(string path)
     {
-        return pathAndQuery.Contains("/api/InstanceOnboarding/complete", StringComparison.OrdinalIgnoreCase)
-            || pathAndQuery.Contains("/api/InstanceOnboarding/validate-secret", StringComparison.OrdinalIgnoreCase)
-            || pathAndQuery.Contains("/api/InstanceOnboarding/auth-provider-configuration/keycloak-bootstrap", StringComparison.OrdinalIgnoreCase)
-            || pathAndQuery.Contains("/api/InstanceOnboarding/auth-provider-configuration", StringComparison.OrdinalIgnoreCase)
-            || pathAndQuery.Contains("/api/InstanceOnboarding/authz-provider-configuration", StringComparison.OrdinalIgnoreCase);
+        const string onboardingBasePath = "/api/InstanceOnboarding/";
+
+        if (!path.StartsWith(onboardingBasePath, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var endpoint = path[onboardingBasePath.Length..].TrimEnd('/');
+        return endpoint.Equals("status", StringComparison.OrdinalIgnoreCase)
+            || endpoint.Equals("complete", StringComparison.OrdinalIgnoreCase)
+            || endpoint.Equals("validate-secret", StringComparison.OrdinalIgnoreCase)
+            || MatchesEndpointFamily(endpoint, "auth-provider-configuration")
+            || MatchesEndpointFamily(endpoint, "authz-provider-configuration");
     }
+
+    private static bool MatchesEndpointFamily(string endpoint, string root) =>
+        endpoint.Equals(root, StringComparison.OrdinalIgnoreCase)
+        || endpoint.StartsWith($"{root}/", StringComparison.OrdinalIgnoreCase);
 }

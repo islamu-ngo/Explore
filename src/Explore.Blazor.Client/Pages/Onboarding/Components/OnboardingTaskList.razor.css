@@ -1,0 +1,158 @@
+/* ABOUTME: Isolated BEM styling for the semantic onboarding task list. */
+/* ABOUTME: Keeps task metadata responsive, token-driven, keyboard-visible, and RTL-safe. */
+
+.onboarding-task-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--isl-space-3, 0.75rem);
+    margin: 0;
+    padding-inline-start: calc(var(--isl-space-6, 1.5rem) + var(--isl-space-2, 0.5rem));
+    list-style: decimal;
+    letter-spacing: 0;
+}
+
+.onboarding-task-list__item {
+    min-inline-size: 0;
+    padding-block: var(--isl-space-4, 1rem);
+    padding-inline: var(--isl-space-4, 1rem);
+    border: 1px solid var(--isl-color-border, #d1d5db);
+    border-radius: min(var(--isl-radius-sm, 4px), 8px);
+    background: var(--isl-color-surface, #fff);
+    container-type: inline-size;
+}
+
+.onboarding-task-list__item::marker {
+    color: var(--isl-color-primary, #2563eb);
+    font-weight: 700;
+}
+
+.onboarding-task-list__content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--isl-space-3, 0.75rem);
+    min-inline-size: 0;
+}
+
+.onboarding-task-list__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--isl-space-2, 0.5rem);
+}
+
+.onboarding-task-list__title {
+    flex: 1 1 12rem;
+    min-inline-size: 0;
+    color: var(--isl-color-text, #111827);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.onboarding-task-list__requirement,
+.onboarding-task-list__status,
+.onboarding-task-list__scope {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--isl-target-min, 24px);
+    padding-block: var(--isl-space-1, 0.25rem);
+    padding-inline: var(--isl-space-2, 0.5rem);
+    border: 1px solid var(--isl-color-border, #d1d5db);
+    border-radius: min(var(--isl-radius-sm, 4px), 8px);
+    font-size: 0.875rem;
+    line-height: 1.25;
+}
+
+.onboarding-task-list__requirement--required {
+    border-color: var(--isl-color-primary, #2563eb);
+    color: var(--isl-color-primary, #2563eb);
+}
+
+.onboarding-task-list__status[data-status="Blocked"] {
+    border-color: var(--isl-color-error, #b91c1c);
+    color: var(--isl-color-error, #b91c1c);
+}
+
+.onboarding-task-list__requirement--optional,
+.onboarding-task-list__status[data-status="Available"] {
+    border-color: var(--isl-color-info, #0369a1);
+    color: var(--isl-color-info, #0369a1);
+}
+
+.onboarding-task-list__status[data-status="InProgress"] {
+    border-color: var(--isl-color-warning, #a16207);
+    color: var(--isl-color-warning, #a16207);
+}
+
+.onboarding-task-list__status[data-status="Completed"] {
+    border-color: var(--isl-color-success, #15803d);
+    color: var(--isl-color-success, #15803d);
+}
+
+.onboarding-task-list__description {
+    margin: 0;
+    color: var(--isl-color-text-secondary, #4b5563);
+    overflow-wrap: anywhere;
+}
+
+.onboarding-task-list__metadata {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2, 0.5rem);
+    align-items: center;
+}
+
+.onboarding-task-list__scope {
+    color: var(--isl-color-text-secondary, #4b5563);
+}
+
+.onboarding-task-list__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: start;
+    inline-size: fit-content;
+    min-inline-size: var(--isl-target-min, 24px);
+    min-block-size: var(--isl-target-min, 24px);
+    max-inline-size: 100%;
+    padding-block: var(--isl-space-1, 0.25rem);
+    padding-inline: var(--isl-space-3, 0.75rem);
+    border: 1px solid currentColor;
+    border-radius: min(var(--isl-radius-sm, 4px), 8px);
+    color: var(--isl-color-primary, #2563eb);
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.onboarding-task-list__action:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+}
+
+.onboarding-task-list__action:focus-visible {
+    outline: var(--isl-focus-ring-width, 2px) solid var(--isl-color-primary, #2563eb);
+    outline-offset: 2px;
+}
+
+@container (max-width: 28rem) {
+    .onboarding-task-list__header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .onboarding-task-list__requirement {
+        justify-self: start;
+    }
+
+    .onboarding-task-list__action {
+        inline-size: 100%;
+    }
+}
+
+@media (forced-colors: active) {
+    .onboarding-task-list__action:focus-visible {
+        outline-color: CanvasText;
+    }
+}

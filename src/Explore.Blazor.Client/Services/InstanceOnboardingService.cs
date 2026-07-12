@@ -3,6 +3,7 @@
 
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Helpers;
 using Microsoft.AspNetCore.Components;
 
 namespace Explore.Blazor.Client.Services;
@@ -56,6 +57,7 @@ public interface IInstanceOnboardingService
     Task<KeycloakClientSecretRotationResultDto> RotateKeycloakClientSecretAsync(KeycloakClientSecretRotationRequestDto request);
     Task<BaseCommandResponseOfGuid> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationDto config);
     Task<bool> IsAuthProviderConfiguredAsync();
+    Task<bool?> GetAuthProviderConfiguredStateAsync();
     Task RefreshAuthSchemesAsync();
     Task<bool> RefreshAuthSessionAsync();
 
@@ -67,6 +69,7 @@ public interface IInstanceOnboardingService
     Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsAdminAsync();
     Task<BaseCommandResponseOfGuid> VerifyCerbosEndpointAsync(string grpcEndpoint);
     Task<bool> IsAuthorizationProviderConfiguredAsync();
+    Task<bool?> GetAuthorizationProviderConfiguredStateAsync();
 
     Task<AnalyticsGovernanceSettingsDto> GetAnalyticsGovernanceSettingsAsync();
     Task<BaseCommandResponseOfGuid> UpdateAnalyticsGovernanceSettingsAsync(AnalyticsGovernanceSettingsDto settings);
@@ -86,8 +89,13 @@ public sealed class InstanceOnboardingService(
     public Task<OnboardingPreflightDto?> GetOnboardingPreflightAsync() =>
         GetOptionalAsync(ct => api.GetSystemOnboardingPreflightAsync(cancellationToken: ct), "onboarding preflight");
 
-    public Task<InstanceOnboardingStatusDto?> GetStatusAsync() =>
-        GetOptionalAsync(ct => api.GetInstanceOnboardingStatusAsync(cancellationToken: ct), "instance onboarding status");
+    public async Task<InstanceOnboardingStatusDto?> GetStatusAsync()
+    {
+        var resource = await GetOptionalAsync(
+            ct => api.GetInstanceOnboardingStatusAsync(cancellationToken: ct),
+            "instance onboarding status");
+        return resource.ToDto();
+    }
 
     public async Task<SetupSecretValidationResultDto> ValidateSecretAsync(string secret)
     {
@@ -284,7 +292,7 @@ public sealed class InstanceOnboardingService(
     }
 
     public Task<AuthProviderConfigurationDto> GetAuthProviderConfigurationAsync() =>
-        GetSettingsAsync(ct => api.GetInstanceOnboardingAuthProviderConfigurationInternalAsync(cancellationToken: ct), () => new());
+        GetSettingsAsync(ct => api.GetInstanceOnboardingAuthProviderConfigurationAsync(cancellationToken: ct), () => new());
 
     public Task<AuthProviderConfigurationDto> GetAuthProviderConfigurationAsAdminAsync() =>
         GetSettingsAsync(ct => api.GetInstanceAuthProviderConfigurationAsync(cancellationToken: ct), () => new());
@@ -328,7 +336,10 @@ public sealed class InstanceOnboardingService(
     public Task<BaseCommandResponseOfGuid> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationDto config) =>
         SendCommandAsync(ct => api.UpdateInstanceAuthProviderConfigurationAsync(config, cancellationToken: ct));
 
-    public async Task<bool> IsAuthProviderConfiguredAsync()
+    public async Task<bool> IsAuthProviderConfiguredAsync() =>
+        await GetAuthProviderConfiguredStateAsync() ?? false;
+
+    public async Task<bool?> GetAuthProviderConfiguredStateAsync()
     {
         try
         {
@@ -338,7 +349,7 @@ public sealed class InstanceOnboardingService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to check auth provider configuration status.");
-            return false;
+            return null;
         }
     }
 
@@ -366,7 +377,10 @@ public sealed class InstanceOnboardingService(
         SendCommandAsync(ct => api.VerifyInstanceOnboardingAuthorizationProviderEndpointAsync(
             body: new VerifyCerbosEndpointRequest { GrpcEndpoint = grpcEndpoint }, cancellationToken: ct));
 
-    public async Task<bool> IsAuthorizationProviderConfiguredAsync()
+    public async Task<bool> IsAuthorizationProviderConfiguredAsync() =>
+        await GetAuthorizationProviderConfiguredStateAsync() ?? false;
+
+    public async Task<bool?> GetAuthorizationProviderConfiguredStateAsync()
     {
         try
         {
@@ -376,7 +390,7 @@ public sealed class InstanceOnboardingService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to check authorization provider configuration status.");
-            return false;
+            return null;
         }
     }
 

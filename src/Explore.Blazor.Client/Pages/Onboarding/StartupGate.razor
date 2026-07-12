@@ -1,4 +1,7 @@
+@* ABOUTME: Routes users from the startup entry point after instance onboarding status resolves. *@
+@* ABOUTME: Rejects unknown deployment modes and sends completed multi-tenant admins to the control plane. *@
 @page "/startup"
+@using Explore.Blazor.Client.Routing.ControlPlane
 @using MudBlazor
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject NavigationManager Navigation
@@ -57,11 +60,26 @@
                 return;
             }
 
-            if (instanceStatus.IsAuthenticated == true &&
-                instanceStatus.IsCurrentUserInstanceAdmin == true &&
-                instanceStatus.SelectedDeploymentMode?.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase) == true)
+            var isSingleTenant = string.Equals(
+                instanceStatus.SelectedDeploymentMode,
+                "SingleTenant",
+                StringComparison.OrdinalIgnoreCase);
+            var isMultiTenant = string.Equals(
+                instanceStatus.SelectedDeploymentMode,
+                "MultiTenant",
+                StringComparison.OrdinalIgnoreCase);
+
+            if (!isSingleTenant && !isMultiTenant)
             {
-                Navigation.NavigateTo("/admin/instance/settings");
+                _error = "Could not determine deployment mode. Try refreshing.";
+                return;
+            }
+
+            if (isMultiTenant &&
+                instanceStatus.IsAuthenticated == true &&
+                instanceStatus.IsCurrentUserInstanceAdmin == true)
+            {
+                Navigation.NavigateTo(ControlPlaneRoutes.Overview);
                 return;
             }
 

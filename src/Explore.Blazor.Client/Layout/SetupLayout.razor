@@ -3,14 +3,13 @@
 
 @inherits LayoutComponentBase
 
-<div class="setup-layout-root" style="margin:0;padding:0;width:100vw;min-height:100vh;overflow-x:hidden;position:relative;">
+<div class="setup-layout-root">
     <MudThemeProvider @ref="_mudThemeProvider" Theme="@_theme" @bind-IsDarkMode="@_isDarkMode" />
     <MudPopoverProvider />
     <MudDialogProvider DefaultFocus="DefaultFocus.FirstChild" />
     <MudSnackbarProvider />
 
-    @* Floating switchers container — positioned at top-level of root div to avoid any stacking context issues from MudLayout *@
-    <div style="position:fixed;top:20px;right:20px;z-index:999999;display:block !important;">
+    <div class="setup-layout-root__switchers">
         <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" 
                   Class="pa-1 px-4 rounded-pill mud-elevation-8 mud-surface" 
                   Style="border:1px solid var(--mud-palette-lines-default); color: var(--mud-palette-text-primary); pointer-events: all;">

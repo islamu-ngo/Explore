@@ -28,6 +28,10 @@ public class RotateKeycloakClientSecretCommandHandler(
             return Blocked("Only instance administrators can rotate Keycloak client secrets.");
         }
 
+        var configuration = await configurationService.ReadConfigurationAsync();
+        var ownershipMode = NormalizeOwnershipMode(configuration.KeycloakClientSecretOwnership.Mode);
+        request.Request.SecretOwnershipMode = ownershipMode;
+
         var validator = new KeycloakClientSecretRotationRequestDtoValidator();
         var validationResult = await validator.ValidateAsync(request.Request, cancellationToken);
         if (!validationResult.IsValid)
@@ -54,10 +58,9 @@ public class RotateKeycloakClientSecretCommandHandler(
             };
         }
 
-        var ownershipMode = NormalizeOwnershipMode(request.Request.SecretOwnershipMode);
         if (ownershipMode == "deployment-managed")
         {
-            var clientId = request.Request.ClientId ?? string.Empty;
+            var clientId = configuration.KeycloakClientId;
             logger.LogInformation(
                 "Keycloak client-secret rotation requires operator action. ActorId: {ActorId}, ClientId: {ClientId}, OwnershipMode: {OwnershipMode}, Result: {Result}",
                 request.UserId,
@@ -76,7 +79,6 @@ public class RotateKeycloakClientSecretCommandHandler(
             };
         }
 
-        var configuration = await configurationService.ReadConfigurationAsync();
         var result = await keycloakBootstrapService.RotateClientSecretAsync(
             configuration,
             request.Request,

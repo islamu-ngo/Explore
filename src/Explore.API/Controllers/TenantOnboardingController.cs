@@ -10,6 +10,7 @@ using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.TenantPolicy;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
 using Explore.Application.Features.TenantOnboarding.Requests.Queries;
+using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -41,21 +42,30 @@ public class TenantOnboardingController : ExploreControllerBase
         "Tenant onboarding step progress save failed.");
 
     private readonly IMediator _mediator;
+    private readonly IResourceAssembler<TenantOnboardingStatusDto, TenantOnboardingStatusDto> _statusAssembler;
 
-    public TenantOnboardingController(IMediator mediator)
+    public TenantOnboardingController(
+        IMediator mediator,
+        IResourceAssembler<TenantOnboardingStatusDto, TenantOnboardingStatusDto> statusAssembler)
     {
         _mediator = mediator;
+        _statusAssembler = statusAssembler;
     }
 
     [HttpGet("status", Name = RouteNames.GetTenantOnboardingStatus)]
     [Authorize]
     [EndpointSummary("Get Tenant Onboarding Status")]
     [EndpointDescription("Returns whether the current tenant onboarding has been completed and whether the current user can complete it.")]
-    [ProducesResponseType(typeof(TenantOnboardingStatusDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<TenantOnboardingStatusDto>> GetStatus(CancellationToken cancellationToken = default)
+    [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
+    [ProducesResponseType(typeof(HalResource<TenantOnboardingStatusDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<HalResource<TenantOnboardingStatusDto>>> GetStatus(CancellationToken cancellationToken = default)
     {
         var status = await _mediator.Send(new GetTenantOnboardingStatusQuery(), cancellationToken);
-        return Ok(status);
+        var resource = await _statusAssembler.ToResource(status, HttpContext);
+        return Ok(resource);
     }
 
     [HttpGet("settings", Name = RouteNames.GetTenantOnboardingPolicySettings)]

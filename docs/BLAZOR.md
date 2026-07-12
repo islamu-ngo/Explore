@@ -6,7 +6,7 @@ ABOUTME: Keeps token handling, proxying, render policy, service state, and clien
 > **Audience:** Contributors | Frontend | AI agents
 > **Status:** Implemented
 > **Owner:** Frontend
-> **Last Verified:** 2026-07-05
+> **Last Verified:** 2026-07-12
 > **Source Anchors:** `Explore.Blazor/Program.cs`, `Explore.Blazor/Extensions/`, `Explore.Blazor/Components/ControlPlane/`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Explore.Blazor.Client/Services/`, `Explore.Blazor.Client/Layout/`, `Explore.Blazor.Client/Pages/Admin/Instance/ControlPlane/`, `docs/RENDER_POLICIES.md`, `docs/DESIGN_SYSTEM.md`
 
 ## Scope
@@ -99,6 +99,21 @@ Setup-secret handling is intentionally BFF-owned:
 6. The BFF limiter partitions requests by authenticated user when available, then antiforgery/session cookie state, then IP as the final fallback.
 
 When debugging onboarding, check both BFF setup-secret endpoints and API setup-secret validation rather than adding client-side storage shortcuts.
+
+## Onboarding UI Contract
+
+`/setup` is the dedicated pre-authentication operator gateway and renders through `SetupLayout`, separate from authenticated application/admin navigation. After provider authentication, the setup experience becomes one task overview composed from existing server onboarding-status, provider-status/sync, and preflight services.
+
+Contributor rules:
+
+1. The task list and completion state are server-derived. Refresh/retry calls the services again; components do not persist a competing workflow state machine in browser storage.
+2. The reusable task component is display-only. It renders server status, warnings, blockers, remediation, and links; it does not calculate authorization, deployment mode, provider readiness, or completion. Completed tasks may retain management links: when the server exposes `manage-authentication`, the configured authentication-provider task opens `/onboarding/auth-provider` before launch and `/admin/instance/settings?section=auth-providers` after launch so operators can diagnose, repair, or reconcile the Keycloak realm.
+3. Deployment mode and dedicated BFF admin hosts are read-only deployment facts in this UI. They are not controls or onboarding choices.
+4. Blocking preflight items disable launch. Ordinary warnings do not; a server-classified serious warning may expose an explicit acknowledgement control. The completion request remains idempotent and server-guarded.
+5. On successful single-tenant launch, follow the server-confirmed events/instance-settings handoff. On multi-tenant platform launch, navigate to `/admin/instance`; do not require or synthesize a tenant. First-tenant creation/onboarding is a separate tenant-scoped flow.
+6. All onboarding copy is resolved through `ITranslationService`. Preserve semantic headings, labeled controls, keyboard focus, and live status announcements through the existing accessibility announcer service for validation, refresh, provider verification, preflight, and launch outcomes.
+7. Setup-secret authority, platform-admin authority, tenant context, tenant-admin authority, and provider readiness are server decisions. Never derive onboarding actions or handoffs from serialized claims or configured-credential flags; use server status and HAL links. Missing or errored authoritative task/provider state fails closed and must not produce a locally synthesized completion state or management affordance.
+8. Access/refresh/provider tokens, setup secrets, provider administrator credentials, and raw provider responses never enter browser storage, browser-facing DTOs, logs, traces, or support diagnostics.
 
 ## Support Access Boundary
 
@@ -275,7 +290,7 @@ Do not duplicate the specialized docs in this guide.
 |---|---|---|
 | Styling | Use shared wrappers and CSS isolation; avoid ad hoc MudBlazor overrides. | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) |
 | Accessibility | Preserve semantic labels, keyboard flow, and testable states in components. | [ACCESSIBILITY.md](ACCESSIBILITY.md) |
-| Localization | Use `LanguageProvider`, `LanguagePicker`, `MudBlazorLocalizer`, and RTL integration points. | [LOCALIZATION.md](LOCALIZATION.md) |
+| Localization | Use `ITranslationService`, `LanguageProvider`, `LanguagePicker`, `MudBlazorLocalizer`, and RTL integration points; do not hardcode onboarding status text. | [LOCALIZATION.md](LOCALIZATION.md) |
 | Analytics | `AnalyticsInitializer` owns browser bootstrap and consent-sensitive pageview tracking; server business metrics stay in handlers. | [OPERATIONS.md](OPERATIONS.md) |
 
 ## Common Pitfalls
@@ -287,12 +302,15 @@ Do not duplicate the specialized docs in this guide.
 5. Updating DTOs without refreshing `schemas/openapi.json` and rebuilding the generated client.
 6. Repeating render-policy, design-system, localization, or accessibility reference tables inside Blazor-specific docs.
 7. Enabling an AI assistant button without the corresponding HAL link from the API.
+8. Reconstructing onboarding tasks, authority, deployment-mode choices, or completion state from claims or browser-local state instead of server status/HAL resources.
 
 ## Related Docs
 
 - [API.md](API.md)
 - [API_COOKBOOK.md](API_COOKBOOK.md)
 - [SECURITY.md](SECURITY.md)
+- [DEPLOYMENT_MODES.md](DEPLOYMENT_MODES.md)
+- [SELF_HOSTING.md](SELF_HOSTING.md)
 - [RENDER_POLICIES.md](RENDER_POLICIES.md)
 - [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md)
 - [ACCESSIBILITY.md](ACCESSIBILITY.md)

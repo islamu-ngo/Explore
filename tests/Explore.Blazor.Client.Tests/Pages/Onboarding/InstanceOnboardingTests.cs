@@ -1,8 +1,12 @@
-// ABOUTME: Component tests for InstanceOnboarding wizard completion flow and redirect outcomes.
-// ABOUTME: Verifies convention-first single-tenant completion and multi-tenant admin redirect behavior.
+// ABOUTME: Component tests for the authoritative single-column instance setup overview.
+// ABOUTME: Verifies task mapping, refresh deduplication, launch gates, secret recovery, and mode-specific handoffs.
 
+using System.Text.Json;
+using AngleSharp.Dom;
 using Explore.Blazor.Client.Models.Responses;
 using Explore.Blazor.Client.Pages.Onboarding;
+using Explore.Blazor.Client.Routing.ControlPlane;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace Explore.Blazor.Client.Tests.Pages.Onboarding;
 
@@ -11,7 +15,8 @@ public class InstanceOnboardingTests : IDisposable
     private readonly BlazorTestContext _ctx;
     private readonly IInstanceOnboardingService _instanceOnboardingService;
     private readonly IUserService _userService;
-    private readonly BunitNavigationManager _nav;
+    private readonly IBffAuthApi _bffAuthApi;
+    private string _currentDeploymentMode = "SingleTenant";
 
     public InstanceOnboardingTests()
     {
@@ -31,8 +36,7 @@ public class InstanceOnboardingTests : IDisposable
             BaseAddress = new Uri("https://localhost/")
         });
         _ctx.Services.AddSingleton(httpClientFactory);
-
-        _nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
+        _bffAuthApi = _ctx.Services.GetRequiredService<IBffAuthApi>();
 
         _userService.SyncUserAsync().Returns(new BaseCommandResponseOfGuid { Success = true });
         _userService.GetCurrentUserAsync().Returns(new UserDto
@@ -42,193 +46,404 @@ public class InstanceOnboardingTests : IDisposable
             LastName = "Admin"
         });
 
-        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
+        _instanceOnboardingService.CompleteAsync(Arg.Any<CompleteInstanceOnboardingRequest>())
+            .Returns(_ =>
+            {
+                _instanceOnboardingService.GetStatusAsync().Returns(
+                    CreateStatus(isCompleted: true, _currentDeploymentMode));
+                return new BaseCommandResponseOfGuid
+                {
+                    Success = true,
+                    Message = "ok"
+                };
+            });
+        _instanceOnboardingService.RefreshAuthSessionAsync().Returns(true);
+    }
+
+    public void Dispose() => _ctx.Dispose();
+
+    [Test]
+    public async Task Overview_HasOneH1AndPageTitleWithoutLegacyRailOrChooser()
+    {
+        var cut = RenderForDeploymentMode("SingleTenant");
+
+        Require(cut.FindComponents<PageTitle>().Count == 1, "Expected exactly one PageTitle component.");
+        Require(cut.FindAll("h1").Count == 1, "Expected exactly one h1.");
+        RequireContains(cut.Find("h1").TextContent, "Setup Overview");
+        RequireNotContains(cut.Markup, "Step 1 of 2");
+        RequireNotContains(cut.Markup, "Setup progress");
+        RequireNotContains(cut.Markup, "Launch Recap");
+        RequireNotContains(cut.Markup, "Administration Access");
+        RequireNotContains(cut.Markup, "Dedicated Admin Host");
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task SingleTenant_RendersRequiredTasksWithNativeFragmentActions()
+    {
+        var cut = RenderForDeploymentMode("SingleTenant");
+
+        RequireContains(cut.Markup, "Site profile");
+        RequireContains(cut.Markup, "Authentication provider");
+        RequireContains(cut.Markup, "Authorization provider");
+        RequireContains(cut.Markup, "Launch readiness");
+        RequireContains(cut.Markup, "Required");
+        RequireContains(cut.Markup, "Instance operator scope");
+        RequireContains(cut.Markup, "Server-evaluated instance scope");
+        Require(cut.FindAll("a").Any(link => link.GetAttribute("href") == "#site-profile"), "Expected site profile fragment action.");
+        Require(cut.FindAll("a").Any(link => link.GetAttribute("href") == "#launch-readiness"), "Expected readiness fragment action.");
+        RequireNotContains(cut.Markup, "First tenant");
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task MultiTenant_RendersOptionalFirstTenantAndReadOnlyDeploymentContext()
+    {
+        var cut = RenderForDeploymentMode("MultiTenant");
+
+        RequireContains(cut.Markup, "Multi tenant");
+        RequireContains(cut.Markup, "First tenant");
+        RequireContains(cut.Markup, "Optional");
+        RequireContains(cut.Markup, "never blocks instance launch");
+        RequireContains(cut.Markup, "Tenant scope");
+        RequireNotContains(cut.Markup, "Embedded admin area");
+        RequireNotContains(cut.Markup, "Dedicated admin hostname");
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task ConfiguredAuthenticationProvider_KeepsManagementActionWithoutImplyingIncompleteState()
+    {
+        var cut = RenderForDeploymentMode(
+            "SingleTenant",
+            authenticationConfigured: true,
+            authorizationConfigured: true);
+
+        RequireContains(cut.Markup, "Authentication provider");
+        RequireContains(cut.Markup, "Manage authentication");
+        RequireContains(cut.Markup, "create, repair, or reconcile the Keycloak realm");
+        Require(cut.FindAll("a").Any(link => link.GetAttribute("href") == "/onboarding/auth-provider"),
+            "Configured authentication must retain access to realm management.");
+        RequireNotContains(cut.Markup, "Configure authentication");
+        Require(!FindButton(cut, "Launch instance").HasAttribute("disabled"),
+            "A completed authentication task must not block launch.");
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task CompletedInstance_KeepsAuthenticationRealmManagementInAdminProviderSettings()
+    {
+        var cut = RenderForDeploymentMode("SingleTenant");
+
+        FindButton(cut, "Launch instance").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            RequireContains(cut.Markup, "Manage authentication");
+            Require(FindLink(cut, "/admin/instance/settings?section=auth-providers") is not null,
+                "Completed setup must retain the HAL-authorized Keycloak management route.");
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task ProviderAndPreflightState_MapToActionRequiredAndBlockedTasks()
+    {
+        var preflight = CreatePreflight(
+            "SingleTenant",
+            blockingStatus: "Fail",
+            blockingMessage: "Setup secret is missing or invalid.");
+        var cut = RenderForDeploymentMode(
+            "SingleTenant",
+            preflight,
+            authenticationConfigured: false,
+            authorizationConfigured: true);
+
+        RequireContains(cut.Markup, "Configure authentication");
+        RequireContains(cut.Markup, "/onboarding/auth-provider");
+        RequireContains(cut.Markup, "Action required");
+        RequireContains(cut.Markup, "Setup secret is missing or invalid.");
+        RequireContains(cut.Markup, "Blocked");
+        RequireNotContains(cut.Markup, "Configure authorization");
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task RequiredBlocker_DisablesCompletion()
+    {
+        var cut = RenderForDeploymentMode(
+            "SingleTenant",
+            CreatePreflight("SingleTenant", blockingStatus: "Fail"));
+
+        Require(FindButton(cut, "Launch instance").HasAttribute("disabled"), "Expected blocker to disable completion.");
+        await _instanceOnboardingService.DidNotReceive()
+            .CompleteAsync(Arg.Any<CompleteInstanceOnboardingRequest>());
+    }
+
+    [Test]
+    public async Task OrdinaryWarning_IsNonBlockingAndSingleTenantUsesEventHandoff()
+    {
+        var cut = RenderForDeploymentMode("SingleTenant");
+
+        Require(!FindButton(cut, "Launch instance").HasAttribute("disabled"), "Ordinary warning must remain non-blocking.");
+        FindButton(cut, "Launch instance").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            RequireContains(cut.Markup, "Instance setup is complete");
+            Require(FindLink(cut, "/events") is not null, "Expected events handoff.");
+            Require(FindLink(cut, "/admin/instance/settings") is not null, "Expected settings handoff.");
+        });
+
+        await _instanceOnboardingService.Received(1)
+            .CompleteAsync(Arg.Any<CompleteInstanceOnboardingRequest>());
+    }
+
+    [Test]
+    public async Task SeriousWarning_RequiresAcknowledgementBeforeCompletion()
+    {
+        var preflight = CreatePreflight(
+            "SingleTenant",
+            warningSeverity: "Critical",
+            warningMessage: "The site will be publicly accessible.");
+        var cut = RenderForDeploymentMode("SingleTenant", preflight);
+
+        RequireContains(cut.Markup, "Required acknowledgement");
+        Require(FindButton(cut, "Launch instance").HasAttribute("disabled"), "Serious warning must require acknowledgement.");
+
+        cut.Find("input[type='checkbox']").Change(true);
+        cut.WaitForAssertion(() =>
+            Require(!FindButton(cut, "Launch instance").HasAttribute("disabled"), "Acknowledgement should enable completion."));
+        FindButton(cut, "Launch instance").Click();
+
+        await _instanceOnboardingService.Received(1)
+            .CompleteAsync(Arg.Any<CompleteInstanceOnboardingRequest>());
+    }
+
+    [Test]
+    public async Task MultiTenantCompletion_UsesControlPlaneHandoffAndLeavesAdminFieldsAtDefaults()
+    {
+        var requestDefaults = new CompleteInstanceOnboardingRequest();
+        var cut = RenderForDeploymentMode("MultiTenant");
+
+        FindButton(cut, "Launch instance").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            RequireContains(cut.Markup, "Open control plane");
+            RequireContains(cut.Markup, "Manage first tenant (optional)");
+            Require(FindLink(cut, ControlPlaneRoutes.Overview) is not null, "Expected control-plane handoff.");
+            Require(FindLink(cut, ControlPlaneRoutes.Tenants) is not null, "Expected optional tenant handoff.");
+        });
+
+        await _instanceOnboardingService.Received(1).CompleteAsync(
+            Arg.Is<CompleteInstanceOnboardingRequest>(request =>
+                request != null
+                && request.SiteProfile != null
+                && request.SiteProfile.SiteName == "ISLAMU Explore"
+                && request.AdministrationAccessMode == requestDefaults.AdministrationAccessMode
+                && request.AdminHost == requestDefaults.AdminHost));
+    }
+
+    [Test]
+    public async Task MultiTenantFirstTenant_RemainsOptionalAndDoesNotBlockLaunch()
+    {
+        var cut = RenderForDeploymentMode("MultiTenant");
+
+        RequireContains(cut.Markup, "Post-launch");
+        Require(!FindButton(cut, "Launch instance").HasAttribute("disabled"), "Optional tenant task must not block launch.");
+        FindButton(cut, "Launch instance").Click();
+
+        await _instanceOnboardingService.Received(1)
+            .CompleteAsync(Arg.Any<CompleteInstanceOnboardingRequest>());
+    }
+
+    [Test]
+    public async Task Completion_RefreshesBffAuthBeforeAndAfterMutation()
+    {
+        var cut = RenderForDeploymentMode("SingleTenant");
+
+        FindButton(cut, "Launch instance").Click();
+
+        await _instanceOnboardingService.Received(2).RefreshAuthSessionAsync();
+        await _instanceOnboardingService.Received(1)
+            .CompleteAsync(Arg.Any<CompleteInstanceOnboardingRequest>());
+    }
+
+    [Test]
+    public async Task CompletionFailure_RendersOnlySafeServiceResponseDetails()
+    {
+        _instanceOnboardingService.CompleteAsync(Arg.Any<CompleteInstanceOnboardingRequest>())
+            .Returns(new BaseCommandResponseOfGuid
+            {
+                Success = false,
+                Message = "Invalid onboarding request.",
+                Errors = ["A required launch check failed."]
+            });
+        var cut = RenderForDeploymentMode("SingleTenant");
+
+        FindButton(cut, "Launch instance").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            RequireContains(cut.Find("[role='alert']").TextContent, "Invalid onboarding request.");
+            RequireContains(cut.Find("[role='alert']").TextContent, "A required launch check failed.");
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task InvalidSetupSecret_DeletesBffStateAndShowsRecoverableError()
+    {
+        var cut = RenderForDeploymentMode("SingleTenant", syncOk: false);
+
+        cut.WaitForAssertion(() =>
+            RequireContains(cut.Find("[role='alert']").TextContent, "setup secret expired or is invalid"));
+
+        await _bffAuthApi.Received(1).DeleteSetupSecretAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task MissingAuthoritativeState_RendersSafeUnavailableStateAndBlocksCompletion()
+    {
+        var cut = RenderForDeploymentMode(
+            "SingleTenant",
+            statusAvailable: false,
+            systemStatusAvailable: false,
+            preflightAvailable: false);
+
+        RequireContains(cut.Find("[role='alert']").TextContent, "authoritative setup state is unavailable");
+        RequireContains(cut.Markup, "Unavailable");
+        RequireContains(cut.Markup, "Launch readiness is unavailable");
+        Require(!cut.FindAll("a").Any(link => link.GetAttribute("href") == "/onboarding/auth-provider"),
+            "Missing authoritative state must not expose provider actions.");
+        Require(FindButton(cut, "Launch instance").HasAttribute("disabled"), "Missing state must disable completion.");
+        await _instanceOnboardingService.DidNotReceive()
+            .CompleteAsync(Arg.Any<CompleteInstanceOnboardingRequest>());
+    }
+
+    [Test]
+    public async Task ProviderStatusFailure_FailsClosedWithoutExposingProviderOrCompletionActions()
+    {
+        var cut = RenderForDeploymentMode(
+            "SingleTenant",
+            authenticationConfigured: null,
+            authorizationConfigured: true);
+
+        RequireContains(cut.Find("[role='alert']").TextContent, "authoritative setup state is unavailable");
+        RequireContains(cut.Markup, "Status unavailable");
+        Require(!cut.FindAll("a").Any(link => link.GetAttribute("href") == "/onboarding/auth-provider"),
+            "Unavailable provider status must not expose a setup action.");
+        Require(FindButton(cut, "Launch instance").HasAttribute("disabled"),
+            "Unavailable provider status must disable completion.");
+        await _instanceOnboardingService.DidNotReceive()
+            .CompleteAsync(Arg.Any<CompleteInstanceOnboardingRequest>());
+    }
+
+    [Test]
+    public async Task InitialLoad_CallsEachAuthoritativeEndpointExactlyOnce()
+    {
+        RenderForDeploymentMode("SingleTenant");
+
+        await AssertAuthoritativeCallCountAsync(1);
+    }
+
+    [Test]
+    public async Task ExplicitRefresh_AddsOneAuthoritativeEndpointCallSet()
+    {
+        var cut = RenderForDeploymentMode("SingleTenant");
+
+        cut.Find("button[aria-label='Refresh setup status']").Click();
+        cut.WaitForAssertion(() =>
+        {
+            _instanceOnboardingService.Received(2).GetStatusAsync();
+            _instanceOnboardingService.Received(2).GetSystemOnboardingStatusAsync();
+            _instanceOnboardingService.Received(2).GetBrandingSettingsAsync();
+            _instanceOnboardingService.Received(2).GetAuthProviderConfiguredStateAsync();
+            _instanceOnboardingService.Received(2).GetAuthorizationProviderConfiguredStateAsync();
+            _instanceOnboardingService.Received(2).GetOnboardingPreflightAsync();
+        });
+
+        await AssertAuthoritativeCallCountAsync(2);
+    }
+
+    [Test]
+    public async Task OverlappingRefreshes_ShareOneInFlightAuthoritativeCallSet()
+    {
+        var cut = RenderForDeploymentMode("SingleTenant");
+        var statusGate = new TaskCompletionSource<InstanceOnboardingStatusDto?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        _instanceOnboardingService.GetStatusAsync().Returns(_ => statusGate.Task);
+
+        var firstRefresh = cut.Instance.RefreshAsync();
+        var overlappingRefresh = cut.Instance.RefreshAsync();
+
+        Require(ReferenceEquals(firstRefresh, overlappingRefresh), "Overlapping refreshes should share one task.");
+        await _instanceOnboardingService.Received(2).GetStatusAsync();
+
+        statusGate.SetResult(new InstanceOnboardingStatusDto
         {
             IsCompleted = false,
             IsAuthenticated = true
         });
+        await Task.WhenAll(firstRefresh, overlappingRefresh);
 
-        _instanceOnboardingService.CompleteAsync(Arg.Any<CompleteInstanceOnboardingRequest>())
-            .Returns(new BaseCommandResponseOfGuid
+        await AssertAuthoritativeCallCountAsync(2);
+    }
+
+    private IRenderedComponent<InstanceOnboarding> RenderForDeploymentMode(
+        string deploymentMode,
+        OnboardingPreflightDto? preflight = null,
+        bool? authenticationConfigured = true,
+        bool? authorizationConfigured = true,
+        bool syncOk = true,
+        bool statusAvailable = true,
+        bool systemStatusAvailable = true,
+        bool preflightAvailable = true)
+    {
+        _currentDeploymentMode = deploymentMode;
+        _instanceOnboardingService.GetStatusAsync().Returns(statusAvailable
+            ? Task.FromResult<InstanceOnboardingStatusDto?>(CreateStatus(isCompleted: false, deploymentMode))
+            : Task.FromResult<InstanceOnboardingStatusDto?>(null));
+        _instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns(systemStatusAvailable
+            ? Task.FromResult<SystemOnboardingStatusDto?>(new SystemOnboardingStatusDto
             {
-                Success = true,
-                Message = "ok"
-            });
-        _instanceOnboardingService.RefreshAuthSessionAsync().Returns(true);
+                RequiresOnboarding = true,
+                DeploymentMode = deploymentMode
+            })
+            : Task.FromResult<SystemOnboardingStatusDto?>(null));
+        _instanceOnboardingService.GetBrandingSettingsAsync().Returns(new BrandingSettingsDto
+        {
+            DefaultBrandDisplayName = "ISLAMU Explore"
+        });
+        _instanceOnboardingService.GetAuthProviderConfiguredStateAsync().Returns(authenticationConfigured);
+        _instanceOnboardingService.GetAuthorizationProviderConfiguredStateAsync().Returns(authorizationConfigured);
+        _instanceOnboardingService.GetOnboardingPreflightAsync().Returns(preflightAvailable
+            ? Task.FromResult<OnboardingPreflightDto?>(preflight ?? CreatePreflight(deploymentMode))
+            : Task.FromResult<OnboardingPreflightDto?>(null));
 
-        SetupBffJsModule();
-    }
+        SetupBffJsModule(syncOk);
 
-    public void Dispose()
-    {
-        _ctx.Dispose();
-    }
-
-    [Test]
-    public async Task DeploymentModeChoice_IsNotRendered()
-    {
-        // Arrange
-        var cut = RenderForDeploymentMode("SingleTenant");
-
-        // Assert — deployment mode is fixed by API system config, not chosen by the user.
+        var cut = _ctx.RenderMudComponent<InstanceOnboarding>();
         cut.WaitForAssertion(() =>
         {
-            if (cut.Markup.Contains("Choose Your Tenant Mode", StringComparison.OrdinalIgnoreCase)
-                || cut.Markup.Contains("Help me choose", StringComparison.OrdinalIgnoreCase)
-                || cut.Markup.Contains("Single Tenant (Recommended)", StringComparison.OrdinalIgnoreCase)
-                || cut.Markup.Contains("Multi Tenant (Advanced)", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Tenant mode chooser should not be visible during onboarding.");
-            }
+            RequireContains(cut.Markup, "Launch readiness");
+            Require(!cut.Find("button[aria-label='Refresh setup status']").HasAttribute("disabled"), "Refresh should be enabled after load.");
         });
 
-        await Task.CompletedTask;
+        return cut;
     }
 
-    [Test]
-    public async Task SingleTenantHostChoice_IsNotRendered()
-    {
-        // Arrange
-        var cut = RenderForDeploymentMode("SingleTenant");
-
-        // Assert — single-tenant onboarding is convention-first and does not ask for first publisher scope.
-        cut.WaitForAssertion(() =>
-        {
-            if (cut.Markup.Contains("Set Up Your First Host", StringComparison.OrdinalIgnoreCase)
-                || cut.Markup.Contains("Personal Account", StringComparison.OrdinalIgnoreCase)
-                || cut.Markup.Contains("Quick Group", StringComparison.OrdinalIgnoreCase)
-                || cut.Markup.Contains("Formal Organization", StringComparison.OrdinalIgnoreCase)
-                || cut.Markup.Contains("I Will Do This Later", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Single-tenant first host choice UI should not be visible during onboarding.");
-            }
-        });
-
-        await Task.CompletedTask;
-    }
-
-    [Test]
-    public async Task MultiTenantAdministrationAccessChoice_IsRendered()
-    {
-        var cut = RenderForDeploymentMode("MultiTenant");
-
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("Platform administration access", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Embedded admin area", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Expected multi-tenant onboarding to render the administration access choice.");
-            }
-        });
-
-        await Task.CompletedTask;
-    }
-
-    [Test]
-    public async Task SingleTenantAdministrationAccessChoice_IsNotRendered()
-    {
-        var cut = RenderForDeploymentMode("SingleTenant");
-
-        cut.WaitForAssertion(() =>
-        {
-            if (cut.Markup.Contains("Platform administration access", StringComparison.OrdinalIgnoreCase)
-                || cut.Markup.Contains("Embedded admin area", StringComparison.OrdinalIgnoreCase)
-                || cut.Markup.Contains("Dedicated admin hostname", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Single-tenant onboarding must not expose platform administration access choices.");
-            }
-        });
-
-        await Task.CompletedTask;
-    }
-
-    [Test]
-    public async Task CompleteOnboarding_SingleTenant_ShowsLaunchHandoff()
-    {
-        var cut = RenderForDeploymentMode("SingleTenant");
-
-        GoToReviewAndLaunch(cut);
-        ClickMudButton(cut, "Launch Instance");
-
-        // Assert
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("Your Site Is Ready", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Browse Events", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Open Instance Settings", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Expected launch handoff after completing SingleTenant onboarding.");
-            }
-        });
-
-        await _instanceOnboardingService.Received(1).CompleteAsync(
-            Arg.Is<CompleteInstanceOnboardingRequest>(model => model != null
-                && model.DeploymentMode == DeploymentMode.SingleTenant
-                && model.SiteProfile!.SiteName == "ISLAMU Explore"
-                && model.SiteProfile.Locale == "en"
-                && model.SiteProfile.TimeZone == "UTC"));
-    }
-
-    [Test]
-    public async Task CompleteOnboarding_MultiTenant_ShowsLaunchHandoff()
-    {
-        var cut = RenderForDeploymentMode("MultiTenant");
-
-        GoToReviewAndLaunch(cut);
-        ClickMudButton(cut, "Launch Instance");
-
-        // Assert
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("Your Site Is Ready", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Open Instance Settings", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Expected launch handoff after completing MultiTenant onboarding.");
-            }
-        });
-
-        await Task.CompletedTask;
-    }
-
-    [Test]
-    public async Task CompleteOnboarding_MultiTenant_SendsConfiguredDeploymentMode()
-    {
-        var cut = RenderForDeploymentMode("MultiTenant");
-
-        GoToReviewAndLaunch(cut);
-        ClickMudButton(cut, "Launch Instance");
-
-        // Assert
-        await _instanceOnboardingService.Received(1).CompleteAsync(
-            Arg.Is<CompleteInstanceOnboardingRequest>(model => model != null
-                && model.DeploymentMode == DeploymentMode.MultiTenant
-                && model.SiteProfile!.SiteName == "ISLAMU Explore"
-                && model.AdministrationAccessMode == "Embedded"
-                && string.IsNullOrWhiteSpace(model.AdminHost)));
-    }
-
-    [Test]
-    public async Task CompleteOnboarding_RefreshesAuthSession_BeforeRedirect()
-    {
-        var cut = RenderForDeploymentMode("MultiTenant");
-
-        GoToReviewAndLaunch(cut);
-        ClickMudButton(cut, "Launch Instance");
-
-        // Assert
-        // RefreshAuthSessionAsync is now called twice during the Complete flow:
-        // (1) proactively before the POST to guarantee a fresh access token survives the
-        //     long form-fill window (Keycloak access tokens are short-lived), and
-        // (2) after successful Complete to pick up the newly assigned instance-admin claims.
-        // Both calls are load-bearing; see InstanceOnboarding.razor CompleteOnboardingAsync.
-        await _instanceOnboardingService.Received(2).RefreshAuthSessionAsync();
-        await Task.CompletedTask;
-    }
-
-    private void SetupBffJsModule(bool syncOk = true)
+    private void SetupBffJsModule(bool syncOk)
     {
         var module = _ctx.JSInterop.SetupModule("/js/bff.js");
-
         module.Setup<BffMutationResult>("syncSetupSecret", _ => true)
             .SetResult(new BffMutationResult
             {
@@ -238,25 +453,16 @@ public class InstanceOnboardingTests : IDisposable
             });
     }
 
-    private IRenderedComponent<InstanceOnboarding> RenderForDeploymentMode(
+    private static OnboardingPreflightDto CreatePreflight(
         string deploymentMode,
-        OnboardingPreflightDto? preflight = null)
-    {
-        _instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns(new SystemOnboardingStatusDto
-        {
-            RequiresOnboarding = true,
-            DeploymentMode = deploymentMode
-        });
-
-        _instanceOnboardingService.GetBrandingSettingsAsync().Returns(new BrandingSettingsDto
-        {
-            DefaultBrandDisplayName = "ISLAMU Explore"
-        });
-
-        _instanceOnboardingService.GetOnboardingPreflightAsync().Returns(preflight ?? new OnboardingPreflightDto
+        string blockingStatus = "Pass",
+        string blockingMessage = "Setup secret is active.",
+        string warningSeverity = "Warning",
+        string warningMessage = "SMTP can be configured after launch.") =>
+        new()
         {
             DeploymentMode = deploymentMode,
-            IsReadyToLaunch = true,
+            IsReadyToLaunch = string.Equals(blockingStatus, "Pass", StringComparison.OrdinalIgnoreCase),
             BlockingChecks =
             [
                 new OnboardingPreflightCheckDto
@@ -264,8 +470,8 @@ public class InstanceOnboardingTests : IDisposable
                     Code = "setup_secret",
                     Name = "Setup Secret",
                     Severity = "Blocking",
-                    Status = "Pass",
-                    Message = "Setup secret is active."
+                    Status = blockingStatus,
+                    Message = blockingMessage
                 }
             ],
             WarningChecks =
@@ -274,265 +480,87 @@ public class InstanceOnboardingTests : IDisposable
                 {
                     Code = "smtp",
                     Name = "SMTP",
-                    Severity = "Warning",
+                    Severity = warningSeverity,
                     Status = "Warning",
-                    Message = "SMTP can be configured after launch."
+                    Message = warningMessage
                 }
             ]
-        });
+        };
 
-        var cut = _ctx.RenderMudComponent<InstanceOnboarding>();
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("Name Your Site", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Onboarding form did not finish loading.");
-            }
-        });
-
-        return cut;
-    }
-
-    private void GoToReviewAndLaunch(IRenderedComponent<InstanceOnboarding> cut)
+    private static InstanceOnboardingStatusDto CreateStatus(bool isCompleted, string deploymentMode)
     {
-        cut.Instance._preflight = _instanceOnboardingService.GetOnboardingPreflightAsync().GetAwaiter().GetResult();
-        cut.Instance._activeStep = 1;
-        cut.Render();
-
-        cut.WaitForAssertion(() =>
+        var relations = new List<string>
         {
-            if (!cut.Markup.Contains("Critical Launch Requirements", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Review & Launch step did not render after setting _activeStep.");
-            }
-        }, TimeSpan.FromSeconds(5));
-    }
-
-    private static void ClickMudButton(IRenderedComponent<InstanceOnboarding> cut, string text)
-    {
-        var htmlButton = cut.FindAll("button")
-            .FirstOrDefault(b => b.TextContent.Contains(text, StringComparison.OrdinalIgnoreCase));
-
-        if (htmlButton is null)
+            "manage-authentication",
+            "manage-authorization"
+        };
+        if (isCompleted && string.Equals(deploymentMode, "MultiTenant", StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException($"Button containing '{text}' was not found.");
+            relations.Add("manage-tenants");
+        }
+        else if (!isCompleted)
+        {
+            relations.Add("complete");
         }
 
-        htmlButton.Click();
+        var status = new InstanceOnboardingStatusDto
+        {
+            IsCompleted = isCompleted,
+            IsAuthenticated = true,
+            IsCurrentUserInstanceAdmin = isCompleted,
+            SelectedDeploymentMode = deploymentMode
+        };
+        status.AdditionalProperties["_links"] = JsonSerializer.SerializeToElement(
+            relations.ToDictionary(relation => relation, _ => new { href = "/" }));
+        return status;
     }
 
-    [Test]
-    public async Task StepIndicator_ShowsCorrectStepNumbers()
+    private async Task AssertAuthoritativeCallCountAsync(int count)
     {
-        var cut = RenderForDeploymentMode("SingleTenant");
-
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("Step 1 of 2", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Expected Step 1 of 2 indicator on Site Profile.");
-            }
-        });
-
-        GoToReviewAndLaunch(cut);
-
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("Step 2 of 2", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Expected Step 2 of 2 indicator on Review & Launch.");
-            }
-        });
-
-        await Task.CompletedTask;
+        await _instanceOnboardingService.Received(count).GetStatusAsync();
+        await _instanceOnboardingService.Received(count).GetSystemOnboardingStatusAsync();
+        await _instanceOnboardingService.Received(count).GetBrandingSettingsAsync();
+        await _instanceOnboardingService.Received(count).GetAuthProviderConfiguredStateAsync();
+        await _instanceOnboardingService.Received(count).GetAuthorizationProviderConfiguredStateAsync();
+        await _instanceOnboardingService.Received(count).GetOnboardingPreflightAsync();
     }
 
-    [Test]
-    public async Task StepRail_ShowsAllSteps()
+    private static IElement FindButton(IRenderedComponent<InstanceOnboarding> cut, string text) =>
+        cut.FindAll("button").Single(button =>
+            button.TextContent.Contains(text, StringComparison.OrdinalIgnoreCase));
+
+    private static IElement? FindLink(IRenderedComponent<InstanceOnboarding> cut, string href) =>
+        cut.FindAll("a").FirstOrDefault(link => link.GetAttribute("href") == href);
+
+    private static void Require(bool condition, string message)
     {
-        var cut = RenderForDeploymentMode("SingleTenant");
-
-        cut.WaitForAssertion(() =>
+        if (!condition)
         {
-            if (!cut.Markup.Contains("Step 1", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Site Profile", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Step 2", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Review & Launch", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Expected step rail to show both steps.");
-            }
-        });
-
-        await Task.CompletedTask;
+            throw new InvalidOperationException(message);
+        }
     }
 
-    [Test]
-    public async Task LaunchRecapPanel_ShowsSummary()
+    private static void RequireContains(string actual, string expected)
     {
-        var cut = RenderForDeploymentMode("SingleTenant");
-
-        cut.WaitForAssertion(() =>
+        if (!actual.Contains(expected, StringComparison.OrdinalIgnoreCase))
         {
-            if (!cut.Markup.Contains("Launch Recap", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Site:", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Mode:", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Auth:", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Destination:", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Expected Launch Recap panel with summary fields.");
-            }
-        });
-
-        await Task.CompletedTask;
+            throw new InvalidOperationException($"Expected content to contain '{expected}'.");
+        }
     }
 
-    [Test]
-    public async Task ReviewAndLaunch_ShowsBlockingChecks()
+    private static void RequireNotContains(string actual, string expected)
     {
-        var cut = RenderForDeploymentMode("SingleTenant");
-        GoToReviewAndLaunch(cut);
-
-        cut.WaitForAssertion(() =>
+        if (actual.Contains(expected, StringComparison.OrdinalIgnoreCase))
         {
-            if (!cut.Markup.Contains("Critical Launch Requirements", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Critical launch requirements passed", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Expected Critical Launch Requirements section with passed checks summary.");
-            }
-        });
-
-        await Task.CompletedTask;
-    }
-
-    [Test]
-    public async Task ReviewAndLaunch_MultiTenant_ShowsDnsChecklistWarnings()
-    {
-        var cut = RenderForDeploymentMode("MultiTenant", new OnboardingPreflightDto
-        {
-            DeploymentMode = "MultiTenant",
-            IsReadyToLaunch = true,
-            BlockingChecks = new List<OnboardingPreflightCheckDto>
-            {
-                new OnboardingPreflightCheckDto
-                {
-                    Code = "setup_secret",
-                    Name = "Setup Secret",
-                    Severity = "Blocking",
-                    Status = "Pass",
-                    Message = "Setup secret is active."
-                }
-            },
-            WarningChecks = new List<OnboardingPreflightCheckDto>
-            {
-                new OnboardingPreflightCheckDto
-                {
-                    Code = "dns_public_platform",
-                    Name = "Public platform DNS",
-                    Severity = "Warning",
-                    Status = "Warning",
-                    Message = "Point the public platform host events.example.org at the Blazor/BFF entry point before launch.",
-                    Detail = "Create an A/AAAA or CNAME record at your edge provider."
-                }
-            }
-        });
-        GoToReviewAndLaunch(cut);
-
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("Public platform DNS", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("events.example.org", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Expected DNS checklist warning to render in Review & Launch.");
-            }
-        });
-
-        await Task.CompletedTask;
-    }
-
-    [Test]
-    public async Task ReviewAndLaunch_WithFailedBlockingCheck_PreventsLaunch()
-    {
-        var cut = RenderForDeploymentMode("SingleTenant", new OnboardingPreflightDto
-        {
-            DeploymentMode = "SingleTenant",
-            IsReadyToLaunch = false,
-            BlockingChecks = new List<OnboardingPreflightCheckDto>
-            {
-                new OnboardingPreflightCheckDto
-                {
-                    Code = "setup_secret",
-                    Name = "Setup Secret",
-                    Severity = "Blocking",
-                    Status = "Fail",
-                    Message = "Setup secret is missing or invalid."
-                }
-            },
-            WarningChecks = new List<OnboardingPreflightCheckDto>()
-        });
-        GoToReviewAndLaunch(cut);
-
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("Setup secret is missing or invalid.", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Expected failed blocking check message to be visible.");
-            }
-        });
-
-        ClickMudButton(cut, "Launch Instance");
-        await _instanceOnboardingService.DidNotReceive().CompleteAsync(Arg.Any<CompleteInstanceOnboardingRequest>());
-    }
-
-    [Test]
-    public async Task ReviewAndLaunch_Acknowledgements_RequiredForSeriousWarnings()
-    {
-        var cut = RenderForDeploymentMode("SingleTenant", new OnboardingPreflightDto
-        {
-            DeploymentMode = "SingleTenant",
-            IsReadyToLaunch = true,
-            BlockingChecks = new List<OnboardingPreflightCheckDto>
-            {
-                new OnboardingPreflightCheckDto
-                {
-                    Code = "setup_secret",
-                    Name = "Setup Secret",
-                    Severity = "Blocking",
-                    Status = "Pass",
-                    Message = "Setup secret is active."
-                }
-            },
-            WarningChecks = new List<OnboardingPreflightCheckDto>
-            {
-                new OnboardingPreflightCheckDto
-                {
-                    Code = "public_exposure",
-                    Name = "Public Exposure",
-                    Severity = "Critical",
-                    Status = "Warning",
-                    Message = "Site will be publicly accessible."
-                }
-            }
-        });
-        GoToReviewAndLaunch(cut);
-
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("Acknowledgements", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("publicly accessible", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Expected acknowledgement section for serious warning.");
-            }
-        });
-
-        ClickMudButton(cut, "Launch Instance");
-        await _instanceOnboardingService.DidNotReceive().CompleteAsync(Arg.Any<CompleteInstanceOnboardingRequest>());
+            throw new InvalidOperationException($"Expected content not to contain '{expected}'.");
+        }
     }
 
     private sealed class OkHttpHandler : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK));
-        }
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK));
     }
 }

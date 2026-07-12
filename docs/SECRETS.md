@@ -116,6 +116,7 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 | Infisical Path + Key | .NET Configuration Key |
 |---|---|
 | `/keycloak/REALM_NAME` | `Keycloak:RealmName` |
+| `/keycloak/KEYCLOAK_CLIENT_ID` | Nonsecret browser/BFF client metadata mapped to `Keycloak:ClientId` for API onboarding detection. |
 | `/keycloak/KEYCLOAK_BLAZOR_CLIENT_SECRET` | Blazor BFF `Keycloak:ClientSecret` and Compose `keycloak-init` client-secret sync input |
 | `/keycloak/KEYCLOAK_API_CLIENT_SECRET` | Optional legacy/future Compose `keycloak-init` sync input for deployments that intentionally make the API resource-server client confidential; not needed by the current bearer-only API audience client |
 | `/keycloak/KEYCLOAK_SMTP_*` | Optional Compose `keycloak-init` realm SMTP bootstrap. Leave `KEYCLOAK_SMTP_HOST` blank to preserve existing Keycloak SMTP settings; set host/port/from to apply deployment-managed SMTP. |
@@ -149,6 +150,25 @@ Environment variable format uses double-underscore separators for .NET keys, for
 Compose Keycloak bootstrap consumes `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` only inside the one-shot `keycloak-init` container. Those credentials are not application runtime secrets and must not be stored in governance settings or copied into support artifacts. The init logs redact client secret values.
 
 External-Keycloak setup bootstrap accepts a one-time Keycloak admin or service-account username/password through the setup UI. Treat that credential as operator input for a single setup request, not as an ISLAMU-managed secret. ISLAMU must not save it to appsettings, environment variables, Infisical paths, database governance settings, logs, traces, screenshots, or support bundles. After a successful bootstrap, only the runtime Keycloak OIDC values and BFF client secrets are stored according to the normal authentication secret ownership model.
+
+Keycloak onboarding and administrator reads always redact the runtime client secret. They may expose only configured/source/editability metadata plus nonsecret authority and client ID. For application-managed ownership, a stored secret wins and a deployment value is only a bootstrap fallback. For deployment-managed ownership, the deployment source is authoritative, stored database secrets are ignored, and setup writes do not persist a replacement.
+
+Keycloak configuration writes and secret rotation derive ownership/configured state from authoritative server-side configuration instead of trusting client-supplied ownership metadata. A new confidential BFF client requires a secret; a blank write is valid only when the server already resolves an effective secret that was redacted from the browser read. Deployment-managed rotation returns operator action guidance and never writes a replacement to application storage.
+
+### Onboarding And Setup Credentials
+
+The `/setup` route is a pre-authentication operator gateway, not a browser-owned secret workflow. Browser-supplied setup, tenant, authorization, and provider-administration headers are stripped before proxying. The BFF/server replaces them only from trusted server-owned state, and the API validates the resulting authority again.
+
+The following values must never be persisted in browser storage, returned in browser-facing DTOs, or copied into logs, traces, screenshots, diagnostics, or support artifacts:
+
+- access, refresh, and provider tokens;
+- the setup secret or a recoverable derivative;
+- temporary provider administrator usernames/passwords or service-account credentials;
+- raw provider request or response bodies.
+
+Rerunning verification or completion does not grant permission to read a stored secret back. Application-managed credentials remain write-only and are rotated through the owning server operation. Deployment-managed credentials remain authoritative in their configured environment/secret provider; rotate them there, refresh or restart as required, and confirm only through configured/readiness metadata. Do not overwrite a deployment-managed value from onboarding to repair drift.
+
+See [SELF_HOSTING.md](SELF_HOSTING.md#first-run-setup-secret) for the operator flow and [TROUBLESHOOTING.md](TROUBLESHOOTING.md#onboarding-recovery-matrix) for recovery without disclosing credentials.
 
 
 ## Ownership Model

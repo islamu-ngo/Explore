@@ -30,6 +30,7 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
         _userExternalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
         _configurationService = Substitute.For<IAuthProviderConfigurationService>();
         _jwtAuthorityRefreshNotifier = Substitute.For<IJwtAuthorityRefreshNotifier>();
+        _configurationService.ReadConfigurationAsync().Returns(new AuthProviderConfigurationDto());
 
         _handler = new UpdateAuthProviderConfigurationCommandHandler(
             _adminContext,
@@ -136,6 +137,63 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await _configurationService.Received(1).ApplyConfigurationAsync(configuration);
+    }
+
+    [Test]
+    public async Task Handle_WithRedactedConfiguredKeycloakSecret_AppliesConfiguration()
+    {
+        _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
+        _configurationService.ReadConfigurationAsync().Returns(new AuthProviderConfigurationDto
+        {
+            KeycloakAuthority = "https://keycloak.example.com/realms/test",
+            KeycloakClientId = "client-id",
+            KeycloakClientSecretOwnership = { Configured = true }
+        });
+        _userRepository.GetById(TestUserId).Returns(CreateUser("keycloak"));
+        _userExternalLoginRepository.GetByUser(TestUserId).Returns(new List<UserExternalLogin>());
+
+        var configuration = CreateValidConfiguration();
+        configuration.KeycloakClientSecret = string.Empty;
+
+        var result = await _handler.Handle(CreateCommand(configuration), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _configurationService.Received(1).ApplyConfigurationAsync(configuration);
+    }
+
+    [Test]
+    public async Task Handle_WithForgedConfiguredOwnershipAndNoServerSecret_ReturnsValidationFailure()
+    {
+        _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
+        var configuration = CreateValidConfiguration();
+        configuration.KeycloakClientSecret = string.Empty;
+        configuration.KeycloakClientSecretOwnership.Configured = true;
+
+        var result = await _handler.Handle(CreateCommand(configuration), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).Contains("Invalid auth provider configuration");
+        await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthProviderConfigurationDto>());
+    }
+
+    [Test]
+    public async Task Handle_WithConfiguredSecretForDifferentClient_ReturnsValidationFailure()
+    {
+        _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
+        _configurationService.ReadConfigurationAsync().Returns(new AuthProviderConfigurationDto
+        {
+            KeycloakAuthority = "https://keycloak.example.com/realms/test",
+            KeycloakClientId = "current-client",
+            KeycloakClientSecretOwnership = { Configured = true }
+        });
+        var configuration = CreateValidConfiguration();
+        configuration.KeycloakClientSecret = string.Empty;
+
+        var result = await _handler.Handle(CreateCommand(configuration), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).Contains("Invalid auth provider configuration");
+        await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthProviderConfigurationDto>());
     }
 
     private static UpdateAuthProviderConfigurationCommand CreateCommand(AuthProviderConfigurationDto configuration)

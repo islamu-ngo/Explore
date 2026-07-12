@@ -13,8 +13,9 @@
 
 <PageTitle>Authentication Providers</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
-    <MudPaper Class="pa-6">
+<div class="auth-provider-configuration" dir="auto">
+    <MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
+        <MudPaper Class="pa-6">
         <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">Authentication Providers</MudText>
         <MudText Typo="Typo.body2" Class="mb-4">
             Choose how users will authenticate. At least one provider must be enabled.
@@ -68,26 +69,30 @@
             }
             else
             {
-                <MudExpansionPanels MultiExpansion="true" Class="mb-4">
+                <div class="auth-provider-configuration__providers">
                     @* ── Keycloak ── *@
-                    <MudExpansionPanel Text="Keycloak (OIDC)" @bind-Expanded="_isKeycloakPanelExpanded">
-                        <TitleContent>
-                            <div class="d-flex align-center" data-testid="keycloak-provider-header">
-                                <MudText Typo="Typo.h6" Class="mr-2">Keycloak (OIDC)</MudText>
+                    <details class="auth-provider-configuration__provider" open>
+                        <summary class="auth-provider-configuration__provider-summary"
+                                 aria-labelledby="keycloak-provider-title"
+                                 aria-describedby="keycloak-provider-description"
+                                 title="Self-hosted identity provider. Full control over user accounts, passwords, and SSO. Requires running a separate Keycloak server."
+                                 data-testid="keycloak-provider-header">
+                            <h2 class="auth-provider-configuration__provider-heading">
+                                <span id="keycloak-provider-title">Keycloak (OIDC)</span>
                                 @if (_model.KeycloakDetectedFromEnvironment == true)
                                 {
-                                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
+                                    <span class="auth-provider-configuration__provider-badge">
                                         Auto-detected
-                                    </MudChip>
+                                    </span>
                                 }
-                                <MudTooltip Text="Self-hosted identity provider. Full control over user accounts, passwords, and SSO. Requires running a separate Keycloak server.">
-                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
-                                </MudTooltip>
-                            </div>
-                        </TitleContent>
-                        <ChildContent>
+                                <span id="keycloak-provider-description" class="sr-only">
+                                    Self-hosted identity provider. Full control over user accounts, passwords, and SSO. Requires running a separate Keycloak server.
+                                </span>
+                            </h2>
+                        </summary>
+                        <div class="auth-provider-configuration__provider-content">
                             <MudStack Spacing="2">
-                                <div data-testid="keycloak-enable-switch">
+                                <div class="auth-provider-configuration__enable-switch" data-testid="keycloak-enable-switch">
                                     <MudSwitch T="bool"
                                                Value="@(_model.KeycloakEnabled == true)"
                                                ValueChanged="OnKeycloakToggled"
@@ -112,13 +117,9 @@
                                         <MudRadio T="KeycloakConfigurationMode" Value="KeycloakConfigurationMode.Manual" Color="Color.Primary" Dense="true">
                                             Use an already configured Keycloak realm
                                         </MudRadio>
-                                        <div data-testid="keycloak-bootstrap-mode-radio"
-                                             @onclick="SelectKeycloakBootstrapMode"
-                                             style="cursor: pointer;">
-                                            <MudRadio T="KeycloakConfigurationMode" Value="KeycloakConfigurationMode.Bootstrap" Color="Color.Primary" Dense="true">
-                                                Let ISLAMU configure Keycloak clients now
-                                            </MudRadio>
-                                        </div>
+                                        <MudRadio T="KeycloakConfigurationMode" Value="KeycloakConfigurationMode.Bootstrap" Color="Color.Primary" Dense="true">
+                                            Let ISLAMU configure Keycloak clients now
+                                        </MudRadio>
                                     </MudRadioGroup>
 
                                     @if (_keycloakConfigurationMode == KeycloakConfigurationMode.Manual)
@@ -168,7 +169,8 @@
                                                            Immediate="true"
                                                            Placeholder="islamu-event-blazor" />
                                              <MudTextField Variant="Variant.Outlined" T="string"
-                                                           Label="Blazor BFF client secret (Required)"
+                                                           Label="BFF client secret (Required)"
+                                                           aria-label="Blazor BFF client secret (required)"
                                                            InputType="InputType.Password"
                                                            @bind-Value="_keycloakBootstrap.BlazorClientSecret"
                                                            Immediate="true"
@@ -185,12 +187,14 @@
                                                            Immediate="true"
                                                             HelperText="Only sent when you want the platform to synchronize the API resource-server client secret." />
                                              <MudTextField Variant="Variant.Outlined" T="string"
-                                                           Label="One-time Keycloak admin username (Required)"
+                                                           Label="Admin username (Required)"
+                                                           aria-label="One-time Keycloak admin username (required)"
                                                            @bind-Value="_keycloakBootstrap.BootstrapAdminUsername"
                                                            Immediate="true"
                                                             HelperText="Used only for this bootstrap request and never stored by the platform." />
                                               <MudTextField Variant="Variant.Outlined" T="string"
-                                                            Label="One-time Keycloak admin password (Required)"
+                                                            Label="Admin password (Required)"
+                                                            aria-label="One-time Keycloak admin password (required)"
                                                             InputType="InputType.Password"
                                                             @bind-Value="_keycloakBootstrap.BootstrapAdminPassword"
                                                             Immediate="true"
@@ -199,20 +203,23 @@
                                     }
                                 }
                             </MudStack>
-                        </ChildContent>
-                    </MudExpansionPanel>
+                        </div>
+                    </details>
 
                     @* ── ATProto Login ── *@
-                    <MudExpansionPanel Text="AT Protocol Login">
-                        <TitleContent>
-                            <div class="d-flex align-center">
-                                <MudText Typo="Typo.h6" Class="mr-2">AT Protocol Login</MudText>
-                                <MudTooltip Text="Users authenticate with their AT Protocol identity (e.g., Bluesky account). No external server needed — users bring their own identity.">
-                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
-                                </MudTooltip>
-                            </div>
-                        </TitleContent>
-                        <ChildContent>
+                    <details class="auth-provider-configuration__provider">
+                        <summary class="auth-provider-configuration__provider-summary"
+                                 aria-labelledby="atproto-provider-title"
+                                 aria-describedby="atproto-provider-description"
+                                 title="Users authenticate with their AT Protocol identity (for example, a Bluesky account). No external server is needed.">
+                            <h2 class="auth-provider-configuration__provider-heading">
+                                <span id="atproto-provider-title">AT Protocol Login</span>
+                                <span id="atproto-provider-description" class="sr-only">
+                                    Users authenticate with their AT Protocol identity, such as a Bluesky account. No external server is needed.
+                                </span>
+                            </h2>
+                        </summary>
+                        <div class="auth-provider-configuration__provider-content">
                             <MudStack Spacing="2">
                                 <MudSwitch T="bool?" @bind-Value="_model.AtprotoLoginEnabled" Color="Color.Primary">
                                     Enable AT Protocol Login
@@ -236,20 +243,23 @@
                                     }
                                 }
                             </MudStack>
-                        </ChildContent>
-                    </MudExpansionPanel>
+                        </div>
+                    </details>
 
                     @* ── Google SSO ── *@
-                    <MudExpansionPanel Text="Google SSO">
-                        <TitleContent>
-                            <div class="d-flex align-center">
-                                <MudText Typo="Typo.h6" Class="mr-2">Google SSO</MudText>
-                                <MudTooltip Text="Users authenticate with their Google account. Requires a Google Cloud project with OAuth credentials configured.">
-                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
-                                </MudTooltip>
-                            </div>
-                        </TitleContent>
-                        <ChildContent>
+                    <details class="auth-provider-configuration__provider">
+                        <summary class="auth-provider-configuration__provider-summary"
+                                 aria-labelledby="google-provider-title"
+                                 aria-describedby="google-provider-description"
+                                 title="Users authenticate with their Google account. Requires a Google Cloud project with OAuth credentials configured.">
+                            <h2 class="auth-provider-configuration__provider-heading">
+                                <span id="google-provider-title">Google SSO</span>
+                                <span id="google-provider-description" class="sr-only">
+                                    Users authenticate with their Google account. Requires a Google Cloud project with OAuth credentials configured.
+                                </span>
+                            </h2>
+                        </summary>
+                        <div class="auth-provider-configuration__provider-content">
                             <MudStack Spacing="2">
                                 <MudSwitch T="bool?" @bind-Value="_model.GoogleSsoEnabled" Color="Color.Primary">
                                     Enable Google SSO
@@ -267,9 +277,9 @@
                                                   @bind-Value="_model.GoogleClientSecret" />
                                 }
                             </MudStack>
-                        </ChildContent>
-                    </MudExpansionPanel>
-                </MudExpansionPanels>
+                        </div>
+                    </details>
+                </div>
 
                 @* ── Validation message ── *@
                 @if (!HasAnyProviderEnabled)
@@ -296,8 +306,9 @@
                 </MudStack>
             }
         }
-    </MudPaper>
-</MudContainer>
+        </MudPaper>
+    </MudContainer>
+</div>
 
 @code {
     private AuthProviderConfigurationDto _model = new();
@@ -308,16 +319,15 @@
     private string? _errorMessage;
     private string? _successMessage;
     private bool _showAdvancedConfig = false;
-    private bool _isKeycloakPanelExpanded = true;
-
+    private bool _googleSecretAlreadyConfigured;
     private bool HasAnyProviderEnabled =>
         _model.KeycloakEnabled == true || _model.AtprotoLoginEnabled == true || _model.GoogleSsoEnabled == true;
 
     private bool HasKeycloakCredentials =>
-        _model.KeycloakDetectedFromEnvironment == true ||
-        (_keycloakConfigurationMode == KeycloakConfigurationMode.Manual
-            ? !string.IsNullOrWhiteSpace(_model.KeycloakAuthority) && !string.IsNullOrWhiteSpace(_model.KeycloakClientId)
-            : HasKeycloakBootstrapCredentials);
+        _keycloakConfigurationMode == KeycloakConfigurationMode.Manual
+            ? _model.KeycloakDetectedFromEnvironment == true ||
+              (!string.IsNullOrWhiteSpace(_model.KeycloakAuthority) && !string.IsNullOrWhiteSpace(_model.KeycloakClientId))
+            : HasKeycloakBootstrapCredentials;
 
     private bool HasKeycloakBootstrapCredentials =>
         !string.IsNullOrWhiteSpace(_keycloakBootstrap.KeycloakBaseUrl) &&
@@ -331,7 +341,8 @@
         !string.IsNullOrWhiteSpace(_model.AtprotoPublicUrl);
 
     private bool HasGoogleCredentials =>
-        !string.IsNullOrWhiteSpace(_model.GoogleClientId) && !string.IsNullOrWhiteSpace(_model.GoogleClientSecret);
+        !string.IsNullOrWhiteSpace(_model.GoogleClientId) &&
+        (_googleSecretAlreadyConfigured || !string.IsNullOrWhiteSpace(_model.GoogleClientSecret));
 
     private bool CanSave =>
         !_submitState.IsSubmitting &&
@@ -350,6 +361,9 @@
         }
 
         _model = await InstanceOnboardingService.GetAuthProviderConfigurationAsync();
+        _googleSecretAlreadyConfigured = _model.GoogleSsoEnabled == true;
+        _model.KeycloakClientSecret = string.Empty;
+        _model.GoogleClientSecret = string.Empty;
         SeedKeycloakBootstrapDefaults();
 
         // Pre-fill the ATProto public URL from the current browser request if not already set
@@ -379,11 +393,6 @@
         }
     }
 
-    private void SelectKeycloakBootstrapMode()
-    {
-        _keycloakConfigurationMode = KeycloakConfigurationMode.Bootstrap;
-    }
-
     private async Task SaveAndContinueAsync()
     {
         _submitState.Start();
@@ -391,13 +400,19 @@
         _successMessage = null;
 
         var usingKeycloakBootstrap = ShouldBootstrapKeycloak;
-        var response = usingKeycloakBootstrap
-            ? await InstanceOnboardingService.BootstrapKeycloakRealmAsync(_keycloakBootstrap)
-            : await InstanceOnboardingService.SaveAuthProviderConfigurationAsync(_model);
-
-        if (usingKeycloakBootstrap)
+        BaseCommandResponseOfGuid response;
+        try
         {
-            ClearKeycloakBootstrapSecrets();
+            response = usingKeycloakBootstrap
+                ? await BootstrapKeycloakWithSecretCleanupAsync()
+                : await InstanceOnboardingService.SaveAuthProviderConfigurationAsync(_model);
+        }
+        catch (Exception)
+        {
+            Logger.LogWarning("Failed to save authentication provider configuration.");
+            _submitState.Complete();
+            _errorMessage = "Could not save authentication provider configuration. Try again.";
+            return;
         }
 
         if (response.Success != true)
@@ -439,6 +454,18 @@
         Navigation.NavigateTo("/onboarding/authz-provider", forceLoad: true);
     }
 
+    private async Task<BaseCommandResponseOfGuid> BootstrapKeycloakWithSecretCleanupAsync()
+    {
+        try
+        {
+            return await InstanceOnboardingService.BootstrapKeycloakRealmAsync(_keycloakBootstrap);
+        }
+        finally
+        {
+            ClearKeycloakBootstrapSecrets();
+        }
+    }
+
     private bool ShouldBootstrapKeycloak =>
         _model.KeycloakEnabled == true &&
         _keycloakConfigurationMode == KeycloakConfigurationMode.Bootstrap;
@@ -467,10 +494,6 @@
             _keycloakBootstrap.BlazorClientId = _model.KeycloakClientId;
         }
 
-        if (!string.IsNullOrWhiteSpace(_model.KeycloakClientSecret))
-        {
-            _keycloakBootstrap.BlazorClientSecret = _model.KeycloakClientSecret;
-        }
     }
 
     private void ClearKeycloakBootstrapSecrets()

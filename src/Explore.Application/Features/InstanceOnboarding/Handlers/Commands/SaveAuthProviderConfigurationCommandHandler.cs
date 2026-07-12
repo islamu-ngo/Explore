@@ -30,7 +30,8 @@ public class SaveAuthProviderConfigurationCommandHandler : IRequestHandler<SaveA
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var validator = new AuthProviderConfigurationDtoValidator();
+        var currentConfiguration = await _configurationService.ReadConfigurationAsync();
+        var validator = new AuthProviderConfigurationDtoValidator(currentConfiguration);
         var validationResult = await validator.ValidateAsync(request.Configuration, cancellationToken);
         if (!validationResult.IsValid)
         {

@@ -1,62 +1,147 @@
-/* ABOUTME: Scoped layout styles for the instance onboarding 2-step flow. */
-/* ABOUTME: Creates the desktop step rail, main content area, and launch recap summary panel. */
+/* ABOUTME: Scoped single-column layout styles for the authoritative instance setup overview. */
+/* ABOUTME: Uses logical properties and design tokens for responsive, RTL-safe task and readiness flows. */
 
-.onboarding-shell {
-    max-width: min(1180px, calc(100vw - 48px));
+.instance-onboarding {
+    box-sizing: border-box;
+    display: grid;
+    gap: var(--isl-space-6, 24px);
+    width: min(100%, 52rem);
     margin-inline: auto;
+    padding-block: var(--isl-space-8, 32px);
+    padding-inline: var(--isl-space-4, 16px);
+    overflow-wrap: anywhere;
 }
 
-.onboarding-shell__grid {
+.instance-onboarding__header {
+    display: flex;
     align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--isl-space-4, 16px);
 }
 
-.onboarding-shell__rail,
-.onboarding-shell__summary {
-    position: sticky;
-    top: var(--isl-space-6, 24px);
-}
-
-.onboarding-shell__step {
-    min-height: 32px;
-}
-
-.onboarding-shell__check-row {
-    padding: var(--isl-space-2, 8px) var(--isl-space-3, 12px);
-    border-radius: var(--isl-radius-sm, 4px);
-    background: var(--mud-palette-surface);
-    border: 1px solid var(--mud-palette-lines-default);
-}
-
-.onboarding-shell__check-row--error {
-    border-color: var(--mud-palette-error);
-    background: var(--mud-palette-error-hover, rgba(244, 67, 54, 0.04));
-}
-
-.onboarding-shell__check-row--pass {
-    border-color: var(--mud-palette-success, rgba(76, 175, 80, 0.3));
-    background: var(--mud-palette-success-hover, rgba(76, 175, 80, 0.04));
-}
-
-.onboarding-shell__check-name {
-    line-height: 1.3;
-}
-
-.onboarding-shell__check-msg {
-    line-height: 1.4;
-}
-
-.onboarding-shell__check-detail {
+.instance-onboarding__heading {
+    display: grid;
     flex: 1;
+    gap: var(--isl-space-2, 8px);
     min-width: 0;
 }
 
-@media (max-width: 1279px) {
-    .onboarding-shell {
-        max-width: min(920px, calc(100vw - 32px));
+.instance-onboarding__operator-context,
+.instance-onboarding__section {
+    display: grid;
+    gap: var(--isl-space-4, 16px);
+    padding-block-start: var(--isl-space-6, 24px);
+    border-block-start: 1px solid var(--isl-color-border, var(--mud-palette-lines-default));
+}
+
+.instance-onboarding__definition-list {
+    margin-block: 0;
+}
+
+.instance-onboarding__definition-row {
+    display: grid;
+    grid-template-columns: minmax(9rem, 1fr) minmax(0, 2fr);
+    gap: var(--isl-space-3, 12px);
+    align-items: baseline;
+}
+
+.instance-onboarding__definition-row dt {
+    color: var(--isl-color-text-secondary, var(--mud-palette-text-secondary));
+    font-weight: 600;
+}
+
+.instance-onboarding__definition-row dd {
+    margin-inline: 0;
+    color: var(--isl-color-text, var(--mud-palette-text-primary));
+}
+
+.instance-onboarding__loading,
+.instance-onboarding__fields,
+.instance-onboarding__checks,
+.instance-onboarding__warnings,
+.instance-onboarding__acknowledgement {
+    display: grid;
+    gap: var(--isl-space-3, 12px);
+    min-width: 0;
+}
+
+.instance-onboarding__task-list {
+    min-width: 0;
+}
+
+.instance-onboarding__check {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--isl-space-3, 12px);
+    align-items: center;
+    min-height: var(--isl-target-min, 24px);
+    padding-block: var(--isl-space-3, 12px);
+    padding-inline: var(--isl-space-3, 12px);
+    border: 1px solid var(--isl-color-border, var(--mud-palette-lines-default));
+    border-radius: var(--isl-radius-sm, 4px);
+    background: var(--isl-color-surface, var(--mud-palette-surface));
+}
+
+.instance-onboarding__check--pass {
+    border-color: var(--isl-color-success, var(--mud-palette-success));
+}
+
+.instance-onboarding__check--fail {
+    border-color: var(--isl-color-error, var(--mud-palette-error));
+}
+
+.instance-onboarding__check--warning {
+    grid-template-columns: auto minmax(0, 1fr);
+    border-color: var(--isl-color-warning, var(--mud-palette-warning));
+}
+
+.instance-onboarding__check-copy {
+    display: grid;
+    gap: var(--isl-space-1, 4px);
+    min-width: 0;
+}
+
+.instance-onboarding__acknowledgement {
+    padding-block: var(--isl-space-3, 12px);
+    padding-inline: var(--isl-space-3, 12px);
+    border: 1px solid var(--isl-color-warning, var(--mud-palette-warning));
+    border-radius: var(--isl-radius-sm, 4px);
+}
+
+.instance-onboarding__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-3, 12px);
+    align-items: center;
+}
+
+.instance-onboarding__actions--submit {
+    justify-content: flex-end;
+    padding-block-start: var(--isl-space-5, 20px);
+}
+
+@media (max-width: 48rem) {
+    .instance-onboarding {
+        gap: var(--isl-space-5, 20px);
+        padding-block: var(--isl-space-6, 24px);
+        padding-inline: var(--isl-space-3, 12px);
     }
 
-    .onboarding-shell__rail,
-    .onboarding-shell__summary {
-        position: static;
+    .instance-onboarding__header {
+        align-items: flex-start;
+    }
+
+    .instance-onboarding__definition-row,
+    .instance-onboarding__check {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .instance-onboarding__check--warning {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .instance-onboarding__actions {
+        align-items: stretch;
+        flex-direction: column;
     }
 }

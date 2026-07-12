@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Explore.Blazor.Client.Helpers;
 using Microsoft.AspNetCore.Components;
 using Refit;
 
@@ -67,12 +68,16 @@ public class InstanceOnboardingServiceTests
     public async Task GetStatusAsync_ReturnsStatus_WhenApiSucceeds()
     {
         // Arrange
-        var expected = new InstanceOnboardingStatusDto
+        var expected = new HalResourceOfInstanceOnboardingStatusDto
         {
             IsCompleted = true,
             IsAuthenticated = true,
             IsCurrentUserInstanceAdmin = true,
-            SelectedDeploymentMode = "SingleTenant"
+            SelectedDeploymentMode = "SingleTenant",
+            _links = new Dictionary<string, HalLink>
+            {
+                ["manage-authentication"] = new HalLink { Href = "/api/instance/auth-provider" }
+            }
         };
         SetupBffClient(CreateJsonResponse(expected));
 
@@ -83,6 +88,7 @@ public class InstanceOnboardingServiceTests
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.IsCompleted).IsTrue();
         await Assert.That(result.SelectedDeploymentMode).IsEqualTo("SingleTenant");
+        await Assert.That(result.HasHalLink("manage-authentication")).IsTrue();
     }
 
     [Test]
@@ -90,7 +96,7 @@ public class InstanceOnboardingServiceTests
     {
         // Arrange
         var startedAt = new DateTime(2026, 2, 15, 10, 0, 0, DateTimeKind.Utc);
-        var expected = new InstanceOnboardingStatusDto
+        var expected = new HalResourceOfInstanceOnboardingStatusDto
         {
             IsCompleted = false,
             IsSetupModeActive = true,
@@ -350,7 +356,7 @@ public class InstanceOnboardingServiceTests
     #region AuthProviderConfigurationAsync
 
     [Test]
-    public async Task GetAuthProviderConfigurationAsync_UsesSetupInternalEndpoint()
+    public async Task GetAuthProviderConfigurationAsync_UsesPublicRedactedEndpoint()
     {
         // Arrange
         Uri? requestUri = null;
@@ -359,7 +365,7 @@ public class InstanceOnboardingServiceTests
             KeycloakEnabled = true,
             KeycloakAuthority = "https://keycloak.example.com/auth/realms/ISLAMU",
             KeycloakClientId = "islamu-event-blazor",
-            KeycloakClientSecret = "runtime-secret",
+            KeycloakClientSecret = string.Empty,
             KeycloakDetectedFromEnvironment = true
         };
         SetupBffClient(request =>
@@ -373,9 +379,9 @@ public class InstanceOnboardingServiceTests
 
         // Assert
         await Assert.That(requestUri).IsNotNull();
-        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/instanceonboarding/auth-provider-configuration/internal");
+        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/instanceonboarding/auth-provider-configuration");
         await Assert.That(result.KeycloakDetectedFromEnvironment).IsTrue();
-        await Assert.That(result.KeycloakClientSecret).IsEqualTo("runtime-secret");
+        await Assert.That(result.KeycloakClientSecret).IsEmpty();
     }
 
     [Test]

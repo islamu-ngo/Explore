@@ -1,8 +1,9 @@
 // ABOUTME: Component tests for startup gate routing decisions after instance onboarding.
-// ABOUTME: Ensures single-tenant users go to events and multi-tenant admins go to instance admin settings.
+// ABOUTME: Covers mode-specific handoff plus fail-closed incomplete, invalid, null, and error states.
 
 using Bunit.TestDoubles;
 using Explore.Blazor.Client.Pages.Onboarding;
+using Explore.Blazor.Client.Routing.ControlPlane;
 using Explore.Blazor.Client.Tests.Common;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -38,6 +39,7 @@ public class StartupGateTests : IDisposable
         {
             IsCompleted = true,
             IsAuthenticated = true,
+            IsCurrentUserInstanceAdmin = true,
             SelectedDeploymentMode = "SingleTenant"
         });
 
@@ -46,21 +48,16 @@ public class StartupGateTests : IDisposable
         var cut = _ctx.RenderMudComponent<StartupGate>();
 
         // Assert
-        cut.WaitForAssertion(() =>
-        {
-            if (!UriEndsWith("/events"))
-            {
-                throw new InvalidOperationException($"Expected redirect to /events, got '{_nav.Uri}'.");
-            }
-        });
+        cut.WaitForAssertion(() => AssertUriEndsWith("/events"));
 
         await Task.CompletedTask;
     }
 
     [Test]
-    public async Task StartupGate_WhenMultiTenantCompleted_RedirectsToInstanceAdminSettings()
+    public async Task StartupGate_WhenMultiTenantAdminCompletedWithZeroTenants_RedirectsToControlPlaneOverview()
     {
         // Arrange
+        // No tenant-count dependency is registered: an empty control plane must still receive the admin handoff.
         _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
         {
             IsCompleted = true,
@@ -74,15 +71,9 @@ public class StartupGateTests : IDisposable
         var cut = _ctx.RenderMudComponent<StartupGate>();
 
         // Assert
-        cut.WaitForAssertion(() =>
-        {
-            if (!UriEndsWith("/admin/instance/settings"))
-            {
-                throw new InvalidOperationException($"Expected redirect to /admin/instance/settings, got '{_nav.Uri}'.");
-            }
-        });
+        cut.WaitForAssertion(() => AssertUriEndsWith(ControlPlaneRoutes.Overview));
 
-        await Task.CompletedTask;
+        await _instanceOnboardingService.Received(1).GetStatusAsync();
     }
 
     [Test]
@@ -102,15 +93,140 @@ public class StartupGateTests : IDisposable
         var cut = _ctx.RenderMudComponent<StartupGate>();
 
         // Assert
+        cut.WaitForAssertion(() => AssertUriEndsWith("/events"));
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task StartupGate_WhenOnboardingIsIncomplete_RedirectsToSetup()
+    {
+        // Arrange
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
+        {
+            IsCompleted = false,
+            IsAuthenticated = true,
+            SelectedDeploymentMode = "MultiTenant"
+        });
+
+        // Act
+        _nav.NavigateTo("/startup");
+        var cut = _ctx.RenderMudComponent<StartupGate>();
+
+        // Assert
+        cut.WaitForAssertion(() => AssertUriEndsWith("/setup"));
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task StartupGate_WhenCompletedDeploymentModeIsBlank_RemainsFailClosedAndShowsError()
+    {
+        // Arrange
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
+        {
+            IsCompleted = true,
+            IsAuthenticated = true,
+            IsCurrentUserInstanceAdmin = true,
+            SelectedDeploymentMode = " "
+        });
+
+        // Act
+        _nav.NavigateTo("/startup");
+        var cut = _ctx.RenderMudComponent<StartupGate>();
+
+        // Assert
         cut.WaitForAssertion(() =>
         {
-            if (!UriEndsWith("/events"))
-            {
-                throw new InvalidOperationException($"Expected redirect to /events, got '{_nav.Uri}'.");
-            }
+            AssertUriEndsWith("/startup");
+            AssertAlertContains(cut, "Could not determine deployment mode. Try refreshing.");
         });
 
         await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task StartupGate_WhenCompletedDeploymentModeIsUnknown_RemainsFailClosedAndShowsError()
+    {
+        // Arrange
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
+        {
+            IsCompleted = true,
+            IsAuthenticated = true,
+            IsCurrentUserInstanceAdmin = true,
+            SelectedDeploymentMode = "HybridTenant"
+        });
+
+        // Act
+        _nav.NavigateTo("/startup");
+        var cut = _ctx.RenderMudComponent<StartupGate>();
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            AssertUriEndsWith("/startup");
+            AssertAlertContains(cut, "Could not determine deployment mode. Try refreshing.");
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task StartupGate_WhenStatusIsNull_RemainsFailClosedAndShowsError()
+    {
+        // Arrange
+        _instanceOnboardingService.GetStatusAsync().Returns((InstanceOnboardingStatusDto?)null);
+
+        // Act
+        _nav.NavigateTo("/startup");
+        var cut = _ctx.RenderMudComponent<StartupGate>();
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            AssertUriEndsWith("/startup");
+            AssertAlertContains(cut, "Could not determine onboarding status. Try refreshing.");
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task StartupGate_WhenStatusLookupFails_RemainsFailClosedAndShowsError()
+    {
+        // Arrange
+        _instanceOnboardingService.GetStatusAsync()
+            .ThrowsAsync(new HttpRequestException("Status unavailable."));
+
+        // Act
+        _nav.NavigateTo("/startup");
+        var cut = _ctx.RenderMudComponent<StartupGate>();
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            AssertUriEndsWith("/startup");
+            AssertAlertContains(cut, "Startup routing failed. Try refreshing.");
+        });
+
+        await Task.CompletedTask;
+    }
+
+    private static void AssertAlertContains(IRenderedComponent<StartupGate> cut, string expectedText)
+    {
+        var alert = cut.Find("[role='alert']");
+        if (!alert.TextContent.Contains(expectedText, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException($"Expected alert to contain '{expectedText}', got '{alert.TextContent}'.");
+        }
+    }
+
+    private void AssertUriEndsWith(string expectedPath)
+    {
+        if (!UriEndsWith(expectedPath))
+        {
+            throw new InvalidOperationException($"Expected redirect to {expectedPath}, got '{_nav.Uri}'.");
+        }
     }
 
     private bool UriEndsWith(string suffix)

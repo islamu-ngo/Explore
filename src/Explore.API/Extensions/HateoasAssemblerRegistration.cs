@@ -239,6 +239,13 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ICollectionLinkPolicy<ControlPlaneTenantEffectiveConfigurationDto>, ControlPlaneTenantEffectiveConfigurationCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<ControlPlaneTenantEffectiveConfigurationDto, ControlPlaneTenantEffectiveConfigurationDto>, ControlPlaneTenantEffectiveConfigurationResourceAssembler>();
 
+        services.AddScoped<ILinkPolicy<InstanceOnboardingStatusDto>, InstanceOnboardingStatusLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<InstanceOnboardingStatusDto>, InstanceOnboardingStatusCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<InstanceOnboardingStatusDto, InstanceOnboardingStatusDto>, InstanceOnboardingStatusResourceAssembler>();
+        services.AddScoped<ILinkPolicy<TenantOnboardingStatusDto>, TenantOnboardingStatusLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<TenantOnboardingStatusDto>, TenantOnboardingStatusCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<TenantOnboardingStatusDto, TenantOnboardingStatusDto>, TenantOnboardingStatusResourceAssembler>();
+
         // Storage administration
         services.AddScoped<ILinkPolicy<InstanceStorageSettingsDto>, InstanceStorageSettingsLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<InstanceStorageSettingsDto>, InstanceStorageSettingsCollectionLinkPolicy>();

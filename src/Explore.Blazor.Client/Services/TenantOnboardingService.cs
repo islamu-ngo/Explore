@@ -2,6 +2,7 @@
 // ABOUTME: Supports startup gating and tenant policy questionnaire submission through BFF endpoints.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Helpers;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -33,7 +34,8 @@ public class TenantOnboardingService : ITenantOnboardingService
     {
         try
         {
-            return await _api.GetTenantOnboardingStatusAsync(cancellationToken: CancellationToken.None);
+            var resource = await _api.GetTenantOnboardingStatusAsync(cancellationToken: CancellationToken.None);
+            return resource.ToDto();
         }
         catch (Exception ex)
         {

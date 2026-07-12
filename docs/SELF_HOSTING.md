@@ -116,12 +116,15 @@ Compose derives the local `postgres` container bootstrap values from `POSTGRESQL
 
 ### Keycloak
 
+The API and browser BFF use the same deployment client identity. `KEYCLOAK_BLAZOR_CLIENT_SECRET` remains server-only: Compose and Aspire pass it to trusted server processes, while onboarding exposes only configured/ownership state plus sanitized authority and client-ID metadata. A detected provider remains reachable from the authentication-provider configuration page so an authorized operator can create, repair, or reconcile the realm after credentials are supplied.
+
 | Key | Purpose |
 |---|---|
 | `KEYCLOAK_DB_DATABASE`, `KEYCLOAK_DB_USERNAME`, `KEYCLOAK_DB_PASSWORD` | Local Keycloak database bootstrap values. |
 | `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD` | Initial Keycloak admin account. |
 | `KEYCLOAK_ENDPOINT` | Base Keycloak endpoint used to derive API/Blazor authority values. |
 | `KEYCLOAK_REALM` | Realm name. |
+| `KEYCLOAK_BLAZOR_CLIENT_ID` | Browser/BFF OIDC client ID shared with the API onboarding producer. Defaults to `islamu-event-blazor`. |
 | `KEYCLOAK_BLAZOR_CLIENT_SECRET` | Required Blazor confidential client secret. `keycloak-init` writes this into the `islamu-event-blazor` Keycloak client after realm import. |
 | `KEYCLOAK_API_CLIENT_SECRET` | Optional legacy/future API resource-server client secret. Current bearer-token validation does not require it, and the checked-in realm export does not include a static API client secret. Set it only if a deployment intentionally makes the API client confidential. |
 | `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET` | Optional local-development escape hatch. Set to `true` only for throwaway local stacks that intentionally use the static realm-export default secret. |
@@ -266,15 +269,16 @@ Operational notes:
 
 If `SETUP_SECRET` is unset and setup mode is active, the API generates a 32-character setup secret, logs it at startup, and accepts it for 60 minutes. Use that secret to complete the setup flow:
 
-1. Setup Secret
-2. Admin Auth
-3. Site Profile
-4. Preflight
-5. Launch
+1. Open `/setup` and submit the operator setup secret through the BFF-mediated gateway. The browser must not store it or send a privileged header directly to the API.
+2. Complete provider verification and administrator authentication. After authentication, the UI renders one task overview derived from the server onboarding status, provider, and preflight endpoints.
+3. Resolve every blocking preflight check. Ordinary warnings and remediation guidance do not block launch; a warning classified as serious can require explicit operator acknowledgement.
+4. Launch once. Single-tenant setup provisions the configured default-tenant state and hands off to the events/instance-settings experience. Multi-tenant platform setup does not require a tenant and hands off to `/admin/instance`; creating and onboarding the first tenant remains optional and separately tenant-scoped.
 
 The validation endpoint is `POST /api/InstanceOnboarding/validate-secret`. The setup-secret rate-limit policy allows only a small number of attempts per minute; repeated failures should be treated as operator or credential errors, not retried blindly.
 
 If the generated secret expires before launch, restart `islamu-event-api` and use the newly logged secret.
+
+Refresh and retry actions always re-fetch authoritative server state; do not resume from a stale browser step. Completion is idempotent and server-guarded, so a retry after a lost response must return the completed state rather than repeat destructive provisioning. Once launch completes, the pre-authentication setup gate locks and further setup-secret attempts are rejected. Use authenticated instance/tenant administration for later changes.
 
 Managed hosting operators that provision through the authorized managed-provider endpoint can set `SETUP_SECRET_REQUIRED=false` only together with `PROVISIONING_TRUSTED=true`, a managed `PROVISIONING_MODE`, `MANAGED_CLIENT_EXTERNAL_PROVIDER`, and `PHYSICAL_TENANCY_MODE`. In that mode the interactive setup-secret lane is not public: setup-secret-protected endpoints still reject missing or invalid secrets, and provider automation must authenticate as the platform/operator path.
 
@@ -304,12 +308,14 @@ The setup bootstrap path is protected by the setup secret before launch. The bro
 Recommended external-Keycloak operator flow:
 
 1. Create a temporary Keycloak admin or service account scoped to the target realm-management operations.
-2. In `/onboarding/auth-provider`, enable Keycloak and select **Let ISLAMU configure Keycloak clients now**.
+2. From the authenticated setup task overview, open authentication-provider setup and select **Let ISLAMU configure Keycloak clients now**.
 3. Enter the Keycloak base URL, target realm, Blazor BFF client ID/secret, optional API client ID, an API client secret only when that client is intentionally confidential, and the temporary bootstrap credential.
 4. Submit once. On success, the UI clears the one-time bootstrap credential fields and continues setup.
 5. Disable or rotate the temporary Keycloak bootstrap credential after setup succeeds.
 
 Use **Use an already configured Keycloak realm** when the operator has already created clients, redirect URIs, web origins, protocol mappers, and client secrets in Keycloak. In that mode ISLAMU only stores the runtime OIDC authority/client settings and does not call the Keycloak Admin API.
+
+Configured authentication credentials do not remove provider management from instance onboarding. Before launch, the configured task continues to link to `/onboarding/auth-provider`; after launch, the HAL-authorized action opens `/admin/instance/settings?section=auth-providers`, where an instance administrator can diagnose the realm, preview synchronization, apply additive repairs, and rotate the managed client secret. If the authoritative provider/task status is missing or returns an error, treat the task as unavailable and repair the backing service before retrying; do not infer readiness from the presence of credentials alone.
 
 External bootstrap is idempotent for client lookup/update: rerunning setup against the same realm locates existing clients by `clientId` and updates their secrets. It does not delete existing realms, users, roles, or unrelated clients. Keep a Keycloak database backup before using create mode in shared environments.
 
@@ -409,6 +415,8 @@ Before every upgrade:
 4. Record image tags, commit SHA, enabled Compose profiles, and secret-provider key names.
 5. Read release notes for migrations, config changes, rollback constraints, and docs impact.
 
+Before first-run provider synchronization or a repair rerun in a shared environment, take the same provider/database backup that would be required for an upgrade. Setup and maintenance repair existing ISLAMU-owned resources additively. Destructive realm/client/policy deletion, reset, or reimport is outside the recovery flow and requires explicit operator approval plus a verified backup. After a partial failure, refresh the server-derived task overview, repair the failed dependency, and retry the idempotent operation; do not delete successful resources to force a clean start.
+
 Use [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) for the full runbook and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before tagging or deploying a release.
 
 ## Related
@@ -418,4 +426,5 @@ Use [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) for the full runbook 
 - [OPERATIONS.md](OPERATIONS.md) — health, startup, shutdown, and runtime safeguards.
 - [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md) — Coolify-specific Cerbos PDP deployment runbook.
 - [SECURITY.md](SECURITY.md) — authentication and authorization architecture.
+- [DEPLOYMENT_MODES.md](DEPLOYMENT_MODES.md) — launch authority and mode-specific handoffs.
 - [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) — backup, restore, upgrade, rollback.

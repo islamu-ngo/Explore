@@ -13,8 +13,9 @@ Configured mode values:
 First-run onboarding source:
 
 - API configuration key `Deployment:Mode`, normally populated from Infisical `/api` secret `DEPLOYMENT_MODE`.
-- Use `DEPLOYMENT_MODE=multi_tenant` to show multi-tenant onboarding.
-- If `DEPLOYMENT_MODE` is absent, onboarding shows single-tenant setup only.
+- Use `DEPLOYMENT_MODE=multi_tenant` before setup for multi-tenant platform launch.
+- If `DEPLOYMENT_MODE` is absent, setup uses single-tenant launch.
+- The setup UI displays the resolved mode; it does not let the operator choose or change it. Dedicated `Bff:AdminHosts` are likewise deployment configuration, not onboarding choices.
 
 Runtime source after onboarding:
 
@@ -30,6 +31,7 @@ When active:
 - `TenantContext` always resolves default tenant ID.
 - Tenant discovery via custom domain/subdomain is bypassed.
 - Endpoints marked with `BlockInSingleTenant` can return `404` (if hiding enabled).
+- platform launch provisions the configured default-tenant state and then hands off to the events/instance-settings experience.
 
 Relevant static setting:
 
@@ -45,6 +47,8 @@ When active, the API-authoritative resolver middleware resolves tenant by reques
 4. unresolved request fails closed with `404`.
 
 Tenant-scoped queries are filtered by global EF query filters.
+
+Multi-tenant platform launch is instance-scoped and does not require a tenant to exist. After launch it hands off to `/admin/instance`. Creating and onboarding the first tenant is optional, happens later, and requires an explicit trusted tenant context plus the tenant-scoped authority described below.
 
 Dedicated admin hosts are static BFF configuration, not tenant routing data. Configure `Bff:AdminHosts` with exact host/origin values such as `admin.example.org`; the Blazor BFF renders the control-plane shell for those hosts and skips tenant subdomain/custom-domain lookup. Optional `Bff:AdminHostAllowedIpRanges` can restrict those admin hosts to exact IP/CIDR ranges.
 
@@ -67,6 +71,18 @@ This should stay aligned with seeded default tenant IDs.
 
 - `BlockInSingleTenantAttribute`: hides endpoint as `404` in single-tenant mode.
 - `RequireMultiTenantAttribute`: returns `403` with explicit message in single-tenant mode.
+
+## Setup And Launch Authority
+
+| Operation | Required authority and context |
+|---|---|
+| Pre-authentication provider/bootstrap work under `/setup` | Valid setup secret resolved from a trusted BFF/server source. Browser-supplied privileged headers are stripped. |
+| Platform launch and later instance settings | Authenticated platform administrator. Multi-tenant launch remains valid without tenant context. |
+| Tenant onboarding completion | Explicit trusted tenant context plus tenant administrator authority, or the backend's explicitly supported instance-administrator path. |
+
+Missing authority or required tenant context fails closed. The browser must not infer authority from local claims or manufacture tenant context.
+
+Launch composes the existing server onboarding status, provider, and preflight results. Any blocking preflight check prevents launch. Ordinary warnings and remediation guidance do not; a warning classified as serious may require explicit acknowledgement. Refresh/retry re-fetches authoritative server state, and completion is idempotent and protected by a server-side completion guard.
 
 ## Operational Note
 
@@ -99,4 +115,6 @@ are only visible to the replica that received the admin request.
 
 - [MULTI_TENANCY.md](MULTI_TENANCY.md)
 - [CONFIGURATION.md](CONFIGURATION.md)
+- [SELF_HOSTING.md](SELF_HOSTING.md)
+- [BLAZOR.md](BLAZOR.md)
 - [OPERATIONS.md](OPERATIONS.md)

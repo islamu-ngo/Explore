@@ -171,6 +171,20 @@ Checks:
 6. use `GET /api/System/onboarding-preflight` to inspect non-sensitive launch blockers and operational warnings before retrying completion.
 7. for first-run Compose setup, confirm the operator used the service names and ports from [SELF_HOSTING.md](SELF_HOSTING.md), not older `api`/`blazor` examples.
 
+### Onboarding Recovery Matrix
+
+Refresh before every recovery action. The setup UI is a projection of server status, provider verification, and preflight state; browser history or a cached task list is not recovery evidence.
+
+| Scenario | Detection | Safe action | Operator, rotation, or backup requirement |
+|---|---|---|---|
+| Invalid or expired setup secret | Validation fails, the source is reported as `Expired`, or the API returns the setup-secret failure response before authentication. | Re-enter the configured secret, or restart the API and use the newly generated startup secret. Do not retry blindly or move the value into browser storage. | Rotate a configured/deployment-managed secret at its owning source if disclosure is suspected. No data restore is required. |
+| Provider verification interrupted | The task overview still reports provider verification incomplete/unknown after a redirect, timeout, or lost response. | Refresh authoritative state, then rerun the same verification. Existing provider resources are located and repaired additively. | Rotate temporary provider admin credentials when their handling is uncertain. Take a provider/database backup before any apply operation that changes shared provider state. |
+| Authorization provider unavailable | Provider status or preflight reports the configured PDP/Admin API unavailable. | Restore the configured provider, or explicitly select the supported local authorization path where policy permits. Cerbos recovery is limited to endpoint verification, package download/sync, and local fallback. | Operator intervention is required. Do not add or use an inventory endpoint or arbitrary policy-decision test as a recovery shortcut. |
+| Blocking preflight check | Preflight classifies an item as blocking. | Fix the named dependency and refresh. Do not bypass completion. Ordinary warnings remain non-blocking; a serious warning may require explicit acknowledgement. | Follow the linked subsystem runbook. Restore from backup only when the blocker identifies corrupted or missing persisted state. |
+| Completion submitted repeatedly | The server reports completed/already completed, the response was lost after launch, or retry reaches the completion guard. | Treat the completed state as authoritative and follow the mode-specific handoff. Completion is idempotent; do not reset resources to make it run again. | No secret rotation or restore is needed unless a separate compromise/failure is detected. |
+| Refresh after partial success | The refreshed overview shows some tasks complete and a remaining provider/preflight failure. | Preserve successful resources, repair the failed dependency, and retry only the incomplete server-guarded operation. | Back up affected provider/database state before a repair apply. Destructive delete/reimport requires explicit approval. |
+| Setup locked after completion | `/setup` reports completed/locked or setup-secret calls are rejected after launch. | Use authenticated instance administration; in multi-tenant mode use `/admin/instance`, and use a tenant-scoped flow only for tenant onboarding. | Never unlock setup by editing database state. A genuine failed-launch recovery requires operator intervention and a verified backup/restore plan. |
+
 ## Tenant Resolution Problems
 
 Symptoms:
@@ -241,6 +255,7 @@ The instance control plane exposes warning codes with operator remediation text.
 - Verify endpoint TLS/safety and credentials without logging or copying raw secrets into support artifacts.
 - If Admin API sync is unavailable, download the manual ZIP package from setup/admin UI and install it with `cerbosctl put`.
 - Zero-touch boot sync skips safely when Admin API endpoint or credentials are incomplete; use setup/admin UI sync after configuration is complete.
+- Troubleshooting scope is endpoint verification, package download/sync, and the configured local fallback only. There is no supported Cerbos resource-inventory or arbitrary policy-decision test API.
 
 ## 429 / 504 Responses
 

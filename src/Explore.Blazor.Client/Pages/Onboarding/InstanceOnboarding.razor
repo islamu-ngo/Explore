@@ -1,12 +1,16 @@
-@* ABOUTME: Two-step instance onboarding (Site Profile → Review & Launch) with step rail and summary panel. *@
-@* ABOUTME: Merges the old Preflight step into Review & Launch, adds collapsible passed checks and acknowledgement checkboxes. *@
+@* ABOUTME: Single-column instance setup overview driven entirely by authoritative onboarding endpoints. *@
+@* ABOUTME: Presents required provider/readiness tasks, optional tenant follow-up, and mode-specific launch handoffs. *@
 
 @page "/onboarding/instance"
-@using MudBlazor
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Helpers
+@using Explore.Blazor.Client.Models.Responses
+@using Explore.Blazor.Client.Pages.Onboarding.Components
+@using Explore.Blazor.Client.Routing.ControlPlane
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Forms
-@using Explore.Blazor.Client.Models.Responses
-@using Explore.Blazor.Client.Components.Forms
+@using MudBlazor
+@implements IAsyncDisposable
 @layout SetupLayout
 @attribute [Authorize]
 @rendermode InteractiveServer
@@ -17,496 +21,450 @@
 @inject ILogger<InstanceOnboarding> Logger
 @inject IJSRuntime JSRuntime
 @inject IBffAuthApi BffAuthApi
+@inject IAccessibilityAnnouncerService Announcer
+@inject ITranslationService Translation
 
-<PageTitle>Instance Onboarding</PageTitle>
+<PageTitle>@T("page_title", "Setup Overview")</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.False" Class="onboarding-shell py-8">
-    <MudGrid Spacing="3" Class="onboarding-shell__grid">
-        @* ── Left Step Rail ── *@
-        <MudItem xs="12" lg="2">
-            <MudPaper Class="onboarding-shell__rail pa-4" Outlined="true">
-                <MudStack Spacing="2">
-                    <MudText Typo="Typo.overline" Color="Color.Primary">Setup progress</MudText>
-                    @foreach (var step in OnboardingSteps)
+<div class="instance-onboarding">
+    <div class="instance-onboarding__header">
+        <div class="instance-onboarding__heading">
+            <MudText Typo="Typo.h3" HtmlTag="h1">@T("title", "Setup Overview")</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">
+                @T("intro", "Review the authoritative setup state, complete required work, and launch the instance when every blocker is resolved.")
+            </MudText>
+        </div>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                       Color="Color.Primary"
+                       Disabled="@_isRefreshing"
+                       OnClick="RefreshAsync"
+                       aria-label="@T("actions.refresh_aria", "Refresh setup status")" />
+    </div>
+
+    <section class="instance-onboarding__operator-context" aria-labelledby="deployment-mode-heading">
+        <MudText Typo="Typo.h5" HtmlTag="h2" id="deployment-mode-heading">
+            @T("deployment.heading", "Deployment context")
+        </MudText>
+        <dl class="instance-onboarding__definition-list">
+            <div class="instance-onboarding__definition-row">
+                <dt>@T("deployment.mode_label", "Deployment mode")</dt>
+                <dd>@DeploymentModeText</dd>
+            </div>
+        </dl>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            @DeploymentModeNotice
+        </MudText>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(CurrentError))
+    {
+        <div role="alert">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@CurrentError</MudAlert>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_syncWarning))
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">@_syncWarning</MudAlert>
+    }
+
+    @if (_isLoading)
+    {
+        <div class="instance-onboarding__loading">
+            <span class="sr-only">@T("loading_aria", "Loading setup status")</span>
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            <MudSkeleton Width="100%" Height="72px" />
+            <MudSkeleton Width="100%" Height="72px" />
+            <MudSkeleton Width="100%" Height="72px" />
+        </div>
+    }
+    else
+    {
+        <div class="instance-onboarding__task-list">
+            <OnboardingTaskList Items="@TaskItems"
+                                AccessibleLabel="@T("tasks.accessible_label", "Instance setup tasks")" />
+        </div>
+
+        @if (_isCompleted)
+        {
+            <section class="instance-onboarding__section" aria-labelledby="launch-handoff-heading">
+                <MudText Typo="Typo.h5" HtmlTag="h2" id="launch-handoff-heading">
+                    @T("success.heading", "Instance setup is complete")
+                </MudText>
+                <div role="status">
+                    <MudAlert Severity="Severity.Success" Variant="Variant.Outlined">
+                        @T("success.message", "The platform is live. Continue with the destination that matches this deployment mode.")
+                    </MudAlert>
+                </div>
+                <div class="instance-onboarding__actions">
+                    @if (IsSingleTenantMode)
                     {
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="onboarding-shell__step">
-                            <MudIcon Icon="@(step.Number < _activeStep + 1 ? Icons.Material.Filled.CheckCircle : step.Number == _activeStep + 1 ? Icons.Material.Filled.RadioButtonChecked : Icons.Material.Outlined.RadioButtonUnchecked)"
-                                     Color="@(step.Number < _activeStep + 1 ? Color.Success : step.Number == _activeStep + 1 ? Color.Primary : Color.Default)"
-                                     Size="Size.Small" />
-                            <MudText Typo="Typo.body2" Color="@(step.Number == _activeStep + 1 ? Color.Primary : Color.Secondary)">
-                                Step @step.Number · @step.Label
-                            </MudText>
-                        </MudStack>
+                        <MudButton Elevation="0"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Filled"
+                                   Href="/events"
+                                   StartIcon="@Icons.Material.Filled.Event">
+                            @T("success.single_primary", "Browse events")
+                        </MudButton>
+                        <MudButton Elevation="0"
+                                   Color="Color.Secondary"
+                                   Variant="Variant.Outlined"
+                                   Href="/admin/instance/settings"
+                                   StartIcon="@Icons.Material.Filled.Settings">
+                            @T("success.single_secondary", "Open instance settings")
+                        </MudButton>
                     }
-                </MudStack>
-            </MudPaper>
-        </MudItem>
-
-        @* ── Main Content ── *@
-        <MudItem xs="12" lg="7">
-            <MudStack Spacing="3">
-                @if (_isCompleted)
-                {
-                    @* ── Success State ── *@
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                        <MudStack Spacing="1">
-                            <MudText Typo="Typo.overline" Color="Color.Success">Complete</MudText>
-                            <MudText Typo="Typo.h3" HtmlTag="h1">Your Site Is Ready</MudText>
-                            <MudText Typo="Typo.body1" Color="Color.Secondary">
-                                Onboarding is complete. Start with the public event catalog, then tune advanced settings when you are ready.
-                            </MudText>
-                        </MudStack>
-                        <MudAvatar Color="Color.Success" Variant="Variant.Filled" Size="Size.Large">
-                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" />
-                        </MudAvatar>
-                    </MudStack>
-
-                    <MudPaper Class="pa-5" Outlined="true">
-                        <MudStack Spacing="3">
-                            <MudAlert Severity="Severity.Success" Variant="Variant.Outlined">
-                                Your instance is live with safe launch defaults.
-                            </MudAlert>
-                            <MudText Typo="Typo.body2"><strong>Site:</strong> @_siteProfile.SiteName</MudText>
-                            <MudText Typo="Typo.body2"><strong>Mode:</strong> @(IsSingleTenantMode ? "Single Tenant" : "Multi Tenant")</MudText>
-                            <MudStack Direction="Direction.Row" Spacing="2">
-                                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Href="/events" StartIcon="@Icons.Material.Filled.Event">
-                                    Browse Events
-                                </MudButton>
-                                <MudButton Elevation="0" Href="/admin/instance/settings"
-                                           Variant="Variant.Outlined"
-                                           Color="Color.Secondary"
-                                           StartIcon="@Icons.Material.Filled.Settings">
-                                    Open Instance Settings
-                                </MudButton>
-                            </MudStack>
-                        </MudStack>
-                    </MudPaper>
-                }
-                else if (_isLoading)
-                {
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                        <MudStack Spacing="1">
-                            <MudSkeleton Width="120px" Height="16px" />
-                            <MudSkeleton Width="280px" Height="32px" />
-                            <MudSkeleton Width="400px" Height="20px" />
-                        </MudStack>
-                        <MudSkeleton Width="56px" Height="56px" SkeletonType="SkeletonType.Circle" />
-                    </MudStack>
-                    <MudPaper Class="pa-5" Outlined="true">
-                        <MudStack Spacing="3">
-                            <MudSkeleton Width="45%" Height="24px" />
-                            <MudSkeleton Width="100%" Height="56px" />
-                            <MudSkeleton Width="100%" Height="56px" />
-                            <MudSkeleton Width="100%" Height="40px" />
-                            <MudSkeleton Width="100%" Height="40px" />
-                        </MudStack>
-                    </MudPaper>
-                }
-                else
-                {
-                    @* ── Step Header ── *@
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                        <MudStack Spacing="1">
-                            <MudText Typo="Typo.overline" Color="Color.Primary">
-                                Step @(_activeStep + 1) of 2
-                            </MudText>
-                            <MudText Typo="Typo.h3" HtmlTag="h1">
-                                @(_activeStep == SiteProfileStepIndex ? "Site Profile" : "Review & Launch")
-                            </MudText>
-                            <MudText Typo="Typo.body1" Color="Color.Secondary">
-                                @(_activeStep == SiteProfileStepIndex
-                                    ? "Add the minimum public profile, review launch readiness, and hand off to the first useful destination."
-                                    : "Review launch readiness and confirm your site profile before going live.")
-                            </MudText>
-                        </MudStack>
-                        <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large">
-                            <MudIcon Icon="@(_activeStep == SiteProfileStepIndex ? Icons.Material.Filled.Edit : Icons.Material.Filled.RocketLaunch)" Size="Size.Large" />
-                        </MudAvatar>
-                    </MudStack>
-
-                    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                    else if (IsMultiTenantMode)
                     {
-                        <MudAlert Severity="Severity.Error" Class="mb-2">@_errorMessage</MudAlert>
-                    }
-
-                    @if (!string.IsNullOrWhiteSpace(_syncWarning))
-                    {
-                        <MudAlert Severity="Severity.Warning" Class="mb-2">@_syncWarning</MudAlert>
-                    }
-
-                    @* ── Step 1: Site Profile ── *@
-                    @if (_activeStep == SiteProfileStepIndex)
-                    {
-                        <EditForm EditContext="_profileEditContext" OnValidSubmit="ContinueToReviewAsync">
-                            <DataAnnotationsValidator />
-                            <MudPaper Class="pa-5" Outlined="true">
-                                <MudStack Spacing="3">
-                                    <MudText Typo="Typo.h6">Name Your Site</MudText>
-                                    <MudText Typo="Typo.body2">
-                                        This is the public identity visitors see first. Everything else can be refined after launch.
-                                    </MudText>
-
-                                    <MudAlert Severity="@(IsMultiTenantMode ? Severity.Info : Severity.Success)" Dense="true" Variant="Variant.Outlined">
-                                        @GetDeploymentModeNotice()
-                                    </MudAlert>
-
-                                    <ValidationSummary />
-
-                                    <MudTextField T="string" Label="Site Name (Required)"
-                                                  Variant="Variant.Outlined"
-                                                  Required="true"
-                                                  RequiredError="Site name is required."
-                                                  For="@(() => _siteProfile.SiteName)"
-                                                  @bind-Value="_siteProfile.SiteName"
-                                  Placeholder="e.g. Community Events, My Events Platform" />
-                                    <ValidationMessage For="@(() => _siteProfile.SiteName)" />
-
-                                    <MudTextField T="string" Label="Support Email (Optional)"
-                                                  Variant="Variant.Outlined"
-                                                  For="@(() => _siteProfile.SupportEmail)"
-                                                  @bind-Value="_siteProfile.SupportEmail"
-                                                  Placeholder="support@example.org" />
-                                    <ValidationMessage For="@(() => _siteProfile.SupportEmail)" />
-
-                                    <MudTextField T="string" Label="Canonical URL (Optional)"
-                                                  Variant="Variant.Outlined"
-                                                  For="@(() => _siteProfile.CanonicalUrl)"
-                                                  @bind-Value="_siteProfile.CanonicalUrl"
-                                                  Placeholder="https://events.example.org" />
-                                    <ValidationMessage For="@(() => _siteProfile.CanonicalUrl)" />
-
-                                     <MudTextField T="string" Label="Purpose (Optional)"
-                                                   Variant="Variant.Outlined"
-                                                   Lines="3"
-                                                   For="@(() => _siteProfile.Purpose)"
-                                                   @bind-Value="_siteProfile.Purpose"
-                                                   Placeholder="A short note for future admins about what this site is for." />
-                                     <ValidationMessage For="@(() => _siteProfile.Purpose)" />
-
-                                     @if (IsMultiTenantMode)
-                                     {
-                                         <MudDivider />
-
-                                         <MudText Typo="Typo.h6">Platform administration access</MudText>
-                                         <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                             Choose how instance admins will reach the control plane after launch.
-                                         </MudText>
-
-                                         <MudSelect T="string" Label="Administration Access"
-                                                    Variant="Variant.Outlined"
-                                                    @bind-Value="_administrationAccessMode">
-                                             <MudSelectItem T="string" Value="@AdministrationAccessEmbedded">Embedded admin area</MudSelectItem>
-                                             <MudSelectItem T="string" Value="@AdministrationAccessDedicatedAdminHost">Dedicated admin hostname</MudSelectItem>
-                                         </MudSelect>
-
-                                         @if (IsDedicatedAdminHostMode)
-                                         {
-                                             <MudTextField T="string" Label="Dedicated Admin Host"
-                                                           Variant="Variant.Outlined"
-                                                           @bind-Value="_adminHost"
-                                                           Placeholder="admin.example.org"
-                                                           HelperText="Use the operator-only host that will serve the embedded control plane." />
-                                         }
-
-                                         <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
-                                             A separate control-plane app can be enabled later when the standalone host is deployed.
-                                         </MudAlert>
-                                     }
-
-                                     <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
-                                         Onboarding will apply safe launch defaults for the public event catalog. Advanced modules,
-                                        policies, domains, federation, and branding remain available in instance settings.
-                                    </MudAlert>
-                                </MudStack>
-                            </MudPaper>
-
-                            <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-4">
-                                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled"
-                                           OnClick="ContinueToReviewAsync"
-                                           Disabled="@_submitState.IsSubmitting">
-                                    Next: Review & Launch
-                                </MudButton>
-                            </MudStack>
-                        </EditForm>
-                    }
-
-                    @* ── Step 2: Review & Launch ── *@
-                    @if (_activeStep == ReviewStepIndex)
-                    {
-                        @if (_isPreflightLoading)
+                        <MudButton Elevation="0"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Filled"
+                                   Href="@ControlPlaneRoutes.Overview"
+                                   StartIcon="@Icons.Material.Filled.Dashboard">
+                            @T("success.multi_primary", "Open control plane")
+                        </MudButton>
+                        @if (CanManageTenants)
                         {
-                            <MudPaper Class="pa-5" Outlined="true">
-                                <MudStack Spacing="3">
-                                    <MudSkeleton Width="45%" Height="24px" />
-                                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
-                                    <MudSkeleton Width="100%" Height="60px" />
-                                    <MudSkeleton Width="100%" Height="60px" />
-                                </MudStack>
-                            </MudPaper>
-                        }
-                        else if (_preflight is null)
-                        {
-                            <MudPaper Class="pa-5" Outlined="true">
-                                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
-                                    Preflight data is not available. Go back and try again.
-                                </MudAlert>
-                            </MudPaper>
-                        }
-                        else
-                        {
-                            var blockingChecks = _preflight.BlockingChecks ?? [];
-                            var failedBlocking = blockingChecks.Where(c => !string.Equals(c.Status, "Pass", StringComparison.OrdinalIgnoreCase)).ToList();
-                            var passedBlocking = blockingChecks.Where(c => string.Equals(c.Status, "Pass", StringComparison.OrdinalIgnoreCase)).ToList();
-                            var warningChecks = _preflight.WarningChecks ?? [];
-                            var hasPublicWarning = warningChecks.Any(c => string.Equals(c.Severity, "Critical", StringComparison.OrdinalIgnoreCase)
-                                || string.Equals(c.Severity, "High", StringComparison.OrdinalIgnoreCase));
-
-                            @* ── Critical Launch Requirements ── *@
-                            <MudPaper Class="pa-5" Outlined="true">
-                                <MudStack Spacing="3">
-                                    <MudStack Spacing="1">
-                                        <MudText Typo="Typo.h6">Critical Launch Requirements</MudText>
-                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                            These checks must pass before your site can go live.
-                                        </MudText>
-                                    </MudStack>
-
-                                    @if (failedBlocking.Count > 0)
-                                    {
-                                        foreach (var check in failedBlocking)
-                                        {
-                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="onboarding-shell__check-row onboarding-shell__check-row--error">
-                                                <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Small" />
-                                                <MudStack Spacing="0">
-                                                    <MudText Typo="Typo.subtitle2" Class="onboarding-shell__check-name">@check.Name</MudText>
-                                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="onboarding-shell__check-msg">@check.Message</MudText>
-                                                </MudStack>
-                                            </MudStack>
-                                        }
-                                    }
-
-                                    @if (passedBlocking.Count > 0)
-                                    {
-                                        <MudStack Spacing="1">
-                                            <MudButton Variant="Variant.Text"
-                                                       Color="Color.Success"
-                                                       Size="Size.Small"
-                                                       EndIcon="@(_showPassedChecks ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
-                                                       OnClick="@(() => { _showPassedChecks = !_showPassedChecks; })">
-                                                ✓ Critical launch requirements passed (@passedBlocking.Count/@blockingChecks.Count)
-                                            </MudButton>
-                                            @if (_showPassedChecks)
-                                            {
-                                                foreach (var check in passedBlocking)
-                                                {
-                                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="onboarding-shell__check-row onboarding-shell__check-row--pass">
-                                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
-                                                        <MudStack Spacing="0">
-                                                            <MudText Typo="Typo.subtitle2" Class="onboarding-shell__check-name">@check.Name</MudText>
-                                                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="onboarding-shell__check-msg">@check.Message</MudText>
-                                                        </MudStack>
-                                                    </MudStack>
-                                                }
-                                            }
-                                        </MudStack>
-                                    }
-
-                                    @if (failedBlocking.Count == 0 && passedBlocking.Count == 0)
-                                    {
-                                        <MudText Typo="Typo.body2" Color="Color.Secondary">No blocking checks found.</MudText>
-                                    }
-                                </MudStack>
-                            </MudPaper>
-
-                            @* ── Operational Recommendations ── *@
-                            @if (warningChecks.Count > 0)
-                            {
-                                <MudPaper Class="pa-5" Outlined="true">
-                                    <MudStack Spacing="3">
-                                        <MudStack Spacing="1">
-                                            <MudText Typo="Typo.h6">Operational Recommendations</MudText>
-                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                                These can be addressed after launch but should be reviewed.
-                                            </MudText>
-                                        </MudStack>
-
-                                        @foreach (var check in warningChecks)
-                                        {
-                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="onboarding-shell__check-row">
-                                                <MudChip T="string" Size="Size.Small"
-                                                         Color="@GetSeverityColor(check.Severity)"
-                                                         Variant="Variant.Outlined">
-                                                    @check.Severity
-                                                </MudChip>
-                                                <MudStack Spacing="0" Class="onboarding-shell__check-detail">
-                                                    <MudText Typo="Typo.subtitle2" Class="onboarding-shell__check-name">@check.Name</MudText>
-                                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="onboarding-shell__check-msg">@check.Message</MudText>
-                                                </MudStack>
-                                            </MudStack>
-                                        }
-                                    </MudStack>
-                                </MudPaper>
-                            }
-
-                            @* ── Acknowledgement Checkboxes for Serious Warnings ── *@
-                            @if (hasPublicWarning && _preflight.IsReadyToLaunch == true)
-                            {
-                                <MudPaper Class="pa-5" Outlined="true">
-                                    <MudStack Spacing="2">
-                                        <MudText Typo="Typo.subtitle2">Acknowledgements</MudText>
-                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                            Please confirm the following before launching a publicly accessible site.
-                                        </MudText>
-                                        <MudCheckBox T="bool" @bind-Value="_acknowledgePublicExposure"
-                                                      Color="Color.Warning"
-                                                      Label="I understand this site will be publicly accessible and I have reviewed the operational recommendations above." />
-                                    </MudStack>
-                                </MudPaper>
-                            }
-                        }
-
-                        @* ── Action Buttons ── *@
-                        <MudStack Row="true" Justify="Justify.SpaceBetween" Spacing="2" Class="mt-4">
-                            <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default"
-                                       Disabled="@(_submitState.IsSubmitting)"
-                                       OnClick="GoBackToProfile">
-                                Back
+                            <MudButton Elevation="0"
+                                       Color="Color.Secondary"
+                                       Variant="Variant.Outlined"
+                                       Href="@ControlPlaneRoutes.Tenants"
+                                       StartIcon="@Icons.Material.Filled.Domain">
+                                @T("success.multi_secondary", "Manage first tenant (optional)")
                             </MudButton>
-                            <MudSpacer />
-                            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled"
-                                       OnClick="CompleteOnboardingAsync"
-                                       Disabled="@(_submitState.IsSubmitting || _isPreflightLoading || _preflight?.IsReadyToLaunch != true || !AllAcknowledgementsChecked)">
-                                @_completeButtonLabel
-                            </MudButton>
-                        </MudStack>
+                        }
                     }
-                }
-            </MudStack>
-        </MudItem>
+                </div>
+            </section>
+        }
+        else
+        {
+            <EditForm EditContext="_profileEditContext" OnValidSubmit="CompleteOnboardingAsync">
+                <DataAnnotationsValidator />
 
-        @* ── Right Summary Panel ── *@
-        <MudItem xs="12" lg="3">
-            <MudPaper Class="onboarding-shell__summary pa-5" Outlined="true">
-                <MudStack Spacing="3">
-                    @if (_isCompleted)
+                <section id="site-profile" class="instance-onboarding__section" aria-labelledby="site-profile-heading">
+                    <MudText Typo="Typo.h5" HtmlTag="h2" id="site-profile-heading">
+                        @T("profile.heading", "Site profile")
+                    </MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @T("profile.description", "Set the minimum public identity for this instance. These values remain editable after launch.")
+                    </MudText>
+
+                    <ValidationSummary />
+
+                    <div class="instance-onboarding__fields">
+                        <MudTextField T="string"
+                                      Label="@T("profile.site_name_label", "Site name (required)")"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      RequiredError="@T("profile.site_name_required", "Site name is required.")"
+                                      Immediate="true"
+                                      For="@(() => _siteProfile.SiteName)"
+                                      @bind-Value="_siteProfile.SiteName"
+                                      Placeholder="@T("profile.site_name_placeholder", "Community Events")" />
+                        <ValidationMessage For="@(() => _siteProfile.SiteName)" />
+
+                        <MudTextField T="string"
+                                      Label="@T("profile.support_email_label", "Support email (optional)")"
+                                      Variant="Variant.Outlined"
+                                      For="@(() => _siteProfile.SupportEmail)"
+                                      @bind-Value="_siteProfile.SupportEmail"
+                                      Placeholder="@T("profile.support_email_placeholder", "support@example.org")" />
+                        <ValidationMessage For="@(() => _siteProfile.SupportEmail)" />
+
+                        <MudTextField T="string"
+                                      Label="@T("profile.canonical_url_label", "Canonical URL (optional)")"
+                                      Variant="Variant.Outlined"
+                                      For="@(() => _siteProfile.CanonicalUrl)"
+                                      @bind-Value="_siteProfile.CanonicalUrl"
+                                      Placeholder="@T("profile.canonical_url_placeholder", "https://events.example.org")" />
+                        <ValidationMessage For="@(() => _siteProfile.CanonicalUrl)" />
+
+                        <MudTextField T="string"
+                                      Label="@T("profile.purpose_label", "Purpose (optional)")"
+                                      Variant="Variant.Outlined"
+                                      Lines="3"
+                                      For="@(() => _siteProfile.Purpose)"
+                                      @bind-Value="_siteProfile.Purpose"
+                                      Placeholder="@T("profile.purpose_placeholder", "A short note for future administrators about this site.")" />
+                        <ValidationMessage For="@(() => _siteProfile.Purpose)" />
+                    </div>
+                </section>
+
+                <section id="launch-readiness" class="instance-onboarding__section" aria-labelledby="launch-readiness-heading">
+                    <MudText Typo="Typo.h5" HtmlTag="h2" id="launch-readiness-heading">
+                        @T("readiness.heading", "Launch readiness")
+                    </MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @T("readiness.description", "Blocking checks must pass. Operational warnings remain non-blocking unless a serious warning requires acknowledgement.")
+                    </MudText>
+
+                    @if (_preflight is null)
                     {
-                        <MudStack Spacing="1">
-                            <MudText Typo="Typo.h5">Launch Complete</MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                Your site is live and ready for visitors.
-                            </MudText>
-                        </MudStack>
+                        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                            @T("readiness.unavailable", "Launch readiness is unavailable. Refresh setup status before continuing.")
+                        </MudAlert>
                     }
                     else
                     {
-                        <MudStack Spacing="1">
-                            <MudText Typo="Typo.h5">Launch Recap</MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                @(_activeStep == SiteProfileStepIndex
-                                    ? "Fill in your site profile to continue."
-                                    : "Review your configuration before launching.")
-                            </MudText>
-                        </MudStack>
-
-                        <MudDivider />
-
-                        <MudStack Spacing="2">
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Color="Color.Primary" />
-                                <MudText Typo="Typo.body2"><strong>Site:</strong> @(string.IsNullOrWhiteSpace(_siteProfile.SiteName) ? "—" : _siteProfile.SiteName)</MudText>
-                            </MudStack>
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Small" Color="Color.Primary" />
-                                <MudText Typo="Typo.body2"><strong>Mode:</strong> @(IsSingleTenantMode ? "Single Tenant" : "Multi Tenant")</MudText>
-                            </MudStack>
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                <MudIcon Icon="@Icons.Material.Filled.Security" Size="Size.Small" Color="Color.Primary" />
-                                <MudText Typo="Typo.body2"><strong>Auth:</strong> Configured</MudText>
-                            </MudStack>
-                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                 <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" Color="Color.Primary" />
-                                 <MudText Typo="Typo.body2"><strong>Destination:</strong> Events Dashboard</MudText>
-                             </MudStack>
-                            @if (IsMultiTenantMode)
+                        <MudText Typo="Typo.h6" HtmlTag="h3" id="required-launch-checks-heading">
+                            @T("readiness.blocking_label", "Required launch checks")
+                        </MudText>
+                        <div class="instance-onboarding__checks" aria-labelledby="required-launch-checks-heading">
+                            @foreach (var check in _preflight.BlockingChecks ?? [])
                             {
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                    <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Small" Color="Color.Primary" />
-                                    <MudText Typo="Typo.body2"><strong>Administration:</strong> @AdministrationAccessSummary</MudText>
-                                </MudStack>
-                            }
-                         </MudStack>
-
-                        @if (_activeStep == ReviewStepIndex && _preflight is not null)
-                        {
-                            <MudDivider />
-
-                            <MudStack Spacing="2">
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                    <MudIcon Icon="@(_preflight.IsReadyToLaunch == true ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)"
-                                             Color="@(_preflight.IsReadyToLaunch == true ? Color.Success : Color.Error)"
+                                <div class="@($"instance-onboarding__check {GetBlockingCheckClass(check)}")">
+                                    <MudIcon Icon="@GetBlockingCheckIcon(check)"
+                                             Color="@GetBlockingCheckColor(check)"
                                              Size="Size.Small" />
-                                    <MudText Typo="Typo.body2">
-                                        @(_preflight.IsReadyToLaunch == true ? "Ready to launch" : "Resolve blockers first")
-                                    </MudText>
-                                </MudStack>
-                            </MudStack>
+                                    <div class="instance-onboarding__check-copy">
+                                        <MudText Typo="Typo.subtitle2">@check.Name</MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">@check.Message</MudText>
+                                    </div>
+                                    <MudText Typo="Typo.caption">@GetBlockingCheckStatusText(check)</MudText>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="instance-onboarding__warnings" aria-labelledby="operational-warnings-heading">
+                            <MudText Typo="Typo.h6" HtmlTag="h3" id="operational-warnings-heading">
+                                @T("readiness.warnings_heading", "Operational warnings")
+                            </MudText>
+                            @if ((_preflight.WarningChecks?.Count ?? 0) == 0)
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    @T("readiness.no_warnings", "No operational warnings were reported.")
+                                </MudText>
+                            }
+                            else
+                            {
+                                @foreach (var check in _preflight.WarningChecks ?? [])
+                                {
+                                    <div class="instance-onboarding__check instance-onboarding__check--warning">
+                                        <MudChip T="string" Size="Size.Small" Color="@GetWarningColor(check.Severity)" Variant="Variant.Outlined">
+                                            @check.Severity
+                                        </MudChip>
+                                        <div class="instance-onboarding__check-copy">
+                                            <MudText Typo="Typo.subtitle2">@check.Name</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">@check.Message</MudText>
+                                            @if (!string.IsNullOrWhiteSpace(check.Detail))
+                                            {
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@check.Detail</MudText>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+
+                        @if (HasSeriousWarning && _preflight.IsReadyToLaunch == true)
+                        {
+                            <div class="instance-onboarding__acknowledgement">
+                                <MudText Typo="Typo.h6" HtmlTag="h3">
+                                    @T("acknowledgement.heading", "Required acknowledgement")
+                                </MudText>
+                                <MudCheckBox T="bool"
+                                             @bind-Value="_acknowledgePublicExposure"
+                                             Color="Color.Warning"
+                                             Label="@T("acknowledgement.public_exposure", "I understand that this site will be publicly accessible and I have reviewed the operational warnings.")" />
+                            </div>
                         }
                     }
-                </MudStack>
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
-</MudContainer>
+                </section>
+
+                <div class="instance-onboarding__actions instance-onboarding__actions--submit">
+                    <MudButton Elevation="0"
+                               Color="Color.Primary"
+                               Variant="Variant.Filled"
+                               ButtonType="ButtonType.Submit"
+                               StartIcon="@Icons.Material.Filled.RocketLaunch"
+                               Disabled="@CannotComplete">
+                        @CompleteButtonLabel
+                    </MudButton>
+                </div>
+            </EditForm>
+        }
+    }
+</div>
 
 @code {
-    private const int SiteProfileStepIndex = 0;
-    private const int ReviewStepIndex = 1;
-    private const string AdministrationAccessEmbedded = "Embedded";
-    private const string AdministrationAccessDedicatedAdminHost = "DedicatedAdminHost";
-
-    private static readonly (int Number, string Label)[] OnboardingSteps =
-    [
-        (1, "Site Profile"),
-        (2, "Review & Launch")
-    ];
-
-    private string _deploymentMode = "SingleTenant";
+    private readonly object _refreshGate = new();
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly SelfHostOnboardingProfileDto _siteProfile = new();
     private EditContext _profileEditContext = default!;
-    private string _administrationAccessMode = AdministrationAccessEmbedded;
-    private string _adminHost = string.Empty;
-    public OnboardingPreflightDto? _preflight;
+    private Task? _refreshTask;
+    private string? _deploymentMode;
+    private OnboardingPreflightDto? _preflight;
+    private InstanceOnboardingStatusDto? _status;
+    private bool? _authProviderConfigured;
+    private bool? _authorizationProviderConfigured;
     private bool _isLoading = true;
-    private bool _isPreflightLoading;
+    private bool _isRefreshing;
+    private bool _hasLoaded;
     private bool _isCompleted;
-    private FormSubmitState _submitState = new();
-    private string? _errorMessage;
-    private bool _setupSecretSynced;
-    private string? _syncWarning;
-    public int _activeStep;
-    private string _completeButtonLabel = "Launch Instance";
-    private bool _showPassedChecks;
     private bool _acknowledgePublicExposure;
+    private bool _setupSecretSynced;
+    private bool _disposed;
+    private FormSubmitState _submitState = new();
+    private string? _loadError;
+    private string? _completionError;
+    private string? _setupSecretError;
+    private string? _syncWarning;
+    private IJSObjectReference? _bffModule;
 
-    private bool IsSingleTenantMode => _deploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
-    private bool IsMultiTenantMode => _deploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
-    private bool IsDedicatedAdminHostMode => _administrationAccessMode.Equals(AdministrationAccessDedicatedAdminHost, StringComparison.OrdinalIgnoreCase);
-    private string AdministrationAccessSummary => IsDedicatedAdminHostMode
-        ? $"Dedicated admin host ({NormalizeOptional(_adminHost) ?? "not configured"})"
-        : "Embedded admin area";
+    private bool IsSingleTenantMode => string.Equals(_deploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase);
+    private bool IsMultiTenantMode => string.Equals(_deploymentMode, "MultiTenant", StringComparison.OrdinalIgnoreCase);
+    private bool CanOpenAuthenticationProvider => _hasLoaded
+        && _loadError is null
+        && _authProviderConfigured.HasValue
+        && _status?.HasHalLink("manage-authentication") == true;
+    private bool CanOpenAuthorizationProvider => _hasLoaded
+        && _loadError is null
+        && _authorizationProviderConfigured.HasValue
+        && _status?.HasHalLink("manage-authorization") == true;
+    private bool CanManageTenants => _isCompleted
+        && _status?.HasHalLink("manage-tenants") == true;
+    private string AuthenticationProviderHref => _isCompleted
+        ? "/admin/instance/settings?section=auth-providers"
+        : "/onboarding/auth-provider";
+    private string AuthorizationProviderHref => _isCompleted
+        ? "/admin/instance/settings?section=auth-providers"
+        : "/onboarding/authz-provider";
+    private string? CurrentError => _completionError ?? _setupSecretError ?? _loadError;
+    private string CompleteButtonLabel => _submitState.IsSubmitting
+        ? T("actions.launching", "Launching...")
+        : T("actions.launch", "Launch instance");
+    private bool HasSeriousWarning => _preflight?.WarningChecks?.Any(check =>
+        string.Equals(check.Severity, "Critical", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(check.Severity, "High", StringComparison.OrdinalIgnoreCase)) == true;
+    private bool AllAcknowledgementsChecked => !HasSeriousWarning || _acknowledgePublicExposure;
+    private bool CannotComplete => _submitState.IsSubmitting
+        || _isRefreshing
+        || !_hasLoaded
+        || string.IsNullOrWhiteSpace(_siteProfile.SiteName)
+        || _authProviderConfigured != true
+        || _authorizationProviderConfigured != true
+        || _preflight?.IsReadyToLaunch != true
+        || !AllAcknowledgementsChecked
+        || _status?.HasHalLink("complete") != true;
 
-    private bool AllAcknowledgementsChecked
+    private string DeploymentModeText => IsSingleTenantMode
+        ? T("deployment.single", "Single tenant")
+        : IsMultiTenantMode
+            ? T("deployment.multi", "Multi tenant")
+            : T("deployment.unavailable", "Unavailable");
+
+    private string DeploymentModeNotice => IsSingleTenantMode
+        ? T("deployment.single_notice", "The operator configured a single-tenant deployment. This value is read-only during onboarding.")
+        : IsMultiTenantMode
+            ? T("deployment.multi_notice", "The operator configured a multi-tenant deployment. Tenant creation is an optional post-launch task.")
+            : T("deployment.unavailable_notice", "The operator-managed deployment mode could not be loaded. Refresh before launching.");
+
+    private IReadOnlyList<OnboardingTaskList.TaskItem> TaskItems
     {
         get
         {
-            if (_preflight?.IsReadyToLaunch != true)
-                return true;
+            var required = T("tasks.required", "Required");
+            var optional = T("tasks.optional", "Optional");
+            var instanceScope = T("tasks.scope.instance", "Instance scope");
+            var operatorScope = T("tasks.scope.operator", "Instance operator scope");
 
-            var hasSeriousWarning = _preflight.WarningChecks?.Any(c =>
-                string.Equals(c.Severity, "Critical", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(c.Severity, "High", StringComparison.OrdinalIgnoreCase)) == true;
+            var items = new List<OnboardingTaskList.TaskItem>
+            {
+                new(
+                    T("tasks.profile.title", "Site profile"),
+                    T("tasks.profile.description", "Define the public name and contact details used by this instance."),
+                    true,
+                    required,
+                    _isCompleted || !string.IsNullOrWhiteSpace(_siteProfile.SiteName)
+                        ? OnboardingTaskList.TaskStatus.Completed
+                        : OnboardingTaskList.TaskStatus.NotStarted,
+                    _isCompleted || !string.IsNullOrWhiteSpace(_siteProfile.SiteName)
+                        ? T("tasks.status.complete", "Complete")
+                        : T("tasks.status.not_started", "Not started"),
+                    instanceScope,
+                    _isCompleted ? null : "#site-profile",
+                    _isCompleted ? null : T("tasks.profile.action", "Edit profile"),
+                    _isCompleted ? null : T("tasks.profile.action_aria", "Edit the site profile")),
+                new(
+                    T("tasks.authentication.title", "Authentication provider"),
+                    _authProviderConfigured == true
+                        ? T("tasks.authentication.configured_description", "Authentication is configured. Open provider management to create, repair, or reconcile the Keycloak realm.")
+                        : _authProviderConfigured == false
+                            ? T("tasks.authentication.description", "At least one sign-in provider must be configured before launch.")
+                            : T("tasks.authentication.unavailable_description", "Authentication provider status is unavailable. Refresh before taking action."),
+                    true,
+                    required,
+                    _authProviderConfigured == true ? OnboardingTaskList.TaskStatus.Completed : OnboardingTaskList.TaskStatus.Blocked,
+                    _authProviderConfigured == true
+                        ? T("tasks.status.complete", "Complete")
+                        : _authProviderConfigured == false
+                            ? T("tasks.status.action_required", "Action required")
+                            : T("tasks.status.unavailable", "Status unavailable"),
+                    operatorScope,
+                    CanOpenAuthenticationProvider ? AuthenticationProviderHref : null,
+                    CanOpenAuthenticationProvider
+                        ? _authProviderConfigured == true
+                            ? T("tasks.authentication.manage_action", "Manage authentication")
+                            : T("tasks.authentication.action", "Configure authentication")
+                        : null,
+                    CanOpenAuthenticationProvider
+                        ? T("tasks.authentication.action_aria", "Open authentication provider configuration")
+                        : null),
+                new(
+                    T("tasks.authorization.title", "Authorization provider"),
+                    _authorizationProviderConfigured.HasValue
+                        ? T("tasks.authorization.description", "A policy provider must be configured before the platform can authorize requests.")
+                        : T("tasks.authorization.unavailable_description", "Authorization provider status is unavailable. Refresh before taking action."),
+                    true,
+                    required,
+                    _authorizationProviderConfigured == true ? OnboardingTaskList.TaskStatus.Completed : OnboardingTaskList.TaskStatus.Blocked,
+                    _authorizationProviderConfigured == true
+                        ? T("tasks.status.complete", "Complete")
+                        : _authorizationProviderConfigured == false
+                            ? T("tasks.status.action_required", "Action required")
+                            : T("tasks.status.unavailable", "Status unavailable"),
+                    operatorScope,
+                    CanOpenAuthorizationProvider ? AuthorizationProviderHref : null,
+                    CanOpenAuthorizationProvider
+                        ? _authorizationProviderConfigured == true
+                            ? T("tasks.authorization.manage_action", "Manage authorization")
+                            : T("tasks.authorization.action", "Configure authorization")
+                        : null,
+                    CanOpenAuthorizationProvider
+                        ? T("tasks.authorization.action_aria", "Open authorization provider configuration")
+                        : null),
+                new(
+                    T("tasks.readiness.title", "Launch readiness"),
+                    T("tasks.readiness.description", "Server-evaluated blocking checks must pass; operational warnings are reported separately."),
+                    true,
+                    required,
+                    GetReadinessTaskStatus(),
+                    GetReadinessTaskStatusText(),
+                    T("tasks.scope.server", "Server-evaluated instance scope"),
+                    _isCompleted ? null : "#launch-readiness",
+                    _isCompleted ? null : T("tasks.readiness.action", "Review readiness"),
+                    _isCompleted ? null : T("tasks.readiness.action_aria", "Review launch readiness"))
+            };
 
-            return !hasSeriousWarning || _acknowledgePublicExposure;
+            if (IsMultiTenantMode)
+            {
+                items.Add(new OnboardingTaskList.TaskItem(
+                    T("tasks.first_tenant.title", "First tenant"),
+                    T("tasks.first_tenant.description", "Create and configure the first tenant after platform launch. This never blocks instance launch."),
+                    false,
+                    optional,
+                    _isCompleted ? OnboardingTaskList.TaskStatus.Available : OnboardingTaskList.TaskStatus.NotStarted,
+                    _isCompleted
+                        ? T("tasks.status.available", "Available")
+                        : T("tasks.status.post_launch", "Post-launch"),
+                    T("tasks.scope.tenant", "Tenant scope"),
+                    CanManageTenants ? ControlPlaneRoutes.Tenants : null,
+                    CanManageTenants ? T("tasks.first_tenant.action", "Manage tenants") : null,
+                    CanManageTenants ? T("tasks.first_tenant.action_aria", "Manage the optional first tenant") : null));
+            }
+
+            return items;
         }
     }
 
@@ -524,253 +482,431 @@
             Logger.LogWarning(ex, "Could not fully hydrate user context during instance onboarding.");
         }
 
-        var status = await InstanceOnboardingService.GetStatusAsync();
-        if (status?.IsCompleted == true)
-        {
-            Navigation.NavigateTo("/startup");
-            return;
-        }
-
-        // Pre-populate from existing settings if available (e.g. restart after partial setup)
-        try
-        {
-            var systemStatus = await InstanceOnboardingService.GetSystemOnboardingStatusAsync();
-            _deploymentMode = NormalizeDeploymentMode(systemStatus?.DeploymentMode);
-
-            var brandingResult = await InstanceOnboardingService.GetBrandingSettingsAsync();
-            if (!string.IsNullOrWhiteSpace(brandingResult.DefaultBrandDisplayName))
-            {
-                _siteProfile.SiteName = brandingResult.DefaultBrandDisplayName;
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Could not load existing settings during instance onboarding. Using defaults.");
-        }
-
-        _isLoading = false;
+        await RefreshAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender || _setupSecretSynced)
+        if (!firstRender || _setupSecretSynced || _disposed)
         {
             return;
         }
 
-        var bffModule = await GetBffModuleAsync();
-
-        for (var attempt = 0; attempt <= 3; attempt++)
-        {
-            if (attempt > 0)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(attempt * 2));
-            }
-
-            var syncResult = await bffModule.InvokeAsync<BffMutationResult>("syncSetupSecret", (string?)null);
-            if (syncResult is { Ok: true })
-            {
-                _setupSecretSynced = true;
-                _syncWarning = null;
-                StateHasChanged();
-                return;
-            }
-
-            if (syncResult?.Status is 400 or 410)
-            {
-                await BffAuthApi.DeleteSetupSecretAsync(CancellationToken.None);
-                _errorMessage = "Setup secret expired or is invalid. Please enter the current setup secret again.";
-                StateHasChanged();
-                return;
-            }
-        }
-
-        _syncWarning = "Setup secret sync pending — you can proceed, but saving may require re-entering your setup secret.";
-        StateHasChanged();
+        await SynchronizeSetupSecretAsync();
     }
 
-    private string GetDeploymentModeNotice() =>
-        IsMultiTenantMode
-            ? "Multi-tenant mode is active from deployment configuration. Complete onboarding to configure tenant governance and create tenants."
-            : "Single-tenant mode is active. To start as multi-tenant, set DEPLOYMENT_MODE=multi_tenant for the API before completing onboarding.";
-
-    private static string NormalizeDeploymentMode(string? deploymentMode) =>
-        string.Equals(deploymentMode, "MultiTenant", StringComparison.OrdinalIgnoreCase)
-            ? "MultiTenant"
-            : "SingleTenant";
-
-    private bool ValidateAdministrationAccessChoice()
+    public Task RefreshAsync()
     {
-        if (!IsMultiTenantMode)
+        lock (_refreshGate)
         {
-            _administrationAccessMode = AdministrationAccessEmbedded;
-            _adminHost = string.Empty;
-            return true;
-        }
+            if (_refreshTask is { IsCompleted: false })
+            {
+                return _refreshTask;
+            }
 
-        if (!IsDedicatedAdminHostMode)
-        {
-            _adminHost = string.Empty;
-            return true;
+            _refreshTask = RefreshCoreAsync();
+            return _refreshTask;
         }
-
-        if (!string.IsNullOrWhiteSpace(_adminHost))
-        {
-            return true;
-        }
-
-        _errorMessage = "Enter the dedicated admin host or choose embedded admin area.";
-        return false;
     }
 
-    private async Task ContinueToReviewAsync()
+    private async Task RefreshCoreAsync()
     {
-        _errorMessage = null;
-
-        if (!_profileEditContext.Validate())
+        if (_disposed)
         {
             return;
         }
 
-        if (!ValidateAdministrationAccessChoice())
-        {
-            return;
-        }
+        _isLoading = !_hasLoaded;
+        _isRefreshing = true;
+        _loadError = null;
+        _completionError = null;
 
-        await LoadPreflightAsync();
-        _activeStep = ReviewStepIndex;
-    }
-
-    private void GoBackToProfile()
-    {
-        _activeStep = SiteProfileStepIndex;
-        _errorMessage = null;
-    }
-
-    public async Task LoadPreflightAsync()
-    {
-        _isPreflightLoading = true;
         try
         {
-            _preflight = await InstanceOnboardingService.GetOnboardingPreflightAsync();
+            var status = await InstanceOnboardingService.GetStatusAsync();
+            if (_disposed)
+            {
+                return;
+            }
+
+            var systemStatusTask = InstanceOnboardingService.GetSystemOnboardingStatusAsync();
+            var brandingTask = InstanceOnboardingService.GetBrandingSettingsAsync();
+            var authenticationTask = InstanceOnboardingService.GetAuthProviderConfiguredStateAsync();
+            var authorizationTask = InstanceOnboardingService.GetAuthorizationProviderConfiguredStateAsync();
+            var preflightTask = InstanceOnboardingService.GetOnboardingPreflightAsync();
+
+            await Task.WhenAll(systemStatusTask, brandingTask, authenticationTask, authorizationTask, preflightTask);
+            if (_disposed)
+            {
+                return;
+            }
+
+            var systemStatus = await systemStatusTask;
+            var branding = await brandingTask;
+
+            _status = status;
+            _isCompleted = status?.IsCompleted == true;
+            _deploymentMode = NormalizeDeploymentMode(systemStatus?.DeploymentMode);
+            _authProviderConfigured = await authenticationTask;
+            _authorizationProviderConfigured = await authorizationTask;
+            _preflight = await preflightTask;
+            _acknowledgePublicExposure = false;
+
+            if (!string.IsNullOrWhiteSpace(branding?.DefaultBrandDisplayName))
+            {
+                _siteProfile.SiteName = branding.DefaultBrandDisplayName;
+            }
+
+            if (status is null
+                || systemStatus is null
+                || _deploymentMode is null
+                || _preflight is null
+                || !_authProviderConfigured.HasValue
+                || !_authorizationProviderConfigured.HasValue)
+            {
+                await SetLoadErrorAsync(T("errors.status_unavailable", "Some authoritative setup state is unavailable. Refresh before launching."));
+            }
+            else
+            {
+                await Announcer.AnnouncePoliteAsync(T("announcements.loaded", "Setup status loaded."));
+            }
         }
         catch (Exception ex)
         {
-            Logger.LogWarning(ex, "Could not load onboarding preflight status.");
+            Logger.LogWarning(ex, "Could not load authoritative instance onboarding state.");
+            _deploymentMode = null;
             _preflight = null;
+            _status = null;
+            _authProviderConfigured = null;
+            _authorizationProviderConfigured = null;
+            await SetLoadErrorAsync(T("errors.load_failed", "Setup status could not be loaded. Refresh and try again."));
         }
         finally
         {
-            _isPreflightLoading = false;
+            if (!_disposed)
+            {
+                _hasLoaded = true;
+                _isLoading = false;
+                _isRefreshing = false;
+            }
         }
     }
 
     private async Task CompleteOnboardingAsync()
     {
-        if (!_profileEditContext.Validate())
+        if (_disposed)
         {
-            _activeStep = SiteProfileStepIndex;
             return;
         }
 
-        if (!ValidateAdministrationAccessChoice())
+        _completionError = null;
+
+        if (!_profileEditContext.Validate())
         {
-            _activeStep = SiteProfileStepIndex;
+            await SetCompletionErrorAsync(T("errors.profile_invalid", "Correct the site profile errors before launching."));
+            return;
+        }
+
+        if (_authProviderConfigured != true || _authorizationProviderConfigured != true)
+        {
+            await SetCompletionErrorAsync(T("errors.providers_incomplete", "Configure both required providers before launching."));
             return;
         }
 
         if (_preflight?.IsReadyToLaunch != true)
         {
-            _errorMessage = "Resolve blocking preflight checks before completing setup.";
+            await SetCompletionErrorAsync(T("errors.blockers", "Resolve blocking launch checks before completing setup."));
             return;
         }
 
         if (!AllAcknowledgementsChecked)
         {
-            _errorMessage = "Please acknowledge all warnings before launching.";
+            await SetCompletionErrorAsync(T("errors.acknowledgement", "Acknowledge the serious operational warning before launching."));
+            return;
+        }
+
+        if (_status?.HasHalLink("complete") != true)
+        {
+            await SetCompletionErrorAsync(T("errors.completion_unavailable", "The server did not expose permission to complete setup. Refresh and try again."));
             return;
         }
 
         _submitState.Start();
-        _completeButtonLabel = "Launching...";
-        _errorMessage = null;
 
-        var completion = new CompleteInstanceOnboardingRequest
+        try
         {
-            DeploymentMode = IsMultiTenantMode ? DeploymentMode.MultiTenant : DeploymentMode.SingleTenant,
-            SiteProfile = new SelfHostOnboardingProfileDto
+            var completion = new CompleteInstanceOnboardingRequest
             {
-                SiteName = _siteProfile.SiteName?.Trim(),
-                SupportEmail = NormalizeOptional(_siteProfile.SupportEmail),
-                CanonicalUrl = NormalizeOptional(_siteProfile.CanonicalUrl),
-                Locale = string.IsNullOrWhiteSpace(_siteProfile.Locale) ? "en" : _siteProfile.Locale.Trim(),
-                TimeZone = string.IsNullOrWhiteSpace(_siteProfile.TimeZone) ? "UTC" : _siteProfile.TimeZone.Trim(),
-                Purpose = NormalizeOptional(_siteProfile.Purpose)
-            },
-            AdministrationAccessMode = IsMultiTenantMode ? _administrationAccessMode : AdministrationAccessEmbedded,
-            AdminHost = IsMultiTenantMode && IsDedicatedAdminHostMode ? NormalizeOptional(_adminHost) : null,
-            InstanceName = _siteProfile.SiteName?.Trim()
-        };
+                SiteProfile = new SelfHostOnboardingProfileDto
+                {
+                    SiteName = _siteProfile.SiteName?.Trim(),
+                    SupportEmail = NormalizeOptional(_siteProfile.SupportEmail),
+                    CanonicalUrl = NormalizeOptional(_siteProfile.CanonicalUrl),
+                    Locale = string.IsNullOrWhiteSpace(_siteProfile.Locale) ? "en" : _siteProfile.Locale.Trim(),
+                    TimeZone = string.IsNullOrWhiteSpace(_siteProfile.TimeZone) ? "UTC" : _siteProfile.TimeZone.Trim(),
+                    Purpose = NormalizeOptional(_siteProfile.Purpose)
+                },
+                InstanceName = _siteProfile.SiteName?.Trim()
+            };
 
-        // Proactively refresh the BFF auth session so the access token forwarded to the API is fresh.
-        var preRefreshed = await InstanceOnboardingService.RefreshAuthSessionAsync();
-        if (!preRefreshed)
-        {
-            Logger.LogWarning("Pre-complete auth session refresh failed. Aborting Complete and redirecting to login.");
-            _submitState.Complete();
-            _completeButtonLabel = "Launch Instance";
-            _errorMessage = "Your session expired. Please sign in again to complete setup.";
-            Navigation.NavigateTo("/login", forceLoad: true);
-            return;
-        }
-
-        var response = await InstanceOnboardingService.CompleteAsync(completion);
-
-        _submitState.Complete();
-        _completeButtonLabel = "Launch Instance";
-
-        if (response.Success == true)
-        {
-            var refreshed = await InstanceOnboardingService.RefreshAuthSessionAsync();
-            if (!refreshed)
+            var preRefreshed = await InstanceOnboardingService.RefreshAuthSessionAsync();
+            if (_disposed)
             {
-                Logger.LogWarning("Instance onboarding completed but BFF auth session refresh failed. Falling back to API-backed admin checks.");
+                return;
             }
 
-            Snackbar.Add("Instance onboarding completed.", Severity.Success);
-            _isCompleted = true;
-            return;
+            if (!preRefreshed)
+            {
+                Logger.LogWarning("Pre-complete auth session refresh failed. Aborting completion and redirecting to login.");
+                await SetCompletionErrorAsync(T("errors.session_expired", "Your session expired. Sign in again to complete setup."));
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+
+            var response = await InstanceOnboardingService.CompleteAsync(completion);
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (response.Success == true)
+            {
+                var refreshed = await InstanceOnboardingService.RefreshAuthSessionAsync();
+                if (_disposed)
+                {
+                    return;
+                }
+
+                if (!refreshed)
+                {
+                    Logger.LogWarning("Instance onboarding completed but the BFF auth session refresh failed.");
+                }
+
+                var confirmedStatus = await InstanceOnboardingService.GetStatusAsync();
+                if (_disposed)
+                {
+                    return;
+                }
+
+                if (confirmedStatus?.IsCompleted != true)
+                {
+                    Logger.LogWarning("Instance onboarding completion succeeded but authoritative status did not confirm completion.");
+                    await SetCompletionErrorAsync(T("errors.completion_unconfirmed", "The completion request succeeded, but the server has not confirmed setup completion. Refresh before continuing."));
+                    return;
+                }
+
+                _status = confirmedStatus;
+                _isCompleted = true;
+                _completionError = null;
+                Snackbar.Add(T("success.snackbar", "Instance setup completed."), Severity.Success);
+                await Announcer.AnnouncePoliteAsync(T("announcements.completed", "Instance setup completed."));
+                return;
+            }
+
+            await SetCompletionErrorAsync(GetSafeCompletionError(response));
         }
-
-        _errorMessage = string.IsNullOrWhiteSpace(response.Message)
-            ? "Failed to complete onboarding."
-            : response.Message;
-
-        if (response.Errors?.Count > 0)
+        catch (Exception ex)
         {
-            _errorMessage += " " + string.Join(" ", response.Errors);
+            Logger.LogError(ex, "Instance onboarding completion failed.");
+            if (!_disposed)
+            {
+                await SetCompletionErrorAsync(T("errors.completion_failed", "Instance setup could not be completed. Review the status and try again."));
+            }
+        }
+        finally
+        {
+            if (!_disposed)
+            {
+                _submitState.Complete();
+            }
         }
     }
 
-    private static Severity GetCheckSeverity(OnboardingPreflightCheckDto check) =>
-        string.Equals(check.Status, "Pass", StringComparison.OrdinalIgnoreCase)
-            ? Severity.Success
-            : Severity.Error;
+    private async Task SynchronizeSetupSecretAsync()
+    {
+        try
+        {
+            var bffModule = await GetBffModuleAsync();
 
-    private static Color GetSeverityColor(string? severity) =>
+            for (var attempt = 0; attempt <= 3 && !_disposed; attempt++)
+            {
+                if (attempt > 0)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(attempt * 2), _lifetimeCancellation.Token);
+                }
+
+                var syncResult = await bffModule.InvokeAsync<BffMutationResult>("syncSetupSecret", (string?)null);
+                if (_disposed)
+                {
+                    return;
+                }
+
+                if (syncResult is { Ok: true })
+                {
+                    _setupSecretSynced = true;
+                    _setupSecretError = null;
+                    _syncWarning = null;
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
+
+                if (syncResult?.Status is 400 or 410)
+                {
+                    await BffAuthApi.DeleteSetupSecretAsync(CancellationToken.None);
+                    _setupSecretError = T("errors.setup_secret_invalid", "The setup secret expired or is invalid. Enter the current setup secret again.");
+                    await Announcer.AnnounceAssertiveAsync(_setupSecretError);
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
+            }
+
+            if (!_disposed)
+            {
+                _syncWarning = T("warnings.setup_secret_pending", "Setup secret synchronization is pending. Saving may require entering the setup secret again.");
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+            // Component disposal cancels retry delays; no UI update is needed.
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Setup secret synchronization failed during instance onboarding.");
+            if (!_disposed)
+            {
+                _syncWarning = T("warnings.setup_secret_pending", "Setup secret synchronization is pending. Saving may require entering the setup secret again.");
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    private OnboardingTaskList.TaskStatus GetReadinessTaskStatus()
+    {
+        if (_isCompleted)
+        {
+            return OnboardingTaskList.TaskStatus.Completed;
+        }
+
+        if (_preflight is null)
+        {
+            return OnboardingTaskList.TaskStatus.Blocked;
+        }
+
+        return _preflight.IsReadyToLaunch == true
+            ? OnboardingTaskList.TaskStatus.Completed
+            : OnboardingTaskList.TaskStatus.Blocked;
+    }
+
+    private string GetReadinessTaskStatusText() => GetReadinessTaskStatus() switch
+    {
+        OnboardingTaskList.TaskStatus.Completed => T("tasks.status.complete", "Complete"),
+        OnboardingTaskList.TaskStatus.Blocked => T("tasks.status.blocked", "Blocked"),
+        _ => T("tasks.status.not_started", "Not started")
+    };
+
+    private static string? NormalizeDeploymentMode(string? deploymentMode)
+    {
+        if (string.Equals(deploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase))
+        {
+            return "SingleTenant";
+        }
+
+        return string.Equals(deploymentMode, "MultiTenant", StringComparison.OrdinalIgnoreCase)
+            ? "MultiTenant"
+            : null;
+    }
+
+    private static bool CheckPassed(OnboardingPreflightCheckDto check) =>
+        string.Equals(check.Status, "Pass", StringComparison.OrdinalIgnoreCase);
+
+    private static string GetBlockingCheckClass(OnboardingPreflightCheckDto check) =>
+        CheckPassed(check) ? "instance-onboarding__check--pass" : "instance-onboarding__check--fail";
+
+    private static string GetBlockingCheckIcon(OnboardingPreflightCheckDto check) =>
+        CheckPassed(check) ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error;
+
+    private static Color GetBlockingCheckColor(OnboardingPreflightCheckDto check) =>
+        CheckPassed(check) ? Color.Success : Color.Error;
+
+    private string GetBlockingCheckStatusText(OnboardingPreflightCheckDto check) =>
+        CheckPassed(check)
+            ? T("readiness.passed", "Passed")
+            : T("readiness.failed", "Blocked");
+
+    private static Color GetWarningColor(string? severity) =>
         string.Equals(severity, "Critical", StringComparison.OrdinalIgnoreCase) ? Color.Error
         : string.Equals(severity, "High", StringComparison.OrdinalIgnoreCase) ? Color.Warning
         : string.Equals(severity, "Medium", StringComparison.OrdinalIgnoreCase) ? Color.Info
         : Color.Default;
 
+    private async Task SetLoadErrorAsync(string message)
+    {
+        _loadError = message;
+        if (!_disposed)
+        {
+            await Announcer.AnnounceAssertiveAsync(message);
+        }
+    }
+
+    private async Task SetCompletionErrorAsync(string message)
+    {
+        _completionError = message;
+        if (!_disposed)
+        {
+            await Announcer.AnnounceAssertiveAsync(message);
+        }
+    }
+
+    private string GetSafeCompletionError(BaseCommandResponseOfGuid response)
+    {
+        var message = string.IsNullOrWhiteSpace(response.Message)
+            ? T("errors.completion_failed", "Instance setup could not be completed. Review the status and try again.")
+            : response.Message.Trim();
+        var errors = response.Errors?
+            .Where(error => !string.IsNullOrWhiteSpace(error))
+            .Select(error => error.Trim())
+            .ToList();
+
+        return errors is { Count: > 0 }
+            ? $"{message} {string.Join(" ", errors)}"
+            : message;
+    }
+
     private static string? NormalizeOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private IJSObjectReference? _bffModule;
+    private string T(string key, string fallback) =>
+        Translation.T($"ui.onboarding.instance.{key}", fallback);
 
     private async Task<IJSObjectReference> GetBffModuleAsync()
     {
         _bffModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", "/js/bff.js");
         return _bffModule;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _lifetimeCancellation.Cancel();
+
+        if (_bffModule is not null)
+        {
+            try
+            {
+                await _bffModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // The circuit may already be gone during component disposal.
+            }
+        }
+
+        _lifetimeCancellation.Dispose();
     }
 }

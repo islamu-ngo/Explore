@@ -1,0 +1,110 @@
+/* ABOUTME: Provides scoped accessibility refinements for authentication-provider setup. */
+/* ABOUTME: Preserves semantic disclosures, readable form text, and mixed-direction content in both themes. */
+
+.auth-provider-configuration {
+    unicode-bidi: isolate;
+}
+
+.auth-provider-configuration__providers {
+    margin-block-end: var(--isl-space-4, 1rem);
+    overflow: clip;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-card, 0.5rem);
+    background-color: var(--mud-palette-surface);
+}
+
+.auth-provider-configuration__provider + .auth-provider-configuration__provider {
+    border-block-start: 1px solid var(--mud-palette-lines-default);
+}
+
+.auth-provider-configuration__provider-summary {
+    min-height: var(--isl-target-min, 1.5rem);
+    padding: var(--isl-space-4, 1rem) var(--isl-space-6, 1.5rem);
+    cursor: pointer;
+    color: var(--mud-palette-text-primary);
+}
+
+.auth-provider-configuration__provider-summary::marker {
+    color: var(--mud-palette-primary);
+}
+
+.auth-provider-configuration__provider-summary:hover {
+    background-color: var(--mud-palette-action-default-hover);
+}
+
+.auth-provider-configuration__provider-summary:focus-visible {
+    outline: var(--isl-focus-ring-width, 2px) solid var(--mud-palette-primary);
+    outline-offset: calc(-1 * var(--isl-focus-ring-width, 2px));
+}
+
+.auth-provider-configuration__provider-heading {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--isl-space-2, 0.5rem);
+    margin: 0;
+    font-family: var(--mud-typography-h6-family);
+    font-size: var(--mud-typography-h6-size);
+    font-weight: var(--mud-typography-h6-weight);
+    line-height: var(--mud-typography-h6-lineheight);
+    letter-spacing: 0;
+}
+
+.auth-provider-configuration__provider-badge {
+    padding: var(--isl-space-1, 0.25rem) var(--isl-space-2, 0.5rem);
+    border: 1px solid var(--mud-palette-success);
+    border-radius: var(--isl-radius-full, 9999px);
+    color: var(--mud-palette-success);
+    font-size: var(--mud-typography-caption-size);
+    font-weight: 600;
+    line-height: 1;
+}
+
+.auth-provider-configuration__provider-content {
+    padding: 0 var(--isl-space-6, 1.5rem) var(--isl-space-6, 1.5rem);
+}
+
+.auth-provider-configuration__enable-switch {
+    width: fit-content;
+    border-radius: var(--isl-radius-control, 0.25rem);
+}
+
+.auth-provider-configuration__enable-switch:has(input:focus-visible) {
+    outline: var(--isl-focus-ring-width, 2px) solid var(--mud-palette-primary);
+    outline-offset: var(--isl-focus-ring-offset, 2px);
+}
+
+.auth-provider-configuration ::deep input::placeholder {
+    color: var(--mud-palette-text-primary);
+    opacity: 0.72;
+}
+
+.auth-provider-configuration ::deep .mud-input-helper-text {
+    color: var(--mud-palette-text-primary);
+    opacity: 0.78;
+}
+
+.auth-provider-configuration ::deep .mud-alert-message,
+.auth-provider-configuration ::deep .mud-alert-message .mud-typography {
+    color: var(--mud-palette-text-primary);
+}
+
+@media (max-width: 48rem) {
+    .auth-provider-configuration__provider-summary {
+        padding: var(--isl-space-4, 1rem);
+    }
+
+    .auth-provider-configuration__provider-heading {
+        display: inline;
+    }
+
+    .auth-provider-configuration__provider-badge {
+        display: inline-block;
+        margin-inline-start: var(--isl-space-2, 0.5rem);
+        vertical-align: middle;
+    }
+
+    .auth-provider-configuration__provider-content {
+        padding: 0 var(--isl-space-4, 1rem) var(--isl-space-4, 1rem);
+    }
+}

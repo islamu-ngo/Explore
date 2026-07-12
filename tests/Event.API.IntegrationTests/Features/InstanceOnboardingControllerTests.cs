@@ -360,6 +360,50 @@ public class InstanceOnboardingControllerTests
         await Assert.That(config.GoogleSsoEnabled).IsTrue();
     }
 
+    [Test]
+    public async Task DeploymentKeycloakConfiguration_PublicStatusAndAdminReads_ExposeSanitizedDetectedProvider()
+    {
+        const string authority = "https://id.example.test/realms/events";
+        const string clientId = "event-blazor";
+        const string clientSecret = "must-not-leave-the-server";
+        using var factory = CreateFactoryWithSetupSecret(new Dictionary<string, string?>
+        {
+            ["Keycloak:Authority"] = authority,
+            ["Keycloak:ClientId"] = clientId,
+            ["Keycloak:ClientSecret"] = clientSecret
+        });
+        using var client = factory.CreateClient();
+
+        var publicResponse = await client.GetAsync($"{BaseUrl}/auth-provider-configuration");
+        await Assert.That(publicResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var publicJson = await publicResponse.Content.ReadAsStringAsync();
+        await Assert.That(publicJson).DoesNotContain(clientSecret);
+        var publicConfiguration = JsonSerializer.Deserialize<AuthProviderConfigurationDto>(publicJson, TestJsonOptions.Default);
+        await AssertDeploymentKeycloakConfiguration(publicConfiguration, authority, clientId);
+
+        var statusResponse = await client.GetAsync($"{SettingsBaseUrl}/auth-provider/status");
+        await Assert.That(statusResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var status = await statusResponse.Content.ReadFromJsonAsync<AuthProviderConfiguredResponse>();
+        await Assert.That(status).IsNotNull();
+        await Assert.That(status!.Configured).IsTrue();
+
+        var userId = Guid.NewGuid();
+        await EnsureUserExistsAsync(factory, userId);
+        await EnsureInstanceAdminRoleAsync(factory, userId);
+        using var adminRequest = CreateInstanceAdminRequest(
+            HttpMethod.Get,
+            $"{SettingsBaseUrl}/auth-provider",
+            userId,
+            body: null,
+            includeSetupSecret: false);
+        var adminResponse = await client.SendAsync(adminRequest);
+        await Assert.That(adminResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var adminJson = await adminResponse.Content.ReadAsStringAsync();
+        await Assert.That(adminJson).DoesNotContain(clientSecret);
+        var adminConfiguration = JsonSerializer.Deserialize<AuthProviderConfigurationDto>(adminJson, TestJsonOptions.Default);
+        await AssertDeploymentKeycloakConfiguration(adminConfiguration, authority, clientId);
+    }
+
     [Skip("Category: API integration. Removal: enable when OpenFeature SDK shutdown no longer throws ChannelClosedException during WebApplicationFactory disposal.")]
     [Test]
     public async Task SetupAuthProviderConfigurationFlow_SaveThenComplete_ShouldExposeConfiguredAndProtectPublicReadAfterCompletion()
@@ -951,6 +995,19 @@ public class InstanceOnboardingControllerTests
             SiteProfile = new SelfHostOnboardingProfileDto { SiteName = "Integration Test Instance" },
             InstanceName = "Integration Test Instance"
         };
+    }
+
+    private static async Task AssertDeploymentKeycloakConfiguration(
+        AuthProviderConfigurationDto? configuration,
+        string authority,
+        string clientId)
+    {
+        await Assert.That(configuration).IsNotNull();
+        await Assert.That(configuration!.KeycloakEnabled).IsTrue();
+        await Assert.That(configuration.KeycloakDetectedFromEnvironment).IsTrue();
+        await Assert.That(configuration.KeycloakAuthority).IsEqualTo(authority);
+        await Assert.That(configuration.KeycloakClientId).IsEqualTo(clientId);
+        await Assert.That(configuration.KeycloakClientSecret).IsEqualTo(string.Empty);
     }
 
     private static AuthProviderConfigurationDto CreateGoogleOnlyAuthProviderConfiguration()

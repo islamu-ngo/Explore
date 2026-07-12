@@ -1,0 +1,73 @@
+@* ABOUTME: Display-only ordered list for onboarding tasks and their parent-derived readiness state. *@
+@* ABOUTME: Presents localized task metadata, authority scope, and optional native navigation actions. *@
+
+<ol class="onboarding-task-list" aria-label="@AccessibleLabel">
+    @foreach (var item in Items)
+    {
+        <li class="onboarding-task-list__item">
+            <div class="onboarding-task-list__content">
+                <div class="onboarding-task-list__header">
+                    <span class="onboarding-task-list__title">@item.Title</span>
+                    <span class="@(item.IsRequired
+                                     ? "onboarding-task-list__requirement onboarding-task-list__requirement--required"
+                                     : "onboarding-task-list__requirement onboarding-task-list__requirement--optional")">
+                        @item.RequirementText
+                    </span>
+                </div>
+
+                <p class="onboarding-task-list__description">@item.Description</p>
+
+                <div class="onboarding-task-list__metadata">
+                    <span class="onboarding-task-list__status"
+                          data-status="@item.Status"
+                          role="status"
+                          aria-live="polite"
+                          aria-atomic="true">
+                        @item.StatusText
+                    </span>
+                    <span class="onboarding-task-list__scope">@item.AuthorityScope</span>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(item.Href) && !string.IsNullOrWhiteSpace(item.ActionLabel))
+                {
+                    <a class="onboarding-task-list__action"
+                       href="@item.Href"
+                       aria-label="@(string.IsNullOrWhiteSpace(item.ActionAccessibleName)
+                                        ? item.ActionLabel
+                                        : item.ActionAccessibleName)">
+                        @item.ActionLabel
+                    </a>
+                }
+            </div>
+        </li>
+    }
+</ol>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<TaskItem> Items { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public string AccessibleLabel { get; set; } = string.Empty;
+
+    public sealed record TaskItem(
+        string Title,
+        string Description,
+        bool IsRequired,
+        string RequirementText,
+        TaskStatus Status,
+        string StatusText,
+        string AuthorityScope,
+        string? Href = null,
+        string? ActionLabel = null,
+        string? ActionAccessibleName = null);
+
+    public enum TaskStatus
+    {
+        NotStarted,
+        InProgress,
+        Completed,
+        Blocked,
+        Available
+    }
+}

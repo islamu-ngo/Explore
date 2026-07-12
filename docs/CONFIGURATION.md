@@ -6,7 +6,7 @@ ABOUTME: Focuses on non-inferable key names, mapping behavior, and settings casc
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-07-04
+> **Last Verified:** 2026-07-12
 > **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.API/Controllers/ListmonkIntegrationSettingsController.cs`, `Explore.Application/DTOs/Integrations/ListmonkIntegrationSettingsDto.cs`, `Explore.Infrastructure/Integrations/Listmonk/ListmonkSyncService.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Event.Web.BffHosting/Authentication/EventBffKeycloakAuthenticationOptions.cs`, `Event.Web.BffHosting/Proxy/EventApiBaseAddressResolver.cs`, `Explore.Application/Features/EventReporting/EventReportSubmissionOptions.cs`, `Explore.Application/Services/AccountAuthorityLifecycleEmailOptions.cs`, `Explore.Application/Notifications/AccountAuthorityKind.cs`, `Explore.Application/Notifications/NotificationRoutingOptions.cs`, `Explore.Infrastructure/Configuration/ModerationProviderOptions.cs`, `Explore.Infrastructure/Configuration/OspreyProviderOptions.cs`, `Explore.Infrastructure/Configuration/CoopProviderOptions.cs`, `Explore.API/Services/CoopWebhookSignatureValidator.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakLifecycleEmailOptions.cs`, `Explore.Infrastructure/Services/Keycloak/KeycloakAccountAuthorityLifecycleEmailService.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
 
 ## Runtime Configuration Sources
@@ -24,6 +24,16 @@ Secrets have an additional ownership contract that applies across the platform:
 - **Deployment bootstrap** values may prefill onboarding/admin forms when no application-managed value exists. If the operator modifies and saves them, the saved application setting is used from then on.
 
 Do not treat environment variables as absolute authority forever. In application-managed mode the precedence is: explicit saved application/database setting, then deployment bootstrap value, then default. In deployment-managed mode the selected external source is authoritative and application-managed DB values for that field are ignored.
+
+### Keycloak onboarding metadata
+
+The API compatibility layer maps `KEYCLOAK_CLIENT_ID` and `KEYCLOAK_BLAZOR_CLIENT_ID` to `Keycloak:ClientId`. It maps the server-only `KEYCLOAK_BLAZOR_CLIENT_SECRET` or `Keycloak:BlazorClientSecret` value to `Keycloak:ClientSecret`. Existing canonical `Keycloak:*` values retain precedence because compatibility aliases only fill missing keys. `Keycloak:Audience` identifies the API audience and is never used as the browser client ID.
+
+Onboarding treats Keycloak deployment metadata as usable only when both the effective authority and client ID are nonblank. In application-managed mode, a complete enabled stored tuple wins; otherwise a complete deployment tuple is a bootstrap fallback and is reported as detected and configured. When authority and client ID are explicitly deployment-managed, the deployment tuple is authoritative and stored values for those fields are ignored. Partial deployment metadata fails closed and does not report Keycloak as configured.
+
+Public setup reads, administrator configuration reads, status responses, and control-plane summaries expose only sanitized authority, client ID, enabled/detected state, and secret ownership metadata. They always return an empty `KeycloakClientSecret`. The effective secret is available only to trusted server-side paths such as BFF refresh and realm synchronization.
+
+The browser BFF is a confidential OIDC client. A new Keycloak configuration therefore requires a client secret. Blank secret input is accepted only when the server's authoritative ownership metadata says an effective secret is already configured and the browser value is merely redacted; save and update handlers derive that state from `IAuthProviderConfigurationService` and never trust request ownership metadata.
 
 ## Deployment CI/CD Secrets
 
@@ -413,6 +423,7 @@ Cerbos runtime settings are the first implemented consumer of the shared secrets
 - `Cerbos:UsePolicyScope` defaults to `false`. Keep it false for bundled root policies; enable it only when the PDP has tenant-scoped policy files and `engine.lenientScopeSearch=true`.
 - `Cerbos:AdminApi:*` configures policy package sync/status operations, not runtime authorization checks. Admin API credentials are secret-bearing and must be treated as write-only/redacted in UI and API responses.
 - `Secrets:Ownership:DeploymentManagedKeys` can mark `cerbos.grpc_endpoint`, `Cerbos:AdminApi:AdminUsername`, `Cerbos:AdminApi:AdminPassword`, or `*` as deployment-managed. Deployment-managed fields are read-only in UI and ignore application-managed DB values for that field.
+- Setup and post-onboarding administration reuse the existing endpoint verification, package download/sync, and local-fallback capabilities. They do not add a Cerbos resource inventory or an arbitrary policy-decision test API.
 
 For a Coolify-managed external Cerbos PDP, use [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md) for the Docker Image tag, PostgreSQL schema bootstrap, Admin API password hash, gRPC routing, and `cerbosctl` upload flow. Compose and Aspire local infrastructure use the repository `cerbos/` folder directly.
 - Governance settings select the active provider (`AuthorizationProvider`), whether tenant customization is enabled, and per-tenant BYO values such as `cerbos.mode`, `cerbos.custom_endpoint`, `cerbos.failure_mode`, custom Admin API endpoint, and custom Admin API credentials.
@@ -559,6 +570,10 @@ Important safety behavior:
 - `SETUP_SECRET_REQUIRED=false` without all trusted managed-provisioning keys is ignored and the API still requires a setup secret.
 - `SETUP_SECRET_REQUIRED=false` with trusted managed provisioning does **not** make setup-secret-protected endpoints public. `ValidateSecret` returns false and those endpoints reject anonymous/no-secret calls; managed provider automation must use the authorized provisioning endpoint instead.
 - Raw setup secrets are not logged when interactive setup-secret validation is disabled.
+
+`/setup` is a separate pre-authentication operator gateway. Browser-provided privileged headers are always removed; the BFF and API accept setup authority only from their trusted server-owned setup-secret sources. Access tokens, setup secrets, provider administrator credentials, and raw provider responses must not enter browser storage, browser-facing DTOs, logs, traces, screenshots, or support artifacts.
+
+After authentication, onboarding is presented as one server-derived task overview. It composes the existing onboarding status, provider verification/sync, and preflight endpoints rather than persisting a second client-side workflow model. A configured authentication-provider task keeps a HAL-authorized management action: before launch it opens `/onboarding/auth-provider`; after launch it opens `/admin/instance/settings?section=auth-providers`, where an instance administrator can run Keycloak doctor, preview synchronization, apply additive repairs, and rotate the managed client secret. Configured credential metadata must not hide that management affordance; missing or errored authoritative provider state fails closed and must not be converted into client-inferred readiness. `Deployment:Mode` and `Bff:AdminHosts` remain operator/deployment configuration and are display-only in onboarding; the UI must not offer them as setup choices.
 
 ## API Compatibility Mapping (Infisical -> .NET keys)
 
@@ -801,9 +816,9 @@ Static deployment config is bound from `Deployment` section (`DeploymentSettings
 - `HidePlatformAdminInSingleTenant` (default `true`)
 - `DefaultTenantSubdomain`
 
-First-run onboarding mode is controlled only by API configuration. Set `DEPLOYMENT_MODE=multi_tenant` in the Infisical `/api` folder to show the multi-tenant onboarding flow. If `DEPLOYMENT_MODE` is absent, onboarding is single-tenant only. Invalid deployment-mode values fail safely to single-tenant setup.
+First-run onboarding mode is controlled only by API configuration. Set `DEPLOYMENT_MODE=multi_tenant` in the Infisical `/api` folder before setup for a multi-tenant deployment. If `DEPLOYMENT_MODE` is absent, onboarding is single-tenant only. Invalid deployment-mode values fail safely to single-tenant setup.
 
-Normal admin UI does not switch deployment mode after onboarding. Choose multi-tenant mode before first launch by setting the API environment value; otherwise the convention-first path launches a single-tenant site with the default tenant hidden internally.
+Deployment mode and dedicated BFF admin hosts are read-only operator configuration in the onboarding UI, not onboarding choices. Normal admin UI does not switch deployment mode after launch. Choose multi-tenant mode before first launch; otherwise the convention-first path launches a single-tenant site and provisions the configured default-tenant state.
 
 ## Reverse Proxy Trust Configuration
 

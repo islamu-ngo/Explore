@@ -8,6 +8,7 @@ using Explore.Application.DTOs.Onboarding;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Domain.Secrets;
 using Microsoft.Extensions.Configuration;
 
 namespace Explore.Application.Services;
@@ -28,27 +29,24 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
     public async Task<AuthProviderConfigurationDto> ReadConfigurationAsync()
     {
         var keycloakEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.KeycloakEnabled);
-        var keycloakAuthority = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.KeycloakAuthority);
-        var keycloakClientId = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.KeycloakClientId);
+        var keycloak = await ResolveKeycloakConfigurationAsync();
         var atprotoLoginEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.AtprotoLoginEnabled);
         var atprotoPublicUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.AtprotoPublicUrl);
         var googleSsoEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.GoogleSsoEnabled);
         var googleClientId = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.GoogleClientId);
         var keycloakSecret = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Authentication.KeycloakClientSecret);
 
-        var keycloakSecretDeploymentManaged = IsDeploymentManaged(InfrastructureSecretSettingKeys.Authentication.KeycloakClientSecret)
-                                             || IsDeploymentManaged("Keycloak:ClientSecret")
-                                             || IsDeploymentManaged("Authentication:Keycloak:ClientSecret");
+        var keycloakSecretDeploymentManaged = IsKeycloakClientSecretDeploymentManaged();
         var storedKeycloakSecretConfigured = !string.IsNullOrWhiteSpace(DeserializeString(keycloakSecret?.Value, string.Empty));
-        var configuredKeycloakSecretConfigured = !string.IsNullOrWhiteSpace(_configuration["Keycloak:ClientSecret"])
-                                                 || !string.IsNullOrWhiteSpace(_configuration["Authentication:Keycloak:ClientSecret"]);
+        var configuredKeycloakSecretConfigured = !string.IsNullOrWhiteSpace(ReadConfiguredKeycloakClientSecret());
 
         return new AuthProviderConfigurationDto
         {
-            KeycloakEnabled = DeserializeBoolean(keycloakEnabled?.Value, false),
-            KeycloakAuthority = DeserializeString(keycloakAuthority?.Value, string.Empty),
-            KeycloakClientId = DeserializeString(keycloakClientId?.Value, string.Empty),
+            KeycloakEnabled = keycloak.Enabled,
+            KeycloakAuthority = keycloak.Authority,
+            KeycloakClientId = keycloak.ClientId,
             KeycloakClientSecret = string.Empty, // Never return secrets on read
+            KeycloakDetectedFromEnvironment = keycloak.DetectedFromEnvironment,
             KeycloakClientSecretOwnership = CreateOwnershipMetadata(
                 keycloakSecretDeploymentManaged,
                 configured: keycloakSecretDeploymentManaged
@@ -81,25 +79,32 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
             1,
             "Whether Keycloak OIDC authentication is enabled");
 
-        await UpsertSettingAsync(
-            GovernanceSettingKeys.Authentication.KeycloakAuthority,
-            JsonSerializer.Serialize(configuration.KeycloakAuthority),
-            SettingValueType.String,
-            true,
-            "Authentication",
-            2,
-            "Keycloak realm authority URL");
+        if (!IsKeycloakAuthorityDeploymentManaged())
+        {
+            await UpsertSettingAsync(
+                GovernanceSettingKeys.Authentication.KeycloakAuthority,
+                JsonSerializer.Serialize(configuration.KeycloakAuthority),
+                SettingValueType.String,
+                true,
+                "Authentication",
+                2,
+                "Keycloak realm authority URL");
+        }
 
-        await UpsertSettingAsync(
-            GovernanceSettingKeys.Authentication.KeycloakClientId,
-            JsonSerializer.Serialize(configuration.KeycloakClientId),
-            SettingValueType.String,
-            true,
-            "Authentication",
-            3,
-            "Keycloak OIDC client ID");
+        if (!IsKeycloakClientIdDeploymentManaged())
+        {
+            await UpsertSettingAsync(
+                GovernanceSettingKeys.Authentication.KeycloakClientId,
+                JsonSerializer.Serialize(configuration.KeycloakClientId),
+                SettingValueType.String,
+                true,
+                "Authentication",
+                3,
+                "Keycloak OIDC client ID");
+        }
 
-        if (!string.IsNullOrEmpty(configuration.KeycloakClientSecret))
+        if (!string.IsNullOrEmpty(configuration.KeycloakClientSecret)
+            && !IsKeycloakClientSecretDeploymentManaged())
         {
             await UpsertSettingAsync(
                 InfrastructureSecretSettingKeys.Authentication.KeycloakClientSecret,
@@ -162,11 +167,11 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
 
     public async Task<bool> IsConfiguredAsync()
     {
-        var keycloakEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.KeycloakEnabled);
+        var keycloak = await ResolveKeycloakConfigurationAsync();
         var atprotoEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.AtprotoLoginEnabled);
         var googleEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.GoogleSsoEnabled);
 
-        return DeserializeBoolean(keycloakEnabled?.Value, false)
+        return keycloak.Enabled
                || DeserializeBoolean(atprotoEnabled?.Value, false)
                || DeserializeBoolean(googleEnabled?.Value, false);
     }
@@ -178,7 +183,13 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
         var keycloakSecret = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Authentication.KeycloakClientSecret);
         var googleSecret = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Authentication.GoogleClientSecret);
 
-        dto.KeycloakClientSecret = DeserializeString(keycloakSecret?.Value, string.Empty);
+        var storedKeycloakSecret = DeserializeString(keycloakSecret?.Value, string.Empty);
+        var configuredKeycloakSecret = ReadConfiguredKeycloakClientSecret();
+        dto.KeycloakClientSecret = IsKeycloakClientSecretDeploymentManaged()
+            ? configuredKeycloakSecret
+            : string.IsNullOrWhiteSpace(storedKeycloakSecret)
+                ? configuredKeycloakSecret
+                : storedKeycloakSecret;
         dto.GoogleClientSecret = DeserializeString(googleSecret?.Value, string.Empty);
 
         return dto;
@@ -205,6 +216,98 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         });
+    }
+
+    private async Task<(bool Enabled, string Authority, string ClientId, bool DetectedFromEnvironment)>
+        ResolveKeycloakConfigurationAsync()
+    {
+        var enabledSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.KeycloakEnabled);
+        var authoritySetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.KeycloakAuthority);
+        var clientIdSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.KeycloakClientId);
+        var storedEnabled = DeserializeBoolean(enabledSetting?.Value, false);
+        var storedAuthority = DeserializeString(authoritySetting?.Value, string.Empty);
+        var storedClientId = DeserializeString(clientIdSetting?.Value, string.Empty);
+        var storedUsable = storedEnabled
+                           && !string.IsNullOrWhiteSpace(storedAuthority)
+                           && !string.IsNullOrWhiteSpace(storedClientId);
+        var deploymentAuthority = ReadFirstConfigured("Keycloak:Authority");
+        var deploymentClientId = ReadFirstConfigured("Keycloak:ClientId");
+        var deploymentUsable = !string.IsNullOrWhiteSpace(deploymentAuthority)
+                               && !string.IsNullOrWhiteSpace(deploymentClientId);
+        var authorityDeploymentManaged = IsKeycloakAuthorityDeploymentManaged();
+        var clientIdDeploymentManaged = IsKeycloakClientIdDeploymentManaged();
+
+        if (authorityDeploymentManaged || clientIdDeploymentManaged)
+        {
+            var effectiveAuthority = authorityDeploymentManaged
+                ? deploymentAuthority
+                : string.IsNullOrWhiteSpace(storedAuthority)
+                    ? deploymentAuthority
+                    : storedAuthority;
+            var effectiveClientId = clientIdDeploymentManaged
+                ? deploymentClientId
+                : string.IsNullOrWhiteSpace(storedClientId)
+                    ? deploymentClientId
+                    : storedClientId;
+            var effectiveUsable = !string.IsNullOrWhiteSpace(effectiveAuthority)
+                                  && !string.IsNullOrWhiteSpace(effectiveClientId);
+            var enabled = effectiveUsable && (storedEnabled || deploymentUsable);
+            var usesDeploymentMetadata = authorityDeploymentManaged
+                                         || clientIdDeploymentManaged
+                                         || string.IsNullOrWhiteSpace(storedAuthority)
+                                         || string.IsNullOrWhiteSpace(storedClientId);
+
+            return (enabled, effectiveAuthority, effectiveClientId, enabled && usesDeploymentMetadata);
+        }
+
+        if (storedUsable)
+        {
+            return (true, storedAuthority, storedClientId, false);
+        }
+
+        return deploymentUsable
+            ? (true, deploymentAuthority, deploymentClientId, true)
+            : (false, storedAuthority, storedClientId, false);
+    }
+
+    private bool IsKeycloakAuthorityDeploymentManaged()
+    {
+        return IsDeploymentManaged(GovernanceSettingKeys.Authentication.KeycloakAuthority)
+               || IsDeploymentManaged(SecretDefinitionRegistry.Keys.Keycloak.Endpoint)
+               || IsDeploymentManaged("Keycloak:Authority");
+    }
+
+    private bool IsKeycloakClientIdDeploymentManaged()
+    {
+        return IsDeploymentManaged(GovernanceSettingKeys.Authentication.KeycloakClientId)
+               || IsDeploymentManaged(SecretDefinitionRegistry.Keys.Keycloak.ClientId)
+               || IsDeploymentManaged("Keycloak:ClientId");
+    }
+
+    private bool IsKeycloakClientSecretDeploymentManaged()
+    {
+        return IsDeploymentManaged(InfrastructureSecretSettingKeys.Authentication.KeycloakClientSecret)
+               || IsDeploymentManaged(SecretDefinitionRegistry.Keys.Keycloak.BlazorClientSecret)
+               || IsDeploymentManaged("Keycloak:ClientSecret")
+               || IsDeploymentManaged("Keycloak:BlazorClientSecret")
+               || IsDeploymentManaged("Authentication:Keycloak:ClientSecret");
+    }
+
+    private string ReadConfiguredKeycloakClientSecret()
+    {
+        return ReadFirstConfigured(
+            "Keycloak:ClientSecret",
+            "Keycloak:BlazorClientSecret",
+            "Authentication:Keycloak:ClientSecret",
+            "KEYCLOAK_BLAZOR_CLIENT_SECRET");
+    }
+
+    private string ReadFirstConfigured(params string[] keys)
+    {
+        return keys
+            .Select(key => _configuration[key])
+            .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))
+            ?.Trim() ?? string.Empty;
     }
 
     private bool IsDeploymentManaged(string key)

@@ -49,7 +49,8 @@ public class UpdateAuthProviderConfigurationCommandHandler : IRequestHandler<Upd
             return response;
         }
 
-        var validator = new AuthProviderConfigurationDtoValidator();
+        var currentConfiguration = await _configurationService.ReadConfigurationAsync();
+        var validator = new AuthProviderConfigurationDtoValidator(currentConfiguration);
         var validationResult = await validator.ValidateAsync(request.Configuration, cancellationToken);
         if (!validationResult.IsValid)
         {

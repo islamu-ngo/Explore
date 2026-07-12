@@ -22,6 +22,7 @@ public class SetupSourceTests
         {
             var candidate = Path.Combine(
                 directory.FullName,
+                "src",
                 "Explore.Blazor.Client",
                 "Pages",
                 "Setup.razor");

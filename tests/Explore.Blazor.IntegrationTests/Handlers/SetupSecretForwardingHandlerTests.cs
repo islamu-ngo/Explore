@@ -72,6 +72,31 @@ public class SetupSecretForwardingHandlerTests
     }
 
     [Test]
+    [Arguments("https://api.example.com/api/Events?next=/api/InstanceOnboarding/status")]
+    [Arguments("https://api.example.com/api/InstanceOnboarding/status-report")]
+    [Arguments("https://api.example.com/api/InstanceOnboarding/auth-provider-configuration-report")]
+    public async Task SendAsync_SimilarButNonOnboardingPath_StripsClientHeaderAndDoesNotAddTrustedSecret(
+        string requestUri)
+    {
+        var httpContext = new DefaultHttpContext();
+        var cookieProtector = CreateCookieProtector();
+        httpContext.Request.Headers.Cookie = $"setup-secret={cookieProtector.Protect("trusted-cookie-secret")}";
+
+        var sessionService = new SetupSecretSessionService();
+        var innerHandler = new CapturingHandler();
+        using var handler = CreateHandler(httpContext, sessionService, innerHandler, cookieProtector);
+
+        using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
+        using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+        request.Headers.Add("X-Setup-Secret", "client-controlled-secret");
+
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Contains("X-Setup-Secret")).IsFalse();
+    }
+
+    [Test]
     public async Task SendAsync_OnboardingPath_WithoutSecret_DoesNotAddHeader()
     {
         var userId = Guid.NewGuid().ToString();
@@ -145,6 +170,38 @@ public class SetupSecretForwardingHandlerTests
         await Assert.That(innerHandler.CapturedRequest).IsNotNull();
         await Assert.That(innerHandler.CapturedRequest!.Headers.Contains("X-Setup-Secret")).IsTrue();
         await Assert.That(innerHandler.CapturedRequest.Headers.GetValues("X-Setup-Secret").Single()).IsEqualTo("trusted-session-secret");
+    }
+
+    [Test]
+    public async Task SendAsync_InstanceOnboardingStatus_WithInboundHeaderAndSessionSecret_ForwardsTrustedSessionSecret()
+    {
+        var userId = Guid.NewGuid().ToString();
+        var httpContext = new DefaultHttpContext();
+        httpContext.User = new ClaimsPrincipal(
+            new ClaimsIdentity(
+            [
+                new Claim("sub", userId),
+                new Claim(ClaimTypes.NameIdentifier, userId)
+            ],
+            authenticationType: "Test"));
+
+        var sessionService = new SetupSecretSessionService();
+        sessionService.SetForUser(userId, "trusted-status-secret");
+
+        var innerHandler = new CapturingHandler();
+        using var handler = CreateHandler(httpContext, sessionService, innerHandler);
+
+        using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/api/InstanceOnboarding/status");
+        request.Headers.Add("X-Setup-Secret", "client-controlled-secret");
+
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        sessionService.ClearForUser(userId);
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Contains("X-Setup-Secret")).IsTrue();
+        await Assert.That(innerHandler.CapturedRequest.Headers.GetValues("X-Setup-Secret").Single()).IsEqualTo("trusted-status-secret");
     }
 
     [Test]

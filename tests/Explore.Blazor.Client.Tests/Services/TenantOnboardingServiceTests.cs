@@ -1,6 +1,8 @@
 // ABOUTME: Unit tests for tenant onboarding delegation through the generated Event API client.
 // ABOUTME: Verifies generated contract mapping, command results, and resilient failure behavior.
 
+using Explore.Blazor.Client.Helpers;
+
 namespace Explore.Blazor.Client.Tests.Services;
 
 public class TenantOnboardingServiceTests
@@ -24,13 +26,17 @@ public class TenantOnboardingServiceTests
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new TenantOnboardingStatusDto
+            .Returns(new HalResourceOfTenantOnboardingStatusDto
             {
                 IsCompleted = true,
                 IsAuthenticated = true,
                 IsCurrentUserTenantAdministrator = true,
                 IsCurrentUserPlatformAdministrator = false,
-                TenantId = tenantId
+                TenantId = tenantId,
+                _links = new Dictionary<string, HalLink>
+                {
+                    ["manage-tenant-settings"] = new HalLink { Href = "/api/tenant-onboarding/policy-settings" }
+                }
             });
 
         var result = await _service.GetStatusAsync();
@@ -38,6 +44,7 @@ public class TenantOnboardingServiceTests
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.IsCompleted).IsTrue();
         await Assert.That(result.TenantId).IsEqualTo(tenantId);
+        await Assert.That(result.HasHalLink("manage-tenant-settings")).IsTrue();
         await _api.Received(1).GetTenantOnboardingStatusAsync(
             Arg.Any<string?>(),
             Arg.Any<string?>(),
@@ -51,7 +58,7 @@ public class TenantOnboardingServiceTests
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
-            .Returns<Task<TenantOnboardingStatusDto>>(_ => throw new HttpRequestException("boom"));
+            .Returns<Task<HalResourceOfTenantOnboardingStatusDto>>(_ => throw new HttpRequestException("boom"));
 
         var result = await _service.GetStatusAsync();
 

@@ -1,0 +1,104 @@
+/* ABOUTME: Scoped single-column layout for the authoritative tenant onboarding task flow. */
+/* ABOUTME: Uses logical properties and project tokens for responsive, RTL-safe onboarding states. */
+
+.tenant-onboarding {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--isl-space-6, 1.5rem);
+    padding-block: var(--isl-space-8, 2rem);
+    overflow-wrap: anywhere;
+}
+
+.tenant-onboarding__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--isl-space-4, 1rem);
+}
+
+.tenant-onboarding__heading {
+    display: grid;
+    min-inline-size: 0;
+    gap: var(--isl-space-2, 0.5rem);
+}
+
+.tenant-onboarding__message {
+    min-inline-size: 0;
+}
+
+.tenant-onboarding__loading {
+    display: flex;
+    min-block-size: 8rem;
+    align-items: center;
+    justify-content: center;
+    gap: var(--isl-space-3, 0.75rem);
+}
+
+.tenant-onboarding__context,
+.tenant-onboarding__settings,
+.tenant-onboarding__completion {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--isl-space-4, 1rem);
+}
+
+.tenant-onboarding__context {
+    padding-block: var(--isl-space-4, 1rem);
+    border-block: 1px solid var(--mud-palette-lines-default);
+}
+
+.tenant-onboarding__settings,
+.tenant-onboarding__completion {
+    padding-block-start: var(--isl-space-2, 0.5rem);
+}
+
+.tenant-onboarding__fieldset {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-inline-size: 0;
+    gap: var(--isl-space-3, 0.75rem);
+    margin: 0;
+    padding: var(--isl-space-4, 1rem);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: min(var(--isl-radius-md, 0.5rem), 0.5rem);
+}
+
+.tenant-onboarding__fieldset legend {
+    max-inline-size: 100%;
+    padding-inline: var(--isl-space-2, 0.5rem);
+    color: var(--mud-palette-text-primary);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.tenant-onboarding__submit,
+.tenant-onboarding__completion-actions,
+.tenant-onboarding__recovery-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--isl-space-3, 0.75rem);
+    min-block-size: var(--isl-target-min, 1.5rem);
+}
+
+.tenant-onboarding__submit {
+    justify-content: flex-end;
+}
+
+@media (max-width: 40rem) {
+    .tenant-onboarding {
+        padding-block: var(--isl-space-5, 1.25rem);
+    }
+
+    .tenant-onboarding__header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .tenant-onboarding__submit,
+    .tenant-onboarding__completion-actions,
+    .tenant-onboarding__recovery-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}

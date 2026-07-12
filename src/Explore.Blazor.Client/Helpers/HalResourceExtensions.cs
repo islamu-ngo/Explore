@@ -591,6 +591,24 @@ public static class HalResourceExtensions
         return JsonSerializer.Deserialize<CustomPropertyDefinitionDto>(json, JsonOptions);
     }
 
+    public static InstanceOnboardingStatusDto? ToDto(this HalResourceOfInstanceOnboardingStatusDto? halResource)
+    {
+        if (halResource is null)
+            return null;
+
+        var json = JsonSerializer.Serialize(halResource, JsonOptions);
+        return JsonSerializer.Deserialize<InstanceOnboardingStatusDto>(json, JsonOptions);
+    }
+
+    public static TenantOnboardingStatusDto? ToDto(this HalResourceOfTenantOnboardingStatusDto? halResource)
+    {
+        if (halResource is null)
+            return null;
+
+        var json = JsonSerializer.Serialize(halResource, JsonOptions);
+        return JsonSerializer.Deserialize<TenantOnboardingStatusDto>(json, JsonOptions);
+    }
+
     // ========== Non-HAL Paginated Result Mappers ==========
 
     /// <summary>
@@ -614,6 +632,12 @@ public static class HalResourceExtensions
     // ========== HAL Link Helpers ==========
 
     public static bool HasHalLink(this EventListDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
+    public static bool HasHalLink(this InstanceOnboardingStatusDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
+    public static bool HasHalLink(this TenantOnboardingStatusDto dto, string linkRel)
         => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
 
     public static bool HasManagementLinks(this EventListDto dto)

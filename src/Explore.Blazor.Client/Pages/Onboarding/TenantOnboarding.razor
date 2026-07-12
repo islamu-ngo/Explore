@@ -1,227 +1,581 @@
+@* ABOUTME: Tenant onboarding task list driven by server-confirmed tenant context and authority. *@
+@* ABOUTME: Preserves governed policy inputs, authoritative completion, and accessible refresh/error states. *@
+
 @page "/onboarding/tenant"
-@using MudBlazor
+@using System.Globalization
 @using Microsoft.AspNetCore.Authorization
-@using Explore.Blazor.Client.Components.Forms
+@using MudBlazor
+@using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Helpers
+@using Explore.Blazor.Client.Pages.Onboarding.Components
+@using Explore.Blazor.Client.Routing.ControlPlane
 @layout SetupLayout
 @attribute [Authorize]
 @rendermode InteractiveServer
+@implements IDisposable
 @inject ITenantOnboardingService TenantOnboardingService
 @inject IUserService UserService
+@inject ITranslationService TranslationService
+@inject IAccessibilityAnnouncerService AccessibilityAnnouncerService
 @inject ISnackbar Snackbar
+@inject ILogger<TenantOnboarding> Logger
 
-<PageTitle>Tenant Onboarding</PageTitle>
+<PageTitle>@T("ui.onboarding.tenant.page_title", "Tenant onboarding")</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
-    <MudPaper Class="pa-6">
-        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">Tenant Onboarding</MudText>
-        <MudText Typo="Typo.body1" Class="mb-4">
-            Configure tenant-level policies for submissions, moderation, and organization verification.
-        </MudText>
+<MudContainer MaxWidth="MaxWidth.Medium" Class="tenant-onboarding">
+    <header class="tenant-onboarding__header">
+        <div class="tenant-onboarding__heading">
+            <MudText Typo="Typo.h4" HtmlTag="h1">
+                @T("ui.onboarding.tenant.title", "Tenant onboarding")
+            </MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">
+                @T("ui.onboarding.tenant.introduction", "Confirm the trusted tenant context, choose launch policies, and complete onboarding.")
+            </MudText>
+        </div>
+        <MudButton Elevation="0"
+                   Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   Disabled="@(_isLoading || _isRefreshing || _isSubmitting)"
+                   OnClick="RefreshAsync"
+                   aria-label="@T("ui.onboarding.tenant.refresh_accessible_name", "Refresh tenant onboarding")">
+            @(_isRefreshing
+                ? T("ui.onboarding.tenant.refreshing", "Refreshing")
+                : T("ui.onboarding.tenant.refresh", "Refresh"))
+        </MudButton>
+    </header>
 
-        @if (!string.IsNullOrWhiteSpace(_errorMessage))
-        {
-            <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
-        }
-
-        @if (_isLoading)
-        {
-            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-        }
-        else if (!_canEdit)
-        {
-            <MudAlert Severity="Severity.Warning" Class="mb-4">
-                You are authenticated but do not have tenant administrator permissions for this tenant.
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="tenant-onboarding__message" role="alert">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+                @_errorMessage
             </MudAlert>
-            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Href="/events">
-                Go to Events
-            </MudButton>
-        }
-        else if (_showCompletionPrompt)
-        {
-            <MudStack Spacing="4">
-                <MudAlert Severity="Severity.Success" Variant="Variant.Outlined">
-                    Tenant onboarding is complete. Choose where you want to go next.
-                </MudAlert>
+        </div>
+    }
 
-                <MudGrid Spacing="3">
-                    <MudItem xs="12" md="6">
-                        <MudPaper Elevation="0" Class="pa-4 h-100" Outlined="true">
-                            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Tune administration settings</MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
-                                Review policies, branding, domains, and public experience before inviting visitors.
-                            </MudText>
-                            <MudButton Elevation="0" Href="@_administrationSettingsHref"
-                                       Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       StartIcon="@Icons.Material.Filled.AdminPanelSettings">
-                                Go to administration settings
-                            </MudButton>
-                        </MudPaper>
-                    </MudItem>
-                    <MudItem xs="12" md="6">
-                        <MudPaper Elevation="0" Class="pa-4 h-100" Outlined="true">
-                            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Start browsing events</MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
-                                Skip configuration for now and open the event catalog with the current defaults.
-                            </MudText>
-                            <MudButton Elevation="0" Href="/events"
-                                       Variant="Variant.Outlined"
-                                       Color="Color.Primary"
-                                       StartIcon="@Icons.Material.Filled.Event">
-                                Go to events
-                            </MudButton>
-                        </MudPaper>
-                    </MudItem>
-                </MudGrid>
-            </MudStack>
+    @if (_isLoading)
+    {
+        <div class="tenant-onboarding__loading" role="status">
+            <MudProgressCircular Indeterminate="true"
+                                 Color="Color.Primary"
+                                 aria-label="@T("ui.onboarding.tenant.loading", "Loading tenant onboarding")" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @T("ui.onboarding.tenant.loading", "Loading tenant onboarding")
+            </MudText>
+        </div>
+    }
+    else if (_status is null)
+    {
+        <div class="tenant-onboarding__recovery-actions">
+            <MudButton Elevation="0"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       Disabled="@_isRefreshing"
+                       OnClick="RefreshAsync">
+                @T("ui.onboarding.tenant.try_again", "Try again")
+            </MudButton>
+            <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Primary" Href="/events">
+                @T("ui.onboarding.tenant.go_to_events", "Go to events")
+            </MudButton>
+        </div>
+    }
+    else
+    {
+        <section class="tenant-onboarding__context" aria-labelledby="tenant-context-heading">
+            <MudText Typo="Typo.h6" HtmlTag="h2" id="tenant-context-heading">
+                @T("ui.onboarding.tenant.context.title", "Trusted tenant context")
+            </MudText>
+            <MudText Typo="Typo.body2">
+                @Format("ui.onboarding.tenant.context.identifier", "Tenant identifier: {0}", _tenantId.ToString("D"))
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @AuthorityDescription
+            </MudText>
+        </section>
+
+        <OnboardingTaskList Items="@TaskItems"
+                            AccessibleLabel="@T("ui.onboarding.tenant.tasks.accessible_label", "Tenant onboarding tasks")" />
+
+        @if (_status.IsCompleted == true)
+        {
+            <section class="tenant-onboarding__completion" aria-labelledby="tenant-completion-heading">
+                <div class="tenant-onboarding__message" role="status">
+                    <MudAlert Severity="Severity.Success" Variant="Variant.Outlined">
+                        <MudText Typo="Typo.h6" HtmlTag="h2" id="tenant-completion-heading">
+                            @T("ui.onboarding.tenant.completion.title", "Tenant onboarding is complete")
+                        </MudText>
+                        <MudText Typo="Typo.body2">
+                            @T("ui.onboarding.tenant.completion.description", "The server confirmed this tenant is ready. Continue to administration or browse events.")
+                        </MudText>
+                    </MudAlert>
+                </div>
+                <div class="tenant-onboarding__completion-actions">
+                    @if (ManagementHref is not null)
+                    {
+                        <MudButton Elevation="0"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.AdminPanelSettings"
+                                   Href="@ManagementHref">
+                            @ManagementActionLabel
+                        </MudButton>
+                    }
+                    <MudButton Elevation="0"
+                               Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Event"
+                               Href="/events">
+                        @T("ui.onboarding.tenant.go_to_events", "Go to events")
+                    </MudButton>
+                </div>
+            </section>
         }
         else
         {
-            <MudStack Spacing="3">
-                <MudText Typo="Typo.caption" Class="mb-1">Fields marked "(Required)" must be provided before completing onboarding.</MudText>
+            <section class="tenant-onboarding__settings" aria-labelledby="tenant-settings-heading">
+                <MudText Typo="Typo.h6" HtmlTag="h2" id="tenant-settings-heading">
+                    @T("ui.onboarding.tenant.settings.title", "Required tenant settings")
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @T("ui.onboarding.tenant.settings.required_guidance", "Required settings must be confirmed before onboarding can be completed.")
+                </MudText>
 
-                @{
-                    bool hasLocks = _model.CanTenantOmitVerification != true ||
-                                    _model.CanOverrideHomePagePreference != true ||
-                                    _model.CanOverrideEventCardClickBehavior != true ||
-                                    _model.CanOverrideSubdomain != true ||
-                                    _model.CanOverrideCustomDomain != true;
-                }
-
-                @if (hasLocks)
+                @if (HasLockedSettings)
                 {
-                    <MudAlert Severity="Severity.Info" Class="mb-4">
-                        <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Class="mr-2" />
-                        Some settings are locked by your instance administrator and cannot be changed here.
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                        @T("ui.onboarding.tenant.settings.locked_guidance", "Some settings are locked by the platform administrator. Their server-provided values will be preserved.")
                     </MudAlert>
                 }
 
-                <MudExpansionPanels MultiExpansion="true" Class="mb-4">
-                    <MudExpansionPanel Text="Content Governance" IsExpanded="true">
-                        <MudStack Spacing="3">
-                            <MudSwitch T="bool?" @bind-Value="_model.AllowUserSubmittedEvents" Color="Color.Primary">
-                                Allow users to submit events
-                            </MudSwitch>
-                            <MudSwitch T="bool?" @bind-Value="_model.RequireEventApproval" Color="Color.Primary">
-                                Require approval before user-submitted events are published
-                            </MudSwitch>
-                            <MudSwitch T="bool?"
-                                       @bind-Value="_model.RequireOrganizationVerification"
-                                       Disabled="@(_model.CanTenantOmitVerification != true)"
-                                       Color="Color.Primary">
-                                Require organization verification @(_model.CanTenantOmitVerification != true ? "🔒" : "")
-                            </MudSwitch>
-                        </MudStack>
-                    </MudExpansionPanel>
+                <fieldset class="tenant-onboarding__fieldset">
+                    <legend>@T("ui.onboarding.tenant.policies.title", "Content governance")</legend>
+                    <MudSwitch T="bool?" @bind-Value="_model.AllowUserSubmittedEvents" Color="Color.Primary">
+                        @T("ui.onboarding.tenant.policies.allow_user_submissions", "Allow users to submit events")
+                    </MudSwitch>
+                    <MudSwitch T="bool?" @bind-Value="_model.RequireEventApproval" Color="Color.Primary">
+                        @T("ui.onboarding.tenant.policies.require_approval", "Require approval before user-submitted events are published")
+                    </MudSwitch>
+                    <MudSwitch T="bool?"
+                               @bind-Value="_model.RequireOrganizationVerification"
+                               Disabled="@(_model.CanTenantOmitVerification != true)"
+                               Color="Color.Primary">
+                        @WithLockState(
+                            T("ui.onboarding.tenant.policies.require_organization_verification", "Require organization verification"),
+                            _model.CanTenantOmitVerification != true)
+                    </MudSwitch>
+                </fieldset>
 
-                    <MudExpansionPanel Text="Tenant Experience">
-                        <MudStack Spacing="3">
-                            <MudSelect T="string"
-                                       Label="@("Preferred Home Page" + (_model.CanOverrideHomePagePreference != true ? " 🔒" : " (Required)"))"
-                                       @bind-Value="_model.PreferredHomePage"
-                                       Disabled="@(_model.CanOverrideHomePagePreference != true)"
-                                       Variant="Variant.Outlined"
-                                       Required="true"
-                                       RequiredError="Preferred home page is required.">
-                                <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
-                                <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
-                            </MudSelect>
+                <fieldset class="tenant-onboarding__fieldset">
+                    <legend>@T("ui.onboarding.tenant.experience.title", "Tenant experience")</legend>
+                    <MudSelect T="string"
+                               Label="@WithLockState(T("ui.onboarding.tenant.experience.home_page", "Preferred home page (Required)"), _model.CanOverrideHomePagePreference != true)"
+                               @bind-Value="_model.PreferredHomePage"
+                               Disabled="@(_model.CanOverrideHomePagePreference != true)"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               RequiredError="@T("ui.onboarding.tenant.experience.home_page_required", "Preferred home page is required.")">
+                        <MudSelectItem Value="@("EventList")">
+                            @T("ui.onboarding.tenant.experience.home_page.event_list", "Event list")
+                        </MudSelectItem>
+                        <MudSelectItem Value="@("LandingPage")">
+                            @T("ui.onboarding.tenant.experience.home_page.landing_page", "Landing page")
+                        </MudSelectItem>
+                    </MudSelect>
 
-                            <MudSwitch T="bool?"
-                                       @bind-Value="_model.EventCardClickOpensDetailPage"
-                                       Color="Color.Primary"
-                                       Disabled="@(_model.CanOverrideEventCardClickBehavior != true)">
-                                Event card click opens detail page @(_model.CanOverrideEventCardClickBehavior != true ? "🔒" : "")
-                            </MudSwitch>
+                    <MudSwitch T="bool?"
+                               @bind-Value="_model.EventCardClickOpensDetailPage"
+                               Color="Color.Primary"
+                               Disabled="@(_model.CanOverrideEventCardClickBehavior != true)">
+                        @WithLockState(
+                            T("ui.onboarding.tenant.experience.event_card_detail", "Event card click opens the detail page"),
+                            _model.CanOverrideEventCardClickBehavior != true)
+                    </MudSwitch>
 
-                            <MudTextField T="string" Label="@("Subdomain (Optional)" + (_model.CanOverrideSubdomain != true ? " 🔒" : ""))"
-                                          Variant="Variant.Outlined"
-                                          Placeholder="tenant-slug"
-                                          @bind-Value="_model.Subdomain"
-                                          Disabled="@(_model.CanOverrideSubdomain != true)"
-                                          HelperText="@($"Base domain: {(_model.InstanceBaseDomain == string.Empty ? "(not configured)" : _model.InstanceBaseDomain)}")" />
+                    <MudTextField T="string"
+                                  Label="@WithLockState(T("ui.onboarding.tenant.experience.subdomain", "Subdomain (Optional)"), _model.CanOverrideSubdomain != true)"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="tenant-slug"
+                                  @bind-Value="_model.Subdomain"
+                                  Disabled="@(_model.CanOverrideSubdomain != true)"
+                                  HelperText="@BaseDomainHelp" />
 
-                            <MudTextField T="string" Label="@("Custom Domain (Optional)" + (_model.CanOverrideCustomDomain != true ? " 🔒" : ""))"
-                                          Variant="Variant.Outlined"
-                                          Placeholder="events.example.org"
-                                          @bind-Value="_model.CustomDomain"
-                                          Disabled="@(_model.CanOverrideCustomDomain != true)" />
-                        </MudStack>
-                    </MudExpansionPanel>
+                    <MudTextField T="string"
+                                  Label="@WithLockState(T("ui.onboarding.tenant.experience.custom_domain", "Custom domain (Optional)"), _model.CanOverrideCustomDomain != true)"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="events.example.org"
+                                  @bind-Value="_model.CustomDomain"
+                                  Disabled="@(_model.CanOverrideCustomDomain != true)" />
+                </fieldset>
 
-                    <MudExpansionPanel Text="Platform Identity">
-                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
-                            Tenant branding is configured after onboarding from Tenant Admin settings.
-                        </MudAlert>
-                    </MudExpansionPanel>
-                </MudExpansionPanels>
-
-                <MudButton Elevation="0" OnClick="CompleteOnboardingAsync"
-                           Disabled="_submitState.IsSubmitting"
-                           Color="Color.Primary"
-                           Variant="Variant.Filled"
-                           Size="Size.Large">
-                    Complete Tenant Onboarding
-                </MudButton>
-            </MudStack>
+                <div class="tenant-onboarding__submit">
+                    <MudButton Elevation="0"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Large"
+                               StartIcon="@(_isSubmitting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.CheckCircle)"
+                               Disabled="@(_isSubmitting || _isRefreshing)"
+                               OnClick="CompleteOnboardingAsync">
+                        @(_isSubmitting
+                            ? T("ui.onboarding.tenant.completing", "Completing")
+                            : T("ui.onboarding.tenant.complete", "Complete tenant onboarding"))
+                    </MudButton>
+                </div>
+            </section>
         }
-    </MudPaper>
+    }
 </MudContainer>
 
 @code {
+    private const string TenantSettingsRoute = "/admin/tenant/settings";
+
+    private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private TenantPolicySettingsDto _model = new();
+    private TenantOnboardingStatusDto? _status;
+    private Guid _tenantId;
     private bool _isLoading = true;
-    private FormSubmitState _submitState = new();
-    private bool _canEdit;
-    private bool _showCompletionPrompt;
-    private string _administrationSettingsHref = "/admin/tenant/settings";
+    private bool _isRefreshing;
+    private bool _isSubmitting;
+    private bool _disposed;
     private string? _errorMessage;
+
+    private string? ManagementHref =>
+        _status?.HasHalLink("manage-tenant-settings") == true
+            ? TenantSettingsRoute
+            : _status?.HasHalLink("manage-control-plane") == true
+                ? ControlPlaneRoutes.Overview
+                : null;
+
+    private string? ManagementActionLabel =>
+        _status?.HasHalLink("manage-tenant-settings") == true
+            ? T("ui.onboarding.tenant.completion.open_tenant_settings", "Open tenant settings")
+            : _status?.HasHalLink("manage-control-plane") == true
+                ? T("ui.onboarding.tenant.completion.open_control_plane", "Open control plane")
+                : null;
+
+    private string AuthorityDescription =>
+        _status?.IsCurrentUserTenantAdministrator == true
+            ? T("ui.onboarding.tenant.context.tenant_admin_authority", "Authority confirmed by the server: tenant administrator.")
+            : T("ui.onboarding.tenant.context.platform_admin_authority", "Authority confirmed by the server: platform administrator for this tenant.");
+
+    private string BaseDomainHelp => Format(
+        "ui.onboarding.tenant.experience.base_domain",
+        "Base domain: {0}",
+        string.IsNullOrWhiteSpace(_model.InstanceBaseDomain)
+            ? T("ui.onboarding.tenant.experience.base_domain_not_configured", "not configured")
+            : _model.InstanceBaseDomain);
+
+    private bool HasLockedSettings =>
+        _model.CanTenantOmitVerification != true
+        || _model.CanOverrideHomePagePreference != true
+        || _model.CanOverrideEventCardClickBehavior != true
+        || _model.CanOverrideSubdomain != true
+        || _model.CanOverrideCustomDomain != true;
+
+    private IReadOnlyList<OnboardingTaskList.TaskItem> TaskItems =>
+    [
+        new(
+            T("ui.onboarding.tenant.tasks.context.title", "Confirm trusted tenant context"),
+            T("ui.onboarding.tenant.tasks.context.description", "Use the tenant resolved and verified by the server."),
+            true,
+            T("ui.onboarding.tenant.tasks.required", "Required"),
+            OnboardingTaskList.TaskStatus.Completed,
+            T("ui.onboarding.tenant.tasks.context.status", "Confirmed"),
+            T("ui.onboarding.tenant.tasks.context.authority", "Server-confirmed tenant context")),
+        new(
+            T("ui.onboarding.tenant.tasks.policies.title", "Set tenant policies and experience"),
+            T("ui.onboarding.tenant.tasks.policies.description", "Confirm submission, moderation, verification, home page, and domain preferences."),
+            true,
+            T("ui.onboarding.tenant.tasks.required", "Required"),
+            _status?.IsCompleted == true
+                ? OnboardingTaskList.TaskStatus.Completed
+                : OnboardingTaskList.TaskStatus.InProgress,
+            _status?.IsCompleted == true
+                ? T("ui.onboarding.tenant.tasks.status.completed", "Completed")
+                : T("ui.onboarding.tenant.tasks.status.in_progress", "In progress"),
+            T("ui.onboarding.tenant.tasks.policies.authority", "Tenant policy settings")),
+        new(
+            T("ui.onboarding.tenant.tasks.branding.title", "Configure branding and domains after launch"),
+            T("ui.onboarding.tenant.tasks.branding.description", "Optional branding and domain refinements remain available from administration."),
+            false,
+            T("ui.onboarding.tenant.tasks.optional", "Optional"),
+            OnboardingTaskList.TaskStatus.Available,
+            T("ui.onboarding.tenant.tasks.status.available_after_launch", "Available after launch"),
+            T("ui.onboarding.tenant.tasks.branding.authority", "Administration settings"),
+            ManagementHref,
+            ManagementActionLabel,
+            ManagementActionLabel),
+        new(
+            T("ui.onboarding.tenant.tasks.completion.title", "Complete tenant onboarding"),
+            T("ui.onboarding.tenant.tasks.completion.description", "Submit these settings and wait for server confirmation."),
+            true,
+            T("ui.onboarding.tenant.tasks.required", "Required"),
+            _status?.IsCompleted == true
+                ? OnboardingTaskList.TaskStatus.Completed
+                : OnboardingTaskList.TaskStatus.Available,
+            _status?.IsCompleted == true
+                ? T("ui.onboarding.tenant.tasks.status.completed", "Completed")
+                : T("ui.onboarding.tenant.tasks.status.ready", "Ready when settings are confirmed"),
+            T("ui.onboarding.tenant.tasks.completion.authority", "Server-authoritative completion"))
+    ];
 
     protected override async Task OnInitializedAsync()
     {
-        await UserService.SyncUserAsync();
-
-        var status = await TenantOnboardingService.GetStatusAsync();
-        if (status == null)
+        try
         {
-            _errorMessage = "Unable to load tenant onboarding status.";
-            _isLoading = false;
+            await UserService.SyncUserAsync();
+            if (_disposed)
+            {
+                return;
+            }
+
+            await LoadAuthoritativeStateAsync(loadSettingsWhenIncomplete: true, announceErrors: true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to initialize tenant onboarding.");
+            if (!_disposed)
+            {
+                _status = null;
+                await SetErrorAsync(
+                    T("ui.onboarding.tenant.error.load", "Unable to verify tenant onboarding. Refresh to try again."),
+                    announce: true);
+            }
+        }
+        finally
+        {
+            if (!_disposed)
+            {
+                _isLoading = false;
+            }
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (_disposed || !_refreshGate.Wait(0))
+        {
             return;
         }
 
-        _canEdit = status.IsCurrentUserTenantAdministrator == true || status.IsCurrentUserPlatformAdministrator == true;
-        _administrationSettingsHref = status.IsCurrentUserTenantAdministrator == true
-            ? "/admin/tenant/settings"
-            : "/admin/instance/settings";
+        _isRefreshing = true;
+        StateHasChanged();
 
-        if (status.IsCompleted == true && _canEdit)
+        try
         {
-            _showCompletionPrompt = true;
-            _isLoading = false;
-            return;
-        }
+            bool refreshed = await LoadAuthoritativeStateAsync(
+                loadSettingsWhenIncomplete: true,
+                announceErrors: true);
 
-        _model = await TenantOnboardingService.GetSettingsAsync();
-        _isLoading = false;
+            if (refreshed && !_disposed)
+            {
+                await AccessibilityAnnouncerService.AnnouncePoliteAsync(
+                    T("ui.onboarding.tenant.refresh_complete", "Tenant onboarding refreshed."));
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to refresh tenant onboarding.");
+            if (!_disposed)
+            {
+                _status = null;
+                await SetErrorAsync(
+                    T("ui.onboarding.tenant.error.refresh", "Unable to refresh tenant onboarding. Try again."),
+                    announce: true);
+            }
+        }
+        finally
+        {
+            if (!_disposed)
+            {
+                _isRefreshing = false;
+            }
+
+            _refreshGate.Release();
+        }
     }
 
     private async Task CompleteOnboardingAsync()
     {
-        _submitState.Start();
-        _errorMessage = null;
-
-        var response = await TenantOnboardingService.CompleteAsync(_model);
-        _submitState.Complete();
-
-        if (response.Success == true)
+        if (_disposed
+            || _status is null
+            || _status.IsCompleted == true
+            || _status.HasHalLink("complete") != true
+            || _isSubmitting
+            || _isRefreshing)
         {
-            Snackbar.Add("Tenant onboarding completed.", Severity.Success);
-            _showCompletionPrompt = true;
             return;
         }
 
-        _errorMessage = string.IsNullOrWhiteSpace(response.Message)
-            ? "Failed to complete tenant onboarding."
-            : response.Message;
+        Guid submittedTenantId = _tenantId;
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            BaseCommandResponseOfGuid response = await TenantOnboardingService.CompleteAsync(_model);
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (response.Success != true)
+            {
+                await SetErrorAsync(
+                    string.IsNullOrWhiteSpace(response.Message)
+                        ? T("ui.onboarding.tenant.error.complete", "Tenant onboarding could not be completed.")
+                        : response.Message,
+                    announce: true);
+                return;
+            }
+
+            bool refreshed = await LoadAuthoritativeStateAsync(
+                loadSettingsWhenIncomplete: false,
+                announceErrors: true);
+
+            if (_disposed || !refreshed)
+            {
+                return;
+            }
+
+            if (_tenantId != submittedTenantId)
+            {
+                _status = null;
+                _tenantId = Guid.Empty;
+                await SetErrorAsync(
+                    T("ui.onboarding.tenant.error.completion_not_confirmed", "The completion request succeeded, but the server has not confirmed completion. Refresh and try again."),
+                    announce: true);
+                return;
+            }
+
+            if (_status?.IsCompleted != true)
+            {
+                await SetErrorAsync(
+                    T("ui.onboarding.tenant.error.completion_not_confirmed", "The completion request succeeded, but the server has not confirmed completion. Refresh and try again."),
+                    announce: true);
+                return;
+            }
+
+            string completionMessage = T(
+                "ui.onboarding.tenant.completion.confirmed",
+                "Tenant onboarding completed and confirmed by the server.");
+            Snackbar.Add(completionMessage, Severity.Success);
+            await AccessibilityAnnouncerService.AnnouncePoliteAsync(completionMessage);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to complete tenant onboarding.");
+            if (!_disposed)
+            {
+                await SetErrorAsync(
+                    T("ui.onboarding.tenant.error.complete", "Tenant onboarding could not be completed."),
+                    announce: true);
+            }
+        }
+        finally
+        {
+            if (!_disposed)
+            {
+                _isSubmitting = false;
+            }
+        }
+    }
+
+    private async Task<bool> LoadAuthoritativeStateAsync(
+        bool loadSettingsWhenIncomplete,
+        bool announceErrors)
+    {
+        TenantOnboardingStatusDto? status = await TenantOnboardingService.GetStatusAsync();
+        if (_disposed)
+        {
+            return false;
+        }
+
+        string? validationError = ValidateStatus(status, out Guid tenantId);
+        if (validationError is not null)
+        {
+            _status = null;
+            _tenantId = Guid.Empty;
+            await SetErrorAsync(validationError, announceErrors);
+            return false;
+        }
+
+        _status = status;
+        _tenantId = tenantId;
+        _errorMessage = null;
+
+        if (status!.IsCompleted != true && loadSettingsWhenIncomplete)
+        {
+            TenantPolicySettingsDto settings = await TenantOnboardingService.GetSettingsAsync();
+            if (_disposed)
+            {
+                return false;
+            }
+
+            _model = settings;
+        }
+
+        return true;
+    }
+
+    private string? ValidateStatus(TenantOnboardingStatusDto? status, out Guid tenantId)
+    {
+        tenantId = Guid.Empty;
+
+        if (status is null)
+        {
+            return T("ui.onboarding.tenant.error.status_missing", "Unable to load the authoritative tenant onboarding status.");
+        }
+
+        if (status.IsAuthenticated != true)
+        {
+            return T("ui.onboarding.tenant.error.unauthenticated", "Your authenticated session could not be verified.");
+        }
+
+        Guid? reportedTenantId = status.TenantId;
+        if (reportedTenantId is not Guid resolvedTenantId || resolvedTenantId == Guid.Empty)
+        {
+            return T("ui.onboarding.tenant.error.tenant_missing", "No trusted tenant context is available for onboarding.");
+        }
+
+        if (status.IsCurrentUserTenantAdministrator != true
+            && status.IsCurrentUserPlatformAdministrator != true)
+        {
+            return T("ui.onboarding.tenant.error.unauthorized", "Your account is not authorized to manage onboarding for this tenant.");
+        }
+
+        if (status.IsCompleted != true && !status.HasHalLink("complete"))
+        {
+            return T("ui.onboarding.tenant.error.completion_unavailable", "The server did not expose permission to complete onboarding for this tenant.");
+        }
+
+        tenantId = resolvedTenantId;
+        return null;
+    }
+
+    private async Task SetErrorAsync(string message, bool announce)
+    {
+        _errorMessage = message;
+        if (announce && !_disposed)
+        {
+            await AccessibilityAnnouncerService.AnnounceAssertiveAsync(message);
+        }
+    }
+
+    private string T(string key, string fallback) => TranslationService.T(key, fallback);
+
+    private string Format(string key, string fallback, object value) =>
+        string.Format(CultureInfo.CurrentCulture, T(key, fallback), value);
+
+    private string WithLockState(string label, bool isLocked) =>
+        isLocked
+            ? $"{label} {T("ui.onboarding.tenant.settings.locked_suffix", "(Locked)")}"
+            : label;
+
+    public void Dispose()
+    {
+        _disposed = true;
     }
 }

@@ -57,21 +57,33 @@ public class RotateKeycloakClientSecretCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenDeploymentManaged_ReturnsOperatorInstructionsWithoutContactingKeycloak()
+    public async Task Handle_WhenServerReportsDeploymentManaged_IgnoresForgedApplicationManagedRequest()
     {
         _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
-        var request = new KeycloakClientSecretRotationRequestDto
+        var request = CreateApplicationManagedRequest();
+        var configuration = CreateConfiguration();
+        configuration.KeycloakClientSecretOwnership = new()
         {
-            ClientId = "islamu-event-blazor",
-            SecretOwnershipMode = "deployment-managed"
+            Mode = "deployment-managed"
         };
+        _configurationService.ReadConfigurationAsync().Returns(configuration);
+        _keycloakBootstrapService.RotateClientSecretAsync(
+                configuration,
+                request,
+                Arg.Any<CancellationToken>())
+            .Returns(new KeycloakClientSecretRotationResultDto
+            {
+                Status = "rotated",
+                ClientId = configuration.KeycloakClientId,
+                SecretOwnershipMode = "application-managed"
+            });
 
         var result = await _handler.Handle(CreateCommand(request), CancellationToken.None);
 
         await Assert.That(result.Status).IsEqualTo("operator-action-required");
         await Assert.That(result.RequiresRestart).IsTrue();
         await Assert.That(result.OperatorInstructions).Contains("deployment secret provider");
-        await _configurationService.DidNotReceive().ReadConfigurationAsync();
+        await _configurationService.Received(1).ReadConfigurationAsync();
         await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthProviderConfigurationDto>());
         await _keycloakBootstrapService.DidNotReceive().RotateClientSecretAsync(
             Arg.Any<AuthProviderConfigurationDto>(),
@@ -204,7 +216,11 @@ public class RotateKeycloakClientSecretCommandHandlerTests
             KeycloakEnabled = true,
             KeycloakAuthority = "https://keycloak.example.com/realms/ISLAMU",
             KeycloakClientId = "islamu-event-blazor",
-            KeycloakClientSecret = "old-client-secret"
+            KeycloakClientSecret = "old-client-secret",
+            KeycloakClientSecretOwnership = new()
+            {
+                Mode = "application-managed"
+            }
         };
     }
 }

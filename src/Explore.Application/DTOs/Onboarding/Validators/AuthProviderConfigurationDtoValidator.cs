@@ -7,7 +7,8 @@ namespace Explore.Application.DTOs.Onboarding.Validators;
 
 public class AuthProviderConfigurationDtoValidator : AbstractValidator<AuthProviderConfigurationDto>
 {
-    public AuthProviderConfigurationDtoValidator()
+    public AuthProviderConfigurationDtoValidator(
+        AuthProviderConfigurationDto? authoritativeCurrentConfiguration = null)
     {
         RuleFor(x => x)
             .Must(HasAtLeastOneProviderEnabled)
@@ -25,7 +26,10 @@ public class AuthProviderConfigurationDtoValidator : AbstractValidator<AuthProvi
 
             RuleFor(x => x.KeycloakClientSecret)
                 .NotEmpty()
-                .WithMessage("Keycloak client secret is required when Keycloak is enabled.");
+                .When(configuration => !CanReuseConfiguredKeycloakSecret(
+                    authoritativeCurrentConfiguration,
+                    configuration))
+                .WithMessage("Keycloak client secret is required when Keycloak is enabled and no secret is configured for the requested client.");
         });
 
         When(x => x.AtprotoLoginEnabled, () =>
@@ -55,6 +59,21 @@ public class AuthProviderConfigurationDtoValidator : AbstractValidator<AuthProvi
     private static bool HasAtLeastOneProviderEnabled(AuthProviderConfigurationDto dto)
     {
         return dto.KeycloakEnabled || dto.AtprotoLoginEnabled || dto.GoogleSsoEnabled;
+    }
+
+    private static bool CanReuseConfiguredKeycloakSecret(
+        AuthProviderConfigurationDto? current,
+        AuthProviderConfigurationDto requested)
+    {
+        return current?.KeycloakClientSecretOwnership.Configured == true
+               && string.Equals(
+                   current.KeycloakAuthority,
+                   requested.KeycloakAuthority,
+                   StringComparison.Ordinal)
+               && string.Equals(
+                   current.KeycloakClientId,
+                   requested.KeycloakClientId,
+                   StringComparison.Ordinal);
     }
 
     private static bool BeAValidUrl(string? url)
