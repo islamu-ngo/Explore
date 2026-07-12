@@ -93,25 +93,45 @@ public sealed class OutboxProcessor(
         }
     }
 
-    private async Task ProcessSingleMessageAsync(
+    internal async Task ProcessSingleMessageAsync(
         OutboxMessage message,
         IOutboxRepository outboxRepository,
         IOutboxMessageDispatcher dispatcher,
         CancellationToken stoppingToken)
     {
+        if (message.Status == OutboxMessageStatus.DeadLettered)
+        {
+            var reconciliationLeaseExpiresAt = await outboxRepository.TryClaimDeadLetterReconciliation(
+                message.Id,
+                DateTime.UtcNow,
+                stoppingToken);
+            if (reconciliationLeaseExpiresAt is not null)
+            {
+                await ReconcileDeadLetterAsync(
+                    message,
+                    reconciliationLeaseExpiresAt.Value,
+                    outboxRepository,
+                    dispatcher,
+                    stoppingToken);
+            }
+            return;
+        }
+
+        var processingLeaseExpiresAt = await outboxRepository.TryClaimForProcessing(
+            message.Id,
+            DateTime.UtcNow,
+            stoppingToken);
+        if (processingLeaseExpiresAt is null)
+        {
+            if (_settings.VerboseLogging)
+            {
+                logger.LogDebug("Message {Id} already being processed by another worker", message.Id);
+            }
+            return;
+        }
+
         try
         {
-            // Optimistic lock — another processor may have claimed this message
-            var locked = await outboxRepository.TryMarkAsProcessing(message.Id, stoppingToken);
-            if (!locked)
-            {
-                if (_settings.VerboseLogging)
-                {
-                    logger.LogDebug("Message {Id} already being processed by another worker", message.Id);
-                }
-                return;
-            }
-
             if (_settings.VerboseLogging)
             {
                 logger.LogDebug(
@@ -122,38 +142,102 @@ public sealed class OutboxProcessor(
             // Dispatch to consumer — idempotent consumers required (at-least-once delivery)
             await dispatcher.DispatchAsync(message, stoppingToken);
 
-            await outboxRepository.MarkAsCompleted(message.Id, stoppingToken);
+            var completed = await outboxRepository.MarkAsCompleted(
+                message.Id,
+                processingLeaseExpiresAt.Value,
+                stoppingToken);
+
+            if (!completed)
+            {
+                logger.LogWarning(
+                    "Message {Id} was dispatched after its processing claim was replaced; completion was ignored",
+                    message.Id);
+                return;
+            }
 
             logger.LogInformation(
                 "Successfully dispatched message {Id}: {EventType} for {AggregateType}/{AggregateId}",
                 message.Id, message.EventType, message.AggregateType, message.AggregateId);
         }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Exception dispatching message {Id}", message.Id);
+            logger.LogError(
+                "Exception dispatching message {Id}: {ExceptionType}",
+                message.Id,
+                ex.GetType().Name);
 
             var retryDelay = _settings.CalculateRetryDelay(message.RetryCount);
-
-            await outboxRepository.MarkAsFailed(
+            var transition = await outboxRepository.MarkAsFailed(
                 message.Id,
-                ex.Message,
+                processingLeaseExpiresAt.Value,
+                "dispatch_failed",
                 isRetryable: true,
                 retryDelay,
-                _settings.MaxRetryCount,
+                DateTime.UtcNow,
                 stoppingToken);
 
-            if (message.RetryCount + 1 < _settings.MaxRetryCount)
+            if (transition == OutboxFailureTransition.DeadLettered)
+            {
+                await ReconcileDeadLetterAsync(
+                    message,
+                    processingLeaseExpiresAt.Value,
+                    outboxRepository,
+                    dispatcher,
+                    stoppingToken);
+                logger.LogError(
+                    "Message {Id} dead-lettered after {Retries} attempts",
+                    message.Id, message.RetryCount + 1);
+            }
+            else if (transition == OutboxFailureTransition.RetryScheduled)
             {
                 logger.LogWarning(
-                    "Message {Id} failed (retry {Retry}/{Max}): {Error}. Next retry in {Delay}s",
-                    message.Id, message.RetryCount + 1, _settings.MaxRetryCount, ex.Message, retryDelay);
+                    "Message {Id} failed (retry {Retry}/{Max}). Next retry in {Delay}s",
+                    message.Id, message.RetryCount + 1, message.MaxRetries, retryDelay);
             }
-            else
+            else if (transition == OutboxFailureTransition.NotOwned)
             {
-                logger.LogError(
-                    "Message {Id} dead-lettered after {Retries} attempts: {Error}",
-                    message.Id, message.RetryCount + 1, ex.Message);
+                logger.LogWarning(
+                    "Message {Id} failed after its processing claim was replaced; failure was ignored",
+                    message.Id);
             }
+        }
+    }
+
+    private async Task ReconcileDeadLetterAsync(
+        OutboxMessage message,
+        DateTime processingLeaseExpiresAt,
+        IOutboxRepository outboxRepository,
+        IOutboxMessageDispatcher dispatcher,
+        CancellationToken stoppingToken)
+    {
+        try
+        {
+            await dispatcher.ReconcileDeadLetterAsync(message, stoppingToken);
+            var reconciled = await outboxRepository.MarkDeadLetterReconciled(
+                message.Id,
+                processingLeaseExpiresAt,
+                stoppingToken);
+            if (!reconciled)
+            {
+                logger.LogWarning(
+                    "Dead-letter reconciliation for message {Id} completed after its claim was replaced; acknowledgement was ignored",
+                    message.Id);
+            }
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                "Dead-letter reconciliation failed for message {Id}: {ExceptionType}",
+                message.Id,
+                ex.GetType().Name);
         }
     }
 }

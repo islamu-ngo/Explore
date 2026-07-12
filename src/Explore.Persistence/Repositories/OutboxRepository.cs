@@ -9,6 +9,7 @@ namespace Explore.Persistence.Repositories;
 
 public class OutboxRepository : GenericRepository<OutboxMessage, Guid>, IOutboxRepository
 {
+    private static readonly TimeSpan ProcessingLease = TimeSpan.FromMinutes(5);
     private readonly ExploreDbContext _dbContext;
 
     public OutboxRepository(ExploreDbContext dbContext) : base(dbContext)
@@ -29,60 +30,146 @@ public class OutboxRepository : GenericRepository<OutboxMessage, Guid>, IOutboxR
 
         return await _dbContext.OutboxMessages
             .AsNoTracking()
-            .Where(m => m.Status == OutboxMessageStatus.Pending &&
-                        (m.NextRetryAt == null || m.NextRetryAt <= now))
+            .Where(m => (m.Status == OutboxMessageStatus.Pending
+                         && (m.NextRetryAt == null || m.NextRetryAt <= now))
+                        || (m.Status == OutboxMessageStatus.Processing
+                            && m.NextRetryAt != null
+                            && m.NextRetryAt <= now)
+                        || (m.Status == OutboxMessageStatus.DeadLettered
+                            && m.NextRetryAt != null
+                            && m.NextRetryAt <= now))
             .OrderBy(m => m.CreatedAt)
             .Take(batchSize)
             .ToListAsync(ct);
     }
 
-    public async Task<bool> TryMarkAsProcessing(Guid id, CancellationToken ct = default)
+    public async Task<DateTime?> TryClaimForProcessing(
+        Guid id,
+        DateTime claimedAt,
+        CancellationToken ct = default)
     {
-        // Atomic WHERE+SET prevents duplicate processing across concurrent processors
+        var now = AtPostgresPrecision(claimedAt);
+        var leaseExpiresAt = now.Add(ProcessingLease);
         var rowsAffected = await _dbContext.OutboxMessages
-            .Where(m => m.Id == id && m.Status == OutboxMessageStatus.Pending)
+            .Where(m => m.Id == id
+                && ((m.Status == OutboxMessageStatus.Pending
+                        && (m.NextRetryAt == null || m.NextRetryAt <= now))
+                    || (m.Status == OutboxMessageStatus.Processing
+                        && m.NextRetryAt != null
+                        && m.NextRetryAt <= now)))
             .ExecuteUpdateAsync(s => s
-                .SetProperty(m => m.Status, OutboxMessageStatus.Processing), ct);
+                .SetProperty(m => m.Status, OutboxMessageStatus.Processing)
+                .SetProperty(m => m.NextRetryAt, leaseExpiresAt), ct);
 
-        return rowsAffected > 0;
+        return rowsAffected == 1 ? leaseExpiresAt : null;
     }
 
-    public async Task MarkAsCompleted(Guid id, CancellationToken ct = default)
+    public async Task<bool> MarkAsCompleted(
+        Guid id,
+        DateTime processingLeaseExpiresAt,
+        CancellationToken ct = default)
     {
-        await _dbContext.OutboxMessages
-            .Where(m => m.Id == id)
+        var rowsAffected = await _dbContext.OutboxMessages
+            .Where(m => m.Id == id
+                && m.Status == OutboxMessageStatus.Processing
+                && m.NextRetryAt == processingLeaseExpiresAt)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(m => m.Status, OutboxMessageStatus.Completed)
                 .SetProperty(m => m.ProcessedAt, DateTime.UtcNow)
+                .SetProperty(m => m.NextRetryAt, (DateTime?)null)
                 .SetProperty(m => m.LastError, (string?)null), ct);
+
+        return rowsAffected == 1;
     }
 
-    public async Task MarkAsFailed(Guid id, string error, bool isRetryable, int retryDelaySeconds, int maxRetries, CancellationToken ct = default)
+    public async Task<OutboxFailureTransition> MarkAsFailed(
+        Guid id,
+        DateTime processingLeaseExpiresAt,
+        string error,
+        bool isRetryable,
+        int retryDelaySeconds,
+        DateTime failedAt,
+        CancellationToken ct = default)
     {
-        var entry = await _dbContext.OutboxMessages.FindAsync([id], ct);
-        if (entry == null) return;
+        var now = AtPostgresPrecision(failedAt);
+        var boundedError = error.Length > 2000 ? error[..2000] : error;
+        var ownedClaim = _dbContext.OutboxMessages.Where(m =>
+            m.Id == id
+            && m.Status == OutboxMessageStatus.Processing
+            && m.NextRetryAt == processingLeaseExpiresAt);
 
-        entry.RetryCount++;
-        entry.LastError = error.Length > 2000 ? error[..2000] : error;
-
-        if (!isRetryable || entry.RetryCount >= maxRetries)
+        var deadLettered = await ownedClaim
+            .Where(m => m.RetryCount + 1 >= m.MaxRetries)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(m => m.Status, OutboxMessageStatus.DeadLettered)
+                .SetProperty(m => m.RetryCount, m => m.RetryCount + 1)
+                .SetProperty(m => m.LastError, boundedError)
+                .SetProperty(m => m.NextRetryAt, processingLeaseExpiresAt)
+                .SetProperty(m => m.DeadLetteredAt, now), ct);
+        if (deadLettered == 1)
         {
-            entry.Status = entry.RetryCount >= maxRetries
-                ? OutboxMessageStatus.DeadLettered
-                : OutboxMessageStatus.Failed;
-            entry.NextRetryAt = null;
-            entry.DeadLetteredAt = entry.Status == OutboxMessageStatus.DeadLettered
-                ? DateTime.UtcNow
-                : null;
-        }
-        else
-        {
-            // Retryable — move back to Pending with a future NextRetryAt
-            entry.Status = OutboxMessageStatus.Pending;
-            entry.NextRetryAt = DateTime.UtcNow.AddSeconds(retryDelaySeconds);
+            return OutboxFailureTransition.DeadLettered;
         }
 
-        await _dbContext.SaveChangesAsync(ct);
+        if (!isRetryable)
+        {
+            var failed = await ownedClaim
+                .Where(m => m.RetryCount + 1 < m.MaxRetries)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(m => m.Status, OutboxMessageStatus.Failed)
+                    .SetProperty(m => m.RetryCount, m => m.RetryCount + 1)
+                    .SetProperty(m => m.LastError, boundedError)
+                    .SetProperty(m => m.NextRetryAt, (DateTime?)null)
+                    .SetProperty(m => m.DeadLetteredAt, (DateTime?)null), ct);
+            return failed == 1
+                ? OutboxFailureTransition.Failed
+                : OutboxFailureTransition.NotOwned;
+        }
+
+        var retryScheduled = await ownedClaim
+            .Where(m => m.RetryCount + 1 < m.MaxRetries)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(m => m.Status, OutboxMessageStatus.Pending)
+                .SetProperty(m => m.RetryCount, m => m.RetryCount + 1)
+                .SetProperty(m => m.LastError, boundedError)
+                .SetProperty(m => m.NextRetryAt, now.AddSeconds(Math.Max(0, retryDelaySeconds)))
+                .SetProperty(m => m.DeadLetteredAt, (DateTime?)null), ct);
+        return retryScheduled == 1
+            ? OutboxFailureTransition.RetryScheduled
+            : OutboxFailureTransition.NotOwned;
+    }
+
+    public async Task<DateTime?> TryClaimDeadLetterReconciliation(
+        Guid id,
+        DateTime claimedAt,
+        CancellationToken ct = default)
+    {
+        var now = AtPostgresPrecision(claimedAt);
+        var leaseExpiresAt = now.Add(ProcessingLease);
+        var rowsAffected = await _dbContext.OutboxMessages
+            .Where(m => m.Id == id
+                && m.Status == OutboxMessageStatus.DeadLettered
+                && m.NextRetryAt != null
+                && m.NextRetryAt <= now)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(m => m.NextRetryAt, leaseExpiresAt), ct);
+
+        return rowsAffected == 1 ? leaseExpiresAt : null;
+    }
+
+    public async Task<bool> MarkDeadLetterReconciled(
+        Guid id,
+        DateTime processingLeaseExpiresAt,
+        CancellationToken ct = default)
+    {
+        var rowsAffected = await _dbContext.OutboxMessages
+            .Where(m => m.Id == id
+                && m.Status == OutboxMessageStatus.DeadLettered
+                && m.NextRetryAt == processingLeaseExpiresAt)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(m => m.NextRetryAt, (DateTime?)null), ct);
+
+        return rowsAffected == 1;
     }
 
     public async Task<List<OutboxMessage>> GetFailedEntries(int limit = 100, CancellationToken ct = default)
@@ -100,5 +187,11 @@ public class OutboxRepository : GenericRepository<OutboxMessage, Guid>, IOutboxR
         return await _dbContext.OutboxMessages
             .Where(m => m.Status == OutboxMessageStatus.Completed && m.ProcessedAt < cutoff)
             .ExecuteDeleteAsync(ct);
+    }
+
+    private static DateTime AtPostgresPrecision(DateTime value)
+    {
+        var utc = value.Kind == DateTimeKind.Utc ? value : value.ToUniversalTime();
+        return utc.AddTicks(-(utc.Ticks % TimeSpan.TicksPerMicrosecond));
     }
 }

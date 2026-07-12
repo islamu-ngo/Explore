@@ -18,27 +18,51 @@ public interface IOutboxRepository
     Task<OutboxMessage> Create(OutboxMessage message);
 
     /// <summary>
-    /// Returns the next batch of pending messages eligible for processing.
-    /// Filters by Status == Pending and NextRetryAt &lt;= now, ordered by CreatedAt.
+    /// Returns due Pending messages, expired Processing leases, and expired
+    /// DeadLettered reconciliation leases, ordered by CreatedAt.
     /// </summary>
     Task<List<OutboxMessage>> GetPendingBatch(int batchSize, CancellationToken ct = default);
 
     /// <summary>
-    /// Atomically marks a message as Processing using optimistic concurrency.
-    /// Returns false if another processor already claimed it.
+    /// Atomically claims a due message for processing and returns its exact persisted
+    /// lease-expiry timestamp. Returns null if another processor owns the message.
     /// </summary>
-    Task<bool> TryMarkAsProcessing(Guid id, CancellationToken ct = default);
+    Task<DateTime?> TryClaimForProcessing(Guid id, DateTime claimedAt, CancellationToken ct = default);
 
     /// <summary>
-    /// Marks a message as successfully dispatched.
+    /// Marks a message as successfully dispatched only while the exact claim is current.
     /// </summary>
-    Task MarkAsCompleted(Guid id, CancellationToken ct = default);
+    Task<bool> MarkAsCompleted(Guid id, DateTime processingLeaseExpiresAt, CancellationToken ct = default);
 
     /// <summary>
     /// Records a dispatch failure. Increments RetryCount, sets LastError,
-    /// and either schedules a retry or marks as Failed/DeadLettered based on retry policy.
+    /// and either schedules a retry or marks as Failed/DeadLettered using the message's
+    /// persisted MaxRetries. A stale claim returns NotOwned without changing the row.
     /// </summary>
-    Task MarkAsFailed(Guid id, string error, bool isRetryable, int retryDelaySeconds, int maxRetries, CancellationToken ct = default);
+    Task<OutboxFailureTransition> MarkAsFailed(
+        Guid id,
+        DateTime processingLeaseExpiresAt,
+        string error,
+        bool isRetryable,
+        int retryDelaySeconds,
+        DateTime failedAt,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Claims an expired, unreconciled DeadLettered message without changing its terminal status.
+    /// </summary>
+    Task<DateTime?> TryClaimDeadLetterReconciliation(
+        Guid id,
+        DateTime claimedAt,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Clears the reconciliation lease only when the exact DeadLettered claim is current.
+    /// </summary>
+    Task<bool> MarkDeadLetterReconciled(
+        Guid id,
+        DateTime processingLeaseExpiresAt,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Returns failed/dead-lettered entries for monitoring and manual intervention.
@@ -50,4 +74,12 @@ public interface IOutboxRepository
     /// Returns the number of rows deleted.
     /// </summary>
     Task<int> DeleteCompletedOlderThan(DateTime cutoff, CancellationToken ct = default);
+}
+
+public enum OutboxFailureTransition
+{
+    NotOwned,
+    RetryScheduled,
+    Failed,
+    DeadLettered
 }

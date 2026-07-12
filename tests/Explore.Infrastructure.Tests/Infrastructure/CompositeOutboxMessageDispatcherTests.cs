@@ -4,11 +4,14 @@
 using System.Text.Json;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Events.Handlers.Commands;
+using Explore.Application.Features.Management.Handlers;
+using Explore.Application.Features.Management.Requests;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.Services.Moderation;
+using MediatR;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -185,15 +188,41 @@ public sealed class CompositeOutboxMessageDispatcherTests
         })).Throws<InvalidOperationException>();
     }
 
+    [Test]
+    public async Task ReconcileDeadLetterAsync_WithManagedTenantPointer_RoutesTerminalCommand()
+    {
+        var mediator = Substitute.For<IMediator>();
+        var dispatcher = CreateDispatcher(
+            Substitute.For<IEventPublishedNotificationFanoutService>(),
+            Substitute.For<IEventModerationNotificationFanoutService>(),
+            mediator: mediator);
+        Guid operationId = Guid.CreateVersion7();
+
+        await dispatcher.ReconcileDeadLetterAsync(new OutboxMessage
+        {
+            Id = Guid.CreateVersion7(),
+            AggregateType = nameof(ManagedTenantProvisioningOperation),
+            AggregateId = operationId,
+            EventType = ManagedTenantProvisioningOutboxEvents.ProcessRequested
+        });
+
+        await mediator.Received(1).Send(
+            Arg.Is<ReconcileManagedTenantProvisioningDeadLetterCommand>(command =>
+                command.OperationId == operationId),
+            Arg.Any<CancellationToken>());
+    }
+
     private static CompositeOutboxMessageDispatcher CreateDispatcher(
         IEventPublishedNotificationFanoutService fanoutService,
         IEventModerationNotificationFanoutService moderationFanoutService,
-        IReportProviderSyncDispatcher? reportProviderSyncDispatcher = null)
+        IReportProviderSyncDispatcher? reportProviderSyncDispatcher = null,
+        IMediator? mediator = null)
     {
         return new CompositeOutboxMessageDispatcher(
             fanoutService,
             moderationFanoutService,
             reportProviderSyncDispatcher ?? Substitute.For<IReportProviderSyncDispatcher>(),
+            mediator ?? Substitute.For<IMediator>(),
             NullLogger<CompositeOutboxMessageDispatcher>.Instance);
     }
 }

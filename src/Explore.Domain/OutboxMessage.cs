@@ -61,7 +61,8 @@ public class OutboxMessage
     public string? LastError { get; set; }
 
     /// <summary>
-    /// Next retry timestamp for exponential backoff. Null if not scheduled for retry.
+    /// Next retry timestamp, active processing lease, or pending dead-letter reconciliation lease.
+    /// Null when no retry or reconciliation work remains.
     /// </summary>
     public DateTime? NextRetryAt { get; set; }
 

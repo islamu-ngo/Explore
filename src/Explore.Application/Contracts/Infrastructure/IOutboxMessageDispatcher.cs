@@ -17,4 +17,6 @@ public interface IOutboxMessageDispatcher
     /// Dispatches the message to its consumer. Throw on failure to trigger retry logic.
     /// </summary>
     Task DispatchAsync(OutboxMessage message, CancellationToken ct = default);
+
+    Task ReconcileDeadLetterAsync(OutboxMessage message, CancellationToken ct = default);
 }

@@ -5,10 +5,13 @@ using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Events.Handlers.Commands;
+using Explore.Application.Features.Management.Handlers;
+using Explore.Application.Features.Management.Requests;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Infrastructure.Services.Moderation;
+using MediatR;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Infrastructure.Messaging;
@@ -17,6 +20,7 @@ public sealed class CompositeOutboxMessageDispatcher(
     IEventPublishedNotificationFanoutService notificationFanoutService,
     IEventModerationNotificationFanoutService moderationNotificationFanoutService,
     IReportProviderSyncDispatcher reportProviderSyncDispatcher,
+    IMediator mediator,
     ILogger<CompositeOutboxMessageDispatcher> logger) : IOutboxMessageDispatcher
 {
     public async Task DispatchAsync(OutboxMessage message, CancellationToken ct = default)
@@ -39,11 +43,31 @@ public sealed class CompositeOutboxMessageDispatcher(
                 await reportProviderSyncDispatcher.DispatchAsync(message, ct);
                 return;
 
+            case ManagedTenantProvisioningOutboxEvents.ProcessRequested:
+                await mediator.Send(
+                    new ProcessManagedTenantProvisioningOperationCommand(message.AggregateId, message.Id),
+                    ct);
+                return;
+
             default:
                 throw new InvalidOperationException(
                     $"Unknown outbox EventType '{message.EventType}' for message {message.Id}. " +
                     $"Add a route in {nameof(CompositeOutboxMessageDispatcher)}.");
         }
+    }
+
+    public async Task ReconcileDeadLetterAsync(
+        OutboxMessage message,
+        CancellationToken ct = default)
+    {
+        if (message.EventType != ManagedTenantProvisioningOutboxEvents.ProcessRequested)
+        {
+            return;
+        }
+
+        await mediator.Send(
+            new ReconcileManagedTenantProvisioningDeadLetterCommand(message.AggregateId, message.Id),
+            ct);
     }
 
     private async Task DispatchNotificationFanoutAsync(OutboxMessage message, CancellationToken cancellationToken)

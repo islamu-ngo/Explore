@@ -70,7 +70,8 @@ public enum EmailDispatchKind
     WaitlistPromoted = 4,
     EventReminder = 5,
     EventCancelled = 6,
-    OrganizerNotification = 7
+    OrganizerNotification = 7,
+    TenantAdministratorInvitation = 8
 }
 
 public enum EmailDispatchStatus
