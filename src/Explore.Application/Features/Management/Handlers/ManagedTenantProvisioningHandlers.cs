@@ -58,24 +58,13 @@ public sealed class ScheduleManagedTenantProvisioningCommandHandler(
             return replay.ImmediateResponse;
         }
 
-        DeploymentMode deploymentMode = await deploymentModeProvider.GetCurrentModeAsync(cancellationToken);
-        if (deploymentMode != DeploymentMode.MultiTenant)
-        {
-            return Failure(
-                "tenant_provisioning_requires_multi_tenant",
-                "Managed tenant provisioning is unavailable in SingleTenant mode.");
-        }
-
-        ManagedControlPlaneRegistration? registration =
-            await registrationRepository.GetCurrentAsync(cancellationToken);
-        ManagementTenantProvisioningBlockerDto? registrationBlocker =
-            ManagedTenantProvisioningRegistrationPolicy.Evaluate(
-                registration,
+        BaseCommandResponse<ManagementTenantProvisioningOperationDto>? instancePolicyFailure =
+            await EvaluateInstanceSchedulingPolicyAsync(
                 request.ManagedInstanceId,
-                deploymentMode);
-        if (registrationBlocker is not null)
+                cancellationToken);
+        if (instancePolicyFailure is not null)
         {
-            return Failure(registrationBlocker.Code, registrationBlocker.Message);
+            return instancePolicyFailure;
         }
 
         CommittedRecoveryResolution retryRecovery = await ResolveCommittedRecoveryAsync(
@@ -89,13 +78,14 @@ public sealed class ScheduleManagedTenantProvisioningCommandHandler(
 
         if (retryRecovery != CommittedRecoveryResolution.Owned)
         {
-            ManagedTenantProvisioningPreflightResult policy = await preflight.EvaluateAsync(
-                normalized,
-                requireProvisionablePlan: true,
-                cancellationToken);
-            if (!policy.Success)
+            BaseCommandResponse<ManagementTenantProvisioningOperationDto>? tenantPolicyFailure =
+                await EvaluateTenantCreationPolicyAsync(
+                    normalized,
+                    includeCapacity: false,
+                    cancellationToken);
+            if (tenantPolicyFailure is not null)
             {
-                return Failure(policy.FailureCode!, policy.Error!);
+                return tenantPolicyFailure;
             }
         }
 
@@ -123,26 +113,25 @@ public sealed class ScheduleManagedTenantProvisioningCommandHandler(
                     return RecoveryConflict();
                 }
 
+                BaseCommandResponse<ManagementTenantProvisioningOperationDto>? concurrentInstancePolicyFailure =
+                    await EvaluateInstanceSchedulingPolicyAsync(
+                        request.ManagedInstanceId,
+                        token);
+                if (concurrentInstancePolicyFailure is not null)
+                {
+                    return concurrentInstancePolicyFailure;
+                }
+
                 if (concurrentRecovery != CommittedRecoveryResolution.Owned)
                 {
-                    if (concurrentReplay.RetryCandidate is not null)
-                    {
-                        ManagedTenantProvisioningPreflightResult retryPolicy = await preflight.EvaluateAsync(
+                    BaseCommandResponse<ManagementTenantProvisioningOperationDto>? concurrentTenantPolicyFailure =
+                        await EvaluateTenantCreationPolicyAsync(
                             normalized,
-                            requireProvisionablePlan: true,
+                            includeCapacity: true,
                             token);
-                        if (!retryPolicy.Success)
-                        {
-                            return Failure(retryPolicy.FailureCode!, retryPolicy.Error!);
-                        }
-                    }
-
-                    TenantActivationCapacityAssessment capacity = await capacityPolicy.EvaluateAsync(
-                        requireMultiTenant: true,
-                        cancellationToken: token);
-                    if (!capacity.Allowed)
+                    if (concurrentTenantPolicyFailure is not null)
                     {
-                        return Failure(capacity.FailureCode!, capacity.Error!);
+                        return concurrentTenantPolicyFailure;
                     }
                 }
 
@@ -205,6 +194,59 @@ public sealed class ScheduleManagedTenantProvisioningCommandHandler(
                 return Success(operation, "Managed tenant provisioning accepted.");
             },
             cancellationToken);
+    }
+
+    private async Task<BaseCommandResponse<ManagementTenantProvisioningOperationDto>?>
+        EvaluateInstanceSchedulingPolicyAsync(
+            Guid managedInstanceId,
+            CancellationToken cancellationToken)
+    {
+        DeploymentMode deploymentMode = await deploymentModeProvider.GetCurrentModeAsync(cancellationToken);
+        if (deploymentMode != DeploymentMode.MultiTenant)
+        {
+            return Failure(
+                "tenant_provisioning_requires_multi_tenant",
+                "Managed tenant provisioning is unavailable in SingleTenant mode.");
+        }
+
+        ManagedControlPlaneRegistration? registration =
+            await registrationRepository.GetCurrentAsync(cancellationToken);
+        ManagementTenantProvisioningBlockerDto? registrationBlocker =
+            ManagedTenantProvisioningRegistrationPolicy.Evaluate(
+                registration,
+                managedInstanceId,
+                deploymentMode);
+        return registrationBlocker is null
+            ? null
+            : Failure(registrationBlocker.Code, registrationBlocker.Message);
+    }
+
+    private async Task<BaseCommandResponse<ManagementTenantProvisioningOperationDto>?>
+        EvaluateTenantCreationPolicyAsync(
+            ManagementTenantProvisioningRequest request,
+            bool includeCapacity,
+            CancellationToken cancellationToken)
+    {
+        ManagedTenantProvisioningPreflightResult policy = await preflight.EvaluateAsync(
+            request,
+            requireProvisionablePlan: true,
+            cancellationToken);
+        if (!policy.Success)
+        {
+            return Failure(policy.FailureCode!, policy.Error!);
+        }
+
+        if (!includeCapacity)
+        {
+            return null;
+        }
+
+        TenantActivationCapacityAssessment capacity = await capacityPolicy.EvaluateAsync(
+            requireMultiTenant: true,
+            cancellationToken: cancellationToken);
+        return capacity.Allowed
+            ? null
+            : Failure(capacity.FailureCode!, capacity.Error!);
     }
 
     private async Task<CommittedRecoveryResolution> ResolveCommittedRecoveryAsync(

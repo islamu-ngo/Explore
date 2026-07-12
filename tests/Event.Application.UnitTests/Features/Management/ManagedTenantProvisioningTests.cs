@@ -1,6 +1,8 @@
 // ABOUTME: Focused tests for managed tenant provisioning validation, idempotency, lifecycle, and mode rejection.
 // ABOUTME: Proves SingleTenant fails before scheduling or execution and canonical request hashes stay stable.
 
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.ManagedProviderProvisioning;
@@ -187,6 +189,54 @@ public sealed class ManagedTenantProvisioningTests
         await Assert.That(mutationLock.Keys).IsEquivalentTo([GovernanceSettingKeys.Deployment.Mode]);
         await tenantRepository.DidNotReceive().GetActiveTenantCountAsync();
         await operationRepository.DidNotReceive().CountActiveReservationsAsync(Arg.Any<CancellationToken>());
+        await outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
+
+    [Test]
+    public async Task Schedule_WhenPlanPolicyChangesBeforeLockAcquisition_RejectsWithoutOperationOrOutboxMutation()
+    {
+        Guid managedInstanceId = Guid.CreateVersion7();
+        Guid planVersionId = Guid.Parse("01980000-0000-7000-8000-000000000001");
+        var planVersion = new TenantPlanVersion
+        {
+            Id = planVersionId,
+            TenantPlanId = Guid.CreateVersion7(),
+            TenantPlan = new TenantPlan
+            {
+                Id = Guid.CreateVersion7(),
+                Key = "standard",
+                DisplayName = "Standard"
+            },
+            VersionNumber = 1,
+            TenantPlanStatusId = (int)TenantPlanStatusEnum.Published,
+            CurrencyCode = "EUR",
+            BillingPeriod = "month",
+            IsActiveForProvisioning = true
+        };
+        var operationRepository = Substitute.For<IManagedTenantProvisioningOperationRepository>();
+        operationRepository.Create(Arg.Any<ManagedTenantProvisioningOperation>())
+            .Returns(call => call.Arg<ManagedTenantProvisioningOperation>());
+        var outboxRepository = Substitute.For<IOutboxRepository>();
+        outboxRepository.Create(Arg.Any<OutboxMessage>())
+            .Returns(call => call.Arg<OutboxMessage>());
+        var mutationLock = new RecordingSettingMutationLock(
+            () => planVersion.IsActiveForProvisioning = false);
+        var handler = CreateValidScheduleHandler(
+            managedInstanceId,
+            operationRepository,
+            outboxRepository,
+            planVersion: planVersion,
+            mutationLock: mutationLock);
+
+        var result = await handler.Handle(
+            new ScheduleManagedTenantProvisioningCommand(
+                managedInstanceId,
+                CreateRequest(modules: [], quotas: [])),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("tenant_plan_not_provisionable");
+        await operationRepository.DidNotReceive().Create(Arg.Any<ManagedTenantProvisioningOperation>());
         await outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
     }
 
@@ -777,6 +827,41 @@ public sealed class ManagedTenantProvisioningTests
     }
 
     [Test]
+    public async Task Validator_WhenCollectionElementsAreNull_ReturnsFailuresWithoutThrowing()
+    {
+        var validator = new ManagementTenantProvisioningRequestValidator();
+        JsonObject requestJson = JsonSerializer.SerializeToNode(CreateRequest())!.AsObject();
+        requestJson[nameof(ManagementTenantProvisioningRequest.ApprovedModules)] = new JsonArray { null };
+        requestJson[nameof(ManagementTenantProvisioningRequest.InitialSettings)] = new JsonArray { null };
+        requestJson[nameof(ManagementTenantProvisioningRequest.Plan)]!
+            .AsObject()[nameof(ManagementTenantPlanDto.Quotas)] = new JsonArray { null };
+        ManagementTenantProvisioningRequest request =
+            requestJson.Deserialize<ManagementTenantProvisioningRequest>()
+            ?? throw new InvalidOperationException("Managed tenant provisioning request did not deserialize.");
+
+        var result = await validator.ValidateAsync(request);
+
+        await Assert.That(result.IsValid).IsFalse();
+        string[] properties = result.Errors.Select(error => error.PropertyName).ToArray();
+        await Assert.That(properties).Contains("ApprovedModules[0]");
+        await Assert.That(properties).Contains("Plan.Quotas[0]");
+        await Assert.That(properties).Contains("InitialSettings[0]");
+    }
+
+    [Test]
+    public async Task Validator_WhenRequiredNestedDtosAreNull_ReturnsFailuresWithoutThrowing()
+    {
+        var validator = new ManagementTenantProvisioningRequestValidator();
+
+        var result = await validator.ValidateAsync(CreateRequest(explicitNullNestedDtos: true));
+
+        await Assert.That(result.IsValid).IsFalse();
+        string[] properties = result.Errors.Select(error => error.PropertyName).ToArray();
+        await Assert.That(properties).Contains(nameof(ManagementTenantProvisioningRequest.Administrator));
+        await Assert.That(properties).Contains(nameof(ManagementTenantProvisioningRequest.Plan));
+    }
+
+    [Test]
     public async Task DeadLetterReconciliation_WhenProcessing_FailsOnceAndClearsRequestSnapshot()
     {
         Guid operationId = Guid.CreateVersion7();
@@ -989,13 +1074,14 @@ public sealed class ManagedTenantProvisioningTests
         IReadOnlyList<ManagementTenantInitialSettingDto>? initialSettings = null,
         ManagementTenantDomainIntentDto? domain = null,
         string externalRequestId = "request-1",
-        string externalCustomerReference = "customer-1") => new()
+        string externalCustomerReference = "customer-1",
+        bool explicitNullNestedDtos = false) => new()
         {
             ExternalRequestId = externalRequestId,
             ExternalCustomerReference = externalCustomerReference,
             TenantName = "Tenant One",
             TenantSlug = "tenant-one",
-            Administrator = new ManagementTenantAdministratorDto
+            Administrator = explicitNullNestedDtos ? null! : new ManagementTenantAdministratorDto
             {
                 ExternalIdentity = new ManagementTenantExternalIdentityDto
                 {
@@ -1007,7 +1093,7 @@ public sealed class ManagedTenantProvisioningTests
                     EmailVerified = true
                 }
             },
-            Plan = new ManagementTenantPlanDto
+            Plan = explicitNullNestedDtos ? null! : new ManagementTenantPlanDto
             {
                 Key = "standard",
                 VersionId = Guid.Parse("01980000-0000-7000-8000-000000000001"),
@@ -1028,7 +1114,9 @@ public sealed class ManagedTenantProvisioningTests
         IOutboxRepository outboxRepository,
         string? registrationApiVersion = null,
         IExternalBindingRepository? externalBindingRepository = null,
-        ITenantRepository? tenantRepository = null)
+        ITenantRepository? tenantRepository = null,
+        TenantPlanVersion? planVersion = null,
+        ISettingMutationLock? mutationLock = null)
     {
         var modeProvider = Substitute.For<IDeploymentModeProvider>();
         modeProvider.GetCurrentModeAsync(Arg.Any<CancellationToken>()).Returns(DeploymentMode.MultiTenant);
@@ -1058,22 +1146,23 @@ public sealed class ManagedTenantProvisioningTests
         tenantRepository.GetTenantBySlug("tenant-one").Returns((Tenant?)null);
         var planRepository = Substitute.For<ITenantPlanRepository>();
         Guid planVersionId = Guid.Parse("01980000-0000-7000-8000-000000000001");
-        planRepository.GetVersionAsync(planVersionId, Arg.Any<CancellationToken>()).Returns(new TenantPlanVersion
-        {
-            Id = planVersionId,
-            TenantPlanId = Guid.CreateVersion7(),
-            TenantPlan = new TenantPlan
+        planVersion ??= new TenantPlanVersion
             {
-                Id = Guid.CreateVersion7(),
-                Key = "standard",
-                DisplayName = "Standard"
-            },
-            VersionNumber = 1,
-            TenantPlanStatusId = (int)TenantPlanStatusEnum.Published,
-            CurrencyCode = "EUR",
-            BillingPeriod = "month",
-            IsActiveForProvisioning = true
-        });
+                Id = planVersionId,
+                TenantPlanId = Guid.CreateVersion7(),
+                TenantPlan = new TenantPlan
+                {
+                    Id = Guid.CreateVersion7(),
+                    Key = "standard",
+                    DisplayName = "Standard"
+                },
+                VersionNumber = 1,
+                TenantPlanStatusId = (int)TenantPlanStatusEnum.Published,
+                CurrencyCode = "EUR",
+                BillingPeriod = "month",
+                IsActiveForProvisioning = true
+            };
+        planRepository.GetVersionAsync(planVersionId, Arg.Any<CancellationToken>()).Returns(planVersion);
         var moduleRepository = Substitute.For<IModuleDefinitionRepository>();
         moduleRepository.GetActiveByKeysAsync(
                 Arg.Any<IReadOnlyCollection<string>>(),
@@ -1118,7 +1207,7 @@ public sealed class ManagedTenantProvisioningTests
             externalBindingRepository ?? Substitute.For<IExternalBindingRepository>(),
             tenantRepository,
             outboxRepository,
-            new RecordingSettingMutationLock(),
+            mutationLock ?? new RecordingSettingMutationLock(),
             new TenantActivationCapacityPolicy(
                 bootstrapRepository,
                 tenantRepository,
@@ -1129,6 +1218,13 @@ public sealed class ManagedTenantProvisioningTests
 
     private sealed class RecordingSettingMutationLock : ISettingMutationLock
     {
+        private readonly Action? _beforeOperation;
+
+        internal RecordingSettingMutationLock(Action? beforeOperation = null)
+        {
+            _beforeOperation = beforeOperation;
+        }
+
         internal List<string> Keys { get; } = [];
 
         public Task<T> ExecuteAsync<T>(
@@ -1137,6 +1233,7 @@ public sealed class ManagedTenantProvisioningTests
             CancellationToken cancellationToken = default)
         {
             Keys.Add(canonicalSettingKey);
+            _beforeOperation?.Invoke();
             return operation(cancellationToken);
         }
 
@@ -1146,6 +1243,7 @@ public sealed class ManagedTenantProvisioningTests
             CancellationToken cancellationToken = default)
         {
             Keys.AddRange(canonicalSettingKeys);
+            _beforeOperation?.Invoke();
             return operation(cancellationToken);
         }
     }

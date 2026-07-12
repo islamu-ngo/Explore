@@ -28,6 +28,8 @@ public sealed class ManagementTenantProvisioningRequestValidator
             .NotNull()
             .Must(modules => modules.Count <= 32);
         RuleForEach(request => request.ApprovedModules)
+            .Cascade(CascadeMode.Stop)
+            .NotNull()
             .NotEmpty().MaximumLength(100).Matches("^[A-Za-z0-9._-]+$");
         RuleFor(request => request.ApprovedModules)
             .Must(HasUniqueValues)
@@ -37,9 +39,13 @@ public sealed class ManagementTenantProvisioningRequestValidator
             .Cascade(CascadeMode.Stop)
             .NotNull()
             .Must(settings => settings.Count <= 32);
-        RuleForEach(request => request.InitialSettings).SetValidator(new InitialSettingValidator());
+        RuleForEach(request => request.InitialSettings)
+            .Cascade(CascadeMode.Stop)
+            .NotNull()
+            .SetValidator(new InitialSettingValidator());
         RuleFor(request => request.InitialSettings)
-            .Must(settings => settings.Select(setting => setting.Key).Distinct(StringComparer.Ordinal).Count() == settings.Count)
+            .Must(settings => settings.Any(setting => setting is null)
+                || settings.Select(setting => setting.Key).Distinct(StringComparer.Ordinal).Count() == settings.Count)
             .When(request => request.InitialSettings is not null)
             .WithMessage("InitialSettings must not contain duplicate keys.");
 
@@ -64,9 +70,13 @@ public sealed class ManagementTenantProvisioningRequestValidator
                 .Cascade(CascadeMode.Stop)
                 .NotNull()
                 .Must(quotas => quotas.Count <= 16);
-            RuleForEach(request => request.Plan.Quotas).SetValidator(new QuotaValidator());
+            RuleForEach(request => request.Plan.Quotas)
+                .Cascade(CascadeMode.Stop)
+                .NotNull()
+                .SetValidator(new QuotaValidator());
             RuleFor(request => request.Plan.Quotas)
-                .Must(quotas => quotas.Select(quota => quota.Key).Distinct(StringComparer.Ordinal).Count() == quotas.Count)
+                .Must(quotas => quotas.Any(quota => quota is null)
+                    || quotas.Select(quota => quota.Key).Distinct(StringComparer.Ordinal).Count() == quotas.Count)
                 .When(request => request.Plan.Quotas is not null)
                 .WithMessage("Plan quotas must not contain duplicate keys.");
         });
@@ -102,7 +112,8 @@ public sealed class ManagementTenantProvisioningRequestValidator
     }
 
     private static bool HasUniqueValues(IReadOnlyList<string> values) =>
-        values.Select(value => value.Trim()).Distinct(StringComparer.Ordinal).Count() == values.Count;
+        values.Any(value => value is null)
+        || values.Select(value => value.Trim()).Distinct(StringComparer.Ordinal).Count() == values.Count;
 
     private static bool IsHostName(string? value) =>
         Uri.CheckHostName(value?.Trim().TrimEnd('.') ?? string.Empty) is UriHostNameType.Dns;
