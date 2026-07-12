@@ -7,19 +7,19 @@
 
 **Source:** `schemas/openapi.json`
 **Governed by:** [GOVERNANCE.md#api-contract-rules](GOVERNANCE.md#api-contract-rules)
-**Regenerate:** `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/ApiContractInventory_Generate_WritesMarkdownToDocs"`
+**Regenerate:** `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/ApiContractInventory_Generate_WritesMarkdownToDocs"`
 
 ## Summary
 
-- Total paths: **418**
-- Total operations: **572**
+- Total paths: **431**
+- Total operations: **585**
 - Operations missing `operationId`: **0**
 - Operation IDs with placeholder fallback pattern (ends in digit or `\dAsync`): **0**
 - URL-segment-versioned paths (`^/api/v\d`, banned by governance): **0**
 - Operations missing `x-endpoint-class` extension: **0**
-- Classification breakdown: `Admin`=44, `Authenticated`=406, `Public`=122
+- Classification breakdown: `Admin`=56, `Authenticated`=405, `Public`=124
 - Tenant-mode extension breakdown: `multi-tenant-required`=22
-- Rate-limit policy extension breakdown: `AiAssistant`=5, `AnalyticsRelay`=1, `Authenticated`=25, `ControlPlane`=31, `Global`=1, `PublicIngestion`=1, `SetupSecret`=10, `Write`=35
+- Rate-limit policy extension breakdown: `AiAssistant`=5, `AnalyticsRelay`=1, `Authenticated`=26, `ControlPlane`=31, `Global`=1, `PublicIngestion`=1, `SetupSecret`=10, `Write`=40
 - Output-cache policy extension breakdown: `DetailData`=51, `ListData`=38, `LookupData`=26, `PublicExperienceShell`=1, `SitemapData`=1, `SystemConfig`=1, `TenantNav`=1
 
 ## Operations
@@ -374,7 +374,7 @@
 | 346 | `/api/instance/settings/organizations` | `PUT` | `UpdateInstanceOrganizationPolicy` | Update Organization Policy | InstanceSettings | `UpdateInstanceOrganizationPolicy` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
 | 347 | `/api/instance/settings/render-policy` | `GET` | `GetInstanceRenderPolicySettings` | Get Render Policy Settings | InstanceSettings | `GetInstanceRenderPolicySettings` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
 | 348 | `/api/instance/settings/render-policy` | `PUT` | `UpdateInstanceRenderPolicySettings` | Update Render Policy Settings | InstanceSettings | `UpdateInstanceRenderPolicySettings` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 349 | `/api/instance/settings/resolver-config` | `GET` | `GetInstanceResolverConfiguration` | Get Tenant Resolver Configuration | InstanceSettings | `GetInstanceResolverConfiguration` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 349 | `/api/instance/settings/resolver-config` | `GET` | `GetInstanceResolverConfiguration` | Get Tenant Resolver Configuration | InstanceSettings | `GetInstanceResolverConfiguration` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
 | 350 | `/api/instance/settings/resolver-config` | `PUT` | `UpdateInstanceResolverConfiguration` | Update Tenant Resolver Configuration | InstanceSettings | `UpdateInstanceResolverConfiguration` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
 | 351 | `/api/instance/settings/smtp` | `GET` | `GetInstanceSmtpSettings` | Get Instance SMTP Settings | InstanceSettings | `GetInstanceSmtpSettings` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
 | 352 | `/api/instance/settings/smtp` | `PUT` | `UpdateInstanceSmtpSettings` | Update Instance SMTP Settings | InstanceSettings | `UpdateInstanceSmtpSettings` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
@@ -421,183 +421,196 @@
 | 393 | `/api/madhab` | `GET` | `GetMadhabs` | Get all Madhabs | Madhab | `GetMadhabs` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
 | 394 | `/api/madhab/{id}` | `GET` | `GetMadhabById` | Get Madhab by ID | Madhab | `GetMadhabById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
 | 395 | `/api/managed-provider-provisioning/clients:ensure` | `POST` | `EnsureManagedProviderClientProvisioned` | Ensure managed provider client provisioning | ManagedProviderProvisioning | `EnsureManagedProviderClientProvisioned` | `Admin` | no | _(none)_ | _(none)_ | _(none)_ |
-| 396 | `/api/module/available` | `GET` | `GetAvailableModules` | Get Available Modules | Module | `GetAvailableModules` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
-| 397 | `/api/module/enabled` | `GET` | `GetEnabledModules` | Get Enabled Modules | Module | `GetEnabledModules` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
-| 398 | `/api/module/{moduleKey}/disable` | `POST` | `DisableModule` | Disable Module | Module | `DisableModule` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 399 | `/api/module/{moduleKey}/enable` | `POST` | `EnableModule` | Enable Module | Module | `EnableModule` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 400 | `/api/module/{moduleKey}/enabled` | `GET` | `CheckModuleEnabled` | Check Module Enabled | Module | `CheckModuleEnabled` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
-| 401 | `/api/module/{moduleKey}/schema` | `GET` | `GetModuleSchemaUrl` | Get Module Schema URL | Module | `GetModuleSchemaUrl` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
-| 402 | `/api/notification` | `GET` | `GetNotifications` | Get User Notifications | Notification | `GetNotifications` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 403 | `/api/notification/preferences/me` | `GET` | `GetCurrentUserNotificationPreferences` | Get Current User Notification Preferences | Notification | `GetCurrentUserNotificationPreferences` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 404 | `/api/notification/preferences/me` | `PUT` | `UpdateCurrentUserNotificationPreferences` | Update Current User Notification Preferences | Notification | `UpdateCurrentUserNotificationPreferences` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 405 | `/api/notification/preferences/me/mute` | `PUT` | `SetCurrentUserNotificationPreferenceMute` | Set Current User Notification Preference Mute | Notification | `SetCurrentUserNotificationPreferenceMute` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 406 | `/api/notification/read-all` | `POST` | `MarkAllNotificationsAsRead` | Mark All Notifications as Read | Notification | `MarkAllNotificationsAsRead` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 407 | `/api/notification/stream` | `GET` | `GetNotificationRefreshStream` | Stream Notification Refresh Hints | Notification | `GetNotificationRefreshStream` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 408 | `/api/notification/unread-count` | `GET` | `GetUnreadNotificationCount` | Get Unread Notification Count | Notification | `GetUnreadNotificationCount` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 409 | `/api/notification/web-push/config` | `GET` | `GetWebPushConfiguration` | Get Web Push public configuration | Notification | `GetWebPushConfiguration` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
-| 410 | `/api/notification/web-push/subscription` | `GET` | `GetCurrentUserWebPushSubscription` | Get current user's Web Push subscription | Notification | `GetCurrentUserWebPushSubscription` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 411 | `/api/notification/web-push/subscriptions` | `POST` | `SubscribeCurrentUserWebPushSubscription` | Subscribe current user to Web Push | Notification | `SubscribeCurrentUserWebPushSubscription` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 412 | `/api/notification/web-push/subscriptions/{subscriptionId}` | `DELETE` | `UnsubscribeCurrentUserWebPushSubscription` | Unsubscribe current user's Web Push subscription | Notification | `UnsubscribeCurrentUserWebPushSubscription` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 413 | `/api/notification/{id}` | `GET` | `GetNotificationById` | Get Notification by ID | Notification | `GetNotificationById` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 414 | `/api/notification/{id}` | `DELETE` | `DeleteNotification` | Delete Notification | Notification | `DeleteNotification` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 415 | `/api/notification/{id}/archive` | `PATCH` | `ArchiveNotification` | Archive Notification | Notification | `ArchiveNotification` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 416 | `/api/notification/{id}/read` | `PATCH` | `MarkNotificationAsRead` | Mark Notification as Read | Notification | `MarkNotificationAsRead` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 417 | `/api/notification/{id}/snooze` | `PATCH` | `SnoozeNotification` | Snooze Notification | Notification | `SnoozeNotification` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 418 | `/api/organization` | `GET` | `GetOrganizations` | Get all Organizations | Organization | `GetOrganizations` | `Public` | no | _(none)_ | _(none)_ | `ListData` |
-| 419 | `/api/organization` | `POST` | `CreateOrganization` | Create Organization | Organization | `CreateOrganization` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 420 | `/api/organization/my` | `GET` | `GetMyOrganizations` | Get my Organizations | Organization | `GetMyOrganizations` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 421 | `/api/organization/{id}` | `GET` | `GetOrganizationById` | Get Organization Details | Organization | `GetOrganizationById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
-| 422 | `/api/organization/{id}` | `PATCH` | `UpdateOrganization` | Update Organization | Organization | `UpdateOrganization` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 423 | `/api/organization/{id}` | `DELETE` | `DeleteOrganization` | Delete Organization | Organization | `DeleteOrganization` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 424 | `/api/organization/{id}/approval-status` | `PUT` | `UpdateOrganizationApprovalStatus` | Update Organization Approval Status | Organization | `UpdateOrganizationApprovalStatus` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 425 | `/api/organization/{id}/notification-preferences` | `GET` | `GetOrganizationNotificationPreferences` | Get Organization Notification Preferences | Organization | `GetOrganizationNotificationPreferences` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 426 | `/api/organization/{id}/notification-preferences` | `PUT` | `UpdateOrganizationNotificationPreferences` | Update Organization Notification Preferences | Organization | `UpdateOrganizationNotificationPreferences` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 427 | `/api/organization/{id}/notification-preferences/mute` | `PUT` | `SetOrganizationNotificationPreferenceMute` | Set Organization Notification Preference Mute | Organization | `SetOrganizationNotificationPreferenceMute` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 428 | `/api/organizationmember` | `POST` | `AddOrganizationMember` | _(none)_ | OrganizationMember | `AddOrganizationMember` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 429 | `/api/organizationmember/invitations` | `GET` | `GetMyOrganizationInvitations` | _(none)_ | OrganizationMember | `GetMyOrganizationInvitations` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 430 | `/api/organizationmember/invitations/{id}/accept` | `POST` | `AcceptOrganizationInvitation` | _(none)_ | OrganizationMember | `AcceptOrganizationInvitation` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 431 | `/api/organizationmember/invitations/{id}/decline` | `POST` | `DeclineOrganizationInvitation` | _(none)_ | OrganizationMember | `DeclineOrganizationInvitation` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 432 | `/api/organizationmember/member/{id}` | `GET` | `GetOrganizationMemberById` | _(none)_ | OrganizationMember | `GetOrganizationMemberById` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 433 | `/api/organizationmember/role` | `PUT` | `UpdateOrganizationMemberRole` | _(none)_ | OrganizationMember | `UpdateOrganizationMemberRole` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 434 | `/api/organizationmember/{id}` | `DELETE` | `DeleteOrganizationMember` | _(none)_ | OrganizationMember | `DeleteOrganizationMember` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 435 | `/api/organizationmember/{organizationId}` | `GET` | `GetOrganizationMembersByOrganization` | _(none)_ | OrganizationMember | `GetOrganizationMembersByOrganization` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 436 | `/api/organizationposition` | `GET` | `GetOrganizationPositions` | Get all Organization Positions | OrganizationPosition | `GetOrganizationPositions` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
-| 437 | `/api/organizationposition/{id}` | `GET` | `GetOrganizationPositionById` | Get Organization Position by ID | OrganizationPosition | `GetOrganizationPositionById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
-| 438 | `/api/organizationreview` | `GET` | `GetOrganizationReviews` | _(none)_ | OrganizationReview | `GetOrganizationReviews` | `Public` | no | _(none)_ | _(none)_ | `ListData` |
-| 439 | `/api/organizationreview` | `POST` | `CreateOrganizationReview` | _(none)_ | OrganizationReview | `CreateOrganizationReview` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 440 | `/api/organizationreview/user/{userId}` | `GET` | `GetOrganizationReviewsByUser` | _(none)_ | OrganizationReview | `GetOrganizationReviewsByUser` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
-| 441 | `/api/organizationreview/{organizationId}` | `GET` | `GetOrganizationReviewsByOrganization` | _(none)_ | OrganizationReview | `GetOrganizationReviewsByOrganization` | `Public` | no | _(none)_ | _(none)_ | `ListData` |
-| 442 | `/api/publicexperience/settings` | `GET` | `GetPublicExperienceSettings` | Get Public Experience Settings | PublicExperience | `GetPublicExperienceSettings` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
-| 443 | `/api/publicexperience/shell` | `GET` | `GetPublicExperienceShell` | Get Public Experience Shell | PublicExperience | `GetPublicExperienceShell` | `Public` | no | _(none)_ | _(none)_ | `PublicExperienceShell` |
-| 444 | `/api/registrationmode` | `GET` | `GetRegistrationModes` | Get all Registration Modes | RegistrationMode | `GetRegistrationModes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
-| 445 | `/api/registrationmode/{id}` | `GET` | `GetRegistrationModeById` | Get Registration Mode by ID | RegistrationMode | `GetRegistrationModeById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
-| 446 | `/api/registrationscope` | `GET` | `GetRegistrationScopes` | Get all Registration Scopes | RegistrationScope | `GetRegistrationScopes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
-| 447 | `/api/role` | `GET` | `GetRoles` | Get all Roles | Role | `GetRoles` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
-| 448 | `/api/role/{id}` | `GET` | `GetRoleById` | Get Role by ID | Role | `GetRoleById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
-| 449 | `/api/scheduleitemkind` | `GET` | `GetScheduleItemKinds` | Get all Schedule Item Kinds | ScheduleItemKind | `GetScheduleItemKinds` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
-| 450 | `/api/settings/tenant/keys/{key}` | `PUT` | `UpdateTenantSetting` | Update Single Tenant Setting | Settings | `UpdateTenantSetting` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 451 | `/api/settings/tenant/keys/{key}/lock` | `POST` | `LockTenantSetting` | Lock Tenant Setting | Settings | `LockTenantSetting` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 452 | `/api/settings/tenant/keys/{key}/lock` | `DELETE` | `UnlockTenantSetting` | Unlock Tenant Setting | Settings | `UnlockTenantSetting` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 453 | `/api/settings/tenant/{category}` | `GET` | `GetTenantScopedSettings` | Get Tenant Settings | Settings | `GetTenantScopedSettings` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 454 | `/api/settings/tenant/{category}` | `PUT` | `UpdateTenantSettingsBatch` | Batch Update Tenant Settings | Settings | `UpdateTenantSettingsBatch` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 455 | `/api/settings/user/keys/{key}` | `PUT` | `UpdateUserSetting` | Update Single User Setting | Settings | `UpdateUserSetting` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 456 | `/api/settings/user/keys/{key}` | `DELETE` | `ResetUserSetting` | Reset User Setting | Settings | `ResetUserSetting` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 457 | `/api/settings/user/{category}` | `GET` | `GetUserSettings` | Get User Settings | Settings | `GetUserSettings` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 458 | `/api/settings/user/{category}` | `PUT` | `UpdateUserSettingsBatch` | Batch Update User Settings | Settings | `UpdateUserSettingsBatch` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 459 | `/api/storageobject` | `GET` | `GetStorageObjects` | Get all Storage Objects | StorageObject | `GetStorageObjects` | `Authenticated` | no | _(none)_ | _(none)_ | `ListData` |
-| 460 | `/api/storageobject` | `POST` | `CreateStorageObject` | Create Storage Object Record | StorageObject | `CreateStorageObject` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 461 | `/api/storageobject/generate-upload-url` | `POST` | `GenerateStorageObjectUploadUrl` | Generate Pre-signed Upload URL | StorageObject | `GenerateStorageObjectUploadUrl` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 462 | `/api/storageobject/upload-sessions` | `POST` | `CreateStorageUploadSession` | Create provider-neutral upload session | StorageObject | `CreateStorageUploadSession` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 463 | `/api/storageobject/upload-sessions/{uploadSessionId}` | `DELETE` | `CancelStorageUploadSession` | Cancel a provider-neutral upload session | StorageObject | `CancelStorageUploadSession` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 464 | `/api/storageobject/upload-sessions/{uploadSessionId}/content` | `PUT` | `UploadStorageUploadSessionContent` | Upload bytes for a reserved storage session | StorageObject | `UploadStorageUploadSessionContent` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 465 | `/api/storageobject/{id}` | `GET` | `GetStorageObjectById` | Get Storage Object by ID | StorageObject | `GetStorageObjectById` | `Authenticated` | no | _(none)_ | _(none)_ | `DetailData` |
-| 466 | `/api/storageobject/{id}` | `PUT` | `UpdateStorageObject` | Update Storage Object | StorageObject | `UpdateStorageObject` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 467 | `/api/storageobject/{id}` | `DELETE` | `DeleteStorageObject` | Delete Storage Object | StorageObject | `DeleteStorageObject` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 468 | `/api/storageobject/{id}/content` | `GET` | `GetStorageObjectContent` | Get Storage Object Content | StorageObject | `GetStorageObjectContent` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 469 | `/api/storageobject/{id}/presigned-url` | `GET` | `GetStorageObjectPresignedDownloadUrl` | Get Presigned Download URL | StorageObject | `GetStorageObjectPresignedDownloadUrl` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 470 | `/api/storageobject/{id}/public` | `GET` | `GetPublicStorageObjectImage` | Get Public Image | StorageObject | `GetPublicStorageObjectImage` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
-| 471 | `/api/support-access/current` | `GET` | `GetCurrentSupportAccessSession` | Get current support-access session | SupportAccess | `GetCurrentSupportAccessSession` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 472 | `/api/support-access/sessions` | `POST` | `StartSupportAccessSession` | Start support-access session | SupportAccess | `StartSupportAccessSession` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 473 | `/api/support-access/sessions/{sessionId}/force-stop` | `POST` | `ForceStopSupportAccessSession` | Force-stop support-access session | SupportAccess | `ForceStopSupportAccessSession` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 474 | `/api/support-access/sessions/{sessionId}/stop` | `POST` | `StopSupportAccessSession` | Stop support-access session | SupportAccess | `StopSupportAccessSession` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 475 | `/api/support-access/tenants/{targetTenantId}/sessions` | `GET` | `ListSupportAccessSessions` | List support-access sessions | SupportAccess | `ListSupportAccessSessions` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 476 | `/api/support-access/tenants/{targetTenantId}/sessions/{sessionId}/audit-events` | `GET` | `GetSupportAccessAuditEvents` | Get support-access audit events | SupportAccess | `GetSupportAccessAuditEvents` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 477 | `/api/syncstate` | `GET` | `GetSyncStates` | _(none)_ | SyncState | `GetSyncStates` | `Authenticated` | no | _(none)_ | _(none)_ | `ListData` |
-| 478 | `/api/syncstate` | `POST` | `CreateSyncState` | _(none)_ | SyncState | `CreateSyncState` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 479 | `/api/syncstate/{id}` | `GET` | `GetSyncStateById` | _(none)_ | SyncState | `GetSyncStateById` | `Authenticated` | no | _(none)_ | _(none)_ | `DetailData` |
-| 480 | `/api/syncstate/{id}` | `PUT` | `UpdateSyncState` | _(none)_ | SyncState | `UpdateSyncState` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 481 | `/api/syncstate/{id}` | `DELETE` | `DeleteSyncState` | _(none)_ | SyncState | `DeleteSyncState` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 482 | `/api/system/onboarding-preflight` | `GET` | `GetSystemOnboardingPreflight` | Get System Onboarding Preflight | System | `GetSystemOnboardingPreflight` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
-| 483 | `/api/system/onboarding-status` | `GET` | `GetSystemOnboardingStatus` | Get System Onboarding Status | System | `GetSystemOnboardingStatus` | `Public` | no | _(none)_ | _(none)_ | `SystemConfig` |
-| 484 | `/api/tag` | `GET` | `GetTags` | Get all Tags | Tag | `GetTags` | `Public` | no | _(none)_ | _(none)_ | `ListData` |
-| 485 | `/api/tag` | `POST` | `CreateTag` | Create Tag | Tag | `CreateTag` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 486 | `/api/tag/{id}` | `GET` | `GetTagById` | Get Tag Details | Tag | `GetTagById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
-| 487 | `/api/tag/{id}` | `PUT` | `UpdateTag` | Update Tag | Tag | `UpdateTag` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 488 | `/api/tag/{id}` | `DELETE` | `DeleteTag` | Delete Tag | Tag | `DeleteTag` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 489 | `/api/tagtype` | `GET` | `GetTagTypes` | _(none)_ | TagType | `GetTagTypes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
-| 490 | `/api/tagtype/with-tags` | `GET` | `GetTagTypesWithTags` | Get Tag Types with Tags | TagType | `GetTagTypesWithTags` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
-| 491 | `/api/tagtype/{id}` | `GET` | `GetTagTypeById` | _(none)_ | TagType | `GetTagTypeById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
-| 492 | `/api/tenant` | `GET` | `GetTenants` | Get all Tenants | Tenant | `GetTenants` | `Authenticated` | no | _(none)_ | _(none)_ | `ListData` |
-| 493 | `/api/tenant` | `POST` | `CreateTenant` | Create new Tenant | Tenant | `CreateTenant` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 494 | `/api/tenant-user-role-grants` | `GET` | `GetTenantUserRoleGrants` | Get all tenant user role grants | TenantUserRoleGrant | `GetTenantUserRoleGrants` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 495 | `/api/tenant-user-role-grants` | `POST` | `CreateTenantUserRoleGrant` | Create tenant user role grant | TenantUserRoleGrant | `CreateTenantUserRoleGrant` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 496 | `/api/tenant-user-role-grants/{id}` | `GET` | `GetTenantUserRoleGrantById` | Get tenant user role grant by ID | TenantUserRoleGrant | `GetTenantUserRoleGrantById` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 497 | `/api/tenant-user-role-grants/{id}` | `DELETE` | `RevokeTenantUserRoleGrant` | Revoke tenant user role grant | TenantUserRoleGrant | `RevokeTenantUserRoleGrant` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 498 | `/api/tenant/count` | `GET` | `GetActiveTenantCount` | Get Active Tenant Count | Tenant | `GetActiveTenantCount` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 499 | `/api/tenant/navigation` | `GET` | `GetTenantNavigationLinks` | Get Tenant Navigation Links | Tenant | `GetTenantNavigationLinks` | `Public` | no | _(none)_ | _(none)_ | `TenantNav` |
-| 500 | `/api/tenant/navigation` | `POST` | `CreateTenantNavigationLink` | Create Tenant Navigation Link | Tenant | `CreateTenantNavigationLink` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 501 | `/api/tenant/navigation/reorder` | `PUT` | `ReorderTenantNavigationLinks` | Reorder Tenant Navigation Links | Tenant | `ReorderTenantNavigationLinks` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 502 | `/api/tenant/navigation/{id}` | `PUT` | `UpdateTenantNavigationLink` | Update Tenant Navigation Link | Tenant | `UpdateTenantNavigationLink` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 503 | `/api/tenant/navigation/{id}` | `DELETE` | `DeleteTenantNavigationLink` | Delete Tenant Navigation Link | Tenant | `DeleteTenantNavigationLink` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 504 | `/api/tenant/settings/documents/branding` | `GET` | `GetTenantBrandingSettingsDocument` | Get Tenant Branding Settings Document | TenantSettingsDocuments | `GetTenantBrandingSettingsDocument` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 505 | `/api/tenant/settings/documents/branding` | `PUT` | `ReplaceTenantBrandingSettingsDocument` | Replace Tenant Branding Settings Document | TenantSettingsDocuments | `ReplaceTenantBrandingSettingsDocument` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 506 | `/api/tenant/settings/moderation-reporting/dashboard` | `GET` | `GetTenantModerationReportingDashboard` | Get Tenant Moderation Reporting Dashboard | TenantModerationReportingDashboard | `GetTenantModerationReportingDashboard` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 507 | `/api/tenant/settings/moderation-reporting/routing-state` | `GET` | `GetModerationReportingRoutingState` | Get Moderation Reporting Routing State | ModerationReportingRouting | `GetModerationReportingRoutingState` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 508 | `/api/tenant/settings/moderation-reporting/routing-state` | `PUT` | `UpdateModerationReportingRoutingSettings` | Update Moderation Reporting Routing Settings | ModerationReportingRouting | `UpdateModerationReportingRoutingSettings` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 509 | `/api/tenant/settings/moderation-reporting/routing-state/test/{provider}` | `POST` | `TestModerationReportingProvider` | Test Moderation Reporting Provider | ModerationReportingRouting | `TestModerationReportingProvider` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 510 | `/api/tenant/settings/storage` | `GET` | `GetTenantStorageSettings` | Get Tenant Storage Settings | TenantStorageSettings | `GetTenantStorageSettings` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 511 | `/api/tenant/settings/storage` | `PUT` | `UpdateTenantStorageSettings` | Update Tenant Storage Settings | TenantStorageSettings | `UpdateTenantStorageSettings` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 512 | `/api/tenant/{id}` | `GET` | `GetTenantById` | Get Tenant by ID | Tenant | `GetTenantById` | `Authenticated` | no | _(none)_ | _(none)_ | `DetailData` |
-| 513 | `/api/tenant/{id}` | `PUT` | `UpdateTenant` | Update Tenant | Tenant | `UpdateTenant` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 514 | `/api/tenant/{id}` | `DELETE` | `DeleteTenant` | Delete Tenant | Tenant | `DeleteTenant` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 515 | `/api/tenantonboarding/complete` | `POST` | `CompleteTenantOnboarding` | Complete Tenant Onboarding | TenantOnboarding | `CompleteTenantOnboarding` | `Authenticated` | no | `multi-tenant-required` | _(none)_ | _(none)_ |
-| 516 | `/api/tenantonboarding/settings` | `GET` | `GetTenantOnboardingPolicySettings` | Get Tenant Policy Settings | TenantOnboarding | `GetTenantOnboardingPolicySettings` | `Authenticated` | no | `multi-tenant-required` | _(none)_ | _(none)_ |
-| 517 | `/api/tenantonboarding/settings` | `PUT` | `UpdateTenantOnboardingPolicySettings` | Update Tenant Policy Settings | TenantOnboarding | `UpdateTenantOnboardingPolicySettings` | `Authenticated` | no | `multi-tenant-required` | _(none)_ | _(none)_ |
-| 518 | `/api/tenantonboarding/status` | `GET` | `GetTenantOnboardingStatus` | Get Tenant Onboarding Status | TenantOnboarding | `GetTenantOnboardingStatus` | `Authenticated` | no | `multi-tenant-required` | _(none)_ | _(none)_ |
-| 519 | `/api/tenantonboarding/steps` | `PUT` | `SaveTenantOnboardingStepProgress` | Save Tenant Onboarding Step Progress | TenantOnboarding | `SaveTenantOnboardingStepProgress` | `Authenticated` | no | `multi-tenant-required` | _(none)_ | _(none)_ |
-| 520 | `/api/translation/languages` | `GET` | `GetAvailableTranslationLanguages` | Get Available Languages | Translation | `GetAvailableTranslationLanguages` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
-| 521 | `/api/translation/{languageCode}` | `GET` | `GetTranslationByLanguage` | Get Translations | Translation | `GetTranslationByLanguage` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
-| 522 | `/api/user` | `GET` | `GetCurrentUser` | _(none)_ | User | `GetCurrentUser` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 523 | `/api/user` | `DELETE` | `DeleteCurrentUser` | _(none)_ | User | `DeleteCurrentUser` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 524 | `/api/user/active-tenant/{tenantId}` | `POST` | `UpdateUserLastActiveTenant` | Update user's last active tenant | User | `UpdateUserLastActiveTenant` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 525 | `/api/user/admin-authority` | `GET` | `GetCurrentUserAdminAuthority` | Get current user's admin authority | User | `GetCurrentUserAdminAuthority` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 526 | `/api/user/appearance` | `GET` | `GetCurrentUserAppearancePreferences` | Get Resolved Appearance | UserAppearance | `GetCurrentUserAppearancePreferences` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 527 | `/api/user/appearance` | `PUT` | `UpdateCurrentUserAppearancePreferences` | Update Appearance Preferences | UserAppearance | `UpdateCurrentUserAppearancePreferences` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 528 | `/api/user/appearance/active-profile` | `PUT` | `SetActiveAppearanceProfile` | Set Active Appearance Profile | UserAppearance | `SetActiveAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 529 | `/api/user/appearance/generate-palette` | `GET` | `GenerateAppearancePalette` | Generate Palette From Colors | UserAppearance | `GenerateAppearancePalette` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 530 | `/api/user/appearance/mode` | `PUT` | `SetAppearanceThemeMode` | Set Theme Mode | UserAppearance | `SetAppearanceThemeMode` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 531 | `/api/user/appearance/presets` | `GET` | `GetAvailableThemes` | Get Available Presets | UserAppearance | `GetAvailableThemes` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 532 | `/api/user/appearance/profiles` | `GET` | `GetUserAppearanceProfiles` | Get User Appearance Profiles | UserAppearance | `GetUserAppearanceProfiles` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 533 | `/api/user/appearance/profiles` | `POST` | `CreateCustomAppearanceProfile` | Create Custom Appearance Profile | UserAppearance | `CreateCustomAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 534 | `/api/user/appearance/profiles/from-preset/{presetId}` | `POST` | `ClonePresetToProfile` | Clone Preset Into User Profile | UserAppearance | `ClonePresetToProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 535 | `/api/user/appearance/profiles/{profileId}` | `PUT` | `UpdateAppearanceProfile` | Update User Appearance Profile | UserAppearance | `UpdateAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 536 | `/api/user/appearance/profiles/{profileId}/archive` | `PUT` | `ArchiveAppearanceProfile` | Archive User Appearance Profile | UserAppearance | `ArchiveAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 537 | `/api/user/appearance/profiles/{profileId}/duplicate` | `POST` | `DuplicateAppearanceProfile` | Duplicate User Appearance Profile | UserAppearance | `DuplicateAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 538 | `/api/user/sync` | `POST` | `SyncUser` | Sync user from identity provider | User | `SyncUser` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 539 | `/api/user/tenants/redirection` | `GET` | `ResolveUserTenantRedirection` | Resolve user tenant redirection | User | `ResolveUserTenantRedirection` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 540 | `/api/user/{id}` | `PATCH` | `UpdateCurrentUser` | _(none)_ | User | `UpdateCurrentUser` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 541 | `/api/user/{userId}/organizations` | `GET` | `GetUserOrganizations` | Get user's organizations | User | `GetUserOrganizations` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 542 | `/api/userauthenticationtoken` | `GET` | `GetUserAuthenticationTokens` | Get all User Authentication Tokens | UserAuthenticationToken | `GetUserAuthenticationTokens` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 543 | `/api/userauthenticationtoken` | `POST` | `CreateUserAuthenticationToken` | Create new User Authentication Token | UserAuthenticationToken | `CreateUserAuthenticationToken` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 544 | `/api/userauthenticationtoken/{id}` | `GET` | `GetUserAuthenticationTokenById` | Get User Authentication Token by ID | UserAuthenticationToken | `GetUserAuthenticationTokenById` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 545 | `/api/userauthenticationtoken/{id}` | `PUT` | `UpdateUserAuthenticationToken` | Update User Authentication Token | UserAuthenticationToken | `UpdateUserAuthenticationToken` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 546 | `/api/userauthenticationtoken/{id}` | `DELETE` | `DeleteUserAuthenticationToken` | Delete User Authentication Token | UserAuthenticationToken | `DeleteUserAuthenticationToken` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 547 | `/api/userexternallogin` | `GET` | `GetUserExternalLogins` | Get all User External Logins | UserExternalLogin | `GetUserExternalLogins` | `Authenticated` | no | _(none)_ | _(none)_ | `ListData` |
-| 548 | `/api/userexternallogin` | `POST` | `CreateUserExternalLogin` | Create new User External Login | UserExternalLogin | `CreateUserExternalLogin` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 549 | `/api/userexternallogin/{id}` | `GET` | `GetUserExternalLoginById` | Get User External Login by ID | UserExternalLogin | `GetUserExternalLoginById` | `Authenticated` | no | _(none)_ | _(none)_ | `DetailData` |
-| 550 | `/api/userexternallogin/{id}` | `PUT` | `UpdateUserExternalLogin` | Update User External Login | UserExternalLogin | `UpdateUserExternalLogin` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 551 | `/api/userexternallogin/{id}` | `DELETE` | `DeleteUserExternalLogin` | Delete User External Login | UserExternalLogin | `DeleteUserExternalLogin` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 552 | `/api/visibilitytype` | `GET` | `GetVisibilityTypes` | Get all Visibility Types | VisibilityType | `GetVisibilityTypes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
-| 553 | `/api/visibilitytype/{id}` | `GET` | `GetVisibilityTypeById` | Get Visibility Type by ID | VisibilityType | `GetVisibilityTypeById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
-| 554 | `/api/webhooks/consumers` | `GET` | `GetWebhookConsumers` | Get webhook consumers | Webhooks | `GetWebhookConsumers` | `Authenticated` | no | _(none)_ | `Authenticated` | `ListData` |
-| 555 | `/api/webhooks/consumers` | `POST` | `CreateWebhookConsumer` | Create webhook consumer | Webhooks | `CreateWebhookConsumer` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 556 | `/api/webhooks/consumers/{consumerId}` | `GET` | `GetWebhookConsumerById` | Get webhook consumer | Webhooks | `GetWebhookConsumerById` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 557 | `/api/webhooks/delivery-attempts` | `GET` | `GetWebhookDeliveryAttempts` | Get webhook delivery attempts | Webhooks | `GetWebhookDeliveryAttempts` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 558 | `/api/webhooks/delivery-attempts/{attemptId}` | `GET` | `GetWebhookDeliveryAttemptById` | Get webhook delivery attempt | Webhooks | `GetWebhookDeliveryAttemptById` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 559 | `/api/webhooks/delivery-attempts/{attemptId}/retry` | `POST` | `RetryWebhookDeliveryAttempt` | Retry webhook delivery attempt | Webhooks | `RetryWebhookDeliveryAttempt` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 560 | `/api/webhooks/endpoints` | `GET` | `GetWebhookEndpoints` | Get webhook endpoints | Webhooks | `GetWebhookEndpoints` | `Authenticated` | no | _(none)_ | `Authenticated` | `ListData` |
-| 561 | `/api/webhooks/endpoints` | `POST` | `CreateWebhookEndpoint` | Create webhook endpoint | Webhooks | `CreateWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 562 | `/api/webhooks/endpoints/{endpointId}` | `GET` | `GetWebhookEndpointById` | Get webhook endpoint | Webhooks | `GetWebhookEndpointById` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 563 | `/api/webhooks/endpoints/{endpointId}` | `PUT` | `UpdateWebhookEndpoint` | Update webhook endpoint | Webhooks | `UpdateWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 564 | `/api/webhooks/endpoints/{endpointId}` | `DELETE` | `DeleteWebhookEndpoint` | Delete webhook endpoint | Webhooks | `DeleteWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 565 | `/api/webhooks/endpoints/{endpointId}/rotate-secret` | `POST` | `RotateWebhookEndpointSecret` | Rotate webhook endpoint secret | Webhooks | `RotateWebhookEndpointSecret` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 566 | `/api/webhooks/endpoints/{endpointId}/test` | `POST` | `TestWebhookEndpoint` | Test webhook endpoint | Webhooks | `TestWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 567 | `/api/webhooks/event-types` | `GET` | `GetWebhookEventTypes` | Get webhook event types | Webhooks | `GetWebhookEventTypes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
-| 568 | `/api/webhooks/messages` | `GET` | `GetWebhookMessages` | Get webhook messages | Webhooks | `GetWebhookMessages` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 569 | `/api/webhooks/messages/{messageId}` | `GET` | `GetWebhookMessageById` | Get webhook message | Webhooks | `GetWebhookMessageById` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 570 | `/api/webhooks/svix/app-portal` | `POST` | `OpenSvixAppPortal` | Open Svix App Portal | Webhooks | `OpenSvixAppPortal` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 571 | `/sitemap.xml` | `GET` | `GetSitemap` | Get XML sitemap | Sitemap | `GetSitemap` | `Public` | no | _(none)_ | _(none)_ | `SitemapData` |
-| 572 | `/vapid-public-key` | `GET` | `GetVapidPublicKey` | Get VAPID public key | Notification | `GetVapidPublicKey` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 396 | `/api/management/capabilities` | `GET` | `GetManagementCapabilities` | Get managed-mode capabilities | Management | `GetManagementCapabilities` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 397 | `/api/management/credentials` | `DELETE` | `RevokeManagedControlPlaneRegistration` | Revoke managed Control Plane trust | Management | `RevokeManagedControlPlaneRegistration` | `Admin` | yes | _(none)_ | `Write` | _(none)_ |
+| 398 | `/api/management/credentials/rotate` | `POST` | `RotateManagedControlPlaneCredential` | Rotate Control Plane credential | Management | `RotateManagedControlPlaneCredential` | `Admin` | yes | _(none)_ | `Write` | _(none)_ |
+| 399 | `/api/management/health` | `GET` | `GetManagementHealth` | Get aggregate Event health | Management | `GetManagementHealth` | `Admin` | yes | _(none)_ | _(none)_ | _(none)_ |
+| 400 | `/api/management/instance` | `GET` | `GetManagedEventInstance` | Get managed Event instance | Management | `GetManagedEventInstance` | `Admin` | yes | _(none)_ | _(none)_ | _(none)_ |
+| 401 | `/api/management/registration` | `POST` | `TriggerManagementRegistration` | Trigger managed registration | Management | `TriggerManagementRegistration` | `Admin` | no | _(none)_ | `Write` | _(none)_ |
+| 402 | `/api/management/tenant-provisioning/{operationId}` | `GET` | `GetManagedTenantProvisioningOperation` | Get managed tenant provisioning status | Management | `GetManagedTenantProvisioningOperation` | `Admin` | yes | _(none)_ | _(none)_ | _(none)_ |
+| 403 | `/api/management/tenant-provisioning/{operationId}/cancel` | `POST` | `CancelManagedTenantProvisioningOperation` | Cancel managed tenant provisioning | Management | `CancelManagedTenantProvisioningOperation` | `Admin` | yes | _(none)_ | `Write` | _(none)_ |
+| 404 | `/api/management/tenants/preflight` | `POST` | `EvaluateManagedTenantProvisioningPreflight` | Evaluate managed tenant provisioning preflight | Management | `EvaluateManagedTenantProvisioningPreflight` | `Admin` | yes | _(none)_ | `Authenticated` | _(none)_ |
+| 405 | `/api/management/tenants/provision` | `POST` | `ScheduleManagedTenantProvisioning` | Schedule managed tenant provisioning | Management | `ScheduleManagedTenantProvisioning` | `Admin` | yes | _(none)_ | `Write` | _(none)_ |
+| 406 | `/api/management/upgrade/postflight` | `POST` | `VerifyManagementUpgradePostflight` | Verify Event upgrade postflight | Management | `VerifyManagementUpgradePostflight` | `Admin` | yes | _(none)_ | _(none)_ | _(none)_ |
+| 407 | `/api/management/upgrade/preflight` | `POST` | `EvaluateManagementUpgradePreflight` | Evaluate Event upgrade preflight | Management | `EvaluateManagementUpgradePreflight` | `Admin` | yes | _(none)_ | _(none)_ | _(none)_ |
+| 408 | `/api/management/version` | `GET` | `GetManagementVersion` | Get Event management version | Management | `GetManagementVersion` | `Admin` | yes | _(none)_ | _(none)_ | _(none)_ |
+| 409 | `/api/module/available` | `GET` | `GetAvailableModules` | Get Available Modules | Module | `GetAvailableModules` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 410 | `/api/module/enabled` | `GET` | `GetEnabledModules` | Get Enabled Modules | Module | `GetEnabledModules` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 411 | `/api/module/{moduleKey}/disable` | `POST` | `DisableModule` | Disable Module | Module | `DisableModule` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 412 | `/api/module/{moduleKey}/enable` | `POST` | `EnableModule` | Enable Module | Module | `EnableModule` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 413 | `/api/module/{moduleKey}/enabled` | `GET` | `CheckModuleEnabled` | Check Module Enabled | Module | `CheckModuleEnabled` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 414 | `/api/module/{moduleKey}/schema` | `GET` | `GetModuleSchemaUrl` | Get Module Schema URL | Module | `GetModuleSchemaUrl` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 415 | `/api/notification` | `GET` | `GetNotifications` | Get User Notifications | Notification | `GetNotifications` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 416 | `/api/notification/preferences/me` | `GET` | `GetCurrentUserNotificationPreferences` | Get Current User Notification Preferences | Notification | `GetCurrentUserNotificationPreferences` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 417 | `/api/notification/preferences/me` | `PUT` | `UpdateCurrentUserNotificationPreferences` | Update Current User Notification Preferences | Notification | `UpdateCurrentUserNotificationPreferences` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 418 | `/api/notification/preferences/me/mute` | `PUT` | `SetCurrentUserNotificationPreferenceMute` | Set Current User Notification Preference Mute | Notification | `SetCurrentUserNotificationPreferenceMute` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 419 | `/api/notification/read-all` | `POST` | `MarkAllNotificationsAsRead` | Mark All Notifications as Read | Notification | `MarkAllNotificationsAsRead` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 420 | `/api/notification/stream` | `GET` | `GetNotificationRefreshStream` | Stream Notification Refresh Hints | Notification | `GetNotificationRefreshStream` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 421 | `/api/notification/unread-count` | `GET` | `GetUnreadNotificationCount` | Get Unread Notification Count | Notification | `GetUnreadNotificationCount` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 422 | `/api/notification/web-push/config` | `GET` | `GetWebPushConfiguration` | Get Web Push public configuration | Notification | `GetWebPushConfiguration` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 423 | `/api/notification/web-push/subscription` | `GET` | `GetCurrentUserWebPushSubscription` | Get current user's Web Push subscription | Notification | `GetCurrentUserWebPushSubscription` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 424 | `/api/notification/web-push/subscriptions` | `POST` | `SubscribeCurrentUserWebPushSubscription` | Subscribe current user to Web Push | Notification | `SubscribeCurrentUserWebPushSubscription` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 425 | `/api/notification/web-push/subscriptions/{subscriptionId}` | `DELETE` | `UnsubscribeCurrentUserWebPushSubscription` | Unsubscribe current user's Web Push subscription | Notification | `UnsubscribeCurrentUserWebPushSubscription` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 426 | `/api/notification/{id}` | `GET` | `GetNotificationById` | Get Notification by ID | Notification | `GetNotificationById` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 427 | `/api/notification/{id}` | `DELETE` | `DeleteNotification` | Delete Notification | Notification | `DeleteNotification` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 428 | `/api/notification/{id}/archive` | `PATCH` | `ArchiveNotification` | Archive Notification | Notification | `ArchiveNotification` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 429 | `/api/notification/{id}/read` | `PATCH` | `MarkNotificationAsRead` | Mark Notification as Read | Notification | `MarkNotificationAsRead` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 430 | `/api/notification/{id}/snooze` | `PATCH` | `SnoozeNotification` | Snooze Notification | Notification | `SnoozeNotification` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 431 | `/api/organization` | `GET` | `GetOrganizations` | Get all Organizations | Organization | `GetOrganizations` | `Public` | no | _(none)_ | _(none)_ | `ListData` |
+| 432 | `/api/organization` | `POST` | `CreateOrganization` | Create Organization | Organization | `CreateOrganization` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 433 | `/api/organization/my` | `GET` | `GetMyOrganizations` | Get my Organizations | Organization | `GetMyOrganizations` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 434 | `/api/organization/{id}` | `GET` | `GetOrganizationById` | Get Organization Details | Organization | `GetOrganizationById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
+| 435 | `/api/organization/{id}` | `PATCH` | `UpdateOrganization` | Update Organization | Organization | `UpdateOrganization` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 436 | `/api/organization/{id}` | `DELETE` | `DeleteOrganization` | Delete Organization | Organization | `DeleteOrganization` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 437 | `/api/organization/{id}/approval-status` | `PUT` | `UpdateOrganizationApprovalStatus` | Update Organization Approval Status | Organization | `UpdateOrganizationApprovalStatus` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 438 | `/api/organization/{id}/notification-preferences` | `GET` | `GetOrganizationNotificationPreferences` | Get Organization Notification Preferences | Organization | `GetOrganizationNotificationPreferences` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 439 | `/api/organization/{id}/notification-preferences` | `PUT` | `UpdateOrganizationNotificationPreferences` | Update Organization Notification Preferences | Organization | `UpdateOrganizationNotificationPreferences` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 440 | `/api/organization/{id}/notification-preferences/mute` | `PUT` | `SetOrganizationNotificationPreferenceMute` | Set Organization Notification Preference Mute | Organization | `SetOrganizationNotificationPreferenceMute` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 441 | `/api/organizationmember` | `POST` | `AddOrganizationMember` | _(none)_ | OrganizationMember | `AddOrganizationMember` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 442 | `/api/organizationmember/invitations` | `GET` | `GetMyOrganizationInvitations` | _(none)_ | OrganizationMember | `GetMyOrganizationInvitations` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 443 | `/api/organizationmember/invitations/{id}/accept` | `POST` | `AcceptOrganizationInvitation` | _(none)_ | OrganizationMember | `AcceptOrganizationInvitation` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 444 | `/api/organizationmember/invitations/{id}/decline` | `POST` | `DeclineOrganizationInvitation` | _(none)_ | OrganizationMember | `DeclineOrganizationInvitation` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 445 | `/api/organizationmember/member/{id}` | `GET` | `GetOrganizationMemberById` | _(none)_ | OrganizationMember | `GetOrganizationMemberById` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 446 | `/api/organizationmember/role` | `PUT` | `UpdateOrganizationMemberRole` | _(none)_ | OrganizationMember | `UpdateOrganizationMemberRole` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 447 | `/api/organizationmember/{id}` | `DELETE` | `DeleteOrganizationMember` | _(none)_ | OrganizationMember | `DeleteOrganizationMember` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 448 | `/api/organizationmember/{organizationId}` | `GET` | `GetOrganizationMembersByOrganization` | _(none)_ | OrganizationMember | `GetOrganizationMembersByOrganization` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 449 | `/api/organizationposition` | `GET` | `GetOrganizationPositions` | Get all Organization Positions | OrganizationPosition | `GetOrganizationPositions` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
+| 450 | `/api/organizationposition/{id}` | `GET` | `GetOrganizationPositionById` | Get Organization Position by ID | OrganizationPosition | `GetOrganizationPositionById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
+| 451 | `/api/organizationreview` | `GET` | `GetOrganizationReviews` | _(none)_ | OrganizationReview | `GetOrganizationReviews` | `Public` | no | _(none)_ | _(none)_ | `ListData` |
+| 452 | `/api/organizationreview` | `POST` | `CreateOrganizationReview` | _(none)_ | OrganizationReview | `CreateOrganizationReview` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 453 | `/api/organizationreview/user/{userId}` | `GET` | `GetOrganizationReviewsByUser` | _(none)_ | OrganizationReview | `GetOrganizationReviewsByUser` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 454 | `/api/organizationreview/{organizationId}` | `GET` | `GetOrganizationReviewsByOrganization` | _(none)_ | OrganizationReview | `GetOrganizationReviewsByOrganization` | `Public` | no | _(none)_ | _(none)_ | `ListData` |
+| 455 | `/api/publicexperience/settings` | `GET` | `GetPublicExperienceSettings` | Get Public Experience Settings | PublicExperience | `GetPublicExperienceSettings` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 456 | `/api/publicexperience/shell` | `GET` | `GetPublicExperienceShell` | Get Public Experience Shell | PublicExperience | `GetPublicExperienceShell` | `Public` | no | _(none)_ | _(none)_ | `PublicExperienceShell` |
+| 457 | `/api/registrationmode` | `GET` | `GetRegistrationModes` | Get all Registration Modes | RegistrationMode | `GetRegistrationModes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
+| 458 | `/api/registrationmode/{id}` | `GET` | `GetRegistrationModeById` | Get Registration Mode by ID | RegistrationMode | `GetRegistrationModeById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
+| 459 | `/api/registrationscope` | `GET` | `GetRegistrationScopes` | Get all Registration Scopes | RegistrationScope | `GetRegistrationScopes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
+| 460 | `/api/role` | `GET` | `GetRoles` | Get all Roles | Role | `GetRoles` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
+| 461 | `/api/role/{id}` | `GET` | `GetRoleById` | Get Role by ID | Role | `GetRoleById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
+| 462 | `/api/scheduleitemkind` | `GET` | `GetScheduleItemKinds` | Get all Schedule Item Kinds | ScheduleItemKind | `GetScheduleItemKinds` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
+| 463 | `/api/settings/tenant/keys/{key}` | `PUT` | `UpdateTenantSetting` | Update Single Tenant Setting | Settings | `UpdateTenantSetting` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 464 | `/api/settings/tenant/keys/{key}/lock` | `POST` | `LockTenantSetting` | Lock Tenant Setting | Settings | `LockTenantSetting` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 465 | `/api/settings/tenant/keys/{key}/lock` | `DELETE` | `UnlockTenantSetting` | Unlock Tenant Setting | Settings | `UnlockTenantSetting` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 466 | `/api/settings/tenant/{category}` | `GET` | `GetTenantScopedSettings` | Get Tenant Settings | Settings | `GetTenantScopedSettings` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 467 | `/api/settings/tenant/{category}` | `PUT` | `UpdateTenantSettingsBatch` | Batch Update Tenant Settings | Settings | `UpdateTenantSettingsBatch` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 468 | `/api/settings/user/keys/{key}` | `PUT` | `UpdateUserSetting` | Update Single User Setting | Settings | `UpdateUserSetting` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 469 | `/api/settings/user/keys/{key}` | `DELETE` | `ResetUserSetting` | Reset User Setting | Settings | `ResetUserSetting` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 470 | `/api/settings/user/{category}` | `GET` | `GetUserSettings` | Get User Settings | Settings | `GetUserSettings` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 471 | `/api/settings/user/{category}` | `PUT` | `UpdateUserSettingsBatch` | Batch Update User Settings | Settings | `UpdateUserSettingsBatch` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 472 | `/api/storageobject` | `GET` | `GetStorageObjects` | Get all Storage Objects | StorageObject | `GetStorageObjects` | `Authenticated` | no | _(none)_ | _(none)_ | `ListData` |
+| 473 | `/api/storageobject` | `POST` | `CreateStorageObject` | Create Storage Object Record | StorageObject | `CreateStorageObject` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 474 | `/api/storageobject/generate-upload-url` | `POST` | `GenerateStorageObjectUploadUrl` | Generate Pre-signed Upload URL | StorageObject | `GenerateStorageObjectUploadUrl` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 475 | `/api/storageobject/upload-sessions` | `POST` | `CreateStorageUploadSession` | Create provider-neutral upload session | StorageObject | `CreateStorageUploadSession` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 476 | `/api/storageobject/upload-sessions/{uploadSessionId}` | `DELETE` | `CancelStorageUploadSession` | Cancel a provider-neutral upload session | StorageObject | `CancelStorageUploadSession` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 477 | `/api/storageobject/upload-sessions/{uploadSessionId}/content` | `PUT` | `UploadStorageUploadSessionContent` | Upload bytes for a reserved storage session | StorageObject | `UploadStorageUploadSessionContent` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 478 | `/api/storageobject/{id}` | `GET` | `GetStorageObjectById` | Get Storage Object by ID | StorageObject | `GetStorageObjectById` | `Authenticated` | no | _(none)_ | _(none)_ | `DetailData` |
+| 479 | `/api/storageobject/{id}` | `PUT` | `UpdateStorageObject` | Update Storage Object | StorageObject | `UpdateStorageObject` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 480 | `/api/storageobject/{id}` | `DELETE` | `DeleteStorageObject` | Delete Storage Object | StorageObject | `DeleteStorageObject` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 481 | `/api/storageobject/{id}/content` | `GET` | `GetStorageObjectContent` | Get Storage Object Content | StorageObject | `GetStorageObjectContent` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 482 | `/api/storageobject/{id}/presigned-url` | `GET` | `GetStorageObjectPresignedDownloadUrl` | Get Presigned Download URL | StorageObject | `GetStorageObjectPresignedDownloadUrl` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 483 | `/api/storageobject/{id}/public` | `GET` | `GetPublicStorageObjectImage` | Get Public Image | StorageObject | `GetPublicStorageObjectImage` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 484 | `/api/support-access/current` | `GET` | `GetCurrentSupportAccessSession` | Get current support-access session | SupportAccess | `GetCurrentSupportAccessSession` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 485 | `/api/support-access/sessions` | `POST` | `StartSupportAccessSession` | Start support-access session | SupportAccess | `StartSupportAccessSession` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 486 | `/api/support-access/sessions/{sessionId}/force-stop` | `POST` | `ForceStopSupportAccessSession` | Force-stop support-access session | SupportAccess | `ForceStopSupportAccessSession` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 487 | `/api/support-access/sessions/{sessionId}/stop` | `POST` | `StopSupportAccessSession` | Stop support-access session | SupportAccess | `StopSupportAccessSession` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 488 | `/api/support-access/tenants/{targetTenantId}/sessions` | `GET` | `ListSupportAccessSessions` | List support-access sessions | SupportAccess | `ListSupportAccessSessions` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 489 | `/api/support-access/tenants/{targetTenantId}/sessions/{sessionId}/audit-events` | `GET` | `GetSupportAccessAuditEvents` | Get support-access audit events | SupportAccess | `GetSupportAccessAuditEvents` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 490 | `/api/syncstate` | `GET` | `GetSyncStates` | _(none)_ | SyncState | `GetSyncStates` | `Authenticated` | no | _(none)_ | _(none)_ | `ListData` |
+| 491 | `/api/syncstate` | `POST` | `CreateSyncState` | _(none)_ | SyncState | `CreateSyncState` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 492 | `/api/syncstate/{id}` | `GET` | `GetSyncStateById` | _(none)_ | SyncState | `GetSyncStateById` | `Authenticated` | no | _(none)_ | _(none)_ | `DetailData` |
+| 493 | `/api/syncstate/{id}` | `PUT` | `UpdateSyncState` | _(none)_ | SyncState | `UpdateSyncState` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 494 | `/api/syncstate/{id}` | `DELETE` | `DeleteSyncState` | _(none)_ | SyncState | `DeleteSyncState` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 495 | `/api/system/onboarding-preflight` | `GET` | `GetSystemOnboardingPreflight` | Get System Onboarding Preflight | System | `GetSystemOnboardingPreflight` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 496 | `/api/system/onboarding-status` | `GET` | `GetSystemOnboardingStatus` | Get System Onboarding Status | System | `GetSystemOnboardingStatus` | `Public` | no | _(none)_ | _(none)_ | `SystemConfig` |
+| 497 | `/api/tag` | `GET` | `GetTags` | Get all Tags | Tag | `GetTags` | `Public` | no | _(none)_ | _(none)_ | `ListData` |
+| 498 | `/api/tag` | `POST` | `CreateTag` | Create Tag | Tag | `CreateTag` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 499 | `/api/tag/{id}` | `GET` | `GetTagById` | Get Tag Details | Tag | `GetTagById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
+| 500 | `/api/tag/{id}` | `PUT` | `UpdateTag` | Update Tag | Tag | `UpdateTag` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 501 | `/api/tag/{id}` | `DELETE` | `DeleteTag` | Delete Tag | Tag | `DeleteTag` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 502 | `/api/tagtype` | `GET` | `GetTagTypes` | _(none)_ | TagType | `GetTagTypes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
+| 503 | `/api/tagtype/with-tags` | `GET` | `GetTagTypesWithTags` | Get Tag Types with Tags | TagType | `GetTagTypesWithTags` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
+| 504 | `/api/tagtype/{id}` | `GET` | `GetTagTypeById` | _(none)_ | TagType | `GetTagTypeById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
+| 505 | `/api/tenant` | `GET` | `GetTenants` | Get all Tenants | Tenant | `GetTenants` | `Authenticated` | no | _(none)_ | _(none)_ | `ListData` |
+| 506 | `/api/tenant` | `POST` | `CreateTenant` | Create new Tenant | Tenant | `CreateTenant` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 507 | `/api/tenant-user-role-grants` | `GET` | `GetTenantUserRoleGrants` | Get all tenant user role grants | TenantUserRoleGrant | `GetTenantUserRoleGrants` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 508 | `/api/tenant-user-role-grants` | `POST` | `CreateTenantUserRoleGrant` | Create tenant user role grant | TenantUserRoleGrant | `CreateTenantUserRoleGrant` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 509 | `/api/tenant-user-role-grants/{id}` | `GET` | `GetTenantUserRoleGrantById` | Get tenant user role grant by ID | TenantUserRoleGrant | `GetTenantUserRoleGrantById` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 510 | `/api/tenant-user-role-grants/{id}` | `DELETE` | `RevokeTenantUserRoleGrant` | Revoke tenant user role grant | TenantUserRoleGrant | `RevokeTenantUserRoleGrant` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 511 | `/api/tenant/count` | `GET` | `GetActiveTenantCount` | Get Active Tenant Count | Tenant | `GetActiveTenantCount` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 512 | `/api/tenant/navigation` | `GET` | `GetTenantNavigationLinks` | Get Tenant Navigation Links | Tenant | `GetTenantNavigationLinks` | `Public` | no | _(none)_ | _(none)_ | `TenantNav` |
+| 513 | `/api/tenant/navigation` | `POST` | `CreateTenantNavigationLink` | Create Tenant Navigation Link | Tenant | `CreateTenantNavigationLink` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 514 | `/api/tenant/navigation/reorder` | `PUT` | `ReorderTenantNavigationLinks` | Reorder Tenant Navigation Links | Tenant | `ReorderTenantNavigationLinks` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 515 | `/api/tenant/navigation/{id}` | `PUT` | `UpdateTenantNavigationLink` | Update Tenant Navigation Link | Tenant | `UpdateTenantNavigationLink` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 516 | `/api/tenant/navigation/{id}` | `DELETE` | `DeleteTenantNavigationLink` | Delete Tenant Navigation Link | Tenant | `DeleteTenantNavigationLink` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 517 | `/api/tenant/settings/documents/branding` | `GET` | `GetTenantBrandingSettingsDocument` | Get Tenant Branding Settings Document | TenantSettingsDocuments | `GetTenantBrandingSettingsDocument` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 518 | `/api/tenant/settings/documents/branding` | `PUT` | `ReplaceTenantBrandingSettingsDocument` | Replace Tenant Branding Settings Document | TenantSettingsDocuments | `ReplaceTenantBrandingSettingsDocument` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 519 | `/api/tenant/settings/moderation-reporting/dashboard` | `GET` | `GetTenantModerationReportingDashboard` | Get Tenant Moderation Reporting Dashboard | TenantModerationReportingDashboard | `GetTenantModerationReportingDashboard` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 520 | `/api/tenant/settings/moderation-reporting/routing-state` | `GET` | `GetModerationReportingRoutingState` | Get Moderation Reporting Routing State | ModerationReportingRouting | `GetModerationReportingRoutingState` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 521 | `/api/tenant/settings/moderation-reporting/routing-state` | `PUT` | `UpdateModerationReportingRoutingSettings` | Update Moderation Reporting Routing Settings | ModerationReportingRouting | `UpdateModerationReportingRoutingSettings` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 522 | `/api/tenant/settings/moderation-reporting/routing-state/test/{provider}` | `POST` | `TestModerationReportingProvider` | Test Moderation Reporting Provider | ModerationReportingRouting | `TestModerationReportingProvider` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 523 | `/api/tenant/settings/storage` | `GET` | `GetTenantStorageSettings` | Get Tenant Storage Settings | TenantStorageSettings | `GetTenantStorageSettings` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 524 | `/api/tenant/settings/storage` | `PUT` | `UpdateTenantStorageSettings` | Update Tenant Storage Settings | TenantStorageSettings | `UpdateTenantStorageSettings` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 525 | `/api/tenant/{id}` | `GET` | `GetTenantById` | Get Tenant by ID | Tenant | `GetTenantById` | `Authenticated` | no | _(none)_ | _(none)_ | `DetailData` |
+| 526 | `/api/tenant/{id}` | `PUT` | `UpdateTenant` | Update Tenant | Tenant | `UpdateTenant` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 527 | `/api/tenant/{id}` | `DELETE` | `DeleteTenant` | Delete Tenant | Tenant | `DeleteTenant` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 528 | `/api/tenantonboarding/complete` | `POST` | `CompleteTenantOnboarding` | Complete Tenant Onboarding | TenantOnboarding | `CompleteTenantOnboarding` | `Authenticated` | no | `multi-tenant-required` | _(none)_ | _(none)_ |
+| 529 | `/api/tenantonboarding/settings` | `GET` | `GetTenantOnboardingPolicySettings` | Get Tenant Policy Settings | TenantOnboarding | `GetTenantOnboardingPolicySettings` | `Authenticated` | no | `multi-tenant-required` | _(none)_ | _(none)_ |
+| 530 | `/api/tenantonboarding/settings` | `PUT` | `UpdateTenantOnboardingPolicySettings` | Update Tenant Policy Settings | TenantOnboarding | `UpdateTenantOnboardingPolicySettings` | `Authenticated` | no | `multi-tenant-required` | _(none)_ | _(none)_ |
+| 531 | `/api/tenantonboarding/status` | `GET` | `GetTenantOnboardingStatus` | Get Tenant Onboarding Status | TenantOnboarding | `GetTenantOnboardingStatus` | `Authenticated` | no | `multi-tenant-required` | _(none)_ | _(none)_ |
+| 532 | `/api/tenantonboarding/steps` | `PUT` | `SaveTenantOnboardingStepProgress` | Save Tenant Onboarding Step Progress | TenantOnboarding | `SaveTenantOnboardingStepProgress` | `Authenticated` | no | `multi-tenant-required` | _(none)_ | _(none)_ |
+| 533 | `/api/translation/languages` | `GET` | `GetAvailableTranslationLanguages` | Get Available Languages | Translation | `GetAvailableTranslationLanguages` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 534 | `/api/translation/{languageCode}` | `GET` | `GetTranslationByLanguage` | Get Translations | Translation | `GetTranslationByLanguage` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 535 | `/api/user` | `GET` | `GetCurrentUser` | _(none)_ | User | `GetCurrentUser` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 536 | `/api/user` | `DELETE` | `DeleteCurrentUser` | _(none)_ | User | `DeleteCurrentUser` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 537 | `/api/user/active-tenant/{tenantId}` | `POST` | `UpdateUserLastActiveTenant` | Update user's last active tenant | User | `UpdateUserLastActiveTenant` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 538 | `/api/user/admin-authority` | `GET` | `GetCurrentUserAdminAuthority` | Get current user's admin authority | User | `GetCurrentUserAdminAuthority` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 539 | `/api/user/appearance` | `GET` | `GetCurrentUserAppearancePreferences` | Get Resolved Appearance | UserAppearance | `GetCurrentUserAppearancePreferences` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 540 | `/api/user/appearance` | `PUT` | `UpdateCurrentUserAppearancePreferences` | Update Appearance Preferences | UserAppearance | `UpdateCurrentUserAppearancePreferences` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 541 | `/api/user/appearance/active-profile` | `PUT` | `SetActiveAppearanceProfile` | Set Active Appearance Profile | UserAppearance | `SetActiveAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 542 | `/api/user/appearance/generate-palette` | `GET` | `GenerateAppearancePalette` | Generate Palette From Colors | UserAppearance | `GenerateAppearancePalette` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 543 | `/api/user/appearance/mode` | `PUT` | `SetAppearanceThemeMode` | Set Theme Mode | UserAppearance | `SetAppearanceThemeMode` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 544 | `/api/user/appearance/presets` | `GET` | `GetAvailableThemes` | Get Available Presets | UserAppearance | `GetAvailableThemes` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 545 | `/api/user/appearance/profiles` | `GET` | `GetUserAppearanceProfiles` | Get User Appearance Profiles | UserAppearance | `GetUserAppearanceProfiles` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 546 | `/api/user/appearance/profiles` | `POST` | `CreateCustomAppearanceProfile` | Create Custom Appearance Profile | UserAppearance | `CreateCustomAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 547 | `/api/user/appearance/profiles/from-preset/{presetId}` | `POST` | `ClonePresetToProfile` | Clone Preset Into User Profile | UserAppearance | `ClonePresetToProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 548 | `/api/user/appearance/profiles/{profileId}` | `PUT` | `UpdateAppearanceProfile` | Update User Appearance Profile | UserAppearance | `UpdateAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 549 | `/api/user/appearance/profiles/{profileId}/archive` | `PUT` | `ArchiveAppearanceProfile` | Archive User Appearance Profile | UserAppearance | `ArchiveAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 550 | `/api/user/appearance/profiles/{profileId}/duplicate` | `POST` | `DuplicateAppearanceProfile` | Duplicate User Appearance Profile | UserAppearance | `DuplicateAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 551 | `/api/user/sync` | `POST` | `SyncUser` | Sync user from identity provider | User | `SyncUser` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 552 | `/api/user/tenants/redirection` | `GET` | `ResolveUserTenantRedirection` | Resolve user tenant redirection | User | `ResolveUserTenantRedirection` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 553 | `/api/user/{id}` | `PATCH` | `UpdateCurrentUser` | _(none)_ | User | `UpdateCurrentUser` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 554 | `/api/user/{userId}/organizations` | `GET` | `GetUserOrganizations` | Get user's organizations | User | `GetUserOrganizations` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 555 | `/api/userauthenticationtoken` | `GET` | `GetUserAuthenticationTokens` | Get all User Authentication Tokens | UserAuthenticationToken | `GetUserAuthenticationTokens` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 556 | `/api/userauthenticationtoken` | `POST` | `CreateUserAuthenticationToken` | Create new User Authentication Token | UserAuthenticationToken | `CreateUserAuthenticationToken` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 557 | `/api/userauthenticationtoken/{id}` | `GET` | `GetUserAuthenticationTokenById` | Get User Authentication Token by ID | UserAuthenticationToken | `GetUserAuthenticationTokenById` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 558 | `/api/userauthenticationtoken/{id}` | `PUT` | `UpdateUserAuthenticationToken` | Update User Authentication Token | UserAuthenticationToken | `UpdateUserAuthenticationToken` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 559 | `/api/userauthenticationtoken/{id}` | `DELETE` | `DeleteUserAuthenticationToken` | Delete User Authentication Token | UserAuthenticationToken | `DeleteUserAuthenticationToken` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 560 | `/api/userexternallogin` | `GET` | `GetUserExternalLogins` | Get all User External Logins | UserExternalLogin | `GetUserExternalLogins` | `Authenticated` | no | _(none)_ | _(none)_ | `ListData` |
+| 561 | `/api/userexternallogin` | `POST` | `CreateUserExternalLogin` | Create new User External Login | UserExternalLogin | `CreateUserExternalLogin` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 562 | `/api/userexternallogin/{id}` | `GET` | `GetUserExternalLoginById` | Get User External Login by ID | UserExternalLogin | `GetUserExternalLoginById` | `Authenticated` | no | _(none)_ | _(none)_ | `DetailData` |
+| 563 | `/api/userexternallogin/{id}` | `PUT` | `UpdateUserExternalLogin` | Update User External Login | UserExternalLogin | `UpdateUserExternalLogin` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 564 | `/api/userexternallogin/{id}` | `DELETE` | `DeleteUserExternalLogin` | Delete User External Login | UserExternalLogin | `DeleteUserExternalLogin` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 565 | `/api/visibilitytype` | `GET` | `GetVisibilityTypes` | Get all Visibility Types | VisibilityType | `GetVisibilityTypes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
+| 566 | `/api/visibilitytype/{id}` | `GET` | `GetVisibilityTypeById` | Get Visibility Type by ID | VisibilityType | `GetVisibilityTypeById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
+| 567 | `/api/webhooks/consumers` | `GET` | `GetWebhookConsumers` | Get webhook consumers | Webhooks | `GetWebhookConsumers` | `Authenticated` | no | _(none)_ | `Authenticated` | `ListData` |
+| 568 | `/api/webhooks/consumers` | `POST` | `CreateWebhookConsumer` | Create webhook consumer | Webhooks | `CreateWebhookConsumer` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 569 | `/api/webhooks/consumers/{consumerId}` | `GET` | `GetWebhookConsumerById` | Get webhook consumer | Webhooks | `GetWebhookConsumerById` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 570 | `/api/webhooks/delivery-attempts` | `GET` | `GetWebhookDeliveryAttempts` | Get webhook delivery attempts | Webhooks | `GetWebhookDeliveryAttempts` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 571 | `/api/webhooks/delivery-attempts/{attemptId}` | `GET` | `GetWebhookDeliveryAttemptById` | Get webhook delivery attempt | Webhooks | `GetWebhookDeliveryAttemptById` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 572 | `/api/webhooks/delivery-attempts/{attemptId}/retry` | `POST` | `RetryWebhookDeliveryAttempt` | Retry webhook delivery attempt | Webhooks | `RetryWebhookDeliveryAttempt` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 573 | `/api/webhooks/endpoints` | `GET` | `GetWebhookEndpoints` | Get webhook endpoints | Webhooks | `GetWebhookEndpoints` | `Authenticated` | no | _(none)_ | `Authenticated` | `ListData` |
+| 574 | `/api/webhooks/endpoints` | `POST` | `CreateWebhookEndpoint` | Create webhook endpoint | Webhooks | `CreateWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 575 | `/api/webhooks/endpoints/{endpointId}` | `GET` | `GetWebhookEndpointById` | Get webhook endpoint | Webhooks | `GetWebhookEndpointById` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 576 | `/api/webhooks/endpoints/{endpointId}` | `PUT` | `UpdateWebhookEndpoint` | Update webhook endpoint | Webhooks | `UpdateWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 577 | `/api/webhooks/endpoints/{endpointId}` | `DELETE` | `DeleteWebhookEndpoint` | Delete webhook endpoint | Webhooks | `DeleteWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 578 | `/api/webhooks/endpoints/{endpointId}/rotate-secret` | `POST` | `RotateWebhookEndpointSecret` | Rotate webhook endpoint secret | Webhooks | `RotateWebhookEndpointSecret` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 579 | `/api/webhooks/endpoints/{endpointId}/test` | `POST` | `TestWebhookEndpoint` | Test webhook endpoint | Webhooks | `TestWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 580 | `/api/webhooks/event-types` | `GET` | `GetWebhookEventTypes` | Get webhook event types | Webhooks | `GetWebhookEventTypes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
+| 581 | `/api/webhooks/messages` | `GET` | `GetWebhookMessages` | Get webhook messages | Webhooks | `GetWebhookMessages` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 582 | `/api/webhooks/messages/{messageId}` | `GET` | `GetWebhookMessageById` | Get webhook message | Webhooks | `GetWebhookMessageById` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 583 | `/api/webhooks/svix/app-portal` | `POST` | `OpenSvixAppPortal` | Open Svix App Portal | Webhooks | `OpenSvixAppPortal` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 584 | `/sitemap.xml` | `GET` | `GetSitemap` | Get XML sitemap | Sitemap | `GetSitemap` | `Public` | no | _(none)_ | _(none)_ | `SitemapData` |
+| 585 | `/vapid-public-key` | `GET` | `GetVapidPublicKey` | Get VAPID public key | Notification | `GetVapidPublicKey` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
 
 ## Columns
 

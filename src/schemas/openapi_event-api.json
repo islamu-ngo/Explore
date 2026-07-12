@@ -29798,21 +29798,35 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/InstanceOnboardingStatusDto"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/InstanceOnboardingStatusDto"
+                  "$ref": "#/components/schemas/HalResourceOfInstanceOnboardingStatusDto"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/InstanceOnboardingStatusDto"
+                  "$ref": "#/components/schemas/HalResourceOfInstanceOnboardingStatusDto"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -37569,6 +37583,1446 @@
           }
         },
         "x-endpoint-class": "Admin"
+      }
+    },
+    "/api/management/capabilities": {
+      "get": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "Get managed-mode capabilities",
+        "description": "Returns the bounded Event management contract only when optional managed mode is enabled.",
+        "operationId": "GetManagementCapabilities",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementCapabilitiesDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementCapabilitiesDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementCapabilitiesDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [ ],
+        "x-endpoint-class": "Public"
+      }
+    },
+    "/api/management/registration": {
+      "post": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "Trigger managed registration",
+        "description": "Retries the same durable Event-to-Control-Plane registration attempt for an instance administrator.",
+        "operationId": "TriggerManagementRegistration",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriggerManagedRegistrationResult"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriggerManagedRegistrationResult"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriggerManagedRegistrationResult"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriggerManagedRegistrationResult"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriggerManagedRegistrationResult"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriggerManagedRegistrationResult"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/management/instance": {
+      "get": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "Get managed Event instance",
+        "description": "Returns Event-owned instance identity, deployment mode, version, and trust freshness.",
+        "operationId": "GetManagedEventInstance",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedEventInstanceStatusDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedEventInstanceStatusDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedEventInstanceStatusDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ManagedControlPlane": [ ]
+          }
+        ],
+        "x-endpoint-class": "Admin"
+      }
+    },
+    "/api/management/version": {
+      "get": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "Get Event management version",
+        "operationId": "GetManagementVersion",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementVersionDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementVersionDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementVersionDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ManagedControlPlane": [ ]
+          }
+        ],
+        "x-endpoint-class": "Admin"
+      }
+    },
+    "/api/management/health": {
+      "get": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "Get aggregate Event health",
+        "operationId": "GetManagementHealth",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementHealthDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementHealthDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementHealthDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ManagedControlPlane": [ ]
+          }
+        ],
+        "x-endpoint-class": "Admin"
+      }
+    },
+    "/api/management/upgrade/preflight": {
+      "post": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "Evaluate Event upgrade preflight",
+        "description": "Returns bounded blockers for an externally executed Event upgrade without mutating Event state.",
+        "operationId": "EvaluateManagementUpgradePreflight",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementUpgradePreflightRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementUpgradePreflightRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementUpgradePreflightRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementUpgradePreflightDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementUpgradePreflightDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementUpgradePreflightDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ManagedControlPlane": [ ]
+          }
+        ],
+        "x-endpoint-class": "Admin"
+      }
+    },
+    "/api/management/upgrade/postflight": {
+      "post": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "Verify Event upgrade postflight",
+        "description": "Verifies bounded runtime, contract, registration, mode, and health evidence after an external upgrade.",
+        "operationId": "VerifyManagementUpgradePostflight",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementUpgradePostflightRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementUpgradePostflightRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementUpgradePostflightRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementUpgradePostflightDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementUpgradePostflightDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementUpgradePostflightDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ManagedControlPlane": [ ]
+          }
+        ],
+        "x-endpoint-class": "Admin"
+      }
+    },
+    "/api/management/tenants/preflight": {
+      "post": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "Evaluate managed tenant provisioning preflight",
+        "description": "Returns a provisional Event-owned policy assessment without creating operations or mutating tenant state.",
+        "operationId": "EvaluateManagedTenantProvisioningPreflight",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementTenantProvisioningRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementTenantProvisioningRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementTenantProvisioningRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementTenantProvisioningPreflightDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementTenantProvisioningPreflightDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementTenantProvisioningPreflightDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ManagedControlPlane": [ ]
+          }
+        ],
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "Authenticated"
+      }
+    },
+    "/api/management/tenants/provision": {
+      "post": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "Schedule managed tenant provisioning",
+        "description": "Validates and durably schedules Event-owned tenant creation without calling infrastructure providers.",
+        "operationId": "ScheduleManagedTenantProvisioning",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementTenantProvisioningRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementTenantProvisioningRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementTenantProvisioningRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementTenantProvisioningOperationDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementTenantProvisioningOperationDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementTenantProvisioningOperationDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ManagedControlPlane": [ ]
+          }
+        ],
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/management/tenant-provisioning/{operationId}": {
+      "get": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "Get managed tenant provisioning status",
+        "description": "Returns safe Event-owned operation state and result references for the authenticated managed instance.",
+        "operationId": "GetManagedTenantProvisioningOperation",
+        "parameters": [
+          {
+            "name": "operationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementTenantProvisioningOperationDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementTenantProvisioningOperationDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementTenantProvisioningOperationDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ManagedControlPlane": [ ]
+          }
+        ],
+        "x-endpoint-class": "Admin"
+      }
+    },
+    "/api/management/tenant-provisioning/{operationId}/cancel": {
+      "post": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "Cancel managed tenant provisioning",
+        "description": "Cancels a pending operation before any tenant mutation begins.",
+        "operationId": "CancelManagedTenantProvisioningOperation",
+        "parameters": [
+          {
+            "name": "operationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementTenantProvisioningOperationDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementTenantProvisioningOperationDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementTenantProvisioningOperationDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ManagedControlPlane": [ ]
+          }
+        ],
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/management/credentials/rotate": {
+      "post": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "Rotate Control Plane credential",
+        "description": "Replaces the inbound Control Plane key id and hash without receiving its raw secret.",
+        "operationId": "RotateManagedControlPlaneCredential",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/RotateManagedControlPlaneCredentialRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/RotateManagedControlPlaneCredentialRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/RotateManagedControlPlaneCredentialRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ManagedControlPlane": [ ]
+          }
+        ],
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/management/credentials": {
+      "delete": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "Revoke managed Control Plane trust",
+        "operationId": "RevokeManagedControlPlaneRegistration",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ManagedControlPlane": [ ]
+          }
+        ],
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "Write"
       }
     },
     "/api/integrations/moderation/osprey/callback": {
@@ -48509,21 +49963,69 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantOnboardingStatusDto"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/TenantOnboardingStatusDto"
+                  "$ref": "#/components/schemas/HalResourceOfTenantOnboardingStatusDto"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/TenantOnboardingStatusDto"
+                  "$ref": "#/components/schemas/HalResourceOfTenantOnboardingStatusDto"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -79148,6 +80650,62 @@
           }
         }
       },
+      "HalResourceOfInstanceOnboardingStatusDto": {
+        "type": "object",
+        "properties": {
+          "isCompleted": {
+            "type": "boolean"
+          },
+          "isAuthenticated": {
+            "type": "boolean"
+          },
+          "isCurrentUserInstanceAdmin": {
+            "type": "boolean"
+          },
+          "selectedDeploymentMode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isSetupModeActive": {
+            "type": "boolean"
+          },
+          "setupSecretFromEnvironment": {
+            "type": "boolean"
+          },
+          "setupTimedOut": {
+            "type": "boolean"
+          },
+          "instanceStartedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "setupSecretState": {
+            "type": "string"
+          },
+          "setupSecretGuidance": {
+            "type": "string"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
       "HalResourceOfInstanceStorageSettingsDto": {
         "type": "object",
         "properties": {
@@ -82432,6 +83990,71 @@
           }
         }
       },
+      "HalResourceOfTenantOnboardingStatusDto": {
+        "type": "object",
+        "properties": {
+          "isCompleted": {
+            "type": "boolean"
+          },
+          "isAuthenticated": {
+            "type": "boolean"
+          },
+          "isCurrentUserTenantAdministrator": {
+            "type": "boolean"
+          },
+          "isCurrentUserPlatformAdministrator": {
+            "type": "boolean"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "currentStep": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalSteps": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "completedSteps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "progressPercentage": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
       "HalResourceOfTenantStorageSettingsDto": {
         "type": "object",
         "properties": {
@@ -84905,6 +86528,57 @@
           }
         }
       },
+      "ManagedEventInstanceStatusDto": {
+        "required": [
+          "managedInstanceId",
+          "eventInstanceId",
+          "deploymentMode",
+          "eventVersion",
+          "managementApiVersion",
+          "registrationState",
+          "registeredAt",
+          "eventToControlPlaneCredentialExpiresAt",
+          "controlPlaneToEventCredentialExpiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "managedInstanceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventInstanceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deploymentMode": {
+            "$ref": "#/components/schemas/DeploymentMode"
+          },
+          "eventVersion": {
+            "type": "string"
+          },
+          "managementApiVersion": {
+            "type": "string"
+          },
+          "registrationState": {
+            "type": "string"
+          },
+          "registeredAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "eventToControlPlaneCredentialExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "controlPlaneToEventCredentialExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "ManagedProviderClientProvisioningDto": {
         "required": [
           "providerKey",
@@ -85010,6 +86684,13 @@
               "string"
             ],
             "format": "uuid"
+          },
+          "tenantPlanAssignmentId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -85109,6 +86790,902 @@
           "Group"
         ],
         "type": "string"
+      },
+      "ManagementCapabilitiesDto": {
+        "required": [
+          "managedModeEnabled",
+          "managementApiVersion",
+          "eventVersion",
+          "deploymentMode",
+          "eventInstanceId",
+          "registrationState",
+          "capabilities",
+          "tenantProvisioningCapacity"
+        ],
+        "type": "object",
+        "properties": {
+          "managedModeEnabled": {
+            "type": "boolean"
+          },
+          "managementApiVersion": {
+            "type": "string"
+          },
+          "eventVersion": {
+            "type": "string"
+          },
+          "deploymentMode": {
+            "$ref": "#/components/schemas/DeploymentMode"
+          },
+          "eventInstanceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "registrationState": {
+            "type": "string"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tenantProvisioningCapacity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ManagementTenantProvisioningCapacityDto"
+              }
+            ]
+          }
+        }
+      },
+      "ManagementHealthDto": {
+        "required": [
+          "status",
+          "observedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ManagementTenantAdministratorDto": {
+        "type": "object",
+        "properties": {
+          "externalIdentity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ManagementTenantExternalIdentityDto"
+              }
+            ]
+          },
+          "invitation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ManagementTenantAdministratorInvitationDto"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManagementTenantAdministratorInvitationDto": {
+        "required": [
+          "email",
+          "firstName",
+          "lastName"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManagementTenantBrandingIntentDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "logoUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "faviconUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customCssUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManagementTenantCallbackMetadataDto": {
+        "type": "object",
+        "properties": {
+          "correlationId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "callbackReference": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManagementTenantDomainIntentDto": {
+        "type": "object",
+        "properties": {
+          "subdomain": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customDomain": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManagementTenantExternalIdentityDto": {
+        "required": [
+          "identityProvider",
+          "subject",
+          "email",
+          "firstName",
+          "lastName"
+        ],
+        "type": "object",
+        "properties": {
+          "identityProvider": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "emailVerified": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManagementTenantInitialSettingDto": {
+        "required": [
+          "key",
+          "jsonValue"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "jsonValue": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManagementTenantPlanDto": {
+        "required": [
+          "key"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "versionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quotas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagementTenantQuotaDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManagementTenantProvisioningBlockerDto": {
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManagementTenantProvisioningCapacityDto": {
+        "required": [
+          "maximumTenants",
+          "activeTenants",
+          "reservedOperations",
+          "availableSlots",
+          "provisioningAvailable",
+          "blockerCode"
+        ],
+        "type": "object",
+        "properties": {
+          "maximumTenants": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "activeTenants": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "reservedOperations": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "availableSlots": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "provisioningAvailable": {
+            "type": "boolean"
+          },
+          "blockerCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManagementTenantProvisioningOperationDto": {
+        "required": [
+          "operationId",
+          "externalRequestId",
+          "externalCustomerReference",
+          "tenantSlug",
+          "status",
+          "tenantId",
+          "tenantAdministratorUserId",
+          "failureCode",
+          "correlationId",
+          "canCancel",
+          "createdAt",
+          "startedAt",
+          "completedAt",
+          "failedAt",
+          "cancelledAt"
+        ],
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "externalRequestId": {
+            "type": "string"
+          },
+          "externalCustomerReference": {
+            "type": "string"
+          },
+          "tenantSlug": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "tenantAdministratorUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "failureCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "correlationId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "canCancel": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "failedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "cancelledAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "ManagementTenantProvisioningPreflightDto": {
+        "required": [
+          "schemaVersion",
+          "managementApiVersion",
+          "eventVersion",
+          "managedInstanceId",
+          "eventInstanceId",
+          "registrationState",
+          "deploymentMode",
+          "normalizedRequestHash",
+          "tenantSlug",
+          "ready",
+          "requiresSchedulingRevalidation",
+          "blockers",
+          "capacity",
+          "resolvedPlan",
+          "acceptedModules",
+          "acceptedDomain",
+          "acceptedBranding",
+          "acceptedSettings",
+          "correlationId",
+          "assessedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "managementApiVersion": {
+            "type": "string"
+          },
+          "eventVersion": {
+            "type": "string"
+          },
+          "managedInstanceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventInstanceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "registrationState": {
+            "type": "string"
+          },
+          "deploymentMode": {
+            "$ref": "#/components/schemas/DeploymentMode"
+          },
+          "normalizedRequestHash": {
+            "type": "string"
+          },
+          "tenantSlug": {
+            "type": "string"
+          },
+          "ready": {
+            "type": "boolean"
+          },
+          "requiresSchedulingRevalidation": {
+            "type": "boolean"
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagementTenantProvisioningBlockerDto"
+            }
+          },
+          "capacity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ManagementTenantProvisioningCapacityDto"
+              }
+            ]
+          },
+          "resolvedPlan": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ManagementTenantPlanDto"
+              }
+            ]
+          },
+          "acceptedModules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "acceptedDomain": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ManagementTenantDomainIntentDto"
+              }
+            ]
+          },
+          "acceptedBranding": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ManagementTenantBrandingIntentDto"
+              }
+            ]
+          },
+          "acceptedSettings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagementTenantResolvedSettingDto"
+            }
+          },
+          "correlationId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "assessedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManagementTenantProvisioningRequest": {
+        "required": [
+          "externalRequestId",
+          "externalCustomerReference",
+          "tenantName",
+          "tenantSlug",
+          "administrator",
+          "plan"
+        ],
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "externalRequestId": {
+            "type": "string"
+          },
+          "externalCustomerReference": {
+            "type": "string"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "tenantSlug": {
+            "type": "string"
+          },
+          "administrator": {
+            "$ref": "#/components/schemas/ManagementTenantAdministratorDto"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/ManagementTenantPlanDto"
+          },
+          "approvedModules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "domain": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ManagementTenantDomainIntentDto"
+              }
+            ]
+          },
+          "branding": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ManagementTenantBrandingIntentDto"
+              }
+            ]
+          },
+          "initialSettings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagementTenantInitialSettingDto"
+            }
+          },
+          "callback": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ManagementTenantCallbackMetadataDto"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManagementTenantQuotaDto": {
+        "required": [
+          "key",
+          "limit"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "limit": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManagementTenantResolvedSettingDto": {
+        "required": [
+          "key",
+          "jsonValue",
+          "isLocked"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "jsonValue": {
+            "type": "string"
+          },
+          "isLocked": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManagementUpgradeBlockerDto": {
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ManagementUpgradePostflightDto": {
+        "required": [
+          "managedInstanceId",
+          "eventInstanceId",
+          "deploymentMode",
+          "currentEventVersion",
+          "expectedEventVersion",
+          "currentManagementApiVersion",
+          "expectedManagementApiVersion",
+          "registrationState",
+          "healthStatus",
+          "verified",
+          "blockers",
+          "observedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "managedInstanceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "eventInstanceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "deploymentMode": {
+            "$ref": "#/components/schemas/DeploymentMode"
+          },
+          "currentEventVersion": {
+            "type": "string"
+          },
+          "expectedEventVersion": {
+            "type": "string"
+          },
+          "currentManagementApiVersion": {
+            "type": "string"
+          },
+          "expectedManagementApiVersion": {
+            "type": "string"
+          },
+          "registrationState": {
+            "type": "string"
+          },
+          "healthStatus": {
+            "type": "string"
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagementUpgradeBlockerDto"
+            }
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ManagementUpgradePostflightRequest": {
+        "required": [
+          "expectedEventVersion",
+          "expectedManagementApiVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "expectedEventVersion": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "expectedManagementApiVersion": {
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "ManagementUpgradePreflightDto": {
+        "required": [
+          "managedInstanceId",
+          "eventInstanceId",
+          "deploymentMode",
+          "currentEventVersion",
+          "targetEventVersion",
+          "currentManagementApiVersion",
+          "targetManagementApiVersion",
+          "registrationState",
+          "healthStatus",
+          "ready",
+          "blockers",
+          "observedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "managedInstanceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "eventInstanceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "deploymentMode": {
+            "$ref": "#/components/schemas/DeploymentMode"
+          },
+          "currentEventVersion": {
+            "type": "string"
+          },
+          "targetEventVersion": {
+            "type": "string"
+          },
+          "currentManagementApiVersion": {
+            "type": "string"
+          },
+          "targetManagementApiVersion": {
+            "type": "string"
+          },
+          "registrationState": {
+            "type": "string"
+          },
+          "healthStatus": {
+            "type": "string"
+          },
+          "ready": {
+            "type": "boolean"
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagementUpgradeBlockerDto"
+            }
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ManagementUpgradePreflightRequest": {
+        "required": [
+          "targetEventVersion",
+          "targetManagementApiVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "targetEventVersion": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "targetManagementApiVersion": {
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "ManagementVersionDto": {
+        "required": [
+          "eventVersion",
+          "managementApiVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "eventVersion": {
+            "type": "string"
+          },
+          "managementApiVersion": {
+            "type": "string"
+          }
+        }
       },
       "McpGovernanceSettingsDto": {
         "type": "object",
@@ -89550,6 +92127,26 @@
           }
         }
       },
+      "RotateManagedControlPlaneCredentialRequest": {
+        "required": [
+          "keyId",
+          "secretHash",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "keyId": {
+            "type": "string"
+          },
+          "secretHash": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "RotateWebhookEndpointSecretRequestDto": {
         "required": [
           "newSecretRef"
@@ -92509,6 +95106,36 @@
           },
           "priority": {
             "$ref": "#/components/schemas/EventReportPriority"
+          }
+        }
+      },
+      "TriggerManagedRegistrationResult": {
+        "required": [
+          "success",
+          "state",
+          "failureCode",
+          "registrationAttemptId"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "state": {
+            "type": "string"
+          },
+          "failureCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "registrationAttemptId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -97935,6 +100562,14 @@
           }
         }
       }
+    },
+    "securitySchemes": {
+      "ManagedControlPlane": {
+        "type": "apiKey",
+        "description": "Directional managed Control Plane credential.",
+        "name": "X-Control-Plane-Key",
+        "in": "header"
+      }
     }
   },
   "tags": [
@@ -98129,6 +100764,9 @@
     },
     {
       "name": "ManagedProviderProvisioning"
+    },
+    {
+      "name": "Management"
     },
     {
       "name": "ModerationIntegration"
