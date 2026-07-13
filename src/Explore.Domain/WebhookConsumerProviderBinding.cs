@@ -1,24 +1,45 @@
 // ABOUTME: Immutable instance-to-consumer application binding for one outgoing webhook provider.
 // ABOUTME: Requires verified tenant ownership and governed typed capabilities before granting provider authority.
 
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
 public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEntity
 {
+    private const int MaxIdentityLength = 500;
+
     public Guid Id { get; private set; }
     public Guid TenantId { get; set; }
     public Tenant Tenant { get; private set; } = null!;
     public Guid WebhookConsumerId { get; private set; }
     public WebhookConsumer WebhookConsumer { get; private set; } = null!;
     public Guid InstanceId { get; private set; }
-    public WebhookProviderKind ProviderKind { get; private set; }
+    public int ProviderKindId { get; private set; }
+    public WebhookProviderKindLookup ProviderKindLookup { get; private set; } = null!;
+    [NotMapped]
+    public WebhookProviderKind ProviderKind
+    {
+        get => (WebhookProviderKind)ProviderKindId;
+        private set => ProviderKindId = (int)value;
+    }
     public string ProviderVersion { get; private set; } = string.Empty;
     public string ProviderEnvironment { get; private set; } = string.Empty;
+    public string NormalizedEnvironment { get; private set; } = string.Empty;
     public string ApplicationUid { get; private set; } = string.Empty;
+    public string NormalizedApplicationUid { get; private set; } = string.Empty;
     public string? ExternalApplicationId { get; private set; }
-    public WebhookProviderBindingVerificationState VerificationState { get; private set; }
+    public string? NormalizedExternalApplicationId { get; private set; }
+    public int VerificationStateId { get; private set; }
+    public WebhookProviderBindingVerificationStateLookup VerificationStateLookup { get; private set; } = null!;
+    [NotMapped]
+    public WebhookProviderBindingVerificationState VerificationState
+    {
+        get => (WebhookProviderBindingVerificationState)VerificationStateId;
+        private set => VerificationStateId = (int)value;
+    }
     public Guid? VerifiedTenantId { get; private set; }
     public Guid? VerifiedWebhookConsumerId { get; private set; }
     public DateTimeOffset? VerifiedAtUtc { get; private set; }
@@ -27,6 +48,8 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
     public string CapabilityResolutionVersion { get; private set; } = string.Empty;
     public DateTimeOffset CapabilitiesResolvedAtUtc { get; private set; }
     public bool IsEnabled { get; private set; }
+    public long ConcurrencyVersion { get; private set; }
+    public long VerificationFence { get; private set; }
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
@@ -121,11 +144,13 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
         ExternalApplicationId = WebhookProviderCapabilityProfile.NormalizeRequired(
             externalApplicationId,
             nameof(externalApplicationId));
+        NormalizedExternalApplicationId = NormalizeIdentity(ExternalApplicationId, nameof(externalApplicationId));
         VerifiedTenantId = verifiedTenantId;
         VerifiedWebhookConsumerId = verifiedWebhookConsumerId;
         VerifiedAtUtc = verifiedAtUtc;
         VerificationState = WebhookProviderBindingVerificationState.Verified;
         IsEnabled = true;
+        AdvanceVerificationGuard();
     }
 
     public void RejectVerification()
@@ -139,6 +164,7 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
 
         VerificationState = WebhookProviderBindingVerificationState.Rejected;
         IsEnabled = false;
+        AdvanceVerificationGuard();
     }
 
     public void Revoke()
@@ -150,6 +176,7 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
 
         VerificationState = WebhookProviderBindingVerificationState.Revoked;
         IsEnabled = false;
+        AdvanceVerificationGuard();
     }
 
     public void ReplaceCapabilityResolution(
@@ -178,6 +205,7 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
     public void Disable()
     {
         IsEnabled = false;
+        AdvanceVerificationGuard();
     }
 
     public void Enable()
@@ -188,6 +216,7 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
         }
 
         IsEnabled = true;
+        AdvanceVerificationGuard();
     }
 
     public static string CreateApplicationUid(Guid instanceId, Guid webhookConsumerId)
@@ -195,6 +224,18 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
         EnsureRequired(instanceId, nameof(instanceId));
         EnsureRequired(webhookConsumerId, nameof(webhookConsumerId));
         return $"islamu-{instanceId:N}-consumer-{webhookConsumerId:N}";
+    }
+
+    public static string NormalizeIdentity(string value, string parameterName)
+    {
+        var normalized = WebhookProviderCapabilityProfile.NormalizeRequired(value, parameterName)
+            .Normalize(NormalizationForm.FormKC);
+        if (normalized.Length > MaxIdentityLength)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, $"Value cannot exceed {MaxIdentityLength} characters.");
+        }
+
+        return normalized.ToUpperInvariant();
     }
 
     private static WebhookConsumerProviderBinding Create(
@@ -215,6 +256,11 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
             governanceAllowedCapabilities,
             nameof(governanceAllowedCapabilities));
 
+        var normalizedEnvironment = WebhookProviderCapabilityProfile.NormalizeRequired(
+            providerEnvironment,
+            nameof(providerEnvironment));
+        var applicationUid = CreateApplicationUid(instanceId, webhookConsumerId);
+
         return new WebhookConsumerProviderBinding
         {
             Id = Guid.CreateVersion7(),
@@ -223,18 +269,32 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
             InstanceId = instanceId,
             ProviderKind = capabilityProfile.ProviderKind,
             ProviderVersion = capabilityProfile.ProviderVersion,
-            ProviderEnvironment = WebhookProviderCapabilityProfile.NormalizeRequired(
-                providerEnvironment,
-                nameof(providerEnvironment)),
-            ApplicationUid = CreateApplicationUid(instanceId, webhookConsumerId),
+            ProviderEnvironment = normalizedEnvironment,
+            NormalizedEnvironment = NormalizeIdentity(normalizedEnvironment, nameof(providerEnvironment)),
+            ApplicationUid = applicationUid,
+            NormalizedApplicationUid = NormalizeIdentity(applicationUid, nameof(applicationUid)),
             ExternalApplicationId = externalApplicationId,
+            NormalizedExternalApplicationId = externalApplicationId is null
+                ? null
+                : NormalizeIdentity(externalApplicationId, nameof(externalApplicationId)),
             VerificationState = verificationState,
             Capabilities = capabilityProfile.Capabilities,
             GovernanceAllowedCapabilities = governanceAllowedCapabilities,
             CapabilityResolutionVersion = capabilityProfile.ResolutionVersion,
             CapabilitiesResolvedAtUtc = capabilityProfile.ResolvedAtUtc,
-            IsEnabled = false
+            IsEnabled = false,
+            ConcurrencyVersion = 1,
+            VerificationFence = 1
         };
+    }
+
+    private void AdvanceVerificationGuard()
+    {
+        checked
+        {
+            ConcurrencyVersion++;
+            VerificationFence++;
+        }
     }
 
     private static void EnsureRequired(Guid value, string parameterName)
@@ -244,13 +304,4 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
             throw new ArgumentException("Identifier is required.", parameterName);
         }
     }
-}
-
-public enum WebhookProviderBindingVerificationState
-{
-    LegacyUnverified = 1,
-    Pending = 2,
-    Verified = 3,
-    Rejected = 4,
-    Revoked = 5
 }

@@ -85,7 +85,6 @@ public sealed class DefaultWebhookEventPublisher(
 
         var failureCategory = providerResult.FailureCategory ?? "webhook_provider_failed";
         metrics.RecordWebhookProviderPublishFailure(
-            message.TenantId.ToString("D"),
             message.EventType,
             providerName,
             failureCategory);
@@ -121,6 +120,9 @@ public sealed class DefaultWebhookEventPublisher(
             context.AggregateId,
             context.ConsumerId,
             payload.PayloadBytes!,
+            "application/json",
+            "utf-8",
+            context.OccurredAt.UtcDateTime,
             payload.PayloadRetentionUntil!.Value.UtcDateTime,
             DateTime.UtcNow);
 
@@ -131,7 +133,6 @@ public sealed class DefaultWebhookEventPublisher(
 
         var created = await messageRepository.CreateAsync(message, cancellationToken);
         metrics.RecordWebhookMessageCreated(
-            context.TenantId.ToString("D"),
             context.EventType,
             providerName,
             "created");

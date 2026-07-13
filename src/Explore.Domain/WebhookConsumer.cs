@@ -1,6 +1,7 @@
 // ABOUTME: Tenant-scoped webhook consumer that owns endpoint subscriptions and provider mapping state.
 // ABOUTME: Represents a tenant, organization, group, user, or system integration receiving outgoing webhooks.
 
+using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
@@ -16,10 +17,31 @@ public class WebhookConsumer : ITenantEntity, IAuditableEntity
     public Guid? OwnerUserId { get; set; }
     public User? OwnerUser { get; set; }
 
-    public WebhookConsumerKind ConsumerKind { get; set; }
+    public int ConsumerKindId { get; set; }
+    public WebhookConsumerKindLookup ConsumerKindLookup { get; set; } = null!;
+    [NotMapped]
+    public WebhookConsumerKind ConsumerKind
+    {
+        get => (WebhookConsumerKind)ConsumerKindId;
+        set => ConsumerKindId = (int)value;
+    }
     public required string Name { get; set; }
-    public WebhookConsumerStatus Status { get; set; }
-    public WebhookProviderMode ProviderMode { get; set; }
+    public int StatusId { get; set; }
+    public WebhookConsumerStatusLookup StatusLookup { get; set; } = null!;
+    [NotMapped]
+    public WebhookConsumerStatus Status
+    {
+        get => (WebhookConsumerStatus)StatusId;
+        set => StatusId = (int)value;
+    }
+    public int ProviderModeId { get; set; }
+    public WebhookProviderModeLookup ProviderModeLookup { get; set; } = null!;
+    [NotMapped]
+    public WebhookProviderMode ProviderMode
+    {
+        get => (WebhookProviderMode)ProviderModeId;
+        set => ProviderModeId = (int)value;
+    }
     public string? ExternalProviderAppId { get; set; }
 
     public ICollection<WebhookConsumerProviderBinding> ProviderBindings { get; private set; } = [];
@@ -40,29 +62,4 @@ public class WebhookConsumer : ITenantEntity, IAuditableEntity
 
         return matchingBindings.Length == 1 ? matchingBindings[0] : null;
     }
-}
-
-public enum WebhookConsumerKind
-{
-    Tenant = 1,
-    Organization = 2,
-    Group = 3,
-    User = 4,
-    SystemIntegration = 5
-}
-
-public enum WebhookConsumerStatus
-{
-    Active = 1,
-    Disabled = 2,
-    Archived = 3
-}
-
-public enum WebhookProviderMode
-{
-    Disabled = 1,
-    Local = 2,
-    Svix = 3,
-    Composite = 4,
-    DryRun = 5
 }

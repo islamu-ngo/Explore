@@ -166,7 +166,7 @@ public sealed class WebhooksControllerTests
     [Test]
     [Arguments("Svix", "Svix")]
     [Arguments("Composite", "Composite")]
-    public async Task ConsumerDetailLinks_WhenSvixPortalEnabled_ExposeOpenPortalAuthorizationMetadata(
+    public async Task ConsumerDetailLinks_BeforePersistedPortalAuthority_HideOpenPortalAffordance(
         string consumerProviderMode,
         string configuredProviderMode)
     {
@@ -176,10 +176,8 @@ public sealed class WebhooksControllerTests
             .GetLinks(consumer, new ClaimsPrincipal(new ClaimsIdentity("test")))
             .ToList();
 
-        var portal = links.Single(link => link.Rel == LinkRelations.OpenProviderPortal);
-        await Assert.That(portal.RouteName).IsEqualTo(RouteNames.OpenSvixAppPortal);
-        await Assert.That(portal.Method).IsEqualTo("POST");
-        await Assert.That(portal.PermissionAction).IsEqualTo(AuthorizationActions.Webhooks.OpenProviderPortal);
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.OpenProviderPortal)).IsFalse();
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.Self)).IsTrue();
     }
 
     [Test]
@@ -369,8 +367,7 @@ public sealed class WebhooksControllerTests
             {
                 ConsumerKindId = 1,
                 Name = "Tenant automation",
-                ProviderModeId = 2,
-                ExternalProviderAppId = "tenant-automation"
+                ProviderModeId = 2
             },
             CancellationToken.None);
 
@@ -383,8 +380,7 @@ public sealed class WebhooksControllerTests
                 command.TenantId == _tenantId &&
                 command.ConsumerKindId == 1 &&
                 command.Name == "Tenant automation" &&
-                command.ProviderModeId == 2 &&
-                command.ExternalProviderAppId == "tenant-automation"),
+                command.ProviderModeId == 2),
             Arg.Any<CancellationToken>());
     }
 
@@ -899,7 +895,8 @@ public sealed class WebhooksControllerTests
         await Assert.That(messageProperties).DoesNotContain("RawPayloadJson");
         await Assert.That(messageProperties).DoesNotContain("SecretRef");
         await Assert.That(messageProperties).DoesNotContain("Signature");
-        await Assert.That(attemptProperties).Contains(nameof(WebhookDeliveryAttemptDto.ResponseBodyPreview));
+        await Assert.That(attemptProperties).DoesNotContain("ResponseBodyPreview");
+        await Assert.That(attemptProperties).DoesNotContain("EndpointUrl");
         await Assert.That(attemptProperties).DoesNotContain("ResponseBody");
         await Assert.That(attemptProperties).DoesNotContain("RequestHeaders");
         await Assert.That(attemptProperties).DoesNotContain("SecretRef");
@@ -1236,9 +1233,7 @@ public sealed class WebhooksControllerTests
             new OpenSvixAppPortalRequestDto
             {
                 ConsumerId = consumerId,
-                ReadOnly = true,
-                ExpiresInSeconds = 900,
-                FeatureFlags = ["endpoints"]
+                ExpiresInSeconds = 900
             },
             CancellationToken.None);
 
@@ -1250,9 +1245,7 @@ public sealed class WebhooksControllerTests
                 command.TenantId == _tenantId &&
                 command.ConsumerId == consumerId &&
                 command.SessionId == "keycloak-subject-1" &&
-                command.ReadOnly &&
-                command.ExpiresInSeconds == 900 &&
-                command.FeatureFlags.Contains("endpoints")),
+                command.ExpiresInSeconds == 900),
             Arg.Any<CancellationToken>());
     }
 
@@ -1332,12 +1325,12 @@ public sealed class WebhooksControllerTests
 
     private static WebhookConsumerDetailLinkPolicy CreateConsumerDetailLinkPolicy(
         string providerMode,
-        bool appPortalEnabled) =>
-        new(new StaticOptionsMonitor<WebhookOptions>(new WebhookOptions
-        {
-            Provider = providerMode,
-            Svix = new WebhookSvixOptions { AppPortalEnabled = appPortalEnabled }
-        }));
+        bool appPortalEnabled)
+    {
+        _ = providerMode;
+        _ = appPortalEnabled;
+        return new WebhookConsumerDetailLinkPolicy();
+    }
 
     private WebhookConsumerDto CreateConsumerDto(string providerModeName = "Local") =>
         new()
@@ -1368,7 +1361,7 @@ public sealed class WebhooksControllerTests
             ConsumerName = "Tenant automation",
             ProviderModeId = ProviderModeId(providerModeName),
             ProviderModeName = providerModeName,
-            Url = "https://integrator.example/webhooks/islamu",
+            DestinationHost = "integrator.example",
             Description = "Integrator endpoint",
             StatusId = statusId,
             StatusName = statusName,
@@ -1403,15 +1396,6 @@ public sealed class WebhooksControllerTests
             _ => 2
         };
 
-    private sealed class StaticOptionsMonitor<TOptions>(TOptions currentValue) : IOptionsMonitor<TOptions>
-    {
-        public TOptions CurrentValue { get; } = currentValue;
-
-        public TOptions Get(string? name) => CurrentValue;
-
-        public IDisposable? OnChange(Action<TOptions, string?> listener) => null;
-    }
-
     private WebhookMessageDto CreateMessageDto() =>
         new()
         {
@@ -1425,11 +1409,6 @@ public sealed class WebhooksControllerTests
             ConsumerName = "Tenant automation",
             PayloadHash = "sha256:ab3d5f2c4e8a",
             PayloadRetentionUntil = DateTime.UtcNow.AddDays(14),
-            ProviderModeId = 2,
-            ProviderModeName = "Local",
-            ProviderMessageId = "local-message-1",
-            StatusId = 2,
-            StatusName = "Queued",
             CreatedAt = DateTime.UtcNow
         };
 
@@ -1441,7 +1420,7 @@ public sealed class WebhooksControllerTests
             MessageId = Guid.CreateVersion7(),
             MessageEventType = "event.published",
             EndpointId = Guid.CreateVersion7(),
-            EndpointUrl = "https://integrator.example/webhooks/islamu",
+            EndpointStatusName = "Active",
             AttemptNumber = 1,
             StatusId = statusName == "Succeeded" ? 2 : 4,
             StatusName = statusName,
@@ -1450,7 +1429,6 @@ public sealed class WebhooksControllerTests
             CompletedAt = DateTime.UtcNow.AddMinutes(-4),
             HttpStatusCode = statusName == "Succeeded" ? StatusCodes.Status200OK : StatusCodes.Status500InternalServerError,
             FailureCategory = statusName == "Succeeded" ? null : "server_error",
-            ResponseBodyPreview = statusName == "Succeeded" ? null : "upstream returned 500",
             DurationMs = 127,
             NextRetryAt = statusName == "Succeeded" ? null : DateTime.UtcNow.AddMinutes(10),
             CreatedAt = DateTime.UtcNow

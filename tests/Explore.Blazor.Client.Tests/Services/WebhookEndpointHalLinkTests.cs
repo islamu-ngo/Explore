@@ -15,7 +15,7 @@ public sealed class WebhookEndpointHalLinkTests
             Id = Guid.CreateVersion7(),
             TenantId = Guid.CreateVersion7(),
             ConsumerId = Guid.CreateVersion7(),
-            Url = "https://integrator.example/webhooks/islamu",
+            DestinationHost = "integrator.example",
             StatusName = "Active"
         };
 

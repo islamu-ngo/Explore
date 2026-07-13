@@ -414,13 +414,11 @@ public sealed class BusinessMetrics : IDisposable
     }
 
     public void RecordEventReportProviderCallback(
-        string? tenantId,
         string? provider,
         string? outcome,
         string? failureCategory = null)
     {
         _eventReportProviderCallbacks.Add(1,
-            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
             new KeyValuePair<string, object?>("provider", NormalizeEventReportProvider(provider)),
             new KeyValuePair<string, object?>("outcome", NormalizeEventReportOutcome(outcome)),
             new KeyValuePair<string, object?>("failure_category", NormalizeEventReportFailureCategory(failureCategory)));
@@ -585,79 +583,67 @@ public sealed class BusinessMetrics : IDisposable
     }
 
     public void RecordWebhookMessageCreated(
-        string? tenantId,
         string? eventType,
         string? provider,
         string? outcome)
     {
         _webhookMessagesCreated.Add(1,
-            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
             new KeyValuePair<string, object?>("event_type", NormalizeWebhookEventType(eventType)),
             new KeyValuePair<string, object?>("provider", NormalizeWebhookProvider(provider)),
             new KeyValuePair<string, object?>("outcome", NormalizeWebhookOutcome(outcome)));
     }
 
     public void RecordWebhookDeliveryAttempt(
-        string? tenantId,
         string? eventType,
         string? outcome,
         string? failureCategory = null)
     {
         _webhookDeliveryAttempts.Add(1,
-            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
             new KeyValuePair<string, object?>("event_type", NormalizeWebhookEventType(eventType)),
             new KeyValuePair<string, object?>("outcome", NormalizeWebhookOutcome(outcome)),
             new KeyValuePair<string, object?>("failure_category", NormalizeWebhookFailureCategory(failureCategory)));
     }
 
-    public void RecordWebhookDeliverySuccess(string? tenantId, string? eventType)
+    public void RecordWebhookDeliverySuccess(string? eventType)
     {
         _webhookDeliverySuccess.Add(1,
-            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
             new KeyValuePair<string, object?>("event_type", NormalizeWebhookEventType(eventType)));
     }
 
     public void RecordWebhookDeliveryFailure(
-        string? tenantId,
         string? eventType,
         string? outcome,
         string? failureCategory)
     {
         _webhookDeliveryFailure.Add(1,
-            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
             new KeyValuePair<string, object?>("event_type", NormalizeWebhookEventType(eventType)),
             new KeyValuePair<string, object?>("outcome", NormalizeWebhookOutcome(outcome)),
             new KeyValuePair<string, object?>("failure_category", NormalizeWebhookFailureCategory(failureCategory)));
     }
 
-    public void RecordWebhookEndpointDisabled(string? tenantId, string? failureCategory)
+    public void RecordWebhookEndpointDisabled(string? failureCategory)
     {
         _webhookEndpointDisabled.Add(1,
-            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
             new KeyValuePair<string, object?>("failure_category", NormalizeWebhookFailureCategory(failureCategory)));
     }
 
     public void RecordWebhookManualRetry(
-        string? tenantId,
         string? eventType,
         string? outcome,
         string? failureCategory = null)
     {
         _webhookManualRetries.Add(1,
-            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
             new KeyValuePair<string, object?>("event_type", NormalizeWebhookEventType(eventType)),
             new KeyValuePair<string, object?>("outcome", NormalizeWebhookOutcome(outcome)),
             new KeyValuePair<string, object?>("failure_category", NormalizeWebhookFailureCategory(failureCategory)));
     }
 
     public void RecordWebhookProviderPublishFailure(
-        string? tenantId,
         string? eventType,
         string? provider,
         string? failureCategory)
     {
         _webhookProviderPublishFailures.Add(1,
-            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
             new KeyValuePair<string, object?>("event_type", NormalizeWebhookEventType(eventType)),
             new KeyValuePair<string, object?>("provider", NormalizeWebhookProvider(provider)),
             new KeyValuePair<string, object?>("failure_category", NormalizeWebhookFailureCategory(failureCategory)));

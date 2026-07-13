@@ -192,7 +192,7 @@ public static class ResourceDescriptors
             ["attemptId"] = dto.Id.ToString(),
             ["messageId"] = dto.MessageId.ToString(),
             ["endpointId"] = dto.EndpointId.ToString(),
-            ["status"] = dto.StatusName
+            ["outcome"] = dto.OutcomeCode
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 

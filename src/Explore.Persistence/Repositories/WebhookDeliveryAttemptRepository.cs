@@ -11,7 +11,6 @@ namespace Explore.Persistence.Repositories;
 public class WebhookDeliveryAttemptRepository : IWebhookDeliveryAttemptRepository
 {
     private const int MaxFailureCategoryLength = 100;
-    private const int MaxResponseBodyPreviewLength = 4096;
 
     private readonly ExploreDbContext _dbContext;
 
@@ -132,8 +131,8 @@ public class WebhookDeliveryAttemptRepository : IWebhookDeliveryAttemptRepositor
             .AnyAsync(e => e.TenantId == tenantId
                 && e.MessageId == messageId
                 && e.EndpointId == endpointId
-                && (e.Status == WebhookDeliveryAttemptStatus.Scheduled
-                    || e.Status == WebhookDeliveryAttemptStatus.Sending), cancellationToken);
+                && (e.OutcomeId == (int)WebhookDeliveryAttemptOutcome.Scheduled
+                    || e.OutcomeId == (int)WebhookDeliveryAttemptOutcome.Sending), cancellationToken);
     }
 
     public async Task<IReadOnlyList<Guid>> GetDueTenantIdsAsync(
@@ -144,10 +143,10 @@ public class WebhookDeliveryAttemptRepository : IWebhookDeliveryAttemptRepositor
         return await _dbContext.WebhookDeliveryAttempts
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookWorkerCrossTenantQueue)
             .AsNoTracking()
-            .Where(e => e.Status == WebhookDeliveryAttemptStatus.Scheduled
+            .Where(e => e.OutcomeId == (int)WebhookDeliveryAttemptOutcome.Scheduled
                 && e.ScheduledAt <= now
                 && e.Endpoint != null
-                && e.Endpoint.Status == WebhookEndpointStatus.Active)
+                && e.Endpoint.StatusId == (int)WebhookEndpointStatus.Active)
             .GroupBy(e => e.TenantId)
             .Select(group => new
             {
@@ -188,7 +187,7 @@ public class WebhookDeliveryAttemptRepository : IWebhookDeliveryAttemptRepositor
         var activeLeaseQuery = _dbContext.WebhookDeliveryAttempts
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookWorkerCrossTenantQueue)
             .AsNoTracking()
-            .Where(e => e.Status == WebhookDeliveryAttemptStatus.Sending
+            .Where(e => e.OutcomeId == (int)WebhookDeliveryAttemptOutcome.Sending
                 && (e.ProcessingLeaseExpiresAt == null || e.ProcessingLeaseExpiresAt > request.ClaimedAt));
         var currentGlobalInFlight = await activeLeaseQuery.CountAsync(cancellationToken);
         var remainingGlobalCapacity = Math.Min(
@@ -229,10 +228,10 @@ public class WebhookDeliveryAttemptRepository : IWebhookDeliveryAttemptRepositor
                 .Include(e => e.Endpoint)
                 .Include(e => e.Message)
                 .Where(e => e.TenantId == tenantId
-                    && e.Status == WebhookDeliveryAttemptStatus.Scheduled
+                    && e.OutcomeId == (int)WebhookDeliveryAttemptOutcome.Scheduled
                     && e.ScheduledAt <= request.ClaimedAt
                     && e.Endpoint != null
-                    && e.Endpoint.Status == WebhookEndpointStatus.Active);
+                    && e.Endpoint.StatusId == (int)WebhookEndpointStatus.Active);
 
             if (request.AttemptId is { } attemptId)
             {
@@ -298,8 +297,9 @@ public class WebhookDeliveryAttemptRepository : IWebhookDeliveryAttemptRepositor
         foreach (var attempt in selected)
         {
             var leaseToken = Guid.CreateVersion7();
-            attempt.Status = WebhookDeliveryAttemptStatus.Sending;
+            attempt.Outcome = WebhookDeliveryAttemptOutcome.Sending;
             attempt.ProcessingLeaseToken = leaseToken;
+            attempt.ProcessingFence = checked(attempt.ProcessingFence + 1);
             attempt.ProcessingStartedAt = request.ClaimedAt;
             attempt.ProcessingLeaseExpiresAt = leaseExpiresAt;
             attempt.SentAt = request.ClaimedAt;
@@ -307,6 +307,7 @@ public class WebhookDeliveryAttemptRepository : IWebhookDeliveryAttemptRepositor
             claims.Add(new WebhookDeliveryClaim(
                 attempt,
                 leaseToken,
+                attempt.ProcessingFence,
                 request.ClaimedAt,
                 leaseExpiresAt));
         }
@@ -323,7 +324,7 @@ public class WebhookDeliveryAttemptRepository : IWebhookDeliveryAttemptRepositor
         return _dbContext.WebhookDeliveryAttempts
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookWorkerCrossTenantQueue)
             .AsNoTracking()
-            .CountAsync(e => e.Status == WebhookDeliveryAttemptStatus.Scheduled
+            .CountAsync(e => e.OutcomeId == (int)WebhookDeliveryAttemptOutcome.Scheduled
                 && e.ScheduledAt <= now, cancellationToken);
     }
 
@@ -335,7 +336,7 @@ public class WebhookDeliveryAttemptRepository : IWebhookDeliveryAttemptRepositor
         return _dbContext.WebhookDeliveryAttempts
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookWorkerCrossTenantQueue)
             .AsNoTracking()
-            .CountAsync(e => e.Status == WebhookDeliveryAttemptStatus.Sending
+            .CountAsync(e => e.OutcomeId == (int)WebhookDeliveryAttemptOutcome.Sending
                 && ((e.ProcessingLeaseExpiresAt != null && e.ProcessingLeaseExpiresAt < now)
                     || (e.ProcessingLeaseExpiresAt == null
                         && e.ProcessingStartedAt != null
@@ -355,69 +356,73 @@ public class WebhookDeliveryAttemptRepository : IWebhookDeliveryAttemptRepositor
             .FirstOrDefaultAsync(e => e.TenantId == tenantId && e.Id == attemptId, cancellationToken);
     }
 
-    public async Task MarkSucceededAsync(
+    public async Task<bool> MarkSucceededAsync(
         Guid tenantId,
         Guid attemptId,
         Guid processingLeaseToken,
+        long processingFence,
         DateTime sentAt,
         DateTime completedAt,
         int httpStatusCode,
         int durationMs,
-        string? responseBodyPreview,
         CancellationToken cancellationToken)
     {
-        await _dbContext.WebhookDeliveryAttempts
+        var affected = await _dbContext.WebhookDeliveryAttempts
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookWorkerCrossTenantQueue)
             .Where(e => e.TenantId == tenantId
                 && e.Id == attemptId
-                && e.Status == WebhookDeliveryAttemptStatus.Sending
-                && e.ProcessingLeaseToken == processingLeaseToken)
+                && e.OutcomeId == (int)WebhookDeliveryAttemptOutcome.Sending
+                && e.ProcessingLeaseToken == processingLeaseToken
+                && e.ProcessingFence == processingFence)
             .ExecuteUpdateAsync(setters => setters
-                .SetProperty(e => e.Status, WebhookDeliveryAttemptStatus.Succeeded)
+                .SetProperty(e => e.OutcomeId, (int)WebhookDeliveryAttemptOutcome.Succeeded)
                 .SetProperty(e => e.SentAt, (DateTime?)sentAt)
                 .SetProperty(e => e.CompletedAt, (DateTime?)completedAt)
                 .SetProperty(e => e.HttpStatusCode, (int?)httpStatusCode)
                 .SetProperty(e => e.DurationMs, (int?)durationMs)
-                .SetProperty(e => e.ResponseBodyPreview, Truncate(responseBodyPreview, MaxResponseBodyPreviewLength))
                 .SetProperty(e => e.NextRetryAt, (DateTime?)null)
                 .SetProperty(e => e.FailureCategory, (string?)null)
                 .SetProperty(e => e.ProcessingLeaseToken, (Guid?)null)
                 .SetProperty(e => e.ProcessingStartedAt, (DateTime?)null)
                 .SetProperty(e => e.ProcessingLeaseExpiresAt, (DateTime?)null)
                 .SetProperty(e => e.UpdatedAt, completedAt), cancellationToken);
+
+        return affected == 1;
     }
 
-    public async Task MarkFailedAsync(
+    public async Task<bool> MarkFailedAsync(
         Guid tenantId,
         Guid attemptId,
         Guid processingLeaseToken,
-        WebhookDeliveryAttemptStatus status,
+        long processingFence,
+        WebhookDeliveryAttemptOutcome outcome,
         DateTime completedAt,
         string failureCategory,
         int? httpStatusCode,
         int durationMs,
-        string? responseBodyPreview,
         DateTime? nextRetryAt,
         CancellationToken cancellationToken)
     {
-        await _dbContext.WebhookDeliveryAttempts
+        var affected = await _dbContext.WebhookDeliveryAttempts
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookWorkerCrossTenantQueue)
             .Where(e => e.TenantId == tenantId
                 && e.Id == attemptId
-                && e.Status == WebhookDeliveryAttemptStatus.Sending
-                && e.ProcessingLeaseToken == processingLeaseToken)
+                && e.OutcomeId == (int)WebhookDeliveryAttemptOutcome.Sending
+                && e.ProcessingLeaseToken == processingLeaseToken
+                && e.ProcessingFence == processingFence)
             .ExecuteUpdateAsync(setters => setters
-                .SetProperty(e => e.Status, status)
+                .SetProperty(e => e.OutcomeId, (int)outcome)
                 .SetProperty(e => e.CompletedAt, (DateTime?)completedAt)
                 .SetProperty(e => e.HttpStatusCode, httpStatusCode)
                 .SetProperty(e => e.DurationMs, (int?)durationMs)
                 .SetProperty(e => e.FailureCategory, Truncate(failureCategory, MaxFailureCategoryLength))
-                .SetProperty(e => e.ResponseBodyPreview, Truncate(responseBodyPreview, MaxResponseBodyPreviewLength))
                 .SetProperty(e => e.NextRetryAt, nextRetryAt)
                 .SetProperty(e => e.ProcessingLeaseToken, (Guid?)null)
                 .SetProperty(e => e.ProcessingStartedAt, (DateTime?)null)
                 .SetProperty(e => e.ProcessingLeaseExpiresAt, (DateTime?)null)
                 .SetProperty(e => e.UpdatedAt, completedAt), cancellationToken);
+
+        return affected == 1;
     }
 
     public async Task<int> ResetStaleSendingAsync(
@@ -430,7 +435,7 @@ public class WebhookDeliveryAttemptRepository : IWebhookDeliveryAttemptRepositor
         var attemptIds = await _dbContext.WebhookDeliveryAttempts
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookWorkerCrossTenantQueue)
             .AsNoTracking()
-            .Where(e => e.Status == WebhookDeliveryAttemptStatus.Sending
+            .Where(e => e.OutcomeId == (int)WebhookDeliveryAttemptOutcome.Sending
                 && ((e.ProcessingLeaseExpiresAt != null && e.ProcessingLeaseExpiresAt < recoveredAt)
                     || (e.ProcessingLeaseExpiresAt == null
                         && e.ProcessingStartedAt != null
@@ -450,16 +455,16 @@ public class WebhookDeliveryAttemptRepository : IWebhookDeliveryAttemptRepositor
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookWorkerCrossTenantQueue)
             .Where(e => attemptIds.Contains(e.Id))
             .ExecuteUpdateAsync(setters => setters
-                .SetProperty(e => e.Status, WebhookDeliveryAttemptStatus.Scheduled)
+                .SetProperty(e => e.OutcomeId, (int)WebhookDeliveryAttemptOutcome.Scheduled)
                 .SetProperty(e => e.ScheduledAt, recoveredAt)
                 .SetProperty(e => e.SentAt, (DateTime?)null)
                 .SetProperty(e => e.CompletedAt, (DateTime?)null)
                 .SetProperty(e => e.HttpStatusCode, (int?)null)
                 .SetProperty(e => e.DurationMs, (int?)null)
                 .SetProperty(e => e.FailureCategory, Truncate(failureCategory, MaxFailureCategoryLength))
-                .SetProperty(e => e.ResponseBodyPreview, (string?)null)
                 .SetProperty(e => e.NextRetryAt, recoveredAt)
                 .SetProperty(e => e.ProcessingLeaseToken, (Guid?)null)
+                .SetProperty(e => e.ProcessingFence, e => e.ProcessingFence + 1)
                 .SetProperty(e => e.ProcessingStartedAt, (DateTime?)null)
                 .SetProperty(e => e.ProcessingLeaseExpiresAt, (DateTime?)null)
                 .SetProperty(e => e.UpdatedAt, recoveredAt), cancellationToken);

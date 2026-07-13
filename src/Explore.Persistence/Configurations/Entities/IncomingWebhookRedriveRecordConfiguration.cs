@@ -23,6 +23,9 @@ public class IncomingWebhookRedriveRecordConfiguration : IEntityTypeConfiguratio
         builder.Property(e => e.Reason).HasMaxLength(IncomingWebhookRedriveRecord.MaxReasonLength).IsRequired();
         builder.Property(e => e.Result).IsRequired();
 
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
+            .HasName("ak_incoming_webhook_redrive_records_tenant_id_id");
+
         builder.HasOne(e => e.Tenant)
             .WithMany()
             .HasForeignKey(e => e.TenantId)

@@ -122,6 +122,9 @@ public sealed class WebhookMessageExactByteAuthorityTests
             AggregateId,
             consumerId: null,
             payloadBytes,
+            "application/json",
+            "utf-8",
+            CreatedAt,
             CreatedAt.AddDays(14),
             CreatedAt);
 }

@@ -43,6 +43,9 @@ public sealed class WebhookLocalOptions
 public sealed class WebhookSvixOptions
 {
     public string? BaseUrl { get; set; }
+    public string Environment { get; set; } = "production";
+    public string ProviderVersion { get; set; } = "1.96.1";
+    public string CapabilityPolicyVersion { get; set; } = "svix-1.96.1-v1";
     public string? AuthTokenSecretRef { get; set; } = SecretDefinitionRegistry.Keys.Webhooks.SvixAuthToken;
     public string? OperationalWebhookSecretRef { get; set; } = SecretDefinitionRegistry.Keys.Webhooks.SvixOperationalWebhookSecret;
     public long OperationalWebhookMaxBodyBytes { get; set; } = 65_536;

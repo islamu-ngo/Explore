@@ -8,7 +8,7 @@ public interface IWebhookSignatureService
     WebhookSignatureHeaders Sign(
         string messageId,
         DateTimeOffset timestamp,
-        string rawPayload,
+        ReadOnlySpan<byte> rawPayload,
         WebhookSecretMaterial secret);
 
     WebhookVerificationResult Verify(
@@ -39,4 +39,3 @@ public sealed record WebhookVerificationResult(
     public static WebhookVerificationResult Failure(string failureCategory) =>
         new(false, failureCategory, null);
 }
-

@@ -163,6 +163,9 @@ public sealed class DefaultWebhookEventPublisherTests
             AggregateId,
             ConsumerId,
             payload.PayloadBytes!,
+            "application/json",
+            "utf-8",
+            OccurredAt.UtcDateTime,
             OccurredAt.AddDays(14).UtcDateTime,
             OccurredAt.UtcDateTime);
     }

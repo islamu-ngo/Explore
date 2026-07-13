@@ -40,7 +40,7 @@ public class IncomingWebhookEffectReceiptConfiguration : IEntityTypeConfiguratio
             .WithMany()
             .HasForeignKey(e => new { e.TenantId, e.IncomingWebhookMessageId })
             .HasPrincipalKey(e => new { e.TenantId, e.Id })
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.IncomingWebhookMessageId, e.EffectKind })
             .HasDatabaseName("ux_incoming_webhook_effect_receipts_identity")

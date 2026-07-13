@@ -66,7 +66,7 @@ public sealed class LocalWebhookDeliveryProvider : IWebhookDeliveryProvider
             MessageId = message.MessageId,
             EndpointId = endpoint.Id,
             AttemptNumber = 1,
-            Status = WebhookDeliveryAttemptStatus.Scheduled,
+            Outcome = WebhookDeliveryAttemptOutcome.Scheduled,
             ScheduledAt = scheduledAt,
             CreatedAt = now
         }).ToList();

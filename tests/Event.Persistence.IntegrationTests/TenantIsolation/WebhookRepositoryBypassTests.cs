@@ -38,13 +38,13 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
             tenantA.Id,
             messageA.Id,
             endpointA.Id,
-            WebhookDeliveryAttemptStatus.Failed,
+            WebhookDeliveryAttemptOutcome.Failed,
             DateTime.UtcNow.AddMinutes(-10));
         var attemptB = CreateDeliveryAttempt(
             tenantB.Id,
             messageB.Id,
             endpointB.Id,
-            WebhookDeliveryAttemptStatus.Failed,
+            WebhookDeliveryAttemptOutcome.Failed,
             DateTime.UtcNow.AddMinutes(-10));
         var incomingA = CreateIncomingMessage(tenantA.Id, "coop", "provider-shared", "idem-a");
         var incomingB = CreateIncomingMessage(tenantB.Id, "coop", "provider-shared", "idem-b");
@@ -228,25 +228,25 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
             tenantA.Id,
             dueMessageA.Id,
             endpointA.Id,
-            WebhookDeliveryAttemptStatus.Scheduled,
+            WebhookDeliveryAttemptOutcome.Scheduled,
             now.AddMinutes(-10));
         var dueAttemptB = CreateDeliveryAttempt(
             tenantB.Id,
             dueMessageB.Id,
             endpointB.Id,
-            WebhookDeliveryAttemptStatus.Scheduled,
+            WebhookDeliveryAttemptOutcome.Scheduled,
             now.AddMinutes(-9));
         var futureAttemptA = CreateDeliveryAttempt(
             tenantA.Id,
             futureMessageA.Id,
             endpointA.Id,
-            WebhookDeliveryAttemptStatus.Scheduled,
+            WebhookDeliveryAttemptOutcome.Scheduled,
             now.AddMinutes(10));
         var staleAttemptA = CreateDeliveryAttempt(
             tenantA.Id,
             staleMessageA.Id,
             endpointA.Id,
-            WebhookDeliveryAttemptStatus.Sending,
+            WebhookDeliveryAttemptOutcome.Sending,
             now.AddMinutes(-30));
         staleAttemptA.ProcessingStartedAt = now.AddMinutes(-30);
         staleAttemptA.ProcessingLeaseToken = Guid.CreateVersion7();
@@ -254,13 +254,13 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
             tenantA.Id,
             statusMessageA.Id,
             endpointA.Id,
-            WebhookDeliveryAttemptStatus.Succeeded,
+            WebhookDeliveryAttemptOutcome.Succeeded,
             now.AddMinutes(-20));
         var statusFailedAttemptA = CreateDeliveryAttempt(
             tenantA.Id,
             statusMessageA.Id,
             endpointA.Id,
-            WebhookDeliveryAttemptStatus.Failed,
+            WebhookDeliveryAttemptOutcome.Failed,
             now.AddMinutes(-19),
             attemptNumber: 2);
         var pendingLinkA = CreateProviderLink(tenantA.Id, "pending-a", dueMessageA.Id);
@@ -343,16 +343,17 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
             },
             CancellationToken.None);
         var leaseToken = claims.Single().LeaseToken;
+        var processingFence = claims.Single().ProcessingFence;
         await attemptRepository.MarkSucceededAsync(
             tenantA.Id,
             dueAttemptA.Id,
             leaseToken,
+            processingFence,
             now,
             now.AddSeconds(1),
             httpStatusCode: 204,
             durationMs: 25,
-            responseBodyPreview: "accepted",
-            CancellationToken.None);
+            cancellationToken: CancellationToken.None);
         var recovered = await attemptRepository.ResetStaleSendingAsync(
             now.AddMinutes(-10),
             now,
@@ -397,11 +398,11 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
         await Assert.That(clearedPayloads).IsEqualTo(2);
         await Assert.That(pendingLinks.Select(row => row.Id)).IsEquivalentTo([pendingLinkA.Id, pendingLinkB.Id]);
 
-        await Assert.That(attempts[dueAttemptA.Id].Status).IsEqualTo(WebhookDeliveryAttemptStatus.Succeeded);
+        await Assert.That(attempts[dueAttemptA.Id].Outcome).IsEqualTo(WebhookDeliveryAttemptOutcome.Succeeded);
         await Assert.That(attempts[dueAttemptA.Id].HttpStatusCode).IsEqualTo(204);
-        await Assert.That(attempts[dueAttemptB.Id].Status).IsEqualTo(WebhookDeliveryAttemptStatus.Scheduled);
-        await Assert.That(attempts[futureAttemptA.Id].Status).IsEqualTo(WebhookDeliveryAttemptStatus.Scheduled);
-        await Assert.That(attempts[staleAttemptA.Id].Status).IsEqualTo(WebhookDeliveryAttemptStatus.Scheduled);
+        await Assert.That(attempts[dueAttemptB.Id].Outcome).IsEqualTo(WebhookDeliveryAttemptOutcome.Scheduled);
+        await Assert.That(attempts[futureAttemptA.Id].Outcome).IsEqualTo(WebhookDeliveryAttemptOutcome.Scheduled);
+        await Assert.That(attempts[staleAttemptA.Id].Outcome).IsEqualTo(WebhookDeliveryAttemptOutcome.Scheduled);
         await Assert.That(attempts[staleAttemptA.Id].FailureCategory).IsEqualTo("worker_recovered");
         await Assert.That(messages[expiredMessageA.Id].GetPayloadBytes()).IsNull();
         await Assert.That(messages[expiredMessageB.Id].GetPayloadBytes()).IsNull();
@@ -509,6 +510,9 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
             Guid.CreateVersion7(),
             consumerId,
             System.Text.Encoding.UTF8.GetBytes($"{{\"id\":\"{eventId}\"}}"),
+            "application/json",
+            "utf-8",
+            createdAt,
             retentionUntil ?? new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
             createdAt);
     }
@@ -517,7 +521,7 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
         Guid tenantId,
         Guid messageId,
         Guid endpointId,
-        WebhookDeliveryAttemptStatus status,
+        WebhookDeliveryAttemptOutcome status,
         DateTime scheduledAt,
         int attemptNumber = 1)
     {
@@ -528,17 +532,16 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
             MessageId = messageId,
             EndpointId = endpointId,
             AttemptNumber = attemptNumber,
-            Status = status,
+            Outcome = status,
             ScheduledAt = scheduledAt,
-            SentAt = status == WebhookDeliveryAttemptStatus.Sending ? scheduledAt : null,
-            CompletedAt = status is WebhookDeliveryAttemptStatus.Succeeded or WebhookDeliveryAttemptStatus.Failed
+            SentAt = status == WebhookDeliveryAttemptOutcome.Sending ? scheduledAt : null,
+            CompletedAt = status is WebhookDeliveryAttemptOutcome.Succeeded or WebhookDeliveryAttemptOutcome.Failed
                 ? scheduledAt.AddSeconds(1)
                 : null,
-            HttpStatusCode = status == WebhookDeliveryAttemptStatus.Succeeded ? 204 : null,
-            FailureCategory = status == WebhookDeliveryAttemptStatus.Failed ? "server_error" : null,
-            ResponseBodyPreview = status == WebhookDeliveryAttemptStatus.Failed ? "upstream returned 500" : null,
-            DurationMs = status is WebhookDeliveryAttemptStatus.Succeeded or WebhookDeliveryAttemptStatus.Failed ? 123 : null,
-            NextRetryAt = status == WebhookDeliveryAttemptStatus.Failed ? scheduledAt.AddMinutes(10) : null,
+            HttpStatusCode = status == WebhookDeliveryAttemptOutcome.Succeeded ? 204 : null,
+            FailureCategory = status == WebhookDeliveryAttemptOutcome.Failed ? "server_error" : null,
+            DurationMs = status is WebhookDeliveryAttemptOutcome.Succeeded or WebhookDeliveryAttemptOutcome.Failed ? 123 : null,
+            NextRetryAt = status == WebhookDeliveryAttemptOutcome.Failed ? scheduledAt.AddMinutes(10) : null,
             CreatedAt = scheduledAt,
         };
     }
@@ -561,9 +564,12 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
             "decision.created",
             payloadBytes,
             payloadHash,
+            "application/json",
+            "utf-8",
             $"{{\"svix-id\":\"{providerMessageId}\"}}",
             receivedAt,
-            verifiedAt);
+            verifiedAt,
+            verifiedAt.AddDays(14));
     }
 
     private static WebhookProviderLink CreateProviderLink(

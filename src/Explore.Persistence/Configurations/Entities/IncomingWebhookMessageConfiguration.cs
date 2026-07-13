@@ -22,6 +22,9 @@ public class IncomingWebhookMessageConfiguration : IEntityTypeConfiguration<Inco
             table.HasCheckConstraint(
                 "ck_incoming_webhook_messages_processing_fence",
                 "processing_fence >= 0");
+            table.HasCheckConstraint(
+                "ck_incoming_webhook_messages_payload_byte_length",
+                "payload_byte_length > 0");
         });
 
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
@@ -31,12 +34,16 @@ public class IncomingWebhookMessageConfiguration : IEntityTypeConfiguration<Inco
         builder.Property(e => e.EventType).HasMaxLength(IncomingWebhookMessage.MaxEventTypeLength);
         builder.Property(e => e.HeadersJson).HasColumnType("jsonb");
         builder.Ignore(e => e.PayloadBytes);
-        builder.Property<byte[]>("_payloadBytes")
+        builder.Property<byte[]?>("_payloadBytes")
             .HasColumnName("payload_bytes")
-            .HasColumnType("bytea")
-            .IsRequired();
+            .HasColumnType("bytea");
         builder.Property(e => e.PayloadHash).HasMaxLength(71).IsRequired();
-        builder.Property(e => e.Status).IsRequired();
+        builder.Property(e => e.PayloadByteLength).IsRequired();
+        builder.Property(e => e.PayloadProvenanceId).IsRequired();
+        builder.Property(e => e.ContentType).HasMaxLength(IncomingWebhookMessage.MaxContentTypeLength).IsRequired();
+        builder.Property(e => e.ContentEncoding).HasMaxLength(IncomingWebhookMessage.MaxContentEncodingLength).IsRequired();
+        builder.Property(e => e.StatusId).IsRequired();
+        builder.Ignore(e => e.Status);
         builder.Property(e => e.ProcessingGeneration).IsRequired();
         builder.Property(e => e.ProcessingFence).IsRequired().IsConcurrencyToken();
         builder.Property(e => e.ProcessingLeaseOwner).HasMaxLength(IncomingWebhookMessage.MaxLeaseOwnerLength);
@@ -52,18 +59,28 @@ public class IncomingWebhookMessageConfiguration : IEntityTypeConfiguration<Inco
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(e => e.StatusLookup)
+            .WithMany()
+            .HasForeignKey(e => e.StatusId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.PayloadProvenanceLookup)
+            .WithMany()
+            .HasForeignKey(e => e.PayloadProvenanceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasMany(e => e.ProcessingAttempts)
             .WithOne(e => e.IncomingWebhookMessage)
             .HasForeignKey(e => new { e.TenantId, e.IncomingWebhookMessageId })
             .HasPrincipalKey(e => new { e.TenantId, e.Id })
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
         builder.Navigation(e => e.ProcessingAttempts).UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.HasMany(e => e.RedriveRecords)
             .WithOne(e => e.IncomingWebhookMessage)
             .HasForeignKey(e => new { e.TenantId, e.IncomingWebhookMessageId })
             .HasPrincipalKey(e => new { e.TenantId, e.Id })
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
         builder.Navigation(e => e.RedriveRecords).UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.HasIndex(e => new { e.TenantId, e.Provider, e.ProviderMessageId })
@@ -74,10 +91,10 @@ public class IncomingWebhookMessageConfiguration : IEntityTypeConfiguration<Inco
             .HasDatabaseName("ix_incoming_webhook_messages_tenant_provider_idempotency")
             .HasFilter("idempotency_key IS NOT NULL");
 
-        builder.HasIndex(e => new { e.Status, e.NextAttemptAt, e.ProcessingLeaseExpiresAt })
+        builder.HasIndex(e => new { e.TenantId, e.StatusId, e.NextAttemptAt, e.ProcessingLeaseExpiresAt })
             .HasDatabaseName("ix_incoming_webhook_messages_claim_due");
 
-        builder.HasIndex(e => new { e.TenantId, e.Status, e.ReceivedAt })
+        builder.HasIndex(e => new { e.TenantId, e.StatusId, e.ReceivedAt })
             .HasDatabaseName("ix_incoming_webhook_messages_tenant_status_received");
     }
 }

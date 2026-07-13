@@ -77,6 +77,9 @@ public sealed class TestWebhookEndpointCommandHandler(
                 endpoint.Id,
                 endpoint.ConsumerId,
                 payload.PayloadBytes!,
+                "application/json",
+                "utf-8",
+                now.UtcDateTime,
                 payload.PayloadRetentionUntil!.Value.UtcDateTime,
                 now.UtcDateTime),
             cancellationToken);
@@ -89,7 +92,7 @@ public sealed class TestWebhookEndpointCommandHandler(
                 MessageId = created.Id,
                 EndpointId = endpoint.Id,
                 AttemptNumber = 1,
-                Status = WebhookDeliveryAttemptStatus.Scheduled,
+                Outcome = WebhookDeliveryAttemptOutcome.Scheduled,
                 ScheduledAt = now.UtcDateTime,
                 CreatedAt = now.UtcDateTime
             },

@@ -7,6 +7,8 @@ using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Domain;
+using Explore.Infrastructure.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
 namespace Explore.API.Services;
@@ -14,6 +16,7 @@ namespace Explore.API.Services;
 public sealed class IncomingWebhookIntakeService(
     IIncomingWebhookVerifierRegistry verifierRegistry,
     IIncomingWebhookMessageRepository incomingWebhookMessageRepository,
+    IOptions<WebhookOptions> webhookOptions,
     ILogger<IncomingWebhookIntakeService> logger) : IIncomingWebhookIntakeService
 {
     private const int BufferThresholdBytes = 30 * 1024;
@@ -97,6 +100,8 @@ public sealed class IncomingWebhookIntakeService(
             bodyBytes,
             receivedAt,
             payloadHash,
+            string.IsNullOrWhiteSpace(request.ContentType) ? "application/octet-stream" : request.ContentType,
+            "utf-8",
             headers,
             verification);
     }
@@ -165,9 +170,12 @@ public sealed class IncomingWebhookIntakeService(
             resolvedEventType,
             readResult.RawPayloadBytes.Span,
             readResult.PayloadHash,
+            readResult.ContentType,
+            readResult.ContentEncoding,
             SerializeSafeHeaders(readResult.Headers),
             readResult.ReceivedAt.UtcDateTime,
-            now);
+            now,
+            now.AddDays(webhookOptions.Value.DefaultPayloadRetentionDays));
 
         var created = await incomingWebhookMessageRepository.TryCreateAsync(message, cancellationToken);
         if (created)

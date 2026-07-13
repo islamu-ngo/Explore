@@ -16,6 +16,9 @@ public class WebhookEndpointSubscriptionConfiguration : IEntityTypeConfiguration
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(e => e.IsEnabled).HasDefaultValue(true);
 
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
+            .HasName("ak_webhook_endpoint_subscriptions_tenant_id_id");
+
         builder.HasOne(e => e.Tenant)
             .WithMany()
             .HasForeignKey(e => e.TenantId)
@@ -25,14 +28,14 @@ public class WebhookEndpointSubscriptionConfiguration : IEntityTypeConfiguration
             .WithMany(e => e.Subscriptions)
             .HasForeignKey(e => new { e.TenantId, e.EndpointId })
             .HasPrincipalKey(e => new { e.TenantId, e.Id })
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.EventType)
             .WithMany()
             .HasForeignKey(e => e.EventTypeId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(e => new { e.EndpointId, e.EventTypeId })
+        builder.HasIndex(e => new { e.TenantId, e.EndpointId, e.EventTypeId })
             .HasDatabaseName("ux_webhook_endpoint_subscriptions_endpoint_event_type")
             .IsUnique();
 

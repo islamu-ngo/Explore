@@ -22,6 +22,7 @@ public sealed record WebhookDeliveryClaimRequest(
 public sealed record WebhookDeliveryClaim(
     WebhookDeliveryAttempt Attempt,
     Guid LeaseToken,
+    long ProcessingFence,
     DateTime ClaimedAt,
     DateTime LeaseExpiresAt);
 
@@ -82,27 +83,27 @@ public interface IWebhookDeliveryAttemptRepository
         Guid attemptId,
         CancellationToken cancellationToken);
 
-    Task MarkSucceededAsync(
+    Task<bool> MarkSucceededAsync(
         Guid tenantId,
         Guid attemptId,
         Guid processingLeaseToken,
+        long processingFence,
         DateTime sentAt,
         DateTime completedAt,
         int httpStatusCode,
         int durationMs,
-        string? responseBodyPreview,
         CancellationToken cancellationToken);
 
-    Task MarkFailedAsync(
+    Task<bool> MarkFailedAsync(
         Guid tenantId,
         Guid attemptId,
         Guid processingLeaseToken,
-        WebhookDeliveryAttemptStatus status,
+        long processingFence,
+        WebhookDeliveryAttemptOutcome outcome,
         DateTime completedAt,
         string failureCategory,
         int? httpStatusCode,
         int durationMs,
-        string? responseBodyPreview,
         DateTime? nextRetryAt,
         CancellationToken cancellationToken);
 

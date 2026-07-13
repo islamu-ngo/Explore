@@ -1,6 +1,7 @@
 // ABOUTME: Owns the tenant-scoped transactional inbox lifecycle for verified incoming webhooks.
 // ABOUTME: Enforces duplicate classification, fenced processing, terminal settlement, and redrive generations.
 
+using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
@@ -11,13 +12,15 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
     public const int MaxProviderMessageIdLength = 256;
     public const int MaxIdempotencyKeyLength = 256;
     public const int MaxEventTypeLength = 200;
+    public const int MaxContentTypeLength = 200;
+    public const int MaxContentEncodingLength = 50;
     public const int MaxLeaseOwnerLength = 200;
     public const int MaxFailureCodeLength = 100;
     public const int MaxSafeDetailLength = 1024;
 
     private readonly List<IncomingWebhookProcessingAttempt> _processingAttempts = [];
     private readonly List<IncomingWebhookRedriveRecord> _redriveRecords = [];
-    private byte[] _payloadBytes = [];
+    private byte[]? _payloadBytes;
 
     public Guid Id { get; private set; }
     public Guid TenantId { get; set; }
@@ -28,9 +31,23 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
     public string? IdempotencyKey { get; private set; }
     public string? EventType { get; private set; }
     public string? HeadersJson { get; private set; }
-    public ReadOnlyMemory<byte> PayloadBytes => _payloadBytes;
+    public ReadOnlyMemory<byte> PayloadBytes => _payloadBytes ?? ReadOnlyMemory<byte>.Empty;
     public string PayloadHash { get; private set; } = string.Empty;
-    public IncomingWebhookMessageStatus Status { get; private set; }
+    public long PayloadByteLength { get; private set; }
+    public int PayloadProvenanceId { get; private set; }
+    public WebhookPayloadProvenanceLookup PayloadProvenanceLookup { get; private set; } = null!;
+    public string ContentType { get; private set; } = string.Empty;
+    public string ContentEncoding { get; private set; } = string.Empty;
+    public DateTime PayloadRetentionUntil { get; private set; }
+    public DateTime? PayloadClearedAt { get; private set; }
+    public int StatusId { get; private set; }
+    public IncomingWebhookMessageStatusLookup StatusLookup { get; private set; } = null!;
+    [NotMapped]
+    public IncomingWebhookMessageStatus Status
+    {
+        get => (IncomingWebhookMessageStatus)StatusId;
+        private set => StatusId = (int)value;
+    }
 
     public int ProcessingGeneration { get; private set; }
     public long ProcessingFence { get; private set; }
@@ -71,14 +88,29 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
         string? eventType,
         ReadOnlySpan<byte> payloadBytes,
         string payloadHash,
+        string contentType,
+        string contentEncoding,
         string? headersJson,
         DateTime receivedAt,
-        DateTime verifiedAt)
+        DateTime verifiedAt,
+        DateTime payloadRetentionUntil)
     {
         RequireGuid(tenantId, nameof(tenantId));
         if (payloadBytes.IsEmpty)
         {
             throw new ArgumentException("Incoming webhook payload is required.", nameof(payloadBytes));
+        }
+
+        if (receivedAt.Kind != DateTimeKind.Utc ||
+            verifiedAt.Kind != DateTimeKind.Utc ||
+            payloadRetentionUntil.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("Webhook timestamps must use UTC kind.");
+        }
+
+        if (verifiedAt < receivedAt || payloadRetentionUntil <= verifiedAt)
+        {
+            throw new ArgumentOutOfRangeException(nameof(payloadRetentionUntil));
         }
 
         return new IncomingWebhookMessage
@@ -92,12 +124,39 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
             HeadersJson = headersJson,
             _payloadBytes = payloadBytes.ToArray(),
             PayloadHash = NormalizePayloadHash(payloadHash),
+            PayloadByteLength = payloadBytes.Length,
+            PayloadProvenanceId = (int)WebhookPayloadProvenance.ExactBytes,
+            ContentType = NormalizeRequired(contentType, MaxContentTypeLength, nameof(contentType)).ToLowerInvariant(),
+            ContentEncoding = NormalizeRequired(contentEncoding, MaxContentEncodingLength, nameof(contentEncoding)).ToLowerInvariant(),
+            PayloadRetentionUntil = payloadRetentionUntil,
             Status = IncomingWebhookMessageStatus.Verified,
             ProcessingGeneration = 1,
             ReceivedAt = receivedAt,
             VerifiedAt = verifiedAt,
             CreatedAt = verifiedAt
         };
+    }
+
+    public void ClearPayload(DateTime clearedAt)
+    {
+        if (clearedAt.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("Timestamp must use UTC kind.", nameof(clearedAt));
+        }
+
+        if (clearedAt < PayloadRetentionUntil)
+        {
+            throw new InvalidOperationException("Incoming payload cannot be cleared before retention expires.");
+        }
+
+        if (_payloadBytes is null)
+        {
+            return;
+        }
+
+        _payloadBytes = null;
+        PayloadClearedAt = clearedAt;
+        UpdatedAt = clearedAt;
     }
 
     public IncomingWebhookDuplicateClassification ClassifyDuplicate(string payloadHash, DateTime classifiedAt)
@@ -428,18 +487,6 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
             throw new ArgumentException("Identifier is required.", parameterName);
         }
     }
-}
-
-public enum IncomingWebhookMessageStatus
-{
-    Verified = 1,
-    Processing = 2,
-    RetryDue = 3,
-    Processed = 4,
-    Ignored = 5,
-    RejectedPermanent = 6,
-    DeadLettered = 7,
-    PayloadConflict = 8
 }
 
 public enum IncomingWebhookDuplicateClassification

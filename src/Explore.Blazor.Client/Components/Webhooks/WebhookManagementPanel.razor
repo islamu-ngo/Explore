@@ -116,7 +116,6 @@
                         <MudTh>Kind</MudTh>
                         <MudTh>Provider</MudTh>
                         <MudTh>Status</MudTh>
-                        <MudTh>External App</MudTh>
                         <MudTh Class="webhook-management__actions-cell">Actions</MudTh>
                     </HeaderContent>
                     <RowTemplate>
@@ -128,12 +127,9 @@
                         <MudTd DataLabel="Status">
                             <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.StatusName)" Variant="Variant.Outlined">@context.StatusName</MudChip>
                         </MudTd>
-                        <MudTd DataLabel="External App">
-                            <span class="webhook-management__mono">@ShortText(context.ExternalProviderAppId, 24)</span>
-                        </MudTd>
                         <MudTd DataLabel="Actions" Class="webhook-management__actions-cell">
                             <div class="webhook-management__action-group">
-                                @if (CanOpenProviderPortal(context))
+                                @if (HasProviderPortalLink(context))
                                 {
                                     <MudTooltip Text="Open provider portal">
                                         <AppIconButton Icon="@Icons.Material.Filled.OpenInNew"
@@ -162,7 +158,7 @@
                           Breakpoint="Breakpoint.Sm"
                           Class="webhook-management__table">
                     <HeaderContent>
-                        <MudTh>URL</MudTh>
+                        <MudTh>Destination</MudTh>
                         <MudTh>Consumer</MudTh>
                         <MudTh>Status</MudTh>
                         <MudTh>Events</MudTh>
@@ -170,8 +166,8 @@
                         <MudTh Class="webhook-management__actions-cell">Actions</MudTh>
                     </HeaderContent>
                     <RowTemplate>
-                        <MudTd DataLabel="URL">
-                            <div class="webhook-management__url">@context.Url</div>
+                        <MudTd DataLabel="Destination">
+                            <div class="webhook-management__url">@context.DestinationHost</div>
                             <MudText Typo="Typo.caption" Color="Color.Secondary">Secret v@(context.SecretVersion ?? 0)</MudText>
                         </MudTd>
                         <MudTd DataLabel="Consumer">
@@ -293,7 +289,7 @@
                                     <MudText Typo="Typo.caption" Color="Color.Secondary">@ShortText(context.PayloadHash, 18)</MudText>
                                 </MudTd>
                                 <MudTd DataLabel="Status">
-                                    <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.StatusName)" Variant="Variant.Outlined">@context.StatusName</MudChip>
+                                    <MudChip T="string" Size="Size.Small" Color="@StatusColor(MessageState(context))" Variant="Variant.Outlined">@MessageState(context)</MudChip>
                                 </MudTd>
                                 <MudTd DataLabel="Created">@FormatDate(context.CreatedAt)</MudTd>
                                 <MudTd DataLabel="Actions" Class="webhook-management__actions-cell">
@@ -336,7 +332,7 @@
                                         <div class="webhook-management__mobile-row">
                                             <span class="webhook-management__mobile-label">Status</span>
                                             <span class="webhook-management__mobile-value">
-                                                <MudChip T="string" Size="Size.Small" Color="@StatusColor(message.StatusName)" Variant="Variant.Outlined">@message.StatusName</MudChip>
+                                                <MudChip T="string" Size="Size.Small" Color="@StatusColor(MessageState(message))" Variant="Variant.Outlined">@MessageState(message)</MudChip>
                                             </span>
                                         </div>
                                         <div class="webhook-management__mobile-row">
@@ -390,7 +386,7 @@
                             </HeaderContent>
                             <RowTemplate>
                                 <MudTd DataLabel="Endpoint">
-                                    <MudText Typo="Typo.body2">@ShortText(context.EndpointUrl, 36)</MudText>
+                                    <MudText Typo="Typo.body2">@ShortId(context.EndpointId)</MudText>
                                     <MudText Typo="Typo.caption" Color="Color.Secondary">@context.MessageEventType</MudText>
                                 </MudTd>
                                 <MudTd DataLabel="Status">
@@ -436,7 +432,7 @@
                                         <div class="webhook-management__mobile-row">
                                             <span class="webhook-management__mobile-label">Endpoint</span>
                                             <span class="webhook-management__mobile-value">
-                                                <MudText Typo="Typo.body2">@ShortText(attempt.EndpointUrl, 36)</MudText>
+                                                <MudText Typo="Typo.body2">@ShortId(attempt.EndpointId)</MudText>
                                                 <MudText Typo="Typo.caption" Color="Color.Secondary">@attempt.MessageEventType</MudText>
                                             </span>
                                         </div>
@@ -504,7 +500,6 @@
                     <MudSelectItem T="int" Value="4">Composite</MudSelectItem>
                     <MudSelectItem T="int" Value="5">DryRun</MudSelectItem>
                 </MudSelect>
-                <AppTextField T="string" @bind-Value="_consumerForm.ExternalProviderAppId" Label="External provider app ID" />
             </MudStack>
         </DialogContent>
         <DialogActions>
@@ -578,7 +573,7 @@
         </TitleContent>
         <DialogContent>
             <MudStack Spacing="3">
-                <MudText Typo="Typo.body2">@_rotateEndpoint?.Url</MudText>
+                <MudText Typo="Typo.body2">@_rotateEndpoint?.DestinationHost</MudText>
                 <AppTextField T="string" @bind-Value="_rotateForm.NewSecretRef" Label="New secret reference" Required="true" Immediate="true" />
                 <MudNumericField T="int?" @bind-Value="_rotateForm.PreviousSecretValidForSeconds" Label="Previous secret valid seconds" Variant="Variant.Outlined" Min="0" />
             </MudStack>
@@ -599,7 +594,7 @@
             </MudStack>
         </TitleContent>
         <DialogContent>
-            <MudText Typo="Typo.body2">@_archiveEndpoint?.Url</MudText>
+            <MudText Typo="Typo.body2">@_archiveEndpoint?.DestinationHost</MudText>
         </DialogContent>
         <DialogActions>
             <AppButton Variant="Variant.Text" OnClick="@(() => _archiveDialogOpen = false)" Disabled="_isBusy">Cancel</AppButton>
@@ -709,8 +704,7 @@
                 {
                     ConsumerKindId = _consumerForm.ConsumerKindId,
                     Name = _consumerForm.Name.Trim(),
-                    ProviderModeId = _consumerForm.ProviderModeId,
-                    ExternalProviderAppId = NullIfWhiteSpace(_consumerForm.ExternalProviderAppId)
+                    ProviderModeId = _consumerForm.ProviderModeId
                 }),
             closeDialog: () => _consumerDialogOpen = false);
     }
@@ -745,7 +739,7 @@
         _endpointForm = new EndpointForm
         {
             ConsumerId = endpoint.ConsumerId ?? Guid.Empty,
-            Url = endpoint.Url,
+            Url = string.Empty,
             Description = endpoint.Description ?? string.Empty,
             MaxAttempts = endpoint.MaxAttempts,
             TimeoutSeconds = endpoint.TimeoutSeconds,
@@ -934,7 +928,7 @@
         _selectedEventTypeIds.Remove(eventTypeId);
     }
 
-    private static bool CanOpenProviderPortal(HalResourceOfWebhookConsumerDto consumer) =>
+    private static bool HasProviderPortalLink(HalResourceOfWebhookConsumerDto consumer) =>
         WebhookHal.HasLink(consumer._links, WebhookClientLinkRelations.OpenProviderPortal);
 
     private static bool HasEndpointLink(HalResourceOfWebhookEndpointDto endpoint, string relation) =>
@@ -966,6 +960,12 @@
             ? $"{status} / {attempt.DurationMs} ms"
             : status;
     }
+
+    private static string MessageState(HalResourceOfWebhookMessageDto message) =>
+        message.PayloadClearedAt.HasValue ? "Payload cleared" : "Payload retained";
+
+    private static string ShortId(Guid? value) =>
+        value.HasValue ? value.Value.ToString("N")[..12] : "-";
 
     private static string FormatDate(DateTimeOffset? value) =>
         value.HasValue
@@ -1016,7 +1016,6 @@
 
         public int ProviderModeId { get; set; } = 2;
 
-        public string ExternalProviderAppId { get; set; } = string.Empty;
     }
 
     private sealed class EndpointForm

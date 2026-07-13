@@ -85,7 +85,7 @@ public sealed class ModerationIntegrationController(
             cancellationToken);
         if (!incoming.Succeeded)
         {
-            metrics.RecordEventReportProviderCallback(null, "coop", "failed", incoming.Code);
+            metrics.RecordEventReportProviderCallback("coop", "failed", incoming.Code);
             logger.LogWarning(
                 "Coop moderation callback rejected with status {StatusCode} failure {FailureCategory}",
                 incoming.StatusCode,
@@ -109,7 +109,7 @@ public sealed class ModerationIntegrationController(
         }
         catch (JsonException)
         {
-            metrics.RecordEventReportProviderCallback(null, "coop", "failed", "coop_webhook_json_invalid");
+            metrics.RecordEventReportProviderCallback("coop", "failed", "coop_webhook_json_invalid");
             logger.LogWarning("Coop moderation callback rejected because JSON parsing failed");
 
             return ApiProblemFactory.ToProblemResult(ApiProblemFactory.CreateValidationProblem(
@@ -122,7 +122,7 @@ public sealed class ModerationIntegrationController(
 
         if (request is null)
         {
-            metrics.RecordEventReportProviderCallback(null, "coop", "failed", "coop_webhook_body_required");
+            metrics.RecordEventReportProviderCallback("coop", "failed", "coop_webhook_body_required");
             logger.LogWarning("Coop moderation callback rejected because the body was empty");
 
             return ApiProblemFactory.ToProblemResult(ApiProblemFactory.CreateValidationProblem(
@@ -145,7 +145,6 @@ public sealed class ModerationIntegrationController(
         if (!capture.Succeeded)
         {
             metrics.RecordEventReportProviderCallback(
-                tenantId == Guid.Empty ? null : tenantId.ToString(),
                 "coop",
                 "failed",
                 capture.Code);
@@ -188,7 +187,6 @@ public sealed class ModerationIntegrationController(
         var outcome = response.Success ? "succeeded" : "failed";
         var failureCategory = response.FailureCode ?? "none";
         metrics.RecordEventReportProviderCallback(
-            tenantId == Guid.Empty ? null : tenantId.ToString(),
             provider,
             outcome,
             failureCategory);

@@ -15,13 +15,17 @@ public sealed class WebhookEndpointDto
 
     public int ProviderModeId { get; init; }
 
+    public required string ProviderModeCode { get; init; }
+
     public required string ProviderModeName { get; init; }
 
-    public required string Url { get; init; }
+    public required string DestinationHost { get; init; }
 
     public string? Description { get; init; }
 
     public int StatusId { get; init; }
+
+    public required string StatusCode { get; init; }
 
     public required string StatusName { get; init; }
 

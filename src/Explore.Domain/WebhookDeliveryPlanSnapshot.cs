@@ -1,6 +1,7 @@
 // ABOUTME: Immutable tenant-scoped delivery-plan authority captured when an outgoing webhook message is materialized.
 // ABOUTME: Freezes consumer mode, contract, configuration, and retention decisions so later settings cannot reroute queued work.
 
+using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
@@ -17,7 +18,14 @@ public sealed class WebhookDeliveryPlanSnapshot : ITenantEntity, IAuditableEntit
     public WebhookMessage WebhookMessage { get; private set; } = null!;
     public Guid WebhookConsumerId { get; private set; }
     public WebhookConsumer WebhookConsumer { get; private set; } = null!;
-    public WebhookProviderMode ProviderMode { get; private set; }
+    public int ProviderModeId { get; private set; }
+    public WebhookProviderModeLookup ProviderModeLookup { get; private set; } = null!;
+    [NotMapped]
+    public WebhookProviderMode ProviderMode
+    {
+        get => (WebhookProviderMode)ProviderModeId;
+        private set => ProviderModeId = (int)value;
+    }
     public string ConfigurationVersion { get; private set; } = string.Empty;
     public string EventContractVersion { get; private set; } = string.Empty;
     public string RetentionPolicy { get; private set; } = string.Empty;

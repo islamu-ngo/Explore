@@ -14,11 +14,15 @@ public class WebhookDeliveryAttemptConfiguration : IEntityTypeConfiguration<Webh
         builder.ToTable("webhook_delivery_attempts");
 
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-        builder.Property(e => e.Status).IsRequired();
+        builder.Property(e => e.OutcomeId).IsRequired();
+        builder.Ignore(e => e.Outcome);
         builder.Property(e => e.ProcessingLeaseToken);
+        builder.Property(e => e.ProcessingFence).IsRequired().IsConcurrencyToken();
         builder.Property(e => e.ProcessingLeaseExpiresAt);
         builder.Property(e => e.FailureCategory).HasMaxLength(100);
-        builder.Property(e => e.ResponseBodyPreview).HasMaxLength(4096);
+
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
+            .HasName("ak_webhook_delivery_attempts_tenant_id_id");
 
         builder.HasOne(e => e.Tenant)
             .WithMany()
@@ -29,7 +33,7 @@ public class WebhookDeliveryAttemptConfiguration : IEntityTypeConfiguration<Webh
             .WithMany()
             .HasForeignKey(e => new { e.TenantId, e.MessageId })
             .HasPrincipalKey(e => new { e.TenantId, e.Id })
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.Endpoint)
             .WithMany()
@@ -37,17 +41,22 @@ public class WebhookDeliveryAttemptConfiguration : IEntityTypeConfiguration<Webh
             .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(e => new { e.MessageId, e.EndpointId, e.AttemptNumber })
+        builder.HasOne(e => e.OutcomeLookup)
+            .WithMany()
+            .HasForeignKey(e => e.OutcomeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(e => new { e.TenantId, e.MessageId, e.EndpointId, e.AttemptNumber })
             .HasDatabaseName("ux_webhook_delivery_attempts_message_endpoint_attempt")
             .IsUnique();
 
-        builder.HasIndex(e => new { e.Status, e.ScheduledAt, e.CreatedAt })
+        builder.HasIndex(e => new { e.TenantId, e.OutcomeId, e.ScheduledAt, e.CreatedAt })
             .HasDatabaseName("ix_webhook_delivery_attempts_worker_poll");
 
-        builder.HasIndex(e => new { e.TenantId, e.EndpointId, e.Status, e.ScheduledAt })
+        builder.HasIndex(e => new { e.TenantId, e.EndpointId, e.OutcomeId, e.ScheduledAt })
             .HasDatabaseName("ix_webhook_delivery_attempts_tenant_endpoint_status");
 
-        builder.HasIndex(e => new { e.Status, e.ProcessingLeaseExpiresAt, e.TenantId, e.EndpointId })
+        builder.HasIndex(e => new { e.TenantId, e.OutcomeId, e.ProcessingLeaseExpiresAt, e.EndpointId })
             .HasDatabaseName("ix_webhook_delivery_attempts_active_lease_caps");
     }
 }

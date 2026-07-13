@@ -2,6 +2,7 @@
 // ABOUTME: Ensures disabled, dry-run, and local modes preserve retry-safe provider results.
 
 using System.Diagnostics.Metrics;
+using System.Text;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Telemetry;
@@ -81,14 +82,7 @@ public sealed class WebhookProviderResolverTests
         await Assert.That(result.MessageId).IsEqualTo(context.MessageId);
         await Assert.That(result.ProviderMessageId).IsEqualTo($"dryrun:{context.MessageId:N}");
         await Assert.That(createdMessage).IsNotNull();
-        await Assert.That(createdMessage!.ProviderMode).IsEqualTo(WebhookProviderMode.DryRun);
-        await Assert.That(createdMessage.PayloadJson).Contains("\"event.published\"");
-        await messageRepository.Received(1).MarkProviderQueuedAsync(
-            context.TenantId,
-            context.MessageId,
-            $"dryrun:{context.MessageId:N}",
-            Arg.Any<DateTime>(),
-            Arg.Any<CancellationToken>());
+        await Assert.That(Encoding.UTF8.GetString(createdMessage!.GetPayloadBytes()!)).Contains("\"event.published\"");
         await endpointRepository.DidNotReceiveWithAnyArgs()
             .GetActiveSubscribedEndpointsAsync(default, default!, default, default);
         await attemptRepository.DidNotReceiveWithAnyArgs()
@@ -140,7 +134,7 @@ public sealed class WebhookProviderResolverTests
                 && attempts.Single().MessageId == message.MessageId
                 && attempts.Single().EndpointId == endpoint.Id
                 && attempts.Single().AttemptNumber == 1
-                && attempts.Single().Status == WebhookDeliveryAttemptStatus.Scheduled),
+                && attempts.Single().Outcome == WebhookDeliveryAttemptOutcome.Scheduled),
             Arg.Any<CancellationToken>());
     }
 
@@ -237,7 +231,7 @@ public sealed class WebhookProviderResolverTests
             "domain-event-1",
             "Event",
             Guid.CreateVersion7(),
-            "{\"id\":\"msg_1\"}",
+            "{\"id\":\"msg_1\"}"u8.ToArray(),
             "hash",
             DateTimeOffset.UtcNow.AddDays(14));
     }

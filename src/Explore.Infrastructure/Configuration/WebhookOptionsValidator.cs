@@ -104,6 +104,22 @@ public sealed class WebhookOptionsValidator : IValidateOptions<WebhookOptions>
 
     private static void ValidateSvixOptions(WebhookSvixOptions options, List<string> failures)
     {
+        if (string.IsNullOrWhiteSpace(options.Environment) || options.Environment.Trim().Length > 100)
+        {
+            failures.Add("Webhooks:Svix:Environment is required and cannot exceed 100 characters.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.ProviderVersion) || options.ProviderVersion.Trim().Length > 100)
+        {
+            failures.Add("Webhooks:Svix:ProviderVersion is required and cannot exceed 100 characters.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.CapabilityPolicyVersion) ||
+            options.CapabilityPolicyVersion.Trim().Length > 100)
+        {
+            failures.Add("Webhooks:Svix:CapabilityPolicyVersion is required and cannot exceed 100 characters.");
+        }
+
         if (!string.IsNullOrWhiteSpace(options.BaseUrl))
         {
             if (!Uri.TryCreate(options.BaseUrl.Trim(), UriKind.Absolute, out var baseUrl))

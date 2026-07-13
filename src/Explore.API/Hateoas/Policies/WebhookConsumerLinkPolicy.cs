@@ -6,13 +6,10 @@ using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Webhooks;
 using Explore.Application.Hateoas;
-using Explore.Infrastructure.Configuration;
-using Microsoft.Extensions.Options;
 
 namespace Explore.API.Hateoas.Policies;
 
-public sealed class WebhookConsumerDetailLinkPolicy(IOptionsMonitor<WebhookOptions> webhookOptions)
-    : ILinkPolicy<WebhookConsumerDto>
+public sealed class WebhookConsumerDetailLinkPolicy : ILinkPolicy<WebhookConsumerDto>
 {
     public IEnumerable<LinkDefinition> GetLinks(WebhookConsumerDto dto, ClaimsPrincipal? user)
     {
@@ -24,27 +21,20 @@ public sealed class WebhookConsumerDetailLinkPolicy(IOptionsMonitor<WebhookOptio
             "Webhook consumer")
             .RequirePermission(AuthorizationActions.Webhooks.View, ResourceDescriptors.WebhookConsumer, dto);
 
-        if (CanOpenProviderPortal(dto, webhookOptions.CurrentValue))
-        {
-            yield return new LinkDefinition(
-                LinkRelations.OpenProviderPortal,
-                RouteNames.OpenSvixAppPortal,
-                null,
-                "POST",
-                "Open advanced webhook provider portal",
-                RequiresAuth: true)
-                .RequirePermission(
-                    AuthorizationActions.Webhooks.OpenProviderPortal,
-                    ResourceDescriptors.WebhookConsumer,
-                    dto);
-        }
     }
 
-    private static bool CanOpenProviderPortal(WebhookConsumerDto dto, WebhookOptions options) =>
-        dto.CanOpenProviderPortal &&
-        options is { IsDisabled: false, Svix: { AppPortalEnabled: true } } &&
-        (options.IsProvider(WebhookOptions.ProviderSvix) ||
-         options.IsProvider(WebhookOptions.ProviderComposite));
+    public static LinkDefinition CreateProviderPortalLink(WebhookConsumerDto dto) =>
+        new LinkDefinition(
+            LinkRelations.OpenProviderPortal,
+            RouteNames.OpenSvixAppPortal,
+            null,
+            "POST",
+            "Open provider portal",
+            RequiresAuth: true)
+        .RequirePermission(
+            AuthorizationActions.Webhooks.OpenProviderPortal,
+            ResourceDescriptors.WebhookConsumer,
+            dto);
 }
 
 public sealed class WebhookConsumerCollectionLinkPolicy(ILinkPolicy<WebhookConsumerDto> detailPolicy)

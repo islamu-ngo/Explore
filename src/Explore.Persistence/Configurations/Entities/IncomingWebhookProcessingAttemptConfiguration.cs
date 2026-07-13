@@ -29,6 +29,9 @@ public class IncomingWebhookProcessingAttemptConfiguration : IEntityTypeConfigur
         builder.Property(e => e.FailureCategory).HasMaxLength(IncomingWebhookMessage.MaxFailureCodeLength);
         builder.Property(e => e.SafeDetail).HasMaxLength(IncomingWebhookMessage.MaxSafeDetailLength);
 
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
+            .HasName("ak_incoming_webhook_processing_attempts_tenant_id_id");
+
         builder.HasOne(e => e.Tenant)
             .WithMany()
             .HasForeignKey(e => e.TenantId)

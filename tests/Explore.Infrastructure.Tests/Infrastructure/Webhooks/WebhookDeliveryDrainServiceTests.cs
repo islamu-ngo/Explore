@@ -27,16 +27,13 @@ public sealed class WebhookDeliveryDrainServiceTests
         var handler = new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NoContent));
         var fixture = new Fixture(handler);
         var attempt = CreateAttempt();
-        fixture.AttemptRepository.GetDueScheduledAsync(100, Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns([attempt]);
-        fixture.AttemptRepository.TryMarkAsSendingAsync(attempt.TenantId, attempt.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns(true);
+        fixture.ConfigureClaim(attempt);
 
         WebhookDeliveryDrainResult result = await fixture.Service.ProcessBatchAsync(CancellationToken.None);
 
         await Assert.That(result.SucceededCount).IsEqualTo(1);
         await Assert.That(handler.CallCount).IsEqualTo(1);
-        await Assert.That(handler.Body).IsEqualTo(attempt.Message!.PayloadJson);
+        await Assert.That(handler.Body).IsEqualTo(Encoding.UTF8.GetString(attempt.Message!.GetPayloadBytes()!));
         await Assert.That(handler.Headers.ContainsKey("svix-id")).IsTrue();
         await Assert.That(handler.Headers.ContainsKey("svix-timestamp")).IsTrue();
         await Assert.That(handler.Headers.ContainsKey("svix-signature")).IsTrue();
@@ -44,20 +41,15 @@ public sealed class WebhookDeliveryDrainServiceTests
             attempt.TenantId,
             attempt.Id,
             Arg.Any<Guid>(),
+            Arg.Any<long>(),
             Arg.Any<DateTime>(),
             Arg.Any<DateTime>(),
             (int)HttpStatusCode.NoContent,
             Arg.Any<int>(),
-            Arg.Is<string?>(value => value == null),
             Arg.Any<CancellationToken>());
         await fixture.EndpointRepository.Received(1).MarkSuccessAsync(
             attempt.TenantId,
             attempt.EndpointId,
-            Arg.Any<DateTime>(),
-            Arg.Any<CancellationToken>());
-        await fixture.MessageRepository.Received(1).RefreshLocalDeliveryStatusAsync(
-            attempt.TenantId,
-            attempt.MessageId,
             Arg.Any<DateTime>(),
             Arg.Any<CancellationToken>());
         await fixture.AttemptRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
@@ -72,10 +64,7 @@ public sealed class WebhookDeliveryDrainServiceTests
         });
         var fixture = new Fixture(handler);
         var attempt = CreateAttempt();
-        fixture.AttemptRepository.GetDueScheduledAsync(100, Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns([attempt]);
-        fixture.AttemptRepository.TryMarkAsSendingAsync(attempt.TenantId, attempt.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns(true);
+        fixture.ConfigureClaim(attempt);
 
         WebhookDeliveryDrainResult result = await fixture.Service.ProcessBatchAsync(CancellationToken.None);
 
@@ -84,12 +73,12 @@ public sealed class WebhookDeliveryDrainServiceTests
             attempt.TenantId,
             attempt.Id,
             Arg.Any<Guid>(),
-            WebhookDeliveryAttemptStatus.Failed,
+            Arg.Any<long>(),
+            WebhookDeliveryAttemptOutcome.Failed,
             Arg.Any<DateTime>(),
             "http_non_success",
             (int)HttpStatusCode.InternalServerError,
             Arg.Any<int>(),
-            "provider unavailable",
             Arg.Is<DateTime?>(value => value != null),
             Arg.Any<CancellationToken>());
         await fixture.AttemptRepository.Received(1).CreateAsync(
@@ -99,12 +88,14 @@ public sealed class WebhookDeliveryDrainServiceTests
                 && retry.MessageId == attempt.MessageId
                 && retry.EndpointId == attempt.EndpointId
                 && retry.AttemptNumber == 2
-                && retry.Status == WebhookDeliveryAttemptStatus.Scheduled),
+                && retry.Outcome == WebhookDeliveryAttemptOutcome.Scheduled),
             Arg.Any<CancellationToken>());
-        await fixture.EndpointRepository.Received(1).MarkFailureAsync(
+        await fixture.EndpointRepository.Received(1).RecordFailureAsync(
             attempt.TenantId,
             attempt.EndpointId,
             Arg.Any<DateTime>(),
+            "http_non_success",
+            attempt.Endpoint!.MaxAttempts,
             Arg.Any<CancellationToken>());
     }
 
@@ -114,10 +105,7 @@ public sealed class WebhookDeliveryDrainServiceTests
         var handler = new RecordingMessageHandler(_ => throw new TaskCanceledException("simulated timeout"));
         var fixture = new Fixture(handler);
         var attempt = CreateAttempt();
-        fixture.AttemptRepository.GetDueScheduledAsync(100, Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns([attempt]);
-        fixture.AttemptRepository.TryMarkAsSendingAsync(attempt.TenantId, attempt.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns(true);
+        fixture.ConfigureClaim(attempt);
 
         WebhookDeliveryDrainResult result = await fixture.Service.ProcessBatchAsync(CancellationToken.None);
 
@@ -126,19 +114,19 @@ public sealed class WebhookDeliveryDrainServiceTests
             attempt.TenantId,
             attempt.Id,
             Arg.Any<Guid>(),
-            WebhookDeliveryAttemptStatus.Failed,
+            Arg.Any<long>(),
+            WebhookDeliveryAttemptOutcome.Failed,
             Arg.Any<DateTime>(),
             "timeout",
             Arg.Is<int?>(value => value == null),
             Arg.Any<int>(),
-            Arg.Is<string?>(value => value == null),
             Arg.Is<DateTime?>(value => value != null),
             Arg.Any<CancellationToken>());
         await fixture.AttemptRepository.Received(1).CreateAsync(
             Arg.Is<WebhookDeliveryAttempt>(retry =>
                 retry != null
                 && retry.AttemptNumber == 2
-                && retry.Status == WebhookDeliveryAttemptStatus.Scheduled),
+                && retry.Outcome == WebhookDeliveryAttemptOutcome.Scheduled),
             Arg.Any<CancellationToken>());
     }
 
@@ -148,10 +136,7 @@ public sealed class WebhookDeliveryDrainServiceTests
         var handler = new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Redirect));
         var fixture = new Fixture(handler);
         var attempt = CreateAttempt();
-        fixture.AttemptRepository.GetDueScheduledAsync(100, Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns([attempt]);
-        fixture.AttemptRepository.TryMarkAsSendingAsync(attempt.TenantId, attempt.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns(true);
+        fixture.ConfigureClaim(attempt);
 
         await fixture.Service.ProcessBatchAsync(CancellationToken.None);
 
@@ -159,12 +144,12 @@ public sealed class WebhookDeliveryDrainServiceTests
             attempt.TenantId,
             attempt.Id,
             Arg.Any<Guid>(),
-            WebhookDeliveryAttemptStatus.Failed,
+            Arg.Any<long>(),
+            WebhookDeliveryAttemptOutcome.Failed,
             Arg.Any<DateTime>(),
             "redirect_response",
             (int)HttpStatusCode.Redirect,
             Arg.Any<int>(),
-            Arg.Any<string?>(),
             Arg.Is<DateTime?>(value => value != null),
             Arg.Any<CancellationToken>());
     }
@@ -176,10 +161,7 @@ public sealed class WebhookDeliveryDrainServiceTests
         var fixture = new Fixture(handler);
         var attempt = CreateAttempt();
         attempt.Endpoint!.Url = "http://127.0.0.1/webhook";
-        fixture.AttemptRepository.GetDueScheduledAsync(100, Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns([attempt]);
-        fixture.AttemptRepository.TryMarkAsSendingAsync(attempt.TenantId, attempt.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns(true);
+        fixture.ConfigureClaim(attempt);
 
         WebhookDeliveryDrainResult result = await fixture.Service.ProcessBatchAsync(CancellationToken.None);
 
@@ -189,18 +171,20 @@ public sealed class WebhookDeliveryDrainServiceTests
             attempt.TenantId,
             attempt.Id,
             Arg.Any<Guid>(),
-            WebhookDeliveryAttemptStatus.Abandoned,
+            Arg.Any<long>(),
+            WebhookDeliveryAttemptOutcome.Abandoned,
             Arg.Any<DateTime>(),
             "private_network_blocked",
             Arg.Is<int?>(value => value == null),
             0,
-            Arg.Is<string?>(value => value == null),
             Arg.Is<DateTime?>(value => value == null),
             Arg.Any<CancellationToken>());
-        await fixture.EndpointRepository.Received(1).DisableAsync(
+        await fixture.EndpointRepository.Received(1).RecordFailureAsync(
             attempt.TenantId,
             attempt.EndpointId,
             Arg.Any<DateTime>(),
+            "private_network_blocked",
+            1,
             Arg.Any<CancellationToken>());
     }
 
@@ -230,7 +214,7 @@ public sealed class WebhookDeliveryDrainServiceTests
     {
         var fixture = new Fixture(new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NoContent)));
         var attempt = CreateAttempt();
-        attempt.Status = WebhookDeliveryAttemptStatus.Abandoned;
+        attempt.Outcome = WebhookDeliveryAttemptOutcome.Abandoned;
         attempt.CompletedAt = DateTime.UtcNow.AddMinutes(-5);
         fixture.AttemptRepository.GetByTenantAndIdAsync(attempt.TenantId, attempt.Id, Arg.Any<CancellationToken>())
             .Returns(attempt);
@@ -264,15 +248,10 @@ public sealed class WebhookDeliveryDrainServiceTests
         await Assert.That(createdAttempt.MessageId).IsEqualTo(attempt.MessageId);
         await Assert.That(createdAttempt.EndpointId).IsEqualTo(attempt.EndpointId);
         await Assert.That(createdAttempt.AttemptNumber).IsEqualTo(9);
-        await Assert.That(createdAttempt.Status).IsEqualTo(WebhookDeliveryAttemptStatus.Scheduled);
+        await Assert.That(createdAttempt.Outcome).IsEqualTo(WebhookDeliveryAttemptOutcome.Scheduled);
         await Assert.That(createdAttempt.ScheduledAt).IsBetween(
             DateTime.UtcNow.AddSeconds(-5),
             DateTime.UtcNow.AddSeconds(5));
-        await fixture.MessageRepository.Received(1).RefreshLocalDeliveryStatusAsync(
-            attempt.TenantId,
-            attempt.MessageId,
-            Arg.Any<DateTime>(),
-            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -280,7 +259,7 @@ public sealed class WebhookDeliveryDrainServiceTests
     {
         var fixture = new Fixture(new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NoContent)));
         var attempt = CreateAttempt();
-        attempt.Status = WebhookDeliveryAttemptStatus.Failed;
+        attempt.Outcome = WebhookDeliveryAttemptOutcome.Failed;
         fixture.AttemptRepository.GetByTenantAndIdAsync(attempt.TenantId, attempt.Id, Arg.Any<CancellationToken>())
             .Returns(attempt);
         fixture.AttemptRepository.HasActiveAttemptForEndpointAsync(
@@ -297,7 +276,6 @@ public sealed class WebhookDeliveryDrainServiceTests
 
         await Assert.That(result.Outcome).IsEqualTo(WebhookDeliveryDrainOutcome.Deferred);
         await fixture.AttemptRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
-        await fixture.MessageRepository.DidNotReceiveWithAnyArgs().RefreshLocalDeliveryStatusAsync(default, default, default, default);
     }
 
     [Test]
@@ -305,7 +283,7 @@ public sealed class WebhookDeliveryDrainServiceTests
     {
         var fixture = new Fixture(new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NoContent)));
         var attempt = CreateAttempt();
-        attempt.Status = WebhookDeliveryAttemptStatus.Abandoned;
+        attempt.Outcome = WebhookDeliveryAttemptOutcome.Abandoned;
         attempt.Endpoint!.Status = WebhookEndpointStatus.Disabled;
         fixture.AttemptRepository.GetByTenantAndIdAsync(attempt.TenantId, attempt.Id, Arg.Any<CancellationToken>())
             .Returns(attempt);
@@ -317,7 +295,6 @@ public sealed class WebhookDeliveryDrainServiceTests
 
         await Assert.That(result.Outcome).IsEqualTo(WebhookDeliveryDrainOutcome.Skipped);
         await fixture.AttemptRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
-        await fixture.MessageRepository.DidNotReceiveWithAnyArgs().RefreshLocalDeliveryStatusAsync(default, default, default, default);
     }
 
     private static WebhookDeliveryAttempt CreateAttempt()
@@ -325,26 +302,26 @@ public sealed class WebhookDeliveryDrainServiceTests
         var tenantId = Guid.CreateVersion7();
         var messageId = Guid.CreateVersion7();
         var endpointId = Guid.CreateVersion7();
+        var createdAt = DateTime.UtcNow;
         return new WebhookDeliveryAttempt
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenantId,
             MessageId = messageId,
-            Message = new WebhookMessage
-            {
-                Id = messageId,
-                TenantId = tenantId,
-                EventType = "event.published",
-                EventId = "domain-event-1",
-                AggregateKind = "Event",
-                AggregateId = Guid.CreateVersion7(),
-                PayloadJson = "{\"type\":\"event.published\"}",
-                PayloadHash = "hash",
-                PayloadRetentionUntil = DateTime.UtcNow.AddDays(14),
-                ProviderMode = WebhookProviderMode.Local,
-                Status = WebhookMessageStatus.Queued,
-                CreatedAt = DateTime.UtcNow
-            },
+            Message = WebhookMessage.Create(
+                messageId,
+                tenantId,
+                "event.published",
+                "domain-event-1",
+                "Event",
+                Guid.CreateVersion7(),
+                consumerId: null,
+                "{\"type\":\"event.published\"}"u8,
+                "application/json",
+                "utf-8",
+                createdAt,
+                createdAt.AddDays(14),
+                createdAt),
             EndpointId = endpointId,
             Endpoint = new WebhookEndpoint
             {
@@ -360,9 +337,9 @@ public sealed class WebhookDeliveryDrainServiceTests
                 CreatedAt = DateTime.UtcNow
             },
             AttemptNumber = 1,
-            Status = WebhookDeliveryAttemptStatus.Scheduled,
-            ScheduledAt = DateTime.UtcNow.AddSeconds(-1),
-            CreatedAt = DateTime.UtcNow
+            Outcome = WebhookDeliveryAttemptOutcome.Scheduled,
+            ScheduledAt = createdAt.AddSeconds(-1),
+            CreatedAt = createdAt
         };
     }
 
@@ -383,7 +360,41 @@ public sealed class WebhookDeliveryDrainServiceTests
             services.AddSingleton(AttemptRepository);
             services.AddSingleton(EndpointRepository);
             services.AddSingleton(MessageRepository);
+            services.AddSingleton(Substitute.For<ITenantContextAccessor>());
             ServiceProvider = services.BuildServiceProvider();
+
+            AttemptRepository.MarkSucceededAsync(
+                    Arg.Any<Guid>(),
+                    Arg.Any<Guid>(),
+                    Arg.Any<Guid>(),
+                    Arg.Any<long>(),
+                    Arg.Any<DateTime>(),
+                    Arg.Any<DateTime>(),
+                    Arg.Any<int>(),
+                    Arg.Any<int>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(true);
+            AttemptRepository.MarkFailedAsync(
+                    Arg.Any<Guid>(),
+                    Arg.Any<Guid>(),
+                    Arg.Any<Guid>(),
+                    Arg.Any<long>(),
+                    Arg.Any<WebhookDeliveryAttemptOutcome>(),
+                    Arg.Any<DateTime>(),
+                    Arg.Any<string>(),
+                    Arg.Any<int?>(),
+                    Arg.Any<int>(),
+                    Arg.Any<DateTime?>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(true);
+            EndpointRepository.RecordFailureAsync(
+                    Arg.Any<Guid>(),
+                    Arg.Any<Guid>(),
+                    Arg.Any<DateTime>(),
+                    Arg.Any<string>(),
+                    Arg.Any<int>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(new WebhookEndpointFailureState(1, false));
 
             var configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -430,6 +441,34 @@ public sealed class WebhookDeliveryDrainServiceTests
         public ServiceProvider ServiceProvider { get; }
 
         public WebhookDeliveryDrainService Service { get; }
+
+        public void ConfigureClaim(WebhookDeliveryAttempt attempt)
+        {
+            var claimedAt = DateTime.UtcNow;
+            var leaseToken = Guid.CreateVersion7();
+            const long processingFence = 1;
+            AttemptRepository.GetDueTenantIdsAsync(
+                    Arg.Any<int>(),
+                    Arg.Any<DateTime>(),
+                    Arg.Any<CancellationToken>())
+                .Returns([attempt.TenantId]);
+            AttemptRepository.CountDueScheduledAsync(
+                    Arg.Any<DateTime>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(1);
+            AttemptRepository.ClaimDueAsync(
+                    Arg.Any<WebhookDeliveryClaimRequest>(),
+                    Arg.Any<IReadOnlyDictionary<Guid, WebhookDeliveryClaimLimits>>(),
+                    Arg.Any<CancellationToken>())
+                .Returns([
+                    new WebhookDeliveryClaim(
+                        attempt,
+                        leaseToken,
+                        processingFence,
+                        claimedAt,
+                        claimedAt.AddMinutes(2))
+                ]);
+        }
     }
 
     private sealed class StaticHttpClientFactory(HttpClient client) : IHttpClientFactory

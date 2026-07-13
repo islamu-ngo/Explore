@@ -15,19 +15,23 @@ public sealed class WebhookConsumerDto
 
     public int ConsumerKindId { get; init; }
 
+    public required string ConsumerKindCode { get; init; }
+
     public required string ConsumerKindName { get; init; }
 
     public int StatusId { get; init; }
+
+    public required string StatusCode { get; init; }
 
     public required string StatusName { get; init; }
 
     public int ProviderModeId { get; init; }
 
+    public required string ProviderModeCode { get; init; }
+
     public required string ProviderModeName { get; init; }
 
     public required string Name { get; init; }
-
-    public bool CanOpenProviderPortal { get; init; }
 
     public DateTime CreatedAt { get; init; }
 

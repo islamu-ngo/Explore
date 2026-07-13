@@ -15,20 +15,16 @@ public sealed class BusinessMetricsWebhookTests
     {
         using var metricsCapture = new MetricsCapture();
         var metrics = CreateMetrics();
-        var tenantId = Guid.NewGuid().ToString();
 
         metrics.RecordWebhookDeliveryFailure(
-            tenantId,
             "event.published",
             "retry_scheduled",
             "http_non_success");
 
-        var measurement = await metricsCapture.SingleByTenantAsync(
-            "explore.webhooks.delivery_failure",
-            tenantId);
+        var measurement = await metricsCapture.SingleAsync("explore.webhooks.delivery_failure");
 
         await Assert.That(measurement.Value).IsEqualTo(1);
-        await Assert.That(measurement.Tags["tenant_id"]?.ToString()).IsEqualTo(tenantId);
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("tenant_id");
         await Assert.That(measurement.Tags["event_type"]?.ToString()).IsEqualTo("event.published");
         await Assert.That(measurement.Tags["outcome"]?.ToString()).IsEqualTo("retry_scheduled");
         await Assert.That(measurement.Tags["failure_category"]?.ToString()).IsEqualTo("http_non_success");
@@ -39,18 +35,15 @@ public sealed class BusinessMetricsWebhookTests
     {
         using var metricsCapture = new MetricsCapture();
         var metrics = CreateMetrics();
-        var tenantId = Guid.NewGuid().ToString();
 
         metrics.RecordWebhookDeliveryFailure(
-            tenantId,
             "event.published",
             "abandoned",
             "private_network_blocked");
 
-        var measurement = await metricsCapture.SingleByTenantAsync(
-            "explore.webhooks.delivery_failure",
-            tenantId);
+        var measurement = await metricsCapture.SingleAsync("explore.webhooks.delivery_failure");
 
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("tenant_id");
         await Assert.That(measurement.Tags.Keys).DoesNotContain("endpoint_id");
         await Assert.That(measurement.Tags.Keys).DoesNotContain("endpoint_url");
         await Assert.That(measurement.Tags.Keys).DoesNotContain("url");
@@ -69,18 +62,15 @@ public sealed class BusinessMetricsWebhookTests
     {
         using var metricsCapture = new MetricsCapture();
         var metrics = CreateMetrics();
-        var tenantId = Guid.NewGuid().ToString();
 
         metrics.RecordWebhookManualRetry(
-            tenantId,
             "https://example.test/private",
             "operator typed this",
             "raw exception with endpoint https://example.test");
 
-        var measurement = await metricsCapture.SingleByTenantAsync(
-            "explore.webhooks.manual_retries",
-            tenantId);
+        var measurement = await metricsCapture.SingleAsync("explore.webhooks.manual_retries");
 
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("tenant_id");
         await Assert.That(measurement.Tags["event_type"]?.ToString()).IsEqualTo("unknown");
         await Assert.That(measurement.Tags["outcome"]?.ToString()).IsEqualTo("unknown");
         await Assert.That(measurement.Tags["failure_category"]?.ToString()).IsEqualTo("unknown");
@@ -91,20 +81,16 @@ public sealed class BusinessMetricsWebhookTests
     {
         using var metricsCapture = new MetricsCapture();
         var metrics = CreateMetrics();
-        var tenantId = Guid.NewGuid().ToString();
 
         metrics.RecordWebhookProviderPublishFailure(
-            tenantId,
             "event.published",
             "Svix",
             "svix_provider_unavailable");
 
-        var measurement = await metricsCapture.SingleByTenantAsync(
-            "explore.webhooks.provider_publish_failure",
-            tenantId);
+        var measurement = await metricsCapture.SingleAsync("explore.webhooks.provider_publish_failure");
 
         await Assert.That(measurement.Value).IsEqualTo(1);
-        await Assert.That(measurement.Tags["tenant_id"]?.ToString()).IsEqualTo(tenantId);
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("tenant_id");
         await Assert.That(measurement.Tags["event_type"]?.ToString()).IsEqualTo("event.published");
         await Assert.That(measurement.Tags["provider"]?.ToString()).IsEqualTo("svix");
         await Assert.That(measurement.Tags["failure_category"]?.ToString()).IsEqualTo("svix_provider_unavailable");
@@ -152,7 +138,7 @@ public sealed class BusinessMetricsWebhookTests
             _listener.Start();
         }
 
-        public async Task<Measurement> SingleByTenantAsync(string instrumentName, string tenantId)
+        public async Task<Measurement> SingleAsync(string instrumentName)
         {
             for (var attempt = 0; attempt < 20; attempt++)
             {
@@ -164,8 +150,6 @@ public sealed class BusinessMetricsWebhookTests
 
                 var matches = snapshot
                     .Where(measurement => measurement.InstrumentName == instrumentName)
-                    .Where(measurement => measurement.Tags.TryGetValue("tenant_id", out var value)
-                        && string.Equals(value?.ToString(), tenantId, StringComparison.Ordinal))
                     .ToList();
 
                 if (matches.Count > 0)
@@ -180,8 +164,6 @@ public sealed class BusinessMetricsWebhookTests
             {
                 return _measurements
                     .Where(measurement => measurement.InstrumentName == instrumentName)
-                    .Where(measurement => measurement.Tags.TryGetValue("tenant_id", out var value)
-                        && string.Equals(value?.ToString(), tenantId, StringComparison.Ordinal))
                     .Single();
             }
         }

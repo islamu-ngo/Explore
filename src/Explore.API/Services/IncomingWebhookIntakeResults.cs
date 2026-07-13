@@ -14,6 +14,8 @@ public sealed record IncomingWebhookReadResult(
     ReadOnlyMemory<byte> RawPayloadBytes,
     DateTimeOffset ReceivedAt,
     string? PayloadHash,
+    string ContentType,
+    string ContentEncoding,
     IReadOnlyDictionary<string, string> Headers,
     IncomingWebhookVerificationResult? Verification,
     int StatusCode,
@@ -28,9 +30,11 @@ public sealed record IncomingWebhookReadResult(
         ReadOnlyMemory<byte> rawPayloadBytes,
         DateTimeOffset receivedAt,
         string payloadHash,
+        string contentType,
+        string contentEncoding,
         IReadOnlyDictionary<string, string> headers,
         IncomingWebhookVerificationResult verification) =>
-        new(true, provider, rawPayload, rawPayloadBytes.ToArray(), receivedAt, payloadHash, headers, verification, StatusCodes.Status200OK, string.Empty, string.Empty, string.Empty, string.Empty);
+        new(true, provider, rawPayload, rawPayloadBytes.ToArray(), receivedAt, payloadHash, contentType, contentEncoding, headers, verification, StatusCodes.Status200OK, string.Empty, string.Empty, string.Empty, string.Empty);
 
     public static IncomingWebhookReadResult Failure(
         string provider,
@@ -38,7 +42,7 @@ public sealed record IncomingWebhookReadResult(
         string title,
         string detail,
         string code) =>
-        new(false, provider, null, ReadOnlyMemory<byte>.Empty, DateTimeOffset.MinValue, null, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), null, statusCode, title, ProblemType(statusCode), detail, code);
+        new(false, provider, null, ReadOnlyMemory<byte>.Empty, DateTimeOffset.MinValue, null, string.Empty, string.Empty, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), null, statusCode, title, ProblemType(statusCode), detail, code);
 
     private static string ProblemType(int statusCode) => statusCode switch
     {

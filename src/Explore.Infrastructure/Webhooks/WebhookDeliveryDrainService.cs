@@ -1,7 +1,6 @@
 // ABOUTME: Drains LocalProvider webhook delivery attempts into signed outbound HTTP POST requests.
 // ABOUTME: Applies SSRF checks, lease-based processing, retries, endpoint state, and canonical message status refresh.
 
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Text;
@@ -27,7 +26,7 @@ public sealed class WebhookDeliveryDrainService(
     IOptions<WebhookDeliveryProcessorSettings> settings,
     IOptionsMonitor<WebhookOptions> webhookOptions,
     BusinessMetrics metrics,
-    ILogger<WebhookDeliveryDrainService> logger) : IWebhookDeliveryDrainService, IDisposable
+    ILogger<WebhookDeliveryDrainService> logger) : IWebhookDeliveryDrainService
 {
     public const string HttpClientName = "LocalWebhookDeliveryClient";
 
@@ -49,12 +48,6 @@ public sealed class WebhookDeliveryDrainService(
     private const string MessagePayloadClearedFailureCategory = "message_payload_cleared";
 
     private readonly WebhookDeliveryProcessorSettings _settings = settings.Value;
-    private readonly SemaphoreSlim _globalConcurrencyGate = new(
-        settings.Value.MaxConcurrentDeliveries,
-        settings.Value.MaxConcurrentDeliveries);
-    private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _tenantConcurrencyGates = new();
-    private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _endpointConcurrencyGates = new();
-
     public async Task<WebhookDeliveryDrainResult> ProcessBatchAsync(CancellationToken cancellationToken)
     {
         if (!ShouldProcessLocalAttempts())
@@ -62,14 +55,43 @@ public sealed class WebhookDeliveryDrainService(
             return new WebhookDeliveryDrainResult(0, 0, 0, 0, 0, 0, 0);
         }
 
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var attemptRepository = scope.ServiceProvider.GetRequiredService<IWebhookDeliveryAttemptRepository>();
-        var candidates = await attemptRepository.GetDueScheduledAsync(
-            _settings.CandidateBatchSize,
-            DateTime.UtcNow,
-            cancellationToken);
+        var claimedAt = DateTime.UtcNow;
+        IReadOnlyList<WebhookDeliveryClaim> claims;
+        int candidateCount;
+        await using (var scope = scopeFactory.CreateAsyncScope())
+        {
+            var attemptRepository = scope.ServiceProvider.GetRequiredService<IWebhookDeliveryAttemptRepository>();
+            var tenantOrder = await attemptRepository.GetDueTenantIdsAsync(
+                _settings.CandidateBatchSize,
+                claimedAt,
+                cancellationToken);
+            candidateCount = await attemptRepository.CountDueScheduledAsync(claimedAt, cancellationToken);
+            if (tenantOrder.Count == 0)
+            {
+                claims = [];
+            }
+            else
+            {
+                var limits = tenantOrder.ToDictionary(
+                    tenantId => tenantId,
+                    _ => new WebhookDeliveryClaimLimits(
+                        _settings.MaxConcurrentDeliveriesPerTenant,
+                        _settings.MaxConcurrentDeliveriesPerEndpoint,
+                        _settings.MaxItemsPerTenantPerClaimCycle));
+                claims = await attemptRepository.ClaimDueAsync(
+                    new WebhookDeliveryClaimRequest(
+                        _settings.BatchSize,
+                        _settings.CandidateBatchSize,
+                        _settings.MaxConcurrentDeliveries,
+                        tenantOrder,
+                        claimedAt,
+                        TimeSpan.FromSeconds(_settings.ProcessingLeaseTimeoutSeconds)),
+                    limits,
+                    cancellationToken);
+            }
+        }
 
-        if (candidates.Count == 0)
+        if (claims.Count == 0)
         {
             if (_settings.VerboseLogging)
             {
@@ -79,9 +101,13 @@ public sealed class WebhookDeliveryDrainService(
             return new WebhookDeliveryDrainResult(0, 0, 0, 0, 0, 0, 0);
         }
 
-        var pending = SelectFairBatch(candidates);
-        var results = await Task.WhenAll(pending.Select(attempt =>
-            ProcessAttemptAsync(attempt, cancellationToken)));
+        var results = await Task.WhenAll(claims.Select(claim =>
+            SendClaimedAttemptAsync(
+                claim.Attempt,
+                claim.LeaseToken,
+                claim.ProcessingFence,
+                claim.ClaimedAt,
+                cancellationToken)));
         var succeeded = results.Count(result => result.Outcome == WebhookDeliveryDrainOutcome.Succeeded);
         var retryScheduled = results.Count(result => result.Outcome == WebhookDeliveryDrainOutcome.RetryScheduled);
         var abandoned = results.Count(result => result.Outcome == WebhookDeliveryDrainOutcome.Abandoned);
@@ -90,7 +116,7 @@ public sealed class WebhookDeliveryDrainService(
         var skipped = results.Length - processed - alreadyClaimed;
 
         return new WebhookDeliveryDrainResult(
-            candidates.Count,
+            candidateCount,
             processed,
             succeeded,
             retryScheduled,
@@ -134,32 +160,55 @@ public sealed class WebhookDeliveryDrainService(
         Guid attemptId,
         CancellationToken cancellationToken)
     {
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var attemptRepository = scope.ServiceProvider.GetRequiredService<IWebhookDeliveryAttemptRepository>();
-        var attempt = await attemptRepository.GetByTenantAndIdAsync(tenantId, attemptId, cancellationToken);
+        WebhookDeliveryAttempt? attempt;
+        await using (var scope = scopeFactory.CreateAsyncScope())
+        {
+            var attemptRepository = scope.ServiceProvider.GetRequiredService<IWebhookDeliveryAttemptRepository>();
+            attempt = await attemptRepository.GetByTenantAndIdAsync(tenantId, attemptId, cancellationToken);
+        }
         if (attempt is null)
         {
             return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.Missing);
         }
 
-        if (attempt.Status is WebhookDeliveryAttemptStatus.Succeeded or WebhookDeliveryAttemptStatus.Abandoned)
+        if (attempt.Outcome is WebhookDeliveryAttemptOutcome.Succeeded or WebhookDeliveryAttemptOutcome.Abandoned)
         {
             return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.AlreadySettled, attempt.Id);
         }
 
-        if (attempt.Status == WebhookDeliveryAttemptStatus.Sending)
+        if (attempt.Outcome == WebhookDeliveryAttemptOutcome.Sending)
         {
             return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.AlreadyClaimed, attempt.Id);
         }
 
-        if (attempt.Status == WebhookDeliveryAttemptStatus.Scheduled && attempt.ScheduledAt > DateTime.UtcNow)
+        if (attempt.Outcome == WebhookDeliveryAttemptOutcome.Scheduled && attempt.ScheduledAt > DateTime.UtcNow)
         {
             return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.Deferred, attempt.Id);
         }
 
-        return ShouldProcessLocalAttempts()
-            ? await ProcessAttemptAsync(attempt, cancellationToken)
-            : new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.Skipped, attempt.Id);
+        if (!ShouldProcessLocalAttempts())
+        {
+            return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.Skipped, attempt.Id);
+        }
+
+        if (attempt.Outcome != WebhookDeliveryAttemptOutcome.Scheduled)
+        {
+            return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.Skipped, attempt.Id);
+        }
+
+        var claims = await ClaimSingleAsync(tenantId, attemptId, cancellationToken);
+        if (claims.Count == 0)
+        {
+            return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.AlreadyClaimed, attempt.Id);
+        }
+
+        var claim = claims.Single();
+        return await SendClaimedAttemptAsync(
+            claim.Attempt,
+            claim.LeaseToken,
+            claim.ProcessingFence,
+            claim.ClaimedAt,
+            cancellationToken);
     }
 
     public async Task<WebhookDeliverySingleDrainResult> ScheduleManualRetryAsync(
@@ -169,12 +218,10 @@ public sealed class WebhookDeliveryDrainService(
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var attemptRepository = scope.ServiceProvider.GetRequiredService<IWebhookDeliveryAttemptRepository>();
-        var messageRepository = scope.ServiceProvider.GetRequiredService<IWebhookMessageRepository>();
         var attempt = await attemptRepository.GetByTenantAndIdAsync(tenantId, attemptId, cancellationToken);
         if (attempt is null)
         {
             metrics.RecordWebhookManualRetry(
-                tenantId.ToString("D"),
                 eventType: null,
                 outcome: "missing",
                 failureCategory: MissingMessageFailureCategory);
@@ -188,19 +235,19 @@ public sealed class WebhookDeliveryDrainService(
             return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.Skipped, attempt.Id);
         }
 
-        if (attempt.Status == WebhookDeliveryAttemptStatus.Scheduled)
+        if (attempt.Outcome == WebhookDeliveryAttemptOutcome.Scheduled)
         {
             RecordManualRetry(attempt, "deferred", AttemptStatusNotRetryableFailureCategory);
             return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.Deferred, attempt.Id);
         }
 
-        if (attempt.Status == WebhookDeliveryAttemptStatus.Sending)
+        if (attempt.Outcome == WebhookDeliveryAttemptOutcome.Sending)
         {
             RecordManualRetry(attempt, "already_claimed", AttemptStatusNotRetryableFailureCategory);
             return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.AlreadyClaimed, attempt.Id);
         }
 
-        if (attempt.Status == WebhookDeliveryAttemptStatus.Succeeded)
+        if (attempt.Outcome == WebhookDeliveryAttemptOutcome.Succeeded)
         {
             RecordManualRetry(attempt, "already_settled", AttemptStatusNotRetryableFailureCategory);
             return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.AlreadySettled, attempt.Id);
@@ -224,7 +271,7 @@ public sealed class WebhookDeliveryDrainService(
             return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.Skipped, attempt.Id);
         }
 
-        if (string.IsNullOrWhiteSpace(attempt.Message.PayloadJson))
+        if (attempt.Message.GetPayloadBytes() is null)
         {
             var failureCategory = attempt.Message.PayloadClearedAt is null
                 ? PayloadUnavailableFailureCategory
@@ -256,105 +303,61 @@ public sealed class WebhookDeliveryDrainService(
                 attempt.MessageId,
                 attempt.EndpointId,
                 cancellationToken),
-            Status = WebhookDeliveryAttemptStatus.Scheduled,
+            Outcome = WebhookDeliveryAttemptOutcome.Scheduled,
             ScheduledAt = now,
             CreatedAt = now
         }, cancellationToken);
 
-        await messageRepository.RefreshLocalDeliveryStatusAsync(
-            retry.TenantId,
-            retry.MessageId,
-            now,
-            cancellationToken);
-
         metrics.RecordWebhookManualRetry(
-            retry.TenantId.ToString("D"),
             eventType,
             "retry_scheduled");
         return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.RetryScheduled, retry.Id);
     }
 
-    private async Task<WebhookDeliverySingleDrainResult> ProcessAttemptAsync(
-        WebhookDeliveryAttempt attempt,
-        CancellationToken cancellationToken)
-    {
-        var tenantGate = _tenantConcurrencyGates.GetOrAdd(
-            attempt.TenantId,
-            _ => new SemaphoreSlim(
-                _settings.MaxConcurrentDeliveriesPerTenant,
-                _settings.MaxConcurrentDeliveriesPerTenant));
-        var endpointGate = _endpointConcurrencyGates.GetOrAdd(
-            attempt.EndpointId,
-            _ => new SemaphoreSlim(
-                _settings.MaxConcurrentDeliveriesPerEndpoint,
-                _settings.MaxConcurrentDeliveriesPerEndpoint));
-
-        await _globalConcurrencyGate.WaitAsync(cancellationToken);
-        try
-        {
-            await tenantGate.WaitAsync(cancellationToken);
-            try
-            {
-                await endpointGate.WaitAsync(cancellationToken);
-                try
-                {
-                    return await ProcessAttemptCoreAsync(attempt, cancellationToken);
-                }
-                finally
-                {
-                    endpointGate.Release();
-                }
-            }
-            finally
-            {
-                tenantGate.Release();
-            }
-        }
-        finally
-        {
-            _globalConcurrencyGate.Release();
-        }
-    }
-
-    private async Task<WebhookDeliverySingleDrainResult> ProcessAttemptCoreAsync(
-        WebhookDeliveryAttempt attempt,
+    private async Task<IReadOnlyList<WebhookDeliveryClaim>> ClaimSingleAsync(
+        Guid tenantId,
+        Guid attemptId,
         CancellationToken cancellationToken)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var attemptRepository = scope.ServiceProvider.GetRequiredService<IWebhookDeliveryAttemptRepository>();
-        var startedAt = DateTime.UtcNow;
-        var leaseToken = Guid.CreateVersion7();
-        var claimed = await attemptRepository.TryMarkAsSendingAsync(
-            attempt.TenantId,
-            attempt.Id,
-            leaseToken,
-            startedAt,
-            cancellationToken);
-
-        if (!claimed)
-        {
-            if (_settings.VerboseLogging)
+        var claimedAt = DateTime.UtcNow;
+        return await attemptRepository.ClaimDueAsync(
+            new WebhookDeliveryClaimRequest(
+                1,
+                Math.Max(1, _settings.CandidateBatchSize),
+                _settings.MaxConcurrentDeliveries,
+                [tenantId],
+                claimedAt,
+                TimeSpan.FromSeconds(_settings.ProcessingLeaseTimeoutSeconds),
+                attemptId),
+            new Dictionary<Guid, WebhookDeliveryClaimLimits>
             {
-                logger.LogDebug("Webhook delivery attempt {AttemptId} was already claimed", attempt.Id);
-            }
-
-            return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.AlreadyClaimed, attempt.Id);
-        }
-
-        return await SendClaimedAttemptAsync(attempt, leaseToken, startedAt, cancellationToken);
+                [tenantId] = new(
+                    _settings.MaxConcurrentDeliveriesPerTenant,
+                    _settings.MaxConcurrentDeliveriesPerEndpoint,
+                    1)
+            },
+            cancellationToken);
     }
 
     private async Task<WebhookDeliverySingleDrainResult> SendClaimedAttemptAsync(
         WebhookDeliveryAttempt attempt,
         Guid leaseToken,
+        long processingFence,
         DateTime startedAt,
         CancellationToken cancellationToken)
     {
+        await using var executionScope = scopeFactory.CreateAsyncScope();
+        var tenantContextAccessor = executionScope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
+        tenantContextAccessor.SetTenant(attempt.TenantId);
+
         if (attempt.Endpoint is null)
         {
             return await AbandonAttemptAsync(
                 attempt,
                 leaseToken,
+                processingFence,
                 startedAt,
                 MissingEndpointFailureCategory,
                 disableEndpoint: false,
@@ -366,6 +369,7 @@ public sealed class WebhookDeliveryDrainService(
             return await AbandonAttemptAsync(
                 attempt,
                 leaseToken,
+                processingFence,
                 startedAt,
                 MissingMessageFailureCategory,
                 disableEndpoint: false,
@@ -377,18 +381,20 @@ public sealed class WebhookDeliveryDrainService(
             return await AbandonAttemptAsync(
                 attempt,
                 leaseToken,
+                processingFence,
                 startedAt,
                 EndpointNotActiveFailureCategory,
                 disableEndpoint: false,
                 cancellationToken);
         }
 
-        var payload = attempt.Message.PayloadJson;
-        if (string.IsNullOrWhiteSpace(payload))
+        var payloadBytes = attempt.Message.GetPayloadBytes();
+        if (payloadBytes is null)
         {
             return await AbandonAttemptAsync(
                 attempt,
                 leaseToken,
+                processingFence,
                 startedAt,
                 PayloadUnavailableFailureCategory,
                 disableEndpoint: false,
@@ -396,11 +402,12 @@ public sealed class WebhookDeliveryDrainService(
         }
 
         var localOptions = webhookOptions.CurrentValue.Local;
-        if (Encoding.UTF8.GetByteCount(payload) > localOptions.MaxPayloadBytes)
+        if (payloadBytes.Length > localOptions.MaxPayloadBytes)
         {
             return await AbandonAttemptAsync(
                 attempt,
                 leaseToken,
+                processingFence,
                 startedAt,
                 PayloadTooLargeFailureCategory,
                 disableEndpoint: false,
@@ -412,6 +419,7 @@ public sealed class WebhookDeliveryDrainService(
             return await AbandonAttemptAsync(
                 attempt,
                 leaseToken,
+                processingFence,
                 startedAt,
                 InvalidUrlFailureCategory,
                 disableEndpoint: true,
@@ -424,6 +432,7 @@ public sealed class WebhookDeliveryDrainService(
             return await AbandonAttemptAsync(
                 attempt,
                 leaseToken,
+                processingFence,
                 startedAt,
                 safetyResult.FailureCategory ?? InvalidUrlFailureCategory,
                 disableEndpoint: true,
@@ -436,6 +445,7 @@ public sealed class WebhookDeliveryDrainService(
             return await AbandonAttemptAsync(
                 attempt,
                 leaseToken,
+                processingFence,
                 startedAt,
                 MissingSecretFailureCategory,
                 disableEndpoint: true,
@@ -451,7 +461,7 @@ public sealed class WebhookDeliveryDrainService(
                 : localOptions.TimeoutSeconds;
             requestTimeout.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
 
-            using var request = BuildRequest(endpointUri, attempt.Message.Id, payload, secret);
+            using var request = BuildRequest(endpointUri, attempt.Message.Id, payloadBytes, secret);
             var client = httpClientFactory.CreateClient(HttpClientName);
             using var response = await client.SendAsync(
                 request,
@@ -466,11 +476,11 @@ public sealed class WebhookDeliveryDrainService(
                 return await MarkSucceededAsync(
                     attempt,
                     leaseToken,
+                    processingFence,
                     startedAt,
                     completedAt,
                     (int)response.StatusCode,
                     durationMs,
-                    responseBodyPreview: null,
                     cancellationToken);
             }
 
@@ -478,19 +488,14 @@ public sealed class WebhookDeliveryDrainService(
                 ? RedirectResponseFailureCategory
                 : HttpNonSuccessFailureCategory;
             var retryAfter = GetRetryAfter(response.Headers.RetryAfter, completedAt);
-            var preview = await ReadResponsePreviewAsync(
-                response.Content,
-                localOptions.MaxResponsePreviewBytes,
-                requestTimeout.Token);
-
             return await MarkFailureAsync(
                 attempt,
                 leaseToken,
+                processingFence,
                 completedAt,
                 failureCategory,
                 (int)response.StatusCode,
                 durationMs,
-                preview,
                 retryable: true,
                 disableEndpointOnAbandon: true,
                 cancellationToken,
@@ -505,11 +510,11 @@ public sealed class WebhookDeliveryDrainService(
             return await MarkFailureAsync(
                 attempt,
                 leaseToken,
+                processingFence,
                 DateTime.UtcNow,
                 TimeoutFailureCategory,
                 httpStatusCode: null,
                 GetDurationMilliseconds(startedTimestamp),
-                responseBodyPreview: null,
                 retryable: true,
                 disableEndpointOnAbandon: true,
                 cancellationToken);
@@ -519,11 +524,11 @@ public sealed class WebhookDeliveryDrainService(
             return await MarkFailureAsync(
                 attempt,
                 leaseToken,
+                processingFence,
                 DateTime.UtcNow,
                 NetworkFailureCategory,
                 httpStatusCode: null,
                 GetDurationMilliseconds(startedTimestamp),
-                responseBodyPreview: null,
                 retryable: true,
                 disableEndpointOnAbandon: true,
                 cancellationToken);
@@ -533,11 +538,11 @@ public sealed class WebhookDeliveryDrainService(
             return await MarkFailureAsync(
                 attempt,
                 leaseToken,
+                processingFence,
                 DateTime.UtcNow,
                 InvalidSecretFailureCategory,
                 httpStatusCode: null,
                 GetDurationMilliseconds(startedTimestamp),
-                responseBodyPreview: null,
                 retryable: false,
                 disableEndpointOnAbandon: true,
                 cancellationToken);
@@ -547,16 +552,17 @@ public sealed class WebhookDeliveryDrainService(
     private HttpRequestMessage BuildRequest(
         Uri endpointUri,
         Guid messageId,
-        string payload,
+        byte[] payloadBytes,
         WebhookSecretMaterial secret)
     {
         var timestamp = DateTimeOffset.UtcNow;
-        var signatureHeaders = signatureService.Sign(messageId.ToString("N"), timestamp, payload, secret);
+        var signatureHeaders = signatureService.Sign(messageId.ToString("N"), timestamp, payloadBytes, secret);
 
         var request = new HttpRequestMessage(HttpMethod.Post, endpointUri)
         {
-            Content = new StringContent(payload, Encoding.UTF8, "application/json")
+            Content = new ByteArrayContent(payloadBytes)
         };
+        request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
 
         request.Headers.TryAddWithoutValidation("svix-id", signatureHeaders.SvixId);
         request.Headers.TryAddWithoutValidation("svix-timestamp", signatureHeaders.SvixTimestamp);
@@ -567,28 +573,32 @@ public sealed class WebhookDeliveryDrainService(
     private async Task<WebhookDeliverySingleDrainResult> MarkSucceededAsync(
         WebhookDeliveryAttempt attempt,
         Guid leaseToken,
+        long processingFence,
         DateTime startedAt,
         DateTime completedAt,
         int httpStatusCode,
         int durationMs,
-        string? responseBodyPreview,
         CancellationToken cancellationToken)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var attemptRepository = scope.ServiceProvider.GetRequiredService<IWebhookDeliveryAttemptRepository>();
         var endpointRepository = scope.ServiceProvider.GetRequiredService<IWebhookEndpointRepository>();
-        var messageRepository = scope.ServiceProvider.GetRequiredService<IWebhookMessageRepository>();
 
-        await attemptRepository.MarkSucceededAsync(
+        var settled = await attemptRepository.MarkSucceededAsync(
             attempt.TenantId,
             attempt.Id,
             leaseToken,
+            processingFence,
             startedAt,
             completedAt,
             httpStatusCode,
             durationMs,
-            responseBodyPreview,
             cancellationToken);
+
+        if (!settled)
+        {
+            return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.AlreadyClaimed, attempt.Id);
+        }
 
         await endpointRepository.MarkSuccessAsync(
             attempt.TenantId,
@@ -596,18 +606,10 @@ public sealed class WebhookDeliveryDrainService(
             completedAt,
             cancellationToken);
 
-        await messageRepository.RefreshLocalDeliveryStatusAsync(
-            attempt.TenantId,
-            attempt.MessageId,
-            completedAt,
-            cancellationToken);
-
         metrics.RecordWebhookDeliveryAttempt(
-            attempt.TenantId.ToString("D"),
             attempt.Message?.EventType,
             "succeeded");
         metrics.RecordWebhookDeliverySuccess(
-            attempt.TenantId.ToString("D"),
             attempt.Message?.EventType);
 
         return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.Succeeded, attempt.Id);
@@ -616,11 +618,11 @@ public sealed class WebhookDeliveryDrainService(
     private async Task<WebhookDeliverySingleDrainResult> MarkFailureAsync(
         WebhookDeliveryAttempt attempt,
         Guid leaseToken,
+        long processingFence,
         DateTime completedAt,
         string failureCategory,
         int? httpStatusCode,
         int durationMs,
-        string? responseBodyPreview,
         bool retryable,
         bool disableEndpointOnAbandon,
         CancellationToken cancellationToken,
@@ -629,31 +631,43 @@ public sealed class WebhookDeliveryDrainService(
         await using var scope = scopeFactory.CreateAsyncScope();
         var attemptRepository = scope.ServiceProvider.GetRequiredService<IWebhookDeliveryAttemptRepository>();
         var endpointRepository = scope.ServiceProvider.GetRequiredService<IWebhookEndpointRepository>();
-        var messageRepository = scope.ServiceProvider.GetRequiredService<IWebhookMessageRepository>();
         var maxAttempts = GetMaxAttempts(attempt.Endpoint);
+        var autoPauseThreshold = disableEndpointOnAbandon && !retryable ? 1 : maxAttempts;
         var nextAttemptNumber = attempt.AttemptNumber + 1;
         var canRetry = retryable && retryScheduler.CanScheduleAttempt(nextAttemptNumber, maxAttempts);
         var status = canRetry
-            ? WebhookDeliveryAttemptStatus.Failed
-            : WebhookDeliveryAttemptStatus.Abandoned;
+            ? WebhookDeliveryAttemptOutcome.Failed
+            : WebhookDeliveryAttemptOutcome.Abandoned;
         var nextRetryAt = canRetry
             ? retryScheduler.GetScheduledAtUtc(nextAttemptNumber, completedAt, retryAfter)
             : (DateTime?)null;
 
-        await attemptRepository.MarkFailedAsync(
+        var settled = await attemptRepository.MarkFailedAsync(
             attempt.TenantId,
             attempt.Id,
             leaseToken,
+            processingFence,
             status,
             completedAt,
             failureCategory,
             httpStatusCode,
             durationMs,
-            responseBodyPreview,
             nextRetryAt,
             cancellationToken);
 
-        await endpointRepository.MarkFailureAsync(attempt.TenantId, attempt.EndpointId, completedAt, cancellationToken);
+        if (!settled)
+        {
+            return new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.AlreadyClaimed, attempt.Id);
+        }
+
+        var failureState = await endpointRepository.RecordFailureAsync(
+            attempt.TenantId,
+            attempt.EndpointId,
+            completedAt,
+            failureCategory,
+            autoPauseThreshold,
+            cancellationToken);
+        canRetry = canRetry && !failureState.IsAutoPaused;
 
         if (canRetry && nextRetryAt is { } scheduledAt)
         {
@@ -664,35 +678,22 @@ public sealed class WebhookDeliveryDrainService(
                 MessageId = attempt.MessageId,
                 EndpointId = attempt.EndpointId,
                 AttemptNumber = nextAttemptNumber,
-                Status = WebhookDeliveryAttemptStatus.Scheduled,
+                Outcome = WebhookDeliveryAttemptOutcome.Scheduled,
                 ScheduledAt = scheduledAt,
                 CreatedAt = completedAt
             }, cancellationToken);
         }
-        else if (disableEndpointOnAbandon)
+        else if (failureState.IsAutoPaused)
         {
-            await endpointRepository.DisableAsync(
-                attempt.TenantId,
-                attempt.EndpointId,
-                completedAt,
-                cancellationToken);
-            metrics.RecordWebhookEndpointDisabled(attempt.TenantId.ToString("D"), failureCategory);
+            metrics.RecordWebhookEndpointDisabled(failureCategory);
         }
-
-        await messageRepository.RefreshLocalDeliveryStatusAsync(
-            attempt.TenantId,
-            attempt.MessageId,
-            completedAt,
-            cancellationToken);
 
         var outcome = canRetry ? "retry_scheduled" : "abandoned";
         metrics.RecordWebhookDeliveryAttempt(
-            attempt.TenantId.ToString("D"),
             attempt.Message?.EventType,
             outcome,
             failureCategory);
         metrics.RecordWebhookDeliveryFailure(
-            attempt.TenantId.ToString("D"),
             attempt.Message?.EventType,
             outcome,
             failureCategory);
@@ -717,6 +718,7 @@ public sealed class WebhookDeliveryDrainService(
     private Task<WebhookDeliverySingleDrainResult> AbandonAttemptAsync(
         WebhookDeliveryAttempt attempt,
         Guid leaseToken,
+        long processingFence,
         DateTime startedAt,
         string failureCategory,
         bool disableEndpoint,
@@ -724,11 +726,11 @@ public sealed class WebhookDeliveryDrainService(
         MarkFailureAsync(
             attempt,
             leaseToken,
+            processingFence,
             startedAt,
             failureCategory,
             httpStatusCode: null,
             durationMs: 0,
-            responseBodyPreview: null,
             retryable: false,
             disableEndpointOnAbandon: disableEndpoint,
             cancellationToken);
@@ -739,7 +741,6 @@ public sealed class WebhookDeliveryDrainService(
         string? failureCategory = null)
     {
         metrics.RecordWebhookManualRetry(
-            attempt.TenantId.ToString("D"),
             attempt.Message?.EventType,
             outcome,
             failureCategory);
@@ -758,43 +759,6 @@ public sealed class WebhookDeliveryDrainService(
         var localMaxAttempts = webhookOptions.CurrentValue.Local.MaxAttempts;
         var endpointMaxAttempts = endpoint?.MaxAttempts > 0 ? endpoint.MaxAttempts : localMaxAttempts;
         return Math.Min(Math.Min(endpointMaxAttempts, localMaxAttempts), retryScheduler.MaxScheduledAttempts);
-    }
-
-    private List<WebhookDeliveryAttempt> SelectFairBatch(
-        IReadOnlyList<WebhookDeliveryAttempt> candidates)
-    {
-        var tenantQueues = candidates
-            .GroupBy(attempt => attempt.TenantId)
-            .Select(group => new Queue<WebhookDeliveryAttempt>(
-                group.Take(_settings.MaxItemsPerTenantPerClaimCycle)))
-            .ToList();
-        List<WebhookDeliveryAttempt> selected = [];
-
-        while (selected.Count < _settings.BatchSize)
-        {
-            var added = false;
-            foreach (var tenantQueue in tenantQueues)
-            {
-                if (tenantQueue.Count == 0)
-                {
-                    continue;
-                }
-
-                selected.Add(tenantQueue.Dequeue());
-                added = true;
-                if (selected.Count == _settings.BatchSize)
-                {
-                    break;
-                }
-            }
-
-            if (!added)
-            {
-                break;
-            }
-        }
-
-        return selected;
     }
 
     private TimeSpan? GetRetryAfter(
@@ -819,53 +783,6 @@ public sealed class WebhookDeliveryDrainService(
         return status is >= 300 and <= 399;
     }
 
-    private static async Task<string?> ReadResponsePreviewAsync(
-        HttpContent? content,
-        int maxBytes,
-        CancellationToken cancellationToken)
-    {
-        if (content is null || maxBytes <= 0)
-        {
-            return null;
-        }
-
-        await using var stream = await content.ReadAsStreamAsync(cancellationToken);
-        var buffer = new byte[maxBytes];
-        var offset = 0;
-        while (offset < buffer.Length)
-        {
-            var read = await stream.ReadAsync(buffer.AsMemory(offset, buffer.Length - offset), cancellationToken);
-            if (read == 0)
-            {
-                break;
-            }
-
-            offset += read;
-        }
-
-        if (offset == 0)
-        {
-            return null;
-        }
-
-        return SanitizePreview(Encoding.UTF8.GetString(buffer, 0, offset));
-    }
-
-    private static string SanitizePreview(string preview)
-    {
-        var chars = new char[preview.Length];
-        var index = 0;
-        foreach (var current in preview)
-        {
-            if (!char.IsControl(current) || current is '\r' or '\n' or '\t')
-            {
-                chars[index++] = current;
-            }
-        }
-
-        return new string(chars, 0, index).Trim();
-    }
-
     private static int GetDurationMilliseconds(long startedTimestamp)
     {
         var elapsed = Stopwatch.GetElapsedTime(startedTimestamp);
@@ -877,17 +794,4 @@ public sealed class WebhookDeliveryDrainService(
         return Math.Max(0, (int)elapsed.TotalMilliseconds);
     }
 
-    public void Dispose()
-    {
-        _globalConcurrencyGate.Dispose();
-        foreach (var gate in _tenantConcurrencyGates.Values)
-        {
-            gate.Dispose();
-        }
-
-        foreach (var gate in _endpointConcurrencyGates.Values)
-        {
-            gate.Dispose();
-        }
-    }
 }

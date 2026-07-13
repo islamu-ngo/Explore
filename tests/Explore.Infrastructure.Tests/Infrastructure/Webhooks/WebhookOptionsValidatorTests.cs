@@ -68,4 +68,25 @@ public sealed class WebhookOptionsValidatorTests
         await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.FailureMessage).Contains("Webhooks:Svix:BaseUrl must use http or https");
     }
+
+    [Test]
+    public async Task Validate_WhenSvixAuthorityProfileIsIncomplete_ReturnsFailure()
+    {
+        var result = _validator.Validate(null, new WebhookOptions
+        {
+            Provider = WebhookOptions.ProviderSvix,
+            Svix = new WebhookSvixOptions
+            {
+                Environment = "",
+                ProviderVersion = "",
+                CapabilityPolicyVersion = "",
+                AuthTokenSecretRef = SecretDefinitionRegistry.Keys.Webhooks.SvixAuthToken
+            }
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("Webhooks:Svix:Environment is required");
+        await Assert.That(result.FailureMessage).Contains("Webhooks:Svix:ProviderVersion is required");
+        await Assert.That(result.FailureMessage).Contains("Webhooks:Svix:CapabilityPolicyVersion is required");
+    }
 }

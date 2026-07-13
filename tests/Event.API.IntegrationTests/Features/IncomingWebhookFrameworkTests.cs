@@ -97,7 +97,9 @@ public sealed class IncomingWebhookFrameworkTests
         var read = IncomingWebhookReadResult.Success(
             "svix",
             rawPayload,
-            "sha256:duplicate",
+            Encoding.UTF8.GetBytes(rawPayload),
+            DateTimeOffset.UtcNow,
+            ComputePayloadHash(rawPayload),
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
             verification);
         var intakeService = Substitute.For<IIncomingWebhookIntakeService>();
@@ -129,10 +131,6 @@ public sealed class IncomingWebhookFrameworkTests
             "msg_duplicate_1",
             "endpoint.updated",
             "msg_duplicate_1",
-            Arg.Any<CancellationToken>());
-        await intakeService.DidNotReceive().MarkProcessedAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<Guid>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -170,7 +168,7 @@ public sealed class IncomingWebhookFrameworkTests
         var signatureHeaders = signatureService.Sign(
             messageId,
             DateTimeOffset.UtcNow,
-            payload,
+            Encoding.UTF8.GetBytes(payload),
             new WebhookSecretMaterial(secret, 1));
         var secretResolver = Substitute.For<ISecretResolver>();
         secretResolver.ResolveAsync(secretRef, null, Arg.Any<CancellationToken>())
@@ -274,6 +272,7 @@ public sealed class IncomingWebhookFrameworkTests
         var service = new IncomingWebhookIntakeService(
             new IncomingWebhookVerifierRegistry([verifier]),
             repository,
+            Options.Create(new WebhookOptions()),
             NullLogger<IncomingWebhookIntakeService>.Instance);
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(rawPayload));
@@ -292,7 +291,7 @@ public sealed class IncomingWebhookFrameworkTests
                 message.Provider == "test" &&
                 message.ProviderMessageId == "provider-msg-1" &&
                 message.EventType == "test.received" &&
-                message.PayloadJson == null &&
+                message.PayloadBytes.ToArray().SequenceEqual(Encoding.UTF8.GetBytes(rawPayload)) &&
                 !message.HeadersJson!.Contains("X-Test-Signature", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
     }
@@ -306,6 +305,7 @@ public sealed class IncomingWebhookFrameworkTests
         var service = new IncomingWebhookIntakeService(
             new IncomingWebhookVerifierRegistry([verifier]),
             repository,
+            Options.Create(new WebhookOptions()),
             NullLogger<IncomingWebhookIntakeService>.Instance);
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes("{\"oversized\":true}"));
@@ -327,11 +327,14 @@ public sealed class IncomingWebhookFrameworkTests
     public async Task IncomingWebhookIntakeService_WhenDuplicateCapture_LogsWithoutTenantOrProviderMessageId()
     {
         var tenantId = Guid.Parse("018f0000-0000-7000-8000-000000000001");
-        var existingMessageId = Guid.Parse("018f0000-0000-7000-8000-000000000002");
+        const string rawPayload = "{\"tenantId\":\"018f0000-0000-7000-8000-000000000001\"}";
+        var payloadHash = ComputePayloadHash(rawPayload);
         var read = IncomingWebhookReadResult.Success(
             "svix",
-            "{\"tenantId\":\"018f0000-0000-7000-8000-000000000001\"}",
-            "sha256:duplicate",
+            rawPayload,
+            Encoding.UTF8.GetBytes(rawPayload),
+            DateTimeOffset.UtcNow,
+            payloadHash,
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["svix-signature"] = "v1,sensitive",
@@ -345,35 +348,45 @@ public sealed class IncomingWebhookFrameworkTests
         var repository = Substitute.For<IIncomingWebhookMessageRepository>();
         repository.TryCreateAsync(Arg.Any<IncomingWebhookMessage>(), Arg.Any<CancellationToken>())
             .Returns(false);
-        repository.GetByProviderMessageIdAsync(tenantId, "svix", "msg_sensitive_provider_id", Arg.Any<CancellationToken>())
-            .Returns(new IncomingWebhookMessage
-            {
-                Id = existingMessageId,
-                TenantId = tenantId,
-                Provider = "svix",
-                ProviderMessageId = "msg_sensitive_provider_id",
-                IdempotencyKey = "msg_sensitive_provider_id",
-                PayloadHash = "sha256:duplicate",
-                Status = IncomingWebhookMessageStatus.Processed
-            });
+        var existing = IncomingWebhookMessage.CreateVerified(
+            tenantId,
+            "svix",
+            "msg_sensitive_provider_id",
+            "msg_sensitive_provider_id",
+            "endpoint.updated",
+            Encoding.UTF8.GetBytes(rawPayload),
+            payloadHash,
+            "application/json",
+            "utf-8",
+            headersJson: null,
+            DateTime.UtcNow.AddMinutes(-1),
+            DateTime.UtcNow.AddMinutes(-1),
+            DateTime.UtcNow.AddDays(14));
+        repository.GetByProviderMessageIdForUpdateAsync(
+                tenantId,
+                "svix",
+                "msg_sensitive_provider_id",
+                Arg.Any<CancellationToken>())
+            .Returns(existing);
         var logger = new ListLogger<IncomingWebhookIntakeService>();
         var service = new IncomingWebhookIntakeService(
             new IncomingWebhookVerifierRegistry([]),
             repository,
+            Options.Create(new WebhookOptions()),
             logger);
 
         var result = await service.CaptureAsync(read, tenantId, null, null, null, CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.IsDuplicate).IsTrue();
-        await Assert.That(result.MessageId).IsEqualTo(existingMessageId);
+        await Assert.That(result.MessageId).IsEqualTo(existing.Id);
         var logOutput = string.Join('\n', logger.Messages);
         await Assert.That(logOutput).Contains("Incoming webhook duplicate captured for provider svix");
         await Assert.That(logOutput).DoesNotContain(tenantId.ToString());
         await Assert.That(logOutput).DoesNotContain("msg_sensitive_provider_id");
         await repository.Received(1).TryCreateAsync(
             Arg.Is<IncomingWebhookMessage>(message =>
-                message.PayloadJson == null &&
+                message.PayloadBytes.ToArray().SequenceEqual(Encoding.UTF8.GetBytes(rawPayload)) &&
                 message.HeadersJson!.Contains("x-safe", StringComparison.Ordinal) &&
                 !message.HeadersJson.Contains("svix-signature", StringComparison.OrdinalIgnoreCase) &&
                 !message.HeadersJson.Contains("authorization", StringComparison.OrdinalIgnoreCase)),
@@ -448,6 +461,7 @@ public sealed class IncomingWebhookFrameworkTests
         return new IncomingWebhookIntakeService(
             new IncomingWebhookVerifierRegistry([verifier]),
             Substitute.For<IIncomingWebhookMessageRepository>(),
+            Options.Create(new WebhookOptions()),
             NullLogger<IncomingWebhookIntakeService>.Instance);
     }
 
@@ -470,6 +484,9 @@ public sealed class IncomingWebhookFrameworkTests
         using var hmac = new System.Security.Cryptography.HMACSHA256(Encoding.UTF8.GetBytes(secret));
         return Convert.ToHexString(hmac.ComputeHash(Encoding.UTF8.GetBytes($"{timestamp}.{body}"))).ToLowerInvariant();
     }
+
+    private static string ComputePayloadHash(string payload) =>
+        $"sha256:{Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(payload))).ToLowerInvariant()}";
 
     private sealed class StaticOptionsMonitor<TOptions>(TOptions currentValue) : IOptionsMonitor<TOptions>
     {

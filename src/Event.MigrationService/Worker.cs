@@ -4,6 +4,7 @@
 using Explore.Persistence;
 using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
+using Explore.Persistence.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace Event.MigrationService;
@@ -35,6 +36,23 @@ public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLif
         logger.LogInformation("Running database seeding...");
         await DatabaseSeeder.SeedAsync(db, environment, configuration: configuration, cancellationToken: stoppingToken);
         logger.LogInformation("Database seeding completed successfully.");
+
+        var webhookBackfill = new WebhookLegacyBackfillService(db);
+        WebhookLegacyBackfillResult webhookBackfillResult;
+        do
+        {
+            webhookBackfillResult = await webhookBackfill.RunBatchAsync(250, stoppingToken);
+            logger.LogInformation(
+                "Webhook legacy backfill materialized {MaterializedPlans} plans; {RemainingEligibleMessages} eligible remain; " +
+                "{OrphanMessages} orphan messages, {ManualProviderLinks} provider links, and {AmbiguousAttempts} in-flight attempts require manual classification; checksum {PlanChecksum}.",
+                webhookBackfillResult.MaterializedPlans,
+                webhookBackfillResult.RemainingEligibleMessages,
+                webhookBackfillResult.OrphanMessages,
+                webhookBackfillResult.ProviderLinksRequiringManualReconciliation,
+                webhookBackfillResult.AmbiguousInFlightAttempts,
+                webhookBackfillResult.PlanChecksum);
+        }
+        while (webhookBackfillResult.MaterializedPlans > 0);
 
         lifetime.StopApplication();
     }

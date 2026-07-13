@@ -506,7 +506,7 @@ public sealed class WebhookConsumerHandlersTests
             CancellationToken.None);
 
         await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Url).IsEqualTo(endpoint.Url);
+        await Assert.That(result!.DestinationHost).IsEqualTo("integrator.example");
         await Assert.That(result.StatusName).IsEqualTo(nameof(WebhookEndpointStatus.Active));
         await Assert.That(result.ProviderModeName).IsEqualTo(nameof(WebhookProviderMode.Local));
         await Assert.That(result.Subscriptions.Single().EventTypeName).IsEqualTo("event.published");
@@ -808,7 +808,7 @@ public sealed class WebhookConsumerHandlersTests
         await Assert.That(capturedAttempt.MessageId).IsEqualTo(capturedMessage.Id);
         await Assert.That(capturedAttempt.EndpointId).IsEqualTo(endpoint.Id);
         await Assert.That(capturedAttempt.AttemptNumber).IsEqualTo(1);
-        await Assert.That(capturedAttempt.Status).IsEqualTo(WebhookDeliveryAttemptStatus.Scheduled);
+        await Assert.That(capturedAttempt.Outcome).IsEqualTo(WebhookDeliveryAttemptOutcome.Scheduled);
         await Assert.That(capturedAttempt.ScheduledAt >= before.AddSeconds(-1)).IsTrue();
         await Assert.That(capturedAttempt.ScheduledAt <= after.AddSeconds(1)).IsTrue();
     }
@@ -951,7 +951,7 @@ public sealed class WebhookConsumerHandlersTests
         var tenantId = Guid.CreateVersion7();
         var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
         var message = CreateMessage(tenantId, endpoint.Consumer!);
-        var attempt = CreateDeliveryAttempt(tenantId, message, endpoint, WebhookDeliveryAttemptStatus.Failed);
+        var attempt = CreateDeliveryAttempt(tenantId, message, endpoint, WebhookDeliveryAttemptOutcome.Failed);
         _attemptRepository.ListByTenantAsync(
                 tenantId,
                 null,
@@ -975,8 +975,8 @@ public sealed class WebhookConsumerHandlersTests
         await Assert.That(result[0].Id).IsEqualTo(attempt.Id);
         await Assert.That(result[0].TenantId).IsEqualTo(tenantId);
         await Assert.That(result[0].MessageEventType).IsEqualTo(WebhookEventNames.EventPublished);
-        await Assert.That(result[0].EndpointUrl).IsEqualTo(endpoint.Url);
-        await Assert.That(result[0].ResponseBodyPreview).IsEqualTo("upstream returned 500");
+        await Assert.That(typeof(Explore.Application.DTOs.Webhooks.WebhookDeliveryAttemptDto).GetProperty("EndpointUrl")).IsNull();
+        await Assert.That(typeof(Explore.Application.DTOs.Webhooks.WebhookDeliveryAttemptDto).GetProperty("ResponseBodyPreview")).IsNull();
         await Assert.That(typeof(Explore.Application.DTOs.Webhooks.WebhookDeliveryAttemptDto).GetProperty("ResponseBody")).IsNull();
         await Assert.That(typeof(Explore.Application.DTOs.Webhooks.WebhookDeliveryAttemptDto).GetProperty("SecretRef")).IsNull();
         await _attemptRepository.Received(1).ListByTenantAsync(
@@ -993,7 +993,7 @@ public sealed class WebhookConsumerHandlersTests
         var tenantId = Guid.CreateVersion7();
         var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
         var message = CreateMessage(tenantId, endpoint.Consumer!);
-        var attempt = CreateDeliveryAttempt(tenantId, message, endpoint, WebhookDeliveryAttemptStatus.Abandoned);
+        var attempt = CreateDeliveryAttempt(tenantId, message, endpoint, WebhookDeliveryAttemptOutcome.Abandoned);
         _attemptRepository.GetByTenantAndIdAsync(tenantId, attempt.Id, Arg.Any<CancellationToken>())
             .Returns(attempt);
         var handler = new GetWebhookDeliveryAttemptByIdQueryHandler(_attemptRepository);
@@ -1008,8 +1008,7 @@ public sealed class WebhookConsumerHandlersTests
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Id).IsEqualTo(attempt.Id);
-        await Assert.That(result.StatusName).IsEqualTo(nameof(WebhookDeliveryAttemptStatus.Abandoned));
-        await Assert.That(result.ResponseBodyPreview).IsEqualTo("upstream returned 500");
+        await Assert.That(result.OutcomeName).IsEqualTo(nameof(WebhookDeliveryAttemptOutcome.Abandoned));
         await _attemptRepository.Received(1).GetByTenantAndIdAsync(
             tenantId,
             attempt.Id,
@@ -1259,6 +1258,9 @@ public sealed class WebhookConsumerHandlersTests
             Guid.CreateVersion7(),
             consumer.Id,
             Encoding.UTF8.GetBytes("""{"secret":"must-not-leak"}"""),
+            "application/json",
+            "utf-8",
+            createdAt,
             createdAt.AddDays(14),
             createdAt);
     }
@@ -1267,7 +1269,7 @@ public sealed class WebhookConsumerHandlersTests
         Guid tenantId,
         WebhookMessage message,
         WebhookEndpoint endpoint,
-        WebhookDeliveryAttemptStatus status) =>
+        WebhookDeliveryAttemptOutcome status) =>
         new()
         {
             Id = Guid.CreateVersion7(),
@@ -1277,13 +1279,12 @@ public sealed class WebhookConsumerHandlersTests
             EndpointId = endpoint.Id,
             Endpoint = endpoint,
             AttemptNumber = 2,
-            Status = status,
+            Outcome = status,
             ScheduledAt = DateTime.UtcNow.AddMinutes(-5),
             SentAt = DateTime.UtcNow.AddMinutes(-4),
             CompletedAt = DateTime.UtcNow.AddMinutes(-4),
             HttpStatusCode = 500,
             FailureCategory = "server_error",
-            ResponseBodyPreview = "upstream returned 500",
             DurationMs = 150,
             NextRetryAt = DateTime.UtcNow.AddMinutes(10),
             CreatedAt = DateTime.UtcNow

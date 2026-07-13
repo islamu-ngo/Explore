@@ -21,6 +21,9 @@ public class WebhookProviderLinkConfiguration : IEntityTypeConfiguration<Webhook
         builder.Property(e => e.SyncState).IsRequired();
         builder.Property(e => e.LastErrorCategory).HasMaxLength(100);
 
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
+            .HasName("ak_webhook_provider_links_tenant_id_id");
+
         builder.HasOne(e => e.Tenant)
             .WithMany()
             .HasForeignKey(e => e.TenantId)

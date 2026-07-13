@@ -108,7 +108,6 @@ public sealed class EventTemplateSyncController : ExploreControllerBase
                 halResource.WithLink(linkDef.Rel, halLink);
             }
         }
-
         return Ok(halResource);
     }
 

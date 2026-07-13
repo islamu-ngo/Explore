@@ -1,6 +1,7 @@
 // ABOUTME: Canonical lookup metadata for enum-backed lookup rows exposed through API DTOs.
 // ABOUTME: Mirrors LookupTableSeeder stable IDs/codes so handlers can map without loading navigations.
 
+using Explore.Domain;
 using Explore.Domain.Enums;
 using ExternalApiKeyOwnerTypeEnum = Explore.Domain.Enums.ExternalApiKeyOwnerType;
 
@@ -73,6 +74,97 @@ public static class NormalizedLookupMetadata
             _ => Unknown(id)
         };
     }
+
+    public static LookupReference WebhookConsumerKind(int id) => id switch
+    {
+        (int)Explore.Domain.WebhookConsumerKind.Tenant => new(id, "TENANT", "Tenant"),
+        (int)Explore.Domain.WebhookConsumerKind.Organization => new(id, "ORGANIZATION", "Organization"),
+        (int)Explore.Domain.WebhookConsumerKind.Group => new(id, "GROUP", "Group"),
+        (int)Explore.Domain.WebhookConsumerKind.User => new(id, "USER", "User"),
+        (int)Explore.Domain.WebhookConsumerKind.SystemIntegration => new(id, "SYSTEM_INTEGRATION", "System integration"),
+        _ => Unknown(id)
+    };
+
+    public static LookupReference WebhookConsumerStatus(int id) => id switch
+    {
+        (int)Explore.Domain.WebhookConsumerStatus.Active => new(id, "ACTIVE", "Active"),
+        (int)Explore.Domain.WebhookConsumerStatus.Disabled => new(id, "DISABLED", "Disabled"),
+        (int)Explore.Domain.WebhookConsumerStatus.Archived => new(id, "ARCHIVED", "Archived"),
+        _ => Unknown(id)
+    };
+
+    public static LookupReference WebhookProviderMode(int id) => id switch
+    {
+        (int)Explore.Domain.WebhookProviderMode.Disabled => new(id, "DISABLED", "Disabled"),
+        (int)Explore.Domain.WebhookProviderMode.Local => new(id, "LOCAL", "Local"),
+        (int)Explore.Domain.WebhookProviderMode.Svix => new(id, "SVIX", "Svix"),
+        (int)Explore.Domain.WebhookProviderMode.Composite => new(id, "COMPOSITE", "Composite"),
+        (int)Explore.Domain.WebhookProviderMode.DryRun => new(id, "DRY_RUN", "Dry run"),
+        _ => Unknown(id)
+    };
+
+    public static LookupReference WebhookProviderKind(int id) => id switch
+    {
+        (int)Explore.Domain.WebhookProviderKind.Local => new(id, "LOCAL", "Local"),
+        (int)Explore.Domain.WebhookProviderKind.Svix => new(id, "SVIX", "Svix"),
+        _ => Unknown(id)
+    };
+
+    public static LookupReference WebhookEndpointStatus(int id) => id switch
+    {
+        (int)Explore.Domain.WebhookEndpointStatus.Active => new(id, "ACTIVE", "Active"),
+        (int)Explore.Domain.WebhookEndpointStatus.Disabled => new(id, "DISABLED", "Disabled"),
+        (int)Explore.Domain.WebhookEndpointStatus.AutoPaused => new(id, "AUTO_PAUSED", "Auto-paused"),
+        (int)Explore.Domain.WebhookEndpointStatus.Archived => new(id, "ARCHIVED", "Archived"),
+        _ => Unknown(id)
+    };
+
+    public static LookupReference WebhookLocalDeliveryStatus(int id) => id switch
+    {
+        (int)Explore.Domain.WebhookLocalDeliveryStatus.Pending => new(id, "PENDING", "Pending"),
+        (int)Explore.Domain.WebhookLocalDeliveryStatus.Delivering => new(id, "DELIVERING", "Delivering"),
+        (int)Explore.Domain.WebhookLocalDeliveryStatus.RetryDue => new(id, "RETRY_DUE", "Retry due"),
+        (int)Explore.Domain.WebhookLocalDeliveryStatus.Succeeded => new(id, "SUCCEEDED", "Succeeded"),
+        (int)Explore.Domain.WebhookLocalDeliveryStatus.DeadLettered => new(id, "DEAD_LETTERED", "Dead-lettered"),
+        (int)Explore.Domain.WebhookLocalDeliveryStatus.Abandoned => new(id, "ABANDONED", "Abandoned"),
+        _ => Unknown(id)
+    };
+
+    public static LookupReference WebhookDeliveryAttemptOutcome(int id) => id switch
+    {
+        (int)Explore.Domain.WebhookDeliveryAttemptOutcome.Scheduled => new(id, "SCHEDULED", "Scheduled"),
+        (int)Explore.Domain.WebhookDeliveryAttemptOutcome.Sending => new(id, "SENDING", "Sending"),
+        (int)Explore.Domain.WebhookDeliveryAttemptOutcome.Succeeded => new(id, "SUCCEEDED", "Succeeded"),
+        (int)Explore.Domain.WebhookDeliveryAttemptOutcome.Failed => new(id, "FAILED", "Failed"),
+        (int)Explore.Domain.WebhookDeliveryAttemptOutcome.Abandoned => new(id, "ABANDONED", "Abandoned"),
+        _ => Unknown(id)
+    };
+
+    public static LookupReference IncomingWebhookMessageStatus(int id) => id switch
+    {
+        (int)Explore.Domain.IncomingWebhookMessageStatus.Verified => new(id, "VERIFIED", "Verified"),
+        (int)Explore.Domain.IncomingWebhookMessageStatus.Processing => new(id, "PROCESSING", "Processing"),
+        (int)Explore.Domain.IncomingWebhookMessageStatus.RetryDue => new(id, "RETRY_DUE", "Retry due"),
+        (int)Explore.Domain.IncomingWebhookMessageStatus.Processed => new(id, "PROCESSED", "Processed"),
+        (int)Explore.Domain.IncomingWebhookMessageStatus.Ignored => new(id, "IGNORED", "Ignored"),
+        (int)Explore.Domain.IncomingWebhookMessageStatus.RejectedPermanent => new(id, "REJECTED_PERMANENT", "Rejected permanently"),
+        (int)Explore.Domain.IncomingWebhookMessageStatus.DeadLettered => new(id, "DEAD_LETTERED", "Dead-lettered"),
+        (int)Explore.Domain.IncomingWebhookMessageStatus.PayloadConflict => new(id, "PAYLOAD_CONFLICT", "Payload conflict"),
+        _ => Unknown(id)
+    };
+
+    public static LookupReference WebhookProviderPublicationStatus(int id) => id switch
+    {
+        (int)Explore.Domain.WebhookProviderPublicationStatus.Prepared => new(id, "PREPARED", "Prepared"),
+        (int)Explore.Domain.WebhookProviderPublicationStatus.Publishing => new(id, "PUBLISHING", "Publishing"),
+        (int)Explore.Domain.WebhookProviderPublicationStatus.ProviderQueued => new(id, "PROVIDER_QUEUED", "Provider queued"),
+        (int)Explore.Domain.WebhookProviderPublicationStatus.RetryDue => new(id, "RETRY_DUE", "Retry due"),
+        (int)Explore.Domain.WebhookProviderPublicationStatus.PublicationUnknown => new(id, "PUBLICATION_UNKNOWN", "Publication unknown"),
+        (int)Explore.Domain.WebhookProviderPublicationStatus.DeadLettered => new(id, "DEAD_LETTERED", "Dead-lettered"),
+        (int)Explore.Domain.WebhookProviderPublicationStatus.ManualReconciliation => new(id, "MANUAL_RECONCILIATION", "Manual reconciliation"),
+        (int)Explore.Domain.WebhookProviderPublicationStatus.Abandoned => new(id, "ABANDONED", "Abandoned"),
+        _ => Unknown(id)
+    };
 
     public static bool IsRoleScopeId(int id)
     {

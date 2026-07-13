@@ -1,6 +1,7 @@
 // ABOUTME: Tenant-scoped outgoing webhook endpoint with provider ids, secret refs, and delivery controls.
 // ABOUTME: LocalProvider treats this row as authoritative while SvixProvider can mirror provider endpoint ids.
 
+using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
@@ -16,7 +17,14 @@ public class WebhookEndpoint : ITenantEntity, IAuditableEntity
 
     public required string Url { get; set; }
     public string? Description { get; set; }
-    public WebhookEndpointStatus Status { get; set; }
+    public int StatusId { get; set; }
+    public WebhookEndpointStatusLookup StatusLookup { get; set; } = null!;
+    [NotMapped]
+    public WebhookEndpointStatus Status
+    {
+        get => (WebhookEndpointStatus)StatusId;
+        set => StatusId = (int)value;
+    }
     public required string SecretRef { get; set; }
     public int SecretVersion { get; set; }
     public string? PreviousSecretRef { get; set; }
@@ -101,12 +109,4 @@ public class WebhookEndpoint : ITenantEntity, IAuditableEntity
         DeliveryStateVersion++;
         return true;
     }
-}
-
-public enum WebhookEndpointStatus
-{
-    Active = 1,
-    Disabled = 2,
-    AutoPaused = 3,
-    Archived = 4
 }

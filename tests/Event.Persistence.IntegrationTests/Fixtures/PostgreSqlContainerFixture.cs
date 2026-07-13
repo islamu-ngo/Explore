@@ -184,5 +184,6 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         new("tenant_plan_statuses"),
         new("tenant_statuses"),
         new("visibility_types"),
+        new("webhook_provider_binding_verification_states"),
     ];
 }

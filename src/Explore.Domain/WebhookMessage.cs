@@ -11,6 +11,8 @@ public sealed class WebhookMessage : ITenantEntity, IAuditableEntity
     public const int MaxEventTypeLength = 200;
     public const int MaxEventIdLength = 200;
     public const int MaxAggregateKindLength = 100;
+    public const int MaxContentTypeLength = 200;
+    public const int MaxContentEncodingLength = 50;
     public const int PayloadHashLength = 71;
 
     private byte[]? _payloadBytes;
@@ -30,7 +32,13 @@ public sealed class WebhookMessage : ITenantEntity, IAuditableEntity
     public Guid? ConsumerId { get; private set; }
     public WebhookConsumer? Consumer { get; private set; }
     public string PayloadHash { get; private set; } = string.Empty;
+    public long PayloadByteLength { get; private set; }
     public int PayloadProvenanceId { get; private set; }
+    public WebhookPayloadProvenanceLookup PayloadProvenanceLookup { get; private set; } = null!;
+    public string ContentType { get; private set; } = string.Empty;
+    public string ContentEncoding { get; private set; } = string.Empty;
+    public DateTime OccurredAt { get; private set; }
+    public DateTime MaterializedAt { get; private set; }
     public DateTime PayloadRetentionUntil { get; private set; }
     public DateTime? PayloadClearedAt { get; private set; }
     public DateTime CreatedAt { get; set; }
@@ -47,8 +55,11 @@ public sealed class WebhookMessage : ITenantEntity, IAuditableEntity
         Guid aggregateId,
         Guid? consumerId,
         ReadOnlySpan<byte> payloadBytes,
+        string contentType,
+        string contentEncoding,
+        DateTime occurredAt,
         DateTime payloadRetentionUntil,
-        DateTime createdAt)
+        DateTime materializedAt)
     {
         RequireGuid(id, nameof(id));
         RequireGuid(tenantId, nameof(tenantId));
@@ -63,9 +74,15 @@ public sealed class WebhookMessage : ITenantEntity, IAuditableEntity
             throw new ArgumentException("Webhook payload bytes are required.", nameof(payloadBytes));
         }
 
-        RequireUtc(createdAt, nameof(createdAt));
+        RequireUtc(occurredAt, nameof(occurredAt));
+        RequireUtc(materializedAt, nameof(materializedAt));
         RequireUtc(payloadRetentionUntil, nameof(payloadRetentionUntil));
-        if (payloadRetentionUntil <= createdAt)
+        if (occurredAt > materializedAt)
+        {
+            throw new ArgumentOutOfRangeException(nameof(occurredAt), "Occurrence cannot be after materialization.");
+        }
+
+        if (payloadRetentionUntil <= materializedAt)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(payloadRetentionUntil),
@@ -84,9 +101,14 @@ public sealed class WebhookMessage : ITenantEntity, IAuditableEntity
             ConsumerId = consumerId,
             _payloadBytes = ownedPayload,
             PayloadHash = ComputePayloadHash(ownedPayload),
+            PayloadByteLength = ownedPayload.LongLength,
             PayloadProvenanceId = (int)WebhookPayloadProvenance.ExactBytes,
+            ContentType = NormalizeRequired(contentType, MaxContentTypeLength, nameof(contentType)).ToLowerInvariant(),
+            ContentEncoding = NormalizeRequired(contentEncoding, MaxContentEncodingLength, nameof(contentEncoding)).ToLowerInvariant(),
+            OccurredAt = occurredAt,
+            MaterializedAt = materializedAt,
             PayloadRetentionUntil = payloadRetentionUntil,
-            CreatedAt = createdAt
+            CreatedAt = materializedAt
         };
     }
 
@@ -144,10 +166,4 @@ public sealed class WebhookMessage : ITenantEntity, IAuditableEntity
             throw new ArgumentException("Timestamp must use UTC kind.", parameterName);
         }
     }
-}
-
-public enum WebhookPayloadProvenance
-{
-    ExactBytes = 1,
-    LegacyJsonCanonicalized = 2
 }

@@ -3,12 +3,6 @@
 
 namespace Explore.Domain;
 
-public enum WebhookProviderKind
-{
-    Local = 1,
-    Svix = 2
-}
-
 [Flags]
 public enum WebhookProviderCapability : long
 {

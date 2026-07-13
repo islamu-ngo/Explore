@@ -1,6 +1,7 @@
 // ABOUTME: Authoritative tenant-scoped aggregate for one provider submission of a webhook message.
 // ABOUTME: Freezes provider identity/configuration and enforces fenced publication and bounded reconciliation.
 
+using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
@@ -23,7 +24,16 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
     public Tenant? Tenant { get; private set; }
     public Guid WebhookMessageId { get; private set; }
     public WebhookMessage? WebhookMessage { get; private set; }
-    public WebhookProviderKind ProviderKind { get; private set; }
+    public Guid WebhookDeliveryPlanSnapshotId { get; private set; }
+    public WebhookDeliveryPlanSnapshot? WebhookDeliveryPlanSnapshot { get; private set; }
+    public int ProviderKindId { get; private set; }
+    public WebhookProviderKindLookup ProviderKindLookup { get; private set; } = null!;
+    [NotMapped]
+    public WebhookProviderKind ProviderKind
+    {
+        get => (WebhookProviderKind)ProviderKindId;
+        private set => ProviderKindId = (int)value;
+    }
     public Guid ProviderBindingId { get; private set; }
     public WebhookConsumerProviderBinding? ProviderBinding { get; private set; }
 
@@ -36,7 +46,14 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
     public string ProviderEnvironment { get; private set; } = string.Empty;
     public string CredentialReference { get; private set; } = string.Empty;
     public string CredentialVersion { get; private set; } = string.Empty;
-    public WebhookProviderMode ModeSnapshot { get; private set; }
+    public int ModeSnapshotId { get; private set; }
+    public WebhookProviderModeLookup ModeSnapshotLookup { get; private set; } = null!;
+    [NotMapped]
+    public WebhookProviderMode ModeSnapshot
+    {
+        get => (WebhookProviderMode)ModeSnapshotId;
+        private set => ModeSnapshotId = (int)value;
+    }
     public string ProviderConfigurationVersion { get; private set; } = string.Empty;
     public int EventContractVersion { get; private set; }
     public string RetentionPolicyVersion { get; private set; } = string.Empty;
@@ -44,7 +61,14 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
     public DateTime PublicationRetentionUntil { get; private set; }
     public DateTime IdempotencyValidUntil { get; private set; }
 
-    public WebhookProviderPublicationStatus Status { get; private set; }
+    public int StatusId { get; private set; }
+    public WebhookProviderPublicationStatusLookup StatusLookup { get; private set; } = null!;
+    [NotMapped]
+    public WebhookProviderPublicationStatus Status
+    {
+        get => (WebhookProviderPublicationStatus)StatusId;
+        private set => StatusId = (int)value;
+    }
     public string? ExternalProviderMessageId { get; private set; }
     public int AutomaticPublicationAttemptCount { get; private set; }
     public int AutomaticReconciliationAttemptCount { get; private set; }
@@ -58,6 +82,7 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
     public DateTime? ProcessingLeaseExpiresAt { get; private set; }
     public DateTime? ProcessingStartedAt { get; private set; }
     public long PublicationFence { get; private set; }
+    public long ConcurrencyVersion { get; private set; }
 
     public DateTime PreparedAt { get; private set; }
     public DateTime? PublishingStartedAt { get; private set; }
@@ -81,6 +106,7 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
     public static WebhookProviderPublication Create(
         Guid tenantId,
         Guid webhookMessageId,
+        Guid webhookDeliveryPlanSnapshotId,
         WebhookProviderKind providerKind,
         Guid providerBindingId,
         string providerVersion,
@@ -103,6 +129,7 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
     {
         RequireGuid(tenantId, nameof(tenantId));
         RequireGuid(webhookMessageId, nameof(webhookMessageId));
+        RequireGuid(webhookDeliveryPlanSnapshotId, nameof(webhookDeliveryPlanSnapshotId));
         RequireGuid(providerBindingId, nameof(providerBindingId));
         if (!Enum.IsDefined(providerKind))
         {
@@ -142,6 +169,7 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
             Id = Guid.CreateVersion7(),
             TenantId = tenantId,
             WebhookMessageId = webhookMessageId,
+            WebhookDeliveryPlanSnapshotId = webhookDeliveryPlanSnapshotId,
             ProviderKind = providerKind,
             ProviderBindingId = providerBindingId,
             ProviderVersion = NormalizeRequired(providerVersion, MaxVersionLength, nameof(providerVersion)),
@@ -167,6 +195,7 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
             PublicationRetentionUntil = publicationRetentionUntil,
             IdempotencyValidUntil = idempotencyValidUntil,
             Status = WebhookProviderPublicationStatus.Prepared,
+            ConcurrencyVersion = 1,
             PreparedAt = preparedAt,
             CreatedAt = preparedAt
         };
@@ -448,6 +477,7 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
         ProcessingLeaseExpiresAt = leaseExpiresAt;
         ProcessingStartedAt = claimedAt;
         PublicationFence = checked(PublicationFence + 1);
+        ConcurrencyVersion = checked(ConcurrencyVersion + 1);
     }
 
     private void EnsurePublishingLease(Guid leaseToken, long publicationFence, DateTime observedAt)
@@ -576,16 +606,4 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
             throw new ArgumentException("Identifier is required.", parameterName);
         }
     }
-}
-
-public enum WebhookProviderPublicationStatus
-{
-    Prepared = 1,
-    Publishing = 2,
-    ProviderQueued = 3,
-    RetryDue = 4,
-    PublicationUnknown = 5,
-    DeadLettered = 6,
-    ManualReconciliation = 7,
-    Abandoned = 8
 }

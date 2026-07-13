@@ -15,15 +15,19 @@ public sealed class WebhookDeliveryAttemptDto
 
     public Guid EndpointId { get; init; }
 
-    public string? EndpointUrl { get; init; }
+    public int EndpointStatusId { get; init; }
+
+    public required string EndpointStatusCode { get; init; }
 
     public required string EndpointStatusName { get; init; }
 
     public int AttemptNumber { get; init; }
 
-    public int StatusId { get; init; }
+    public int OutcomeId { get; init; }
 
-    public required string StatusName { get; init; }
+    public required string OutcomeCode { get; init; }
+
+    public required string OutcomeName { get; init; }
 
     public DateTime ScheduledAt { get; init; }
 
@@ -34,8 +38,6 @@ public sealed class WebhookDeliveryAttemptDto
     public int? HttpStatusCode { get; init; }
 
     public string? FailureCategory { get; init; }
-
-    public string? ResponseBodyPreview { get; init; }
 
     public int? DurationMs { get; init; }
 

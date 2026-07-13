@@ -13,6 +13,7 @@ namespace Explore.Infrastructure.Webhooks;
 public sealed class SvixAppPortalService(
     ISvixWebhookClient svixClient,
     IWebhookConsumerRepository consumerRepository,
+    IWebhookConsumerProviderBindingRepository bindingRepository,
     IOptionsMonitor<WebhookOptions> options) : IWebhookProviderPortalService
 {
     private static readonly TimeSpan DefaultExpiry = TimeSpan.FromMinutes(15);
@@ -73,7 +74,12 @@ public sealed class SvixAppPortalService(
                     isRetryable: false);
             }
 
-            var binding = consumer.GetVerifiedProviderBinding(WebhookProviderKind.Svix);
+            var binding = await bindingRepository.GetVerifiedByConsumerAsync(
+                input.TenantId,
+                input.ConsumerId,
+                WebhookProviderKind.Svix,
+                currentOptions.Svix.Environment,
+                cancellationToken);
             if (binding is null)
             {
                 return WebhookProviderPortalAccessResult.Failure(
@@ -81,7 +87,11 @@ public sealed class SvixAppPortalService(
                     isRetryable: false);
             }
 
-            if (!binding.CanIssueAppPortalFor(input.TenantId, input.ConsumerId))
+            if (!SvixPortalAuthorityPolicy.AllowsBinding(
+                    binding,
+                    currentOptions,
+                    input.TenantId,
+                    input.ConsumerId))
             {
                 return WebhookProviderPortalAccessResult.Failure(
                     "webhook_provider_capability_unavailable",

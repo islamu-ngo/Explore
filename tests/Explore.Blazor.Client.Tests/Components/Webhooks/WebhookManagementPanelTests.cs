@@ -136,8 +136,7 @@ public sealed class WebhookManagementPanelTests : IDisposable
             ProviderModeId = 3,
             ProviderModeName = "Svix",
             StatusId = 1,
-            StatusName = "Active",
-            ExternalProviderAppId = "app_operations_bridge"
+            StatusName = "Active"
         };
 
         var endpoint = new HalResourceOfWebhookEndpointDto
@@ -148,7 +147,7 @@ public sealed class WebhookManagementPanelTests : IDisposable
             ConsumerName = consumer.Name,
             ProviderModeId = 3,
             ProviderModeName = "Svix",
-            Url = "https://integrator.example.test/islamu/webhooks",
+            DestinationHost = "integrator.example.test",
             Description = "Integration endpoint",
             StatusId = 1,
             StatusName = "Active",
@@ -181,10 +180,7 @@ public sealed class WebhookManagementPanelTests : IDisposable
             ConsumerId = consumerId,
             ConsumerName = consumer.Name,
             PayloadHash = "sha256:1234567890abcdef",
-            ProviderModeId = 3,
-            ProviderModeName = "Svix",
-            StatusId = 2,
-            StatusName = "Queued",
+            PayloadRetentionUntil = DateTimeOffset.UtcNow.AddDays(14),
             CreatedAt = DateTimeOffset.UtcNow
         };
 
@@ -195,7 +191,6 @@ public sealed class WebhookManagementPanelTests : IDisposable
             MessageId = messageId,
             MessageEventType = message.EventType,
             EndpointId = endpointId,
-            EndpointUrl = endpoint.Url,
             AttemptNumber = 2,
             StatusId = 5,
             StatusName = "Failed",

@@ -1,0 +1,24 @@
+// ABOUTME: EF Core configuration for webhook binding verification-state lookup rows.
+// ABOUTME: Enforces stable integer identifiers and unique governed master codes.
+
+using Explore.Domain;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Explore.Persistence.Configurations.Entities;
+
+public sealed class WebhookProviderBindingVerificationStateLookupConfiguration
+    : IEntityTypeConfiguration<WebhookProviderBindingVerificationStateLookup>
+{
+    public void Configure(EntityTypeBuilder<WebhookProviderBindingVerificationStateLookup> builder)
+    {
+        builder.ToTable("webhook_provider_binding_verification_states");
+        builder.Property(state => state.Id).ValueGeneratedNever();
+        builder.Property(state => state.MasterCode).HasMaxLength(100).IsRequired();
+        builder.Property(state => state.FullName).HasMaxLength(200).IsRequired();
+        builder.Property(state => state.Description).HasMaxLength(500);
+        builder.HasIndex(state => state.MasterCode)
+            .HasDatabaseName("ux_webhook_provider_binding_verification_states_master_code")
+            .IsUnique();
+    }
+}

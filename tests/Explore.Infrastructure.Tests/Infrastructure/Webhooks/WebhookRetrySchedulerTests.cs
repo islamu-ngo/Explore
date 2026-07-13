@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for LocalProvider webhook retry backoff scheduling.
-// ABOUTME: Locks the documented attempt schedule used by delivery workers and manual retries.
+// ABOUTME: Locks bounded exponential full-jitter behavior used by delivery workers and manual retries.
 
 using Explore.Infrastructure.Webhooks;
 
@@ -8,18 +8,30 @@ namespace Explore.Infrastructure.Tests.Infrastructure.Webhooks;
 public sealed class WebhookRetrySchedulerTests
 {
     [Test]
-    public async Task GetDelay_ReturnsDocumentedBackoffSchedule()
+    public async Task GetDelay_StaysWithinConfiguredExponentialFullJitterCeiling()
     {
         var scheduler = new WebhookRetryScheduler();
 
         await Assert.That(scheduler.GetDelay(1)).IsEqualTo(TimeSpan.Zero);
-        await Assert.That(scheduler.GetDelay(2)).IsEqualTo(TimeSpan.FromSeconds(30));
-        await Assert.That(scheduler.GetDelay(3)).IsEqualTo(TimeSpan.FromMinutes(5));
-        await Assert.That(scheduler.GetDelay(4)).IsEqualTo(TimeSpan.FromMinutes(30));
-        await Assert.That(scheduler.GetDelay(5)).IsEqualTo(TimeSpan.FromHours(2));
-        await Assert.That(scheduler.GetDelay(6)).IsEqualTo(TimeSpan.FromHours(6));
-        await Assert.That(scheduler.GetDelay(7)).IsEqualTo(TimeSpan.FromHours(12));
-        await Assert.That(scheduler.GetDelay(8)).IsEqualTo(TimeSpan.FromHours(24));
+
+        var expectedCeilings = new[]
+        {
+            TimeSpan.FromSeconds(30),
+            TimeSpan.FromSeconds(60),
+            TimeSpan.FromSeconds(120),
+            TimeSpan.FromSeconds(240),
+            TimeSpan.FromSeconds(480),
+            TimeSpan.FromSeconds(960),
+            TimeSpan.FromSeconds(1920)
+        };
+
+        for (var attemptNumber = 2; attemptNumber <= 8; attemptNumber++)
+        {
+            var delay = scheduler.GetDelay(attemptNumber);
+
+            await Assert.That(delay).IsGreaterThanOrEqualTo(TimeSpan.Zero);
+            await Assert.That(delay).IsLessThanOrEqualTo(expectedCeilings[attemptNumber - 2]);
+        }
     }
 
     [Test]

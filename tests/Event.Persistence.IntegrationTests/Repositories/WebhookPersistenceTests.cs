@@ -321,9 +321,12 @@ public sealed class WebhookPersistenceTests(PostgreSqlContainerFixture fixture)
             "decision.created",
             payloadBytes,
             payloadHash,
+            "application/json",
+            "utf-8",
             "{\"svix-id\":\"" + providerMessageId + "\"}",
             now,
-            now);
+            now,
+            now.AddDays(14));
     }
 
     private static WebhookMessage CreateMessage(
@@ -343,6 +346,9 @@ public sealed class WebhookPersistenceTests(PostgreSqlContainerFixture fixture)
             Guid.CreateVersion7(),
             consumerId,
             System.Text.Encoding.UTF8.GetBytes("{\"id\":\"" + eventId + "\"}"),
+            "application/json",
+            "utf-8",
+            createdAt,
             retentionUntil,
             createdAt);
     }
@@ -359,13 +365,12 @@ public sealed class WebhookPersistenceTests(PostgreSqlContainerFixture fixture)
             MessageId = messageId,
             EndpointId = endpointId,
             AttemptNumber = 1,
-            Status = WebhookDeliveryAttemptStatus.Failed,
+            Outcome = WebhookDeliveryAttemptOutcome.Failed,
             ScheduledAt = DateTime.UtcNow.AddMinutes(-5),
             SentAt = DateTime.UtcNow.AddMinutes(-4),
             CompletedAt = DateTime.UtcNow.AddMinutes(-4),
             HttpStatusCode = 500,
             FailureCategory = "server_error",
-            ResponseBodyPreview = "upstream returned 500",
             DurationMs = 123,
             NextRetryAt = DateTime.UtcNow.AddMinutes(10)
         };

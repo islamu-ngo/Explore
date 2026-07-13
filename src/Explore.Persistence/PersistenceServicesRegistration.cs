@@ -294,6 +294,7 @@ public static class PersistenceServicesRegistration
 
         // Webhook Repositories
         services.AddScoped<IWebhookConsumerRepository, WebhookConsumerRepository>();
+        services.AddScoped<IWebhookConsumerProviderBindingRepository, WebhookConsumerProviderBindingRepository>();
         services.AddScoped<IWebhookEventTypeRepository, WebhookEventTypeRepository>();
         services.AddScoped<IWebhookEndpointRepository, WebhookEndpointRepository>();
         services.AddScoped<IWebhookMessageRepository, WebhookMessageRepository>();

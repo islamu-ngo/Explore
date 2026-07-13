@@ -54,6 +54,8 @@ public static class LookupTableSeeder
         await SeedSupportAccessModesAsync(context, cancellationToken);
         await SeedSupportAccessEndReasonsAsync(context, cancellationToken);
         await SeedSupportAccessAuditEventTypesAsync(context, cancellationToken);
+        await SeedWebhookProviderBindingVerificationStatesAsync(context, cancellationToken);
+        await SeedWebhookLookupsAsync(context, cancellationToken);
         await SeedApprovalStatusesAsync(context, cancellationToken);
         await SeedAnalyticsProvidersAsync(context, cancellationToken);
         await SeedTenantStatusesAsync(context, cancellationToken);
@@ -98,6 +100,146 @@ public static class LookupTableSeeder
         await SeedEventRegistrationPoliciesAsync(context, cancellationToken);
         await SeedRegistrationScopesAsync(context, cancellationToken);
         await SeedUiThemePresetsAsync(context, cancellationToken);
+    }
+
+    private static async Task SeedWebhookProviderBindingVerificationStatesAsync(
+        ExploreDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var states = new WebhookProviderBindingVerificationStateLookup[]
+        {
+            new() { Id = (int)WebhookProviderBindingVerificationState.LegacyUnverified, MasterCode = "LEGACY_UNVERIFIED", FullName = "Legacy unverified", Description = "Legacy binding identity could not be proven and cannot grant provider authority" },
+            new() { Id = (int)WebhookProviderBindingVerificationState.Pending, MasterCode = "PENDING", FullName = "Pending", Description = "Binding is awaiting provider ownership verification" },
+            new() { Id = (int)WebhookProviderBindingVerificationState.Verified, MasterCode = "VERIFIED", FullName = "Verified", Description = "Provider ownership matches the persisted tenant and webhook consumer" },
+            new() { Id = (int)WebhookProviderBindingVerificationState.Rejected, MasterCode = "REJECTED", FullName = "Rejected", Description = "Provider ownership verification was rejected" },
+            new() { Id = (int)WebhookProviderBindingVerificationState.Revoked, MasterCode = "REVOKED", FullName = "Revoked", Description = "Previously verified provider authority has been revoked" }
+        };
+
+        var existingIds = await context.WebhookProviderBindingVerificationStates
+            .Select(state => state.Id)
+            .ToListAsync(cancellationToken);
+        var missingStates = states
+            .Where(state => !existingIds.Contains(state.Id))
+            .ToArray();
+        if (missingStates.Length == 0)
+        {
+            return;
+        }
+
+        context.WebhookProviderBindingVerificationStates.AddRange(missingStates);
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task SeedWebhookLookupsAsync(
+        ExploreDbContext context,
+        CancellationToken cancellationToken)
+    {
+        await AddMissingLookupRowsAsync(context.WebhookConsumerKinds,
+        [
+            new() { Id = (int)WebhookConsumerKind.Tenant, MasterCode = "TENANT", FullName = "Tenant", Description = "Tenant-owned webhook consumer" },
+            new() { Id = (int)WebhookConsumerKind.Organization, MasterCode = "ORGANIZATION", FullName = "Organization", Description = "Organization-owned webhook consumer" },
+            new() { Id = (int)WebhookConsumerKind.Group, MasterCode = "GROUP", FullName = "Group", Description = "Group-owned webhook consumer" },
+            new() { Id = (int)WebhookConsumerKind.User, MasterCode = "USER", FullName = "User", Description = "User-owned webhook consumer" },
+            new() { Id = (int)WebhookConsumerKind.SystemIntegration, MasterCode = "SYSTEM_INTEGRATION", FullName = "System integration", Description = "System integration webhook consumer" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.WebhookConsumerStatuses,
+        [
+            new() { Id = (int)WebhookConsumerStatus.Active, MasterCode = "ACTIVE", FullName = "Active", Description = "Consumer may receive newly materialized webhook work" },
+            new() { Id = (int)WebhookConsumerStatus.Disabled, MasterCode = "DISABLED", FullName = "Disabled", Description = "Consumer is disabled for new webhook work" },
+            new() { Id = (int)WebhookConsumerStatus.Archived, MasterCode = "ARCHIVED", FullName = "Archived", Description = "Consumer is retained as historical evidence" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.WebhookProviderModes,
+        [
+            new() { Id = (int)WebhookProviderMode.Disabled, MasterCode = "DISABLED", FullName = "Disabled", Description = "Webhook delivery is disabled" },
+            new() { Id = (int)WebhookProviderMode.Local, MasterCode = "LOCAL", FullName = "Local", Description = "Deliver through the platform Local provider" },
+            new() { Id = (int)WebhookProviderMode.Svix, MasterCode = "SVIX", FullName = "Svix", Description = "Publish through a verified Svix binding" },
+            new() { Id = (int)WebhookProviderMode.Composite, MasterCode = "COMPOSITE", FullName = "Composite", Description = "Materialize independent Local and provider work" },
+            new() { Id = (int)WebhookProviderMode.DryRun, MasterCode = "DRY_RUN", FullName = "Dry run", Description = "Materialize evidence without network delivery" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.WebhookProviderKinds,
+        [
+            new() { Id = (int)WebhookProviderKind.Local, MasterCode = "LOCAL", FullName = "Local", Description = "Platform-owned direct HTTP delivery" },
+            new() { Id = (int)WebhookProviderKind.Svix, MasterCode = "SVIX", FullName = "Svix", Description = "Svix application delivery provider" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.WebhookEndpointStatuses,
+        [
+            new() { Id = (int)WebhookEndpointStatus.Active, MasterCode = "ACTIVE", FullName = "Active", Description = "Endpoint accepts newly materialized Local work" },
+            new() { Id = (int)WebhookEndpointStatus.Disabled, MasterCode = "DISABLED", FullName = "Disabled", Description = "Endpoint is administratively disabled" },
+            new() { Id = (int)WebhookEndpointStatus.AutoPaused, MasterCode = "AUTO_PAUSED", FullName = "Auto-paused", Description = "Endpoint was paused by bounded failure policy" },
+            new() { Id = (int)WebhookEndpointStatus.Archived, MasterCode = "ARCHIVED", FullName = "Archived", Description = "Endpoint is retained as historical evidence" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.WebhookLocalDeliveryStatuses,
+        [
+            new() { Id = (int)WebhookLocalDeliveryStatus.Pending, MasterCode = "PENDING", FullName = "Pending", Description = "Local target is waiting for its first claim" },
+            new() { Id = (int)WebhookLocalDeliveryStatus.Delivering, MasterCode = "DELIVERING", FullName = "Delivering", Description = "Local target has an active fenced delivery claim" },
+            new() { Id = (int)WebhookLocalDeliveryStatus.RetryDue, MasterCode = "RETRY_DUE", FullName = "Retry due", Description = "Local target is waiting for a bounded retry" },
+            new() { Id = (int)WebhookLocalDeliveryStatus.Succeeded, MasterCode = "SUCCEEDED", FullName = "Succeeded", Description = "Local target completed successfully" },
+            new() { Id = (int)WebhookLocalDeliveryStatus.DeadLettered, MasterCode = "DEAD_LETTERED", FullName = "Dead-lettered", Description = "Local target exhausted automatic delivery" },
+            new() { Id = (int)WebhookLocalDeliveryStatus.Abandoned, MasterCode = "ABANDONED", FullName = "Abandoned", Description = "Local target was explicitly abandoned" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.WebhookDeliveryAttemptOutcomes,
+        [
+            new() { Id = (int)WebhookDeliveryAttemptOutcome.Scheduled, MasterCode = "SCHEDULED", FullName = "Scheduled", Description = "Attempt was scheduled for delivery" },
+            new() { Id = (int)WebhookDeliveryAttemptOutcome.Sending, MasterCode = "SENDING", FullName = "Sending", Description = "Attempt entered provider handoff" },
+            new() { Id = (int)WebhookDeliveryAttemptOutcome.Succeeded, MasterCode = "SUCCEEDED", FullName = "Succeeded", Description = "Attempt received a successful response" },
+            new() { Id = (int)WebhookDeliveryAttemptOutcome.Failed, MasterCode = "FAILED", FullName = "Failed", Description = "Attempt failed with safe classified evidence" },
+            new() { Id = (int)WebhookDeliveryAttemptOutcome.Abandoned, MasterCode = "ABANDONED", FullName = "Abandoned", Description = "Attempt was not eligible for further delivery" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.IncomingWebhookMessageStatuses,
+        [
+            new() { Id = (int)IncomingWebhookMessageStatus.Verified, MasterCode = "VERIFIED", FullName = "Verified", Description = "Input verification succeeded and is ready to claim" },
+            new() { Id = (int)IncomingWebhookMessageStatus.Processing, MasterCode = "PROCESSING", FullName = "Processing", Description = "Inbox row has an active fenced claim" },
+            new() { Id = (int)IncomingWebhookMessageStatus.RetryDue, MasterCode = "RETRY_DUE", FullName = "Retry due", Description = "Inbox row is waiting for a bounded retry" },
+            new() { Id = (int)IncomingWebhookMessageStatus.Processed, MasterCode = "PROCESSED", FullName = "Processed", Description = "Effect receipt and settlement completed" },
+            new() { Id = (int)IncomingWebhookMessageStatus.Ignored, MasterCode = "IGNORED", FullName = "Ignored", Description = "Verified input required no business effect" },
+            new() { Id = (int)IncomingWebhookMessageStatus.RejectedPermanent, MasterCode = "REJECTED_PERMANENT", FullName = "Rejected permanently", Description = "Input cannot be processed safely" },
+            new() { Id = (int)IncomingWebhookMessageStatus.DeadLettered, MasterCode = "DEAD_LETTERED", FullName = "Dead-lettered", Description = "Input exhausted automatic processing" },
+            new() { Id = (int)IncomingWebhookMessageStatus.PayloadConflict, MasterCode = "PAYLOAD_CONFLICT", FullName = "Payload conflict", Description = "Provider identity was reused with different exact bytes" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.WebhookProviderPublicationStatuses,
+        [
+            new() { Id = (int)WebhookProviderPublicationStatus.Prepared, MasterCode = "PREPARED", FullName = "Prepared", Description = "Provider publication is durably prepared" },
+            new() { Id = (int)WebhookProviderPublicationStatus.Publishing, MasterCode = "PUBLISHING", FullName = "Publishing", Description = "Provider publication has an active fenced claim" },
+            new() { Id = (int)WebhookProviderPublicationStatus.ProviderQueued, MasterCode = "PROVIDER_QUEUED", FullName = "Provider queued", Description = "Provider accepted the publication" },
+            new() { Id = (int)WebhookProviderPublicationStatus.RetryDue, MasterCode = "RETRY_DUE", FullName = "Retry due", Description = "Provider publication is waiting for a bounded retry" },
+            new() { Id = (int)WebhookProviderPublicationStatus.PublicationUnknown, MasterCode = "PUBLICATION_UNKNOWN", FullName = "Publication unknown", Description = "Provider acceptance could not be proven" },
+            new() { Id = (int)WebhookProviderPublicationStatus.DeadLettered, MasterCode = "DEAD_LETTERED", FullName = "Dead-lettered", Description = "Provider publication exhausted automatic submission" },
+            new() { Id = (int)WebhookProviderPublicationStatus.ManualReconciliation, MasterCode = "MANUAL_RECONCILIATION", FullName = "Manual reconciliation", Description = "Operator evidence is required before settlement" },
+            new() { Id = (int)WebhookProviderPublicationStatus.Abandoned, MasterCode = "ABANDONED", FullName = "Abandoned", Description = "Provider publication was explicitly abandoned" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.WebhookPayloadProvenances,
+        [
+            new() { Id = (int)WebhookPayloadProvenance.ExactBytes, MasterCode = "EXACT_BYTES", FullName = "Exact bytes", Description = "Persisted bytes are the authoritative received or serialized sequence" },
+            new() { Id = (int)WebhookPayloadProvenance.LegacyJsonCanonicalized, MasterCode = "LEGACY_JSON_CANONICALIZED", FullName = "Legacy JSON canonicalized", Description = "Legacy jsonb was canonicalized because original byte formatting cannot be recovered" }
+        ], cancellationToken);
+
+        if (context.ChangeTracker.HasChanges())
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private static async Task AddMissingLookupRowsAsync<TLookup>(
+        DbSet<TLookup> set,
+        IReadOnlyCollection<TLookup> rows,
+        CancellationToken cancellationToken)
+        where TLookup : class
+    {
+        var existingIds = await set
+            .Select(row => EF.Property<int>(row, "Id"))
+            .ToListAsync(cancellationToken);
+        set.AddRange(rows.Where(row => !existingIds.Contains(
+            (int)(typeof(TLookup).GetProperty("Id")?.GetValue(row)
+                ?? throw new InvalidOperationException($"{typeof(TLookup).Name} must expose an integer Id.")))));
     }
 
     private static async Task SeedAiConversationStatusesAsync(ExploreDbContext context, CancellationToken ct)

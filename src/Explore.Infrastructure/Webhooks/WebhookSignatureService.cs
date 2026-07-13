@@ -26,16 +26,18 @@ public sealed class WebhookSignatureService : IWebhookSignatureService
     public WebhookSignatureHeaders Sign(
         string messageId,
         DateTimeOffset timestamp,
-        string rawPayload,
+        ReadOnlySpan<byte> rawPayload,
         WebhookSecretMaterial secret)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
-        ArgumentNullException.ThrowIfNull(rawPayload);
 
         var unixTimestamp = timestamp.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
-        var signatures = GetActiveSecrets(secret, _timeProvider.GetUtcNow())
-            .Select(activeSecret =>
+        var signatures = new List<string>();
+        foreach (var activeSecret in GetActiveSecrets(secret, _timeProvider.GetUtcNow()))
+        {
+            signatures.Add(
                 $"v1,{Convert.ToBase64String(ComputeSignature(messageId, unixTimestamp, rawPayload, DecodeSecret(activeSecret)))}");
+        }
 
         return new WebhookSignatureHeaders(messageId, unixTimestamp, string.Join(' ', signatures));
     }
@@ -121,6 +123,19 @@ public sealed class WebhookSignatureService : IWebhookSignatureService
         }
 
         return secrets;
+    }
+
+    private static byte[] ComputeSignature(
+        string messageId,
+        string timestamp,
+        ReadOnlySpan<byte> rawPayload,
+        byte[] secret)
+    {
+        var prefix = Encoding.UTF8.GetBytes($"{messageId}.{timestamp}.");
+        var signedContent = new byte[prefix.Length + rawPayload.Length];
+        prefix.CopyTo(signedContent, 0);
+        rawPayload.CopyTo(signedContent.AsSpan(prefix.Length));
+        return HMACSHA256.HashData(secret, signedContent);
     }
 
     private static byte[] ComputeSignature(

@@ -168,6 +168,7 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<ISvixWebhookClient, SvixWebhookClient>();
         services.AddScoped<SvixWebhookDeliveryProvider>();
         services.AddScoped<IWebhookProviderPortalService, SvixAppPortalService>();
+        services.AddScoped<IWebhookProviderPortalEligibilityService, SvixPortalEligibilityService>();
         services.AddScoped<IWebhookProviderEventTypeSyncService, SvixEventTypeSyncService>();
         services.AddScoped<RuntimeWebhookDeliveryProvider>();
         services.AddScoped<IWebhookDeliveryProvider>(sp => sp.GetRequiredService<RuntimeWebhookDeliveryProvider>());

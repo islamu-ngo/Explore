@@ -1,6 +1,7 @@
 // ABOUTME: Immutable Local-provider endpoint target captured for one outgoing webhook delivery plan.
 // ABOUTME: Freezes destination, endpoint configuration, signing-key reference, and delivery limits without storing secret values.
 
+using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
@@ -29,6 +30,20 @@ public sealed class WebhookLocalTargetSnapshot : ITenantEntity, IAuditableEntity
     public int TimeoutSeconds { get; private set; }
     public int? RateLimitPerMinute { get; private set; }
     public DateTimeOffset CapturedAtUtc { get; private set; }
+    public int DeliveryStatusId { get; private set; }
+    public WebhookLocalDeliveryStatusLookup DeliveryStatusLookup { get; private set; } = null!;
+    [NotMapped]
+    public WebhookLocalDeliveryStatus DeliveryStatus
+    {
+        get => (WebhookLocalDeliveryStatus)DeliveryStatusId;
+        private set => DeliveryStatusId = (int)value;
+    }
+    public DateTimeOffset NextActionAtUtc { get; private set; }
+    public string? ProcessingLeaseOwner { get; private set; }
+    public Guid? ProcessingLeaseToken { get; private set; }
+    public DateTimeOffset? ProcessingLeaseExpiresAtUtc { get; private set; }
+    public long DeliveryFence { get; private set; }
+    public long ConcurrencyVersion { get; private set; }
 
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
@@ -125,6 +140,9 @@ public sealed class WebhookLocalTargetSnapshot : ITenantEntity, IAuditableEntity
             TimeoutSeconds = webhookEndpoint.TimeoutSeconds,
             RateLimitPerMinute = webhookEndpoint.RateLimitPerMinute,
             CapturedAtUtc = capturedAtUtc,
+            DeliveryStatus = WebhookLocalDeliveryStatus.Pending,
+            NextActionAtUtc = capturedAtUtc,
+            ConcurrencyVersion = 1,
             CreatedAt = capturedAtUtc.UtcDateTime
         };
     }

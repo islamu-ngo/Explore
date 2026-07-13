@@ -15,9 +15,12 @@ public class WebhookConsumerConfiguration : IEntityTypeConfiguration<WebhookCons
 
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(e => e.Name).HasMaxLength(200).IsRequired();
-        builder.Property(e => e.ConsumerKind).IsRequired();
-        builder.Property(e => e.Status).IsRequired();
-        builder.Property(e => e.ProviderMode).IsRequired();
+        builder.Property(e => e.ConsumerKindId).IsRequired();
+        builder.Property(e => e.StatusId).IsRequired();
+        builder.Property(e => e.ProviderModeId).IsRequired();
+        builder.Ignore(e => e.ConsumerKind);
+        builder.Ignore(e => e.Status);
+        builder.Ignore(e => e.ProviderMode);
         builder.Property(e => e.ExternalProviderAppId).HasMaxLength(500);
 
         builder.HasAlternateKey(e => new { e.TenantId, e.Id })
@@ -30,7 +33,8 @@ public class WebhookConsumerConfiguration : IEntityTypeConfiguration<WebhookCons
 
         builder.HasOne(e => e.OwnerActor)
             .WithMany()
-            .HasForeignKey(e => e.OwnerActorId)
+            .HasForeignKey(e => new { e.TenantId, e.OwnerActorId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.OwnerUser)
@@ -38,11 +42,26 @@ public class WebhookConsumerConfiguration : IEntityTypeConfiguration<WebhookCons
             .HasForeignKey(e => e.OwnerUserId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(e => e.ConsumerKindLookup)
+            .WithMany()
+            .HasForeignKey(e => e.ConsumerKindId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.StatusLookup)
+            .WithMany()
+            .HasForeignKey(e => e.StatusId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.ProviderModeLookup)
+            .WithMany()
+            .HasForeignKey(e => e.ProviderModeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(e => new { e.TenantId, e.Name })
             .HasDatabaseName("ux_webhook_consumers_tenant_name")
             .IsUnique();
 
-        builder.HasIndex(e => new { e.TenantId, e.Status, e.ProviderMode })
+        builder.HasIndex(e => new { e.TenantId, e.StatusId, e.ProviderModeId })
             .HasDatabaseName("ix_webhook_consumers_tenant_status_provider");
 
         builder.HasIndex(e => new { e.TenantId, e.ExternalProviderAppId })

@@ -95,7 +95,7 @@ public sealed class ModerationIntegrationControllerTests
     }
 
     [Test]
-    public async Task RecordCoopCallback_WithValidSignature_MapsBodyToCommand()
+    public async Task RecordCoopCallback_WithValidSignature_CapturesBodyForDurableProcessing()
     {
         var reportId = Guid.CreateVersion7();
         var eventId = Guid.CreateVersion7();
@@ -113,9 +113,11 @@ public sealed class ModerationIntegrationControllerTests
         var incoming = IncomingWebhookReadResult.Success(
             "coop",
             body,
-            "sha256:body",
+            Encoding.UTF8.GetBytes(body),
+            DateTimeOffset.UtcNow,
+            ComputePayloadHash(body),
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-            IncomingWebhookVerificationResult.Verified("sha256:body", "moderation.coop.decision", "sha256:body"));
+            IncomingWebhookVerificationResult.Verified("coop-decision-1", "moderation.coop.decision", "coop-decision-1"));
         _incomingWebhookIntakeService.ReadAndVerifyAsync(Arg.Any<HttpRequest>(), "coop", Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(incoming);
         _incomingWebhookIntakeService.CaptureAsync(
@@ -126,31 +128,21 @@ public sealed class ModerationIntegrationControllerTests
                 "coop-decision-1",
                 Arg.Any<CancellationToken>())
             .Returns(IncomingWebhookCaptureResult.Captured(Guid.CreateVersion7(), "coop-decision-1", "coop-decision-1"));
-        _mediator.Send(Arg.Any<ProcessCoopDecisionCallbackCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponse<Guid>
-            {
-                Success = true,
-                Id = reportId,
-                Message = "ok"
-            });
         var controller = CreateController();
 
         var response = await controller.RecordCoopCallback(CancellationToken.None);
 
         var ok = response.Result as OkObjectResult;
         await Assert.That(ok).IsNotNull();
-        await _mediator.Received(1).Send(
-            Arg.Is<ProcessCoopDecisionCallbackCommand>(command =>
-                command.Request.TenantIdSnake == tenantId &&
-                command.Request.ReportIdSnake == reportId &&
-                command.Request.EventIdSnake == eventId &&
-                command.Request.CaseIdSnake == caseId &&
-                command.Request.ProviderDecisionIdSnake == "coop-decision-1" &&
-                command.Request.Action!.Id == "light_moderate"),
-            Arg.Any<CancellationToken>());
-        await _incomingWebhookIntakeService.Received(1).MarkProcessedAsync(
+        await _incomingWebhookIntakeService.Received(1).CaptureAsync(
+            incoming,
             tenantId,
-            Arg.Any<Guid>(),
+            "coop-decision-1",
+            "moderation.coop.decision",
+            "coop-decision-1",
+            Arg.Any<CancellationToken>());
+        await _mediator.DidNotReceive().Send(
+            Arg.Any<ProcessCoopDecisionCallbackCommand>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -171,9 +163,11 @@ public sealed class ModerationIntegrationControllerTests
         var incoming = IncomingWebhookReadResult.Success(
             "coop",
             body,
-            "sha256:duplicate",
+            Encoding.UTF8.GetBytes(body),
+            DateTimeOffset.UtcNow,
+            ComputePayloadHash(body),
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-            IncomingWebhookVerificationResult.Verified("sha256:duplicate", "moderation.coop.decision", "sha256:duplicate"));
+            IncomingWebhookVerificationResult.Verified("coop-decision-duplicate", "moderation.coop.decision", "coop-decision-duplicate"));
         _incomingWebhookIntakeService.ReadAndVerifyAsync(Arg.Any<HttpRequest>(), "coop", Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(incoming);
         _incomingWebhookIntakeService.CaptureAsync(
@@ -194,10 +188,6 @@ public sealed class ModerationIntegrationControllerTests
         await Assert.That(bodyResponse!.Success).IsTrue();
         await Assert.That(bodyResponse.Id).IsEqualTo(capturedMessageId);
         await _mediator.DidNotReceive().Send(Arg.Any<ProcessCoopDecisionCallbackCommand>(), Arg.Any<CancellationToken>());
-        await _incomingWebhookIntakeService.DidNotReceive().MarkProcessedAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<Guid>(),
-            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -293,6 +283,9 @@ public sealed class ModerationIntegrationControllerTests
         var signature = hmac.ComputeHash(Encoding.UTF8.GetBytes($"{timestamp}.{body}"));
         return Convert.ToHexString(signature).ToLowerInvariant();
     }
+
+    private static string ComputePayloadHash(string payload) =>
+        $"sha256:{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload))).ToLowerInvariant()}";
 
     private sealed class StaticOptionsMonitor<TOptions>(TOptions currentValue) : IOptionsMonitor<TOptions>
     {

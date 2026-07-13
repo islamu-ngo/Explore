@@ -49,6 +49,12 @@ public sealed class OpenSvixAppPortalCommandHandler(
                 ? "webhook_provider_portal_failed"
                 : result.FailureCategory;
 
+            await CreateAuditAsync(
+                request,
+                result,
+                "provider_failure",
+                failureCategory);
+
             return Failure(
                 ResolveFailureMessage(failureCategory),
                 failureCategory,
@@ -56,26 +62,7 @@ public sealed class OpenSvixAppPortalCommandHandler(
                 [result.SafeDetail ?? failureCategory]);
         }
 
-        await auditLogRepository.Create(new AuditLog
-        {
-            Id = Guid.CreateVersion7(),
-            TenantId = request.TenantId,
-            Tenant = null!,
-            EntityType = nameof(WebhookConsumer),
-            EntityId = request.ConsumerId.ToString("D"),
-            Action = "WebhookPortalSessionIssued",
-            NewValues = JsonSerializer.Serialize(new
-            {
-                consumerId = request.ConsumerId,
-                providerBindingId = result.ProviderBindingId,
-                provider = "svix",
-                capabilityPolicyVersion = result.CapabilityPolicyVersion,
-                result = "issued"
-            }),
-            AffectedColumns = JsonSerializer.Serialize(new[] { "PortalSessionIssuance" }),
-            ActorId = currentUserService.UserId,
-            Timestamp = DateTime.UtcNow
-        });
+        await CreateAuditAsync(request, result, "issued", failureCategory: null);
 
         return new WebhookProviderPortalAccessCommandResponse
         {
@@ -88,6 +75,38 @@ public sealed class OpenSvixAppPortalCommandHandler(
                 ExpiresAt = result.ExpiresAt!.Value
             }
         };
+    }
+
+    private async Task CreateAuditAsync(
+        OpenSvixAppPortalCommand request,
+        WebhookProviderPortalAccessResult result,
+        string outcome,
+        string? failureCategory)
+    {
+        var correlationId = Guid.CreateVersion7();
+        await auditLogRepository.Create(new AuditLog
+        {
+            Id = correlationId,
+            TenantId = request.TenantId,
+            Tenant = null!,
+            EntityType = nameof(WebhookConsumer),
+            EntityId = request.ConsumerId.ToString("D"),
+            Action = "WebhookPortalSessionIssued",
+            NewValues = JsonSerializer.Serialize(new
+            {
+                consumerId = request.ConsumerId,
+                providerBindingId = result.ProviderBindingId,
+                provider = "svix",
+                capabilityPolicyVersion = result.CapabilityPolicyVersion,
+                correlationId,
+                category = "webhook_provider_portal",
+                result = outcome,
+                failureCategory
+            }),
+            AffectedColumns = JsonSerializer.Serialize(new[] { "PortalSessionIssuance" }),
+            ActorId = currentUserService.UserId,
+            Timestamp = DateTime.UtcNow
+        });
     }
 
     private static List<string> Validate(OpenSvixAppPortalCommand request)

@@ -103,7 +103,7 @@ public sealed class SvixWebhookDeliveryProviderTests
         await Assert.That(messageRequest.EventType).IsEqualTo("event.published");
         await Assert.That(messageRequest.EventId).IsEqualTo(MessageId.ToString("D"));
         await Assert.That(messageRequest.IdempotencyKey).IsEqualTo(MessageId.ToString("D"));
-        await Assert.That(messageRequest.PayloadJson).IsEqualTo("{\"type\":\"event.published\"}");
+        await Assert.That(System.Text.Encoding.UTF8.GetString(messageRequest.PayloadBytes)).IsEqualTo("{\"type\":\"event.published\"}");
         await Assert.That(messageRequest.PayloadRetentionDays).IsEqualTo(14);
         await Assert.That(createdLink).IsNotNull();
         await Assert.That(createdLink!.TenantId).IsEqualTo(TenantId);
@@ -173,7 +173,7 @@ public sealed class SvixWebhookDeliveryProviderTests
             "domain-event-1",
             "Event",
             AggregateId,
-            "{\"type\":\"event.published\"}",
+            "{\"type\":\"event.published\"}"u8.ToArray(),
             "hash",
             DateTimeOffset.UtcNow.AddDays(14));
 

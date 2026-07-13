@@ -2,6 +2,7 @@
 // ABOUTME: Keeps Persistence entity-first while centralizing Application-owned projection rules.
 
 using Explore.Application.DTOs.Webhooks;
+using Explore.Application.Lookups;
 using Explore.Domain;
 
 namespace Explore.Application.Features.Webhooks.Handlers;
@@ -10,24 +11,25 @@ internal static class WebhookConsumerDtoMapper
 {
     public static WebhookConsumerDto Map(WebhookConsumer consumer)
     {
-        var svixBinding = consumer.GetVerifiedProviderBinding(WebhookProviderKind.Svix);
+        var consumerKind = NormalizedLookupMetadata.WebhookConsumerKind(consumer.ConsumerKindId);
+        var status = NormalizedLookupMetadata.WebhookConsumerStatus(consumer.StatusId);
+        var providerMode = NormalizedLookupMetadata.WebhookProviderMode(consumer.ProviderModeId);
         return new WebhookConsumerDto
         {
             Id = consumer.Id,
             TenantId = consumer.TenantId,
             OwnerActorId = consumer.OwnerActorId,
             OwnerUserId = consumer.OwnerUserId,
-            ConsumerKindId = (int)consumer.ConsumerKind,
-            ConsumerKindName = consumer.ConsumerKind.ToString(),
-            StatusId = (int)consumer.Status,
-            StatusName = consumer.Status.ToString(),
-            ProviderModeId = (int)consumer.ProviderMode,
-            ProviderModeName = consumer.ProviderMode.ToString(),
+            ConsumerKindId = consumerKind.Id,
+            ConsumerKindCode = consumerKind.Code,
+            ConsumerKindName = consumerKind.Name,
+            StatusId = status.Id,
+            StatusCode = status.Code,
+            StatusName = status.Name,
+            ProviderModeId = providerMode.Id,
+            ProviderModeCode = providerMode.Code,
+            ProviderModeName = providerMode.Name,
             Name = consumer.Name,
-            CanOpenProviderPortal =
-                consumer.Status == WebhookConsumerStatus.Active &&
-                consumer.ProviderMode is WebhookProviderMode.Svix or WebhookProviderMode.Composite &&
-                svixBinding?.CanIssueAppPortalFor(consumer.TenantId, consumer.Id) == true,
             CreatedAt = consumer.CreatedAt,
             UpdatedAt = consumer.UpdatedAt
         };

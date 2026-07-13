@@ -19,6 +19,9 @@ public class WebhookMessageConfiguration : IEntityTypeConfiguration<WebhookMessa
             table.HasCheckConstraint(
                 "ck_webhook_messages_payload_provenance",
                 "payload_provenance_id > 0");
+            table.HasCheckConstraint(
+                "ck_webhook_messages_payload_byte_length",
+                "payload_byte_length > 0");
         });
 
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
@@ -29,7 +32,10 @@ public class WebhookMessageConfiguration : IEntityTypeConfiguration<WebhookMessa
             .HasColumnName("payload_bytes")
             .HasColumnType("bytea");
         builder.Property(e => e.PayloadHash).HasMaxLength(WebhookMessage.PayloadHashLength).IsRequired();
+        builder.Property(e => e.PayloadByteLength).IsRequired();
         builder.Property(e => e.PayloadProvenanceId).IsRequired();
+        builder.Property(e => e.ContentType).HasMaxLength(WebhookMessage.MaxContentTypeLength).IsRequired();
+        builder.Property(e => e.ContentEncoding).HasMaxLength(WebhookMessage.MaxContentEncodingLength).IsRequired();
 
         builder.HasAlternateKey(e => new { e.TenantId, e.Id })
             .HasName("ak_webhook_messages_tenant_id_id");
@@ -43,6 +49,11 @@ public class WebhookMessageConfiguration : IEntityTypeConfiguration<WebhookMessa
             .WithMany()
             .HasForeignKey(e => new { e.TenantId, e.ConsumerId })
             .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.PayloadProvenanceLookup)
+            .WithMany()
+            .HasForeignKey(e => e.PayloadProvenanceId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.CreatedAt, e.Id })

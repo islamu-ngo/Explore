@@ -47,7 +47,8 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
         }
 
         var user = httpContext.User;
-        var links = await GenerateLinks(_detailLinkPolicy.GetLinks(dto, user), user, httpContext);
+        var definitions = await GetDetailLinkDefinitionsAsync(dto, user, httpContext);
+        var links = await GenerateLinks(definitions, user, httpContext);
 
         return new HalResource<TDto>
         {
@@ -66,7 +67,8 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
         }
 
         var user = httpContext.User;
-        var links = await GenerateLinks(_collectionLinkPolicy.GetItemLinks(dto, user), user, httpContext);
+        var definitions = await GetListItemLinkDefinitionsAsync(dto, user, httpContext);
+        var links = await GenerateLinks(definitions, user, httpContext);
 
         return new HalResource<TListDto>
         {
@@ -207,6 +209,26 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
         return null;
     }
 
+    protected virtual Task<IReadOnlyList<LinkDefinition>> GetDetailLinkDefinitionsAsync(
+        TDto dto,
+        ClaimsPrincipal? user,
+        HttpContext httpContext) =>
+        Task.FromResult<IReadOnlyList<LinkDefinition>>(_detailLinkPolicy.GetLinks(dto, user).ToList());
+
+    protected virtual Task<IReadOnlyList<LinkDefinition>> GetListItemLinkDefinitionsAsync(
+        TListDto dto,
+        ClaimsPrincipal? user,
+        HttpContext httpContext) =>
+        Task.FromResult<IReadOnlyList<LinkDefinition>>(_collectionLinkPolicy.GetItemLinks(dto, user).ToList());
+
+    protected virtual Task<IReadOnlyList<IReadOnlyList<LinkDefinition>>> GetCollectionItemLinkDefinitionsAsync(
+        IReadOnlyList<TListDto> items,
+        ClaimsPrincipal? user,
+        HttpContext httpContext) =>
+        Task.FromResult<IReadOnlyList<IReadOnlyList<LinkDefinition>>>(items
+            .Select(item => (IReadOnlyList<LinkDefinition>)_collectionLinkPolicy.GetItemLinks(item, user).ToList())
+            .ToList());
+
     private static void EnsureCollectionSelfLink(Dictionary<string, HalLink> links, HttpContext httpContext)
     {
         if (links.ContainsKey(LinkRelations.Self))
@@ -273,9 +295,7 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
             return [];
 
         // Phase 1: Collect candidate link definitions for every item
-        var definitionsByItem = itemList
-            .Select(item => _collectionLinkPolicy.GetItemLinks(item, user).ToList())
-            .ToList();
+        var definitionsByItem = await GetCollectionItemLinkDefinitionsAsync(itemList, user, httpContext);
 
         // Phase 2-3: Flatten and batch evaluate (evaluator handles dedup internally)
         var flattenedDefinitions = definitionsByItem.SelectMany(x => x).ToList();

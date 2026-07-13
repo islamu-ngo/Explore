@@ -121,14 +121,13 @@ public sealed class BusinessMetricsEventModerationTests
         using var metrics = CreateMetrics();
 
         metrics.RecordEventReportProviderCallback(
-            "tenant-a",
             "osprey",
             "succeeded");
 
         var measurement = await metricsCapture.SingleAsync("explore.event_reports.provider_callbacks");
 
         await Assert.That(measurement.Value).IsEqualTo(1);
-        await Assert.That(measurement.Tags["tenant_id"]?.ToString()).IsEqualTo("tenant-a");
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("tenant_id");
         await Assert.That(measurement.Tags["provider"]?.ToString()).IsEqualTo("osprey");
         await Assert.That(measurement.Tags["outcome"]?.ToString()).IsEqualTo("succeeded");
         await Assert.That(measurement.Tags["failure_category"]?.ToString()).IsEqualTo("none");
@@ -142,7 +141,6 @@ public sealed class BusinessMetricsEventModerationTests
         var rawIdentifier = Guid.NewGuid().ToString("N");
 
         metrics.RecordEventReportProviderCallback(
-            "tenant-a",
             $"https://provider.example/{rawIdentifier}?secret=value",
             $"reporter text {rawIdentifier}",
             $"raw provider payload {rawIdentifier}");

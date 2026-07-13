@@ -50,7 +50,7 @@ public sealed class IncomingWebhooksController(
             cancellationToken);
         if (!incoming.Succeeded)
         {
-            metrics.RecordEventReportProviderCallback(null, "svix", "failed", incoming.Code);
+            metrics.RecordEventReportProviderCallback("svix", "failed", incoming.Code);
             logger.LogWarning(
                 "Svix operational webhook rejected with status {StatusCode} failure {FailureCategory}",
                 incoming.StatusCode,
@@ -77,7 +77,7 @@ public sealed class IncomingWebhooksController(
                 cancellationToken);
             if (!capture.Succeeded)
             {
-                metrics.RecordEventReportProviderCallback(null, "svix", "failed", capture.Code);
+                metrics.RecordEventReportProviderCallback("svix", "failed", capture.Code);
                 return ApiProblemFactory.ToProblemResult(ApiProblemFactory.CreateProblem(
                     HttpContext,
                     capture.StatusCode,
@@ -89,7 +89,6 @@ public sealed class IncomingWebhooksController(
         }
 
         metrics.RecordEventReportProviderCallback(
-            null,
             "svix",
             "succeeded",
             "none");

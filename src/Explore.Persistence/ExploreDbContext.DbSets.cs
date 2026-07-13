@@ -285,11 +285,27 @@ public partial class ExploreDbContext
 
     // ===== Webhook Delivery =====
     public DbSet<WebhookConsumer> WebhookConsumers { get; set; }
+    public DbSet<WebhookConsumerKindLookup> WebhookConsumerKinds { get; set; }
+    public DbSet<WebhookConsumerStatusLookup> WebhookConsumerStatuses { get; set; }
+    public DbSet<WebhookProviderModeLookup> WebhookProviderModes { get; set; }
+    public DbSet<WebhookProviderKindLookup> WebhookProviderKinds { get; set; }
+    public DbSet<WebhookConsumerProviderBinding> WebhookConsumerProviderBindings { get; set; }
+    public DbSet<WebhookProviderBindingVerificationStateLookup> WebhookProviderBindingVerificationStates { get; set; }
+    public DbSet<WebhookEndpointStatusLookup> WebhookEndpointStatuses { get; set; }
+    public DbSet<WebhookLocalDeliveryStatusLookup> WebhookLocalDeliveryStatuses { get; set; }
+    public DbSet<WebhookDeliveryAttemptOutcomeLookup> WebhookDeliveryAttemptOutcomes { get; set; }
+    public DbSet<IncomingWebhookMessageStatusLookup> IncomingWebhookMessageStatuses { get; set; }
+    public DbSet<WebhookProviderPublicationStatusLookup> WebhookProviderPublicationStatuses { get; set; }
+    public DbSet<WebhookPayloadProvenanceLookup> WebhookPayloadProvenances { get; set; }
     public DbSet<WebhookEventType> WebhookEventTypes { get; set; }
     public DbSet<WebhookEndpoint> WebhookEndpoints { get; set; }
     public DbSet<WebhookEndpointSubscription> WebhookEndpointSubscriptions { get; set; }
     public DbSet<WebhookMessage> WebhookMessages { get; set; }
+    public DbSet<WebhookDeliveryPlanSnapshot> WebhookDeliveryPlanSnapshots { get; set; }
+    public DbSet<WebhookLocalTargetSnapshot> WebhookLocalTargetSnapshots { get; set; }
     public DbSet<WebhookDeliveryAttempt> WebhookDeliveryAttempts { get; set; }
+    public DbSet<WebhookProviderPublication> WebhookProviderPublications { get; set; }
+    public DbSet<WebhookProviderPublicationAttempt> WebhookProviderPublicationAttempts { get; set; }
     public DbSet<WebhookProviderLink> WebhookProviderLinks { get; set; }
     public DbSet<IncomingWebhookMessage> IncomingWebhookMessages { get; set; }
     public DbSet<IncomingWebhookEffectReceipt> IncomingWebhookEffectReceipts { get; set; }

@@ -111,6 +111,7 @@ public sealed class OpenSvixAppPortalCommandHandlerTests
             new OpenSvixAppPortalCommand
             {
                 TenantId = Guid.CreateVersion7(),
+                ConsumerId = Guid.CreateVersion7(),
                 SessionId = "session-1"
             },
             CancellationToken.None);
@@ -119,6 +120,11 @@ public sealed class OpenSvixAppPortalCommandHandlerTests
         await Assert.That(result.FailureCode).IsEqualTo("svix_provider_unavailable");
         await Assert.That(result.IsRetryable).IsTrue();
         await Assert.That(result.Errors).Contains("SvixApi:503");
+        await _auditLogRepository.Received(1).Create(
+            Arg.Is<Explore.Domain.AuditLog>(log =>
+                log.NewValues != null &&
+                log.NewValues.Contains("svix_provider_unavailable", StringComparison.Ordinal) &&
+                !log.NewValues.Contains("SvixApi:503", StringComparison.Ordinal)));
     }
 
     private OpenSvixAppPortalCommandHandler CreateHandler() =>

@@ -16,7 +16,8 @@ public class WebhookEndpointConfiguration : IEntityTypeConfiguration<WebhookEndp
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(e => e.Url).HasMaxLength(2048).IsRequired();
         builder.Property(e => e.Description).HasMaxLength(1000);
-        builder.Property(e => e.Status).IsRequired();
+        builder.Property(e => e.StatusId).IsRequired();
+        builder.Ignore(e => e.Status);
         builder.Property(e => e.SecretRef).HasMaxLength(500).IsRequired();
         builder.Property(e => e.SecretVersion).HasDefaultValue(1);
         builder.Property(e => e.PreviousSecretRef).HasMaxLength(500);
@@ -41,10 +42,15 @@ public class WebhookEndpointConfiguration : IEntityTypeConfiguration<WebhookEndp
             .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(e => new { e.TenantId, e.ConsumerId, e.Status })
+        builder.HasOne(e => e.StatusLookup)
+            .WithMany()
+            .HasForeignKey(e => e.StatusId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(e => new { e.TenantId, e.ConsumerId, e.StatusId })
             .HasDatabaseName("ix_webhook_endpoints_tenant_consumer_status");
 
-        builder.HasIndex(e => new { e.Status, e.TenantId, e.Id })
+        builder.HasIndex(e => new { e.TenantId, e.StatusId, e.Id })
             .HasDatabaseName("ix_webhook_endpoints_status_tenant_id");
 
         builder.HasIndex(e => new { e.TenantId, e.ProviderEndpointId })

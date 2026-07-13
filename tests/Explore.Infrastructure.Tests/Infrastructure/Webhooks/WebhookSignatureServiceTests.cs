@@ -18,7 +18,7 @@ public sealed class WebhookSignatureServiceTests
         var secret = CreateSecret("current-secret");
         const string payload = "{\"id\":\"msg_1\",\"data\":{\"value\":1}}";
 
-        var headers = service.Sign("msg_1", FixedNow, payload, secret);
+        var headers = service.Sign("msg_1", FixedNow, System.Text.Encoding.UTF8.GetBytes(payload), secret);
 
         var result = service.Verify(payload, ToDictionary(headers), secret);
 
@@ -31,7 +31,7 @@ public sealed class WebhookSignatureServiceTests
     {
         var service = CreateService();
         var secret = CreateSecret("current-secret");
-        var headers = service.Sign("msg_1", FixedNow, "{\"value\":1}", secret);
+        var headers = service.Sign("msg_1", FixedNow, "{\"value\":1}"u8, secret);
 
         var result = service.Verify("{\"value\":2}", ToDictionary(headers), secret);
 
@@ -44,7 +44,7 @@ public sealed class WebhookSignatureServiceTests
     {
         var service = CreateService();
         var secret = CreateSecret("current-secret");
-        var headers = service.Sign("msg_1", FixedNow.AddMinutes(-10), "{}", secret);
+        var headers = service.Sign("msg_1", FixedNow.AddMinutes(-10), "{}"u8, secret);
 
         var result = service.Verify("{}", ToDictionary(headers), secret);
 
@@ -63,7 +63,7 @@ public sealed class WebhookSignatureServiceTests
             PreviousSecret: previousOnly.CurrentSecret,
             PreviousSecretValidUntil: FixedNow.AddMinutes(1));
 
-        var headers = service.Sign("msg_1", FixedNow, "{}", previousOnly);
+        var headers = service.Sign("msg_1", FixedNow, "{}"u8, previousOnly);
 
         var result = service.Verify("{}", ToDictionary(headers), rotatedSecret);
 
