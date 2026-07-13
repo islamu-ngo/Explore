@@ -29,6 +29,9 @@ public sealed class WebhookOptions
 public sealed class WebhookLocalOptions
 {
     public int MaxAttempts { get; set; } = 8;
+    public int InitialRetryDelaySeconds { get; set; } = 30;
+    public int MaxRetryDelaySeconds { get; set; } = 24 * 60 * 60;
+    public int MaxRetryAfterSeconds { get; set; } = 60 * 60;
     public int TimeoutSeconds { get; set; } = 15;
     public int ConnectTimeoutSeconds { get; set; } = 3;
     public int MaxPayloadBytes { get; set; } = 256 * 1024;

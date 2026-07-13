@@ -14,6 +14,4 @@ public sealed class CreateWebhookConsumerRequestDto
     public string Name { get; set; } = string.Empty;
 
     public int ProviderModeId { get; set; }
-
-    public string? ExternalProviderAppId { get; set; }
 }

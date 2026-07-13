@@ -33,20 +33,18 @@ public sealed class DefaultWebhookEventPublisher(
             context.MessageId,
             cancellationToken);
 
-        if (message is null)
+        if (message is not null)
         {
-            var creation = await CreateMessageAsync(context, providerName, cancellationToken);
-            if (creation.Failure is not null)
-            {
-                return creation.Failure;
-            }
+            return WebhookEventPublishResult.Success(message.Id);
+        }
 
-            message = creation.Message!;
-        }
-        else if (IsProviderSettled(message.Status))
+        var creation = await CreateMessageAsync(context, providerName, cancellationToken);
+        if (creation.Failure is not null)
         {
-            return WebhookEventPublishResult.Success(message.Id, message.ProviderMessageId);
+            return creation.Failure;
         }
+
+        message = creation.Message!;
 
         if (string.IsNullOrWhiteSpace(message.PayloadJson))
         {
@@ -62,13 +60,6 @@ public sealed class DefaultWebhookEventPublisher(
 
         if (providerResult.Succeeded)
         {
-            await messageRepository.MarkProviderQueuedAsync(
-                message.TenantId,
-                message.Id,
-                providerResult.ProviderMessageId,
-                DateTime.UtcNow,
-                cancellationToken);
-
             return WebhookEventPublishResult.Success(message.Id, providerResult.ProviderMessageId);
         }
 
@@ -78,12 +69,6 @@ public sealed class DefaultWebhookEventPublisher(
             message.EventType,
             providerName,
             failureCategory);
-
-        await messageRepository.MarkProviderFailedAsync(
-            message.TenantId,
-            message.Id,
-            DateTime.UtcNow,
-            cancellationToken);
 
         return WebhookEventPublishResult.Failure(
             message.Id,
@@ -119,8 +104,6 @@ public sealed class DefaultWebhookEventPublisher(
             PayloadJson = payload.RawPayloadJson,
             PayloadHash = payload.PayloadHash!,
             PayloadRetentionUntil = payload.PayloadRetentionUntil!.Value.UtcDateTime,
-            ProviderMode = ResolveProviderMode(providerName),
-            Status = WebhookMessageStatus.Pending,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -147,39 +130,8 @@ public sealed class DefaultWebhookEventPublisher(
             message.PayloadHash,
             message.PayloadRetentionUntil);
 
-    private static bool IsProviderSettled(WebhookMessageStatus status) =>
-        status is WebhookMessageStatus.Queued
-            or WebhookMessageStatus.Delivered
-            or WebhookMessageStatus.PartiallyFailed
-            or WebhookMessageStatus.Cancelled;
-
     private static bool IsDisabledProvider(string providerName) =>
         string.Equals(providerName, "Disabled", StringComparison.OrdinalIgnoreCase);
-
-    private static WebhookProviderMode ResolveProviderMode(string providerName)
-    {
-        if (string.Equals(providerName, "Disabled", StringComparison.OrdinalIgnoreCase))
-        {
-            return WebhookProviderMode.Disabled;
-        }
-
-        if (string.Equals(providerName, "Svix", StringComparison.OrdinalIgnoreCase))
-        {
-            return WebhookProviderMode.Svix;
-        }
-
-        if (string.Equals(providerName, "Composite", StringComparison.OrdinalIgnoreCase))
-        {
-            return WebhookProviderMode.Composite;
-        }
-
-        if (string.Equals(providerName, "DryRun", StringComparison.OrdinalIgnoreCase))
-        {
-            return WebhookProviderMode.DryRun;
-        }
-
-        return WebhookProviderMode.Local;
-    }
 
     private sealed record MessageCreation(WebhookMessage? Message, WebhookEventPublishResult? Failure);
 }

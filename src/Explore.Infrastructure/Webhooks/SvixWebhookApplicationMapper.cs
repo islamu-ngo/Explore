@@ -7,6 +7,9 @@ namespace Explore.Infrastructure.Webhooks;
 
 internal static class SvixWebhookApplicationMapper
 {
+    private const string TenantMetadataKey = "islamu.tenant_id";
+    private const string ConsumerMetadataKey = "islamu.consumer_id";
+
     public static SvixApplicationSyncRequest CreateSyncRequest(
         Guid tenantId,
         Guid? consumerId,
@@ -21,16 +24,33 @@ internal static class SvixWebhookApplicationMapper
             $"svix-app:{appUid}");
     }
 
+    public static bool IsVerifiedConsumerBinding(
+        SvixApplicationBindingResult application,
+        Guid tenantId,
+        WebhookConsumer consumer,
+        WebhookConsumerProviderBinding binding)
+    {
+        return string.Equals(application.AppId, binding.ExternalApplicationId, StringComparison.Ordinal)
+            && string.Equals(application.AppUid, binding.ApplicationUid, StringComparison.Ordinal)
+            && application.Metadata.TryGetValue(TenantMetadataKey, out var boundTenantId)
+            && string.Equals(boundTenantId, tenantId.ToString("D"), StringComparison.OrdinalIgnoreCase)
+            && application.Metadata.TryGetValue(ConsumerMetadataKey, out var boundConsumerId)
+            && string.Equals(boundConsumerId, consumer.Id.ToString("D"), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string CreateConsumerAppUid(Guid consumerId) => $"islamu-consumer-{consumerId:N}";
+
     private static string ResolveAppUid(Guid tenantId, Guid? consumerId, WebhookConsumer? consumer)
     {
-        if (!string.IsNullOrWhiteSpace(consumer?.ExternalProviderAppId))
+        var verifiedBinding = consumer?.GetVerifiedProviderBinding(WebhookProviderKind.Svix);
+        if (verifiedBinding is not null)
         {
-            return consumer.ExternalProviderAppId.Trim();
+            return verifiedBinding.ApplicationUid;
         }
 
         if (consumerId is { } id)
         {
-            return $"islamu-consumer-{id:N}";
+            return CreateConsumerAppUid(id);
         }
 
         return $"islamu-tenant-{tenantId:N}";
@@ -58,12 +78,12 @@ internal static class SvixWebhookApplicationMapper
     {
         var metadata = new Dictionary<string, string>
         {
-            ["islamu.tenant_id"] = tenantId.ToString("D")
+            [TenantMetadataKey] = tenantId.ToString("D")
         };
 
         if (consumerId is { } id)
         {
-            metadata["islamu.consumer_id"] = id.ToString("D");
+            metadata[ConsumerMetadataKey] = id.ToString("D");
         }
 
         if (consumer is not null)

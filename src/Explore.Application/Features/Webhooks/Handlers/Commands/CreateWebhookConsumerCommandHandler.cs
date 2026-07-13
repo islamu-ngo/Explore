@@ -13,7 +13,6 @@ public sealed class CreateWebhookConsumerCommandHandler(IWebhookConsumerReposito
     : IRequestHandler<CreateWebhookConsumerCommand, BaseCommandResponse<Guid>>
 {
     private const int MaxNameLength = 200;
-    private const int MaxExternalProviderAppIdLength = 500;
 
     public async Task<BaseCommandResponse<Guid>> Handle(
         CreateWebhookConsumerCommand request,
@@ -52,7 +51,7 @@ public sealed class CreateWebhookConsumerCommandHandler(IWebhookConsumerReposito
             Name = name,
             Status = WebhookConsumerStatus.Active,
             ProviderMode = (WebhookProviderMode)request.ProviderModeId,
-            ExternalProviderAppId = NormalizeOptional(request.ExternalProviderAppId),
+            ExternalProviderAppId = null,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -109,23 +108,7 @@ public sealed class CreateWebhookConsumerCommandHandler(IWebhookConsumerReposito
             errors.Add("ProviderModeId is invalid.");
         }
 
-        if (request.ExternalProviderAppId is { } externalProviderAppId &&
-            externalProviderAppId.Trim().Length > MaxExternalProviderAppIdLength)
-        {
-            errors.Add($"ExternalProviderAppId must be {MaxExternalProviderAppIdLength} characters or fewer.");
-        }
-
         return errors;
-    }
-
-    private static string? NormalizeOptional(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return value.Trim();
     }
 
     private static BaseCommandResponse<Guid> Failure(

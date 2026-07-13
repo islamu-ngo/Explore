@@ -22,13 +22,7 @@ internal static class WebhookMessageDtoMapper
             PayloadHash = message.PayloadHash,
             PayloadRetentionUntil = message.PayloadRetentionUntil,
             PayloadClearedAt = message.PayloadClearedAt,
-            ProviderModeId = (int)message.ProviderMode,
-            ProviderModeName = message.ProviderMode.ToString(),
-            ProviderMessageId = message.ProviderMessageId,
-            StatusId = (int)message.Status,
-            StatusName = message.Status.ToString(),
             CreatedAt = message.CreatedAt,
-            PublishedAt = message.PublishedAt,
             UpdatedAt = message.UpdatedAt
         };
 }

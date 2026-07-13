@@ -22,10 +22,24 @@ public class WebhookConsumer : ITenantEntity, IAuditableEntity
     public WebhookProviderMode ProviderMode { get; set; }
     public string? ExternalProviderAppId { get; set; }
 
+    public ICollection<WebhookConsumerProviderBinding> ProviderBindings { get; private set; } = [];
+
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public Guid? UpdatedBy { get; set; }
+
+    public WebhookConsumerProviderBinding? GetVerifiedProviderBinding(WebhookProviderKind providerKind)
+    {
+        var matchingBindings = ProviderBindings
+            .Where(binding =>
+                binding.ProviderKind == providerKind &&
+                binding.IsVerifiedFor(TenantId, Id))
+            .Take(2)
+            .ToArray();
+
+        return matchingBindings.Length == 1 ? matchingBindings[0] : null;
+    }
 }
 
 public enum WebhookConsumerKind

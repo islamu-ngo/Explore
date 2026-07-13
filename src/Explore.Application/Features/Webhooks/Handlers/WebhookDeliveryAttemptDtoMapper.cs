@@ -17,6 +17,7 @@ internal static class WebhookDeliveryAttemptDtoMapper
             MessageEventType = attempt.Message?.EventType,
             EndpointId = attempt.EndpointId,
             EndpointUrl = attempt.Endpoint?.Url,
+            EndpointStatusName = (attempt.Endpoint?.Status ?? WebhookEndpointStatus.Archived).ToString(),
             AttemptNumber = attempt.AttemptNumber,
             StatusId = (int)attempt.Status,
             StatusName = attempt.Status.ToString(),

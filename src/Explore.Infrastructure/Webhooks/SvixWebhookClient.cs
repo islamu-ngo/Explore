@@ -16,6 +16,19 @@ internal sealed class SvixWebhookClient(
     IOptionsMonitor<WebhookOptions> options,
     ILogger<SvixClient> svixLogger) : ISvixWebhookClient
 {
+    public async Task<SvixApplicationBindingResult> GetApplicationAsync(
+        string applicationId,
+        CancellationToken cancellationToken)
+    {
+        var client = await CreateClientAsync(cancellationToken);
+        var application = await client.Application.GetAsync(applicationId, cancellationToken);
+
+        return new SvixApplicationBindingResult(
+            application.Id,
+            application.Uid ?? string.Empty,
+            application.Metadata ?? new Dictionary<string, string>());
+    }
+
     public async Task<SvixApplicationSyncResult> GetOrCreateApplicationAsync(
         SvixApplicationSyncRequest request,
         CancellationToken cancellationToken)

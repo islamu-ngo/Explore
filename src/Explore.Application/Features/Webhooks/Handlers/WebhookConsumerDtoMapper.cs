@@ -8,8 +8,10 @@ namespace Explore.Application.Features.Webhooks.Handlers;
 
 internal static class WebhookConsumerDtoMapper
 {
-    public static WebhookConsumerDto Map(WebhookConsumer consumer) =>
-        new()
+    public static WebhookConsumerDto Map(WebhookConsumer consumer)
+    {
+        var svixBinding = consumer.GetVerifiedProviderBinding(WebhookProviderKind.Svix);
+        return new WebhookConsumerDto
         {
             Id = consumer.Id,
             TenantId = consumer.TenantId,
@@ -22,8 +24,12 @@ internal static class WebhookConsumerDtoMapper
             ProviderModeId = (int)consumer.ProviderMode,
             ProviderModeName = consumer.ProviderMode.ToString(),
             Name = consumer.Name,
-            ExternalProviderAppId = consumer.ExternalProviderAppId,
+            CanOpenProviderPortal =
+                consumer.Status == WebhookConsumerStatus.Active &&
+                consumer.ProviderMode is WebhookProviderMode.Svix or WebhookProviderMode.Composite &&
+                svixBinding?.CanIssueAppPortalFor(consumer.TenantId, consumer.Id) == true,
             CreatedAt = consumer.CreatedAt,
             UpdatedAt = consumer.UpdatedAt
         };
+    }
 }

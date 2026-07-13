@@ -154,6 +154,15 @@ public partial class ExploreDbContext
         modelBuilder.Entity<IncomingWebhookMessage>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
+        modelBuilder.Entity<IncomingWebhookEffectReceipt>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<IncomingWebhookProcessingAttempt>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<IncomingWebhookRedriveRecord>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
         modelBuilder.Entity<EventSessionIslamicAspect>()
             .HasQueryFilter(QueryFilterNames.Tenant,
                 e => IsTenantFilterBypassed

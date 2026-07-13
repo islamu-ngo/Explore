@@ -5,6 +5,10 @@ namespace Explore.Infrastructure.Webhooks;
 
 public interface ISvixWebhookClient
 {
+    Task<SvixApplicationBindingResult> GetApplicationAsync(
+        string applicationId,
+        CancellationToken cancellationToken);
+
     Task<SvixApplicationSyncResult> GetOrCreateApplicationAsync(
         SvixApplicationSyncRequest request,
         CancellationToken cancellationToken);
@@ -21,6 +25,11 @@ public interface ISvixWebhookClient
         SvixEventTypeSyncRequest request,
         CancellationToken cancellationToken);
 }
+
+public sealed record SvixApplicationBindingResult(
+    string AppId,
+    string AppUid,
+    IReadOnlyDictionary<string, string> Metadata);
 
 public sealed record SvixApplicationSyncRequest(
     Guid TenantId,

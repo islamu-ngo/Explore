@@ -80,8 +80,6 @@ public sealed class TestWebhookEndpointCommandHandler(
                 PayloadJson = payload.RawPayloadJson,
                 PayloadHash = payload.PayloadHash!,
                 PayloadRetentionUntil = payload.PayloadRetentionUntil!.Value.UtcDateTime,
-                ProviderMode = endpoint.Consumer.ProviderMode,
-                Status = WebhookMessageStatus.Pending,
                 CreatedAt = now.UtcDateTime
             },
             cancellationToken);
@@ -98,13 +96,6 @@ public sealed class TestWebhookEndpointCommandHandler(
                 ScheduledAt = now.UtcDateTime,
                 CreatedAt = now.UtcDateTime
             },
-            cancellationToken);
-
-        await messageRepository.MarkProviderQueuedAsync(
-            request.TenantId,
-            created.Id,
-            providerMessageId: null,
-            queuedAt: now.UtcDateTime,
             cancellationToken);
 
         return new BaseCommandResponse<Guid>

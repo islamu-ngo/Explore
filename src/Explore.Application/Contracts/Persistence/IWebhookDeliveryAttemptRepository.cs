@@ -5,6 +5,26 @@ using Explore.Domain;
 
 namespace Explore.Application.Contracts.Persistence;
 
+public sealed record WebhookDeliveryClaimLimits(
+    int MaxInFlightPerTenant,
+    int MaxInFlightPerEndpoint,
+    int MaxItemsPerClaimCycle);
+
+public sealed record WebhookDeliveryClaimRequest(
+    int BatchSize,
+    int CandidateBatchSize,
+    int GlobalInFlightLimit,
+    IReadOnlyList<Guid> TenantOrder,
+    DateTime ClaimedAt,
+    TimeSpan LeaseDuration,
+    Guid? AttemptId = null);
+
+public sealed record WebhookDeliveryClaim(
+    WebhookDeliveryAttempt Attempt,
+    Guid LeaseToken,
+    DateTime ClaimedAt,
+    DateTime LeaseExpiresAt);
+
 public interface IWebhookDeliveryAttemptRepository
 {
     Task<WebhookDeliveryAttempt> CreateAsync(
@@ -39,9 +59,14 @@ public interface IWebhookDeliveryAttemptRepository
         Guid endpointId,
         CancellationToken cancellationToken);
 
-    Task<IReadOnlyList<WebhookDeliveryAttempt>> GetDueScheduledAsync(
-        int batchSize,
+    Task<IReadOnlyList<Guid>> GetDueTenantIdsAsync(
+        int tenantLimit,
         DateTime now,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<WebhookDeliveryClaim>> ClaimDueAsync(
+        WebhookDeliveryClaimRequest request,
+        IReadOnlyDictionary<Guid, WebhookDeliveryClaimLimits> tenantLimits,
         CancellationToken cancellationToken);
 
     Task<int> CountDueScheduledAsync(
@@ -55,13 +80,6 @@ public interface IWebhookDeliveryAttemptRepository
     Task<WebhookDeliveryAttempt?> GetByTenantAndIdAsync(
         Guid tenantId,
         Guid attemptId,
-        CancellationToken cancellationToken);
-
-    Task<bool> TryMarkAsSendingAsync(
-        Guid tenantId,
-        Guid attemptId,
-        Guid processingLeaseToken,
-        DateTime startedAt,
         CancellationToken cancellationToken);
 
     Task MarkSucceededAsync(

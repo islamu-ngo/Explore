@@ -52,32 +52,78 @@ public sealed class SvixAppPortalService(
         try
         {
             var consumer = await ResolveConsumerAsync(input, cancellationToken);
-            if (input.ConsumerId is not null && consumer is null)
+            if (consumer is null)
             {
                 return WebhookProviderPortalAccessResult.Failure(
                     "webhook_consumer_not_found",
                     isRetryable: false);
             }
 
-            var app = await svixClient.GetOrCreateApplicationAsync(
-                SvixWebhookApplicationMapper.CreateSyncRequest(input.TenantId, input.ConsumerId, consumer),
-                cancellationToken);
+            if (consumer.Status != WebhookConsumerStatus.Active)
+            {
+                return WebhookProviderPortalAccessResult.Failure(
+                    "webhook_consumer_disabled",
+                    isRetryable: false);
+            }
+
+            if (consumer.ProviderMode is not (WebhookProviderMode.Svix or WebhookProviderMode.Composite))
+            {
+                return WebhookProviderPortalAccessResult.Failure(
+                    "webhook_provider_binding_mismatched",
+                    isRetryable: false);
+            }
+
+            var binding = consumer.GetVerifiedProviderBinding(WebhookProviderKind.Svix);
+            if (binding is null)
+            {
+                return WebhookProviderPortalAccessResult.Failure(
+                    "webhook_provider_binding_unverified",
+                    isRetryable: false);
+            }
+
+            if (!binding.CanIssueAppPortalFor(input.TenantId, input.ConsumerId))
+            {
+                return WebhookProviderPortalAccessResult.Failure(
+                    "webhook_provider_capability_unavailable",
+                    isRetryable: false);
+            }
+
+            var providerApplicationId = binding.ExternalApplicationId;
+            if (string.IsNullOrWhiteSpace(providerApplicationId))
+            {
+                return WebhookProviderPortalAccessResult.Failure(
+                    "webhook_provider_binding_unverified",
+                    isRetryable: false);
+            }
+
+            var app = await svixClient.GetApplicationAsync(providerApplicationId, cancellationToken);
+            if (!SvixWebhookApplicationMapper.IsVerifiedConsumerBinding(app, input.TenantId, consumer, binding))
+            {
+                return WebhookProviderPortalAccessResult.Failure(
+                    "webhook_provider_binding_mismatched",
+                    isRetryable: false);
+            }
+
             var expiresIn = NormalizeExpiry(input.ExpiresIn);
+            var readOnly = !binding.SupportsGoverned(WebhookProviderCapability.EndpointManagement);
+            var featureFlags = ResolveFeatureFlags(binding);
             var portal = await svixClient.CreateAppPortalAccessAsync(
                 new SvixAppPortalAccessRequest(
                     input.TenantId,
-                    app.AppId,
+                    providerApplicationId,
                     input.SessionId.Trim(),
-                    input.ReadOnly,
+                    readOnly,
                     expiresIn,
-                    NormalizeFeatureFlags(input.FeatureFlags),
-                    $"svix-portal:{app.AppId}:{input.SessionId.Trim()}"),
+                    featureFlags,
+                    $"svix-portal:{providerApplicationId}:{input.SessionId.Trim()}"),
                 cancellationToken);
 
             return WebhookProviderPortalAccessResult.Success(
                 portal.Url,
                 portal.Token,
-                DateTimeOffset.UtcNow.Add(expiresIn));
+                DateTimeOffset.UtcNow.Add(expiresIn),
+                binding.Id,
+                binding.CapabilityResolutionVersion);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -86,6 +132,12 @@ public sealed class SvixAppPortalService(
         catch (SvixWebhookConfigurationException ex)
         {
             return WebhookProviderPortalAccessResult.Failure(ex.FailureCategory, isRetryable: false, ex.FailureCategory);
+        }
+        catch (ApiException ex) when (ex.ErrorCode == 404)
+        {
+            return WebhookProviderPortalAccessResult.Failure(
+                "webhook_provider_binding_mismatched",
+                isRetryable: false);
         }
         catch (ApiException ex)
         {
@@ -108,14 +160,9 @@ public sealed class SvixAppPortalService(
         WebhookProviderPortalAccessInput input,
         CancellationToken cancellationToken)
     {
-        if (input.ConsumerId is not { } consumerId)
-        {
-            return null;
-        }
-
         return await consumerRepository.GetByTenantAndIdAsync(
             input.TenantId,
-            consumerId,
+            input.ConsumerId,
             cancellationToken);
     }
 
@@ -130,11 +177,24 @@ public sealed class SvixAppPortalService(
         return requested > MaxExpiry ? MaxExpiry : requested;
     }
 
-    private static IReadOnlyCollection<string> NormalizeFeatureFlags(IReadOnlyCollection<string> featureFlags) =>
-        featureFlags
-            .Select(flag => flag.Trim())
-            .Where(flag => flag.Length > 0)
-            .Distinct(StringComparer.Ordinal)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
+    private static List<string> ResolveFeatureFlags(WebhookConsumerProviderBinding binding)
+    {
+        var flags = new List<string> { "ViewBase" };
+        if (binding.SupportsGoverned(WebhookProviderCapability.EndpointManagement))
+        {
+            flags.Add("ManageEndpoint");
+        }
+
+        if (binding.SupportsGoverned(WebhookProviderCapability.Replay))
+        {
+            flags.Add("CreateAttempts");
+        }
+
+        if (binding.SupportsGoverned(WebhookProviderCapability.Transformations))
+        {
+            flags.Add("ManageTransformations");
+        }
+
+        return flags;
+    }
 }

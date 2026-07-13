@@ -155,6 +155,19 @@ public static class GovernanceSettingKeys
         public const string SmtpSkipCertValidation = "email.smtp_skip_cert_validation";
     }
 
+    public static class WebhookDelivery
+    {
+        private const string Base = "webhook.delivery";
+
+        public const string MaxConcurrentDeliveries = Base + ".max_concurrent_deliveries";
+        public const string MaxConcurrentDeliveriesPerTenant = Base + ".max_concurrent_deliveries_per_tenant";
+        public const string MaxConcurrentDeliveriesPerEndpoint = Base + ".max_concurrent_deliveries_per_endpoint";
+        public const string MaxItemsPerTenantPerClaimCycle = Base + ".max_items_per_tenant_per_claim_cycle";
+        public const string MaxAttempts = Base + ".max_attempts";
+        public const string EndpointTimeoutSeconds = Base + ".endpoint_timeout_seconds";
+        public const string AutoPauseThreshold = Base + ".auto_pause_threshold";
+    }
+
     public static class Integrations
     {
         public static class Listmonk

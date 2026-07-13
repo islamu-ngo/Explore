@@ -16,6 +16,7 @@ public class WebhookDeliveryAttemptConfiguration : IEntityTypeConfiguration<Webh
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(e => e.Status).IsRequired();
         builder.Property(e => e.ProcessingLeaseToken);
+        builder.Property(e => e.ProcessingLeaseExpiresAt);
         builder.Property(e => e.FailureCategory).HasMaxLength(100);
         builder.Property(e => e.ResponseBodyPreview).HasMaxLength(4096);
 
@@ -45,5 +46,8 @@ public class WebhookDeliveryAttemptConfiguration : IEntityTypeConfiguration<Webh
 
         builder.HasIndex(e => new { e.TenantId, e.EndpointId, e.Status, e.ScheduledAt })
             .HasDatabaseName("ix_webhook_delivery_attempts_tenant_endpoint_status");
+
+        builder.HasIndex(e => new { e.Status, e.ProcessingLeaseExpiresAt, e.TenantId, e.EndpointId })
+            .HasDatabaseName("ix_webhook_delivery_attempts_active_lease_caps");
     }
 }

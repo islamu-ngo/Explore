@@ -1,5 +1,5 @@
-// ABOUTME: Tenant-scoped incoming integration callback ledger captured after raw-body signature verification.
-// ABOUTME: Provides idempotency and safe processing state for Coop, Osprey, Svix operational callbacks, and future providers.
+// ABOUTME: Owns the tenant-scoped transactional inbox lifecycle for verified incoming webhooks.
+// ABOUTME: Enforces duplicate classification, fenced processing, terminal settlement, and redrive generations.
 
 using Explore.Domain.Interfaces;
 
@@ -7,37 +7,450 @@ namespace Explore.Domain;
 
 public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
 {
-    public Guid Id { get; set; }
-    public Guid TenantId { get; set; }
-    public Tenant? Tenant { get; set; }
+    public const int MaxProviderLength = 100;
+    public const int MaxProviderMessageIdLength = 256;
+    public const int MaxIdempotencyKeyLength = 256;
+    public const int MaxEventTypeLength = 200;
+    public const int MaxLeaseOwnerLength = 200;
+    public const int MaxFailureCodeLength = 100;
+    public const int MaxSafeDetailLength = 1024;
 
-    public required string Provider { get; set; }
-    public required string ProviderMessageId { get; set; }
-    public string? IdempotencyKey { get; set; }
-    public string? EventType { get; set; }
-    public string? HeadersJson { get; set; }
-    public string? PayloadJson { get; set; }
-    public required string PayloadHash { get; set; }
-    public IncomingWebhookMessageStatus Status { get; set; }
-    public DateTime ReceivedAt { get; set; }
-    public DateTime? VerifiedAt { get; set; }
-    public DateTime? ProcessedAt { get; set; }
-    public string? FailureCategory { get; set; }
-    public string? SafeDetail { get; set; }
+    private readonly List<IncomingWebhookProcessingAttempt> _processingAttempts = [];
+    private readonly List<IncomingWebhookRedriveRecord> _redriveRecords = [];
+    private byte[] _payloadBytes = [];
+
+    public Guid Id { get; private set; }
+    public Guid TenantId { get; set; }
+    public Tenant? Tenant { get; private set; }
+
+    public string Provider { get; private set; } = string.Empty;
+    public string ProviderMessageId { get; private set; } = string.Empty;
+    public string? IdempotencyKey { get; private set; }
+    public string? EventType { get; private set; }
+    public string? HeadersJson { get; private set; }
+    public ReadOnlyMemory<byte> PayloadBytes => _payloadBytes;
+    public string PayloadHash { get; private set; } = string.Empty;
+    public IncomingWebhookMessageStatus Status { get; private set; }
+
+    public int ProcessingGeneration { get; private set; }
+    public long ProcessingFence { get; private set; }
+    public int AttemptCount { get; private set; }
+    public string? ProcessingLeaseOwner { get; private set; }
+    public Guid? ProcessingLeaseToken { get; private set; }
+    public DateTime? ProcessingLeaseExpiresAt { get; private set; }
+    public DateTime? ProcessingStartedAt { get; private set; }
+    public DateTime? NextAttemptAt { get; private set; }
+
+    public DateTime ReceivedAt { get; private set; }
+    public DateTime VerifiedAt { get; private set; }
+    public DateTime? ProcessedAt { get; private set; }
+    public DateTime? IgnoredAt { get; private set; }
+    public DateTime? RejectedAt { get; private set; }
+    public DateTime? DeadLetteredAt { get; private set; }
+    public DateTime? PayloadConflictAt { get; private set; }
+    public string? FailureCategory { get; private set; }
+    public string? SafeDetail { get; private set; }
+
+    public Guid? SettledByEffectReceiptId { get; private set; }
+    public string? SettledEffectKind { get; private set; }
+    public IncomingWebhookSettlementSource SettlementSource { get; private set; }
+
+    public IReadOnlyCollection<IncomingWebhookProcessingAttempt> ProcessingAttempts => _processingAttempts;
+    public IReadOnlyCollection<IncomingWebhookRedriveRecord> RedriveRecords => _redriveRecords;
 
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public Guid? UpdatedBy { get; set; }
+
+    public static IncomingWebhookMessage CreateVerified(
+        Guid tenantId,
+        string provider,
+        string providerMessageId,
+        string? idempotencyKey,
+        string? eventType,
+        ReadOnlySpan<byte> payloadBytes,
+        string payloadHash,
+        string? headersJson,
+        DateTime receivedAt,
+        DateTime verifiedAt)
+    {
+        RequireGuid(tenantId, nameof(tenantId));
+        if (payloadBytes.IsEmpty)
+        {
+            throw new ArgumentException("Incoming webhook payload is required.", nameof(payloadBytes));
+        }
+
+        return new IncomingWebhookMessage
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            Provider = NormalizeRequired(provider, MaxProviderLength, nameof(provider)).ToLowerInvariant(),
+            ProviderMessageId = NormalizeRequired(providerMessageId, MaxProviderMessageIdLength, nameof(providerMessageId)),
+            IdempotencyKey = NormalizeOptional(idempotencyKey, MaxIdempotencyKeyLength, nameof(idempotencyKey)),
+            EventType = NormalizeOptional(eventType, MaxEventTypeLength, nameof(eventType)),
+            HeadersJson = headersJson,
+            _payloadBytes = payloadBytes.ToArray(),
+            PayloadHash = NormalizePayloadHash(payloadHash),
+            Status = IncomingWebhookMessageStatus.Verified,
+            ProcessingGeneration = 1,
+            ReceivedAt = receivedAt,
+            VerifiedAt = verifiedAt,
+            CreatedAt = verifiedAt
+        };
+    }
+
+    public IncomingWebhookDuplicateClassification ClassifyDuplicate(string payloadHash, DateTime classifiedAt)
+    {
+        var normalizedHash = NormalizePayloadHash(payloadHash);
+        if (string.Equals(PayloadHash, normalizedHash, StringComparison.Ordinal))
+        {
+            return IncomingWebhookDuplicateClassification.Duplicate;
+        }
+
+        if (Status == IncomingWebhookMessageStatus.PayloadConflict)
+        {
+            return IncomingWebhookDuplicateClassification.PayloadConflict;
+        }
+
+        Status = IncomingWebhookMessageStatus.PayloadConflict;
+        PayloadConflictAt = classifiedAt;
+        FailureCategory = "payload_hash_conflict";
+        SafeDetail = "The provider identity was reused with a different payload hash.";
+        ClearLease();
+        UpdatedAt = classifiedAt;
+        AppendAttempt(IncomingWebhookProcessingAttemptOutcome.PayloadConflict, classifiedAt, FailureCategory, SafeDetail);
+        return IncomingWebhookDuplicateClassification.PayloadConflict;
+    }
+
+    public void Claim(
+        string leaseOwner,
+        Guid leaseToken,
+        DateTime leaseExpiresAt,
+        DateTime claimedAt)
+    {
+        if (Status is not (IncomingWebhookMessageStatus.Verified or IncomingWebhookMessageStatus.RetryDue))
+        {
+            throw new InvalidOperationException($"Incoming webhook in state '{Status}' cannot be claimed.");
+        }
+
+        if (NextAttemptAt is not null && NextAttemptAt > claimedAt)
+        {
+            throw new InvalidOperationException("Incoming webhook is not due for processing.");
+        }
+
+        RequireGuid(leaseToken, nameof(leaseToken));
+        if (leaseExpiresAt <= claimedAt)
+        {
+            throw new ArgumentOutOfRangeException(nameof(leaseExpiresAt), "Processing lease must expire after the claim time.");
+        }
+
+        ProcessingLeaseOwner = NormalizeRequired(leaseOwner, MaxLeaseOwnerLength, nameof(leaseOwner));
+        ProcessingLeaseToken = leaseToken;
+        ProcessingLeaseExpiresAt = leaseExpiresAt;
+        ProcessingStartedAt = claimedAt;
+        NextAttemptAt = null;
+        ProcessingFence = checked(ProcessingFence + 1);
+        AttemptCount = checked(AttemptCount + 1);
+        Status = IncomingWebhookMessageStatus.Processing;
+        UpdatedAt = claimedAt;
+        AppendAttempt(IncomingWebhookProcessingAttemptOutcome.Claimed, claimedAt);
+    }
+
+    public void RenewLease(
+        Guid leaseToken,
+        long processingFence,
+        int processingGeneration,
+        DateTime leaseExpiresAt,
+        DateTime renewedAt)
+    {
+        EnsureActiveClaim(leaseToken, processingFence, processingGeneration, renewedAt);
+        if (leaseExpiresAt <= renewedAt || leaseExpiresAt <= ProcessingLeaseExpiresAt)
+        {
+            throw new ArgumentOutOfRangeException(nameof(leaseExpiresAt), "A renewed lease must extend the active lease.");
+        }
+
+        ProcessingLeaseExpiresAt = leaseExpiresAt;
+        UpdatedAt = renewedAt;
+    }
+
+    public void SettleProcessed(
+        IncomingWebhookEffectReceipt receipt,
+        string expectedEffectKind,
+        IncomingWebhookSettlementSource settlementSource,
+        Guid leaseToken,
+        long processingFence,
+        int processingGeneration,
+        DateTime settledAt)
+    {
+        EnsureActiveClaim(leaseToken, processingFence, processingGeneration, settledAt);
+        if (settlementSource is not (IncomingWebhookSettlementSource.EffectCommitted or IncomingWebhookSettlementSource.ExistingReceipt))
+        {
+            throw new ArgumentOutOfRangeException(nameof(settlementSource));
+        }
+
+        receipt.EnsureMatches(TenantId, Id, expectedEffectKind, PayloadHash, ProcessingGeneration);
+
+        Status = IncomingWebhookMessageStatus.Processed;
+        ProcessedAt = settledAt;
+        SettledByEffectReceiptId = receipt.Id;
+        SettledEffectKind = IncomingWebhookEffectReceipt.NormalizeEffectKind(expectedEffectKind);
+        SettlementSource = settlementSource;
+        FailureCategory = null;
+        SafeDetail = null;
+        AppendAttempt(
+            settlementSource == IncomingWebhookSettlementSource.ExistingReceipt
+                ? IncomingWebhookProcessingAttemptOutcome.SettledFromReceipt
+                : IncomingWebhookProcessingAttemptOutcome.Processed,
+            settledAt);
+        ClearLease();
+        UpdatedAt = settledAt;
+    }
+
+    public void Ignore(
+        Guid leaseToken,
+        long processingFence,
+        int processingGeneration,
+        string reasonCode,
+        string? safeDetail,
+        DateTime ignoredAt)
+    {
+        EnsureActiveClaim(leaseToken, processingFence, processingGeneration, ignoredAt);
+        Status = IncomingWebhookMessageStatus.Ignored;
+        IgnoredAt = ignoredAt;
+        FailureCategory = NormalizeRequired(reasonCode, MaxFailureCodeLength, nameof(reasonCode));
+        SafeDetail = BoundSafeDetail(safeDetail);
+        AppendAttempt(IncomingWebhookProcessingAttemptOutcome.Ignored, ignoredAt, FailureCategory, SafeDetail);
+        ClearLease();
+        UpdatedAt = ignoredAt;
+    }
+
+    public void RejectPermanent(
+        Guid leaseToken,
+        long processingFence,
+        int processingGeneration,
+        string failureCategory,
+        string? safeDetail,
+        DateTime rejectedAt)
+    {
+        EnsureActiveClaim(leaseToken, processingFence, processingGeneration, rejectedAt);
+        Status = IncomingWebhookMessageStatus.RejectedPermanent;
+        RejectedAt = rejectedAt;
+        FailureCategory = NormalizeRequired(failureCategory, MaxFailureCodeLength, nameof(failureCategory));
+        SafeDetail = BoundSafeDetail(safeDetail);
+        AppendAttempt(IncomingWebhookProcessingAttemptOutcome.RejectedPermanent, rejectedAt, FailureCategory, SafeDetail);
+        ClearLease();
+        UpdatedAt = rejectedAt;
+    }
+
+    public void ScheduleRetry(
+        Guid leaseToken,
+        long processingFence,
+        int processingGeneration,
+        string failureCategory,
+        string? safeDetail,
+        DateTime nextAttemptAt,
+        DateTime failedAt)
+    {
+        EnsureActiveClaim(leaseToken, processingFence, processingGeneration, failedAt);
+        if (nextAttemptAt <= failedAt)
+        {
+            throw new ArgumentOutOfRangeException(nameof(nextAttemptAt), "Retry must be scheduled in the future.");
+        }
+
+        Status = IncomingWebhookMessageStatus.RetryDue;
+        NextAttemptAt = nextAttemptAt;
+        FailureCategory = NormalizeRequired(failureCategory, MaxFailureCodeLength, nameof(failureCategory));
+        SafeDetail = BoundSafeDetail(safeDetail);
+        AppendAttempt(IncomingWebhookProcessingAttemptOutcome.RetryScheduled, failedAt, FailureCategory, SafeDetail);
+        ClearLease();
+        UpdatedAt = failedAt;
+    }
+
+    public void DeadLetter(
+        Guid leaseToken,
+        long processingFence,
+        int processingGeneration,
+        string failureCategory,
+        string? safeDetail,
+        DateTime deadLetteredAt)
+    {
+        EnsureActiveClaim(leaseToken, processingFence, processingGeneration, deadLetteredAt);
+        Status = IncomingWebhookMessageStatus.DeadLettered;
+        DeadLetteredAt = deadLetteredAt;
+        FailureCategory = NormalizeRequired(failureCategory, MaxFailureCodeLength, nameof(failureCategory));
+        SafeDetail = BoundSafeDetail(safeDetail);
+        AppendAttempt(IncomingWebhookProcessingAttemptOutcome.DeadLettered, deadLetteredAt, FailureCategory, SafeDetail);
+        ClearLease();
+        UpdatedAt = deadLetteredAt;
+    }
+
+    public void Redrive(string actorId, string reason, DateTime requestedAt)
+    {
+        if (Status != IncomingWebhookMessageStatus.DeadLettered)
+        {
+            throw new InvalidOperationException("Only dead-lettered incoming webhooks can be redriven.");
+        }
+
+        var sourceGeneration = ProcessingGeneration;
+        ProcessingGeneration = checked(ProcessingGeneration + 1);
+        Status = IncomingWebhookMessageStatus.RetryDue;
+        NextAttemptAt = requestedAt;
+        DeadLetteredAt = null;
+        FailureCategory = null;
+        SafeDetail = null;
+        ClearLease();
+        _redriveRecords.Add(IncomingWebhookRedriveRecord.Create(
+            TenantId,
+            Id,
+            actorId,
+            reason,
+            requestedAt,
+            sourceGeneration,
+            ProcessingGeneration,
+            IncomingWebhookRedriveResult.Scheduled));
+        UpdatedAt = requestedAt;
+    }
+
+    public void EnsureActiveClaim(
+        Guid leaseToken,
+        long processingFence,
+        int processingGeneration,
+        DateTime observedAt)
+    {
+        if (Status != IncomingWebhookMessageStatus.Processing ||
+            ProcessingLeaseToken != leaseToken ||
+            ProcessingFence != processingFence ||
+            ProcessingGeneration != processingGeneration ||
+            ProcessingLeaseExpiresAt is null ||
+            ProcessingLeaseExpiresAt <= observedAt)
+        {
+            throw new InvalidOperationException("The incoming webhook processing claim is stale or no longer active.");
+        }
+    }
+
+    private void AppendAttempt(
+        IncomingWebhookProcessingAttemptOutcome outcome,
+        DateTime recordedAt,
+        string? failureCategory = null,
+        string? safeDetail = null)
+    {
+        _processingAttempts.Add(IncomingWebhookProcessingAttempt.Create(
+            TenantId,
+            Id,
+            ProcessingGeneration,
+            ProcessingFence,
+            AttemptCount,
+            outcome,
+            ProcessingStartedAt ?? recordedAt,
+            recordedAt,
+            failureCategory,
+            safeDetail));
+    }
+
+    private void ClearLease()
+    {
+        ProcessingLeaseOwner = null;
+        ProcessingLeaseToken = null;
+        ProcessingLeaseExpiresAt = null;
+        ProcessingStartedAt = null;
+    }
+
+    internal static string NormalizePayloadHash(string payloadHash)
+    {
+        var normalized = NormalizeRequired(payloadHash, 71, nameof(payloadHash)).ToLowerInvariant();
+        if (!normalized.StartsWith("sha256:", StringComparison.Ordinal) ||
+            normalized.Length != 71 ||
+            !ContainsOnlyLowerHex(normalized.AsSpan(7)))
+        {
+            throw new ArgumentException("Payload hash must be a lowercase SHA-256 identifier.", nameof(payloadHash));
+        }
+
+        return normalized;
+    }
+
+    private static bool ContainsOnlyLowerHex(ReadOnlySpan<char> value)
+    {
+        foreach (var character in value)
+        {
+            if (character is not (>= '0' and <= '9') and not (>= 'a' and <= 'f'))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    internal static string NormalizeRequired(string value, int maxLength, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new ArgumentException("Value is required.", parameterName);
+        }
+
+        var normalized = value.Trim();
+        if (normalized.Length > maxLength)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, $"Value cannot exceed {maxLength} characters.");
+        }
+
+        return normalized;
+    }
+
+    internal static string? NormalizeOptional(string? value, int maxLength, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return NormalizeRequired(value, maxLength, parameterName);
+    }
+
+    internal static string? BoundSafeDetail(string? safeDetail)
+    {
+        if (string.IsNullOrWhiteSpace(safeDetail))
+        {
+            return null;
+        }
+
+        var normalized = safeDetail.Trim();
+        return normalized.Length <= MaxSafeDetailLength
+            ? normalized
+            : normalized[..MaxSafeDetailLength];
+    }
+
+    private static void RequireGuid(Guid value, string parameterName)
+    {
+        if (value == Guid.Empty)
+        {
+            throw new ArgumentException("Identifier is required.", parameterName);
+        }
+    }
 }
 
 public enum IncomingWebhookMessageStatus
 {
-    Received = 1,
-    Verified = 2,
-    Processing = 3,
+    Verified = 1,
+    Processing = 2,
+    RetryDue = 3,
     Processed = 4,
-    Rejected = 5,
-    Failed = 6,
-    Duplicate = 7
+    Ignored = 5,
+    RejectedPermanent = 6,
+    DeadLettered = 7,
+    PayloadConflict = 8
+}
+
+public enum IncomingWebhookDuplicateClassification
+{
+    Duplicate = 1,
+    PayloadConflict = 2
+}
+
+public enum IncomingWebhookSettlementSource
+{
+    None = 0,
+    EffectCommitted = 1,
+    ExistingReceipt = 2
 }

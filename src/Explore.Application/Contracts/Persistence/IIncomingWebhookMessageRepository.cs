@@ -9,23 +9,11 @@ public interface IIncomingWebhookMessageRepository
 {
     Task<bool> TryCreateAsync(IncomingWebhookMessage message, CancellationToken cancellationToken);
 
-    Task<IncomingWebhookMessage?> GetByProviderMessageIdAsync(
+    Task<IncomingWebhookMessage?> GetByProviderMessageIdForUpdateAsync(
         Guid tenantId,
         string provider,
         string providerMessageId,
         CancellationToken cancellationToken);
 
-    Task MarkProcessedAsync(
-        Guid tenantId,
-        Guid messageId,
-        DateTime processedAt,
-        CancellationToken cancellationToken);
-
-    Task MarkRejectedAsync(
-        Guid tenantId,
-        Guid messageId,
-        string failureCategory,
-        string? safeDetail,
-        DateTime rejectedAt,
-        CancellationToken cancellationToken);
+    Task SaveChangesAsync(CancellationToken cancellationToken);
 }

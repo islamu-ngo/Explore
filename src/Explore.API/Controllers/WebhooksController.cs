@@ -170,8 +170,7 @@ public sealed class WebhooksController(
                 OwnerUserId = request.OwnerUserId,
                 ConsumerKindId = request.ConsumerKindId,
                 Name = request.Name,
-                ProviderModeId = request.ProviderModeId,
-                ExternalProviderAppId = request.ExternalProviderAppId
+                ProviderModeId = request.ProviderModeId
             },
             cancellationToken);
 
@@ -424,17 +423,19 @@ public sealed class WebhooksController(
 
     [HttpPost("svix/app-portal", Name = RouteNames.OpenSvixAppPortal)]
     [EndpointSummary("Open Svix App Portal")]
-    [EndpointDescription("Creates a short-lived Svix App Portal URL for the current tenant or webhook consumer.")]
+    [EndpointDescription("Creates a short-lived Svix App Portal URL for a verified webhook consumer binding.")]
     [Consumes(HateoasConstants.JsonMediaType)]
     [ProducesResponseType(typeof(WebhookProviderPortalAccessDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<ActionResult<WebhookProviderPortalAccessDto>> OpenSvixAppPortal(
         [FromBody] OpenSvixAppPortalRequestDto request,
         CancellationToken cancellationToken = default)
@@ -445,9 +446,7 @@ public sealed class WebhooksController(
                 TenantId = tenantContext.TenantId,
                 ConsumerId = request.ConsumerId,
                 SessionId = ResolvePortalSessionId(),
-                ReadOnly = request.ReadOnly,
-                ExpiresInSeconds = request.ExpiresInSeconds,
-                FeatureFlags = request.FeatureFlags ?? []
+                ExpiresInSeconds = request.ExpiresInSeconds
             },
             cancellationToken);
 
@@ -660,7 +659,7 @@ public sealed class WebhooksController(
     {
         return ResolveProviderSubject()
             ?? CurrentUserId?.ToString("D")
-            ?? HttpContext.TraceIdentifier;
+            ?? string.Empty;
     }
 
     private ActionResult<WebhookProviderPortalAccessDto> ToWebhookPortalProblem(
@@ -685,6 +684,16 @@ public sealed class WebhooksController(
                 ApiProblemFactory.ToProblemResult(ApiProblemFactory.CreateNotFoundProblem(
                     HttpContext,
                     ConsumerNotFoundProblem)),
+
+            "webhook_consumer_disabled"
+                or "webhook_provider_binding_unverified"
+                or "webhook_provider_binding_mismatched"
+                or "webhook_provider_capability_unavailable" =>
+                ApiProblemFactory.ToProblemResult(ApiProblemFactory.CreateConflictProblem(
+                    HttpContext,
+                    "Webhook provider portal unavailable",
+                    detail,
+                    code)),
 
             "svix_provider_not_enabled"
                 or "svix_app_portal_disabled"

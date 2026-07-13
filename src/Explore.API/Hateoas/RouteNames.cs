@@ -329,6 +329,7 @@ public static class RouteNames
     public const string DeleteWebhookEndpoint = "DeleteWebhookEndpoint";
     public const string RotateWebhookEndpointSecret = "RotateWebhookEndpointSecret";
     public const string TestWebhookEndpoint = "TestWebhookEndpoint";
+    public const string ResumeWebhookEndpoint = "ResumeWebhookEndpoint";
     public const string GetWebhookMessages = "GetWebhookMessages";
     public const string GetWebhookMessageById = "GetWebhookMessageById";
     public const string GetWebhookDeliveryAttempts = "GetWebhookDeliveryAttempts";

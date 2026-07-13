@@ -1,5 +1,5 @@
-// ABOUTME: Authorized command for creating Svix App Portal access for the current tenant.
-// ABOUTME: Supplies tenant-scoped webhook resource attributes to the MediatR authorization pipeline.
+// ABOUTME: Authorized command for creating Svix App Portal access for one verified tenant consumer.
+// ABOUTME: Supplies resource attributes without accepting caller-selected portal capabilities.
 
 using Explore.Application.Authorization;
 using Explore.Application.Responses;
@@ -12,17 +12,13 @@ public sealed class OpenSvixAppPortalCommand : IRequest<WebhookProviderPortalAcc
 {
     public Guid TenantId { get; init; }
 
-    public Guid? ConsumerId { get; init; }
+    public Guid ConsumerId { get; init; }
 
     public string SessionId { get; init; } = string.Empty;
 
-    public bool ReadOnly { get; init; }
-
     public int? ExpiresInSeconds { get; init; }
 
-    public IReadOnlyCollection<string> FeatureFlags { get; init; } = [];
-
-    string? ISecureRequest.ResourceId => ConsumerId?.ToString("D") ?? TenantId.ToString("D");
+    string? ISecureRequest.ResourceId => ConsumerId.ToString("D");
 
     IDictionary<string, object>? ISecureRequest.ResourceAttributes
     {
@@ -34,10 +30,7 @@ public sealed class OpenSvixAppPortalCommand : IRequest<WebhookProviderPortalAcc
                 ["provider"] = "svix"
             };
 
-            if (ConsumerId is { } consumerId)
-            {
-                attributes["consumerId"] = consumerId.ToString("D");
-            }
+            attributes["consumerId"] = ConsumerId.ToString("D");
 
             return attributes;
         }

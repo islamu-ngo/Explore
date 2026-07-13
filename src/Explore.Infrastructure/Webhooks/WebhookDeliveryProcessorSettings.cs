@@ -13,6 +13,11 @@ public sealed class WebhookDeliveryProcessorSettings
     public int PollingIntervalSeconds { get; set; } = 5;
     public int InitialDelaySeconds { get; set; } = 5;
     public int BatchSize { get; set; } = 100;
+    public int CandidateBatchSize { get; set; } = 1000;
+    public int MaxConcurrentDeliveries { get; set; } = 16;
+    public int MaxConcurrentDeliveriesPerTenant { get; set; } = 4;
+    public int MaxConcurrentDeliveriesPerEndpoint { get; set; } = 1;
+    public int MaxItemsPerTenantPerClaimCycle { get; set; } = 10;
     public int ProcessingLeaseTimeoutSeconds { get; set; } = 120;
     public int HealthDueAttemptWarningThreshold { get; set; } = 1000;
     public int HealthStaleSendingWarningThreshold { get; set; } = 1;
@@ -38,6 +43,38 @@ public sealed class WebhookDeliveryProcessorSettingsValidator : IValidateOptions
         if (options.BatchSize is < 1 or > 1000)
         {
             failures.Add("WebhookDeliveryProcessor:BatchSize must be between 1 and 1000.");
+        }
+
+        if (options.CandidateBatchSize is < 1 or > 10000)
+        {
+            failures.Add("WebhookDeliveryProcessor:CandidateBatchSize must be between 1 and 10000.");
+        }
+
+        if (options.CandidateBatchSize < options.BatchSize)
+        {
+            failures.Add("WebhookDeliveryProcessor:CandidateBatchSize cannot be less than WebhookDeliveryProcessor:BatchSize.");
+        }
+
+        if (options.MaxConcurrentDeliveries is < 1 or > 256)
+        {
+            failures.Add("WebhookDeliveryProcessor:MaxConcurrentDeliveries must be between 1 and 256.");
+        }
+
+        if (options.MaxConcurrentDeliveriesPerTenant is < 1 or > 256
+            || options.MaxConcurrentDeliveriesPerTenant > options.MaxConcurrentDeliveries)
+        {
+            failures.Add("WebhookDeliveryProcessor:MaxConcurrentDeliveriesPerTenant must be between 1 and MaxConcurrentDeliveries.");
+        }
+
+        if (options.MaxConcurrentDeliveriesPerEndpoint is < 1 or > 256
+            || options.MaxConcurrentDeliveriesPerEndpoint > options.MaxConcurrentDeliveriesPerTenant)
+        {
+            failures.Add("WebhookDeliveryProcessor:MaxConcurrentDeliveriesPerEndpoint must be between 1 and MaxConcurrentDeliveriesPerTenant.");
+        }
+
+        if (options.MaxItemsPerTenantPerClaimCycle is < 1 or > 1000)
+        {
+            failures.Add("WebhookDeliveryProcessor:MaxItemsPerTenantPerClaimCycle must be between 1 and 1000.");
         }
 
         if (options.ProcessingLeaseTimeoutSeconds is < 30 or > 3600)

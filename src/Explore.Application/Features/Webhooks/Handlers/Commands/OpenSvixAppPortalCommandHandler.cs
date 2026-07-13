@@ -1,15 +1,22 @@
 // ABOUTME: Handles Svix App Portal access creation through the provider-neutral webhook portal contract.
 // ABOUTME: Keeps provider SDK calls in Infrastructure while preserving command-response API conventions.
 
+using System.Text.Json;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.DTOs.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Domain;
 using MediatR;
 
 namespace Explore.Application.Features.Webhooks.Handlers.Commands;
 
-public sealed class OpenSvixAppPortalCommandHandler(IWebhookProviderPortalService portalService)
+public sealed class OpenSvixAppPortalCommandHandler(
+    IWebhookProviderPortalService portalService,
+    IAuditLogRepository auditLogRepository,
+    ICurrentUserService currentUserService)
     : IRequestHandler<OpenSvixAppPortalCommand, WebhookProviderPortalAccessCommandResponse>
 {
     private const string ValidationFailure = "webhook_portal_validation_failed";
@@ -33,9 +40,7 @@ public sealed class OpenSvixAppPortalCommandHandler(IWebhookProviderPortalServic
                 request.TenantId,
                 request.ConsumerId,
                 request.SessionId,
-                request.ReadOnly,
-                request.ExpiresInSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
-                request.FeatureFlags),
+                request.ExpiresInSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null),
             cancellationToken);
 
         if (!result.Succeeded)
@@ -50,6 +55,27 @@ public sealed class OpenSvixAppPortalCommandHandler(IWebhookProviderPortalServic
                 result.IsRetryable,
                 [result.SafeDetail ?? failureCategory]);
         }
+
+        await auditLogRepository.Create(new AuditLog
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = request.TenantId,
+            Tenant = null!,
+            EntityType = nameof(WebhookConsumer),
+            EntityId = request.ConsumerId.ToString("D"),
+            Action = "WebhookPortalSessionIssued",
+            NewValues = JsonSerializer.Serialize(new
+            {
+                consumerId = request.ConsumerId,
+                providerBindingId = result.ProviderBindingId,
+                provider = "svix",
+                capabilityPolicyVersion = result.CapabilityPolicyVersion,
+                result = "issued"
+            }),
+            AffectedColumns = JsonSerializer.Serialize(new[] { "PortalSessionIssuance" }),
+            ActorId = currentUserService.UserId,
+            Timestamp = DateTime.UtcNow
+        });
 
         return new WebhookProviderPortalAccessCommandResponse
         {
@@ -76,6 +102,11 @@ public sealed class OpenSvixAppPortalCommandHandler(IWebhookProviderPortalServic
         if (string.IsNullOrWhiteSpace(request.SessionId))
         {
             errors.Add("SessionId is required.");
+        }
+
+        if (request.ConsumerId == Guid.Empty)
+        {
+            errors.Add("ConsumerId is required.");
         }
 
         if (request.ExpiresInSeconds is <= 0)
@@ -105,6 +136,10 @@ public sealed class OpenSvixAppPortalCommandHandler(IWebhookProviderPortalServic
         "svix_provider_not_enabled" => "Svix webhook provider is not enabled.",
         "svix_app_portal_disabled" => "Svix App Portal is disabled.",
         "webhook_consumer_not_found" => "Webhook consumer was not found.",
+        "webhook_consumer_disabled" => "Webhook consumer is disabled.",
+        "webhook_provider_binding_unverified" => "Webhook provider binding is not verified.",
+        "webhook_provider_binding_mismatched" => "Webhook provider binding does not match this tenant and consumer.",
+        "webhook_provider_capability_unavailable" => "Webhook provider portal capability is unavailable.",
         "webhook_portal_session_required" => "Webhook provider portal session id is required.",
         "svix_auth_token_secret_missing" => "Svix auth token secret reference is not configured.",
         "svix_auth_token_unresolved" => "Svix auth token secret could not be resolved.",

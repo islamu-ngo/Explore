@@ -19,15 +19,4 @@ public interface IIncomingWebhookIntakeService
         string? idempotencyKey,
         CancellationToken cancellationToken);
 
-    Task MarkProcessedAsync(
-        Guid tenantId,
-        Guid messageId,
-        CancellationToken cancellationToken);
-
-    Task MarkRejectedAsync(
-        Guid tenantId,
-        Guid messageId,
-        string failureCategory,
-        string? safeDetail,
-        CancellationToken cancellationToken);
 }

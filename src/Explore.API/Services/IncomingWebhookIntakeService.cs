@@ -17,10 +17,10 @@ public sealed class IncomingWebhookIntakeService(
     ILogger<IncomingWebhookIntakeService> logger) : IIncomingWebhookIntakeService
 {
     private const int BufferThresholdBytes = 30 * 1024;
-    private const int MaxProviderLength = 100;
-    private const int MaxProviderMessageIdLength = 500;
-    private const int MaxIdempotencyKeyLength = 500;
-    private const int MaxEventTypeLength = 200;
+    private const int MaxProviderLength = IncomingWebhookMessage.MaxProviderLength;
+    private const int MaxProviderMessageIdLength = IncomingWebhookMessage.MaxProviderMessageIdLength;
+    private const int MaxIdempotencyKeyLength = IncomingWebhookMessage.MaxIdempotencyKeyLength;
+    private const int MaxEventTypeLength = IncomingWebhookMessage.MaxEventTypeLength;
     private const int MaxSafeHeaderValueLength = 256;
 
     private static readonly string[] SensitiveHeaderFragments =
@@ -73,9 +73,10 @@ public sealed class IncomingWebhookIntakeService(
 
         var rawPayload = Encoding.UTF8.GetString(bodyBytes);
         var payloadHash = ComputePayloadHash(bodyBytes);
+        var receivedAt = DateTimeOffset.UtcNow;
         var verifier = verifierRegistry.GetRequired(normalizedProvider);
         var verification = await verifier.VerifyAsync(
-            new IncomingWebhookContext(normalizedProvider, rawPayload, headers, DateTimeOffset.UtcNow),
+            new IncomingWebhookContext(normalizedProvider, rawPayload, headers, receivedAt),
             cancellationToken);
 
         if (!verification.IsVerified)
@@ -90,7 +91,14 @@ public sealed class IncomingWebhookIntakeService(
                 failureCategory);
         }
 
-        return IncomingWebhookReadResult.Success(normalizedProvider, rawPayload, payloadHash, headers, verification);
+        return IncomingWebhookReadResult.Success(
+            normalizedProvider,
+            rawPayload,
+            bodyBytes,
+            receivedAt,
+            payloadHash,
+            headers,
+            verification);
     }
 
     public async Task<IncomingWebhookCaptureResult> CaptureAsync(
@@ -103,7 +111,10 @@ public sealed class IncomingWebhookIntakeService(
     {
         ArgumentNullException.ThrowIfNull(readResult);
 
-        if (!readResult.Succeeded || readResult.Verification is null || string.IsNullOrWhiteSpace(readResult.PayloadHash))
+        if (!readResult.Succeeded ||
+            readResult.Verification is null ||
+            readResult.RawPayloadBytes.IsEmpty ||
+            string.IsNullOrWhiteSpace(readResult.PayloadHash))
         {
             return IncomingWebhookCaptureResult.Failure(
                 StatusCodes.Status400BadRequest,
@@ -122,32 +133,41 @@ public sealed class IncomingWebhookIntakeService(
         }
 
         var normalizedProvider = NormalizeRequired(readResult.Provider, MaxProviderLength);
-        var normalizedProviderMessageId = NormalizeOptional(providerMessageId, MaxProviderMessageIdLength)
-            ?? NormalizeOptional(readResult.Verification.ProviderMessageId, MaxProviderMessageIdLength)
-            ?? NormalizeRequired(readResult.PayloadHash, MaxProviderMessageIdLength);
-        var normalizedIdempotencyKey = NormalizeOptional(idempotencyKey, MaxIdempotencyKeyLength)
-            ?? NormalizeOptional(readResult.Verification.IdempotencyKey, MaxIdempotencyKeyLength)
-            ?? normalizedProviderMessageId;
+        var resolvedProviderMessageId = FirstNonBlank(
+            providerMessageId,
+            readResult.Verification.ProviderMessageId,
+            readResult.PayloadHash);
+        var resolvedIdempotencyKey = FirstNonBlank(
+            idempotencyKey,
+            readResult.Verification.IdempotencyKey,
+            resolvedProviderMessageId);
+        var resolvedEventType = FirstNonBlank(eventType, readResult.Verification.EventType);
+        if (resolvedProviderMessageId is null || resolvedProviderMessageId.Length > MaxProviderMessageIdLength ||
+            resolvedIdempotencyKey is null || resolvedIdempotencyKey.Length > MaxIdempotencyKeyLength ||
+            resolvedEventType?.Length > MaxEventTypeLength)
+        {
+            return IncomingWebhookCaptureResult.Failure(
+                StatusCodes.Status400BadRequest,
+                "Incoming webhook identity is invalid",
+                "Provider message identity, idempotency identity, or event type exceeds its allowed size.",
+                "incoming_webhook_identity_invalid");
+        }
+
+        var normalizedProviderMessageId = resolvedProviderMessageId;
+        var normalizedIdempotencyKey = resolvedIdempotencyKey;
 
         var now = DateTime.UtcNow;
-        var message = new IncomingWebhookMessage
-        {
-            Id = Guid.CreateVersion7(),
-            TenantId = tenantId,
-            Provider = normalizedProvider,
-            ProviderMessageId = normalizedProviderMessageId,
-            IdempotencyKey = normalizedIdempotencyKey,
-            EventType = NormalizeOptional(eventType, MaxEventTypeLength)
-                ?? NormalizeOptional(readResult.Verification.EventType, MaxEventTypeLength),
-            HeadersJson = SerializeSafeHeaders(readResult.Headers),
-            PayloadJson = null,
-            PayloadHash = readResult.PayloadHash,
-            Status = IncomingWebhookMessageStatus.Verified,
-            ReceivedAt = now,
-            VerifiedAt = now,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
+        var message = IncomingWebhookMessage.CreateVerified(
+            tenantId,
+            normalizedProvider,
+            normalizedProviderMessageId,
+            normalizedIdempotencyKey,
+            resolvedEventType,
+            readResult.RawPayloadBytes.Span,
+            readResult.PayloadHash,
+            SerializeSafeHeaders(readResult.Headers),
+            readResult.ReceivedAt.UtcDateTime,
+            now);
 
         var created = await incomingWebhookMessageRepository.TryCreateAsync(message, cancellationToken);
         if (created)
@@ -155,53 +175,41 @@ public sealed class IncomingWebhookIntakeService(
             return IncomingWebhookCaptureResult.Captured(message.Id, normalizedProviderMessageId, normalizedIdempotencyKey);
         }
 
-        var existing = await incomingWebhookMessageRepository.GetByProviderMessageIdAsync(
+        var existing = await incomingWebhookMessageRepository.GetByProviderMessageIdForUpdateAsync(
             tenantId,
             normalizedProvider,
             normalizedProviderMessageId,
             cancellationToken);
+        if (existing is null)
+        {
+            return IncomingWebhookCaptureResult.Failure(
+                StatusCodes.Status409Conflict,
+                "Incoming webhook identity conflict",
+                "The provider message identity could not be resolved after a uniqueness conflict.",
+                "incoming_webhook_identity_conflict");
+        }
+
+        var duplicateClassification = existing.ClassifyDuplicate(readResult.PayloadHash, now);
+        if (duplicateClassification == IncomingWebhookDuplicateClassification.PayloadConflict)
+        {
+            await incomingWebhookMessageRepository.SaveChangesAsync(cancellationToken);
+            logger.LogWarning(
+                "Incoming webhook payload conflict captured for provider {Provider}",
+                normalizedProvider);
+            return IncomingWebhookCaptureResult.PayloadConflict(
+                existing.Id,
+                normalizedProviderMessageId,
+                normalizedIdempotencyKey);
+        }
+
         logger.LogInformation(
             "Incoming webhook duplicate captured for provider {Provider}",
             normalizedProvider);
 
         return IncomingWebhookCaptureResult.Duplicate(
-            existing?.Id ?? Guid.Empty,
+            existing.Id,
             normalizedProviderMessageId,
             normalizedIdempotencyKey);
-    }
-
-    public async Task MarkProcessedAsync(
-        Guid tenantId,
-        Guid messageId,
-        CancellationToken cancellationToken)
-    {
-        if (tenantId == Guid.Empty || messageId == Guid.Empty)
-        {
-            return;
-        }
-
-        await incomingWebhookMessageRepository.MarkProcessedAsync(tenantId, messageId, DateTime.UtcNow, cancellationToken);
-    }
-
-    public async Task MarkRejectedAsync(
-        Guid tenantId,
-        Guid messageId,
-        string failureCategory,
-        string? safeDetail,
-        CancellationToken cancellationToken)
-    {
-        if (tenantId == Guid.Empty || messageId == Guid.Empty)
-        {
-            return;
-        }
-
-        await incomingWebhookMessageRepository.MarkRejectedAsync(
-            tenantId,
-            messageId,
-            NormalizeRequired(failureCategory, 100),
-            safeDetail,
-            DateTime.UtcNow,
-            cancellationToken);
     }
 
     private static async Task<byte[]> ReadBodyBytesAsync(
@@ -319,16 +327,9 @@ public sealed class IncomingWebhookIntakeService(
         return Truncate(value.Trim().ToLowerInvariant(), maxLength);
     }
 
-    private static string? NormalizeOptional(string? value, int maxLength)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return Truncate(value.Trim(), maxLength);
-    }
-
     private static string Truncate(string value, int maxLength) =>
         value.Length <= maxLength ? value : value[..maxLength];
+
+    private static string? FirstNonBlank(params string?[] values) =>
+        values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))?.Trim();
 }

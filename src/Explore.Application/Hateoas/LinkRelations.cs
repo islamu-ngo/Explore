@@ -334,6 +334,8 @@ public static class LinkRelations
 
     public const string Retry = "retry";
 
+    public const string Resume = "resume";
+
     public const string OpenProviderPortal = "open-provider-portal";
 
     /// <summary>

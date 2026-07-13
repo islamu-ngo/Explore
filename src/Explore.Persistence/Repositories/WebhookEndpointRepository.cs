@@ -168,6 +168,7 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
             .Where(e => e.TenantId == tenantId && e.Id == endpointId)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(e => e.Status, WebhookEndpointStatus.Archived)
+                .SetProperty(e => e.DeliveryStateVersion, e => e.DeliveryStateVersion + 1)
                 .SetProperty(e => e.UpdatedAt, archivedAt), cancellationToken);
     }
 
@@ -213,6 +214,7 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(e => e.Status, WebhookEndpointStatus.Disabled)
                 .SetProperty(e => e.LastFailureAt, disabledAt)
+                .SetProperty(e => e.DeliveryStateVersion, e => e.DeliveryStateVersion + 1)
                 .SetProperty(e => e.UpdatedAt, disabledAt), cancellationToken);
     }
 
@@ -227,20 +229,99 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
             .Where(e => e.TenantId == tenantId && e.Id == endpointId)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(e => e.LastSuccessAt, succeededAt)
+                .SetProperty(
+                    e => e.ConsecutiveFailureCount,
+                    e => e.Status == WebhookEndpointStatus.Active ? 0 : e.ConsecutiveFailureCount)
+                .SetProperty(
+                    e => e.DeliveryStateVersion,
+                    e => e.Status == WebhookEndpointStatus.Active
+                        ? e.DeliveryStateVersion + 1
+                        : e.DeliveryStateVersion)
                 .SetProperty(e => e.UpdatedAt, succeededAt), cancellationToken);
     }
 
-    public async Task MarkFailureAsync(
+    public async Task<WebhookEndpointFailureState> RecordFailureAsync(
         Guid tenantId,
         Guid endpointId,
         DateTime failedAt,
+        string failureCategory,
+        int autoPauseThreshold,
         CancellationToken cancellationToken)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(autoPauseThreshold, 1);
+        var normalizedFailureCategory = Truncate(failureCategory, 100);
+
         await _dbContext.WebhookEndpoints
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
-            .Where(e => e.TenantId == tenantId && e.Id == endpointId)
+            .Where(e => e.TenantId == tenantId
+                && e.Id == endpointId
+                && e.Status == WebhookEndpointStatus.Active)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(e => e.LastFailureAt, failedAt)
+                .SetProperty(e => e.ConsecutiveFailureCount, e => e.ConsecutiveFailureCount + 1)
+                .SetProperty(
+                    e => e.Status,
+                    e => e.ConsecutiveFailureCount + 1 >= autoPauseThreshold
+                        ? WebhookEndpointStatus.AutoPaused
+                        : e.Status)
+                .SetProperty(
+                    e => e.CircuitOpenedAt,
+                    e => e.ConsecutiveFailureCount + 1 >= autoPauseThreshold
+                        ? failedAt
+                        : e.CircuitOpenedAt)
+                .SetProperty(
+                    e => e.AutoPausedAt,
+                    e => e.ConsecutiveFailureCount + 1 >= autoPauseThreshold
+                        ? failedAt
+                        : e.AutoPausedAt)
+                .SetProperty(
+                    e => e.AutoPauseReason,
+                    e => e.ConsecutiveFailureCount + 1 >= autoPauseThreshold
+                        ? normalizedFailureCategory
+                        : e.AutoPauseReason)
+                .SetProperty(e => e.DeliveryStateVersion, e => e.DeliveryStateVersion + 1)
                 .SetProperty(e => e.UpdatedAt, failedAt), cancellationToken);
+
+        var state = await _dbContext.WebhookEndpoints
+            .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+            .AsNoTracking()
+            .Where(e => e.TenantId == tenantId && e.Id == endpointId)
+            .Select(e => new WebhookEndpointFailureState(
+                e.ConsecutiveFailureCount,
+                e.Status == WebhookEndpointStatus.AutoPaused))
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return state ?? new WebhookEndpointFailureState(0, false);
     }
+
+    public async Task<bool> TryResumeAsync(
+        Guid tenantId,
+        Guid endpointId,
+        DateTime resumedAt,
+        Guid actorUserId,
+        CancellationToken cancellationToken)
+    {
+        var updated = await _dbContext.WebhookEndpoints
+            .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+            .Where(e => e.TenantId == tenantId
+                && e.Id == endpointId
+                && e.Status == WebhookEndpointStatus.AutoPaused)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(e => e.Status, WebhookEndpointStatus.Active)
+                .SetProperty(e => e.ConsecutiveFailureCount, 0)
+                .SetProperty(e => e.CircuitOpenedAt, (DateTime?)null)
+                .SetProperty(e => e.AutoPausedAt, (DateTime?)null)
+                .SetProperty(e => e.AutoPauseReason, (string?)null)
+                .SetProperty(e => e.LastResumedAt, resumedAt)
+                .SetProperty(e => e.LastResumedBy, actorUserId)
+                .SetProperty(e => e.UpdatedAt, resumedAt)
+                .SetProperty(e => e.UpdatedBy, actorUserId)
+                .SetProperty(e => e.DeliveryStateVersion, e => e.DeliveryStateVersion + 1),
+                cancellationToken);
+
+        return updated == 1;
+    }
+
+    private static string Truncate(string value, int maxLength) =>
+        value.Length <= maxLength ? value : value[..maxLength];
 }

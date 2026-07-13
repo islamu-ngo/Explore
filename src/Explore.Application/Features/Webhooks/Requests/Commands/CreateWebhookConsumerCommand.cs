@@ -22,8 +22,6 @@ public sealed class CreateWebhookConsumerCommand : IRequest<BaseCommandResponse<
 
     public int ProviderModeId { get; init; }
 
-    public string? ExternalProviderAppId { get; init; }
-
     string? ISecureRequest.ResourceId => TenantId.ToString("D");
 
     IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>

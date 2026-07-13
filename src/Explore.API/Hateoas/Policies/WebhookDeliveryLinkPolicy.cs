@@ -71,8 +71,9 @@ public sealed class WebhookDeliveryAttemptDetailLinkPolicy : ILinkPolicy<Webhook
             "Webhook message")
             .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery, ResourceDescriptors.WebhookDeliveryAttempt, dto);
 
-        if (string.Equals(dto.StatusName, "Failed", StringComparison.Ordinal) ||
-            string.Equals(dto.StatusName, "Abandoned", StringComparison.Ordinal))
+        if ((string.Equals(dto.StatusName, "Failed", StringComparison.Ordinal) ||
+                string.Equals(dto.StatusName, "Abandoned", StringComparison.Ordinal))
+            && string.Equals(dto.EndpointStatusName, "Active", StringComparison.Ordinal))
         {
             yield return new LinkDefinition(
                 LinkRelations.Retry,

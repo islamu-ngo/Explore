@@ -36,6 +36,7 @@ public sealed class IncomingWebhooksController(
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     [EnableRateLimiting(RateLimitingExtensions.PublicIngestionPolicy)]
@@ -84,11 +85,6 @@ public sealed class IncomingWebhooksController(
                     capture.Type,
                     capture.Detail,
                     capture.Code));
-            }
-
-            if (!capture.IsDuplicate)
-            {
-                await incomingWebhookIntakeService.MarkProcessedAsync(tenantId.Value, capture.MessageId, cancellationToken);
             }
         }
 

@@ -292,4 +292,7 @@ public partial class ExploreDbContext
     public DbSet<WebhookDeliveryAttempt> WebhookDeliveryAttempts { get; set; }
     public DbSet<WebhookProviderLink> WebhookProviderLinks { get; set; }
     public DbSet<IncomingWebhookMessage> IncomingWebhookMessages { get; set; }
+    public DbSet<IncomingWebhookEffectReceipt> IncomingWebhookEffectReceipts { get; set; }
+    public DbSet<IncomingWebhookProcessingAttempt> IncomingWebhookProcessingAttempts { get; set; }
+    public DbSet<IncomingWebhookRedriveRecord> IncomingWebhookRedriveRecords { get; set; }
 }

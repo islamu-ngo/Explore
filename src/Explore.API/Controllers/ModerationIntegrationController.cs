@@ -171,23 +171,12 @@ public sealed class ModerationIntegrationController(
             return Ok(duplicateResponse);
         }
 
-        var response = await mediator.Send(new ProcessCoopDecisionCallbackCommand
+        var response = new BaseCommandResponse<Guid>
         {
-            Request = request
-        }, cancellationToken);
-        if (response.Success)
-        {
-            await incomingWebhookIntakeService.MarkProcessedAsync(tenantId, capture.MessageId, cancellationToken);
-        }
-        else
-        {
-            await incomingWebhookIntakeService.MarkRejectedAsync(
-                tenantId,
-                capture.MessageId,
-                response.FailureCode ?? "coop_callback_processing_failed",
-                response.Message,
-                cancellationToken);
-        }
+            Success = true,
+            Id = capture.MessageId,
+            Message = "Coop decision callback was captured for durable processing."
+        };
 
         RecordCallback("coop", tenantId, response);
 

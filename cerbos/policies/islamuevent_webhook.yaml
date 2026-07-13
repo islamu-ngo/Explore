@@ -26,6 +26,7 @@ resourcePolicy:
         - "webhook:rotate-secret"
         - "webhook:test"
         - "webhook:retry"
+        - "webhook:resume"
         - "webhook:view-delivery"
         - "webhook:manage-provider"
         - "webhook:open-provider-portal"
@@ -41,6 +42,7 @@ resourcePolicy:
         - "webhook:rotate-secret"
         - "webhook:test"
         - "webhook:retry"
+        - "webhook:resume"
         - "webhook:view-delivery"
         - "webhook:open-provider-portal"
       effect: EFFECT_ALLOW

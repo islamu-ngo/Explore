@@ -36,6 +36,7 @@ public class WebhookConsumerRepository : IWebhookConsumerRepository
     {
         return await _dbContext.WebhookConsumers
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+            .Include(e => e.ProviderBindings)
             .AsNoTracking()
             .FirstOrDefaultAsync(e => e.TenantId == tenantId && e.Id == consumerId, cancellationToken);
     }
@@ -47,6 +48,7 @@ public class WebhookConsumerRepository : IWebhookConsumerRepository
     {
         return await _dbContext.WebhookConsumers
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+            .Include(e => e.ProviderBindings)
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 e => e.TenantId == tenantId && e.Name == name,
@@ -73,6 +75,7 @@ public class WebhookConsumerRepository : IWebhookConsumerRepository
     {
         return await _dbContext.WebhookConsumers
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+            .Include(e => e.ProviderBindings)
             .AsNoTracking()
             .Where(e => e.TenantId == tenantId)
             .OrderBy(e => e.Name)

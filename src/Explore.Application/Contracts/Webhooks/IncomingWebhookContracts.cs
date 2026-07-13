@@ -1,5 +1,5 @@
-// ABOUTME: Provider-neutral incoming webhook callback contract models.
-// ABOUTME: Separates signed provider callbacks into verification and idempotent processing boundaries.
+// ABOUTME: Provider-neutral incoming webhook verification and processing contracts.
+// ABOUTME: Requires processors to use persisted claim identity and declare one stable receipt effect kind.
 
 namespace Explore.Application.Contracts.Webhooks;
 
@@ -29,15 +29,35 @@ public sealed record IncomingWebhookVerificationResult(
         new(false, null, null, null, failureCategory, safeDetail);
 }
 
-public sealed record IncomingWebhookProcessingMessage(
-    Guid Id,
-    Guid? TenantId,
-    string Provider,
-    string ProviderMessageId,
-    string IdempotencyKey,
-    string? EventType,
-    string RawPayloadHash,
-    DateTimeOffset ReceivedAt);
+public sealed record IncomingWebhookProcessingResult(
+    IncomingWebhookProcessingOutcome Outcome,
+    string? FailureCategory = null,
+    string? SafeDetail = null)
+{
+    public static IncomingWebhookProcessingResult Processed() =>
+        new(IncomingWebhookProcessingOutcome.Processed);
+
+    public static IncomingWebhookProcessingResult Ignored(string reasonCode, string? safeDetail = null) =>
+        new(IncomingWebhookProcessingOutcome.Ignored, reasonCode, safeDetail);
+
+    public static IncomingWebhookProcessingResult RejectedPermanent(string failureCategory, string? safeDetail = null) =>
+        new(IncomingWebhookProcessingOutcome.RejectedPermanent, failureCategory, safeDetail);
+
+    public static IncomingWebhookProcessingResult RetryDue(string failureCategory, string? safeDetail = null) =>
+        new(IncomingWebhookProcessingOutcome.RetryDue, failureCategory, safeDetail);
+
+    public static IncomingWebhookProcessingResult DeadLettered(string failureCategory, string? safeDetail = null) =>
+        new(IncomingWebhookProcessingOutcome.DeadLettered, failureCategory, safeDetail);
+}
+
+public enum IncomingWebhookProcessingOutcome
+{
+    Processed = 1,
+    Ignored = 2,
+    RejectedPermanent = 3,
+    RetryDue = 4,
+    DeadLettered = 5
+}
 
 public interface IIncomingWebhookVerifier
 {
@@ -50,7 +70,9 @@ public interface IIncomingWebhookVerifier
 
 public interface IIncomingWebhookHandler
 {
-    Task<bool> HandleAsync(
-        IncomingWebhookProcessingMessage message,
+    string EffectKind { get; }
+
+    Task<IncomingWebhookProcessingResult> HandleAsync(
+        IncomingWebhookProcessingContext context,
         CancellationToken cancellationToken);
 }

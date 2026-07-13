@@ -152,6 +152,7 @@ public static class MachineScopeMapping
         AuthorizationActions.Webhooks.RotateSecret => true,
         AuthorizationActions.Webhooks.Test => true,
         AuthorizationActions.Webhooks.Retry => true,
+        AuthorizationActions.Webhooks.Resume => true,
         AuthorizationActions.Webhooks.ManageProvider => true,
         AuthorizationActions.Webhooks.OpenProviderPortal => true,
         AuthorizationActions.EmailDispatches.ManageTenant => true,

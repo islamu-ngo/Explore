@@ -23,6 +23,7 @@ public class WebhookDeliveryAttempt : ITenantEntity, IAuditableEntity
     public DateTime? CompletedAt { get; set; }
     public Guid? ProcessingLeaseToken { get; set; }
     public DateTime? ProcessingStartedAt { get; set; }
+    public DateTime? ProcessingLeaseExpiresAt { get; set; }
     public int? HttpStatusCode { get; set; }
     public string? FailureCategory { get; set; }
     public string? ResponseBodyPreview { get; set; }

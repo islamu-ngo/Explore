@@ -44,6 +44,26 @@ public sealed class WebhookOptionsValidator : IValidateOptions<WebhookOptions>
             failures.Add("Webhooks:Local:MaxAttempts must be between 1 and 20.");
         }
 
+        if (options.Local.InitialRetryDelaySeconds is < 1 or > 3600)
+        {
+            failures.Add("Webhooks:Local:InitialRetryDelaySeconds must be between 1 and 3600.");
+        }
+
+        if (options.Local.MaxRetryDelaySeconds is < 1 or > 7 * 24 * 60 * 60)
+        {
+            failures.Add("Webhooks:Local:MaxRetryDelaySeconds must be between 1 second and 7 days.");
+        }
+
+        if (options.Local.MaxRetryDelaySeconds < options.Local.InitialRetryDelaySeconds)
+        {
+            failures.Add("Webhooks:Local:MaxRetryDelaySeconds cannot be less than Webhooks:Local:InitialRetryDelaySeconds.");
+        }
+
+        if (options.Local.MaxRetryAfterSeconds is < 0 or > 24 * 60 * 60)
+        {
+            failures.Add("Webhooks:Local:MaxRetryAfterSeconds must be between 0 and 86400.");
+        }
+
         if (options.Local.TimeoutSeconds is < 1 or > 60)
         {
             failures.Add("Webhooks:Local:TimeoutSeconds must be between 1 and 60.");

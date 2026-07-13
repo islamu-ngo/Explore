@@ -218,6 +218,7 @@ public partial class FallbackAuthorizationService
             or AuthorizationActions.Webhooks.RotateSecret
             or AuthorizationActions.Webhooks.Test
             or AuthorizationActions.Webhooks.Retry
+            or AuthorizationActions.Webhooks.Resume
             or AuthorizationActions.Webhooks.ViewDelivery
             or AuthorizationActions.Webhooks.OpenProviderPortal;
 

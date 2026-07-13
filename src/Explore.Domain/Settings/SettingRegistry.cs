@@ -32,6 +32,7 @@ public static class SettingRegistry
         all.AddRange(AppearanceSettingDefinitions.All);
         all.AddRange(DomainSettingDefinitions.All);
         all.AddRange(EmailSettingDefinitions.All);
+        all.AddRange(WebhookDeliverySettingDefinitions.All);
         all.AddRange(StorageSettingDefinitions.All);
         all.AddRange(SecuritySettingDefinitions.All);
         all.AddRange(SupportAccessSettingDefinitions.All);

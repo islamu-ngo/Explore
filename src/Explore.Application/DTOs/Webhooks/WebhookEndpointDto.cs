@@ -39,6 +39,18 @@ public sealed class WebhookEndpointDto
 
     public DateTime? LastFailureAt { get; init; }
 
+    public int ConsecutiveFailureCount { get; init; }
+
+    public DateTime? CircuitOpenedAt { get; init; }
+
+    public DateTime? AutoPausedAt { get; init; }
+
+    public string? AutoPauseReason { get; init; }
+
+    public DateTime? LastResumedAt { get; init; }
+
+    public long DeliveryStateVersion { get; init; }
+
     public DateTime CreatedAt { get; init; }
 
     public DateTime? UpdatedAt { get; init; }

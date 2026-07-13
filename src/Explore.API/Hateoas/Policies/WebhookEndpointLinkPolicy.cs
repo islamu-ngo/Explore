@@ -51,6 +51,18 @@ public sealed class WebhookEndpointDetailLinkPolicy : ILinkPolicy<WebhookEndpoin
                     .RequirePermission(AuthorizationActions.Webhooks.Test, ResourceDescriptors.WebhookEndpoint, dto);
             }
 
+            if (string.Equals(dto.StatusName, "AutoPaused", StringComparison.Ordinal)
+                && CanScheduleLocalTest(dto.ProviderModeName))
+            {
+                yield return new LinkDefinition(
+                    LinkRelations.Resume,
+                    RouteNames.ResumeWebhookEndpoint,
+                    new { endpointId = dto.Id },
+                    "POST",
+                    "Resume webhook endpoint")
+                    .RequirePermission(AuthorizationActions.Webhooks.Resume, ResourceDescriptors.WebhookEndpoint, dto);
+            }
+
             yield return new LinkDefinition(
                 LinkRelations.Delete,
                 RouteNames.DeleteWebhookEndpoint,

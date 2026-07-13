@@ -17,6 +17,8 @@ public sealed class WebhookDeliveryAttemptDto
 
     public string? EndpointUrl { get; init; }
 
+    public required string EndpointStatusName { get; init; }
+
     public int AttemptNumber { get; init; }
 
     public int StatusId { get; init; }

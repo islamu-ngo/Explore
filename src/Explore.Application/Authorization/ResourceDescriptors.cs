@@ -179,7 +179,7 @@ public static class ResourceDescriptors
             ["tenantId"] = dto.TenantId.ToString(),
             ["messageId"] = dto.Id.ToString(),
             ["eventType"] = dto.EventType,
-            ["status"] = dto.StatusName
+            ["aggregateKind"] = dto.AggregateKind
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 

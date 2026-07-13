@@ -33,9 +33,11 @@ public sealed class WebhookSignatureService : IWebhookSignatureService
         ArgumentNullException.ThrowIfNull(rawPayload);
 
         var unixTimestamp = timestamp.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
-        var signature = ComputeSignature(messageId, unixTimestamp, rawPayload, DecodeSecret(secret.CurrentSecret));
+        var signatures = GetActiveSecrets(secret, _timeProvider.GetUtcNow())
+            .Select(activeSecret =>
+                $"v1,{Convert.ToBase64String(ComputeSignature(messageId, unixTimestamp, rawPayload, DecodeSecret(activeSecret)))}");
 
-        return new WebhookSignatureHeaders(messageId, unixTimestamp, $"v1,{Convert.ToBase64String(signature)}");
+        return new WebhookSignatureHeaders(messageId, unixTimestamp, string.Join(' ', signatures));
     }
 
     public WebhookVerificationResult Verify(

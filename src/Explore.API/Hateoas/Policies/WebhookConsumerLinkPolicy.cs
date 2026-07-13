@@ -1,5 +1,5 @@
 // ABOUTME: HAL link policy for webhook consumer management resources.
-// ABOUTME: Emits server-authorized provider portal and create affordances for webhook administration.
+// ABOUTME: Emits provider portal authority only from verified governed binding capability.
 
 using System.Security.Claims;
 using Explore.Application.Authorization;
@@ -33,18 +33,18 @@ public sealed class WebhookConsumerDetailLinkPolicy(IOptionsMonitor<WebhookOptio
                 "POST",
                 "Open advanced webhook provider portal",
                 RequiresAuth: true)
-                .RequirePermission(AuthorizationActions.Webhooks.OpenProviderPortal,
+                .RequirePermission(
+                    AuthorizationActions.Webhooks.OpenProviderPortal,
                     ResourceDescriptors.WebhookConsumer,
                     dto);
         }
     }
 
     private static bool CanOpenProviderPortal(WebhookConsumerDto dto, WebhookOptions options) =>
+        dto.CanOpenProviderPortal &&
         options is { IsDisabled: false, Svix: { AppPortalEnabled: true } } &&
         (options.IsProvider(WebhookOptions.ProviderSvix) ||
-         options.IsProvider(WebhookOptions.ProviderComposite)) &&
-        (string.Equals(dto.ProviderModeName, WebhookOptions.ProviderSvix, StringComparison.OrdinalIgnoreCase) ||
-         string.Equals(dto.ProviderModeName, WebhookOptions.ProviderComposite, StringComparison.OrdinalIgnoreCase));
+         options.IsProvider(WebhookOptions.ProviderComposite));
 }
 
 public sealed class WebhookConsumerCollectionLinkPolicy(ILinkPolicy<WebhookConsumerDto> detailPolicy)

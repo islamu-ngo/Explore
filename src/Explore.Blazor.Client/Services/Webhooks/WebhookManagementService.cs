@@ -160,7 +160,6 @@ public sealed class WebhookManagementService(
                 new OpenSvixAppPortalRequestDto
                 {
                     ConsumerId = consumerId,
-                    ReadOnly = false,
                     ExpiresInSeconds = 3600
                 },
                 cancellationToken: cancellationToken);

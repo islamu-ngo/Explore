@@ -5,6 +5,10 @@ using Explore.Domain;
 
 namespace Explore.Application.Contracts.Persistence;
 
+public sealed record WebhookEndpointFailureState(
+    int ConsecutiveFailureCount,
+    bool IsAutoPaused);
+
 public interface IWebhookEndpointRepository
 {
     Task<WebhookEndpoint> CreateWithSubscriptionsAsync(
@@ -67,9 +71,18 @@ public interface IWebhookEndpointRepository
         DateTime succeededAt,
         CancellationToken cancellationToken);
 
-    Task MarkFailureAsync(
+    Task<WebhookEndpointFailureState> RecordFailureAsync(
         Guid tenantId,
         Guid endpointId,
         DateTime failedAt,
+        string failureCategory,
+        int autoPauseThreshold,
+        CancellationToken cancellationToken);
+
+    Task<bool> TryResumeAsync(
+        Guid tenantId,
+        Guid endpointId,
+        DateTime resumedAt,
+        Guid actorUserId,
         CancellationToken cancellationToken);
 }

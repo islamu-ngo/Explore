@@ -27,7 +27,7 @@ public sealed class WebhookConsumerDto
 
     public required string Name { get; init; }
 
-    public string? ExternalProviderAppId { get; init; }
+    public bool CanOpenProviderPortal { get; init; }
 
     public DateTime CreatedAt { get; init; }
 

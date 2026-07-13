@@ -28,6 +28,12 @@ internal static class WebhookEndpointDtoMapper
             RateLimitPerMinute = endpoint.RateLimitPerMinute,
             LastSuccessAt = endpoint.LastSuccessAt,
             LastFailureAt = endpoint.LastFailureAt,
+            ConsecutiveFailureCount = endpoint.ConsecutiveFailureCount,
+            CircuitOpenedAt = endpoint.CircuitOpenedAt,
+            AutoPausedAt = endpoint.AutoPausedAt,
+            AutoPauseReason = endpoint.AutoPauseReason,
+            LastResumedAt = endpoint.LastResumedAt,
+            DeliveryStateVersion = endpoint.DeliveryStateVersion,
             CreatedAt = endpoint.CreatedAt,
             UpdatedAt = endpoint.UpdatedAt,
             Subscriptions = endpoint.Subscriptions

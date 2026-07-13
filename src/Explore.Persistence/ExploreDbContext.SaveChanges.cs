@@ -34,7 +34,7 @@ public partial class ExploreDbContext
                 {
                     case EntityState.Added:
                         auditable.CreatedAt = now;
-                        auditable.CreatedBy = userId;
+                        auditable.CreatedBy = userId ?? auditable.CreatedBy;
                         break;
 
                     case EntityState.Modified:

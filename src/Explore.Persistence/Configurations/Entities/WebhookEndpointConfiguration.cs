@@ -23,6 +23,9 @@ public class WebhookEndpointConfiguration : IEntityTypeConfiguration<WebhookEndp
         builder.Property(e => e.ProviderEndpointId).HasMaxLength(500);
         builder.Property(e => e.MaxAttempts).HasDefaultValue(8);
         builder.Property(e => e.TimeoutSeconds).HasDefaultValue(15);
+        builder.Property(e => e.ConsecutiveFailureCount).HasDefaultValue(0);
+        builder.Property(e => e.AutoPauseReason).HasMaxLength(100);
+        builder.Property(e => e.DeliveryStateVersion).HasDefaultValue(0).IsConcurrencyToken();
 
         builder.HasAlternateKey(e => new { e.TenantId, e.Id })
             .HasName("ak_webhook_endpoints_tenant_id_id");
@@ -40,6 +43,9 @@ public class WebhookEndpointConfiguration : IEntityTypeConfiguration<WebhookEndp
 
         builder.HasIndex(e => new { e.TenantId, e.ConsumerId, e.Status })
             .HasDatabaseName("ix_webhook_endpoints_tenant_consumer_status");
+
+        builder.HasIndex(e => new { e.Status, e.TenantId, e.Id })
+            .HasDatabaseName("ix_webhook_endpoints_status_tenant_id");
 
         builder.HasIndex(e => new { e.TenantId, e.ProviderEndpointId })
             .HasDatabaseName("ux_webhook_endpoints_tenant_provider_endpoint")
