@@ -1,6 +1,23 @@
 {
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
+    "local-default": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "https://localhost:17074;http://localhost:15185",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development",
+        "ISLAMU_ASPIRE_MODE": "DefaultLocal",
+        "SecretProvider__Provider": "None",
+        "Infisical__ProjectId": "",
+        "Infisical__ClientId": "",
+        "Infisical__ClientSecret": "",
+        "ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL": "https://localhost:21220",
+        "ASPIRE_RESOURCE_SERVICE_ENDPOINT_URL": "https://localhost:22156"
+      }
+    },
     "local-full": {
       "commandName": "Project",
       "dotnetRunMessages": true,

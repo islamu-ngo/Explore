@@ -36,7 +36,7 @@ Directory.CreateDirectory(grafanaDashboardPath);
 Console.WriteLine("===========================================");
 Console.WriteLine("Explore AppHost - Local Development Orchestrator");
 Console.WriteLine($"Mode: {runMode}");
-Console.WriteLine("local-full: local platform; local-core: local data/cache; local-lite: external infrastructure");
+Console.WriteLine("local-full: full local platform; local-default: lightweight local platform; local-core: local data/cache; local-lite: external infrastructure");
 Console.WriteLine("===========================================");
 
 // Delayed health check for startup sequencing
@@ -47,7 +47,7 @@ builder.Services.AddHealthChecks().AddCheck("startup-delay", () =>
 IResourceBuilder<PostgresDatabaseResource>? database = null;
 IResourceBuilder<RedisResource>? cache = null;
 IResourceBuilder<RabbitMQServerResource>? messaging = null;
-FullLocalResources? fullLocalResources = null;
+LocalPlatformResources? localPlatformResources = null;
 var mailpit = AddMailpit(builder);
 
 if (runMode.UsesLocalData())
@@ -61,14 +61,15 @@ if (runMode.UsesLocalData())
         .WithDataVolume("islamu-event-redis-data");
 }
 
-if (runMode == AspireRunMode.FullLocal)
+if (runMode is AspireRunMode.FullLocal or AspireRunMode.DefaultLocal)
 {
     messaging = builder.AddRabbitMQ("messaging")
         .WithManagementPlugin()
         .WithDataVolume("islamu-event-rabbitmq-data");
 
-    fullLocalResources = AddFullLocalPlatform(
+    localPlatformResources = AddLocalPlatform(
         builder,
+        includeHeavyExtras: runMode == AspireRunMode.FullLocal,
         cerbosConfigPath,
         cerbosPolicyPackagePath,
         cerbosSchemaPath,
@@ -167,15 +168,15 @@ else
     exploreAPI = exploreAPI.WithEnvironment("EmailDispatchRabbitMq__Enabled", "false");
 }
 
-if (fullLocalResources is not null)
+if (localPlatformResources is not null)
 {
-    exploreAPI = ConfigureFullLocalApi(
+    exploreAPI = ConfigureLocalPlatformApi(
             exploreAPI,
-            fullLocalResources,
+            localPlatformResources,
             builder.Configuration)
-        .WaitFor(fullLocalResources.Keycloak)
-        .WaitFor(fullLocalResources.Cerbos)
-        .WaitFor(fullLocalResources.Minio);
+        .WaitFor(localPlatformResources.Keycloak)
+        .WaitFor(localPlatformResources.Cerbos)
+        .WaitFor(localPlatformResources.Minio);
 }
 
 // Service discovery (via WithReference) automatically resolves the API URL at runtime.
@@ -213,16 +214,17 @@ if (cache is not null)
         .WaitFor(cache);
 }
 
-if (fullLocalResources is not null)
+if (localPlatformResources is not null)
 {
-    exploreBlazor = ConfigureFullLocalBlazor(exploreBlazor, fullLocalResources, builder.Configuration)
-        .WaitFor(fullLocalResources.Keycloak);
+    exploreBlazor = ConfigureLocalPlatformBlazor(exploreBlazor, localPlatformResources, builder.Configuration)
+        .WaitFor(localPlatformResources.Keycloak);
 }
 
 await builder.Build().RunAsync();
 
-static FullLocalResources AddFullLocalPlatform(
+static LocalPlatformResources AddLocalPlatform(
     IDistributedApplicationBuilder builder,
+    bool includeHeavyExtras,
     string cerbosConfigPath,
     string cerbosPolicyPackagePath,
     string cerbosSchemaPath,
@@ -383,189 +385,202 @@ static FullLocalResources AddFullLocalPlatform(
         svix = svix.WithEnvironment("SVIX_REDIS_DSN", "redis://cache:6379");
     }
 
-    var weblateDb = builder.AddContainer("weblate-postgres", "postgres", "18-alpine")
-        .WithEnvironment("POSTGRES_USER", configuration["WEBLATE_POSTGRES_USER"] ?? "weblate")
-        .WithEnvironment("POSTGRES_PASSWORD", configuration["WEBLATE_POSTGRES_PASSWORD"] ?? "weblate_password")
-        .WithEnvironment("POSTGRES_DB", configuration["WEBLATE_POSTGRES_DB"] ?? "weblate")
-        .WithVolume("islamu-event-weblate-postgres-data", "/var/lib/postgresql");
+    IResourceBuilder<ContainerResource>? weblateDb = null;
+    IResourceBuilder<ContainerResource>? weblate = null;
+    IResourceBuilder<ContainerResource>? coop = null;
+    IResourceBuilder<ContainerResource>? coopMigrations = null;
+    IResourceBuilder<ContainerResource>? coopClient = null;
+    IResourceBuilder<ContainerResource>? pgAdmin = null;
+    IResourceBuilder<ContainerResource>? osprey = null;
+    IResourceBuilder<ContainerResource>? prometheus = null;
+    IResourceBuilder<ContainerResource>? grafana = null;
 
-    var (weblateImage, weblateTag) = ResolveImageAndTag(
-        configuration["WEBLATE_IMAGE"] ?? "weblate/weblate:latest",
-        configuration["WEBLATE_TAG"] ?? "latest");
-    var weblate = builder.AddContainer("weblate", weblateImage, weblateTag)
-        .WithEnvironment("WEBLATE_SITE_DOMAIN", configuration["WEBLATE_SITE_DOMAIN"] ?? "localhost:8083")
-        .WithEnvironment("WEBLATE_ADMIN_NAME", configuration["WEBLATE_ADMIN_NAME"] ?? "Admin")
-        .WithEnvironment("WEBLATE_ADMIN_EMAIL", configuration["WEBLATE_ADMIN_EMAIL"] ?? "admin@openislamu.org")
-        .WithEnvironment("WEBLATE_ADMIN_PASSWORD", configuration["WEBLATE_ADMIN_PASSWORD"] ?? "admin")
-        .WithEnvironment("POSTGRES_HOST", "weblate-postgres")
-        .WithEnvironment("POSTGRES_PORT", "5432")
-        .WithEnvironment("POSTGRES_USER", configuration["WEBLATE_POSTGRES_USER"] ?? "weblate")
-        .WithEnvironment("POSTGRES_PASSWORD", configuration["WEBLATE_POSTGRES_PASSWORD"] ?? "weblate_password")
-        .WithEnvironment("POSTGRES_DB", configuration["WEBLATE_POSTGRES_DB"] ?? "weblate")
-        .WithHttpEndpoint(targetPort: 8080, port: 8083, name: "http")
-        .WithVolume("islamu-event-weblate-data", "/app/data")
-        .WaitFor(weblateDb);
-
-    if (cache is not null)
+    if (includeHeavyExtras)
     {
-        weblate = weblate
-            .WithEnvironment("VALKEY_HOST", "cache")
-            .WithEnvironment("VALKEY_PORT", "6380")
-            .WithEnvironment("REDIS_HOST", "cache")
-            .WithEnvironment("REDIS_PORT", "6380")
-            .WithEnvironment("REDIS_PASSWORD", cache.Resource.PasswordParameter!)
-            .WaitFor(cache);
+        weblateDb = builder.AddContainer("weblate-postgres", "postgres", "18-alpine")
+            .WithEnvironment("POSTGRES_USER", configuration["WEBLATE_POSTGRES_USER"] ?? "weblate")
+            .WithEnvironment("POSTGRES_PASSWORD", configuration["WEBLATE_POSTGRES_PASSWORD"] ?? "weblate_password")
+            .WithEnvironment("POSTGRES_DB", configuration["WEBLATE_POSTGRES_DB"] ?? "weblate")
+            .WithVolume("islamu-event-weblate-postgres-data", "/var/lib/postgresql");
+
+        var (weblateImage, weblateTag) = ResolveImageAndTag(
+            configuration["WEBLATE_IMAGE"] ?? "weblate/weblate:latest",
+            configuration["WEBLATE_TAG"] ?? "latest");
+        weblate = builder.AddContainer("weblate", weblateImage, weblateTag)
+            .WithEnvironment("WEBLATE_SITE_DOMAIN", configuration["WEBLATE_SITE_DOMAIN"] ?? "localhost:8083")
+            .WithEnvironment("WEBLATE_ADMIN_NAME", configuration["WEBLATE_ADMIN_NAME"] ?? "Admin")
+            .WithEnvironment("WEBLATE_ADMIN_EMAIL", configuration["WEBLATE_ADMIN_EMAIL"] ?? "admin@openislamu.org")
+            .WithEnvironment("WEBLATE_ADMIN_PASSWORD", configuration["WEBLATE_ADMIN_PASSWORD"] ?? "admin")
+            .WithEnvironment("POSTGRES_HOST", "weblate-postgres")
+            .WithEnvironment("POSTGRES_PORT", "5432")
+            .WithEnvironment("POSTGRES_USER", configuration["WEBLATE_POSTGRES_USER"] ?? "weblate")
+            .WithEnvironment("POSTGRES_PASSWORD", configuration["WEBLATE_POSTGRES_PASSWORD"] ?? "weblate_password")
+            .WithEnvironment("POSTGRES_DB", configuration["WEBLATE_POSTGRES_DB"] ?? "weblate")
+            .WithHttpEndpoint(targetPort: 8080, port: 8083, name: "http")
+            .WithVolume("islamu-event-weblate-data", "/app/data")
+            .WaitFor(weblateDb);
+
+        if (cache is not null)
+        {
+            weblate = weblate
+                .WithEnvironment("VALKEY_HOST", "cache")
+                .WithEnvironment("VALKEY_PORT", "6380")
+                .WithEnvironment("REDIS_HOST", "cache")
+                .WithEnvironment("REDIS_PORT", "6380")
+                .WithEnvironment("REDIS_PASSWORD", cache.Resource.PasswordParameter!)
+                .WaitFor(cache);
+        }
+
+        var coopDb = builder.AddContainer("coop-postgres", "postgres", "18-alpine")
+            .WithEnvironment("POSTGRES_USER", configuration["COOP_DATABASE_USER"] ?? "coop")
+            .WithEnvironment("POSTGRES_PASSWORD", configuration["COOP_DATABASE_PASSWORD"] ?? "coop_password")
+            .WithEnvironment("POSTGRES_DB", configuration["COOP_DATABASE_NAME"] ?? "coop")
+            .WithVolume("islamu-event-coop-postgres-data", "/var/lib/postgresql");
+
+        var (coopMigrationsImage, coopMigrationsTag) = ResolveImageAndTag(
+            builder.Configuration["COOP_MIGRATIONS_IMAGE"] ?? "ghcr.io/roostorg/coop-migrations",
+            "latest");
+        coopMigrations = builder.AddContainer("coop-migrations", coopMigrationsImage, coopMigrationsTag)
+            .WithEntrypoint("sh")
+            .WithArgs(
+                "-c",
+                "npm run db:create -- --db api-server-pg --env staging && npm run db:update -- --db api-server-pg --env staging")
+            .WithEnvironment("DATABASE_HOST", "coop-postgres")
+            .WithEnvironment("DATABASE_READ_ONLY_HOST", "coop-postgres")
+            .WithEnvironment("DATABASE_PORT", "5432")
+            .WithEnvironment("DATABASE_USER", builder.Configuration["COOP_DATABASE_USER"] ?? "coop")
+            .WithEnvironment("DATABASE_PASSWORD", builder.Configuration["COOP_DATABASE_PASSWORD"] ?? "coop_password")
+            .WithEnvironment("DATABASE_NAME", builder.Configuration["COOP_DATABASE_NAME"] ?? "coop")
+            .WithEnvironment("API_SERVER_DATABASE_HOST", "coop-postgres")
+            .WithEnvironment("API_SERVER_DATABASE_PORT", "5432")
+            .WithEnvironment("API_SERVER_DATABASE_USER", builder.Configuration["COOP_DATABASE_USER"] ?? "coop")
+            .WithEnvironment("API_SERVER_DATABASE_PASSWORD", builder.Configuration["COOP_DATABASE_PASSWORD"] ?? "coop_password")
+            .WithEnvironment("API_SERVER_DATABASE_NAME", builder.Configuration["COOP_DATABASE_NAME"] ?? "coop")
+            .WithEnvironment("SCYLLA_HOSTS", builder.Configuration["COOP_SCYLLA_HOSTS"] ?? "coop-scylla")
+            .WithEnvironment("SCYLLA_USERNAME", builder.Configuration["COOP_SCYLLA_USERNAME"] ?? "cassandra")
+            .WithEnvironment("SCYLLA_PASSWORD", builder.Configuration["COOP_SCYLLA_PASSWORD"] ?? "cassandra")
+            .WithEnvironment("SCYLLA_LOCAL_DATACENTER", builder.Configuration["COOP_SCYLLA_LOCAL_DATACENTER"] ?? "datacenter1")
+            .WithEnvironment("SCYLLA_SSL", builder.Configuration["COOP_SCYLLA_SSL"] ?? "false")
+            .WaitFor(coopDb);
+
+        var (coopImage, coopTag) = ResolveImageAndTag(
+            builder.Configuration["COOP_IMAGE"] ?? "ghcr.io/roostorg/coop-server",
+            "latest");
+        coop = builder.AddContainer("coop", coopImage, coopTag)
+            .WithEnvironment("NODE_ENV", builder.Configuration["COOP_NODE_ENV"] ?? "development")
+            .WithEnvironment("OTEL_SERVICE_NAME", builder.Configuration["COOP_OTEL_SERVICE_NAME"] ?? "coop")
+            .WithEnvironment("PORT", "8080")
+            .WithEnvironment("UI_URL", builder.Configuration["COOP_UI_URL"] ?? "http://localhost:3001")
+            .WithEnvironment("SESSION_SECRET", builder.Configuration["COOP_SESSION_SECRET"] ?? "local-dev-coop-session-secret")
+            .WithEnvironment("DATABASE_HOST", "coop-postgres")
+            .WithEnvironment("DATABASE_READ_ONLY_HOST", "coop-postgres")
+            .WithEnvironment("DATABASE_PORT", "5432")
+            .WithEnvironment("DATABASE_USER", builder.Configuration["COOP_DATABASE_USER"] ?? "coop")
+            .WithEnvironment("DATABASE_PASSWORD", builder.Configuration["COOP_DATABASE_PASSWORD"] ?? "coop_password")
+            .WithEnvironment("DATABASE_NAME", builder.Configuration["COOP_DATABASE_NAME"] ?? "coop")
+            .WithEnvironment("WAREHOUSE_ADAPTER", builder.Configuration["COOP_WAREHOUSE_ADAPTER"] ?? "noop")
+            .WithEnvironment("ANALYTICS_ADAPTER", builder.Configuration["COOP_ANALYTICS_ADAPTER"] ?? "noop")
+            .WithEnvironment("SCYLLA_HOSTS", builder.Configuration["COOP_SCYLLA_HOSTS"] ?? "coop-scylla")
+            .WithEnvironment("SCYLLA_USERNAME", builder.Configuration["COOP_SCYLLA_USERNAME"] ?? "cassandra")
+            .WithEnvironment("SCYLLA_PASSWORD", builder.Configuration["COOP_SCYLLA_PASSWORD"] ?? "cassandra")
+            .WithEnvironment("SCYLLA_LOCAL_DATACENTER", builder.Configuration["COOP_SCYLLA_LOCAL_DATACENTER"] ?? "datacenter1")
+            .WithEnvironment("SCYLLA_SSL", builder.Configuration["COOP_SCYLLA_SSL"] ?? "false")
+            .WithHttpEndpoint(targetPort: 8080, port: 8082, name: "http")
+            .WaitFor(coopDb)
+            .WaitForCompletion(coopMigrations);
+
+        if (cache is not null)
+        {
+            coop = coop
+                .WithEnvironment("REDIS_USE_CLUSTER", "false")
+                .WithEnvironment("REDIS_HOST", "cache")
+                .WithEnvironment("REDIS_PORT", "6380")
+                .WithEnvironment("REDIS_PASSWORD", cache.Resource.PasswordParameter!)
+                .WaitFor(cache);
+        }
+
+        var (coopClientImage, coopClientTag) = ResolveImageAndTag(
+            builder.Configuration["COOP_CLIENT_IMAGE"] ?? "ghcr.io/roostorg/coop-client",
+            "latest");
+        coopClient = builder.AddContainer("coop-client", coopClientImage, coopClientTag)
+            .WithBindMount(coopNginxConfigPath, "/etc/nginx/conf.d/default.conf", isReadOnly: true)
+            .WithHttpEndpoint(targetPort: 80, port: 3001, name: "http")
+            .WaitFor(coop);
+
+        pgAdmin = builder.AddContainer("pgadmin", "dpage/pgadmin4", "latest")
+            .WithEnvironment("PGADMIN_DEFAULT_EMAIL", "admin@openislamu.org")
+            .WithEnvironment("PGADMIN_DEFAULT_PASSWORD", "admin")
+            .WithEnvironment("PGADMIN_DISABLE_POSTFIX", "true")
+            .WithEnvironment("PGADMIN_SERVER_JSON_FILE", "/pgadmin4/servers.json")
+            .WithEnvironment("PGADMIN_REPLACE_SERVERS_ON_STARTUP", "True")
+            .WithEnvironment("PGPASS_FILE", "/pgadmin4/pgpass")
+            .WithBindMount(pgAdminServersPath, "/pgadmin4/servers.json", isReadOnly: true)
+            .WithBindMount(pgAdminPassFilePath, "/pgadmin4/pgpass", isReadOnly: true)
+            .WithVolume("islamu-event-pgadmin-data", "/var/lib/pgadmin")
+            .WithHttpEndpoint(targetPort: 80, port: 5050, name: "http")
+            .WaitFor(cerbosDb)
+            .WaitFor(svixDb)
+            .WaitFor(weblateDb)
+            .WaitFor(coopDb);
+
+        if (appDatabase is not null)
+        {
+            pgAdmin = pgAdmin.WaitFor(appDatabase);
+        }
+
+        var ospreyKafka = builder.AddContainer("osprey-kafka", "confluentinc/cp-kafka", "7.4.0")
+            .WithEnvironment("KAFKA_NODE_ID", "1")
+            .WithEnvironment("KAFKA_PROCESS_ROLES", "broker,controller")
+            .WithEnvironment("KAFKA_CONTROLLER_QUORUM_VOTERS", "1@osprey-kafka:29093")
+            .WithEnvironment("KAFKA_CONTROLLER_LISTENER_NAMES", "CONTROLLER")
+            .WithEnvironment("KAFKA_INTER_BROKER_LISTENER_NAME", "INTERNAL")
+            .WithEnvironment("KAFKA_LISTENERS", "INTERNAL://osprey-kafka:29092,CONTROLLER://osprey-kafka:29093")
+            .WithEnvironment("KAFKA_ADVERTISED_LISTENERS", "INTERNAL://osprey-kafka:29092")
+            .WithEnvironment("KAFKA_LISTENER_SECURITY_PROTOCOL_MAP", "INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT")
+            .WithEnvironment("KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR", "1")
+            .WithEnvironment("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
+            .WithEnvironment("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
+            .WithEnvironment("KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS", "0")
+            .WithEnvironment("CLUSTER_ID", "P45WxmmWSe2CrdGoeJMcKg");
+
+        var ospreyKafkaBootstrap = builder.AddContainer("osprey-kafka-bootstrap", "confluentinc/cp-kafka", "7.4.0")
+            .WithEntrypoint("bash")
+            .WithArgs(
+                "-c",
+                "until kafka-topics --bootstrap-server osprey-kafka:29092 --list >/dev/null 2>&1; do sleep 1; done; kafka-topics --bootstrap-server osprey-kafka:29092 --create --if-not-exists --topic osprey.actions_input --partitions 3 --replication-factor 1")
+            .WaitFor(ospreyKafka);
+
+        var (ospreyImage, ospreyTag) = ResolveImageAndTag(
+            configuration["OSPREY_IMAGE"] ?? "ghcr.io/roostorg/osprey/osprey-coordinator:latest",
+            configuration["OSPREY_TAG"] ?? "latest");
+        osprey = builder.AddContainer("osprey", ospreyImage, ospreyTag)
+            .WithEnvironment("RUST_LOG", configuration["OSPREY_RUST_LOG"] ?? "info")
+            .WithEnvironment("OSPREY_COORDINATOR_CONSUMER_TYPE", "kafka")
+            .WithEnvironment("OSPREY_KAFKA_BOOTSTRAP_SERVERS", "osprey-kafka:29092")
+            .WithEnvironment("OSPREY_KAFKA_INPUT_STREAM_TOPIC", "osprey.actions_input")
+            .WithEnvironment("OSPREY_KAFKA_GROUP_ID", "osprey_coordinator_group")
+            .WithEnvironment("OSPREY_COORDINATOR_BIDI_STREAM_PORT", "19950")
+            .WithEnvironment("OSPREY_COORDINATOR_SYNC_ACTION_PORT", "19951")
+            .WithEnvironment("POD_IP", "osprey")
+            .WithEndpoint(targetPort: 19950, port: 19950, name: "bidi-stream", protocol: ProtocolType.Tcp)
+            .WithEndpoint(targetPort: 19951, port: 19951, name: "sync-action", protocol: ProtocolType.Tcp)
+            .WaitForCompletion(ospreyKafkaBootstrap);
+
+        prometheus = builder.AddContainer("prometheus", "prom/prometheus", "v3.2.1")
+            .WithBindMount(prometheusConfigPath, "/etc/prometheus/prometheus.yaml", isReadOnly: true)
+            .WithArgs("--web.enable-otlp-receiver", "--config.file=/etc/prometheus/prometheus.yaml")
+            .WithHttpEndpoint(targetPort: 9090, port: 9090, name: "http")
+            .WithVolume("islamu-event-prometheus-data", "/prometheus");
+
+        grafana = builder.AddContainer("grafana", "grafana/grafana", "latest")
+            .WithBindMount(grafanaDashboardPath, "/var/lib/grafana/dashboards", isReadOnly: true)
+            .WithEnvironment("PROMETHEUS_ENDPOINT", "http://prometheus:9090")
+            .WithHttpEndpoint(targetPort: 3000, port: 3000, name: "http")
+            .WithVolume("islamu-event-grafana-data", "/var/lib/grafana")
+            .WaitFor(prometheus);
     }
 
-    var coopDb = builder.AddContainer("coop-postgres", "postgres", "18-alpine")
-        .WithEnvironment("POSTGRES_USER", configuration["COOP_DATABASE_USER"] ?? "coop")
-        .WithEnvironment("POSTGRES_PASSWORD", configuration["COOP_DATABASE_PASSWORD"] ?? "coop_password")
-        .WithEnvironment("POSTGRES_DB", configuration["COOP_DATABASE_NAME"] ?? "coop")
-        .WithVolume("islamu-event-coop-postgres-data", "/var/lib/postgresql");
-
-    var (coopMigrationsImage, coopMigrationsTag) = ResolveImageAndTag(
-        builder.Configuration["COOP_MIGRATIONS_IMAGE"] ?? "ghcr.io/roostorg/coop-migrations",
-        "latest");
-    var coopMigrations = builder.AddContainer("coop-migrations", coopMigrationsImage, coopMigrationsTag)
-        .WithEntrypoint("sh")
-        .WithArgs(
-            "-c",
-            "npm run db:create -- --db api-server-pg --env staging && npm run db:update -- --db api-server-pg --env staging")
-        .WithEnvironment("DATABASE_HOST", "coop-postgres")
-        .WithEnvironment("DATABASE_READ_ONLY_HOST", "coop-postgres")
-        .WithEnvironment("DATABASE_PORT", "5432")
-        .WithEnvironment("DATABASE_USER", builder.Configuration["COOP_DATABASE_USER"] ?? "coop")
-        .WithEnvironment("DATABASE_PASSWORD", builder.Configuration["COOP_DATABASE_PASSWORD"] ?? "coop_password")
-        .WithEnvironment("DATABASE_NAME", builder.Configuration["COOP_DATABASE_NAME"] ?? "coop")
-        .WithEnvironment("API_SERVER_DATABASE_HOST", "coop-postgres")
-        .WithEnvironment("API_SERVER_DATABASE_PORT", "5432")
-        .WithEnvironment("API_SERVER_DATABASE_USER", builder.Configuration["COOP_DATABASE_USER"] ?? "coop")
-        .WithEnvironment("API_SERVER_DATABASE_PASSWORD", builder.Configuration["COOP_DATABASE_PASSWORD"] ?? "coop_password")
-        .WithEnvironment("API_SERVER_DATABASE_NAME", builder.Configuration["COOP_DATABASE_NAME"] ?? "coop")
-        .WithEnvironment("SCYLLA_HOSTS", builder.Configuration["COOP_SCYLLA_HOSTS"] ?? "coop-scylla")
-        .WithEnvironment("SCYLLA_USERNAME", builder.Configuration["COOP_SCYLLA_USERNAME"] ?? "cassandra")
-        .WithEnvironment("SCYLLA_PASSWORD", builder.Configuration["COOP_SCYLLA_PASSWORD"] ?? "cassandra")
-        .WithEnvironment("SCYLLA_LOCAL_DATACENTER", builder.Configuration["COOP_SCYLLA_LOCAL_DATACENTER"] ?? "datacenter1")
-        .WithEnvironment("SCYLLA_SSL", builder.Configuration["COOP_SCYLLA_SSL"] ?? "false")
-        .WaitFor(coopDb);
-
-    var (coopImage, coopTag) = ResolveImageAndTag(
-        builder.Configuration["COOP_IMAGE"] ?? "ghcr.io/roostorg/coop-server",
-        "latest");
-    var coop = builder.AddContainer("coop", coopImage, coopTag)
-        .WithEnvironment("NODE_ENV", builder.Configuration["COOP_NODE_ENV"] ?? "development")
-        .WithEnvironment("OTEL_SERVICE_NAME", builder.Configuration["COOP_OTEL_SERVICE_NAME"] ?? "coop")
-        .WithEnvironment("PORT", "8080")
-        .WithEnvironment("UI_URL", builder.Configuration["COOP_UI_URL"] ?? "http://localhost:3001")
-        .WithEnvironment("SESSION_SECRET", builder.Configuration["COOP_SESSION_SECRET"] ?? "local-dev-coop-session-secret")
-        .WithEnvironment("DATABASE_HOST", "coop-postgres")
-        .WithEnvironment("DATABASE_READ_ONLY_HOST", "coop-postgres")
-        .WithEnvironment("DATABASE_PORT", "5432")
-        .WithEnvironment("DATABASE_USER", builder.Configuration["COOP_DATABASE_USER"] ?? "coop")
-        .WithEnvironment("DATABASE_PASSWORD", builder.Configuration["COOP_DATABASE_PASSWORD"] ?? "coop_password")
-        .WithEnvironment("DATABASE_NAME", builder.Configuration["COOP_DATABASE_NAME"] ?? "coop")
-        .WithEnvironment("WAREHOUSE_ADAPTER", builder.Configuration["COOP_WAREHOUSE_ADAPTER"] ?? "noop")
-        .WithEnvironment("ANALYTICS_ADAPTER", builder.Configuration["COOP_ANALYTICS_ADAPTER"] ?? "noop")
-        .WithEnvironment("SCYLLA_HOSTS", builder.Configuration["COOP_SCYLLA_HOSTS"] ?? "coop-scylla")
-        .WithEnvironment("SCYLLA_USERNAME", builder.Configuration["COOP_SCYLLA_USERNAME"] ?? "cassandra")
-        .WithEnvironment("SCYLLA_PASSWORD", builder.Configuration["COOP_SCYLLA_PASSWORD"] ?? "cassandra")
-        .WithEnvironment("SCYLLA_LOCAL_DATACENTER", builder.Configuration["COOP_SCYLLA_LOCAL_DATACENTER"] ?? "datacenter1")
-        .WithEnvironment("SCYLLA_SSL", builder.Configuration["COOP_SCYLLA_SSL"] ?? "false")
-        .WithHttpEndpoint(targetPort: 8080, port: 8082, name: "http")
-        .WaitFor(coopDb)
-        .WaitForCompletion(coopMigrations);
-
-    if (cache is not null)
-    {
-        coop = coop
-            .WithEnvironment("REDIS_USE_CLUSTER", "false")
-            .WithEnvironment("REDIS_HOST", "cache")
-            .WithEnvironment("REDIS_PORT", "6380")
-            .WithEnvironment("REDIS_PASSWORD", cache.Resource.PasswordParameter!)
-            .WaitFor(cache);
-    }
-
-    var (coopClientImage, coopClientTag) = ResolveImageAndTag(
-        builder.Configuration["COOP_CLIENT_IMAGE"] ?? "ghcr.io/roostorg/coop-client",
-        "latest");
-    var coopClient = builder.AddContainer("coop-client", coopClientImage, coopClientTag)
-        .WithBindMount(coopNginxConfigPath, "/etc/nginx/conf.d/default.conf", isReadOnly: true)
-        .WithHttpEndpoint(targetPort: 80, port: 3001, name: "http")
-        .WaitFor(coop);
-
-    var pgAdmin = builder.AddContainer("pgadmin", "dpage/pgadmin4", "latest")
-        .WithEnvironment("PGADMIN_DEFAULT_EMAIL", "admin@openislamu.org")
-        .WithEnvironment("PGADMIN_DEFAULT_PASSWORD", "admin")
-        .WithEnvironment("PGADMIN_DISABLE_POSTFIX", "true")
-        .WithEnvironment("PGADMIN_SERVER_JSON_FILE", "/pgadmin4/servers.json")
-        .WithEnvironment("PGADMIN_REPLACE_SERVERS_ON_STARTUP", "True")
-        .WithEnvironment("PGPASS_FILE", "/pgadmin4/pgpass")
-        .WithBindMount(pgAdminServersPath, "/pgadmin4/servers.json", isReadOnly: true)
-        .WithBindMount(pgAdminPassFilePath, "/pgadmin4/pgpass", isReadOnly: true)
-        .WithVolume("islamu-event-pgadmin-data", "/var/lib/pgadmin")
-        .WithHttpEndpoint(targetPort: 80, port: 5050, name: "http")
-        .WaitFor(cerbosDb)
-        .WaitFor(svixDb)
-        .WaitFor(weblateDb)
-        .WaitFor(coopDb);
-
-    if (appDatabase is not null)
-    {
-        pgAdmin = pgAdmin.WaitFor(appDatabase);
-    }
-
-    var ospreyKafka = builder.AddContainer("osprey-kafka", "confluentinc/cp-kafka", "7.4.0")
-        .WithEnvironment("KAFKA_NODE_ID", "1")
-        .WithEnvironment("KAFKA_PROCESS_ROLES", "broker,controller")
-        .WithEnvironment("KAFKA_CONTROLLER_QUORUM_VOTERS", "1@osprey-kafka:29093")
-        .WithEnvironment("KAFKA_CONTROLLER_LISTENER_NAMES", "CONTROLLER")
-        .WithEnvironment("KAFKA_INTER_BROKER_LISTENER_NAME", "INTERNAL")
-        .WithEnvironment("KAFKA_LISTENERS", "INTERNAL://osprey-kafka:29092,CONTROLLER://osprey-kafka:29093")
-        .WithEnvironment("KAFKA_ADVERTISED_LISTENERS", "INTERNAL://osprey-kafka:29092")
-        .WithEnvironment("KAFKA_LISTENER_SECURITY_PROTOCOL_MAP", "INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT")
-        .WithEnvironment("KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR", "1")
-        .WithEnvironment("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
-        .WithEnvironment("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
-        .WithEnvironment("KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS", "0")
-        .WithEnvironment("CLUSTER_ID", "P45WxmmWSe2CrdGoeJMcKg");
-
-    var ospreyKafkaBootstrap = builder.AddContainer("osprey-kafka-bootstrap", "confluentinc/cp-kafka", "7.4.0")
-        .WithEntrypoint("bash")
-        .WithArgs(
-            "-c",
-            "until kafka-topics --bootstrap-server osprey-kafka:29092 --list >/dev/null 2>&1; do sleep 1; done; kafka-topics --bootstrap-server osprey-kafka:29092 --create --if-not-exists --topic osprey.actions_input --partitions 3 --replication-factor 1")
-        .WaitFor(ospreyKafka);
-
-    var (ospreyImage, ospreyTag) = ResolveImageAndTag(
-        configuration["OSPREY_IMAGE"] ?? "ghcr.io/roostorg/osprey/osprey-coordinator:latest",
-        configuration["OSPREY_TAG"] ?? "latest");
-    var osprey = builder.AddContainer("osprey", ospreyImage, ospreyTag)
-        .WithEnvironment("RUST_LOG", configuration["OSPREY_RUST_LOG"] ?? "info")
-        .WithEnvironment("OSPREY_COORDINATOR_CONSUMER_TYPE", "kafka")
-        .WithEnvironment("OSPREY_KAFKA_BOOTSTRAP_SERVERS", "osprey-kafka:29092")
-        .WithEnvironment("OSPREY_KAFKA_INPUT_STREAM_TOPIC", "osprey.actions_input")
-        .WithEnvironment("OSPREY_KAFKA_GROUP_ID", "osprey_coordinator_group")
-        .WithEnvironment("OSPREY_COORDINATOR_BIDI_STREAM_PORT", "19950")
-        .WithEnvironment("OSPREY_COORDINATOR_SYNC_ACTION_PORT", "19951")
-        .WithEnvironment("POD_IP", "osprey")
-        .WithEndpoint(targetPort: 19950, port: 19950, name: "bidi-stream", protocol: ProtocolType.Tcp)
-        .WithEndpoint(targetPort: 19951, port: 19951, name: "sync-action", protocol: ProtocolType.Tcp)
-        .WaitForCompletion(ospreyKafkaBootstrap);
-
-    var prometheus = builder.AddContainer("prometheus", "prom/prometheus", "v3.2.1")
-        .WithBindMount(prometheusConfigPath, "/etc/prometheus/prometheus.yaml", isReadOnly: true)
-        .WithArgs("--web.enable-otlp-receiver", "--config.file=/etc/prometheus/prometheus.yaml")
-        .WithHttpEndpoint(targetPort: 9090, port: 9090, name: "http")
-        .WithVolume("islamu-event-prometheus-data", "/prometheus");
-
-    var grafana = builder.AddContainer("grafana", "grafana/grafana", "latest")
-        .WithBindMount(grafanaDashboardPath, "/var/lib/grafana/dashboards", isReadOnly: true)
-        .WithEnvironment("PROMETHEUS_ENDPOINT", "http://prometheus:9090")
-        .WithHttpEndpoint(targetPort: 3000, port: 3000, name: "http")
-        .WithVolume("islamu-event-grafana-data", "/var/lib/grafana")
-        .WaitFor(prometheus);
-
-    return new FullLocalResources(
+    return new LocalPlatformResources(
         Keycloak: keycloak,
         KeycloakInit: keycloakInit,
         Cerbos: cerbos,
@@ -630,9 +645,9 @@ static IResourceBuilder<ProjectResource> ConfigureLocalMailpitSmtp(
         .WithEnvironment("SMTP_FROM_NAME", configuration["MAIL_SMTP_FROM_NAME"] ?? "ISLAMU Event Dev");
 }
 
-static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
+static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
     IResourceBuilder<ProjectResource> api,
-    FullLocalResources resources,
+    LocalPlatformResources resources,
     IConfiguration configuration)
 {
     var keycloakRealm = configuration["KEYCLOAK_REALM"] ?? "ISLAMU";
@@ -652,7 +667,6 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
     var cerbosGrpcEndpoint = HttpEndpointFromHostAndPort(resources.Cerbos, "grpc");
     var cerbosHttpEndpoint = EndpointUrl(resources.Cerbos, "http");
     var minioApiEndpoint = EndpointUrl(resources.Minio, "api");
-    var coopEndpoint = EndpointUrl(resources.Coop, "http");
     var svixEndpoint = EndpointUrl(resources.Svix, "http");
 
     api = api
@@ -695,8 +709,6 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
         .WithEnvironment("Reporting__ExecuteDecisions", configuration["REPORTING_EXECUTE_DECISIONS"] ?? "true")
         .WithEnvironment("Reporting__Osprey__Enabled", configuration["REPORTING_OSPREY_ENABLED"] ?? "false")
         .WithEnvironment("Reporting__Osprey__AllowLocalProviderEndpoints", configuration["REPORTING_OSPREY_ALLOW_LOCAL_PROVIDER_ENDPOINTS"] ?? "true")
-        .WithEnvironment("Reporting__Coop__Enabled", configuration["REPORTING_COOP_ENABLED"] ?? "true")
-        .WithEnvironment("Reporting__Coop__EndpointUrl", coopEndpoint)
         .WithEnvironment("Reporting__Coop__ApiKey", configuration["REPORTING_COOP_API_KEY"] ?? "local-dev-coop-api-key")
         .WithEnvironment("Reporting__Coop__AllowLocalProviderEndpoints", configuration["REPORTING_COOP_ALLOW_LOCAL_PROVIDER_ENDPOINTS"] ?? "true")
         .WithEnvironment("Reporting__Coop__WebhookSecret", configuration["REPORTING_COOP_WEBHOOK_SECRET"] ?? "local-dev-coop-webhook-secret")
@@ -708,20 +720,30 @@ static IResourceBuilder<ProjectResource> ConfigureFullLocalApi(
         .WithEnvironment("WEBHOOKS_SVIX_AUTH_TOKEN", configuration["WEBHOOKS_SVIX_AUTH_TOKEN"] ?? string.Empty)
         .WithEnvironment("WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET", configuration["WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET"] ?? string.Empty);
 
+    api = resources.Coop is not null
+        ? api
+            .WithEnvironment("Reporting__Coop__Enabled", configuration["REPORTING_COOP_ENABLED"] ?? "true")
+            .WithEnvironment("Reporting__Coop__EndpointUrl", EndpointUrl(resources.Coop, "http"))
+            .WaitFor(resources.Coop)
+        : api.WithEnvironment("Reporting__Coop__Enabled", configuration["REPORTING_COOP_ENABLED"] ?? "false");
+
+    if (resources.Weblate is not null)
+    {
+        api = api.WaitFor(resources.Weblate);
+    }
+
     api = api
         .WaitFor(resources.Cerbos)
         .WaitFor(resources.Svix)
-        .WaitFor(resources.Weblate)
-        .WaitFor(resources.Coop)
         .WaitForCompletion(resources.KeycloakInit)
         .WaitForCompletion(resources.MinioBootstrap);
 
     return api;
 }
 
-static IResourceBuilder<ProjectResource> ConfigureFullLocalBlazor(
+static IResourceBuilder<ProjectResource> ConfigureLocalPlatformBlazor(
     IResourceBuilder<ProjectResource> blazor,
-    FullLocalResources resources,
+    LocalPlatformResources resources,
     IConfiguration configuration)
 {
     var keycloakRealm = configuration["KEYCLOAK_REALM"] ?? "ISLAMU";
@@ -876,6 +898,7 @@ static string ConfiguredValue(IConfiguration configuration, string key, string f
 internal enum AspireRunMode
 {
     FullLocal,
+    DefaultLocal,
     ExternalInfra,
     LocalDataExternalPlatform
 }
@@ -883,13 +906,13 @@ internal enum AspireRunMode
 internal static class AspireRunModeExtensions
 {
     public static bool UsesLocalData(this AspireRunMode runMode) =>
-        runMode is AspireRunMode.FullLocal or AspireRunMode.LocalDataExternalPlatform;
+        runMode is AspireRunMode.FullLocal or AspireRunMode.DefaultLocal or AspireRunMode.LocalDataExternalPlatform;
 
     public static AspireRunMode Parse(string? rawValue)
     {
         if (string.IsNullOrWhiteSpace(rawValue))
         {
-            return AspireRunMode.FullLocal;
+            return AspireRunMode.DefaultLocal;
         }
 
         var normalized = rawValue.Trim()
@@ -902,6 +925,13 @@ internal static class AspireRunModeExtensions
             || normalized.Equals("fulllocal", StringComparison.OrdinalIgnoreCase))
         {
             return AspireRunMode.FullLocal;
+        }
+
+        if (normalized.Equals("default", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("localdefault", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("defaultlocal", StringComparison.OrdinalIgnoreCase))
+        {
+            return AspireRunMode.DefaultLocal;
         }
 
         if (normalized.Equals("lite", StringComparison.OrdinalIgnoreCase)
@@ -919,26 +949,26 @@ internal static class AspireRunModeExtensions
         }
 
         throw new InvalidOperationException(
-            $"Unsupported ISLAMU_ASPIRE_MODE '{rawValue}'. Use FullLocal, ExternalInfra, or LocalDataExternalPlatform.");
+            $"Unsupported ISLAMU_ASPIRE_MODE '{rawValue}'. Use FullLocal, DefaultLocal, ExternalInfra, or LocalDataExternalPlatform.");
     }
 }
 
-internal sealed record FullLocalResources(
+internal sealed record LocalPlatformResources(
     IResourceBuilder<ContainerResource> Keycloak,
     IResourceBuilder<ContainerResource> KeycloakInit,
     IResourceBuilder<ContainerResource> Cerbos,
     IResourceBuilder<ContainerResource> Minio,
     IResourceBuilder<ContainerResource> MinioBootstrap,
     IResourceBuilder<ContainerResource> Svix,
-    IResourceBuilder<ContainerResource> WeblateDb,
-    IResourceBuilder<ContainerResource> Weblate,
-    IResourceBuilder<ContainerResource> Coop,
-    IResourceBuilder<ContainerResource> CoopMigrations,
-    IResourceBuilder<ContainerResource> CoopClient,
-    IResourceBuilder<ContainerResource> PgAdmin,
+    IResourceBuilder<ContainerResource>? WeblateDb,
+    IResourceBuilder<ContainerResource>? Weblate,
+    IResourceBuilder<ContainerResource>? Coop,
+    IResourceBuilder<ContainerResource>? CoopMigrations,
+    IResourceBuilder<ContainerResource>? CoopClient,
+    IResourceBuilder<ContainerResource>? PgAdmin,
     IResourceBuilder<ContainerResource>? Osprey,
-    IResourceBuilder<ContainerResource> Prometheus,
-    IResourceBuilder<ContainerResource> Grafana);
+    IResourceBuilder<ContainerResource>? Prometheus,
+    IResourceBuilder<ContainerResource>? Grafana);
 
 internal sealed record InfisicalBootstrapSettings(
     string Url,
