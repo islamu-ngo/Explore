@@ -747,11 +747,12 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         }
     }
 
-    private void CloseDetailDrawer()
+    private async Task CloseDetailDrawer()
     {
         _detailDrawerOpen = false;
         ClearDetailPreviewTransientState();
         RequireDockingController().CloseEventPreviewIfRegistered();
+        await RefreshDetailPreviewAsync();
     }
 
     private void OnDetailDrawerOpenChanged(bool open)
@@ -773,6 +774,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     private void ClearDetailPreviewTransientState()
     {
+        _selectedEvent = null;
         _selectedEventDetail = null;
         _selectedEventSessions = null;
         _isDetailImageLoading = false;
@@ -780,7 +782,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         _showTagCatPopup = false;
     }
 
-    private void HandleOutsideDrawerClick()
+    private async Task HandleOutsideDrawerClick()
     {
         if (_showInlineRegistration || _showTagCatPopup)
         {
@@ -789,7 +791,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         }
         else
         {
-            CloseDetailDrawer();
+            await CloseDetailDrawer();
         }
     }
 
@@ -1025,7 +1027,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         }
     }
 
-    private void HandleDrawerCloseClick()
+    private async Task HandleDrawerCloseClick()
     {
         if (_showInlineRegistration || _showTagCatPopup)
         {
@@ -1034,7 +1036,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         }
         else
         {
-            CloseDetailDrawer();
+            await CloseDetailDrawer();
         }
     }
 

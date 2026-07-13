@@ -794,7 +794,7 @@ public class EventListTests : IDisposable
         SetPrivateField(cut.Instance, "_showInlineRegistration", true);
         SetPrivateField(cut.Instance, "_showTagCatPopup", true);
 
-        await InvokePrivateVoidAsync(cut, "CloseDetailDrawer");
+        await InvokePrivateTaskAsync(cut, "CloseDetailDrawer");
 
         await Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsFalse();
         await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsFalse();
