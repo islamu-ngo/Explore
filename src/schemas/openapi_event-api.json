@@ -29361,6 +29361,17 @@
               "application/json": { }
             }
           },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
           "413": {
             "description": "Payload Too Large",
             "content": {
@@ -54716,6 +54727,111 @@
         "x-output-cache-policy": "DetailData"
       }
     },
+    "/api/webhooks/endpoints/{endpointId}/resume": {
+      "post": {
+        "tags": [
+          "WebhookEndpointOperations"
+        ],
+        "summary": "Resume webhook endpoint",
+        "description": "Resumes a tenant-scoped Local webhook endpoint after its sustained-failure circuit auto-paused delivery.",
+        "operationId": "ResumeWebhookEndpoint",
+        "parameters": [
+          {
+            "name": "endpointId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
     "/api/webhooks/event-types": {
       "get": {
         "tags": [
@@ -55709,7 +55825,7 @@
           "Webhooks"
         ],
         "summary": "Open Svix App Portal",
-        "description": "Creates a short-lived Svix App Portal URL for the current tenant or webhook consumer.",
+        "description": "Creates a short-lived Svix App Portal URL for a verified webhook consumer binding.",
         "operationId": "OpenSvixAppPortal",
         "parameters": [
           {
@@ -55789,6 +55905,17 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -64100,12 +64227,6 @@
               "string"
             ],
             "format": "int32"
-          },
-          "externalProviderAppId": {
-            "type": [
-              "null",
-              "string"
-            ]
           }
         }
       },
@@ -84512,8 +84633,11 @@
       },
       "HalResourceOfWebhookConsumerDto": {
         "required": [
+          "consumerKindCode",
           "consumerKindName",
+          "statusCode",
           "statusName",
+          "providerModeCode",
           "providerModeName",
           "name"
         ],
@@ -84549,6 +84673,9 @@
             ],
             "format": "int32"
           },
+          "consumerKindCode": {
+            "type": "string"
+          },
           "consumerKindName": {
             "type": "string"
           },
@@ -84559,6 +84686,9 @@
               "string"
             ],
             "format": "int32"
+          },
+          "statusCode": {
+            "type": "string"
           },
           "statusName": {
             "type": "string"
@@ -84571,17 +84701,14 @@
             ],
             "format": "int32"
           },
+          "providerModeCode": {
+            "type": "string"
+          },
           "providerModeName": {
             "type": "string"
           },
           "name": {
             "type": "string"
-          },
-          "externalProviderAppId": {
-            "type": [
-              "null",
-              "string"
-            ]
           },
           "createdAt": {
             "type": "string",
@@ -84612,7 +84739,10 @@
       },
       "HalResourceOfWebhookDeliveryAttemptDto": {
         "required": [
-          "statusName"
+          "endpointStatusCode",
+          "endpointStatusName",
+          "outcomeCode",
+          "outcomeName"
         ],
         "type": "object",
         "properties": {
@@ -84638,11 +84768,19 @@
             "type": "string",
             "format": "uuid"
           },
-          "endpointUrl": {
+          "endpointStatusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
-              "null",
+              "integer",
               "string"
-            ]
+            ],
+            "format": "int32"
+          },
+          "endpointStatusCode": {
+            "type": "string"
+          },
+          "endpointStatusName": {
+            "type": "string"
           },
           "attemptNumber": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -84652,7 +84790,7 @@
             ],
             "format": "int32"
           },
-          "statusId": {
+          "outcomeId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -84660,7 +84798,10 @@
             ],
             "format": "int32"
           },
-          "statusName": {
+          "outcomeCode": {
+            "type": "string"
+          },
+          "outcomeName": {
             "type": "string"
           },
           "scheduledAt": {
@@ -84691,12 +84832,6 @@
             "format": "int32"
           },
           "failureCategory": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "responseBodyPreview": {
             "type": [
               "null",
               "string"
@@ -84747,8 +84882,10 @@
       },
       "HalResourceOfWebhookEndpointDto": {
         "required": [
+          "providerModeCode",
           "providerModeName",
-          "url",
+          "destinationHost",
+          "statusCode",
           "statusName"
         ],
         "type": "object",
@@ -84779,10 +84916,13 @@
             ],
             "format": "int32"
           },
+          "providerModeCode": {
+            "type": "string"
+          },
           "providerModeName": {
             "type": "string"
           },
-          "url": {
+          "destinationHost": {
             "type": "string"
           },
           "description": {
@@ -84798,6 +84938,9 @@
               "string"
             ],
             "format": "int32"
+          },
+          "statusCode": {
+            "type": "string"
           },
           "statusName": {
             "type": "string"
@@ -84854,6 +84997,49 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "consecutiveFailureCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "circuitOpenedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "autoPausedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "autoPauseReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lastResumedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "deliveryStateVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           },
           "createdAt": {
             "type": "string",
@@ -84920,9 +85106,7 @@
           "eventType",
           "eventId",
           "aggregateKind",
-          "payloadHash",
-          "providerModeName",
-          "statusName"
+          "payloadHash"
         ],
         "type": "object",
         "properties": {
@@ -84974,43 +85158,8 @@
             ],
             "format": "date-time"
           },
-          "providerModeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "providerModeName": {
-            "type": "string"
-          },
-          "providerMessageId": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "statusId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "statusName": {
-            "type": "string"
-          },
           "createdAt": {
             "type": "string",
-            "format": "date-time"
-          },
-          "publishedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
             "format": "date-time"
           },
           "updatedAt": {
@@ -89441,14 +89590,8 @@
         "type": "object",
         "properties": {
           "consumerId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": "string",
             "format": "uuid"
-          },
-          "readOnly": {
-            "type": "boolean"
           },
           "expiresInSeconds": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -89458,15 +89601,6 @@
               "string"
             ],
             "format": "int32"
-          },
-          "featureFlags": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "type": "string"
-            }
           }
         }
       },
@@ -99957,8 +100091,11 @@
       },
       "WebhookConsumerDto": {
         "required": [
+          "consumerKindCode",
           "consumerKindName",
+          "statusCode",
           "statusName",
+          "providerModeCode",
           "providerModeName",
           "name"
         ],
@@ -99994,6 +100131,9 @@
             ],
             "format": "int32"
           },
+          "consumerKindCode": {
+            "type": "string"
+          },
           "consumerKindName": {
             "type": "string"
           },
@@ -100004,6 +100144,9 @@
               "string"
             ],
             "format": "int32"
+          },
+          "statusCode": {
+            "type": "string"
           },
           "statusName": {
             "type": "string"
@@ -100016,17 +100159,14 @@
             ],
             "format": "int32"
           },
+          "providerModeCode": {
+            "type": "string"
+          },
           "providerModeName": {
             "type": "string"
           },
           "name": {
             "type": "string"
-          },
-          "externalProviderAppId": {
-            "type": [
-              "null",
-              "string"
-            ]
           },
           "createdAt": {
             "type": "string",
@@ -100043,7 +100183,10 @@
       },
       "WebhookDeliveryAttemptDto": {
         "required": [
-          "statusName"
+          "endpointStatusCode",
+          "endpointStatusName",
+          "outcomeCode",
+          "outcomeName"
         ],
         "type": "object",
         "properties": {
@@ -100069,11 +100212,19 @@
             "type": "string",
             "format": "uuid"
           },
-          "endpointUrl": {
+          "endpointStatusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
-              "null",
+              "integer",
               "string"
-            ]
+            ],
+            "format": "int32"
+          },
+          "endpointStatusCode": {
+            "type": "string"
+          },
+          "endpointStatusName": {
+            "type": "string"
           },
           "attemptNumber": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -100083,7 +100234,7 @@
             ],
             "format": "int32"
           },
-          "statusId": {
+          "outcomeId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -100091,7 +100242,10 @@
             ],
             "format": "int32"
           },
-          "statusName": {
+          "outcomeCode": {
+            "type": "string"
+          },
+          "outcomeName": {
             "type": "string"
           },
           "scheduledAt": {
@@ -100122,12 +100276,6 @@
             "format": "int32"
           },
           "failureCategory": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "responseBodyPreview": {
             "type": [
               "null",
               "string"
@@ -100164,8 +100312,10 @@
       },
       "WebhookEndpointDto": {
         "required": [
+          "providerModeCode",
           "providerModeName",
-          "url",
+          "destinationHost",
+          "statusCode",
           "statusName"
         ],
         "type": "object",
@@ -100196,10 +100346,13 @@
             ],
             "format": "int32"
           },
+          "providerModeCode": {
+            "type": "string"
+          },
           "providerModeName": {
             "type": "string"
           },
-          "url": {
+          "destinationHost": {
             "type": "string"
           },
           "description": {
@@ -100215,6 +100368,9 @@
               "string"
             ],
             "format": "int32"
+          },
+          "statusCode": {
+            "type": "string"
           },
           "statusName": {
             "type": "string"
@@ -100271,6 +100427,49 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "consecutiveFailureCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "circuitOpenedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "autoPausedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "autoPauseReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lastResumedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "deliveryStateVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           },
           "createdAt": {
             "type": "string",
@@ -100411,9 +100610,7 @@
           "eventType",
           "eventId",
           "aggregateKind",
-          "payloadHash",
-          "providerModeName",
-          "statusName"
+          "payloadHash"
         ],
         "type": "object",
         "properties": {
@@ -100465,43 +100662,8 @@
             ],
             "format": "date-time"
           },
-          "providerModeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "providerModeName": {
-            "type": "string"
-          },
-          "providerMessageId": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "statusId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "statusName": {
-            "type": "string"
-          },
           "createdAt": {
             "type": "string",
-            "format": "date-time"
-          },
-          "publishedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
             "format": "date-time"
           },
           "updatedAt": {
@@ -100912,6 +101074,9 @@
     },
     {
       "name": "VisibilityType"
+    },
+    {
+      "name": "WebhookEndpointOperations"
     },
     {
       "name": "Webhooks"

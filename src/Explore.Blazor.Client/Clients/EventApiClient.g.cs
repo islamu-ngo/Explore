@@ -5749,6 +5749,17 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Resume webhook endpoint
+        /// </summary>
+        /// <remarks>
+        /// Resumes a tenant-scoped Local webhook endpoint after its sustained-failure circuit auto-paused delivery.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ResumeWebhookEndpointAsync(System.Guid endpointId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get webhook event types
         /// </summary>
         /// <remarks>
@@ -5873,7 +5884,7 @@ namespace Explore.Blazor.Client.Clients
         /// Open Svix App Portal
         /// </summary>
         /// <remarks>
-        /// Creates a short-lived Svix App Portal URL for the current tenant or webhook consumer.
+        /// Creates a short-lived Svix App Portal URL for a verified webhook consumer binding.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -38602,6 +38613,16 @@ namespace Explore.Blazor.Client.Clients
                             throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
                         if (status_ == 413)
                         {
                             var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
@@ -68536,6 +68557,148 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Resume webhook endpoint
+        /// </summary>
+        /// <remarks>
+        /// Resumes a tenant-scoped Local webhook endpoint after its sustained-failure circuit auto-paused delivery.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ResumeWebhookEndpointAsync(System.Guid endpointId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (endpointId == null)
+                throw new System.ArgumentNullException("endpointId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/webhooks/endpoints/{endpointId}/resume"
+                    urlBuilder_.Append("api/webhooks/endpoints/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(endpointId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/resume");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get webhook event types
         /// </summary>
         /// <remarks>
@@ -69907,7 +70070,7 @@ namespace Explore.Blazor.Client.Clients
         /// Open Svix App Portal
         /// </summary>
         /// <remarks>
-        /// Creates a short-lived Svix App Portal URL for the current tenant or webhook consumer.
+        /// Creates a short-lived Svix App Portal URL for a verified webhook consumer binding.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -70014,6 +70177,16 @@ namespace Explore.Blazor.Client.Clients
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
                         if (status_ == 502)
@@ -77023,9 +77196,6 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("providerModeId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? ProviderModeId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("externalProviderAppId")]
-        public string? ExternalProviderAppId { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -91329,6 +91499,10 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? ConsumerKindId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("consumerKindCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ConsumerKindCode { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("consumerKindName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string ConsumerKindName { get; set; } = default!;
@@ -91336,6 +91510,10 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("statusId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? StatusId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string StatusCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("statusName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
@@ -91345,6 +91523,10 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? ProviderModeId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("providerModeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ProviderModeCode { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("providerModeName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string ProviderModeName { get; set; } = default!;
@@ -91352,9 +91534,6 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("name")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Name { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("externalProviderAppId")]
-        public string? ExternalProviderAppId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
         public System.DateTimeOffset? CreatedAt { get; set; } = default!;
@@ -91404,20 +91583,33 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("endpointId")]
         public System.Guid? EndpointId { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("endpointUrl")]
-        public string? EndpointUrl { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("endpointStatusId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? EndpointStatusId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endpointStatusCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string EndpointStatusCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endpointStatusName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string EndpointStatusName { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("attemptNumber")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? AttemptNumber { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("statusId")]
+        [System.Text.Json.Serialization.JsonPropertyName("outcomeId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? StatusId { get; set; } = default!;
+        public int? OutcomeId { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("statusName")]
+        [System.Text.Json.Serialization.JsonPropertyName("outcomeCode")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string StatusName { get; set; } = default!;
+        public string OutcomeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("outcomeName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string OutcomeName { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("scheduledAt")]
         public System.DateTimeOffset? ScheduledAt { get; set; } = default!;
@@ -91434,9 +91626,6 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("failureCategory")]
         public string? FailureCategory { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("responseBodyPreview")]
-        public string? ResponseBodyPreview { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("durationMs")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -91494,13 +91683,17 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? ProviderModeId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("providerModeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ProviderModeCode { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("providerModeName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string ProviderModeName { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("url")]
+        [System.Text.Json.Serialization.JsonPropertyName("destinationHost")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Url { get; set; } = default!;
+        public string DestinationHost { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string? Description { get; set; } = default!;
@@ -91508,6 +91701,10 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("statusId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? StatusId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string StatusCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("statusName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
@@ -91537,6 +91734,26 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("lastFailureAt")]
         public System.DateTimeOffset? LastFailureAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("consecutiveFailureCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ConsecutiveFailureCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("circuitOpenedAt")]
+        public System.DateTimeOffset? CircuitOpenedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("autoPausedAt")]
+        public System.DateTimeOffset? AutoPausedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("autoPauseReason")]
+        public string? AutoPauseReason { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lastResumedAt")]
+        public System.DateTimeOffset? LastResumedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("deliveryStateVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? DeliveryStateVersion { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
         public System.DateTimeOffset? CreatedAt { get; set; } = default!;
@@ -91611,30 +91828,8 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("payloadClearedAt")]
         public System.DateTimeOffset? PayloadClearedAt { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("providerModeId")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? ProviderModeId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("providerModeName")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string ProviderModeName { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("providerMessageId")]
-        public string? ProviderMessageId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("statusId")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? StatusId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("statusName")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string StatusName { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
         public System.DateTimeOffset? CreatedAt { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("publishedAt")]
-        public System.DateTimeOffset? PublishedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("updatedAt")]
         public System.DateTimeOffset? UpdatedAt { get; set; } = default!;
@@ -94901,15 +95096,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("consumerId")]
         public System.Guid? ConsumerId { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("readOnly")]
-        public bool? ReadOnly { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("expiresInSeconds")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? ExpiresInSeconds { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("featureFlags")]
-        public System.Collections.Generic.ICollection<string>? FeatureFlags { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -105671,6 +105860,10 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? ConsumerKindId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("consumerKindCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ConsumerKindCode { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("consumerKindName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string ConsumerKindName { get; set; } = default!;
@@ -105678,6 +105871,10 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("statusId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? StatusId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string StatusCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("statusName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
@@ -105687,6 +105884,10 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? ProviderModeId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("providerModeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ProviderModeCode { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("providerModeName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string ProviderModeName { get; set; } = default!;
@@ -105694,9 +105895,6 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("name")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Name { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("externalProviderAppId")]
-        public string? ExternalProviderAppId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
         public System.DateTimeOffset? CreatedAt { get; set; } = default!;
@@ -105734,20 +105932,33 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("endpointId")]
         public System.Guid? EndpointId { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("endpointUrl")]
-        public string? EndpointUrl { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("endpointStatusId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? EndpointStatusId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endpointStatusCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string EndpointStatusCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endpointStatusName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string EndpointStatusName { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("attemptNumber")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? AttemptNumber { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("statusId")]
+        [System.Text.Json.Serialization.JsonPropertyName("outcomeId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? StatusId { get; set; } = default!;
+        public int? OutcomeId { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("statusName")]
+        [System.Text.Json.Serialization.JsonPropertyName("outcomeCode")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string StatusName { get; set; } = default!;
+        public string OutcomeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("outcomeName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string OutcomeName { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("scheduledAt")]
         public System.DateTimeOffset? ScheduledAt { get; set; } = default!;
@@ -105764,9 +105975,6 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("failureCategory")]
         public string? FailureCategory { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("responseBodyPreview")]
-        public string? ResponseBodyPreview { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("durationMs")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -105812,13 +106020,17 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? ProviderModeId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("providerModeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ProviderModeCode { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("providerModeName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string ProviderModeName { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("url")]
+        [System.Text.Json.Serialization.JsonPropertyName("destinationHost")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Url { get; set; } = default!;
+        public string DestinationHost { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string? Description { get; set; } = default!;
@@ -105826,6 +106038,10 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("statusId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? StatusId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string StatusCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("statusName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
@@ -105855,6 +106071,26 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("lastFailureAt")]
         public System.DateTimeOffset? LastFailureAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("consecutiveFailureCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ConsecutiveFailureCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("circuitOpenedAt")]
+        public System.DateTimeOffset? CircuitOpenedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("autoPausedAt")]
+        public System.DateTimeOffset? AutoPausedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("autoPauseReason")]
+        public string? AutoPauseReason { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lastResumedAt")]
+        public System.DateTimeOffset? LastResumedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("deliveryStateVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? DeliveryStateVersion { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
         public System.DateTimeOffset? CreatedAt { get; set; } = default!;
@@ -106006,30 +106242,8 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("payloadClearedAt")]
         public System.DateTimeOffset? PayloadClearedAt { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("providerModeId")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? ProviderModeId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("providerModeName")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string ProviderModeName { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("providerMessageId")]
-        public string? ProviderMessageId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("statusId")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? StatusId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("statusName")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string StatusName { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
         public System.DateTimeOffset? CreatedAt { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("publishedAt")]
-        public System.DateTimeOffset? PublishedAt { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("updatedAt")]
         public System.DateTimeOffset? UpdatedAt { get; set; } = default!;
