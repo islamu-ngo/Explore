@@ -531,3 +531,179 @@ intents:
       - architect-agent
       - backend-engineer-agent
       - quality-verifier-agent
+
+  - id: webhook-delivery-redesign
+    title: "Redesign durable inbound and outbound webhook delivery across the platform"
+    category: cross-cutting
+    triggers:
+      - "webhook delivery redesign"
+      - "redesign webhook delivery"
+      - "implement the webhook delivery redesign"
+      - "replace the webhook delivery architecture"
+    must_read_docs:
+      - AGENTS.md
+      - docs/QUICK_REFERENCE.md
+      - docs/ARCHITECTURE.md
+      - docs/WEBHOOKS.md
+      - docs/SECURITY-MODEL.md
+      - docs/AUTHORIZATION.md
+      - docs/API.md
+      - docs/BLAZOR.md
+      - docs/MULTI_TENANCY.md
+      - docs/OUTBOX_PATTERN.md
+      - docs/OPERATIONS.md
+      - docs/TESTING.md
+      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-context.md
+      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-plan.md
+      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-tasks.md
+    load_skills:
+      - clean-architecture-rules
+      - cqrs-mediatr-guidelines
+      - dotnet-efcore-guidelines
+      - outbox-pattern
+      - auth-patterns
+      - blazor-bff-patterns
+      - blazor-ui-conventions
+      - error-tracking
+    load_rules:
+      - .claude/rules/domain.md
+      - .claude/rules/application-layer.md
+      - .claude/rules/efcore-persistence.md
+      - .claude/rules/efcore-migrations.md
+      - .claude/rules/api-controllers.md
+      - .claude/rules/api-hateoas.md
+      - .claude/rules/blazor-server.md
+      - .claude/rules/blazor-client.md
+      - .claude/rules/tests.md
+    paths_in_scope:
+      - "src/Explore.Domain/*Webhook*.cs"
+      - "src/Explore.Domain/**/*Webhook*.cs"
+      - "src/Explore.Domain/Constants/GovernanceSettingKeys.cs"
+      - "src/Explore.Domain/Settings/SettingRegistry.cs"
+      - "src/Explore.Application/**/*Webhook*.cs"
+      - "src/Explore.Application/**/Webhooks/**/*.cs"
+      - "src/Explore.Application/Authorization/AuthorizationActions.cs"
+      - "src/Explore.Application/Authorization/MachineScopeMapping.cs"
+      - "src/Explore.Application/Authorization/ResourceDescriptors.cs"
+      - "src/Explore.Application/Hateoas/LinkRelations.cs"
+      - "src/Explore.Application/Telemetry/BusinessMetrics.cs"
+      - "src/Explore.Application/ApplicationServicesRegistration.cs"
+      - "src/Explore.Persistence/**/*Webhook*.cs"
+      - "src/Explore.Persistence/ExploreDbContext.DbSets.cs"
+      - "src/Explore.Persistence/ExploreDbContext.QueryFilters.cs"
+      - "src/Explore.Persistence/ExploreDbContext.SaveChanges.cs"
+      - "src/Explore.Persistence/Seed/LookupTableSeeder.cs"
+      - "src/Explore.Persistence/Migrations/**/*.cs"
+      - "src/Explore.Infrastructure/**/*Webhook*.cs"
+      - "src/Explore.Infrastructure/InfrastructureServicesRegistration.cs"
+      - "src/Explore.API/Controllers/*Webhook*.cs"
+      - "src/Explore.API/Services/*Webhook*.cs"
+      - "src/Explore.API/BackgroundServices/*Webhook*.cs"
+      - "src/Explore.API/Hateoas/**/*Webhook*.cs"
+      - "src/Explore.API/Hateoas/RouteNames.cs"
+      - "src/Explore.API/Program.cs"
+      - "src/Explore.Blazor/**/*Webhook*.cs"
+      - "src/Explore.Blazor/Program.cs"
+      - "src/Explore.Blazor.Client/**/*Webhook*"
+      - "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"
+      - "src/Explore.AppHost/AppHost.cs"
+      - "src/Explore.AppHost/Properties/launchSettings.json"
+      - "cerbos/policies/islamuevent_webhook.yaml"
+      - "tests/**/*Webhook*.cs"
+      - "tests/**/Webhooks/**/*.cs"
+      - "schemas/openapi.json"
+      - "schemas/islamu-event.md"
+      - "src/schemas/openapi_event-api.json"
+      - "docs/API.md"
+      - "docs/API_CHANGELOG.md"
+      - "docs/BLAZOR.md"
+      - "docs/WEBHOOKS.md"
+      - "docs/OPERATIONS.md"
+      - "docs/CONFIGURATION.md"
+      - "docs/SELF_HOSTING.md"
+      - "docs/BACKUP_RESTORE_UPGRADE.md"
+      - "docs/TROUBLESHOOTING.md"
+      - "dev/active/webhook-delivery-redesign/**"
+    paths_forbidden:
+      - ".claude/settings*.json"
+      - ".design-sync/**"
+      - "dev/next/**"
+      - "dev/report/**"
+      - "src/Explore.Application/Features/ControlPlane/**"
+      - "src/Explore.API/Hateoas/**/*ControlPlane*.cs"
+      - "src/Explore.Blazor.Client/**/*ControlPlane*"
+    minimum_tests:
+      - Event.Domain.UnitTests
+      - Event.Application.UnitTests
+      - Event.Architecture.Tests
+      - Event.Persistence.IntegrationTests
+      - Explore.Infrastructure.Tests
+      - Event.API.IntegrationTests
+      - Explore.Blazor.IntegrationTests
+      - Explore.Blazor.Client.Tests
+      - Explore.Blazor.Client.E2ETests
+      - Explore.Secrets.UnitTests
+    docs_to_update:
+      - docs/API.md
+      - docs/API_CHANGELOG.md
+      - docs/BLAZOR.md
+      - docs/WEBHOOKS.md
+      - docs/OPERATIONS.md
+      - docs/CONFIGURATION.md
+      - docs/SELF_HOSTING.md
+      - docs/BACKUP_RESTORE_UPGRADE.md
+      - docs/TROUBLESHOOTING.md
+      - schemas/islamu-event.md
+      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-context.md
+      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-plan.md
+      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-tasks.md
+    unique_acceptance:
+      - "PostgreSQL exact bytes, SHA-256, and provenance are the sole payload, signing, idempotency, and transmission authority; parsed JSON is never authoritative"
+      - "Inbound acceptance, effect receipt or durable external outbox, attempt evidence, and settlement preserve one transaction boundary with verified tenant ownership"
+      - "Webhook lookup contracts expose stable normalized Id, Code, and Name values with enum, seeder, migration, and database parity"
+      - "Provider publication uncertainty fails closed and never retries a create unless conformance-proven lookup can reconcile the ambiguous result"
+      - "Every background item creates a fresh scope and executes under its persisted tenant; tenant or capability data supplied by callers is never authoritative"
+      - "Operational actions are authorized server-side, represented by HAL links, and rendered by Blazor only when the matching link exists"
+      - "Removed compatibility members, aliases, dual writes, legacy request authority, and new messaging infrastructure are absent"
+    pr_checklist:
+      - "Failing-first evidence covers exact-byte mutation, duplicate processing, tenant substitution, ambiguous provider acceptance, and HAL omission before implementation"
+      - "Repositories still return entities, handlers map DTOs, validators are manually instantiated, and normalized lookup parity is verified"
+      - "Migrations are additive, deterministic, and reversible; legacy rows are classified without guessed success and the EF model has no pending changes"
+      - "Logs, traces, metrics, DTOs, and support artifacts exclude payloads, secrets, tokens, full destination URLs, raw provider responses, and tenant metric labels"
+      - "OpenAPI schemas and the generated NSwag client converge on a second generation and contain no removed compatibility fields"
+      - "All minimum test projects execute nonzero tests and the Local, optional Svix, API, BFF, HAL, browser, retention, and recovery surfaces have evidence"
+      - "Webhook, API, Blazor, operations, configuration, self-hosting, backup/restore, troubleshooting, schema, and active development docs match the shipped behavior"
+    forbidden_without_approval:
+      - "Restoring backward-compatibility properties, DTO aliases, deprecated methods, dual writes, or legacy request authority"
+      - "Adding Redis, RabbitMQ, Kafka, CDC, another reverse proxy, a generic provider plugin system, or any other new webhook infrastructure"
+      - "Treating caller-supplied tenant, binding, provider capability, or portal authority as trusted state"
+      - "Persisting or logging response bodies, payloads, secrets, tokens, full destination URLs, raw provider responses, or provider exception text"
+      - "Performing a network call inside a database transaction or migration"
+      - "Automatically retrying provider creation after ambiguous acceptance without conformance-proven reconciliation"
+      - "Editing an applied migration, bypassing tenant filters, hand-editing generated contracts, or gating UI actions by roles or claims"
+    related_agents:
+      - architect-agent
+      - backend-engineer-agent
+      - presentation-engineer-agent
+      - quality-verifier-agent
+    related_intents:
+      - add-write-endpoint
+      - add-hal-link
+      - add-cqrs-handler
+      - add-ef-migration
+      - update-repository-query
+      - bff-auth-bug
+      - openapi-contract-change
+    verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet ef migrations has-pending-model-changes --project src/Explore.Persistence/Explore.Persistence.csproj --startup-project src/Explore.API/Explore.API.csproj --configuration Release --context ExploreDbContext"

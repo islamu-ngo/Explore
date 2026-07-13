@@ -30,14 +30,10 @@
         "load_skills",
         "load_rules",
         "paths_in_scope",
-        "paths_forbidden",
         "minimum_tests",
         "docs_to_update",
-        "pr_checklist",
-        "forbidden_without_approval",
-        "related_agents",
-        "related_intents",
-        "verification_commands"
+        "unique_acceptance",
+        "forbidden_without_approval"
       ],
       "additionalProperties": false,
       "properties": {
@@ -62,8 +58,8 @@
             "auth",
             "authorization",
             "infrastructure",
-            "tests",
-            "docs"
+            "federation",
+            "cross-cutting"
           ],
           "description": "Broad grouping. Restricted enum so routing/reporting stays predictable."
         },
@@ -77,7 +73,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^(docs|schema|dev)/.+\\.md$"
+            "pattern": "^(AGENTS\\.md|(?:docs|dev|schemas)/.+\\.md|\\.agents/skills/_SKILL_SCHEMA\\.md)$"
           },
           "description": "Repo-relative paths. AgentContextLinkTests verifies each exists."
         },
@@ -114,8 +110,17 @@
         },
         "docs_to_update": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^(docs|schema)/.+\\.md$" },
+          "items": {
+            "type": "string",
+            "pattern": "^((docs|dev|schemas)/.+\\.md|\\.claude/contract/intents\\.yaml|\\.agents/skills/_SKILL_SCHEMA\\.md)$"
+          },
           "description": "Docs that SHOULD be updated in the same PR if the intent causes user-visible changes."
+        },
+        "unique_acceptance": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 8 },
+          "description": "Intent-specific acceptance criteria that distinguish this change from related intents."
         },
         "pr_checklist": {
           "type": "array",

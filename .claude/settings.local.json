@@ -43,7 +43,11 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git merge:*)",
-      "Bash(wait)"
+      "Bash(wait)",
+      "Skill(update-config)",
+      "Bash(rtk read *)",
+      "Bash(rtk ls *)",
+      "Bash(rtk grep *)"
     ]
   },
   "enableAllProjectMcpServers": true,

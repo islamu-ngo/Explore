@@ -1,10 +1,10 @@
-# ABOUTME: Nine cold-start benchmark scenarios validating the ISLAMU Event AI-native contribution system.
+# ABOUTME: Ten cold-start benchmark scenarios validating the ISLAMU Event AI-native contribution system.
 # ABOUTME: Each scenario is a self-contained task a fresh AI agent should be able to complete using only AGENTS.md + the context system.
 # Schema: see README.md §3. Validated by Event.Architecture.Tests.AgentContextIntentManifestTests.
 # Version: 1 (synthetic). Target: replace each with real issue-based scenario within 4–6 weeks.
 
 version: 1
-last_updated: "2026-04-24"
+last_updated: "2026-07-13"
 owner: "context-system-maintainers"
 
 scenarios:
@@ -320,3 +320,81 @@ scenarios:
       - "Provider mutation is additive/idempotent and does not delete existing realms, users, groups, or unrelated clients."
       - "Auth schemes refresh only after successful runtime OIDC configuration persistence."
       - "Docs describe secret ownership, rerun behavior, backup requirements, and safe troubleshooting evidence."
+
+  - id: webhook-delivery-redesign
+    intent_id: webhook-delivery-redesign
+    summary: |
+      Redesign webhook delivery across all layers without compatibility shims or new messaging infrastructure.
+    prompt: |
+      Implement the approved webhook delivery redesign across Domain, Application, Persistence,
+      Infrastructure, API/HAL, the Blazor BFF/client, generated contracts, and operational docs.
+      PostgreSQL `bytea` exact bytes must be the stored, hashed, signed, idempotency, and transmitted
+      authority; normalized webhook lookups must expose stable Id, Code, and Name values. Remove the
+      obsolete compatibility fields and legacy request authority instead of adding aliases, dual writes,
+      or fallbacks. Do not introduce Redis, RabbitMQ, Kafka, CDC, or another proxy. Verify every changed
+      layer and prove that UI actions follow server-issued HAL links only.
+    expected_must_reads:
+      - "AGENTS.md"
+      - "docs/QUICK_REFERENCE.md"
+      - "docs/ARCHITECTURE.md"
+      - "docs/WEBHOOKS.md"
+      - "docs/SECURITY-MODEL.md"
+      - "docs/API.md"
+      - "docs/BLAZOR.md"
+      - "dev/active/webhook-delivery-redesign/webhook-delivery-redesign-context.md"
+      - "dev/active/webhook-delivery-redesign/webhook-delivery-redesign-plan.md"
+      - "dev/active/webhook-delivery-redesign/webhook-delivery-redesign-tasks.md"
+      - ".claude/rules/domain.md"
+      - ".claude/rules/application-layer.md"
+      - ".claude/rules/efcore-persistence.md"
+      - ".claude/rules/efcore-migrations.md"
+      - ".claude/rules/api-controllers.md"
+      - ".claude/rules/api-hateoas.md"
+      - ".claude/rules/blazor-server.md"
+      - ".claude/rules/blazor-client.md"
+      - ".agents/skills/clean-architecture-rules/SKILL.md"
+      - ".agents/skills/outbox-pattern/SKILL.md"
+      - ".agents/skills/auth-patterns/SKILL.md"
+    expected_paths_in_scope:
+      - "src/Explore.Domain/**/*Webhook*.cs"
+      - "src/Explore.Application/**/Webhooks/**/*.cs"
+      - "src/Explore.Persistence/**/*Webhook*.cs"
+      - "src/Explore.Persistence/Migrations/**/*.cs"
+      - "src/Explore.Infrastructure/**/*Webhook*.cs"
+      - "src/Explore.API/**/*Webhook*.cs"
+      - "src/Explore.Blazor/**/*Webhook*.cs"
+      - "src/Explore.Blazor.Client/**/*Webhook*"
+      - "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"
+      - "tests/**/*Webhook*.cs"
+      - "schemas/openapi.json"
+      - "schemas/islamu-event.md"
+      - "src/schemas/openapi_event-api.json"
+      - "docs/WEBHOOKS.md"
+      - "dev/active/webhook-delivery-redesign/**"
+    expected_paths_forbidden:
+      - "dev/next/**"
+      - "dev/report/**"
+      - "src/Explore.Application/Features/ControlPlane/**"
+      - "src/Explore.API/Hateoas/**/*ControlPlane*.cs"
+      - "src/Explore.Blazor.Client/**/*ControlPlane*"
+    expected_verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+    acceptance_criteria:
+      - "The request classifies as `webhook-delivery-redesign`, not a single-layer endpoint, migration, or UI intent."
+      - "Stored, hashed, signed, idempotency, and transmitted payload bytes are identical; a one-byte change conflicts."
+      - "Webhook lookup DTOs expose normalized Id, Code, and Name values with enum, seeder, migration, and database parity."
+      - "Removed compatibility fields, aliases, fallback authority, and dual writes are absent rather than deprecated."
+      - "Inbound settlement and durable effects are transactional, tenant-bound, idempotent, and recoverable after interruption."
+      - "Ambiguous provider acceptance reconciles through proven lookup or stops for manual action; it never guesses success."
+      - "Repositories return entities, handlers map DTOs, validators are manually instantiated, and tenant filters stay active."
+      - "API authorization emits HAL affordances and Blazor renders operational actions only when those links are present."
+      - "Cross-layer verification executes nonzero tests without adding new webhook messaging infrastructure."
