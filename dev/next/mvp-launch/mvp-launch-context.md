@@ -100,7 +100,7 @@ Completed during Phase 1 FullLocal runtime proof slice:
 - Updated `SeedData.CreateSession` so deterministic launch sessions are `Published`, updated `SeedData.CreateEvent` so `LastSessionEndUtc` is populated, and updated `DatabaseSeeder.EnsureIslamicEventCatalogAsync` to repair those status/schedule-summary fields on existing Development seed rows across persistent FullLocal volumes.
 - Added `DatabaseSeederTests.SeedAsync_InDevelopment_RepairsLaunchCatalogDiscoveryFieldsAcrossStartups` to recreate stale persisted seed rows and prove a later Development seed repairs all catalog sessions/events.
 - Verified public runtime smoke through FullLocal isolated Aspire after the seed repair: public event list returned six events, event detail rendered with canonical/Open Graph/Twitter metadata and security headers, event calendar returned `text/calendar` with `BEGIN:VCALENDAR`, sitemap returned XML with deterministic event URLs, robots returned development `Disallow: /`, branded error/static assets rendered, and `aspire ps --format Json` returned `[]` after shutdown cleanup.
-- Fixed the new control-plane Blazor host compile blocker found when AppHost started building `Event.ControlPlane.Blazor`: `Components/App.razor` used `InteractiveServer` in root `HeadOutlet`/`Routes` render-mode attributes, but generated Razor did not resolve the symbol from `_Imports.razor`. Adding a direct `@using static Microsoft.AspNetCore.Components.Web.RenderMode` to `App.razor` made `dotnet build Event.ControlPlane.Blazor/Event.ControlPlane.Blazor.csproj --configuration Release --verbosity quiet` pass with 0 errors.
+- Kept the embedded control-plane shell compile-safe when AppHost built the public Blazor host. Current UI ownership is `Explore.Blazor` and `Explore.Blazor.Client`, reusable authentication/proxy infrastructure remains in `Event.Web.BffHosting`, and commercial management/orchestration belongs to the separate Event-Control-Plane repository. The focused `Explore.Blazor` Release build passed with 0 errors.
 - Re-ran detached Aspire after the control-plane fix. `aspire run --detach --apphost Explore.AppHost/Explore.AppHost.csproj --isolated --format Json` returned `appHostPid=3623272`, `cliPid=3618280`, and log `/home/amir/.aspire/logs/cli_20260704T164306504_detach-child_351672a4ed3846a3931c7d5f915ad84a.log`; logs reached resource readiness and `Notifying AppHost startup readiness`, but immediate `aspire ps --format Json` returned `[]`, `aspire describe` reported no AppHost, and both PIDs were gone.
 - Hardened SMTP readiness by registering `SmtpHealthCheck` with `timeout: TimeSpan.FromSeconds(5)` in `Explore.API/Program.cs`.
 - Added `SmtpHealthCheckRegistrationTests` to assert the real API host registration uses the five-second timeout, `Unhealthy` failure status, and readiness/SMTP/infrastructure tags.
@@ -318,25 +318,25 @@ Launch implication:
 
 - FullLocal foreground startup, health, bounded SMTP outage readiness, dynamic dependency wiring, seed discovery, public endpoint smoke, registration-to-Mailpit email delivery, focused BFF Data Protection cookie continuity, Data Protection key-store failure visibility, and email-dispatch backlog/dead-letter health behavior are now proven. Continue with the remaining runtime proof: full browser/OIDC restart continuity. Detached Aspire lifecycle should be re-tested only after a CLI/runtime tooling update or when specifically investigating the Aspire CLI.
 
-## Validation Results for Phase 1 Detached CLI Follow-up and Control-Plane Build
+## Validation Results for Phase 1 Detached CLI Follow-up and Embedded Control-Plane Build
 
 Checks run after the later detached lifecycle flake and control-plane host compile failure:
 
 ```bash
-dotnet build Event.ControlPlane.Blazor/Event.ControlPlane.Blazor.csproj --configuration Release --verbosity quiet
+dotnet build src/Explore.Blazor/Explore.Blazor.csproj --configuration Release --verbosity quiet
 aspire run --detach --apphost Explore.AppHost/Explore.AppHost.csproj --isolated --format Json
 aspire ps --format Json
 aspire describe --apphost Explore.AppHost/Explore.AppHost.csproj --format Json
 ps -fp 3623272 3618280
 dotnet build --configuration Release --verbosity quiet
 dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --no-progress
-git diff --check -- Event.ControlPlane.Blazor/Components/App.razor dev/active/mvp-launch/mvp-launch-plan.md dev/active/mvp-launch/mvp-launch-context.md dev/active/mvp-launch/mvp-launch-tasks.md docs/OPERATIONS.md docs/TROUBLESHOOTING.md dev/_journal/journal.md
-rg -n "[[:blank:]]+$" Event.ControlPlane.Blazor/Components/App.razor dev/active/mvp-launch/mvp-launch-plan.md dev/active/mvp-launch/mvp-launch-context.md dev/active/mvp-launch/mvp-launch-tasks.md docs/OPERATIONS.md docs/TROUBLESHOOTING.md dev/_journal/journal.md
+git diff --check -- src/Explore.Blazor src/Explore.Blazor.Client dev/next/mvp-launch docs/OPERATIONS.md docs/TROUBLESHOOTING.md dev/_journal/journal.md
+rg -n "[[:blank:]]+$" src/Explore.Blazor src/Explore.Blazor.Client dev/next/mvp-launch docs/OPERATIONS.md docs/TROUBLESHOOTING.md dev/_journal/journal.md
 ```
 
 Results:
 
-- Control-plane host build: passed, 7 projects, 0 errors, 294 existing warnings after adding the direct `RenderMode` static import in `Event.ControlPlane.Blazor/Components/App.razor`.
+- Embedded control-plane host build: the public `Explore.Blazor`/`Explore.Blazor.Client` ownership path passed with 0 errors; the UI no longer depends on a separate public control-plane host project.
 - Detached Aspire after the control-plane fix returned JSON with `appHostPid=3623272`, `cliPid=3618280`, dashboard URL, and log file.
 - AppHost log reached resource readiness and `Notifying AppHost startup readiness`.
 - Immediate lifecycle checks failed the official detached contract: `aspire ps --format Json` returned `[]`, `aspire describe` said no AppHost was currently running, and `ps -fp 3623272 3618280` returned no process rows.

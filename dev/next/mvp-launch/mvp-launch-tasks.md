@@ -559,7 +559,7 @@ Latest Phase 1 FullLocal runtime verification - 2026-07-04:
 - [x] Earlier detached API `/health` returned HTTP 200 Healthy with 18 checks; detached Blazor `/health` returned HTTP 200 Healthy with 7 checks.
 - [x] Earlier detached PostgreSQL `system_settings` contained `email.smtp_port=45665`, matching that run's Mailpit SMTP endpoint.
 - [x] Re-prove detached lifecycle after the later run returned JSON, lost AppHost registration, and left `aspire ps --format Json` empty. Result: reproduced after the control-plane compile fix with `appHostPid=3623272`; logs reached readiness, but `aspire ps` remained empty and both AppHost/CLI PIDs were gone.
-- [x] Fix the control-plane host `InteractiveServer` compile blocker found during detached AppHost startup. Result: `Event.ControlPlane.Blazor/Components/App.razor` now imports `Microsoft.AspNetCore.Components.Web.RenderMode` directly, and the focused control-plane Release build passed with 0 errors.
+- [x] Keep the embedded control-plane shell compile-safe during detached AppHost startup. Current ownership is `Explore.Blazor` plus `Explore.Blazor.Client`; the focused public Blazor Release build passed with 0 errors. Commercial management/orchestration remains in the separate Event-Control-Plane repository.
 - [x] Reclassify detached Aspire lifecycle as a local CLI/tooling caveat and update plan/context/operations/troubleshooting/journal guidance so foreground `aspire run --isolated` remains the launch proof path.
 - [x] `GET http://localhost:34857/api/event?pageSize=6` returned six seeded public events after seed schedule/status repair.
 - [x] `GET http://localhost:34857/api/event/018e4e5c-7f00-7000-8000-000000000061/calendar` returned HTTP 200 `text/calendar` with VCALENDAR content.
