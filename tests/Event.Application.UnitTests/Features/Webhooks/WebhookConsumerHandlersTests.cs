@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for webhook consumer command and query handlers.
 // ABOUTME: Verifies tenant-scoped validation, entity persistence, and DTO projection behavior.
 
+using System.Text;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -174,8 +175,7 @@ public sealed class WebhookConsumerHandlersTests
                 TenantId = tenantId,
                 ConsumerKindId = (int)WebhookConsumerKind.Tenant,
                 Name = " Tenant automation ",
-                ProviderModeId = (int)WebhookProviderMode.Local,
-                ExternalProviderAppId = " tenant-app "
+                ProviderModeId = (int)WebhookProviderMode.Local
             },
             CancellationToken.None);
 
@@ -187,7 +187,7 @@ public sealed class WebhookConsumerHandlersTests
         await Assert.That(captured.ConsumerKind).IsEqualTo(WebhookConsumerKind.Tenant);
         await Assert.That(captured.Status).IsEqualTo(WebhookConsumerStatus.Active);
         await Assert.That(captured.ProviderMode).IsEqualTo(WebhookProviderMode.Local);
-        await Assert.That(captured.ExternalProviderAppId).IsEqualTo("tenant-app");
+        await Assert.That(captured.ExternalProviderAppId).IsNull();
     }
 
     [Test]
@@ -798,10 +798,9 @@ public sealed class WebhookConsumerHandlersTests
         await Assert.That(capturedMessage.AggregateKind).IsEqualTo("WebhookEndpoint");
         await Assert.That(capturedMessage.AggregateId).IsEqualTo(endpoint.Id);
         await Assert.That(capturedMessage.ConsumerId).IsEqualTo(endpoint.ConsumerId);
-        await Assert.That(capturedMessage.ProviderMode).IsEqualTo(WebhookProviderMode.Local);
-        await Assert.That(capturedMessage.Status).IsEqualTo(WebhookMessageStatus.Pending);
-        await Assert.That(capturedMessage.PayloadJson).Contains(endpoint.Id.ToString("D"));
-        await Assert.That(capturedMessage.PayloadJson).DoesNotContain(endpoint.SecretRef);
+        var payloadJson = Encoding.UTF8.GetString(capturedMessage.GetPayloadBytes()!);
+        await Assert.That(payloadJson).Contains(endpoint.Id.ToString("D"));
+        await Assert.That(payloadJson).DoesNotContain(endpoint.SecretRef);
         await Assert.That(capturedMessage.PayloadRetentionUntil >= before.AddDays(1).AddSeconds(-1)).IsTrue();
         await Assert.That(capturedMessage.PayloadRetentionUntil <= after.AddDays(1).AddSeconds(1)).IsTrue();
         await Assert.That(capturedAttempt).IsNotNull();
@@ -812,12 +811,6 @@ public sealed class WebhookConsumerHandlersTests
         await Assert.That(capturedAttempt.Status).IsEqualTo(WebhookDeliveryAttemptStatus.Scheduled);
         await Assert.That(capturedAttempt.ScheduledAt >= before.AddSeconds(-1)).IsTrue();
         await Assert.That(capturedAttempt.ScheduledAt <= after.AddSeconds(1)).IsTrue();
-        await _messageRepository.Received(1).MarkProviderQueuedAsync(
-            tenantId,
-            capturedMessage.Id,
-            null,
-            Arg.Any<DateTime>(),
-            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -897,10 +890,8 @@ public sealed class WebhookConsumerHandlersTests
         await Assert.That(result.Count).IsEqualTo(1);
         await Assert.That(result[0].Id).IsEqualTo(message.Id);
         await Assert.That(result[0].TenantId).IsEqualTo(tenantId);
-        await Assert.That(result[0].ConsumerName).IsEqualTo("Tenant automation");
+        await Assert.That(result[0].ConsumerName).IsNull();
         await Assert.That(result[0].PayloadHash).IsEqualTo(message.PayloadHash);
-        await Assert.That(result[0].ProviderModeName).IsEqualTo(nameof(WebhookProviderMode.Local));
-        await Assert.That(result[0].StatusName).IsEqualTo(nameof(WebhookMessageStatus.Queued));
         await Assert.That(typeof(Explore.Application.DTOs.Webhooks.WebhookMessageDto).GetProperty("PayloadJson")).IsNull();
         await _messageRepository.Received(1).ListByTenantAsync(
             tenantId,
@@ -928,7 +919,6 @@ public sealed class WebhookConsumerHandlersTests
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Id).IsEqualTo(message.Id);
         await Assert.That(result.PayloadHash).IsEqualTo(message.PayloadHash);
-        await Assert.That(result.ProviderMessageId).IsEqualTo(message.ProviderMessageId);
         await _messageRepository.Received(1).GetByTenantAndIdAsync(
             tenantId,
             message.Id,
@@ -1257,25 +1247,21 @@ public sealed class WebhookConsumerHandlersTests
             CreatedAt = DateTime.UtcNow
         };
 
-    private static WebhookMessage CreateMessage(Guid tenantId, WebhookConsumer consumer) =>
-        new()
-        {
-            Id = Guid.CreateVersion7(),
-            TenantId = tenantId,
-            EventType = WebhookEventNames.EventPublished,
-            EventId = Guid.CreateVersion7().ToString("D"),
-            AggregateKind = "Event",
-            AggregateId = Guid.CreateVersion7(),
-            ConsumerId = consumer.Id,
-            Consumer = consumer,
-            PayloadJson = """{"secret":"must-not-leak"}""",
-            PayloadHash = "sha256:8f4a3db2",
-            PayloadRetentionUntil = DateTime.UtcNow.AddDays(14),
-            ProviderMode = WebhookProviderMode.Local,
-            ProviderMessageId = "local-message-1",
-            Status = WebhookMessageStatus.Queued,
-            CreatedAt = DateTime.UtcNow
-        };
+    private static WebhookMessage CreateMessage(Guid tenantId, WebhookConsumer consumer)
+    {
+        var createdAt = DateTime.UtcNow;
+        return WebhookMessage.Create(
+            Guid.CreateVersion7(),
+            tenantId,
+            WebhookEventNames.EventPublished,
+            Guid.CreateVersion7().ToString("D"),
+            "Event",
+            Guid.CreateVersion7(),
+            consumer.Id,
+            Encoding.UTF8.GetBytes("""{"secret":"must-not-leak"}"""),
+            createdAt.AddDays(14),
+            createdAt);
+    }
 
     private static WebhookDeliveryAttempt CreateDeliveryAttempt(
         Guid tenantId,

@@ -2,6 +2,8 @@
 // ABOUTME: Verifies validation and provider-neutral portal service mapping for webhook management.
 
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Handlers.Commands;
 using Explore.Application.Features.Webhooks.Requests.Commands;
@@ -12,6 +14,8 @@ namespace Event.Application.UnitTests.Features.Webhooks;
 public sealed class OpenSvixAppPortalCommandHandlerTests
 {
     private readonly IWebhookProviderPortalService _portalService = Substitute.For<IWebhookProviderPortalService>();
+    private readonly IAuditLogRepository _auditLogRepository = Substitute.For<IAuditLogRepository>();
+    private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
 
     [Test]
     public async Task Command_RequiresWebhookOpenProviderPortalAuthorization()
@@ -32,13 +36,16 @@ public sealed class OpenSvixAppPortalCommandHandlerTests
     {
         var tenantId = Guid.CreateVersion7();
         var consumerId = Guid.CreateVersion7();
+        var providerBindingId = Guid.CreateVersion7();
         var expiresAt = DateTimeOffset.UtcNow.AddMinutes(15);
         _portalService.CreateAccessAsync(Arg.Any<WebhookProviderPortalAccessInput>(), Arg.Any<CancellationToken>())
             .Returns(WebhookProviderPortalAccessResult.Success(
                 "https://svix.example/app-portal/session",
                 "portal-token",
-                expiresAt));
-        var handler = new OpenSvixAppPortalCommandHandler(_portalService);
+                expiresAt,
+                providerBindingId,
+                "portal-policy-v1"));
+        var handler = CreateHandler();
 
         var result = await handler.Handle(
             new OpenSvixAppPortalCommand
@@ -46,8 +53,7 @@ public sealed class OpenSvixAppPortalCommandHandlerTests
                 TenantId = tenantId,
                 ConsumerId = consumerId,
                 SessionId = "session-1",
-                ExpiresInSeconds = 900,
-                FeatureFlags = ["endpoints"]
+                ExpiresInSeconds = 900
             },
             CancellationToken.None);
 
@@ -61,15 +67,19 @@ public sealed class OpenSvixAppPortalCommandHandlerTests
                 input.TenantId == tenantId &&
                 input.ConsumerId == consumerId &&
                 input.SessionId == "session-1" &&
-                input.ExpiresIn == TimeSpan.FromSeconds(900) &&
-                input.FeatureFlags.Contains("endpoints")),
+                input.ExpiresIn == TimeSpan.FromSeconds(900)),
             Arg.Any<CancellationToken>());
+        await _auditLogRepository.Received(1).Create(
+            Arg.Is<Explore.Domain.AuditLog>(log =>
+                log.TenantId == tenantId &&
+                log.EntityId == consumerId.ToString("D") &&
+                log.NewValues.Contains(providerBindingId.ToString("D"), StringComparison.OrdinalIgnoreCase)));
     }
 
     [Test]
     public async Task Handle_WhenExpiresInSecondsInvalid_ReturnsValidationFailure()
     {
-        var handler = new OpenSvixAppPortalCommandHandler(_portalService);
+        var handler = CreateHandler();
 
         var result = await handler.Handle(
             new OpenSvixAppPortalCommand
@@ -95,7 +105,7 @@ public sealed class OpenSvixAppPortalCommandHandlerTests
                 "svix_provider_unavailable",
                 isRetryable: true,
                 "SvixApi:503"));
-        var handler = new OpenSvixAppPortalCommandHandler(_portalService);
+        var handler = CreateHandler();
 
         var result = await handler.Handle(
             new OpenSvixAppPortalCommand
@@ -110,4 +120,7 @@ public sealed class OpenSvixAppPortalCommandHandlerTests
         await Assert.That(result.IsRetryable).IsTrue();
         await Assert.That(result.Errors).Contains("SvixApi:503");
     }
+
+    private OpenSvixAppPortalCommandHandler CreateHandler() =>
+        new(_portalService, _auditLogRepository, _currentUserService);
 }

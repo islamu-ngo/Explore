@@ -3,6 +3,7 @@
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence.Repositories;
@@ -31,8 +32,8 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
         var disabledEndpointA = CreateEndpoint(tenantA.Id, consumerA.Id, "tenant-a-disabled", WebhookEndpointStatus.Disabled);
         var wrongEventEndpointA = CreateEndpoint(tenantA.Id, consumerA.Id, "tenant-a-wrong-event", WebhookEndpointStatus.Active);
         var endpointB = CreateEndpoint(tenantB.Id, consumerB.Id, "tenant-b", WebhookEndpointStatus.Active);
-        var messageA = CreateMessage(tenantA.Id, consumerA.Id, "evt-a", WebhookMessageStatus.Pending);
-        var messageB = CreateMessage(tenantB.Id, consumerB.Id, "evt-b", WebhookMessageStatus.Pending);
+        var messageA = CreateMessage(tenantA.Id, consumerA.Id, "evt-a");
+        var messageB = CreateMessage(tenantB.Id, consumerB.Id, "evt-b");
         var attemptA = CreateDeliveryAttempt(
             tenantA.Id,
             messageA.Id,
@@ -121,7 +122,7 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
             messageA.Id,
             endpointA.Id,
             CancellationToken.None);
-        var tenantAIncoming = await incomingRepository.GetByProviderMessageIdAsync(
+        var tenantAIncoming = await incomingRepository.GetByProviderMessageIdForUpdateAsync(
             tenantA.Id,
             "coop",
             "provider-shared",
@@ -139,13 +140,16 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
 
         var changedAt = new DateTime(2026, 1, 7, 12, 0, 0, DateTimeKind.Utc);
         await endpointRepository.ArchiveAsync(tenantA.Id, disabledEndpointA.Id, changedAt, CancellationToken.None);
-        await messageRepository.MarkProviderQueuedAsync(
-            tenantA.Id,
-            messageA.Id,
-            "provider-message-a",
-            changedAt,
-            CancellationToken.None);
-        await incomingRepository.MarkProcessedAsync(tenantA.Id, incomingA.Id, changedAt, CancellationToken.None);
+        var incomingLeaseToken = Guid.CreateVersion7();
+        tenantAIncoming!.Claim("bypass-test", incomingLeaseToken, changedAt.AddMinutes(1), changedAt);
+        tenantAIncoming.Ignore(
+            incomingLeaseToken,
+            tenantAIncoming.ProcessingFence,
+            tenantAIncoming.ProcessingGeneration,
+            "test_settled",
+            "Tenant-scoped transition completed.",
+            changedAt.AddSeconds(1));
+        await incomingRepository.SaveChangesAsync(CancellationToken.None);
 
         await using var verifyContext = fixture.CreateDbContext();
         var endpoints = await verifyContext.WebhookEndpoints
@@ -191,10 +195,9 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
 
         await Assert.That(endpoints[disabledEndpointA.Id].Status).IsEqualTo(WebhookEndpointStatus.Archived);
         await Assert.That(endpoints[endpointB.Id].Status).IsEqualTo(WebhookEndpointStatus.Active);
-        await Assert.That(messages[messageA.Id].Status).IsEqualTo(WebhookMessageStatus.Queued);
-        await Assert.That(messages[messageA.Id].ProviderMessageId).IsEqualTo("provider-message-a");
-        await Assert.That(messages[messageB.Id].Status).IsEqualTo(WebhookMessageStatus.Pending);
-        await Assert.That(incomingMessages[incomingA.Id].Status).IsEqualTo(IncomingWebhookMessageStatus.Processed);
+        await Assert.That(messages[messageA.Id].PayloadHash).IsEqualTo(messageA.PayloadHash);
+        await Assert.That(messages[messageB.Id].PayloadHash).IsEqualTo(messageB.PayloadHash);
+        await Assert.That(incomingMessages[incomingA.Id].Status).IsEqualTo(IncomingWebhookMessageStatus.Ignored);
         await Assert.That(incomingMessages[incomingB.Id].Status).IsEqualTo(IncomingWebhookMessageStatus.Verified);
     }
 
@@ -212,14 +215,14 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
         var endpointB = CreateEndpoint(tenantB.Id, consumerB.Id, "worker-b", WebhookEndpointStatus.Active);
         var now = new DateTime(2026, 1, 8, 12, 0, 0, DateTimeKind.Utc);
 
-        var dueMessageA = CreateMessage(tenantA.Id, consumerA.Id, "due-a", WebhookMessageStatus.Queued);
-        var dueMessageB = CreateMessage(tenantB.Id, consumerB.Id, "due-b", WebhookMessageStatus.Queued);
-        var futureMessageA = CreateMessage(tenantA.Id, consumerA.Id, "future-a", WebhookMessageStatus.Queued);
-        var staleMessageA = CreateMessage(tenantA.Id, consumerA.Id, "stale-a", WebhookMessageStatus.Queued);
-        var statusMessageA = CreateMessage(tenantA.Id, consumerA.Id, "status-a", WebhookMessageStatus.Queued);
-        var expiredMessageA = CreateMessage(tenantA.Id, consumerA.Id, "expired-a", WebhookMessageStatus.Pending, now.AddMinutes(-1));
-        var expiredMessageB = CreateMessage(tenantB.Id, consumerB.Id, "expired-b", WebhookMessageStatus.Pending, now.AddMinutes(-1));
-        var retainedMessageA = CreateMessage(tenantA.Id, consumerA.Id, "retained-a", WebhookMessageStatus.Pending, now.AddDays(1));
+        var dueMessageA = CreateMessage(tenantA.Id, consumerA.Id, "due-a");
+        var dueMessageB = CreateMessage(tenantB.Id, consumerB.Id, "due-b");
+        var futureMessageA = CreateMessage(tenantA.Id, consumerA.Id, "future-a");
+        var staleMessageA = CreateMessage(tenantA.Id, consumerA.Id, "stale-a");
+        var statusMessageA = CreateMessage(tenantA.Id, consumerA.Id, "status-a");
+        var expiredMessageA = CreateMessage(tenantA.Id, consumerA.Id, "expired-a", now.AddMinutes(-1));
+        var expiredMessageB = CreateMessage(tenantB.Id, consumerB.Id, "expired-b", now.AddMinutes(-1));
+        var retainedMessageA = CreateMessage(tenantA.Id, consumerA.Id, "retained-a", now.AddDays(1));
 
         var dueAttemptA = CreateDeliveryAttempt(
             tenantA.Id,
@@ -308,22 +311,38 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
         var messageRepository = new WebhookMessageRepository(tenantBContext);
         var providerLinkRepository = new WebhookProviderLinkRepository(tenantBContext);
 
-        var dueAttempts = await attemptRepository.GetDueScheduledAsync(10, now, CancellationToken.None);
+        var dueTenantIds = await attemptRepository.GetDueTenantIdsAsync(10, now, CancellationToken.None);
         var dueAttemptCount = await attemptRepository.CountDueScheduledAsync(now, CancellationToken.None);
         var staleSendingCount = await attemptRepository.CountStaleSendingAsync(now.AddMinutes(-10), CancellationToken.None);
-        var wrongTenantClaimed = await attemptRepository.TryMarkAsSendingAsync(
-            tenantB.Id,
-            dueAttemptA.Id,
-            Guid.CreateVersion7(),
-            now,
+        var wrongTenantClaims = await attemptRepository.ClaimDueAsync(
+            new WebhookDeliveryClaimRequest(
+                1,
+                10,
+                10,
+                [tenantB.Id],
+                now,
+                TimeSpan.FromMinutes(5),
+                dueAttemptA.Id),
+            new Dictionary<Guid, WebhookDeliveryClaimLimits>
+            {
+                [tenantB.Id] = new(10, 10, 10)
+            },
             CancellationToken.None);
-        var leaseToken = Guid.CreateVersion7();
-        var claimed = await attemptRepository.TryMarkAsSendingAsync(
-            tenantA.Id,
-            dueAttemptA.Id,
-            leaseToken,
-            now,
+        var claims = await attemptRepository.ClaimDueAsync(
+            new WebhookDeliveryClaimRequest(
+                1,
+                10,
+                10,
+                [tenantA.Id],
+                now,
+                TimeSpan.FromMinutes(5),
+                dueAttemptA.Id),
+            new Dictionary<Guid, WebhookDeliveryClaimLimits>
+            {
+                [tenantA.Id] = new(10, 10, 10)
+            },
             CancellationToken.None);
+        var leaseToken = claims.Single().LeaseToken;
         await attemptRepository.MarkSucceededAsync(
             tenantA.Id,
             dueAttemptA.Id,
@@ -341,11 +360,6 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
             batchSize: 10,
             CancellationToken.None);
         var clearedPayloads = await messageRepository.ClearExpiredPayloadsAsync(now, 10, CancellationToken.None);
-        await messageRepository.RefreshLocalDeliveryStatusAsync(
-            tenantA.Id,
-            statusMessageA.Id,
-            now,
-            CancellationToken.None);
         var pendingLinks = await providerLinkRepository.GetPendingByProviderAsync(
             WebhookExternalProvider.Svix,
             limit: 10,
@@ -374,11 +388,11 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
         await Assert.That(visibleMessages).DoesNotContain(dueMessageA.Id);
         await Assert.That(visibleLinks).IsEquivalentTo([pendingLinkB.Id]);
 
-        await Assert.That(dueAttempts.Select(row => row.Id)).IsEquivalentTo([dueAttemptA.Id, dueAttemptB.Id]);
+        await Assert.That(dueTenantIds).IsEquivalentTo(new[] { tenantA.Id, tenantB.Id });
         await Assert.That(dueAttemptCount).IsEqualTo(2);
         await Assert.That(staleSendingCount).IsEqualTo(1);
-        await Assert.That(wrongTenantClaimed).IsFalse();
-        await Assert.That(claimed).IsTrue();
+        await Assert.That(wrongTenantClaims).IsEmpty();
+        await Assert.That(claims.Select(claim => claim.Attempt.Id)).IsEquivalentTo(new[] { dueAttemptA.Id });
         await Assert.That(recovered).IsEqualTo(1);
         await Assert.That(clearedPayloads).IsEqualTo(2);
         await Assert.That(pendingLinks.Select(row => row.Id)).IsEquivalentTo([pendingLinkA.Id, pendingLinkB.Id]);
@@ -389,10 +403,10 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
         await Assert.That(attempts[futureAttemptA.Id].Status).IsEqualTo(WebhookDeliveryAttemptStatus.Scheduled);
         await Assert.That(attempts[staleAttemptA.Id].Status).IsEqualTo(WebhookDeliveryAttemptStatus.Scheduled);
         await Assert.That(attempts[staleAttemptA.Id].FailureCategory).IsEqualTo("worker_recovered");
-        await Assert.That(messages[expiredMessageA.Id].PayloadJson).IsNull();
-        await Assert.That(messages[expiredMessageB.Id].PayloadJson).IsNull();
-        await Assert.That(messages[retainedMessageA.Id].PayloadJson).IsNotNull();
-        await Assert.That(messages[statusMessageA.Id].Status).IsEqualTo(WebhookMessageStatus.PartiallyFailed);
+        await Assert.That(messages[expiredMessageA.Id].GetPayloadBytes()).IsNull();
+        await Assert.That(messages[expiredMessageB.Id].GetPayloadBytes()).IsNull();
+        await Assert.That(messages[retainedMessageA.Id].GetPayloadBytes()).IsNotNull();
+        await Assert.That(messages[statusMessageA.Id].PayloadHash).IsEqualTo(statusMessageA.PayloadHash);
     }
 
     private static Tenant CreateTenant(string slugPrefix)
@@ -483,25 +497,20 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
         Guid tenantId,
         Guid consumerId,
         string eventId,
-        WebhookMessageStatus status,
         DateTime? retentionUntil = null)
     {
-        return new WebhookMessage
-        {
-            Id = Guid.CreateVersion7(),
-            TenantId = tenantId,
-            EventType = "event.published",
-            EventId = eventId,
-            AggregateKind = "event",
-            AggregateId = Guid.CreateVersion7(),
-            ConsumerId = consumerId,
-            PayloadJson = $"{{\"id\":\"{eventId}\"}}",
-            PayloadHash = $"sha256:{eventId}",
-            PayloadRetentionUntil = retentionUntil ?? new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
-            ProviderMode = WebhookProviderMode.Local,
-            Status = status,
-            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        };
+        var createdAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        return WebhookMessage.Create(
+            Guid.CreateVersion7(),
+            tenantId,
+            "event.published",
+            eventId,
+            "event",
+            Guid.CreateVersion7(),
+            consumerId,
+            System.Text.Encoding.UTF8.GetBytes($"{{\"id\":\"{eventId}\"}}"),
+            retentionUntil ?? new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
+            createdAt);
     }
 
     private static WebhookDeliveryAttempt CreateDeliveryAttempt(
@@ -540,21 +549,21 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
         string providerMessageId,
         string idempotencyKey)
     {
-        return new IncomingWebhookMessage
-        {
-            Id = Guid.CreateVersion7(),
-            TenantId = tenantId,
-            Provider = provider,
-            ProviderMessageId = providerMessageId,
-            IdempotencyKey = idempotencyKey,
-            EventType = "decision.created",
-            HeadersJson = $"{{\"svix-id\":\"{providerMessageId}\"}}",
-            PayloadJson = "{\"decision\":\"accepted\"}",
-            PayloadHash = $"sha256:{providerMessageId}",
-            Status = IncomingWebhookMessageStatus.Verified,
-            ReceivedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            VerifiedAt = new DateTime(2026, 1, 1, 0, 0, 1, DateTimeKind.Utc),
-        };
+        var receivedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var verifiedAt = receivedAt.AddSeconds(1);
+        var payloadBytes = System.Text.Encoding.UTF8.GetBytes("{\"decision\":\"accepted\"}");
+        var payloadHash = $"sha256:{Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(payloadBytes)).ToLowerInvariant()}";
+        return IncomingWebhookMessage.CreateVerified(
+            tenantId,
+            provider,
+            providerMessageId,
+            idempotencyKey,
+            "decision.created",
+            payloadBytes,
+            payloadHash,
+            $"{{\"svix-id\":\"{providerMessageId}\"}}",
+            receivedAt,
+            verifiedAt);
     }
 
     private static WebhookProviderLink CreateProviderLink(

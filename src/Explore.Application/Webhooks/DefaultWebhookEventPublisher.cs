@@ -35,6 +35,25 @@ public sealed class DefaultWebhookEventPublisher(
 
         if (message is not null)
         {
+            var duplicatePayload = await payloadBuilder.BuildAsync(context, cancellationToken);
+            if (!duplicatePayload.Succeeded)
+            {
+                return WebhookEventPublishResult.Failure(
+                    message.Id,
+                    duplicatePayload.FailureCategory ?? "webhook_payload_build_failed",
+                    isRetryable: false,
+                    duplicatePayload.SafeDetail);
+            }
+
+            if (!string.Equals(message.PayloadHash, duplicatePayload.PayloadHash, StringComparison.Ordinal))
+            {
+                return WebhookEventPublishResult.Failure(
+                    message.Id,
+                    "webhook_payload_conflict",
+                    isRetryable: false,
+                    "The message identity already exists with different payload bytes.");
+            }
+
             return WebhookEventPublishResult.Success(message.Id);
         }
 
@@ -46,7 +65,8 @@ public sealed class DefaultWebhookEventPublisher(
 
         message = creation.Message!;
 
-        if (string.IsNullOrWhiteSpace(message.PayloadJson))
+        var payloadBytes = message.GetPayloadBytes();
+        if (payloadBytes is null)
         {
             return WebhookEventPublishResult.Failure(
                 message.Id,
@@ -55,7 +75,7 @@ public sealed class DefaultWebhookEventPublisher(
         }
 
         var providerResult = await deliveryProvider.PublishAsync(
-            CreateProviderMessage(message),
+            CreateProviderMessage(message, payloadBytes),
             cancellationToken);
 
         if (providerResult.Succeeded)
@@ -92,20 +112,22 @@ public sealed class DefaultWebhookEventPublisher(
                 payload.SafeDetail));
         }
 
-        var message = new WebhookMessage
+        var message = WebhookMessage.Create(
+            context.MessageId,
+            context.TenantId,
+            context.EventType,
+            context.EventId,
+            context.AggregateKind,
+            context.AggregateId,
+            context.ConsumerId,
+            payload.PayloadBytes!,
+            payload.PayloadRetentionUntil!.Value.UtcDateTime,
+            DateTime.UtcNow);
+
+        if (!string.Equals(message.PayloadHash, payload.PayloadHash, StringComparison.Ordinal))
         {
-            Id = context.MessageId,
-            TenantId = context.TenantId,
-            EventType = context.EventType,
-            EventId = context.EventId,
-            AggregateKind = context.AggregateKind,
-            AggregateId = context.AggregateId,
-            ConsumerId = context.ConsumerId,
-            PayloadJson = payload.RawPayloadJson,
-            PayloadHash = payload.PayloadHash!,
-            PayloadRetentionUntil = payload.PayloadRetentionUntil!.Value.UtcDateTime,
-            CreatedAt = DateTime.UtcNow
-        };
+            throw new InvalidOperationException("Payload builder hash does not match the exact bytes it returned.");
+        }
 
         var created = await messageRepository.CreateAsync(message, cancellationToken);
         metrics.RecordWebhookMessageCreated(
@@ -117,7 +139,7 @@ public sealed class DefaultWebhookEventPublisher(
         return new MessageCreation(created, null);
     }
 
-    private static WebhookProviderMessage CreateProviderMessage(WebhookMessage message) =>
+    private static WebhookProviderMessage CreateProviderMessage(WebhookMessage message, byte[] payloadBytes) =>
         new(
             message.Id,
             message.TenantId,
@@ -126,7 +148,7 @@ public sealed class DefaultWebhookEventPublisher(
             message.EventId,
             message.AggregateKind,
             message.AggregateId,
-            message.PayloadJson!,
+            payloadBytes,
             message.PayloadHash,
             message.PayloadRetentionUntil);
 

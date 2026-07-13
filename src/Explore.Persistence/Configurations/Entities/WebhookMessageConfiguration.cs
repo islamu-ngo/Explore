@@ -11,17 +11,25 @@ public class WebhookMessageConfiguration : IEntityTypeConfiguration<WebhookMessa
 {
     public void Configure(EntityTypeBuilder<WebhookMessage> builder)
     {
-        builder.ToTable("webhook_messages");
+        builder.ToTable("webhook_messages", table =>
+        {
+            table.HasCheckConstraint(
+                "ck_webhook_messages_payload_hash",
+                "payload_hash ~ '^sha256:[0-9a-f]{64}$'");
+            table.HasCheckConstraint(
+                "ck_webhook_messages_payload_provenance",
+                "payload_provenance_id > 0");
+        });
 
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-        builder.Property(e => e.EventType).HasMaxLength(200).IsRequired();
-        builder.Property(e => e.EventId).HasMaxLength(200).IsRequired();
-        builder.Property(e => e.AggregateKind).HasMaxLength(100).IsRequired();
-        builder.Property(e => e.PayloadJson).HasColumnType("jsonb");
-        builder.Property(e => e.PayloadHash).HasMaxLength(128).IsRequired();
-        builder.Property(e => e.ProviderMode).IsRequired();
-        builder.Property(e => e.ProviderMessageId).HasMaxLength(500);
-        builder.Property(e => e.Status).IsRequired();
+        builder.Property(e => e.EventType).HasMaxLength(WebhookMessage.MaxEventTypeLength).IsRequired();
+        builder.Property(e => e.EventId).HasMaxLength(WebhookMessage.MaxEventIdLength).IsRequired();
+        builder.Property(e => e.AggregateKind).HasMaxLength(WebhookMessage.MaxAggregateKindLength).IsRequired();
+        builder.Property<byte[]?>("_payloadBytes")
+            .HasColumnName("payload_bytes")
+            .HasColumnType("bytea");
+        builder.Property(e => e.PayloadHash).HasMaxLength(WebhookMessage.PayloadHashLength).IsRequired();
+        builder.Property(e => e.PayloadProvenanceId).IsRequired();
 
         builder.HasAlternateKey(e => new { e.TenantId, e.Id })
             .HasName("ak_webhook_messages_tenant_id_id");
@@ -37,8 +45,8 @@ public class WebhookMessageConfiguration : IEntityTypeConfiguration<WebhookMessa
             .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(e => new { e.TenantId, e.Status, e.CreatedAt })
-            .HasDatabaseName("ix_webhook_messages_tenant_status_created");
+        builder.HasIndex(e => new { e.TenantId, e.CreatedAt, e.Id })
+            .HasDatabaseName("ix_webhook_messages_tenant_created");
 
         builder.HasIndex(e => new { e.TenantId, e.EventType, e.EventId })
             .HasDatabaseName("ux_webhook_messages_tenant_event")
@@ -49,11 +57,6 @@ public class WebhookMessageConfiguration : IEntityTypeConfiguration<WebhookMessa
 
         builder.HasIndex(e => new { e.TenantId, e.PayloadRetentionUntil })
             .HasDatabaseName("ix_webhook_messages_tenant_payload_retention")
-            .HasFilter("payload_json IS NOT NULL");
-
-        builder.HasIndex(e => new { e.TenantId, e.ProviderMessageId })
-            .HasDatabaseName("ux_webhook_messages_tenant_provider_message")
-            .IsUnique()
-            .HasFilter("provider_message_id IS NOT NULL");
+            .HasFilter("payload_bytes IS NOT NULL");
     }
 }

@@ -169,9 +169,9 @@ public sealed class WebhookPersistenceTests(PostgreSqlContainerFixture fixture)
             .ToDictionaryAsync(e => e.Id);
 
         await Assert.That(clearedCount).IsEqualTo(1);
-        await Assert.That(messages[expired.Id].PayloadJson).IsNull();
+        await Assert.That(messages[expired.Id].GetPayloadBytes()).IsNull();
         await Assert.That(messages[expired.Id].PayloadClearedAt).IsNotNull();
-        await Assert.That(messages[retained.Id].PayloadJson).Contains("evt-retained");
+        await Assert.That(System.Text.Encoding.UTF8.GetString(messages[retained.Id].GetPayloadBytes()!)).Contains("evt-retained");
         await Assert.That(messages[retained.Id].PayloadClearedAt).IsNull();
     }
 
@@ -186,10 +186,8 @@ public sealed class WebhookPersistenceTests(PostgreSqlContainerFixture fixture)
         var consumerB = CreateConsumer(tenantB.Id, "Tenant B Consumer", WebhookProviderMode.Local);
         var endpointA = CreateEndpoint(tenantA.Id, consumerA.Id, "tenant-a", WebhookEndpointStatus.Active);
         var endpointB = CreateEndpoint(tenantB.Id, consumerB.Id, "tenant-b", WebhookEndpointStatus.Active);
-        var messageA = CreateMessage(tenantA.Id, "event.published", "evt-a", DateTime.UtcNow.AddDays(14));
-        var messageB = CreateMessage(tenantB.Id, "event.published", "evt-b", DateTime.UtcNow.AddDays(14));
-        messageA.ConsumerId = consumerA.Id;
-        messageB.ConsumerId = consumerB.Id;
+        var messageA = CreateMessage(tenantA.Id, "event.published", "evt-a", DateTime.UtcNow.AddDays(14), consumerA.Id);
+        var messageB = CreateMessage(tenantB.Id, "event.published", "evt-b", DateTime.UtcNow.AddDays(14), consumerB.Id);
         var attemptA = CreateDeliveryAttempt(tenantA.Id, messageA.Id, endpointA.Id);
         var attemptB = CreateDeliveryAttempt(tenantB.Id, messageB.Id, endpointB.Id);
         context.Tenants.AddRange(tenantA, tenantB);
@@ -312,43 +310,41 @@ public sealed class WebhookPersistenceTests(PostgreSqlContainerFixture fixture)
         string providerMessageId,
         string idempotencyKey)
     {
-        return new IncomingWebhookMessage
-        {
-            Id = Guid.CreateVersion7(),
-            TenantId = tenantId,
-            Provider = provider,
-            ProviderMessageId = providerMessageId,
-            IdempotencyKey = idempotencyKey,
-            EventType = "decision.created",
-            HeadersJson = "{\"svix-id\":\"" + providerMessageId + "\"}",
-            PayloadJson = "{\"decision\":\"accepted\"}",
-            PayloadHash = "sha256:" + providerMessageId,
-            Status = IncomingWebhookMessageStatus.Verified,
-            ReceivedAt = DateTime.UtcNow,
-            VerifiedAt = DateTime.UtcNow
-        };
+        var now = DateTime.UtcNow;
+        var payloadBytes = System.Text.Encoding.UTF8.GetBytes("{\"decision\":\"accepted\"}");
+        var payloadHash = $"sha256:{Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(payloadBytes)).ToLowerInvariant()}";
+        return IncomingWebhookMessage.CreateVerified(
+            tenantId,
+            provider,
+            providerMessageId,
+            idempotencyKey,
+            "decision.created",
+            payloadBytes,
+            payloadHash,
+            "{\"svix-id\":\"" + providerMessageId + "\"}",
+            now,
+            now);
     }
 
     private static WebhookMessage CreateMessage(
         Guid tenantId,
         string eventType,
         string eventId,
-        DateTime retentionUntil)
+        DateTime retentionUntil,
+        Guid? consumerId = null)
     {
-        return new WebhookMessage
-        {
-            Id = Guid.CreateVersion7(),
-            TenantId = tenantId,
-            EventType = eventType,
-            EventId = eventId,
-            AggregateKind = "event",
-            AggregateId = Guid.CreateVersion7(),
-            PayloadJson = "{\"id\":\"" + eventId + "\"}",
-            PayloadHash = "sha256:" + eventId,
-            PayloadRetentionUntil = retentionUntil,
-            ProviderMode = WebhookProviderMode.Local,
-            Status = WebhookMessageStatus.Pending
-        };
+        var createdAt = retentionUntil.AddDays(-1);
+        return WebhookMessage.Create(
+            Guid.CreateVersion7(),
+            tenantId,
+            eventType,
+            eventId,
+            "event",
+            Guid.CreateVersion7(),
+            consumerId,
+            System.Text.Encoding.UTF8.GetBytes("{\"id\":\"" + eventId + "\"}"),
+            retentionUntil,
+            createdAt);
     }
 
     private static WebhookDeliveryAttempt CreateDeliveryAttempt(

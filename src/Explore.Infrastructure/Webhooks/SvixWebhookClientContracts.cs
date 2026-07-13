@@ -47,7 +47,7 @@ public sealed record SvixMessageCreateRequest(
     string AppUid,
     string EventType,
     string EventId,
-    string PayloadJson,
+    byte[] PayloadBytes,
     int PayloadRetentionDays,
     string IdempotencyKey);
 

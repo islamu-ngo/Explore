@@ -19,12 +19,6 @@ public interface IWebhookMessageRepository
         int limit,
         CancellationToken cancellationToken);
 
-    Task RefreshLocalDeliveryStatusAsync(
-        Guid tenantId,
-        Guid messageId,
-        DateTime refreshedAt,
-        CancellationToken cancellationToken);
-
     Task<int> ClearExpiredPayloadsAsync(
         DateTime now,
         int batchSize,

@@ -2,7 +2,6 @@
 // ABOUTME: Enforces event-catalog allow lists, payload retention, and SHA-256 payload hashes.
 
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using Explore.Application.Contracts.Webhooks;
 
@@ -51,23 +50,18 @@ public sealed class DefaultWebhookPayloadBuilder(IWebhookEventTypeRegistry event
             context.OccurredAt,
             context.TenantId,
             data);
-        var rawPayloadJson = JsonSerializer.Serialize(envelope, JsonOptions);
-        var payloadHash = ComputeSha256Hex(rawPayloadJson);
+        var payloadBytes = JsonSerializer.SerializeToUtf8Bytes(envelope, JsonOptions);
+        var payloadHash = ComputeSha256Identifier(payloadBytes);
         var retentionDays = context.PayloadRetentionDays ?? descriptor.PayloadRetentionDays;
         var payloadRetentionUntil = context.OccurredAt.AddDays(retentionDays);
 
         return Task.FromResult(WebhookPayloadBuildResult.Success(
             envelope,
-            rawPayloadJson,
+            payloadBytes,
             payloadHash,
             payloadRetentionUntil));
     }
 
-    private static string ComputeSha256Hex(string payload)
-    {
-        var bytes = Encoding.UTF8.GetBytes(payload);
-        var hash = SHA256.HashData(bytes);
-        return Convert.ToHexString(hash).ToLowerInvariant();
-    }
+    private static string ComputeSha256Identifier(ReadOnlySpan<byte> payloadBytes) =>
+        $"sha256:{Convert.ToHexString(SHA256.HashData(payloadBytes)).ToLowerInvariant()}";
 }
-

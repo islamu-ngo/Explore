@@ -68,20 +68,17 @@ public sealed class TestWebhookEndpointCommandHandler(
         }
 
         var created = await messageRepository.CreateAsync(
-            new WebhookMessage
-            {
-                Id = messageId,
-                TenantId = request.TenantId,
-                EventType = WebhookEventNames.WebhookTest,
-                EventId = messageId.ToString("D"),
-                AggregateKind = "WebhookEndpoint",
-                AggregateId = endpoint.Id,
-                ConsumerId = endpoint.ConsumerId,
-                PayloadJson = payload.RawPayloadJson,
-                PayloadHash = payload.PayloadHash!,
-                PayloadRetentionUntil = payload.PayloadRetentionUntil!.Value.UtcDateTime,
-                CreatedAt = now.UtcDateTime
-            },
+            WebhookMessage.Create(
+                messageId,
+                request.TenantId,
+                WebhookEventNames.WebhookTest,
+                messageId.ToString("D"),
+                "WebhookEndpoint",
+                endpoint.Id,
+                endpoint.ConsumerId,
+                payload.PayloadBytes!,
+                payload.PayloadRetentionUntil!.Value.UtcDateTime,
+                now.UtcDateTime),
             cancellationToken);
 
         await attemptRepository.CreateAsync(

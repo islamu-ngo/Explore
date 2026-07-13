@@ -1,6 +1,7 @@
 // ABOUTME: Production adapter around the official Svix C# SDK for outgoing webhook delivery.
 // ABOUTME: Resolves backend-only auth token secrets and maps canonical messages to Svix applications/messages.
 
+using System.Text;
 using System.Text.Json;
 using Explore.Application.Contracts.Secrets;
 using Explore.Infrastructure.Configuration;
@@ -57,9 +58,10 @@ internal sealed class SvixWebhookClient(
         CancellationToken cancellationToken)
     {
         var client = await CreateClientAsync(cancellationToken);
+        var payloadJson = DecodeExactUtf8(request.PayloadBytes);
         var message = Message.messageInRaw(
             request.EventType,
-            request.PayloadJson,
+            payloadJson,
             "application/json",
             application: null,
             channels: null,
@@ -79,6 +81,25 @@ internal sealed class SvixWebhookClient(
             cancellationToken);
 
         return new SvixMessageCreateResult(created.Id);
+    }
+
+    private static string DecodeExactUtf8(byte[] payloadBytes)
+    {
+        try
+        {
+            var utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+            var payload = utf8.GetString(payloadBytes);
+            if (!utf8.GetBytes(payload).AsSpan().SequenceEqual(payloadBytes))
+            {
+                throw new SvixWebhookConfigurationException("svix_payload_not_exact_utf8");
+            }
+
+            return payload;
+        }
+        catch (DecoderFallbackException)
+        {
+            throw new SvixWebhookConfigurationException("svix_payload_not_utf8");
+        }
     }
 
     public async Task<SvixAppPortalAccessResult> CreateAppPortalAccessAsync(

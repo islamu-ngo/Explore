@@ -26,7 +26,7 @@ public sealed record WebhookEventBuildContext(
 public sealed record WebhookPayloadBuildResult(
     bool Succeeded,
     WebhookEventEnvelope? Envelope,
-    string? RawPayloadJson,
+    byte[]? PayloadBytes,
     string? PayloadHash,
     DateTimeOffset? PayloadRetentionUntil,
     string? FailureCategory,
@@ -34,10 +34,10 @@ public sealed record WebhookPayloadBuildResult(
 {
     public static WebhookPayloadBuildResult Success(
         WebhookEventEnvelope envelope,
-        string rawPayloadJson,
+        byte[] payloadBytes,
         string payloadHash,
         DateTimeOffset payloadRetentionUntil) =>
-        new(true, envelope, rawPayloadJson, payloadHash, payloadRetentionUntil, null, null);
+        new(true, envelope, payloadBytes.ToArray(), payloadHash, payloadRetentionUntil, null, null);
 
     public static WebhookPayloadBuildResult Failure(string failureCategory, string? safeDetail = null) =>
         new(false, null, null, null, null, failureCategory, safeDetail);
@@ -51,7 +51,7 @@ public sealed record WebhookProviderMessage(
     string EventId,
     string AggregateKind,
     Guid AggregateId,
-    string PayloadJson,
+    byte[] PayloadBytes,
     string PayloadHash,
     DateTimeOffset PayloadRetentionUntil);
 

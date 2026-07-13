@@ -105,7 +105,7 @@ public sealed class SvixWebhookDeliveryProvider(
             appUid,
             message.EventType,
             message.MessageId.ToString("D"),
-            message.PayloadJson,
+            message.PayloadBytes.ToArray(),
             CalculateRetentionDays(message.PayloadRetentionUntil),
             message.MessageId.ToString("D"));
 

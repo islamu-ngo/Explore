@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for webhook payload envelope creation and minimization.
 // ABOUTME: Guards stable hashes, retention calculation, strict data allow-lists, and heavy-redaction privacy.
 
+using System.Text;
 using System.Text.Json;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Webhooks;
@@ -36,12 +37,13 @@ public sealed class DefaultWebhookPayloadBuilderTests
         await Assert.That(result.Envelope.Type).IsEqualTo(WebhookEventNames.EventPublished);
         await Assert.That(result.Envelope.Version).IsEqualTo(1);
         await Assert.That(result.PayloadHash).IsNotNull();
-        await Assert.That(result.PayloadHash!.Length).IsEqualTo(64);
+        await Assert.That(result.PayloadHash!.Length).IsEqualTo(71);
+        await Assert.That(result.PayloadHash).StartsWith("sha256:");
         await Assert.That(result.PayloadRetentionUntil).IsEqualTo(OccurredAt.AddDays(14));
-        await Assert.That(result.RawPayloadJson!).Contains("publicUrl");
-        await Assert.That(result.RawPayloadJson!).DoesNotContain("internalNote");
+        await Assert.That(PayloadJson(result)).Contains("publicUrl");
+        await Assert.That(PayloadJson(result)).DoesNotContain("internalNote");
 
-        using var parsed = JsonDocument.Parse(result.RawPayloadJson!);
+        using var parsed = JsonDocument.Parse(result.PayloadBytes!);
         await Assert.That(parsed.RootElement.GetProperty("tenantId").GetGuid()).IsEqualTo(TenantId);
         await Assert.That(parsed.RootElement.GetProperty("data").GetProperty("eventId").GetString()).IsEqualTo(AggregateId.ToString());
     }
@@ -71,15 +73,15 @@ public sealed class DefaultWebhookPayloadBuilderTests
         var result = await _builder.BuildAsync(context, CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsTrue();
-        await Assert.That(result.RawPayloadJson!).Contains(moderationRecordId.ToString());
-        await Assert.That(result.RawPayloadJson!).Contains("HeavyRedacted");
-        await Assert.That(result.RawPayloadJson!).DoesNotContain(AggregateId.ToString());
-        await Assert.That(result.RawPayloadJson!).DoesNotContain("Unsafe Event Title");
-        await Assert.That(result.RawPayloadJson!).DoesNotContain("unsafe-event-title");
-        await Assert.That(result.RawPayloadJson!).DoesNotContain("/events/");
-        await Assert.That(result.RawPayloadJson!).DoesNotContain("s3://");
-        await Assert.That(result.RawPayloadJson!).DoesNotContain("provider leaked unsafe content");
-        await Assert.That(result.RawPayloadJson!).DoesNotContain("unsafe moderator text");
+        await Assert.That(PayloadJson(result)).Contains(moderationRecordId.ToString());
+        await Assert.That(PayloadJson(result)).Contains("HeavyRedacted");
+        await Assert.That(PayloadJson(result)).DoesNotContain(AggregateId.ToString());
+        await Assert.That(PayloadJson(result)).DoesNotContain("Unsafe Event Title");
+        await Assert.That(PayloadJson(result)).DoesNotContain("unsafe-event-title");
+        await Assert.That(PayloadJson(result)).DoesNotContain("/events/");
+        await Assert.That(PayloadJson(result)).DoesNotContain("s3://");
+        await Assert.That(PayloadJson(result)).DoesNotContain("provider leaked unsafe content");
+        await Assert.That(PayloadJson(result)).DoesNotContain("unsafe moderator text");
         await Assert.That(result.PayloadRetentionUntil).IsEqualTo(OccurredAt.AddDays(1));
     }
 
@@ -97,7 +99,7 @@ public sealed class DefaultWebhookPayloadBuilderTests
 
         await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.FailureCategory).IsEqualTo("missing_required_payload_field");
-        await Assert.That(result.RawPayloadJson).IsNull();
+        await Assert.That(result.PayloadBytes).IsNull();
     }
 
     [Test]
@@ -117,7 +119,7 @@ public sealed class DefaultWebhookPayloadBuilderTests
 
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.Envelope!.Version).IsEqualTo(2);
-        using var parsed = JsonDocument.Parse(result.RawPayloadJson!);
+        using var parsed = JsonDocument.Parse(result.PayloadBytes!);
         var data = parsed.RootElement.GetProperty("data");
         await Assert.That(data.GetProperty("consentToEmailShare").GetBoolean()).IsFalse();
         await Assert.That(data.TryGetProperty("attendeeEmail", out _)).IsFalse();
@@ -143,7 +145,7 @@ public sealed class DefaultWebhookPayloadBuilderTests
 
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.Envelope!.Version).IsEqualTo(2);
-        using var parsed = JsonDocument.Parse(result.RawPayloadJson!);
+        using var parsed = JsonDocument.Parse(result.PayloadBytes!);
         var data = parsed.RootElement.GetProperty("data");
         await Assert.That(data.GetProperty("consentToEmailShare").GetBoolean()).IsTrue();
         await Assert.That(data.GetProperty("attendeeEmail").GetString()).IsEqualTo("attendee@example.test");
@@ -198,4 +200,7 @@ public sealed class DefaultWebhookPayloadBuilderTests
             AggregateId,
             OccurredAt,
             data);
+
+    private static string PayloadJson(WebhookPayloadBuildResult result) =>
+        Encoding.UTF8.GetString(result.PayloadBytes!);
 }

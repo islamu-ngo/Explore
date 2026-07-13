@@ -2,6 +2,7 @@
 // ABOUTME: Covers idempotent creation, disabled mode, provider failures, and payload validation.
 
 using System.Diagnostics.Metrics;
+using System.Text;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Telemetry;
@@ -36,7 +37,7 @@ public sealed class DefaultWebhookEventPublisherTests
     }
 
     [Test]
-    public async Task PublishAsync_WhenMessageIsNew_CreatesCanonicalMessageDispatchesProviderAndMarksQueued()
+    public async Task PublishAsync_WhenMessageIsNew_CreatesCanonicalMessageAndDispatchesExactBytes()
     {
         var fixture = new Fixture("Local");
         var context = CreateContext();
@@ -64,25 +65,19 @@ public sealed class DefaultWebhookEventPublisherTests
         await Assert.That(createdMessage.TenantId).IsEqualTo(TenantId);
         await Assert.That(createdMessage.ConsumerId).IsEqualTo(ConsumerId);
         await Assert.That(createdMessage.EventType).IsEqualTo(WebhookEventNames.EventPublished);
-        await Assert.That(createdMessage.ProviderMode).IsEqualTo(WebhookProviderMode.Local);
-        await Assert.That(createdMessage.Status).IsEqualTo(WebhookMessageStatus.Pending);
-        await Assert.That(createdMessage.PayloadJson).Contains("\"event.published\"");
+        await Assert.That(Encoding.UTF8.GetString(createdMessage.GetPayloadBytes()!)).Contains("\"event.published\"");
         await Assert.That(providerMessage).IsNotNull();
         await Assert.That(providerMessage!.MessageId).IsEqualTo(MessageId);
         await Assert.That(providerMessage.ConsumerId).IsEqualTo(ConsumerId);
-        await fixture.MessageRepository.Received(1).MarkProviderQueuedAsync(
-            TenantId,
-            MessageId,
-            "local-provider-message",
-            Arg.Any<DateTime>(),
-            Arg.Any<CancellationToken>());
+        await Assert.That(providerMessage.PayloadBytes).IsEquivalentTo(createdMessage.GetPayloadBytes()!);
+        await Assert.That(providerMessage.PayloadHash).IsEqualTo(createdMessage.PayloadHash);
     }
 
     [Test]
-    public async Task PublishAsync_WhenExistingMessageAlreadyQueued_DoesNotRepublish()
+    public async Task PublishAsync_WhenExistingMessageHasSamePayload_DoesNotRepublish()
     {
         var fixture = new Fixture("Local");
-        var existing = CreateMessage(WebhookMessageStatus.Queued, providerMessageId: "existing-provider-message");
+        var existing = CreateMessage();
         fixture.MessageRepository.GetByTenantAndIdAsync(TenantId, MessageId, Arg.Any<CancellationToken>())
             .Returns(existing);
 
@@ -90,14 +85,13 @@ public sealed class DefaultWebhookEventPublisherTests
 
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.MessageId).IsEqualTo(MessageId);
-        await Assert.That(result.ProviderMessageId).IsEqualTo("existing-provider-message");
+        await Assert.That(result.ProviderMessageId).IsNull();
         await fixture.MessageRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
         await fixture.DeliveryProvider.DidNotReceiveWithAnyArgs().PublishAsync(default!, default);
-        await fixture.MessageRepository.DidNotReceiveWithAnyArgs().MarkProviderQueuedAsync(default, default, default, default, default);
     }
 
     [Test]
-    public async Task PublishAsync_WhenProviderFails_MarksMessageFailedAndReturnsRetryableFailure()
+    public async Task PublishAsync_WhenProviderFails_ReturnsRetryableFailureWithoutMutatingMessage()
     {
         var fixture = new Fixture("Local");
         fixture.MessageRepository.GetByTenantAndIdAsync(TenantId, MessageId, Arg.Any<CancellationToken>())
@@ -116,12 +110,6 @@ public sealed class DefaultWebhookEventPublisherTests
         await Assert.That(result.MessageId).IsEqualTo(MessageId);
         await Assert.That(result.IsRetryable).IsTrue();
         await Assert.That(result.FailureCategory).IsEqualTo("webhook_provider_failed");
-        await fixture.MessageRepository.Received(1).MarkProviderFailedAsync(
-            TenantId,
-            MessageId,
-            Arg.Any<DateTime>(),
-            Arg.Any<CancellationToken>());
-        await fixture.MessageRepository.DidNotReceiveWithAnyArgs().MarkProviderQueuedAsync(default, default, default, default, default);
     }
 
     [Test]
@@ -159,26 +147,25 @@ public sealed class DefaultWebhookEventPublisherTests
             },
             ConsumerId);
 
-    private static WebhookMessage CreateMessage(
-        WebhookMessageStatus status,
-        string? providerMessageId = null) =>
-        new()
-        {
-            Id = MessageId,
-            TenantId = TenantId,
-            EventType = WebhookEventNames.EventPublished,
-            EventId = "domain-event-1",
-            AggregateKind = "Event",
-            AggregateId = AggregateId,
-            ConsumerId = ConsumerId,
-            PayloadJson = "{\"type\":\"event.published\"}",
-            PayloadHash = "hash",
-            PayloadRetentionUntil = OccurredAt.AddDays(14).UtcDateTime,
-            ProviderMode = WebhookProviderMode.Local,
-            ProviderMessageId = providerMessageId,
-            Status = status,
-            CreatedAt = DateTime.UtcNow
-        };
+    private static WebhookMessage CreateMessage()
+    {
+        var payload = new DefaultWebhookPayloadBuilder(new WebhookEventTypeRegistry())
+            .BuildAsync(CreateContext(), CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+
+        return WebhookMessage.Create(
+            MessageId,
+            TenantId,
+            WebhookEventNames.EventPublished,
+            "domain-event-1",
+            "Event",
+            AggregateId,
+            ConsumerId,
+            payload.PayloadBytes!,
+            OccurredAt.AddDays(14).UtcDateTime,
+            OccurredAt.UtcDateTime);
+    }
 
     private sealed class Fixture
     {
