@@ -266,6 +266,9 @@
     private int _existingTenantPolicy;
     private IReadOnlyList<TenantPlanValidationError> _validationErrors = [];
     private TenantPlanDiffResult? _diff;
+    private long _loadGeneration;
+    private string _requestedPlanKey = string.Empty;
+    private string _loadedPlanKey = string.Empty;
     private bool _loading = true;
     private bool _loadFailed;
     private bool _busy;
@@ -287,26 +290,52 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        string key = string.IsNullOrWhiteSpace(Key) ? RouterState.GetParam("Key") ?? string.Empty : Key;
+        string requestedPlanKey = CurrentRoutePlanKey();
+        long generation = ++_loadGeneration;
+        ResetForPlanReload();
+        _requestedPlanKey = requestedPlanKey;
         _loading = true;
         _loadFailed = false;
-        _plan = null;
 
         try
         {
-            _plan = await PlanCatalog.GetPlanAsync(key);
+            HalResourceOfControlPlaneTenantPlanDetailDto plan = await PlanCatalog.GetPlanAsync(requestedPlanKey);
+            if (!IsPlanRequestCurrent(generation, requestedPlanKey))
+            {
+                return;
+            }
+
+            if (!string.Equals(NormalizePlanKey(plan.Key), requestedPlanKey, StringComparison.Ordinal))
+            {
+                _loadFailed = true;
+                return;
+            }
+
+            _plan = plan;
+            _loadedPlanKey = requestedPlanKey;
         }
         catch (OperationCanceledException)
         {
+            if (!IsPlanRequestCurrent(generation, requestedPlanKey))
+            {
+                return;
+            }
+
             throw;
         }
         catch
         {
-            _loadFailed = true;
+            if (IsPlanRequestCurrent(generation, requestedPlanKey))
+            {
+                _loadFailed = true;
+            }
         }
         finally
         {
-            _loading = false;
+            if (IsPlanRequestCurrent(generation, requestedPlanKey))
+            {
+                _loading = false;
+            }
         }
     }
 
@@ -322,14 +351,41 @@
         await FocusService.FocusAsync(selector);
     }
 
-    private async Task ReloadAsync()
+    private async Task ReloadAsync(long generation, string requestedPlanKey)
     {
-        _plan = await PlanCatalog.GetPlanAsync(Key);
+        HalResourceOfControlPlaneTenantPlanDetailDto plan = await PlanCatalog.GetPlanAsync(requestedPlanKey);
+        if (!IsPlanRequestCurrent(generation, requestedPlanKey))
+        {
+            return;
+        }
+
+        if (!string.Equals(NormalizePlanKey(plan.Key), requestedPlanKey, StringComparison.Ordinal))
+        {
+            _plan = null;
+            _loadedPlanKey = string.Empty;
+            _loadFailed = true;
+            return;
+        }
+
+        _plan = plan;
+        _loadedPlanKey = requestedPlanKey;
     }
 
     private async Task StartNewVersionAsync()
     {
+        long generation = _loadGeneration;
+        string requestedPlanKey = _requestedPlanKey;
+        if (!IsLoadedPlanCurrent(generation, requestedPlanKey))
+        {
+            return;
+        }
+
         await FocusService.SaveFocusAsync();
+        if (!IsLoadedPlanCurrent(generation, requestedPlanKey))
+        {
+            return;
+        }
+
         _draftSourceVersion = Versions.OrderByDescending(version => version.VersionNumber).FirstOrDefault();
         _editingVersionId = null;
         _draft = _draftSourceVersion is null ? NewDraft() : DraftFromVersion(_draftSourceVersion);
@@ -339,7 +395,21 @@
 
     private async Task StartEditAsync(ControlPlaneTenantPlanVersionDto version)
     {
+        long generation = _loadGeneration;
+        string requestedPlanKey = _requestedPlanKey;
+        if (!IsLoadedPlanCurrent(generation, requestedPlanKey)
+            || !Versions.Any(candidate => ReferenceEquals(candidate, version))
+            || !CanEditVersion(version))
+        {
+            return;
+        }
+
         await FocusService.SaveFocusAsync();
+        if (!IsLoadedPlanCurrent(generation, requestedPlanKey))
+        {
+            return;
+        }
+
         _editingVersionId = version.Id;
         _draftSourceVersion = version;
         _draft = DraftFromVersion(version);
@@ -359,33 +429,65 @@
         await FocusService.RestoreFocusAsync(fallback);
     }
 
-    private Task ValidateDraftAsync(TenantPlanDraft draft) => RunActionAsync(async () =>
+    private Task ValidateDraftAsync(TenantPlanDraft draft) => RunActionAsync(async (generation, requestedPlanKey) =>
     {
+        if (!IsCurrentPlan(draft.Key))
+        {
+            SetStaleResourceMessage();
+            return false;
+        }
+
         TenantPlanValidationResult result = await PlanCatalog.ValidateDraftAsync(draft);
+        if (!IsLoadedPlanCurrent(generation, requestedPlanKey))
+        {
+            return false;
+        }
+
         _validationErrors = result.Errors.ToArray();
         _commandSucceeded = result.IsValid == true;
         _commandMessage = result.IsValid == true ? "Draft is valid." : "Draft validation found issues.";
         return false;
     });
 
-    private Task PreviewDiffAsync(TenantPlanDraft draft) => RunActionAsync(async () =>
+    private Task PreviewDiffAsync(TenantPlanDraft draft) => RunActionAsync(async (generation, requestedPlanKey) =>
     {
-        if (_draftSourceVersion is null)
+        if (_draftSourceVersion is not { } sourceVersion || !IsCurrentPlan(draft.Key))
+        {
+            SetStaleResourceMessage();
+            return false;
+        }
+
+        TenantPlanDiffResult diff = await PlanCatalog.PreviewDiffAsync(EffectiveConfigurationFrom(sourceVersion), draft);
+        if (!IsLoadedPlanCurrent(generation, requestedPlanKey))
         {
             return false;
         }
 
-        _diff = await PlanCatalog.PreviewDiffAsync(EffectiveConfigurationFrom(_draftSourceVersion), draft);
+        _diff = diff;
         _commandSucceeded = true;
         _commandMessage = _diff.SettingChanges.Count == 0 ? "No setting changes." : $"{_diff.SettingChanges.Count} setting changes found.";
         return true;
     });
 
-    private Task SaveDraftAsync(TenantPlanDraft draft) => RunActionAsync(async () =>
+    private Task SaveDraftAsync(TenantPlanDraft draft) => RunActionAsync(async (generation, requestedPlanKey) =>
     {
+        if (!IsCurrentPlan(draft.Key)
+            || (_editingVersionId is { } editableVersionId
+                && !Versions.Any(version => version.Id == editableVersionId && CanEditVersion(version)))
+            || (_editingVersionId is null && !CanCreateVersionDraft))
+        {
+            SetStaleResourceMessage();
+            return false;
+        }
+
         BaseCommandResponseOfGuid result = _editingVersionId is { } versionId
             ? await PlanCatalog.UpdateVersionDraftAsync(versionId, draft)
-            : await PlanCatalog.CreateVersionDraftAsync(_plan?.Key ?? Key, draft);
+            : await PlanCatalog.CreateVersionDraftAsync(requestedPlanKey, draft);
+
+        if (!IsLoadedPlanCurrent(generation, requestedPlanKey))
+        {
+            return false;
+        }
 
         SetCommandResult(result, "Plan version draft saved.", "Plan version draft could not be saved.");
         if (result.Success != true)
@@ -398,13 +500,27 @@
         _draftSourceVersion = null;
         _validationErrors = [];
         _diff = null;
-        await ReloadAsync();
+        await ReloadAsync(generation, requestedPlanKey);
         return true;
     });
 
     private async Task StartCloneAsync(ControlPlaneTenantPlanVersionDto version)
     {
+        long generation = _loadGeneration;
+        string requestedPlanKey = _requestedPlanKey;
+        if (!IsLoadedPlanCurrent(generation, requestedPlanKey)
+            || !Versions.Any(candidate => ReferenceEquals(candidate, version))
+            || !CanCloneVersion(version))
+        {
+            return;
+        }
+
         await FocusService.SaveFocusAsync();
+        if (!IsLoadedPlanCurrent(generation, requestedPlanKey))
+        {
+            return;
+        }
+
         _cloneVersion = version;
         _cloneKey = string.Empty;
         _cloneName = string.Empty;
@@ -423,14 +539,23 @@
         await FocusService.RestoreFocusAsync(versionId is { } id ? $"#{VersionActionId(id)}" : null);
     }
 
-    private Task ConfirmCloneAsync() => RunActionAsync(async () =>
+    private Task ConfirmCloneAsync() => RunActionAsync(async (generation, requestedPlanKey) =>
     {
-        if (_cloneVersion?.Id is not { } versionId || !CanConfirmClone)
+        if (_cloneVersion?.Id is not { } versionId
+            || !CanConfirmClone
+            || !IsCurrentPlan(_plan?.Key)
+            || !Versions.Any(version => version.Id == versionId && CanCloneVersion(version)))
         {
+            SetStaleResourceMessage();
             return false;
         }
 
         BaseCommandResponseOfGuid result = await PlanCatalog.ClonePlanAsync(versionId, _cloneKey.Trim(), _cloneName.Trim());
+        if (!IsLoadedPlanCurrent(generation, requestedPlanKey))
+        {
+            return false;
+        }
+
         SetCommandResult(result, "Plan cloned to a new draft.", "Plan could not be cloned.");
         if (result.Success == true)
         {
@@ -444,19 +569,30 @@
 
     private async Task StartLifecycleAsync(ControlPlaneTenantPlanVersionDto version, VersionOperation operation)
     {
-        if (version.Id is not { } versionId)
+        long generation = _loadGeneration;
+        string requestedPlanKey = _requestedPlanKey;
+        bool canRunOperation = operation == VersionOperation.Publish ? CanPublishVersion(version) : CanArchiveVersion(version);
+        if (version.Id is not { } versionId
+            || !IsLoadedPlanCurrent(generation, requestedPlanKey)
+            || !Versions.Any(candidate => ReferenceEquals(candidate, version))
+            || !canRunOperation)
         {
             return;
         }
 
         await FocusService.SaveFocusAsync();
-        _lifecycleConfirmation = new VersionConfirmation(operation, versionId, version.VersionNumber ?? 0, _plan?.Key ?? Key);
+        if (!IsLoadedPlanCurrent(generation, requestedPlanKey))
+        {
+            return;
+        }
+
+        _lifecycleConfirmation = new VersionConfirmation(operation, versionId, version.VersionNumber ?? 0, _loadedPlanKey);
         _confirmationText = string.Empty;
         _existingTenantPolicy = 0;
         _draft = null;
         _cloneVersion = null;
         ClearCommandMessage();
-        _focusSelector = "#plan-lifecycle-confirmation-input input";
+        _focusSelector = "#plan-lifecycle-confirmation-input";
     }
 
     private async Task CancelLifecycleAsync()
@@ -467,34 +603,65 @@
         await FocusService.RestoreFocusAsync(versionId is { } id ? $"#{VersionActionId(id)}" : null);
     }
 
-    private Task ConfirmLifecycleAsync() => RunActionAsync(async () =>
+    private Task ConfirmLifecycleAsync() => RunActionAsync(async (generation, requestedPlanKey) =>
     {
-        if (_lifecycleConfirmation is not { } confirmation || !CanConfirmLifecycle)
+        if (_lifecycleConfirmation is not { } confirmation
+            || !CanConfirmLifecycle
+            || !IsCurrentPlan(confirmation.PlanKey)
+            || !Versions.Any(version => version.Id == confirmation.VersionId
+                && (confirmation.Operation == VersionOperation.Publish
+                    ? CanPublishVersion(version)
+                    : CanArchiveVersion(version))))
         {
+            SetStaleResourceMessage();
             return false;
         }
 
         BaseCommandResponseOfGuid result = confirmation.Operation == VersionOperation.Publish
             ? await PlanCatalog.PublishVersionAsync(confirmation.VersionId, _existingTenantPolicy)
             : await PlanCatalog.ArchiveVersionAsync(confirmation.VersionId);
-        SetCommandResult(result, $"Plan version {confirmation.ActionLabel.ToLowerInvariant()}ed.", $"Plan version could not be {confirmation.ActionLabel.ToLowerInvariant()}ed.");
+        if (!IsLoadedPlanCurrent(generation, requestedPlanKey))
+        {
+            return false;
+        }
+
+        string completedMessage = confirmation.Operation == VersionOperation.Publish
+            ? "Plan version published."
+            : "Plan version archived.";
+        string failedMessage = confirmation.Operation == VersionOperation.Publish
+            ? "Plan version could not be published."
+            : "Plan version could not be archived.";
+        SetCommandResult(result, completedMessage, failedMessage);
         if (result.Success == true)
         {
             _lifecycleConfirmation = null;
             _confirmationText = string.Empty;
-            await ReloadAsync();
+            await ReloadAsync(generation, requestedPlanKey);
         }
 
         return result.Success == true;
     });
 
-    private async Task RunActionAsync(Func<Task<bool>> action)
+    private async Task RunActionAsync(Func<long, string, Task<bool>> action)
     {
+        long generation = _loadGeneration;
+        string requestedPlanKey = _requestedPlanKey;
+        if (!IsLoadedPlanCurrent(generation, requestedPlanKey))
+        {
+            SetStaleResourceMessage();
+            return;
+        }
+
         _busy = true;
         ClearCommandMessage();
         try
         {
-            await action();
+            await action(generation, requestedPlanKey);
+            if (!IsLoadedPlanCurrent(generation, requestedPlanKey))
+            {
+                return;
+            }
+
             string message = _commandMessage ?? "Plan action completed.";
             if (_commandSucceeded)
             {
@@ -507,17 +674,30 @@
         }
         catch (OperationCanceledException)
         {
+            if (!IsPlanRequestCurrent(generation, requestedPlanKey))
+            {
+                return;
+            }
+
             throw;
         }
         catch
         {
+            if (!IsLoadedPlanCurrent(generation, requestedPlanKey))
+            {
+                return;
+            }
+
             _commandSucceeded = false;
             _commandMessage = "The plan action could not be completed.";
             await Announcer.AnnounceAssertiveAsync(_commandMessage);
         }
         finally
         {
-            _busy = false;
+            if (IsPlanRequestCurrent(generation, requestedPlanKey))
+            {
+                _busy = false;
+            }
         }
     }
 
@@ -546,22 +726,19 @@
         CanEditVersion(version) || CanPublishVersion(version) || CanArchiveVersion(version) || CanCloneVersion(version);
 
     private bool CanEditVersion(ControlPlaneTenantPlanVersionDto version) =>
-        IsStatus(version, "Draft") && HasVersionLink(ControlPlaneLinkRelations.UpdateVersionDraft, version);
+        HasVersionLink(ControlPlaneLinkRelations.UpdateVersionDraft, version);
 
     private bool CanPublishVersion(ControlPlaneTenantPlanVersionDto version) =>
-        IsStatus(version, "Draft") && HasVersionLink(ControlPlaneLinkRelations.Publish, version);
+        HasVersionLink(ControlPlaneLinkRelations.Publish, version);
 
     private bool CanArchiveVersion(ControlPlaneTenantPlanVersionDto version) =>
-        IsStatus(version, "Published") && HasVersionLink(ControlPlaneLinkRelations.Archive, version);
+        HasVersionLink(ControlPlaneLinkRelations.Archive, version);
 
     private bool CanCloneVersion(ControlPlaneTenantPlanVersionDto version) =>
-        IsStatus(version, "Published") && HasVersionLink(ControlPlaneLinkRelations.Clone, version);
+        HasVersionLink(ControlPlaneLinkRelations.Clone, version);
 
     private bool HasVersionLink(string relation, ControlPlaneTenantPlanVersionDto version) =>
-        version.Id is { } id && ControlPlaneHal.HasLinkForResource(_plan?._links, relation, id);
-
-    private static bool IsStatus(ControlPlaneTenantPlanVersionDto version, string status) =>
-        string.Equals(version.StatusCode, status, StringComparison.OrdinalIgnoreCase);
+        version.Id is { } id && ControlPlaneHal.HasLinkForResource(version._links, relation, id);
 
     private int VersionNumber(Guid versionId) => Versions.FirstOrDefault(version => version.Id == versionId)?.VersionNumber ?? 0;
     private static string VersionActionId(ControlPlaneTenantPlanVersionDto version) => VersionActionId(version.Id ?? Guid.Empty);
@@ -611,6 +788,55 @@
 
     private static string FormatPricing(ControlPlaneTenantPlanVersionDto version) =>
         $"{(version.PriceAmount ?? 0).ToString("0.##", CultureInfo.InvariantCulture)} {version.CurrencyCode} / {version.BillingPeriod}";
+
+    private string CurrentRoutePlanKey() => NormalizePlanKey(
+        string.IsNullOrWhiteSpace(Key) ? RouterState.GetParam("Key") : Key);
+
+    private static string NormalizePlanKey(string? planKey) => planKey?.Trim() ?? string.Empty;
+
+    private bool IsPlanRequestCurrent(long generation, string requestedPlanKey) =>
+        generation == _loadGeneration
+        && string.Equals(_requestedPlanKey, requestedPlanKey, StringComparison.Ordinal)
+        && string.Equals(CurrentRoutePlanKey(), requestedPlanKey, StringComparison.Ordinal);
+
+    private bool IsLoadedPlanCurrent(long generation, string requestedPlanKey) =>
+        IsPlanRequestCurrent(generation, requestedPlanKey) && IsCurrentPlan(requestedPlanKey);
+
+    private bool IsCurrentPlan(string? planKey)
+    {
+        string normalizedPlanKey = NormalizePlanKey(planKey);
+        return !string.IsNullOrEmpty(normalizedPlanKey)
+            && string.Equals(_requestedPlanKey, normalizedPlanKey, StringComparison.Ordinal)
+            && string.Equals(CurrentRoutePlanKey(), normalizedPlanKey, StringComparison.Ordinal)
+            && string.Equals(_loadedPlanKey, normalizedPlanKey, StringComparison.Ordinal)
+            && string.Equals(NormalizePlanKey(_plan?.Key), normalizedPlanKey, StringComparison.Ordinal);
+    }
+
+    private void SetStaleResourceMessage()
+    {
+        _commandSucceeded = false;
+        _commandMessage = "The plan changed while this action was open. Reload the plan and try again from its current actions.";
+    }
+
+    private void ResetForPlanReload()
+    {
+        _plan = null;
+        _loadedPlanKey = string.Empty;
+        _draft = null;
+        _editingVersionId = null;
+        _draftSourceVersion = null;
+        _cloneVersion = null;
+        _cloneKey = string.Empty;
+        _cloneName = string.Empty;
+        _lifecycleConfirmation = null;
+        _confirmationText = string.Empty;
+        _existingTenantPolicy = 0;
+        _validationErrors = [];
+        _diff = null;
+        _busy = false;
+        _focusSelector = null;
+        ClearCommandMessage();
+    }
 
     private enum VersionOperation
     {

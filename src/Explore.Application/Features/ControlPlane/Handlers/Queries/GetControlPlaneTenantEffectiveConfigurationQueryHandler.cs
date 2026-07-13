@@ -38,6 +38,12 @@ public sealed class GetControlPlaneTenantEffectiveConfigurationQueryHandler(
         TenantPlanAssignment? assignment = await tenantPlanRepository.GetActiveAssignmentForTenantAsync(
             request.TenantId,
             cancellationToken);
+        TenantPlanAssignment? rollbackAssignment = assignment is null
+            ? null
+            : await tenantPlanRepository.GetPreviousEligibleAssignmentForTenantAsync(
+                request.TenantId,
+                assignment.Id,
+                cancellationToken);
         TenantPlanVersion? assignedVersion = assignment is null
             ? null
             : await tenantPlanRepository.GetVersionAsync(assignment.TenantPlanVersionId, cancellationToken);
@@ -49,6 +55,9 @@ public sealed class GetControlPlaneTenantEffectiveConfigurationQueryHandler(
         {
             TenantId = request.TenantId,
             PlanAssignment = assignment is null ? null : ControlPlaneTenantPlanMapper.ToAssignment(assignment),
+            RollbackAssignment = rollbackAssignment is null
+                ? null
+                : ControlPlaneTenantPlanMapper.ToAssignment(rollbackAssignment),
             Settings = MapSettings(definitions, resolvedSettings),
             Quotas = MapQuotas(assignedVersion, storage)
         };

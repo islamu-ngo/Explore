@@ -1,5 +1,5 @@
-@* ABOUTME: Public instance-admin page for one tenant's effective settings and quota usage. *@
-@* ABOUTME: Gates override and lock actions exclusively through per-setting HAL links. *@
+@* ABOUTME: Public instance-admin page for tenant plan assignment, effective settings, and quotas. *@
+@* ABOUTME: Gates plan and setting mutations exclusively through resource-specific HAL links. *@
 
 @page "/admin/instance/tenants/{TenantId:guid}/configuration"
 @using Explore.Blazor.Client.Clients
@@ -11,6 +11,7 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject IControlPlaneTenantConfigurationService ConfigurationService
+@inject IControlPlanePlanCatalogService PlanCatalog
 @inject IAccessibilityFocusService FocusService
 @inject IAccessibilityAnnouncerService Announcer
 
@@ -38,17 +39,82 @@
     }
     else
     {
-        @if (_configuration.PlanAssignment is { } assignment)
+        @if (Assignment is not null || CanSwitchPlan)
         {
             <section class="instance-tenant-config__section"
                      aria-labelledby="tenant-plan-assignment-title">
                 <h2 id="tenant-plan-assignment-title">Plan assignment</h2>
-                <dl class="instance-tenant-config__assignment-facts">
-                    <div><dt>Plan</dt><dd dir="ltr"><code dir="ltr">@assignment.PlanKey</code></dd></div>
-                    <div><dt>Version</dt><dd dir="ltr">@($"v{assignment.VersionNumber}")</dd></div>
-                    <div><dt>Status</dt><dd dir="ltr">@assignment.StatusCode</dd></div>
-                    <div><dt>Assigned</dt><dd dir="ltr">@assignment.AssignedAt?.ToString("yyyy-MM-dd HH:mm UTC")</dd></div>
-                </dl>
+                @if (Assignment is { } assignment)
+                {
+                    <dl class="instance-tenant-config__assignment-facts">
+                        <div><dt>Plan</dt><dd dir="ltr"><code dir="ltr">@assignment.PlanKey</code></dd></div>
+                        <div><dt>Version</dt><dd dir="ltr">@($"v{assignment.VersionNumber}")</dd></div>
+                        <div><dt>Status</dt><dd dir="ltr">@assignment.StatusCode</dd></div>
+                        <div><dt>Assigned</dt><dd dir="ltr">@assignment.AssignedAt?.ToString("yyyy-MM-dd HH:mm UTC")</dd></div>
+                    </dl>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">No tenant plan is currently assigned.</MudAlert>
+                }
+
+                <div id="tenant-plan-actions" class="instance-tenant-config__assignment-actions" role="group" tabindex="-1" aria-label="Tenant plan assignment actions">
+                    @if (CanSwitchPlan)
+                    {
+                        <MudSelect T="Guid?"
+                                   @bind-Value="_selectedPlanVersionId"
+                                   Label="Published plan version"
+                                   Variant="Variant.Outlined"
+                                   Disabled="@IsBusy"
+                                   aria-label="Published plan version">
+                            @foreach (PublishedPlanVersion option in _publishedPlanVersions)
+                            {
+                                <MudSelectItem T="Guid?" Value="@((Guid?)option.Id)">@option.Label</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <AppButton Variant="Variant.Outlined"
+                                   Disabled="@(_selectedPlanVersionId is null || IsBusy)"
+                                   OnClick="@(() => StartAssignmentActionAsync(AssignmentOperation.Switch))">
+                            Switch plan
+                        </AppButton>
+                    }
+                    @if (Assignment is { } applyAssignment && CanApplyAssignment(applyAssignment))
+                    {
+                        <AppButton Disabled="@IsBusy" OnClick="@(() => StartAssignmentActionAsync(AssignmentOperation.Apply))">Apply assignment</AppButton>
+                    }
+                    @if (RollbackAssignment is { } rollbackAssignment && CanRollbackAssignment(rollbackAssignment))
+                    {
+                        <AppButton Variant="Variant.Outlined" Color="Color.Warning" Disabled="@IsBusy" OnClick="@(() => StartAssignmentActionAsync(AssignmentOperation.Rollback))">Rollback assignment</AppButton>
+                    }
+                </div>
+
+                @if (_planCatalogUnavailable && CanSwitchPlan)
+                {
+                    <MudAlert Severity="Severity.Warning">Published plan versions are currently unavailable. Existing assignment actions remain available.</MudAlert>
+                }
+
+                @if (_assignmentConfirmation is not null)
+                {
+                    <div class="instance-tenant-config__assignment-confirmation" aria-labelledby="tenant-plan-confirmation-title">
+                        <h3 id="tenant-plan-confirmation-title">@_assignmentConfirmation.Title</h3>
+                        <p>@_assignmentConfirmation.Description</p>
+                        <p>Type <code dir="ltr">@_assignmentConfirmation.RequiredPhrase</code> to continue.</p>
+                        <input id="tenant-plan-confirmation-input"
+                               aria-label="Tenant plan confirmation phrase"
+                               autocomplete="off"
+                               dir="ltr"
+                               disabled="@IsBusy"
+                               @bind="_assignmentConfirmationText" />
+                        <div class="instance-tenant-config__actions">
+                            <AppButton Color="@_assignmentConfirmation.Color"
+                                       Disabled="@(!CanConfirmAssignment || IsBusy)"
+                                       OnClick="ConfirmAssignmentAsync">
+                                @_assignmentConfirmation.ActionLabel
+                            </AppButton>
+                            <AppButton Variant="Variant.Text" Disabled="@IsBusy" OnClick="CancelAssignmentActionAsync">Cancel</AppButton>
+                        </div>
+                    </div>
+                }
             </section>
         }
 
@@ -198,23 +264,44 @@
 
     private readonly FormSubmitState _submitState = new();
     private HalResourceOfControlPlaneTenantEffectiveConfigurationDto? _configuration;
+    private IReadOnlyList<PublishedPlanVersion> _publishedPlanVersions = [];
     private bool _loading = true;
+    private bool _planCatalogUnavailable;
     private string? _editingKey;
     private string _editingValue = string.Empty;
+    private Guid? _selectedPlanVersionId;
+    private AssignmentConfirmation? _assignmentConfirmation;
+    private string _assignmentConfirmationText = string.Empty;
     private string? _pendingFocusId;
     private string? _commandMessage;
     private bool _commandSucceeded;
+    private long _loadGeneration;
+    private Guid _requestedTenantId;
+    private Guid _loadedTenantId;
 
     private bool IsBusy => _submitState.IsSubmitting;
     private const string LoadError = "Tenant configuration is currently unavailable.";
     private IReadOnlyList<ControlPlaneTenantEffectiveSettingDto> Settings => _configuration?.Settings?.ToArray() ?? [];
     private IReadOnlyList<ControlPlaneTenantQuotaUsageDto> Quotas => _configuration?.Quotas?.ToArray() ?? [];
+    private ControlPlaneTenantPlanAssignmentDto? Assignment => _configuration?.PlanAssignment;
+    private ControlPlaneTenantPlanAssignmentDto? RollbackAssignment => _configuration?.RollbackAssignment;
+    private bool CanSwitchPlan => ControlPlaneHal.HasLink(_configuration?._links, ControlPlaneLinkRelations.SwitchPlan);
+    private bool CanConfirmAssignment => _assignmentConfirmation is not null
+        && string.Equals(_assignmentConfirmationText.Trim(), _assignmentConfirmation.RequiredPhrase, StringComparison.Ordinal);
     private IEnumerable<IGrouping<string, ControlPlaneTenantEffectiveSettingDto>> GroupedSettings =>
         Settings.OrderBy(setting => setting.Category, StringComparer.OrdinalIgnoreCase)
             .ThenBy(setting => setting.Key, StringComparer.OrdinalIgnoreCase)
             .GroupBy(setting => string.IsNullOrWhiteSpace(setting.Category) ? "General" : setting.Category);
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override Task OnParametersSetAsync()
+    {
+        Guid requestedTenantId = TenantId;
+        long generation = ++_loadGeneration;
+        ResetForTenantReload();
+        _requestedTenantId = requestedTenantId;
+        _loading = true;
+        return LoadAsync(generation, requestedTenantId);
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -228,29 +315,139 @@
         await FocusService.FocusByIdAsync(id);
     }
 
-    private async Task LoadAsync()
+    private async Task LoadAsync(long generation, Guid requestedTenantId)
     {
         try
         {
-            _configuration = await ConfigurationService.GetEffectiveConfigurationAsync(TenantId);
+            HalResourceOfControlPlaneTenantEffectiveConfigurationDto configuration =
+                await ConfigurationService.GetEffectiveConfigurationAsync(requestedTenantId);
+            if (!IsTenantRequestCurrent(generation, requestedTenantId))
+            {
+                return;
+            }
+
+            if (configuration.TenantId != requestedTenantId)
+            {
+                _configuration = null;
+                _loadedTenantId = Guid.Empty;
+                return;
+            }
+
+            _configuration = configuration;
+            _loadedTenantId = requestedTenantId;
+            if (CanSwitchPlan)
+            {
+                await LoadPublishedPlanVersionsAsync(generation, requestedTenantId);
+                if (!IsTenantRequestCurrent(generation, requestedTenantId))
+                {
+                    return;
+                }
+            }
         }
         catch (OperationCanceledException)
         {
+            if (!IsTenantRequestCurrent(generation, requestedTenantId))
+            {
+                return;
+            }
+
             throw;
         }
         catch
         {
-            _configuration = null;
+            if (IsTenantRequestCurrent(generation, requestedTenantId))
+            {
+                _configuration = null;
+                _loadedTenantId = Guid.Empty;
+            }
         }
         finally
         {
-            _loading = false;
+            if (IsTenantRequestCurrent(generation, requestedTenantId))
+            {
+                _loading = false;
+            }
+        }
+    }
+
+    private async Task LoadPublishedPlanVersionsAsync(long generation, Guid requestedTenantId)
+    {
+        try
+        {
+            HalCollectionResourceOfControlPlaneTenantPlanListItemDto catalog = await PlanCatalog.GetPlansAsync();
+            if (!IsTenantRequestCurrent(generation, requestedTenantId))
+            {
+                return;
+            }
+
+            string[] keys = catalog._embedded?.Items?
+                .Where(plan => !string.IsNullOrWhiteSpace(plan.Key)
+                    && ControlPlaneHal.HasLink(plan._links, ControlPlaneLinkRelations.Self))
+                .Select(plan => NormalizePlanKey(plan.Key))
+                .ToArray() ?? [];
+            HalResourceOfControlPlaneTenantPlanDetailDto[] plans = await Task.WhenAll(
+                keys.Select(key => PlanCatalog.GetPlanAsync(key)));
+            if (!IsTenantRequestCurrent(generation, requestedTenantId))
+            {
+                return;
+            }
+
+            if (plans.Where((plan, index) => !string.Equals(
+                    NormalizePlanKey(plan.Key),
+                    keys[index],
+                    StringComparison.Ordinal)).Any())
+            {
+                throw new InvalidOperationException("The plan catalog returned a resource for a different key.");
+            }
+
+            _publishedPlanVersions = plans
+                .SelectMany(plan => (plan.Versions ?? [])
+                    .Where(version => version.Id is not null
+                        && string.Equals(version.StatusCode, "Published", StringComparison.OrdinalIgnoreCase))
+                    .Select(version => new PublishedPlanVersion(
+                        version.Id!.Value,
+                        $"{plan.DisplayName ?? plan.Key} / v{version.VersionNumber}")))
+                .OrderBy(option => option.Label, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            _planCatalogUnavailable = false;
+        }
+        catch (OperationCanceledException)
+        {
+            if (!IsTenantRequestCurrent(generation, requestedTenantId))
+            {
+                return;
+            }
+
+            throw;
+        }
+        catch
+        {
+            if (IsTenantRequestCurrent(generation, requestedTenantId))
+            {
+                _publishedPlanVersions = [];
+                _planCatalogUnavailable = true;
+            }
         }
     }
 
     private async Task StartEditAsync(ControlPlaneTenantEffectiveSettingDto setting)
     {
+        long generation = _loadGeneration;
+        Guid requestedTenantId = _requestedTenantId;
+        if (!IsLoadedTenantCurrent(generation, requestedTenantId)
+            || !Settings.Any(candidate => ReferenceEquals(candidate, setting)))
+        {
+            return;
+        }
+
         await FocusService.SaveFocusAsync();
+        if (!IsLoadedTenantCurrent(generation, requestedTenantId))
+        {
+            return;
+        }
+
+        _assignmentConfirmation = null;
+        _assignmentConfirmationText = string.Empty;
         _editingKey = setting.Key;
         _editingValue = setting.Value;
         ClearCommandMessage();
@@ -270,20 +467,162 @@
 
     private async Task SaveOverrideAsync(ControlPlaneTenantEffectiveSettingDto setting)
     {
+        Guid requestedTenantId = _requestedTenantId;
         await RunCommandAsync(
             setting,
-            () => ConfigurationService.SetSettingAsync(TenantId, setting.Key, _editingValue.Trim()),
+            () => ConfigurationService.SetSettingAsync(requestedTenantId, setting.Key, _editingValue.Trim()),
             closeEditorOnSuccess: true);
     }
 
-    private Task RunSettingCommandAsync(ControlPlaneTenantEffectiveSettingDto setting, string relation) =>
-        RunCommandAsync(
+    private Task RunSettingCommandAsync(ControlPlaneTenantEffectiveSettingDto setting, string relation)
+    {
+        Guid requestedTenantId = _requestedTenantId;
+        return RunCommandAsync(
             setting,
             relation == ControlPlaneLinkRelations.Lock
-                ? () => ConfigurationService.LockSettingAsync(TenantId, setting.Key)
-                : () => ConfigurationService.UnlockSettingAsync(TenantId, setting.Key),
+                ? () => ConfigurationService.LockSettingAsync(requestedTenantId, setting.Key)
+                : () => ConfigurationService.UnlockSettingAsync(requestedTenantId, setting.Key),
             closeEditorOnSuccess: false,
             saveFocus: true);
+    }
+
+    private async Task StartAssignmentActionAsync(AssignmentOperation operation)
+    {
+        long generation = _loadGeneration;
+        Guid requestedTenantId = _requestedTenantId;
+        if (!IsLoadedTenantCurrent(generation, requestedTenantId))
+        {
+            return;
+        }
+
+        ControlPlaneTenantPlanAssignmentDto? assignment = _configuration?.PlanAssignment;
+        ControlPlaneTenantPlanAssignmentDto? rollbackAssignment = _configuration?.RollbackAssignment;
+        PublishedPlanVersion? target = operation == AssignmentOperation.Switch
+            ? _publishedPlanVersions.FirstOrDefault(option => option.Id == _selectedPlanVersionId)
+            : null;
+
+        if (operation == AssignmentOperation.Switch && target is null)
+        {
+            return;
+        }
+
+        if (operation == AssignmentOperation.Apply && assignment?.Id is null)
+        {
+            return;
+        }
+
+        if (operation == AssignmentOperation.Rollback && rollbackAssignment?.Id is null)
+        {
+            return;
+        }
+
+        await FocusService.SaveFocusAsync();
+        if (!IsLoadedTenantCurrent(generation, requestedTenantId))
+        {
+            return;
+        }
+
+        _editingKey = null;
+        _editingValue = string.Empty;
+        _assignmentConfirmation = AssignmentConfirmation.Create(
+            operation,
+            _loadedTenantId,
+            assignment,
+            rollbackAssignment,
+            target);
+        _assignmentConfirmationText = string.Empty;
+        ClearCommandMessage();
+        _pendingFocusId = "tenant-plan-confirmation-input";
+    }
+
+    private async Task CancelAssignmentActionAsync()
+    {
+        _assignmentConfirmation = null;
+        _assignmentConfirmationText = string.Empty;
+        await FocusService.RestoreFocusAsync("#tenant-plan-actions");
+    }
+
+    private async Task ConfirmAssignmentAsync()
+    {
+        if (_assignmentConfirmation is not { } confirmation
+            || !CanConfirmAssignment
+            || !IsCurrentAssignmentConfirmation(confirmation))
+        {
+            _commandSucceeded = false;
+            _commandMessage = "The tenant plan assignment changed while this action was open. Reload the tenant and try again from its current actions.";
+            await Announcer.AnnounceAssertiveAsync(_commandMessage);
+            return;
+        }
+
+        long generation = _loadGeneration;
+        Guid requestedTenantId = _requestedTenantId;
+        ClearCommandMessage();
+        _submitState.Start();
+        try
+        {
+            BaseCommandResponseOfGuid result = confirmation.Operation switch
+            {
+                AssignmentOperation.Switch => await ConfigurationService.SwitchPlanAsync(requestedTenantId, confirmation.TargetVersionId!.Value),
+                AssignmentOperation.Apply => await ConfigurationService.ApplyPlanAsync(requestedTenantId, confirmation.AssignmentId!.Value),
+                _ => await ConfigurationService.RollbackPlanAsync(requestedTenantId, confirmation.AssignmentId!.Value)
+            };
+            if (!IsLoadedTenantCurrent(generation, requestedTenantId))
+            {
+                return;
+            }
+
+            _commandSucceeded = result.Success == true;
+            _commandMessage = result.Message ?? (_commandSucceeded ? "Tenant plan action completed." : "Tenant plan action could not be completed.");
+
+            if (_commandSucceeded)
+            {
+                _submitState.Complete();
+                _assignmentConfirmation = null;
+                _assignmentConfirmationText = string.Empty;
+                _selectedPlanVersionId = null;
+                await LoadAsync(generation, requestedTenantId);
+                if (!IsLoadedTenantCurrent(generation, requestedTenantId))
+                {
+                    return;
+                }
+
+                await FocusService.RestoreFocusAsync("#tenant-plan-actions");
+                if (!IsLoadedTenantCurrent(generation, requestedTenantId))
+                {
+                    return;
+                }
+
+                await Announcer.AnnouncePoliteAsync(_commandMessage);
+            }
+            else
+            {
+                _submitState.Fail(_commandMessage);
+                await Announcer.AnnounceAssertiveAsync(_commandMessage);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            if (!IsTenantRequestCurrent(generation, requestedTenantId))
+            {
+                return;
+            }
+
+            throw;
+        }
+        catch
+        {
+            if (!IsLoadedTenantCurrent(generation, requestedTenantId))
+            {
+                return;
+            }
+
+            const string message = "The tenant plan action could not be completed.";
+            _commandMessage = message;
+            _commandSucceeded = false;
+            _submitState.Fail(message);
+            await Announcer.AnnounceAssertiveAsync(message);
+        }
+    }
 
     private async Task RunCommandAsync(
         ControlPlaneTenantEffectiveSettingDto setting,
@@ -291,16 +630,33 @@
         bool closeEditorOnSuccess,
         bool saveFocus = false)
     {
+        long generation = _loadGeneration;
+        Guid requestedTenantId = _requestedTenantId;
+        if (!IsLoadedTenantCurrent(generation, requestedTenantId)
+            || !Settings.Any(candidate => ReferenceEquals(candidate, setting)))
+        {
+            return;
+        }
+
         if (saveFocus)
         {
             await FocusService.SaveFocusAsync();
+            if (!IsLoadedTenantCurrent(generation, requestedTenantId))
+            {
+                return;
+            }
         }
 
-        _submitState.Start();
         ClearCommandMessage();
+        _submitState.Start();
         try
         {
             var result = await command();
+            if (!IsLoadedTenantCurrent(generation, requestedTenantId))
+            {
+                return;
+            }
+
             _commandMessage = result.Message;
             _commandSucceeded = result.Success == true;
 
@@ -313,8 +669,18 @@
                     _editingValue = string.Empty;
                 }
 
-                await LoadAsync();
+                await LoadAsync(generation, requestedTenantId);
+                if (!IsLoadedTenantCurrent(generation, requestedTenantId))
+                {
+                    return;
+                }
+
                 await FocusService.RestoreFocusAsync($"#{ActionTargetId(setting.Key)}");
+                if (!IsLoadedTenantCurrent(generation, requestedTenantId))
+                {
+                    return;
+                }
+
                 await Announcer.AnnouncePoliteAsync(result.Message ?? "Tenant setting updated.");
             }
             else
@@ -326,10 +692,20 @@
         }
         catch (OperationCanceledException)
         {
+            if (!IsTenantRequestCurrent(generation, requestedTenantId))
+            {
+                return;
+            }
+
             throw;
         }
         catch
         {
+            if (!IsLoadedTenantCurrent(generation, requestedTenantId))
+            {
+                return;
+            }
+
             const string message = "The tenant setting action could not be completed.";
             _commandMessage = message;
             _commandSucceeded = false;
@@ -338,7 +714,7 @@
         }
         finally
         {
-            if (_submitState.IsSubmitting)
+            if (IsTenantRequestCurrent(generation, requestedTenantId) && _submitState.IsSubmitting)
             {
                 _submitState.Fail(_commandMessage ?? "The tenant setting action could not be completed.");
             }
@@ -350,6 +726,49 @@
             || ControlPlaneHal.HasLink(setting._links, ControlPlaneLinkRelations.Lock)
             || ControlPlaneHal.HasLink(setting._links, ControlPlaneLinkRelations.Unlock));
 
+    private bool CanApplyAssignment(ControlPlaneTenantPlanAssignmentDto assignment) =>
+        assignment.Id is { } id
+        && ControlPlaneHal.HasLinkForResource(_configuration?._links, ControlPlaneLinkRelations.Apply, id);
+
+    private bool CanRollbackAssignment(ControlPlaneTenantPlanAssignmentDto assignment) =>
+        assignment.Id is { } id
+        && ControlPlaneHal.HasLinkForResource(_configuration?._links, ControlPlaneLinkRelations.Rollback, id);
+
+    private bool IsCurrentAssignmentConfirmation(AssignmentConfirmation confirmation)
+    {
+        if (!IsLoadedTenantCurrent(_loadGeneration, _requestedTenantId)
+            || confirmation.TenantId != _loadedTenantId)
+        {
+            return false;
+        }
+
+        return confirmation.Operation switch
+        {
+            AssignmentOperation.Switch => CanSwitchPlan
+                && confirmation.TargetVersionId is { } targetId
+                && _publishedPlanVersions.Any(option => option.Id == targetId),
+            AssignmentOperation.Apply => Assignment?.Id == confirmation.AssignmentId
+                && Assignment is { } current
+                && CanApplyAssignment(current),
+            _ => RollbackAssignment?.Id == confirmation.AssignmentId
+                && RollbackAssignment is { } previous
+                && CanRollbackAssignment(previous)
+        };
+    }
+
+    private static string NormalizePlanKey(string? planKey) => planKey?.Trim() ?? string.Empty;
+
+    private bool IsTenantRequestCurrent(long generation, Guid requestedTenantId) =>
+        generation == _loadGeneration
+        && requestedTenantId == _requestedTenantId
+        && requestedTenantId == TenantId;
+
+    private bool IsLoadedTenantCurrent(long generation, Guid requestedTenantId) =>
+        requestedTenantId != Guid.Empty
+        && IsTenantRequestCurrent(generation, requestedTenantId)
+        && _loadedTenantId == requestedTenantId
+        && _configuration?.TenantId == requestedTenantId;
+
     private static string ActionTargetId(string key) => $"instance-tenant-config-actions-{key.Replace('.', '-')}";
     private static string CategoryId(string category) => $"instance-tenant-config-category-{category.Replace(' ', '-').ToLowerInvariant()}";
 
@@ -358,5 +777,66 @@
         _commandMessage = null;
         _commandSucceeded = false;
         _submitState.Reset();
+    }
+
+    private void ResetForTenantReload()
+    {
+        _configuration = null;
+        _publishedPlanVersions = [];
+        _planCatalogUnavailable = false;
+        _editingKey = null;
+        _editingValue = string.Empty;
+        _selectedPlanVersionId = null;
+        _assignmentConfirmation = null;
+        _assignmentConfirmationText = string.Empty;
+        _pendingFocusId = null;
+        _loadedTenantId = Guid.Empty;
+        ClearCommandMessage();
+    }
+
+    private enum AssignmentOperation
+    {
+        Switch,
+        Apply,
+        Rollback
+    }
+
+    private sealed record PublishedPlanVersion(Guid Id, string Label);
+
+    private sealed record AssignmentConfirmation(
+        AssignmentOperation Operation,
+        Guid TenantId,
+        Guid? AssignmentId,
+        Guid? TargetVersionId,
+        string Subject)
+    {
+        public string ActionLabel => Operation switch
+        {
+            AssignmentOperation.Switch => "Switch plan",
+            AssignmentOperation.Apply => "Apply assignment",
+            _ => "Rollback assignment"
+        };
+
+        public string Title => ActionLabel;
+        public string RequiredPhrase => $"{Operation.ToString().ToUpperInvariant()} {Subject}";
+        public Color Color => Operation == AssignmentOperation.Rollback ? Color.Warning : Color.Primary;
+        public string Description => Operation switch
+        {
+            AssignmentOperation.Switch => "This supersedes the active assignment and selects the published version shown below. Apply it separately to copy its governed settings into the tenant store.",
+            AssignmentOperation.Apply => "This copies the assigned plan settings into the tenant store after server-side lock and quota preflight checks.",
+            _ => "This asks the API to restore the prior assignment while preserving the assignment audit history."
+        };
+
+        public static AssignmentConfirmation Create(
+            AssignmentOperation operation,
+            Guid tenantId,
+            ControlPlaneTenantPlanAssignmentDto? assignment,
+            ControlPlaneTenantPlanAssignmentDto? rollbackAssignment,
+            PublishedPlanVersion? target) =>
+            operation == AssignmentOperation.Switch
+                ? new(operation, tenantId, null, target!.Id, target.Label)
+                : operation == AssignmentOperation.Apply
+                    ? new(operation, tenantId, assignment!.Id, null, $"{assignment.PlanKey} v{assignment.VersionNumber}")
+                    : new(operation, tenantId, rollbackAssignment!.Id, null, $"{rollbackAssignment.PlanKey} v{rollbackAssignment.VersionNumber}");
     }
 }

@@ -224,7 +224,8 @@ public sealed class TenantPlanCqrsHandlerTests
             AssignedByUserId = Guid.NewGuid()
         };
         repository.GetVersionAsync(draftVersion.Id, Arg.Any<CancellationToken>()).Returns(draftVersion);
-        var handler = new PublishControlPlaneTenantPlanVersionCommandHandler(repository);
+        var unitOfWork = new ImmediateUnitOfWork();
+        var handler = new PublishControlPlaneTenantPlanVersionCommandHandler(repository, unitOfWork);
 
         var result = await handler.Handle(
             new PublishControlPlaneTenantPlanVersionCommand(
@@ -237,6 +238,7 @@ public sealed class TenantPlanCqrsHandlerTests
         await Assert.That(assignment.TenantPlanVersionId).IsEqualTo(currentVersion.Id);
         await repository.DidNotReceive().ListActiveAssignmentsForPlanAsync(plan.Id, Arg.Any<CancellationToken>());
         await repository.Received(1).UpdateVersionAsync(draftVersion, Arg.Any<CancellationToken>());
+        await Assert.That(unitOfWork.ExecutionCount).IsEqualTo(1);
     }
 
     [Test]
@@ -260,7 +262,8 @@ public sealed class TenantPlanCqrsHandlerTests
         };
         repository.GetVersionAsync(newVersion.Id, Arg.Any<CancellationToken>()).Returns(newVersion);
         repository.ListActiveAssignmentsForPlanAsync(plan.Id, Arg.Any<CancellationToken>()).Returns([assignment]);
-        var handler = new PublishControlPlaneTenantPlanVersionCommandHandler(repository);
+        var unitOfWork = new ImmediateUnitOfWork();
+        var handler = new PublishControlPlaneTenantPlanVersionCommandHandler(repository, unitOfWork);
 
         var result = await handler.Handle(
             new PublishControlPlaneTenantPlanVersionCommand(
@@ -273,6 +276,7 @@ public sealed class TenantPlanCqrsHandlerTests
         await Assert.That(assignment.TenantPlanVersionId).IsEqualTo(newVersion.Id);
         await Assert.That(assignment.TenantPlanVersion).IsEqualTo(newVersion);
         await repository.Received(1).UpdateAssignmentAsync(assignment, Arg.Any<CancellationToken>());
+        await Assert.That(unitOfWork.ExecutionCount).IsEqualTo(1);
     }
 
     [Test]
@@ -302,7 +306,8 @@ public sealed class TenantPlanCqrsHandlerTests
         repository.GetActiveAssignmentForTenantAsync(tenantId, Arg.Any<CancellationToken>()).Returns(oldAssignment);
         repository.CreateAssignmentAsync(Arg.Do<TenantPlanAssignment>(assignment => createdAssignment = assignment), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(call.Arg<TenantPlanAssignment>()));
-        var handler = new SwitchControlPlaneTenantPlanAssignmentCommandHandler(repository);
+        var unitOfWork = new ImmediateUnitOfWork();
+        var handler = new SwitchControlPlaneTenantPlanAssignmentCommandHandler(repository, unitOfWork);
 
         var result = await handler.Handle(
             new SwitchControlPlaneTenantPlanAssignmentCommand(tenantId, newVersion.Id, operatorId),
@@ -318,6 +323,7 @@ public sealed class TenantPlanCqrsHandlerTests
         await Assert.That(createdAssignment.TenantPlanAssignmentStatusId).IsEqualTo((int)TenantPlanAssignmentStatusEnum.Active);
         await Assert.That(createdAssignment.AssignedByUserId).IsEqualTo(operatorId);
         await repository.Received(1).UpdateAssignmentAsync(oldAssignment, Arg.Any<CancellationToken>());
+        await Assert.That(unitOfWork.ExecutionCount).IsEqualTo(1);
     }
 
     [Test]
@@ -487,9 +493,14 @@ public sealed class TenantPlanCqrsHandlerTests
             AssignedAt = DateTime.UtcNow.AddDays(-5),
             AssignedByUserId = operatorId
         };
-        repository.GetAssignmentAsync(previousAssignment.Id, Arg.Any<CancellationToken>()).Returns(previousAssignment);
         repository.GetActiveAssignmentForTenantAsync(tenantId, Arg.Any<CancellationToken>()).Returns(currentAssignment);
-        var handler = new RollbackControlPlaneTenantPlanAssignmentCommandHandler(repository);
+        repository.GetPreviousEligibleAssignmentForTenantAsync(
+                tenantId,
+                currentAssignment.Id,
+                Arg.Any<CancellationToken>())
+            .Returns(previousAssignment);
+        var unitOfWork = new ImmediateUnitOfWork();
+        var handler = new RollbackControlPlaneTenantPlanAssignmentCommandHandler(repository, unitOfWork);
 
         var result = await handler.Handle(
             new RollbackControlPlaneTenantPlanAssignmentCommand(tenantId, previousAssignment.Id, operatorId),
@@ -502,6 +513,33 @@ public sealed class TenantPlanCqrsHandlerTests
         await Assert.That(previousAssignment.EndedAt).IsNull();
         await repository.Received(1).UpdateAssignmentAsync(currentAssignment, Arg.Any<CancellationToken>());
         await repository.Received(1).UpdateAssignmentAsync(previousAssignment, Arg.Any<CancellationToken>());
+        await Assert.That(unitOfWork.ExecutionCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task RollbackAssignment_WhenNoEligiblePreviousAssignmentExists_FailsClosed()
+    {
+        Guid tenantId = Guid.NewGuid();
+        TenantPlanAssignment currentAssignment = CreateActiveAssignment(tenantId, Guid.NewGuid());
+        var repository = Substitute.For<ITenantPlanRepository>();
+        repository.GetActiveAssignmentForTenantAsync(tenantId, Arg.Any<CancellationToken>())
+            .Returns(currentAssignment);
+        repository.GetPreviousEligibleAssignmentForTenantAsync(
+                tenantId,
+                currentAssignment.Id,
+                Arg.Any<CancellationToken>())
+            .Returns((TenantPlanAssignment?)null);
+        var unitOfWork = new ImmediateUnitOfWork();
+        var handler = new RollbackControlPlaneTenantPlanAssignmentCommandHandler(repository, unitOfWork);
+
+        BaseCommandResponse<Guid> result = await handler.Handle(
+            new RollbackControlPlaneTenantPlanAssignmentCommand(tenantId, Guid.NewGuid(), Guid.NewGuid()),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors ?? []).Contains("tenant_plan_rollback_assignment_not_found");
+        await repository.DidNotReceiveWithAnyArgs().UpdateAssignmentAsync(default!, default);
+        await Assert.That(unitOfWork.ExecutionCount).IsEqualTo(1);
     }
 
     [Test]

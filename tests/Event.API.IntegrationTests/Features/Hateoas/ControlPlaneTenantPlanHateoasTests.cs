@@ -8,7 +8,11 @@ using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.Features.ControlPlane.Requests.Commands;
 using Explore.Application.Features.ControlPlane.Requests.Queries;
 using Explore.Application.Hateoas;
+using Explore.Domain.Enums;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -77,12 +81,10 @@ public sealed class ControlPlaneTenantPlanHateoasTests
     }
 
     [Test]
-    public async Task DetailLinks_ExposePlanVersionActionAuthorizationMetadata()
+    public async Task DetailLinks_KeepVersionActionsOffTheRootResource()
     {
         var policy = new ControlPlaneTenantPlanDetailLinkPolicy();
         var detail = CreateDetail();
-        var versionId = detail.Versions[0].Id;
-
         var links = policy.GetLinks(detail, user: null).ToArray();
 
         var createVersion = links.Single(link => link.Rel == "create-version-draft");
@@ -93,29 +95,10 @@ public sealed class ControlPlaneTenantPlanHateoasTests
         await Assert.That(createVersion.PermissionResourceId).IsEqualTo(CreateControlPlaneTenantPlanVersionDraftCommand.SettingKey);
         await Assert.That(createVersion.PermissionResourceAttributes?["planKey"]).IsEqualTo("community");
 
-        var updateVersion = links.Single(link => link.Rel == "update-version-draft");
-        await Assert.That(updateVersion.RouteName).IsEqualTo(RouteNames.UpdateControlPlaneTenantPlanVersionDraft);
-        await Assert.That(updateVersion.Method).IsEqualTo("PUT");
-        await Assert.That(RouteValues(updateVersion)["versionId"]).IsEqualTo(versionId);
-        await Assert.That(updateVersion.PermissionResourceId).IsEqualTo(UpdateControlPlaneTenantPlanVersionDraftCommand.SettingKey);
-        await Assert.That(updateVersion.PermissionResourceAttributes?["versionId"]).IsEqualTo(versionId);
-
-        var publish = links.Single(link => link.Rel == LinkRelations.Publish);
-        await Assert.That(publish.RouteName).IsEqualTo(RouteNames.PublishControlPlaneTenantPlanVersion);
-        await Assert.That(publish.Method).IsEqualTo("POST");
-        await Assert.That(publish.PermissionResourceId).IsEqualTo(PublishControlPlaneTenantPlanVersionCommand.SettingKey);
-        await Assert.That(publish.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.Update);
-
-        var archive = links.Single(link => link.Rel == LinkRelations.Archive);
-        await Assert.That(archive.RouteName).IsEqualTo(RouteNames.ArchiveControlPlaneTenantPlanVersion);
-        await Assert.That(archive.Method).IsEqualTo("POST");
-        await Assert.That(archive.PermissionResourceId).IsEqualTo(ArchiveControlPlaneTenantPlanVersionCommand.SettingKey);
-
-        var clone = links.Single(link => link.Rel == "clone");
-        await Assert.That(clone.RouteName).IsEqualTo(RouteNames.CloneControlPlaneTenantPlan);
-        await Assert.That(RouteValues(clone)["sourceVersionId"]).IsEqualTo(versionId);
-        await Assert.That(clone.PermissionResourceId).IsEqualTo(CloneControlPlaneTenantPlanCommand.SettingKey);
-        await Assert.That(clone.PermissionResourceAttributes?["sourceVersionId"]).IsEqualTo(versionId);
+        await Assert.That(links.Any(link => link.Rel == "update-version-draft")).IsFalse();
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.Publish)).IsFalse();
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.Archive)).IsFalse();
+        await Assert.That(links.Any(link => link.Rel == "clone")).IsFalse();
 
         var validate = links.Single(link => link.Rel == "validate");
         await Assert.That(validate.RouteName).IsEqualTo(RouteNames.ValidateControlPlaneTenantPlanDraft);
@@ -126,6 +109,65 @@ public sealed class ControlPlaneTenantPlanHateoasTests
         await Assert.That(previewDiff.RouteName).IsEqualTo(RouteNames.PreviewControlPlaneTenantPlanDiff);
         await Assert.That(previewDiff.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
         await Assert.That(previewDiff.PermissionResourceId).IsEqualTo(PreviewControlPlaneTenantPlanDiffQuery.SettingKey);
+    }
+
+    [Test]
+    public async Task VersionLinks_AreStateQualifiedAndMaterializedPerVersion()
+    {
+        ControlPlaneTenantPlanDetailDto detail = CreateDetail();
+        var draft = new ControlPlaneTenantPlanVersionDto
+        {
+            Id = Guid.NewGuid(),
+            VersionNumber = 2,
+            StatusId = (int)TenantPlanStatusEnum.Draft,
+            StatusCode = "DRAFT"
+        };
+        detail.Versions = [draft, detail.Versions.Single()];
+
+        IHateoasAuthorizationEvaluator evaluator = Substitute.For<IHateoasAuthorizationEvaluator>();
+        evaluator.AreLinksAllowedAsync(
+                Arg.Any<IReadOnlyList<LinkDefinition>>(),
+                Arg.Any<System.Security.Claims.ClaimsPrincipal?>(),
+                Arg.Any<HttpContext>())
+            .Returns(call => Task.FromResult<IReadOnlyList<bool>>(
+                call.ArgAt<IReadOnlyList<LinkDefinition>>(0).Select(_ => true).ToArray()));
+        IHateoasLinkGenerator linkGenerator = Substitute.For<IHateoasLinkGenerator>();
+        linkGenerator.GenerateLink(Arg.Any<LinkDefinition>(), Arg.Any<HttpContext>())
+            .Returns(call =>
+            {
+                LinkDefinition definition = call.ArgAt<LinkDefinition>(0);
+                RouteValueDictionary values = RouteValues(definition);
+                Guid? id = values.TryGetValue("versionId", out object? versionId)
+                    ? (Guid)versionId!
+                    : values.TryGetValue("sourceVersionId", out object? sourceVersionId)
+                        ? (Guid)sourceVersionId!
+                        : null;
+                return new HalLink
+                {
+                    Href = id.HasValue
+                        ? $"/plans/versions/{id.Value:D}/{definition.Rel}"
+                        : $"/plans/{definition.Rel}",
+                    Method = definition.Method,
+                    Title = definition.Title
+                };
+            });
+        var services = new ServiceCollection();
+        services.AddSingleton(evaluator);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        var context = new DefaultHttpContext { RequestServices = provider };
+        var assembler = new Explore.API.Hateoas.Assemblers.ControlPlaneTenantPlanResourceAssembler(
+            linkGenerator,
+            new ControlPlaneTenantPlanDetailLinkPolicy(),
+            new ControlPlaneTenantPlanCollectionLinkPolicy());
+
+        HalResource<ControlPlaneTenantPlanDetailDto> resource = await assembler.ToResource(detail, context);
+
+        await Assert.That(resource.Links.Keys.Any(relation => relation is "update-version-draft" or "publish" or "archive" or "clone")).IsFalse();
+        await Assert.That(draft.Links?.Keys).IsEquivalentTo(["publish", "update-version-draft"]);
+        await Assert.That(draft.Links!.Values.All(link => link.Href.Contains(draft.Id.ToString("D"), StringComparison.Ordinal))).IsTrue();
+        ControlPlaneTenantPlanVersionDto published = detail.Versions.Single(version => version.StatusId == (int)TenantPlanStatusEnum.Published);
+        await Assert.That(published.Links?.Keys).IsEquivalentTo(["archive", "clone"]);
+        await Assert.That(published.Links!.Values.All(link => link.Href.Contains(published.Id.ToString("D"), StringComparison.Ordinal))).IsTrue();
     }
 
     private static ControlPlaneTenantPlanDetailDto CreateDetail() => new()
@@ -139,6 +181,7 @@ public sealed class ControlPlaneTenantPlanHateoasTests
             {
                 Id = Guid.NewGuid(),
                 VersionNumber = 1,
+                StatusId = (int)TenantPlanStatusEnum.Published,
                 StatusCode = "PUBLISHED",
                 PriceAmount = 29m,
                 CurrencyCode = "EUR",

@@ -16,9 +16,13 @@
     gap: var(--isl-space-4);
 }
 
+.control-plane-domains__operator-status {
+    margin-block-end: var(--isl-space-4);
+}
+
 .control-plane-domains__item {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--isl-space-4);
     padding: var(--isl-space-4);
     border: var(--isl-card-border);
@@ -64,20 +68,8 @@
     color: var(--mud-palette-text-secondary);
 }
 
-.control-plane-domains__actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    align-content: start;
-    gap: var(--isl-space-2);
-}
-
 @container (max-width: 42rem) {
     .control-plane-domains__item {
         grid-template-columns: 1fr;
-    }
-
-    .control-plane-domains__actions {
-        justify-content: flex-start;
     }
 }

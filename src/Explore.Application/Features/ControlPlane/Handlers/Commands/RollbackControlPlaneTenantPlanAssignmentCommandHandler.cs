@@ -10,46 +10,62 @@ using MediatR;
 
 namespace Explore.Application.Features.ControlPlane.Handlers.Commands;
 
-public sealed class RollbackControlPlaneTenantPlanAssignmentCommandHandler(ITenantPlanRepository tenantPlanRepository)
+public sealed class RollbackControlPlaneTenantPlanAssignmentCommandHandler(
+    ITenantPlanRepository tenantPlanRepository,
+    IUnitOfWork unitOfWork)
     : IRequestHandler<RollbackControlPlaneTenantPlanAssignmentCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
         RollbackControlPlaneTenantPlanAssignmentCommand request,
         CancellationToken cancellationToken)
     {
-        TenantPlanAssignment? previous = await tenantPlanRepository.GetAssignmentAsync(request.AssignmentId, cancellationToken);
-        if (previous is null)
-        {
-            return Failure("Tenant plan assignment was not found.", ["tenant_plan_assignment_not_found"]);
-        }
+        return await unitOfWork.ExecuteInTransactionAsync(ExecuteAsync, cancellationToken);
 
-        if (previous.TenantId != request.TenantId)
+        async Task<BaseCommandResponse<Guid>> ExecuteAsync(CancellationToken token)
         {
-            return Failure("Tenant plan assignment does not belong to the requested tenant.", ["tenant_plan_assignment_tenant_mismatch"]);
-        }
+            TenantPlanAssignment? current = await tenantPlanRepository.GetActiveAssignmentForTenantAsync(
+                request.TenantId,
+                token);
+            if (current is null)
+            {
+                return Failure("Tenant has no active plan assignment.", ["tenant_plan_active_assignment_not_found"]);
+            }
 
-        TenantPlanAssignment? current = await tenantPlanRepository.GetActiveAssignmentForTenantAsync(
-            request.TenantId,
-            cancellationToken);
+            TenantPlanAssignment? previous = await tenantPlanRepository.GetPreviousEligibleAssignmentForTenantAsync(
+                request.TenantId,
+                current.Id,
+                token);
+            if (previous is null)
+            {
+                return Failure("Tenant has no eligible previous plan assignment.", ["tenant_plan_rollback_assignment_not_found"]);
+            }
 
-        DateTime now = DateTime.UtcNow;
-        if (current is not null && current.Id != previous.Id)
-        {
+            if (previous.Id != request.AssignmentId
+                || previous.TenantId != request.TenantId
+                || previous.TenantPlanAssignmentStatusId != (int)TenantPlanAssignmentStatusEnum.Superseded
+                || previous.TenantPlanVersion.TenantPlanStatusId != (int)TenantPlanStatusEnum.Published
+                || previous.EndedAt is null
+                || previous.EndedAt > current.AssignedAt)
+            {
+                return Failure("Tenant plan assignment is not the eligible rollback target.", ["tenant_plan_rollback_assignment_not_eligible"]);
+            }
+
+            DateTime now = DateTime.UtcNow;
             current.TenantPlanAssignmentStatusId = (int)TenantPlanAssignmentStatusEnum.RolledBack;
             current.EndedAt = now;
-            await tenantPlanRepository.UpdateAssignmentAsync(current, cancellationToken);
+            await tenantPlanRepository.UpdateAssignmentAsync(current, token);
+
+            previous.TenantPlanAssignmentStatusId = (int)TenantPlanAssignmentStatusEnum.Active;
+            previous.EndedAt = null;
+            await tenantPlanRepository.UpdateAssignmentAsync(previous, token);
+
+            return new BaseCommandResponse<Guid>
+            {
+                Success = true,
+                Id = previous.Id,
+                Message = "Tenant plan assignment rolled back."
+            };
         }
-
-        previous.TenantPlanAssignmentStatusId = (int)TenantPlanAssignmentStatusEnum.Active;
-        previous.EndedAt = null;
-        await tenantPlanRepository.UpdateAssignmentAsync(previous, cancellationToken);
-
-        return new BaseCommandResponse<Guid>
-        {
-            Success = true,
-            Id = previous.Id,
-            Message = "Tenant plan assignment rolled back."
-        };
     }
 
     private static BaseCommandResponse<Guid> Failure(string message, IEnumerable<string> errors) => new()

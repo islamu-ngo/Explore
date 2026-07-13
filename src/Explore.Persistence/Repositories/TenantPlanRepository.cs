@@ -133,6 +133,26 @@ public sealed class TenantPlanRepository(ExploreDbContext dbContext)
                 cancellationToken);
     }
 
+    public Task<TenantPlanAssignment?> GetPreviousEligibleAssignmentForTenantAsync(
+        Guid tenantId,
+        Guid currentAssignmentId,
+        CancellationToken cancellationToken = default)
+    {
+        return dbContext.TenantPlanAssignments
+            .AsNoTracking()
+            .Include(assignment => assignment.TenantPlan)
+            .Include(assignment => assignment.TenantPlanVersion)
+            .Include(assignment => assignment.TenantPlanAssignmentStatus)
+            .Where(assignment => assignment.TenantId == tenantId
+                && assignment.Id != currentAssignmentId
+                && assignment.TenantPlanAssignmentStatusId == (int)TenantPlanAssignmentStatusEnum.Superseded
+                && assignment.TenantPlanVersion.TenantPlanStatusId == (int)TenantPlanStatusEnum.Published
+                && assignment.EndedAt != null)
+            .OrderByDescending(assignment => assignment.EndedAt)
+            .ThenByDescending(assignment => assignment.AssignedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public Task<TenantPlanAssignment?> GetAssignmentAsync(Guid assignmentId, CancellationToken cancellationToken = default)
     {
         return dbContext.TenantPlanAssignments

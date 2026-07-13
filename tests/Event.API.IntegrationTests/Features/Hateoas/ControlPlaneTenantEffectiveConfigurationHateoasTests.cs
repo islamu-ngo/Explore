@@ -56,6 +56,7 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
         var policy = new ControlPlaneTenantEffectiveConfigurationLinkPolicy();
         var configuration = CreateConfiguration();
         var assignmentId = configuration.PlanAssignment!.Id;
+        var rollbackAssignmentId = configuration.RollbackAssignment!.Id;
 
         var links = policy.GetLinks(configuration, user: null).ToArray();
 
@@ -79,9 +80,9 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
         await Assert.That(rollback.RouteName).IsEqualTo(RouteNames.RollbackControlPlaneTenantPlanAssignment);
         await Assert.That(rollback.Method).IsEqualTo("POST");
         await Assert.That(RouteValues(rollback)["tenantId"]).IsEqualTo(configuration.TenantId);
-        await Assert.That(RouteValues(rollback)["assignmentId"]).IsEqualTo(assignmentId);
+        await Assert.That(RouteValues(rollback)["assignmentId"]).IsEqualTo(rollbackAssignmentId);
         await Assert.That(rollback.PermissionResourceId).IsEqualTo(RollbackControlPlaneTenantPlanAssignmentCommand.SettingKey);
-        await Assert.That(rollback.PermissionResourceAttributes?["assignmentId"]).IsEqualTo(assignmentId);
+        await Assert.That(rollback.PermissionResourceAttributes?["assignmentId"]).IsEqualTo(rollbackAssignmentId);
     }
 
     [Test]
@@ -90,11 +91,25 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
         var policy = new ControlPlaneTenantEffectiveConfigurationLinkPolicy();
         var configuration = CreateConfiguration();
         configuration.PlanAssignment = null;
+        configuration.RollbackAssignment = null;
 
         var links = policy.GetLinks(configuration, user: null).ToArray();
 
         await Assert.That(links.Any(link => link.Rel == "switch-plan")).IsTrue();
         await Assert.That(links.Any(link => link.Rel == "apply")).IsFalse();
+        await Assert.That(links.Any(link => link.Rel == "rollback")).IsFalse();
+    }
+
+    [Test]
+    public async Task DetailLinks_OmitRollback_WhenNoEligiblePreviousAssignmentExists()
+    {
+        var policy = new ControlPlaneTenantEffectiveConfigurationLinkPolicy();
+        ControlPlaneTenantEffectiveConfigurationDto configuration = CreateConfiguration();
+        configuration.RollbackAssignment = null;
+
+        LinkDefinition[] links = policy.GetLinks(configuration, user: null).ToArray();
+
+        await Assert.That(links.Any(link => link.Rel == "apply")).IsTrue();
         await Assert.That(links.Any(link => link.Rel == "rollback")).IsFalse();
     }
 
@@ -306,6 +321,17 @@ public sealed class ControlPlaneTenantEffectiveConfigurationHateoasTests
                 VersionNumber = 1,
                 StatusCode = "ACTIVE",
                 AssignedAt = DateTime.UtcNow
+            },
+            RollbackAssignment = new ControlPlaneTenantPlanAssignmentDto
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                PlanId = Guid.NewGuid(),
+                PlanKey = "starter",
+                PlanVersionId = Guid.NewGuid(),
+                VersionNumber = 1,
+                StatusCode = "SUPERSEDED",
+                AssignedAt = DateTime.UtcNow.AddDays(-30)
             }
         };
     }

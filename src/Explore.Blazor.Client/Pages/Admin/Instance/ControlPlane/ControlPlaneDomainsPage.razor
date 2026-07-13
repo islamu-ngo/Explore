@@ -1,5 +1,5 @@
-@* ABOUTME: Shared domain overview page for the embedded Event control plane. *@
-@* ABOUTME: Displays generated DNS records and gates actions with generated HAL links. *@
+@* ABOUTME: Shared domain inventory and governance entrypoint for the embedded Event control plane. *@
+@* ABOUTME: Deep-links to public domain settings while keeping DNS verification operator-managed. *@
 
 @using Explore.Blazor.Client.Clients
 @inject IControlPlaneDomainService DomainService
@@ -9,7 +9,26 @@
 <div class="control-plane-domains">
     <ControlPlanePageHeader Title="Domains"
                             Eyebrow="Instance console"
-                            Description="Review public/admin host routing and domain verification affordances.">
+                            Description="Review public and admin host routing, DNS guidance, and domain governance.">
+        <ActionsContent>
+            @if (HasLink(ControlPlaneLinkRelations.Edit))
+            {
+                <ControlPlaneActionButton Href="/admin/instance/settings?section=domain"
+                                          StartIcon="@Icons.Material.Filled.Edit"
+                                          AriaLabel="Edit domain governance">
+                    Edit domain governance
+                </ControlPlaneActionButton>
+            }
+            else if (HasLink(ControlPlaneLinkRelations.Settings))
+            {
+                <ControlPlaneActionButton Href="/admin/instance/settings?section=domain"
+                                          Variant="Variant.Outlined"
+                                          StartIcon="@Icons.Material.Filled.Settings"
+                                          AriaLabel="Review domain settings">
+                    Review domain settings
+                </ControlPlaneActionButton>
+            }
+        </ActionsContent>
     </ControlPlanePageHeader>
 
     @if (_loading)
@@ -27,12 +46,15 @@
     else if (DomainRecords.Count == 0)
     {
         <ControlPlanePanel Title="No domains reported" Description="The control-plane API did not return public or admin domain records.">
-            <p class="control-plane-domains__message">Verification controls will appear only when advertised by HAL.</p>
+            <p class="control-plane-domains__message">Configure domain governance through instance settings when the API advertises that affordance.</p>
         </ControlPlanePanel>
     }
     else
     {
         <ControlPlanePanel Title="Domain inventory" Description="@DomainCountLabel">
+            <MudAlert Severity="Severity.Info" Class="control-plane-domains__operator-status">
+                DNS verification is operator-managed. Apply the generated record guidance with your DNS provider, then review the resulting routing and certificate status in your hosting platform.
+            </MudAlert>
             <div class="control-plane-domains__list" role="list">
                 @foreach (var domain in DomainRecords)
                 {
@@ -59,23 +81,6 @@
                             }
                         </div>
 
-                        @if (HasDomainAction(domain))
-                        {
-                            <div class="control-plane-domains__actions" aria-label="@($"Domain actions for {domain.Name}")">
-                                @if (HasLink(ControlPlaneLinkRelations.Verify))
-                                {
-                                    <ControlPlaneActionButton Size="Size.Small" Disabled="true" AriaLabel="@($"Verify {domain.Name}")">Verify</ControlPlaneActionButton>
-                                }
-                                @if (HasLink(ControlPlaneLinkRelations.Test))
-                                {
-                                    <ControlPlaneActionButton Size="Size.Small" Disabled="true" AriaLabel="@($"Test {domain.Name}")">Test</ControlPlaneActionButton>
-                                }
-                                @if (HasLink(ControlPlaneLinkRelations.Retry))
-                                {
-                                    <ControlPlaneActionButton Size="Size.Small" Disabled="true" AriaLabel="@($"Retry {domain.Name}")">Retry</ControlPlaneActionButton>
-                                }
-                            </div>
-                        }
                     </article>
                 }
             </div>
@@ -111,11 +116,6 @@
             _loading = false;
         }
     }
-
-    private bool HasDomainAction(ControlPlaneDnsRecordDto domain) =>
-        HasLink(ControlPlaneLinkRelations.Verify)
-        || HasLink(ControlPlaneLinkRelations.Test)
-        || HasLink(ControlPlaneLinkRelations.Retry);
 
     private bool HasLink(string relation) => ControlPlaneHal.HasLink(_domains?._links, relation);
 

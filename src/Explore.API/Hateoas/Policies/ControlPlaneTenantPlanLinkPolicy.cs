@@ -10,6 +10,7 @@ using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.Features.ControlPlane.Requests.Commands;
 using Explore.Application.Features.ControlPlane.Requests.Queries;
 using Explore.Application.Hateoas;
+using Explore.Domain.Enums;
 
 public sealed class ControlPlaneTenantPlanDetailLinkPolicy : ILinkPolicy<ControlPlaneTenantPlanDetailDto>
 {
@@ -57,44 +58,6 @@ public sealed class ControlPlaneTenantPlanDetailLinkPolicy : ILinkPolicy<Control
             PreviewControlPlaneTenantPlanDiffQuery.SettingKey,
             method: "POST");
 
-        foreach (var version in dto.Versions)
-        {
-            yield return UpdateLink(
-                "update-version-draft",
-                RouteNames.UpdateControlPlaneTenantPlanVersionDraft,
-                new { versionId = version.Id },
-                "Update plan version draft",
-                UpdateControlPlaneTenantPlanVersionDraftCommand.SettingKey,
-                dto.Key,
-                versionId: version.Id);
-
-            yield return UpdateLink(
-                LinkRelations.Publish,
-                RouteNames.PublishControlPlaneTenantPlanVersion,
-                new { versionId = version.Id },
-                "Publish plan version",
-                PublishControlPlaneTenantPlanVersionCommand.SettingKey,
-                dto.Key,
-                versionId: version.Id);
-
-            yield return UpdateLink(
-                LinkRelations.Archive,
-                RouteNames.ArchiveControlPlaneTenantPlanVersion,
-                new { versionId = version.Id },
-                "Archive plan version",
-                ArchiveControlPlaneTenantPlanVersionCommand.SettingKey,
-                dto.Key,
-                versionId: version.Id);
-
-            yield return UpdateLink(
-                "clone",
-                RouteNames.CloneControlPlaneTenantPlan,
-                new { sourceVersionId = version.Id },
-                "Clone plan version",
-                CloneControlPlaneTenantPlanCommand.SettingKey,
-                dto.Key,
-                sourceVersionId: version.Id);
-        }
     }
 
     private static LinkDefinition ViewLink(
@@ -141,6 +104,104 @@ public sealed class ControlPlaneTenantPlanDetailLinkPolicy : ILinkPolicy<Control
         {
             attributes["planKey"] = planKey;
         }
+
+        if (versionId.HasValue)
+        {
+            attributes["versionId"] = versionId.Value;
+        }
+
+        if (sourceVersionId.HasValue)
+        {
+            attributes["sourceVersionId"] = sourceVersionId.Value;
+        }
+
+        return attributes;
+    }
+}
+
+internal static class ControlPlaneTenantPlanVersionLinks
+{
+    public static IEnumerable<LinkDefinition> GetLinks(
+        string planKey,
+        ControlPlaneTenantPlanVersionDto version)
+    {
+        if (version.StatusId == (int)TenantPlanStatusEnum.Draft)
+        {
+            yield return UpdateLink(
+                "update-version-draft",
+                RouteNames.UpdateControlPlaneTenantPlanVersionDraft,
+                new { versionId = version.Id },
+                "PUT",
+                "Update plan version draft",
+                UpdateControlPlaneTenantPlanVersionDraftCommand.SettingKey,
+                planKey,
+                version.Id,
+                sourceVersionId: null);
+
+            yield return UpdateLink(
+                LinkRelations.Publish,
+                RouteNames.PublishControlPlaneTenantPlanVersion,
+                new { versionId = version.Id },
+                "POST",
+                "Publish plan version",
+                PublishControlPlaneTenantPlanVersionCommand.SettingKey,
+                planKey,
+                version.Id,
+                sourceVersionId: null);
+        }
+        else if (version.StatusId == (int)TenantPlanStatusEnum.Published)
+        {
+            yield return UpdateLink(
+                LinkRelations.Archive,
+                RouteNames.ArchiveControlPlaneTenantPlanVersion,
+                new { versionId = version.Id },
+                "POST",
+                "Archive plan version",
+                ArchiveControlPlaneTenantPlanVersionCommand.SettingKey,
+                planKey,
+                version.Id,
+                sourceVersionId: null);
+
+            yield return UpdateLink(
+                "clone",
+                RouteNames.CloneControlPlaneTenantPlan,
+                new { sourceVersionId = version.Id },
+                "POST",
+                "Clone plan version",
+                CloneControlPlaneTenantPlanCommand.SettingKey,
+                planKey,
+                versionId: null,
+                sourceVersionId: version.Id);
+        }
+    }
+
+    private static LinkDefinition UpdateLink(
+        string relation,
+        string routeName,
+        object routeValues,
+        string method,
+        string title,
+        string settingKey,
+        string planKey,
+        Guid? versionId,
+        Guid? sourceVersionId) =>
+        new LinkDefinition(relation, routeName, routeValues, method, title, RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.InstanceSettings.Update,
+                ResourceKinds.InstanceSetting,
+                settingKey,
+                Attributes(settingKey, planKey, versionId, sourceVersionId));
+
+    private static IReadOnlyDictionary<string, object> Attributes(
+        string settingKey,
+        string planKey,
+        Guid? versionId,
+        Guid? sourceVersionId)
+    {
+        var attributes = new Dictionary<string, object>
+        {
+            ["settingKey"] = settingKey,
+            ["planKey"] = planKey
+        };
 
         if (versionId.HasValue)
         {

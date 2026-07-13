@@ -5,19 +5,21 @@
 
 <form class="control-plane-plan-editor" @onsubmit="SubmitAsync" @onsubmit:preventDefault="true">
     <div class="control-plane-plan-editor__grid">
-        <AppTextField T="string"
+        <MudTextField T="string"
                       Value="@Draft.Key"
                       ValueChanged="SetKey"
                       Label="Plan key"
+                      Variant="Variant.Outlined"
                       Required="true"
                       ReadOnly="@KeyReadOnly"
                       Disabled="@Busy"
                       autocomplete="off"
                       dir="ltr" />
-        <AppTextField T="string"
+        <MudTextField T="string"
                       Value="@Draft.Name"
                       ValueChanged="SetName"
                       Label="Plan name"
+                      Variant="Variant.Outlined"
                       Required="true"
                       Disabled="@Busy"
                       autocomplete="off"
@@ -30,10 +32,11 @@
                          Disabled="@Busy"
                          Required="true"
                          dir="ltr" />
-        <AppTextField T="string"
+        <MudTextField T="string"
                       Value="@Draft.Pricing.CurrencyCode"
                       ValueChanged="SetCurrency"
                       Label="Currency code"
+                      Variant="Variant.Outlined"
                       Required="true"
                       MaxLength="3"
                       Disabled="@Busy"
@@ -64,13 +67,13 @@
                 <h3 id="@SettingsHeadingId">Setting overrides</h3>
                 <p>Use JSON values so booleans, numbers, arrays, and objects retain their type.</p>
             </div>
-            <AppButton Variant="Variant.Outlined"
-                       Size="Size.Small"
-                       StartIcon="@Icons.Material.Filled.Add"
-                       Disabled="@Busy"
-                       OnClick="AddSetting">
+            <ControlPlaneActionButton Variant="Variant.Outlined"
+                                      Size="Size.Small"
+                                      StartIcon="@Icons.Material.Filled.Add"
+                                      Disabled="@Busy"
+                                      OnClick="AddSetting">
                 Add setting
-            </AppButton>
+            </ControlPlaneActionButton>
         </div>
 
         @if (Draft.SettingOverrides.Count == 0)
@@ -83,18 +86,20 @@
                 @foreach (var setting in Draft.SettingOverrides)
                 {
                     <div class="control-plane-plan-editor__row control-plane-plan-editor__row--setting" role="listitem" @key="setting">
-                        <AppTextField T="string"
+                        <MudTextField T="string"
                                       Value="@setting.Key"
                                       ValueChanged="@(value => setting.Key = value ?? string.Empty)"
                                       Label="Setting key"
+                                      Variant="Variant.Outlined"
                                       Required="true"
                                       Disabled="@Busy"
                                       autocomplete="off"
                                       dir="ltr" />
-                        <AppTextField T="string"
+                        <MudTextField T="string"
                                       Value="@setting.JsonValue"
                                       ValueChanged="@(value => setting.JsonValue = value ?? string.Empty)"
                                       Label="JSON value"
+                                      Variant="Variant.Outlined"
                                       Required="true"
                                       Disabled="@Busy"
                                       autocomplete="off"
@@ -121,13 +126,13 @@
                 <h3 id="@QuotasHeadingId">Quota limits</h3>
                 <p>Limits are whole-number units defined by each quota key.</p>
             </div>
-            <AppButton Variant="Variant.Outlined"
-                       Size="Size.Small"
-                       StartIcon="@Icons.Material.Filled.Add"
-                       Disabled="@Busy"
-                       OnClick="AddQuota">
+            <ControlPlaneActionButton Variant="Variant.Outlined"
+                                      Size="Size.Small"
+                                      StartIcon="@Icons.Material.Filled.Add"
+                                      Disabled="@Busy"
+                                      OnClick="AddQuota">
                 Add quota
-            </AppButton>
+            </ControlPlaneActionButton>
         </div>
 
         @if (Draft.QuotaLimits.Count == 0)
@@ -140,10 +145,11 @@
                 @foreach (var quota in Draft.QuotaLimits)
                 {
                     <div class="control-plane-plan-editor__row control-plane-plan-editor__row--quota" role="listitem" @key="quota">
-                        <AppTextField T="string"
+                        <MudTextField T="string"
                                       Value="@quota.Key"
                                       ValueChanged="@(value => quota.Key = value ?? string.Empty)"
                                       Label="Quota key"
+                                      Variant="Variant.Outlined"
                                       Required="true"
                                       Disabled="@Busy"
                                       autocomplete="off"
@@ -228,14 +234,14 @@
     <div class="control-plane-plan-editor__actions">
         @if (CanValidate)
         {
-            <AppButton Variant="Variant.Outlined" Disabled="@Busy" OnClick="ValidateAsync">Validate</AppButton>
+            <ControlPlaneActionButton Variant="Variant.Outlined" Disabled="@Busy" OnClick="ValidateAsync">Validate</ControlPlaneActionButton>
         }
         @if (CanPreviewDiff)
         {
-            <AppButton Variant="Variant.Outlined" Disabled="@Busy" OnClick="PreviewDiffAsync">Preview diff</AppButton>
+            <ControlPlaneActionButton Variant="Variant.Outlined" Disabled="@Busy" OnClick="PreviewDiffAsync">Preview diff</ControlPlaneActionButton>
         }
-        <AppButton ButtonType="ButtonType.Submit" Disabled="@Busy">@SubmitLabel</AppButton>
-        <AppButton Variant="Variant.Text" Disabled="@Busy" OnClick="CancelAsync">Cancel</AppButton>
+        <ControlPlaneActionButton ButtonType="ButtonType.Submit" Disabled="@Busy">@SubmitLabel</ControlPlaneActionButton>
+        <ControlPlaneActionButton Variant="Variant.Text" Disabled="@Busy" OnClick="CancelAsync">Cancel</ControlPlaneActionButton>
     </div>
 </form>
 

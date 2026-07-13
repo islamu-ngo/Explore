@@ -23,6 +23,11 @@ public sealed class ArchiveControlPlaneTenantPlanVersionCommandHandler(ITenantPl
             return Failure("Tenant plan version was not found.", ["tenant_plan_version_not_found"]);
         }
 
+        if (version.TenantPlanStatusId != (int)TenantPlanStatusEnum.Published)
+        {
+            return Failure("Only published tenant plan versions can be archived.", ["tenant_plan_version_not_published"]);
+        }
+
         version.TenantPlanStatusId = (int)TenantPlanStatusEnum.Archived;
         version.IsActiveForProvisioning = false;
         await tenantPlanRepository.UpdateVersionAsync(version, cancellationToken);

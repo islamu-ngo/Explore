@@ -42,6 +42,10 @@ Configured admin hosts render `Explore.Blazor/Components/ControlPlane/EmbeddedCo
 
 Control-plane UI primitives live under `Explore.Blazor.Client/Components/ControlPlane/`. They follow the same MudBlazor, token, CSS-isolation, and HAL affordance conventions as the rest of the client.
 
+The embedded instance console owns the public tenant-plan workflows. `/admin/instance/plans` creates structured plan drafts and `/admin/instance/plans/{key}` creates or edits version drafts, validates drafts, previews setting diffs, publishes or archives versions with typed confirmation, and clones published versions. Version lifecycle relations live on each `versions[]` resource, never on the root plan. `/admin/instance/tenants/{tenantId}/configuration` switches published plan assignments and applies or rolls them back with typed confirmation; rollback uses the separately returned eligible previous assignment. Every mutation is exposed only from the matching server-emitted HAL relation and matches the resource identifier in the advertised link before rendering or dispatch.
+
+Domain inventory remains an Event-owned read model. The domain page follows its HAL `settings` or `edit` relation into `/admin/instance/settings?section=domain`; DNS-provider verification and certificate probing are operator-managed because Event does not expose verification, test, or retry endpoints for that resource.
+
 ## BFF Endpoint Families
 
 BFF endpoints are split by concern in `Explore.Blazor/Extensions/` and wired through the server host.

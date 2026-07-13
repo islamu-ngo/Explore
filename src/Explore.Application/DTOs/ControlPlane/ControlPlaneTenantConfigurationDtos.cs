@@ -10,6 +10,7 @@ public sealed class ControlPlaneTenantEffectiveConfigurationDto
 {
     public Guid TenantId { get; set; }
     public ControlPlaneTenantPlanAssignmentDto? PlanAssignment { get; set; }
+    public ControlPlaneTenantPlanAssignmentDto? RollbackAssignment { get; set; }
     public IReadOnlyList<ControlPlaneTenantEffectiveSettingDto> Settings { get; set; } = [];
     public IReadOnlyList<ControlPlaneTenantQuotaUsageDto> Quotas { get; set; } = [];
 }

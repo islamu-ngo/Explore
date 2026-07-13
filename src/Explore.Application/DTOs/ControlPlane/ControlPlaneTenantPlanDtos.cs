@@ -3,6 +3,9 @@
 
 namespace Explore.Application.DTOs.ControlPlane;
 
+using System.Text.Json.Serialization;
+using Explore.Application.Hateoas;
+
 public sealed class ControlPlaneTenantPlanListItemDto
 {
     public Guid Id { get; set; }
@@ -38,6 +41,10 @@ public sealed class ControlPlaneTenantPlanVersionDto
     public bool IsActiveForProvisioning { get; set; }
     public IReadOnlyList<ControlPlaneTenantPlanSettingDto> Settings { get; set; } = [];
     public IReadOnlyList<ControlPlaneTenantPlanQuotaDto> Quotas { get; set; } = [];
+
+    [JsonPropertyName("_links")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, HalLink>? Links { get; set; }
 }
 
 public sealed class ControlPlaneTenantPlanSettingDto

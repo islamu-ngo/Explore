@@ -7,6 +7,7 @@ public static class ControlPlaneLinkRelations
 {
     public const string Self = "self";
     public const string Plans = "plans";
+    public const string Settings = "settings";
     public const string Create = "create";
     public const string Edit = "edit";
     public const string Delete = "delete";

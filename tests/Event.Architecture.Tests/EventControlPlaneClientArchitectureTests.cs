@@ -181,7 +181,7 @@ public sealed class EventControlPlaneClientArchitectureTests
     }
 
     [Test]
-    public async Task PublicPlanCatalog_MustUseReadOnlyContractHalNavigationAndGuardedRoutes()
+    public async Task PublicPlanCatalog_MustUseGeneratedContractHalAffordancesAndGuardedRoutes()
     {
         var catalogPath = Path.Combine(ExploreBlazorClientRoot, "Contracts", "Services", "ControlPlane", "IControlPlanePlanCatalogService.cs");
         var planServicePath = Path.Combine(ExploreBlazorClientRoot, "Contracts", "Services", "ControlPlane", "IControlPlanePlanService.cs");
@@ -190,7 +190,7 @@ public sealed class EventControlPlaneClientArchitectureTests
         var routesPath = Path.Combine(ExploreBlazorClientRoot, "Routes.razor");
 
         await Assert.That(File.Exists(catalogPath)).IsTrue()
-            .Because("public plan pages need a read-only catalog boundary separate from mutation services");
+            .Because("public plan pages need one generated HAL and command-response boundary");
         await Assert.That(File.Exists(listPagePath)).IsTrue();
         await Assert.That(File.Exists(listPagePath + ".css")).IsTrue();
         await Assert.That(File.Exists(detailPagePath)).IsTrue();
@@ -205,10 +205,14 @@ public sealed class EventControlPlaneClientArchitectureTests
 
         await Assert.That(catalog).Contains("GetPlansAsync");
         await Assert.That(catalog).Contains("GetPlanAsync");
-        await Assert.That(catalog).DoesNotContain("CreatePlan");
-        await Assert.That(catalog).DoesNotContain("UpdatePlan");
-        await Assert.That(catalog).DoesNotContain("PublishPlan");
-        await Assert.That(catalog).DoesNotContain("ArchivePlan");
+        await Assert.That(catalog).Contains("CreatePlanDraftAsync");
+        await Assert.That(catalog).Contains("CreateVersionDraftAsync");
+        await Assert.That(catalog).Contains("UpdateVersionDraftAsync");
+        await Assert.That(catalog).Contains("PublishVersionAsync");
+        await Assert.That(catalog).Contains("ArchiveVersionAsync");
+        await Assert.That(catalog).Contains("ClonePlanAsync");
+        await Assert.That(catalog).Contains("ValidateDraftAsync");
+        await Assert.That(catalog).Contains("PreviewDiffAsync");
         await Assert.That(File.Exists(planServicePath)).IsFalse()
             .Because("The Blazor client must not retain a local plan mutation contract.");
 
@@ -216,14 +220,18 @@ public sealed class EventControlPlaneClientArchitectureTests
         {
             await Assert.That(page).Contains("IControlPlanePlanCatalogService");
             await Assert.That(page).DoesNotContain("IControlPlanePlanService");
-            await Assert.That(page).DoesNotContain("CreatePlanDraftAsync");
-            await Assert.That(page).DoesNotContain("PublishPlanVersionAsync");
-            await Assert.That(page).DoesNotContain("ArchivePlanVersionAsync");
-            await Assert.That(page).DoesNotContain("ClonePlanAsync");
         }
 
         await Assert.That(listPage).Contains("ControlPlaneHal.HasLink(plan._links, ControlPlaneLinkRelations.Self)")
             .Because("plan detail navigation must come only from each item's HAL self link");
+        await Assert.That(listPage).Contains("ControlPlaneHal.HasLink(_catalog?._links, ControlPlaneLinkRelations.Create)");
+        await Assert.That(listPage).Contains("ControlPlaneHal.HasLink(_catalog?._links, ControlPlaneLinkRelations.Validate)");
+        await Assert.That(detailPage).Contains("ControlPlaneHal.HasLink(_plan?._links, ControlPlaneLinkRelations.CreateVersionDraft)");
+        await Assert.That(detailPage).Contains("ControlPlaneHal.HasLink(_plan?._links, ControlPlaneLinkRelations.Validate)");
+        await Assert.That(detailPage).Contains("HasVersionLink(ControlPlaneLinkRelations.UpdateVersionDraft, version)");
+        await Assert.That(detailPage).Contains("HasVersionLink(ControlPlaneLinkRelations.Publish, version)");
+        await Assert.That(detailPage).Contains("HasVersionLink(ControlPlaneLinkRelations.Archive, version)");
+        await Assert.That(detailPage).Contains("HasVersionLink(ControlPlaneLinkRelations.Clone, version)");
         await Assert.That(detailPage).Contains("role=\"region\"");
         await Assert.That(detailPage).Contains("tabindex=\"0\"");
         await Assert.That(listCss).Contains("min-inline-size: 0");

@@ -24,6 +24,11 @@ public sealed class CloneControlPlaneTenantPlanCommandHandler(ITenantPlanReposit
             return Failure("Tenant plan version was not found.", ["tenant_plan_version_not_found"]);
         }
 
+        if (source.TenantPlanStatusId != (int)TenantPlanStatusEnum.Published)
+        {
+            return Failure("Only published tenant plan versions can be cloned.", ["tenant_plan_version_not_published"]);
+        }
+
         TenantPlan? existing = await tenantPlanRepository.GetByKeyAsync(request.Key, cancellationToken);
         if (existing is not null)
         {

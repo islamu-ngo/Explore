@@ -59,15 +59,18 @@ public sealed class ControlPlaneTenantEffectiveConfigurationLinkPolicy
             dto.TenantId,
             dto.PlanAssignment.Id);
 
-        yield return UpdateLink(
-            "rollback",
-            RouteNames.RollbackControlPlaneTenantPlanAssignment,
-            new { tenantId = dto.TenantId, assignmentId = dto.PlanAssignment.Id },
-            "POST",
-            "Rollback tenant plan assignment",
-            RollbackControlPlaneTenantPlanAssignmentCommand.SettingKey,
-            dto.TenantId,
-            dto.PlanAssignment.Id);
+        if (dto.RollbackAssignment is not null)
+        {
+            yield return UpdateLink(
+                "rollback",
+                RouteNames.RollbackControlPlaneTenantPlanAssignment,
+                new { tenantId = dto.TenantId, assignmentId = dto.RollbackAssignment.Id },
+                "POST",
+                "Rollback tenant plan assignment",
+                RollbackControlPlaneTenantPlanAssignmentCommand.SettingKey,
+                dto.TenantId,
+                dto.RollbackAssignment.Id);
+        }
 
     }
 

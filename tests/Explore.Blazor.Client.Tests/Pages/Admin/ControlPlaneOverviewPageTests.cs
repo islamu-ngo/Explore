@@ -87,7 +87,7 @@ public sealed class ControlPlaneOverviewPageTests : IDisposable
     }
 
     [Test]
-    public async Task DomainsPage_RendersOnlyHalAdvertisedActions()
+    public async Task DomainsPage_RendersOperatorManagedDnsAndOnlySupportedHalDeepLink()
     {
         var domainService = Substitute.For<IControlPlaneDomainService>();
         domainService.GetDomainsAsync(Arg.Any<CancellationToken>()).Returns(new HalResourceOfControlPlaneDomainOverviewDto
@@ -109,17 +109,23 @@ public sealed class ControlPlaneOverviewPageTests : IDisposable
                     Status = "Verified"
                 }
             ],
-            _links = Links(ControlPlaneLinkRelations.Verify, ControlPlaneLinkRelations.Test)
+            _links = Links(
+                ControlPlaneLinkRelations.Edit,
+                ControlPlaneLinkRelations.Verify,
+                ControlPlaneLinkRelations.Test)
         });
         _ctx.Services.AddSingleton(domainService);
 
         var cut = _ctx.Render<ControlPlaneDomainsPage>();
-        cut.WaitForAssertion(() => cut.Find("button[aria-label='Verify admin.example.test']"));
+        cut.WaitForAssertion(() => cut.Find("a[aria-label='Edit domain governance']"));
 
         await Assert.That(cut.Find("h1").TextContent).IsEqualTo("Domains");
-        await Assert.That(cut.Markup).Contains("Verify");
-        await Assert.That(cut.Markup).Contains("Test");
-        await Assert.That(cut.Markup).DoesNotContain("Retry");
+        await Assert.That(cut.Find("a[aria-label='Edit domain governance']").GetAttribute("href"))
+            .IsEqualTo("/admin/instance/settings?section=domain");
+        await Assert.That(cut.Markup).Contains("DNS verification is operator-managed.");
+        await Assert.That(cut.FindAll("button[aria-label^='Verify ']")).IsEmpty();
+        await Assert.That(cut.FindAll("button[aria-label^='Test ']")).IsEmpty();
+        await Assert.That(cut.FindAll("button[aria-label^='Retry ']")).IsEmpty();
     }
 
     [Test]

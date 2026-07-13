@@ -1147,21 +1147,21 @@ public sealed class ManagedTenantProvisioningTests
         var planRepository = Substitute.For<ITenantPlanRepository>();
         Guid planVersionId = Guid.Parse("01980000-0000-7000-8000-000000000001");
         planVersion ??= new TenantPlanVersion
+        {
+            Id = planVersionId,
+            TenantPlanId = Guid.CreateVersion7(),
+            TenantPlan = new TenantPlan
             {
-                Id = planVersionId,
-                TenantPlanId = Guid.CreateVersion7(),
-                TenantPlan = new TenantPlan
-                {
-                    Id = Guid.CreateVersion7(),
-                    Key = "standard",
-                    DisplayName = "Standard"
-                },
-                VersionNumber = 1,
-                TenantPlanStatusId = (int)TenantPlanStatusEnum.Published,
-                CurrencyCode = "EUR",
-                BillingPeriod = "month",
-                IsActiveForProvisioning = true
-            };
+                Id = Guid.CreateVersion7(),
+                Key = "standard",
+                DisplayName = "Standard"
+            },
+            VersionNumber = 1,
+            TenantPlanStatusId = (int)TenantPlanStatusEnum.Published,
+            CurrencyCode = "EUR",
+            BillingPeriod = "month",
+            IsActiveForProvisioning = true
+        };
         planRepository.GetVersionAsync(planVersionId, Arg.Any<CancellationToken>()).Returns(planVersion);
         var moduleRepository = Substitute.For<IModuleDefinitionRepository>();
         moduleRepository.GetActiveByKeysAsync(

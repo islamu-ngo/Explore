@@ -15,15 +15,19 @@ public sealed class InstanceTenantConfigurationTests : IDisposable
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly IControlPlaneTenantConfigurationService _configurationService =
         Substitute.For<IControlPlaneTenantConfigurationService>();
+    private readonly IControlPlanePlanCatalogService _planCatalog =
+        Substitute.For<IControlPlanePlanCatalogService>();
     private readonly IAccessibilityFocusService _focusService = Substitute.For<IAccessibilityFocusService>();
     private readonly IAccessibilityAnnouncerService _announcer = Substitute.For<IAccessibilityAnnouncerService>();
 
     public InstanceTenantConfigurationTests()
     {
         _ctx.Services.RemoveAll<IControlPlaneTenantConfigurationService>();
+        _ctx.Services.RemoveAll<IControlPlanePlanCatalogService>();
         _ctx.Services.RemoveAll<IAccessibilityFocusService>();
         _ctx.Services.RemoveAll<IAccessibilityAnnouncerService>();
         _ctx.Services.AddSingleton(_configurationService);
+        _ctx.Services.AddSingleton(_planCatalog);
         _ctx.Services.AddSingleton(_focusService);
         _ctx.Services.AddSingleton(_announcer);
     }
@@ -31,14 +35,16 @@ public sealed class InstanceTenantConfigurationTests : IDisposable
     public void Dispose() => _ctx.Dispose();
 
     [Test]
-    public async Task Page_UsesConfigurationServiceWithoutPlanService()
+    public async Task Page_WithoutSwitchPlanLink_DoesNotLoadPlanCatalog()
     {
         ReturnConfiguration();
 
         var cut = RenderPage();
 
         cut.WaitForAssertion(() => cut.Find("h1").TextContent.Equals("Tenant configuration", StringComparison.Ordinal));
-        await Assert.That(_ctx.Services.GetService<IControlPlanePlanCatalogService>()).IsNull();
+        await Assert.That(_ctx.Services.GetRequiredService<IControlPlanePlanCatalogService>())
+            .IsSameReferenceAs(_planCatalog);
+        await _planCatalog.DidNotReceive().GetPlansAsync(Arg.Any<CancellationToken>());
         await _configurationService.Received(1).GetEffectiveConfigurationAsync(_tenantId, Arg.Any<CancellationToken>());
     }
 
@@ -140,7 +146,9 @@ public sealed class InstanceTenantConfigurationTests : IDisposable
         await Assert.That(cut.Markup).Contains("Active");
         await Assert.That(cut.Find("[data-setting-key='feature.locked'] dd[data-lock-source]").TextContent)
             .IsEqualTo("Tenant");
-        await Assert.That(_ctx.Services.GetService<IControlPlanePlanCatalogService>()).IsNull();
+        await Assert.That(_ctx.Services.GetRequiredService<IControlPlanePlanCatalogService>())
+            .IsSameReferenceAs(_planCatalog);
+        await _planCatalog.DidNotReceive().GetPlansAsync(Arg.Any<CancellationToken>());
         await Assert.That(cut.Markup).DoesNotContain("Apply assignment");
         await Assert.That(cut.Markup).DoesNotContain("Rollback assignment");
         await Assert.That(cut.Find(".instance-tenant-config__header code").GetAttribute("dir")).IsEqualTo("ltr");

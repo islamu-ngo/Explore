@@ -27,6 +27,11 @@ public interface ITenantPlanRepository : IGenericRepository<TenantPlan, Guid>
         Guid tenantId,
         CancellationToken cancellationToken = default);
 
+    Task<TenantPlanAssignment?> GetPreviousEligibleAssignmentForTenantAsync(
+        Guid tenantId,
+        Guid currentAssignmentId,
+        CancellationToken cancellationToken = default);
+
     Task<TenantPlanAssignment?> GetAssignmentAsync(Guid assignmentId, CancellationToken cancellationToken = default);
 
     Task<TenantPlanAssignment> CreateAssignmentAsync(
