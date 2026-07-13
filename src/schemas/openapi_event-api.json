@@ -60117,6 +60117,9 @@
           "planAssignment": {
             "$ref": "#/components/schemas/ControlPlaneTenantPlanAssignmentDto"
           },
+          "rollbackAssignment": {
+            "$ref": "#/components/schemas/ControlPlaneTenantPlanAssignmentDto"
+          },
           "settings": {
             "type": "array",
             "items": {
@@ -60528,6 +60531,15 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ControlPlaneTenantPlanQuotaDto"
+            }
+          },
+          "_links": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
             }
           }
         }
@@ -76006,6 +76018,9 @@
             "format": "uuid"
           },
           "planAssignment": {
+            "$ref": "#/components/schemas/ControlPlaneTenantPlanAssignmentDto"
+          },
+          "rollbackAssignment": {
             "$ref": "#/components/schemas/ControlPlaneTenantPlanAssignmentDto"
           },
           "settings": {

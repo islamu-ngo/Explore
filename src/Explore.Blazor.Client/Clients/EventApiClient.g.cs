@@ -73813,6 +73813,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("planAssignment")]
         public ControlPlaneTenantPlanAssignmentDto? PlanAssignment { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("rollbackAssignment")]
+        public ControlPlaneTenantPlanAssignmentDto? RollbackAssignment { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("settings")]
         public System.Collections.Generic.ICollection<ControlPlaneTenantEffectiveSettingDto>? Settings { get; set; } = default!;
 
@@ -74206,6 +74209,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("quotas")]
         public System.Collections.Generic.ICollection<ControlPlaneTenantPlanQuotaDto>? Quotas { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -86204,6 +86210,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("planAssignment")]
         public ControlPlaneTenantPlanAssignmentDto? PlanAssignment { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("rollbackAssignment")]
+        public ControlPlaneTenantPlanAssignmentDto? RollbackAssignment { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("settings")]
         public System.Collections.Generic.ICollection<ControlPlaneTenantEffectiveSettingDto>? Settings { get; set; } = default!;
