@@ -281,6 +281,40 @@ public class FallbackAuthorizationServiceTests
     }
 
     [Test]
+    public async Task IsAllowed_IncomingWebhookWorker_AllowsOnlyDedicatedProcessingAction()
+    {
+        var principal = new Explore.Application.Authentication.ApiKeyPrincipalContext(
+            "internal-webhook-worker",
+            TestTenantId,
+            Explore.Domain.Enums.ExternalApiKeyOwnerType.Tenant,
+            TestTenantId,
+            [InternalMachineScopes.ProcessIncomingWebhook]);
+        _machinePrincipalAccessor.IsMachineCaller.Returns(true);
+        _machinePrincipalAccessor.Current.Returns(principal);
+        var attributes = new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") };
+
+        var processAllowed = await _service.IsAllowedAsync(
+            ResourceKinds.Webhook,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Webhooks.ProcessIncoming,
+            attributes);
+        var redriveAllowed = await _service.IsAllowedAsync(
+            ResourceKinds.Webhook,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Webhooks.RedriveIncoming,
+            attributes);
+        var providerManagementAllowed = await _service.IsAllowedAsync(
+            ResourceKinds.Webhook,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Webhooks.ManageProvider,
+            attributes);
+
+        await Assert.That(processAllowed).IsTrue();
+        await Assert.That(redriveAllowed).IsFalse();
+        await Assert.That(providerManagementAllowed).IsFalse();
+    }
+
+    [Test]
     public async Task IsAllowed_WebhookOrganizationAdmin_AllowsOrganizationWebhookManagementWhenTenantSettingAllows()
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);

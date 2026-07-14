@@ -144,7 +144,13 @@ public sealed class SvixPortalCapabilityCeilingTests
         var bindingRepository = Substitute.For<IWebhookConsumerProviderBindingRepository>();
         var options = new StaticOptionsMonitor<WebhookOptions>(new WebhookOptions
         {
-            Provider = WebhookOptions.ProviderSvix
+            Provider = WebhookOptions.ProviderSvix,
+            Svix = new WebhookSvixOptions
+            {
+                Environment = "production",
+                ProviderVersion = "1.96.1",
+                CapabilityPolicyVersion = "svix-1.96.1-v1"
+            }
         });
         var consumer = new WebhookConsumer
         {

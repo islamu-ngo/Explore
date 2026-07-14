@@ -24,7 +24,6 @@ public sealed partial class WebhookTenantModelInvariantTests
         typeof(WebhookDeliveryAttempt),
         typeof(WebhookProviderPublication),
         typeof(WebhookProviderPublicationAttempt),
-        typeof(WebhookProviderLink),
         typeof(IncomingWebhookMessage),
         typeof(IncomingWebhookEffectReceipt),
         typeof(IncomingWebhookProcessingAttempt),

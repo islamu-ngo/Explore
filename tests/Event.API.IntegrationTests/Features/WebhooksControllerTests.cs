@@ -129,6 +129,62 @@ public sealed class WebhooksControllerTests
     }
 
     [Test]
+    public async Task RepairProviderBindingRoute_UsesStableWriteAndManageProviderAuthorization()
+    {
+        var action = typeof(WebhooksController).GetMethod(nameof(WebhooksController.RepairProviderBinding))!;
+        var route = action.GetCustomAttribute<HttpPostAttribute>();
+        var authorization = typeof(RepairWebhookProviderBindingCommand)
+            .GetCustomAttribute<AuthorizeResourceAttribute>();
+
+        await Assert.That(route).IsNotNull();
+        await Assert.That(route!.Template)
+            .IsEqualTo("consumers/{consumerId:guid}/provider-binding/repair");
+        await Assert.That(route.Name).IsEqualTo(RouteNames.RepairWebhookProviderBinding);
+        await Assert.That(action.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName)
+            .IsEqualTo(RateLimitingExtensions.WritePolicy);
+        await Assert.That(action.GetCustomAttribute<RequestTimeoutAttribute>()?.PolicyName)
+            .IsEqualTo(RequestTimeoutExtensions.ComplexPolicy);
+        await Assert.That(authorization).IsNotNull();
+        await Assert.That(authorization!.Resource).IsEqualTo(ResourceKinds.Webhook);
+        await Assert.That(authorization.Action).IsEqualTo(AuthorizationActions.Webhooks.ManageProvider);
+    }
+
+    [Test]
+    public async Task RepairProviderBinding_DispatchesServerTenantAndConsumerIdentity()
+    {
+        var consumerId = Guid.CreateVersion7();
+        _mediator.Send(
+                Arg.Any<RepairWebhookProviderBindingCommand>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid>
+            {
+                Success = true,
+                Id = Guid.CreateVersion7(),
+                Message = "Webhook provider binding verified."
+            });
+        var controller = CreateController("keycloak-subject-provider-binding-repair");
+        var request = new RepairWebhookProviderBindingRequestDto
+        {
+            ExternalApplicationId = "app_repaired",
+            ReasonCode = "provider.application-recreated"
+        };
+
+        var result = await controller.RepairProviderBinding(
+            consumerId,
+            request,
+            CancellationToken.None);
+
+        await Assert.That(result.Result).IsTypeOf<OkObjectResult>();
+        await _mediator.Received(1).Send(
+            Arg.Is<RepairWebhookProviderBindingCommand>(command =>
+                command.TenantId == _tenantId &&
+                command.ConsumerId == consumerId &&
+                command.ExternalApplicationId == request.ExternalApplicationId &&
+                command.ReasonCode == request.ReasonCode),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task ConsumerRoutes_UseStableMetadataAndWebhookAuthorizationActions()
     {
         var controllerType = typeof(WebhooksController);
@@ -1176,6 +1232,88 @@ public sealed class WebhooksControllerTests
     }
 
     [Test]
+    public async Task RedriveIncomingWebhook_DispatchesServerTenantAndExpectedGeneration()
+    {
+        var messageId = Guid.CreateVersion7();
+        _mediator.Send(Arg.Any<RedriveIncomingWebhookCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid>
+            {
+                Success = true,
+                Id = messageId,
+                Message = "Incoming webhook redrive scheduled."
+            });
+        var controller = CreateController("keycloak-subject-incoming-webhook-redrive");
+        var request = new RedriveIncomingWebhookRequestDto
+        {
+            ExpectedProcessingGeneration = 4,
+            Reason = "operator-confirmed-recovery"
+        };
+
+        var result = await controller.RedriveIncomingWebhook(messageId, request, CancellationToken.None);
+
+        var ok = result.Result as OkObjectResult;
+        await Assert.That(ok).IsNotNull();
+        await _mediator.Received(1).Send(
+            Arg.Is<RedriveIncomingWebhookCommand>(command =>
+                command.TenantId == _tenantId &&
+                command.IncomingWebhookMessageId == messageId &&
+                command.ExpectedProcessingGeneration == request.ExpectedProcessingGeneration &&
+                command.Reason == request.Reason),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task RedriveIncomingWebhook_WhenGenerationIsStale_ReturnsConflictProblem()
+    {
+        _mediator.Send(Arg.Any<RedriveIncomingWebhookCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                FailureCode = "incoming_webhook_redrive_generation_conflict",
+                Message = "Incoming webhook processing generation changed before redrive.",
+                Errors = ["Incoming webhook processing generation changed before redrive."]
+            });
+        var controller = CreateController("keycloak-subject-incoming-webhook-redrive-conflict");
+
+        var result = await controller.RedriveIncomingWebhook(
+            Guid.CreateVersion7(),
+            new RedriveIncomingWebhookRequestDto
+            {
+                ExpectedProcessingGeneration = 1,
+                Reason = "stale-redrive"
+            },
+            CancellationToken.None);
+
+        var objectResult = result.Result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
+        var problem = objectResult.Value as ProblemDetails;
+        await Assert.That(problem).IsNotNull();
+        await Assert.That(problem!.Extensions["code"])
+            .IsEqualTo("incoming_webhook_redrive_generation_conflict");
+    }
+
+    [Test]
+    public async Task RedriveIncomingWebhookRoute_UsesStableWriteAndAuthorizationMetadata()
+    {
+        var action = typeof(WebhooksController).GetMethod(nameof(WebhooksController.RedriveIncomingWebhook))!;
+        var route = action.GetCustomAttribute<HttpPostAttribute>();
+        var authorization = typeof(RedriveIncomingWebhookCommand)
+            .GetCustomAttribute<AuthorizeResourceAttribute>();
+
+        await Assert.That(route).IsNotNull();
+        await Assert.That(route!.Template).IsEqualTo("incoming/{incomingWebhookMessageId:guid}/redrive");
+        await Assert.That(route.Name).IsEqualTo(RouteNames.RedriveIncomingWebhook);
+        await Assert.That(action.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName)
+            .IsEqualTo(RateLimitingExtensions.WritePolicy);
+        await Assert.That(action.GetCustomAttribute<RequestTimeoutAttribute>()?.PolicyName)
+            .IsEqualTo(RequestTimeoutExtensions.DefaultPolicy);
+        await Assert.That(authorization).IsNotNull();
+        await Assert.That(authorization!.Resource).IsEqualTo(ResourceKinds.Webhook);
+        await Assert.That(authorization.Action).IsEqualTo(AuthorizationActions.Webhooks.RedriveIncoming);
+    }
+
+    [Test]
     public async Task WebhookMessageLinks_ExposeViewDeliveryAuditAffordances()
     {
         var message = CreateMessageDto();
@@ -1338,10 +1476,13 @@ public sealed class WebhooksControllerTests
             Id = Guid.CreateVersion7(),
             TenantId = _tenantId,
             ConsumerKindId = 1,
+            ConsumerKindCode = "TENANT",
             ConsumerKindName = "Tenant",
             StatusId = 1,
+            StatusCode = "ACTIVE",
             StatusName = "Active",
             ProviderModeId = ProviderModeId(providerModeName),
+            ProviderModeCode = providerModeName == "DryRun" ? "DRY_RUN" : providerModeName.ToUpperInvariant(),
             ProviderModeName = providerModeName,
             Name = "Tenant automation",
             CreatedAt = DateTime.UtcNow
@@ -1360,10 +1501,12 @@ public sealed class WebhooksControllerTests
             ConsumerId = Guid.CreateVersion7(),
             ConsumerName = "Tenant automation",
             ProviderModeId = ProviderModeId(providerModeName),
+            ProviderModeCode = providerModeName == "DryRun" ? "DRY_RUN" : providerModeName.ToUpperInvariant(),
             ProviderModeName = providerModeName,
             DestinationHost = "integrator.example",
             Description = "Integrator endpoint",
             StatusId = statusId,
+            StatusCode = statusName.ToUpperInvariant(),
             StatusName = statusName,
             SecretVersion = 1,
             MaxAttempts = 8,
@@ -1421,9 +1564,11 @@ public sealed class WebhooksControllerTests
             MessageEventType = "event.published",
             EndpointId = Guid.CreateVersion7(),
             EndpointStatusName = "Active",
+            EndpointStatusCode = "ACTIVE",
             AttemptNumber = 1,
-            StatusId = statusName == "Succeeded" ? 2 : 4,
-            StatusName = statusName,
+            OutcomeId = statusName == "Succeeded" ? 3 : 4,
+            OutcomeCode = statusName == "Succeeded" ? "SUCCEEDED" : "FAILED",
+            OutcomeName = statusName,
             ScheduledAt = DateTime.UtcNow.AddMinutes(-5),
             SentAt = DateTime.UtcNow.AddMinutes(-4),
             CompletedAt = DateTime.UtcNow.AddMinutes(-4),

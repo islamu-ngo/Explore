@@ -8,6 +8,7 @@ using Explore.API.Hateoas.Policies;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.DTOs.Webhooks;
 using Explore.Application.Hateoas;
 using Explore.Domain;
@@ -34,6 +35,7 @@ public sealed class WebhookPortalHalAuthorityTests
         var resource = await fixture.Assembler.ToResource(CreateConsumerDto(), fixture.HttpContext);
 
         await Assert.That(resource.Links.ContainsKey(LinkRelations.OpenProviderPortal)).IsTrue();
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.RepairProviderBinding)).IsTrue();
         await Assert.That(resource.Links[LinkRelations.OpenProviderPortal].Method).IsEqualTo("POST");
         await fixture.AuthorizationProvider.Received(1).IsAllowedBatchAsync(
             Arg.Is<IReadOnlyList<AuthorizationCheck>>(checks => checks != null && checks.Any(check =>
@@ -50,6 +52,7 @@ public sealed class WebhookPortalHalAuthorityTests
         var resource = await fixture.Assembler.ToResource(CreateConsumerDto(), fixture.HttpContext);
 
         await Assert.That(resource.Links.ContainsKey(LinkRelations.OpenProviderPortal)).IsFalse();
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.RepairProviderBinding)).IsTrue();
     }
 
     [Test]
@@ -99,7 +102,7 @@ public sealed class WebhookPortalHalAuthorityTests
                 TenantId,
                 Arg.Any<IReadOnlyCollection<Guid>>(),
                 WebhookProviderKind.Svix,
-                "production",
+                SvixConformanceProfileRegistry.SelfHostedEnvironment,
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromException<IReadOnlyList<WebhookConsumerProviderBinding>>(
                 new InvalidOperationException("database unavailable")));
@@ -131,15 +134,15 @@ public sealed class WebhookPortalHalAuthorityTests
             Arg.Is<IReadOnlyCollection<Guid>>(ids =>
                 ids != null && ids.Count == 2 && ids.Contains(ConsumerId) && ids.Contains(secondConsumerId)),
             WebhookProviderKind.Svix,
-            "production",
+            SvixConformanceProfileRegistry.SelfHostedEnvironment,
             Arg.Any<CancellationToken>());
     }
 
     private static WebhookConsumerProviderBinding CreateBinding(
         WebhookProviderCapability providerCapabilities = WebhookProviderCapability.AppPortal,
         WebhookProviderCapability governanceCapabilities = WebhookProviderCapability.AppPortal,
-        string providerVersion = "1.96.1",
-        string capabilityPolicyVersion = "svix-1.96.1-v1")
+        string providerVersion = SvixConformanceProfileRegistry.SelfHostedProviderVersion,
+        string capabilityPolicyVersion = SvixConformanceProfileRegistry.SelfHostedCapabilityPolicyVersion)
     {
         var profile = WebhookProviderCapabilityProfile.Create(
             WebhookProviderKind.Svix,
@@ -151,7 +154,7 @@ public sealed class WebhookPortalHalAuthorityTests
             TenantId,
             ConsumerId,
             Guid.CreateVersion7(),
-            "production",
+            SvixConformanceProfileRegistry.SelfHostedEnvironment,
             profile,
             governanceCapabilities);
         binding.VerifyOwnership(TenantId, ConsumerId, "app_hal_authority", DateTimeOffset.UtcNow);
@@ -163,10 +166,13 @@ public sealed class WebhookPortalHalAuthorityTests
         Id = consumerId ?? ConsumerId,
         TenantId = TenantId,
         ConsumerKindId = (int)WebhookConsumerKind.Tenant,
+        ConsumerKindCode = "TENANT",
         ConsumerKindName = nameof(WebhookConsumerKind.Tenant),
         StatusId = (int)WebhookConsumerStatus.Active,
+        StatusCode = "ACTIVE",
         StatusName = nameof(WebhookConsumerStatus.Active),
         ProviderModeId = (int)WebhookProviderMode.Svix,
+        ProviderModeCode = "SVIX",
         ProviderModeName = nameof(WebhookProviderMode.Svix),
         Name = "HAL authority consumer",
         CreatedAt = DateTime.UtcNow
@@ -183,7 +189,7 @@ public sealed class WebhookPortalHalAuthorityTests
                     TenantId,
                     Arg.Any<IReadOnlyCollection<Guid>>(),
                     WebhookProviderKind.Svix,
-                    "production",
+                    SvixConformanceProfileRegistry.SelfHostedEnvironment,
                     Arg.Any<CancellationToken>())
                 .Returns(bindings);
 
@@ -230,17 +236,39 @@ public sealed class WebhookPortalHalAuthorityTests
                 BindingRepository,
                 new StaticOptionsMonitor<WebhookOptions>(new WebhookOptions
                 {
-                    Provider = WebhookOptions.ProviderSvix
+                    Provider = WebhookOptions.ProviderSvix,
+                    Svix = new WebhookSvixOptions
+                    {
+                        BaseUrl = "http://svix.test",
+                        Environment = SvixConformanceProfileRegistry.SelfHostedEnvironment,
+                        ProviderVersion = SvixConformanceProfileRegistry.SelfHostedProviderVersion,
+                        CapabilityPolicyVersion = SvixConformanceProfileRegistry.SelfHostedCapabilityPolicyVersion
+                    }
                 }),
                 NullLogger<SvixPortalEligibilityService>.Instance);
+            BindingAuthorityService = Substitute.For<IWebhookProviderBindingAuthorityService>();
+            var capabilityProfile = WebhookProviderCapabilityProfile.Create(
+                WebhookProviderKind.Svix,
+                SvixConformanceProfileRegistry.SelfHostedProviderVersion,
+                WebhookProviderCapability.None,
+                SvixConformanceProfileRegistry.SelfHostedCapabilityPolicyVersion,
+                DateTimeOffset.UtcNow);
+            BindingAuthorityService.ResolveCurrentProfile().Returns(
+                WebhookProviderBindingProfileResult.Success(new WebhookProviderBindingProfile(
+                    WebhookProviderKind.Svix,
+                    SvixConformanceProfileRegistry.SelfHostedEnvironment,
+                    capabilityProfile,
+                    WebhookProviderCapability.None)));
             Assembler = new WebhookConsumerResourceAssembler(
                 linkGenerator,
                 new WebhookConsumerDetailLinkPolicy(),
                 new WebhookConsumerCollectionLinkPolicy(new WebhookConsumerDetailLinkPolicy()),
-                eligibilityService);
+                eligibilityService,
+                BindingAuthorityService);
         }
 
         public IWebhookConsumerProviderBindingRepository BindingRepository { get; }
+        public IWebhookProviderBindingAuthorityService BindingAuthorityService { get; }
         public IAuthorizationProvider AuthorizationProvider { get; }
         public DefaultHttpContext HttpContext { get; }
         public WebhookConsumerResourceAssembler Assembler { get; }

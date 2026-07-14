@@ -31,14 +31,16 @@ public sealed class WebhookProviderBindingFoundationTests(PostgreSqlContainerFix
         var binding = CreatePendingBinding(tenant.Id, consumer.Id, "Production");
         await repository.CreateAsync(binding, CancellationToken.None);
 
-        var verified = await repository.TryVerifyAsync(
+        var tracked = await repository.GetByTenantAndIdForUpdateAsync(
             tenant.Id,
             binding.Id,
-            expectedConcurrencyVersion: 1,
-            expectedVerificationFence: 1,
-            "app_Custom",
-            DateTimeOffset.UtcNow,
             CancellationToken.None);
+        tracked!.VerifyOwnership(
+            tenant.Id,
+            consumer.Id,
+            "app_Custom",
+            DateTimeOffset.UtcNow);
+        await repository.SaveChangesAsync(CancellationToken.None);
         var byConsumer = await repository.GetVerifiedByConsumerAsync(
             tenant.Id,
             consumer.Id,
@@ -59,7 +61,6 @@ public sealed class WebhookProviderBindingFoundationTests(PostgreSqlContainerFix
             "production",
             CancellationToken.None);
 
-        await Assert.That(verified).IsTrue();
         await Assert.That(byConsumer).IsNotNull();
         await Assert.That(byProviderIdentity?.Id).IsEqualTo(binding.Id);
         await Assert.That(substitutedTenant).IsNull();
@@ -68,49 +69,50 @@ public sealed class WebhookProviderBindingFoundationTests(PostgreSqlContainerFix
         await Assert.That(byConsumer.ConcurrencyVersion).IsEqualTo(2);
         await Assert.That(byConsumer.VerificationFence).IsEqualTo(2);
 
-        var staleVersion = await repository.TryDisableAsync(
+        await using var winnerContext = fixture.CreateDbContext();
+        await using var staleContext = fixture.CreateDbContext();
+        var winnerRepository = new WebhookConsumerProviderBindingRepository(winnerContext);
+        var staleRepository = new WebhookConsumerProviderBindingRepository(staleContext);
+        var winner = await winnerRepository.GetByTenantAndIdForUpdateAsync(
             tenant.Id,
             binding.Id,
-            expectedConcurrencyVersion: 1,
-            expectedVerificationFence: 2,
-            DateTimeOffset.UtcNow,
             CancellationToken.None);
-        var staleFence = await repository.TryDisableAsync(
+        var stale = await staleRepository.GetByTenantAndIdForUpdateAsync(
             tenant.Id,
             binding.Id,
-            expectedConcurrencyVersion: 2,
-            expectedVerificationFence: 1,
-            DateTimeOffset.UtcNow,
             CancellationToken.None);
-        var disabled = await repository.TryDisableAsync(
+        winner!.Disable();
+        await winnerRepository.SaveChangesAsync(CancellationToken.None);
+        stale!.RepairAndVerifyOwnership(
+            stale.InstanceId,
             tenant.Id,
-            binding.Id,
-            expectedConcurrencyVersion: 2,
-            expectedVerificationFence: 2,
-            DateTimeOffset.UtcNow,
-            CancellationToken.None);
-        var staleRebind = await repository.TryRebindAsync(
-            tenant.Id,
-            binding.Id,
-            expectedConcurrencyVersion: 2,
-            expectedVerificationFence: 2,
-            "app_rebound",
-            DateTimeOffset.UtcNow,
-            CancellationToken.None);
-        var rebound = await repository.TryRebindAsync(
-            tenant.Id,
-            binding.Id,
-            expectedConcurrencyVersion: 3,
-            expectedVerificationFence: 3,
-            "app_rebound",
-            DateTimeOffset.UtcNow,
-            CancellationToken.None);
+            consumer.Id,
+            "app_stale",
+            CreateProfile(),
+            WebhookProviderCapability.AppPortal | WebhookProviderCapability.EndpointManagement,
+            DateTimeOffset.UtcNow);
 
-        await Assert.That(staleVersion).IsFalse();
-        await Assert.That(staleFence).IsFalse();
-        await Assert.That(disabled).IsTrue();
-        await Assert.That(staleRebind).IsFalse();
-        await Assert.That(rebound).IsTrue();
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(async () =>
+            await staleRepository.SaveChangesAsync(CancellationToken.None));
+
+        await using var rebindContext = fixture.CreateDbContext();
+        var rebindRepository = new WebhookConsumerProviderBindingRepository(rebindContext);
+        var rebound = await rebindRepository.GetByTenantAndIdForUpdateAsync(
+            tenant.Id,
+            binding.Id,
+            CancellationToken.None);
+        rebound!.RepairAndVerifyOwnership(
+            rebound.InstanceId,
+            tenant.Id,
+            consumer.Id,
+            "app_rebound",
+            CreateProfile(),
+            WebhookProviderCapability.AppPortal | WebhookProviderCapability.EndpointManagement,
+            DateTimeOffset.UtcNow);
+        await rebindRepository.SaveChangesAsync(CancellationToken.None);
+
+        await Assert.That(rebound.ConcurrencyVersion).IsEqualTo(4);
+        await Assert.That(rebound.VerificationFence).IsEqualTo(4);
     }
 
     [Test]
@@ -184,21 +186,22 @@ public sealed class WebhookProviderBindingFoundationTests(PostgreSqlContainerFix
         Guid consumerId,
         string environment)
     {
-        var profile = WebhookProviderCapabilityProfile.Create(
-            WebhookProviderKind.Svix,
-            "1.84.0",
-            WebhookProviderCapability.AppPortal | WebhookProviderCapability.EndpointManagement,
-            "svix-1.84.0-v1",
-            DateTimeOffset.UtcNow);
-
         return WebhookConsumerProviderBinding.CreatePending(
             tenantId,
             consumerId,
             Guid.CreateVersion7(),
             environment,
-            profile,
+            CreateProfile(),
             WebhookProviderCapability.AppPortal | WebhookProviderCapability.EndpointManagement);
     }
+
+    private static WebhookProviderCapabilityProfile CreateProfile() =>
+        WebhookProviderCapabilityProfile.Create(
+            WebhookProviderKind.Svix,
+            "1.84.0",
+            WebhookProviderCapability.AppPortal | WebhookProviderCapability.EndpointManagement,
+            "svix-1.84.0-v1",
+            DateTimeOffset.UtcNow);
 
     private static Tenant CreateTenant(string slugPrefix) => new()
     {

@@ -107,8 +107,8 @@ public static class WebhookManagementScenarioSeed
         {
             var attempts = await api.GetWebhookDeliveryAttemptsAsync(endpointId: endpointId, limit: 20);
             var failed = attempts._embedded?.Items?.FirstOrDefault(candidate =>
-                string.Equals(candidate.StatusName, "Failed", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(candidate.StatusName, "Unknown", StringComparison.OrdinalIgnoreCase));
+                string.Equals(candidate.OutcomeName, "Failed", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(candidate.OutcomeName, "Unknown", StringComparison.OrdinalIgnoreCase));
             if (failed is not null)
             {
                 return failed;

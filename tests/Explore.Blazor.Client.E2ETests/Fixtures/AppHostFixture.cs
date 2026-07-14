@@ -269,10 +269,11 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
             .WithEnvironment("POSTGRES_DB", "postgres")
             .WithLifetime(ContainerLifetime.Session);
 
-        var svix = builder.AddContainer("svix", "svix/svix-server", "latest")
+        var svix = builder.AddContainer("svix", "svix/svix-server", "v1.96.1")
             .WithEnvironment("WAIT_FOR", "true")
             .WithEnvironment("SVIX_DB_DSN", "postgresql://postgres:postgres@svix-postgres:5432/postgres")
             .WithEnvironment("SVIX_QUEUE_TYPE", "redis")
+            .WithEnvironment("SVIX_CACHE_TYPE", "redis")
             .WithEnvironment("SVIX_REDIS_DSN", ReferenceExpression.Create($"redis://:{cache.Resource.PasswordParameter!}@cache:6380"))
             .WithEnvironment("SVIX_JWT_SECRET", LocalSvixJwtSecret)
             .WithHttpEndpoint(targetPort: 8071, name: "http")
@@ -282,6 +283,9 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         var api = builder.CreateResourceBuilder<ProjectResource>("explore-api");
         api.WithEnvironment("Webhooks__Provider", "Composite");
         api.WithEnvironment("Webhooks__Svix__BaseUrl", svix.GetEndpoint("http"));
+        api.WithEnvironment("Webhooks__Svix__Environment", "self-hosted");
+        api.WithEnvironment("Webhooks__Svix__ProviderVersion", "1.96.1");
+        api.WithEnvironment("Webhooks__Svix__CapabilityPolicyVersion", "svix-self-hosted-1.96.1-v1");
         api.WithEnvironment("Webhooks__Svix__AuthTokenSecretRef", SvixAuthTokenSecretRef);
         api.WithEnvironment("Webhooks__Svix__OperationalWebhookSecretRef", SvixOperationalWebhookSecretRef);
         api.WithEnvironment("WEBHOOKS_SVIX_AUTH_TOKEN", LocalSvixAuthToken);

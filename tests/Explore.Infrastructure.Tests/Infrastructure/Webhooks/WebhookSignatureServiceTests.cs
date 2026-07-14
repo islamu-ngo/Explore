@@ -20,7 +20,7 @@ public sealed class WebhookSignatureServiceTests
 
         var headers = service.Sign("msg_1", FixedNow, System.Text.Encoding.UTF8.GetBytes(payload), secret);
 
-        var result = service.Verify(payload, ToDictionary(headers), secret);
+        var result = service.Verify(Encoding.UTF8.GetBytes(payload), ToDictionary(headers), secret);
 
         await Assert.That(result.IsValid).IsTrue();
         await Assert.That(result.Timestamp).IsEqualTo(FixedNow);
@@ -33,7 +33,7 @@ public sealed class WebhookSignatureServiceTests
         var secret = CreateSecret("current-secret");
         var headers = service.Sign("msg_1", FixedNow, "{\"value\":1}"u8, secret);
 
-        var result = service.Verify("{\"value\":2}", ToDictionary(headers), secret);
+        var result = service.Verify(Encoding.UTF8.GetBytes("{\"value\":2}"), ToDictionary(headers), secret);
 
         await Assert.That(result.IsValid).IsFalse();
         await Assert.That(result.FailureCategory).IsEqualTo("signature_mismatch");
@@ -46,7 +46,7 @@ public sealed class WebhookSignatureServiceTests
         var secret = CreateSecret("current-secret");
         var headers = service.Sign("msg_1", FixedNow.AddMinutes(-10), "{}"u8, secret);
 
-        var result = service.Verify("{}", ToDictionary(headers), secret);
+        var result = service.Verify(Encoding.UTF8.GetBytes("{}"), ToDictionary(headers), secret);
 
         await Assert.That(result.IsValid).IsFalse();
         await Assert.That(result.FailureCategory).IsEqualTo("timestamp_outside_tolerance");
@@ -65,7 +65,7 @@ public sealed class WebhookSignatureServiceTests
 
         var headers = service.Sign("msg_1", FixedNow, "{}"u8, previousOnly);
 
-        var result = service.Verify("{}", ToDictionary(headers), rotatedSecret);
+        var result = service.Verify(Encoding.UTF8.GetBytes("{}"), ToDictionary(headers), rotatedSecret);
 
         await Assert.That(result.IsValid).IsTrue();
     }

@@ -3,6 +3,7 @@
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
@@ -115,35 +116,125 @@ public sealed class WebhookPersistenceTests(PostgreSqlContainerFixture fixture)
     }
 
     [Test]
-    public async Task ProviderLinkRepository_ReturnsTenantScopedExternalMessageAndPendingSyncRows()
+    public async Task IncomingWebhookRepository_ConcurrentClaims_AreBoundedAndNeverDuplicateMessages()
     {
         await fixture.ResetAsync();
-        await using var context = fixture.CreateDbContext();
-        var tenantA = CreateTenant("provider-link-a");
-        var tenantB = CreateTenant("provider-link-b");
-        context.Tenants.AddRange(tenantA, tenantB);
-        await context.SaveChangesAsync();
+        await using (var setupContext = fixture.CreateDbContext())
+        {
+            var tenant = CreateTenant("incoming-webhook-concurrent-claims");
+            setupContext.Tenants.Add(tenant);
+            setupContext.IncomingWebhookMessages.AddRange(
+                CreateIncomingMessage(tenant.Id, "coop", "claim-1", "claim-idem-1"),
+                CreateIncomingMessage(tenant.Id, "coop", "claim-2", "claim-idem-2"),
+                CreateIncomingMessage(tenant.Id, "coop", "claim-3", "claim-idem-3"),
+                CreateIncomingMessage(tenant.Id, "coop", "claim-4", "claim-idem-4"));
+            await setupContext.SaveChangesAsync();
+        }
 
-        var repository = new WebhookProviderLinkRepository(context);
-        var tenantALink = CreateProviderLink(tenantA.Id, "msg-shared");
-        var tenantBLink = CreateProviderLink(tenantB.Id, "msg-shared");
+        var claimedAt = DateTime.UtcNow.AddMinutes(1);
+        await using var firstContext = fixture.CreateDbContext();
+        await using var secondContext = fixture.CreateDbContext();
+        var firstRepository = new IncomingWebhookMessageRepository(firstContext);
+        var secondRepository = new IncomingWebhookMessageRepository(secondContext);
 
-        await repository.CreateAsync(tenantALink, CancellationToken.None);
-        await repository.CreateAsync(tenantBLink, CancellationToken.None);
+        var claimResults = await Task.WhenAll(
+            firstRepository.ClaimDueAsync(
+                new IncomingWebhookClaimRequest("incoming-worker-a", 2, claimedAt, TimeSpan.FromMinutes(1)),
+                CancellationToken.None),
+            secondRepository.ClaimDueAsync(
+                new IncomingWebhookClaimRequest("incoming-worker-b", 2, claimedAt, TimeSpan.FromMinutes(1)),
+                CancellationToken.None));
+        var claims = claimResults.SelectMany(result => result).ToArray();
 
-        var resolved = await repository.GetByExternalMessageIdAsync(
-            tenantA.Id,
-            WebhookExternalProvider.Svix,
-            "msg-shared",
+        await Assert.That(claimResults[0].Count).IsEqualTo(2);
+        await Assert.That(claimResults[1].Count).IsEqualTo(2);
+        await Assert.That(claims.Length).IsEqualTo(4);
+        await Assert.That(claims.Select(claim => claim.IncomingWebhookMessageId).Distinct().Count()).IsEqualTo(4);
+        await Assert.That(claims.All(claim => claim.ProcessingFence == 1)).IsTrue();
+        await Assert.That(claims.All(claim => claim.ProcessingGeneration == 1)).IsTrue();
+    }
+
+    [Test]
+    public async Task IncomingWebhookRepository_ExpiredClaim_IsReclaimedWithNewFenceAndRejectsStaleRenewal()
+    {
+        await fixture.ResetAsync();
+        Guid tenantId;
+        await using (var setupContext = fixture.CreateDbContext())
+        {
+            var tenant = CreateTenant("incoming-webhook-expired-claim");
+            tenantId = tenant.Id;
+            setupContext.Tenants.Add(tenant);
+            setupContext.IncomingWebhookMessages.Add(
+                CreateIncomingMessage(tenant.Id, "coop", "expired-claim", "expired-claim-idem"));
+            await setupContext.SaveChangesAsync();
+        }
+
+        var firstClaimedAt = DateTime.UtcNow.AddMinutes(1);
+        IncomingWebhookClaim firstClaim;
+        await using (var firstContext = fixture.CreateDbContext())
+        {
+            var firstRepository = new IncomingWebhookMessageRepository(firstContext);
+            firstClaim = (await firstRepository.ClaimDueAsync(
+                new IncomingWebhookClaimRequest(
+                    "incoming-worker-original",
+                    1,
+                    firstClaimedAt,
+                    TimeSpan.FromMinutes(1)),
+                CancellationToken.None)).Single();
+        }
+
+        var reclaimedAt = firstClaimedAt.AddMinutes(2);
+        IncomingWebhookClaim reclaimedClaim;
+        await using (var reclaimContext = fixture.CreateDbContext())
+        {
+            var reclaimRepository = new IncomingWebhookMessageRepository(reclaimContext);
+            reclaimedClaim = (await reclaimRepository.ClaimDueAsync(
+                new IncomingWebhookClaimRequest(
+                    "incoming-worker-recovery",
+                    1,
+                    reclaimedAt,
+                    TimeSpan.FromMinutes(2)),
+                CancellationToken.None)).Single();
+        }
+
+        await using var renewalContext = fixture.CreateDbContext();
+        var renewalRepository = new IncomingWebhookMessageRepository(renewalContext);
+        var staleRenewed = await renewalRepository.TryRenewClaimAsync(
+            tenantId,
+            firstClaim.IncomingWebhookMessageId,
+            firstClaim.LeaseToken,
+            firstClaim.ProcessingFence,
+            firstClaim.ProcessingGeneration,
+            reclaimedAt,
+            reclaimedAt.AddMinutes(3),
             CancellationToken.None);
-        var pendingLinks = await repository.GetPendingByProviderAsync(
-            WebhookExternalProvider.Svix,
-            limit: 10,
+        var currentRenewed = await renewalRepository.TryRenewClaimAsync(
+            tenantId,
+            reclaimedClaim.IncomingWebhookMessageId,
+            reclaimedClaim.LeaseToken,
+            reclaimedClaim.ProcessingFence,
+            reclaimedClaim.ProcessingGeneration,
+            reclaimedAt,
+            reclaimedAt.AddMinutes(3),
             CancellationToken.None);
+        var persisted = await renewalContext.IncomingWebhookMessages
+            .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+            .AsNoTracking()
+            .Include(message => message.ProcessingAttempts)
+            .SingleAsync(message => message.TenantId == tenantId && message.Id == reclaimedClaim.IncomingWebhookMessageId);
 
-        await Assert.That(resolved).IsNotNull();
-        await Assert.That(resolved!.TenantId).IsEqualTo(tenantA.Id);
-        await Assert.That(pendingLinks.Select(e => e.Id)).IsEquivalentTo([tenantALink.Id, tenantBLink.Id]);
+        await Assert.That(reclaimedClaim.IncomingWebhookMessageId).IsEqualTo(firstClaim.IncomingWebhookMessageId);
+        await Assert.That(reclaimedClaim.LeaseToken).IsNotEqualTo(firstClaim.LeaseToken);
+        await Assert.That(reclaimedClaim.ProcessingFence).IsEqualTo(firstClaim.ProcessingFence + 1);
+        await Assert.That(staleRenewed).IsFalse();
+        await Assert.That(currentRenewed).IsTrue();
+        await Assert.That(persisted.ProcessingAttempts.Select(attempt => attempt.Outcome)).IsEquivalentTo(
+        new[]
+        {
+            IncomingWebhookProcessingAttemptOutcome.Claimed,
+            IncomingWebhookProcessingAttemptOutcome.LeaseExpired,
+            IncomingWebhookProcessingAttemptOutcome.Claimed
+        });
     }
 
     [Test]
@@ -373,18 +464,6 @@ public sealed class WebhookPersistenceTests(PostgreSqlContainerFixture fixture)
             FailureCategory = "server_error",
             DurationMs = 123,
             NextRetryAt = DateTime.UtcNow.AddMinutes(10)
-        };
-    }
-
-    private static WebhookProviderLink CreateProviderLink(Guid tenantId, string externalMessageId)
-    {
-        return new WebhookProviderLink
-        {
-            Id = Guid.CreateVersion7(),
-            TenantId = tenantId,
-            Provider = WebhookExternalProvider.Svix,
-            ExternalMessageId = externalMessageId,
-            SyncState = WebhookProviderLinkSyncState.Pending
         };
     }
 

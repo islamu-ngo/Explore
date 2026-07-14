@@ -143,7 +143,16 @@ public sealed class SvixAppPortalServiceTests
                 SvixClient,
                 ConsumerRepository,
                 BindingRepository,
-                new StaticOptionsMonitor<WebhookOptions>(options ?? new WebhookOptions { Provider = WebhookOptions.ProviderSvix }));
+                new StaticOptionsMonitor<WebhookOptions>(options ?? new WebhookOptions
+                {
+                    Provider = WebhookOptions.ProviderSvix,
+                    Svix = new WebhookSvixOptions
+                    {
+                        Environment = "production",
+                        ProviderVersion = "1.96.1",
+                        CapabilityPolicyVersion = "svix-1.96.1-v1"
+                    }
+                }));
         }
 
         public ISvixWebhookClient SvixClient { get; }

@@ -116,16 +116,18 @@ public sealed class ModerationIntegrationControllerTests
             Encoding.UTF8.GetBytes(body),
             DateTimeOffset.UtcNow,
             ComputePayloadHash(body),
+            "application/json",
+            "utf-8",
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-            IncomingWebhookVerificationResult.Verified("coop-decision-1", "moderation.coop.decision", "coop-decision-1"));
+            IncomingWebhookVerificationResult.VerifiedTenantCredential(
+                tenantId,
+                "coop-decision-1",
+                "moderation.coop.decision",
+                "coop-decision-1"));
         _incomingWebhookIntakeService.ReadAndVerifyAsync(Arg.Any<HttpRequest>(), "coop", Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(incoming);
         _incomingWebhookIntakeService.CaptureAsync(
                 incoming,
-                tenantId,
-                "coop-decision-1",
-                "moderation.coop.decision",
-                "coop-decision-1",
                 Arg.Any<CancellationToken>())
             .Returns(IncomingWebhookCaptureResult.Captured(Guid.CreateVersion7(), "coop-decision-1", "coop-decision-1"));
         var controller = CreateController();
@@ -136,10 +138,6 @@ public sealed class ModerationIntegrationControllerTests
         await Assert.That(ok).IsNotNull();
         await _incomingWebhookIntakeService.Received(1).CaptureAsync(
             incoming,
-            tenantId,
-            "coop-decision-1",
-            "moderation.coop.decision",
-            "coop-decision-1",
             Arg.Any<CancellationToken>());
         await _mediator.DidNotReceive().Send(
             Arg.Any<ProcessCoopDecisionCallbackCommand>(),
@@ -166,16 +164,18 @@ public sealed class ModerationIntegrationControllerTests
             Encoding.UTF8.GetBytes(body),
             DateTimeOffset.UtcNow,
             ComputePayloadHash(body),
+            "application/json",
+            "utf-8",
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-            IncomingWebhookVerificationResult.Verified("coop-decision-duplicate", "moderation.coop.decision", "coop-decision-duplicate"));
+            IncomingWebhookVerificationResult.VerifiedTenantCredential(
+                tenantId,
+                "coop-decision-duplicate",
+                "moderation.coop.decision",
+                "coop-decision-duplicate"));
         _incomingWebhookIntakeService.ReadAndVerifyAsync(Arg.Any<HttpRequest>(), "coop", Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(incoming);
         _incomingWebhookIntakeService.CaptureAsync(
                 incoming,
-                tenantId,
-                "coop-decision-duplicate",
-                "moderation.coop.decision",
-                "coop-decision-duplicate",
                 Arg.Any<CancellationToken>())
             .Returns(IncomingWebhookCaptureResult.Duplicate(capturedMessageId, "coop-decision-duplicate", "coop-decision-duplicate"));
         var controller = CreateController();

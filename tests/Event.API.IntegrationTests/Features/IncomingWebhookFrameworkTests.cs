@@ -11,6 +11,7 @@ using Explore.API.Hateoas;
 using Explore.API.Services;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Secrets;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Telemetry;
 using Explore.Domain;
@@ -77,10 +78,6 @@ public sealed class IncomingWebhookFrameworkTests
         await Assert.That(problem.Detail).DoesNotContain("raw-provider-secret");
         await intakeService.DidNotReceive().CaptureAsync(
             Arg.Any<IncomingWebhookReadResult>(),
-            Arg.Any<Guid>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -88,9 +85,13 @@ public sealed class IncomingWebhookFrameworkTests
     public async Task RecordSvixOperationalCallback_WhenDuplicateTenantCapture_AcknowledgesWithoutProcessingAgain()
     {
         var tenantId = Guid.Parse("018f0000-0000-7000-8000-000000000001");
+        var spoofedTenantId = Guid.Parse("018f0000-0000-7000-8000-000000000099");
+        var bindingId = Guid.Parse("018f0000-0000-7000-8000-000000000003");
         var existingMessageId = Guid.Parse("018f0000-0000-7000-8000-000000000002");
-        var rawPayload = $"{{\"tenantId\":\"{tenantId}\"}}";
-        var verification = IncomingWebhookVerificationResult.Verified(
+        var rawPayload = $"{{\"tenantId\":\"{spoofedTenantId}\",\"appId\":\"app_verified\",\"appUid\":\"uid_verified\"}}";
+        var verification = IncomingWebhookVerificationResult.VerifiedProviderBinding(
+            tenantId,
+            bindingId,
             "msg_duplicate_1",
             "endpoint.updated",
             "msg_duplicate_1");
@@ -100,6 +101,8 @@ public sealed class IncomingWebhookFrameworkTests
             Encoding.UTF8.GetBytes(rawPayload),
             DateTimeOffset.UtcNow,
             ComputePayloadHash(rawPayload),
+            "application/json",
+            "utf-8",
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
             verification);
         var intakeService = Substitute.For<IIncomingWebhookIntakeService>();
@@ -111,10 +114,6 @@ public sealed class IncomingWebhookFrameworkTests
             .Returns(read);
         intakeService.CaptureAsync(
                 read,
-                tenantId,
-                "msg_duplicate_1",
-                "endpoint.updated",
-                "msg_duplicate_1",
                 Arg.Any<CancellationToken>())
             .Returns(IncomingWebhookCaptureResult.Duplicate(
                 existingMessageId,
@@ -127,10 +126,6 @@ public sealed class IncomingWebhookFrameworkTests
         await Assert.That(result).IsTypeOf<AcceptedResult>();
         await intakeService.Received(1).CaptureAsync(
             read,
-            tenantId,
-            "msg_duplicate_1",
-            "endpoint.updated",
-            "msg_duplicate_1",
             Arg.Any<CancellationToken>());
     }
 
@@ -148,7 +143,7 @@ public sealed class IncomingWebhookFrameworkTests
         };
 
         var result = await verifier.VerifyAsync(
-            new IncomingWebhookContext("coop", payload, headers, DateTimeOffset.UtcNow),
+            new IncomingWebhookContext("coop", payload, Encoding.UTF8.GetBytes(payload), headers, DateTimeOffset.UtcNow),
             CancellationToken.None);
 
         await Assert.That(result.IsVerified).IsTrue();
@@ -162,7 +157,8 @@ public sealed class IncomingWebhookFrameworkTests
         var secretBytes = Enumerable.Range(1, 32).Select(value => (byte)value).ToArray();
         var secret = "whsec_" + Convert.ToBase64String(secretBytes);
         const string secretRef = "webhooks.svix.operational_webhook_secret";
-        const string payload = "{\"type\":\"endpoint.created\"}";
+        var binding = CreateVerifiedSvixBinding();
+        var payload = $"{{\"type\":\"endpoint.created\",\"appId\":\"{binding.ExternalApplicationId}\",\"appUid\":\"{binding.ApplicationUid}\"}}";
         const string messageId = "msg_test_123";
         var signatureService = new WebhookSignatureService();
         var signatureHeaders = signatureService.Sign(
@@ -189,6 +185,7 @@ public sealed class IncomingWebhookFrameworkTests
             }),
             secretResolver,
             signatureService,
+            CreateBindingRepository(binding),
             NullLogger<SvixIncomingWebhookVerifier>.Instance);
         var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -199,12 +196,14 @@ public sealed class IncomingWebhookFrameworkTests
         };
 
         var result = await verifier.VerifyAsync(
-            new IncomingWebhookContext("svix", payload, headers, DateTimeOffset.UtcNow),
+            new IncomingWebhookContext("svix", payload, Encoding.UTF8.GetBytes(payload), headers, DateTimeOffset.UtcNow),
             CancellationToken.None);
 
         await Assert.That(result.IsVerified).IsTrue();
         await Assert.That(result.ProviderMessageId).IsEqualTo(messageId);
         await Assert.That(result.EventType).IsEqualTo("endpoint.created");
+        await Assert.That(result.TenantId).IsEqualTo(binding.TenantId);
+        await Assert.That(result.WebhookConsumerProviderBindingId).IsEqualTo(binding.Id);
     }
 
     [Test]
@@ -261,10 +260,11 @@ public sealed class IncomingWebhookFrameworkTests
             .Returns(call =>
             {
                 var context = call.Arg<IncomingWebhookContext>();
-                return IncomingWebhookVerificationResult.Verified(
+                return IncomingWebhookVerificationResult.VerifiedTenantCredential(
+                    tenantId,
                     "provider-msg-1",
                     "test.received",
-                    "provider-msg-1:" + context.RawPayload.Length);
+                    "provider-msg-1:" + context.RawPayloadBytes.Length);
             });
         var repository = Substitute.For<IIncomingWebhookMessageRepository>();
         repository.TryCreateAsync(Arg.Any<IncomingWebhookMessage>(), Arg.Any<CancellationToken>())
@@ -280,7 +280,7 @@ public sealed class IncomingWebhookFrameworkTests
         httpContext.Request.Headers["X-Test-Signature"] = "secret";
 
         var read = await service.ReadAndVerifyAsync(httpContext.Request, "test", 65_536, CancellationToken.None);
-        var capture = await service.CaptureAsync(read, tenantId, null, null, null, CancellationToken.None);
+        var capture = await service.CaptureAsync(read, CancellationToken.None);
 
         await Assert.That(read.Succeeded).IsTrue();
         await Assert.That(httpContext.Request.Body.Position).IsEqualTo(0);
@@ -335,13 +335,17 @@ public sealed class IncomingWebhookFrameworkTests
             Encoding.UTF8.GetBytes(rawPayload),
             DateTimeOffset.UtcNow,
             payloadHash,
+            "application/json",
+            "utf-8",
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["svix-signature"] = "v1,sensitive",
                 ["authorization"] = "Bearer sensitive",
                 ["x-safe"] = "safe"
             },
-            IncomingWebhookVerificationResult.Verified(
+            IncomingWebhookVerificationResult.VerifiedProviderBinding(
+                tenantId,
+                Guid.CreateVersion7(),
                 "msg_sensitive_provider_id",
                 "endpoint.updated",
                 "msg_sensitive_provider_id"));
@@ -375,7 +379,7 @@ public sealed class IncomingWebhookFrameworkTests
             Options.Create(new WebhookOptions()),
             logger);
 
-        var result = await service.CaptureAsync(read, tenantId, null, null, null, CancellationToken.None);
+        var result = await service.CaptureAsync(read, CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.IsDuplicate).IsTrue();
@@ -427,12 +431,18 @@ public sealed class IncomingWebhookFrameworkTests
         return new BusinessMetrics(meterFactory);
     }
 
-    private static CoopIncomingWebhookVerifier CreateCoopVerifier(string secret) => new(
-        new StaticOptionsMonitor<CoopProviderOptions>(new CoopProviderOptions
-        {
-            WebhookSecret = secret
-        }),
-        NullLogger<CoopIncomingWebhookVerifier>.Instance);
+    private static CoopIncomingWebhookVerifier CreateCoopVerifier(string secret)
+    {
+        var tenantContext = Substitute.For<ITenantContextAccessor>();
+        tenantContext.TenantId.Returns(Guid.Parse("018f0000-0000-7000-8000-000000000001"));
+        return new CoopIncomingWebhookVerifier(
+            new StaticOptionsMonitor<CoopProviderOptions>(new CoopProviderOptions
+            {
+                WebhookSecret = secret
+            }),
+            tenantContext,
+            NullLogger<CoopIncomingWebhookVerifier>.Instance);
+    }
 
     private static IncomingWebhookIntakeService CreateSvixIntakeService(string secret)
     {
@@ -456,6 +466,7 @@ public sealed class IncomingWebhookFrameworkTests
             }),
             secretResolver,
             new WebhookSignatureService(),
+            Substitute.For<IWebhookConsumerProviderBindingRepository>(),
             NullLogger<SvixIncomingWebhookVerifier>.Instance);
 
         return new IncomingWebhookIntakeService(
@@ -487,6 +498,41 @@ public sealed class IncomingWebhookFrameworkTests
 
     private static string ComputePayloadHash(string payload) =>
         $"sha256:{Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(payload))).ToLowerInvariant()}";
+
+    private static WebhookConsumerProviderBinding CreateVerifiedSvixBinding()
+    {
+        var tenantId = Guid.Parse("018f0000-0000-7000-8000-000000000001");
+        var consumerId = Guid.Parse("018f0000-0000-7000-8000-000000000010");
+        var profile = WebhookProviderCapabilityProfile.Create(
+            WebhookProviderKind.Svix,
+            "1.96.1",
+            WebhookProviderCapability.OperationalCallbacks,
+            "svix-1.96.1-v1",
+            DateTimeOffset.UtcNow);
+        var binding = WebhookConsumerProviderBinding.CreatePending(
+            tenantId,
+            consumerId,
+            Guid.Parse("018f0000-0000-7000-8000-000000000020"),
+            "production",
+            profile,
+            WebhookProviderCapability.OperationalCallbacks);
+        binding.VerifyOwnership(tenantId, consumerId, "app_verified", DateTimeOffset.UtcNow);
+        return binding;
+    }
+
+    private static IWebhookConsumerProviderBindingRepository CreateBindingRepository(
+        WebhookConsumerProviderBinding binding)
+    {
+        var repository = Substitute.For<IWebhookConsumerProviderBindingRepository>();
+        repository.ResolveVerifiedProviderIdentityAsync(
+                WebhookProviderKind.Svix,
+                "production",
+                binding.ExternalApplicationId!,
+                binding.ApplicationUid,
+                Arg.Any<CancellationToken>())
+            .Returns(binding);
+        return repository;
+    }
 
     private sealed class StaticOptionsMonitor<TOptions>(TOptions currentValue) : IOptionsMonitor<TOptions>
     {

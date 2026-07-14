@@ -171,9 +171,13 @@ public sealed class WebhookPortalHttpContainmentTests
             AuthorizationProviderOverride = authorizationProvider
         };
         factory.AdditionalConfiguration["Webhooks:Provider"] = WebhookOptions.ProviderSvix;
-        factory.AdditionalConfiguration["Webhooks:Svix:Environment"] = "production";
-        factory.AdditionalConfiguration["Webhooks:Svix:ProviderVersion"] = "1.96.1";
-        factory.AdditionalConfiguration["Webhooks:Svix:CapabilityPolicyVersion"] = "svix-1.96.1-v1";
+        factory.AdditionalConfiguration["Webhooks:Svix:BaseUrl"] = "http://svix.test";
+        factory.AdditionalConfiguration["Webhooks:Svix:Environment"] =
+            SvixConformanceProfileRegistry.SelfHostedEnvironment;
+        factory.AdditionalConfiguration["Webhooks:Svix:ProviderVersion"] =
+            SvixConformanceProfileRegistry.SelfHostedProviderVersion;
+        factory.AdditionalConfiguration["Webhooks:Svix:CapabilityPolicyVersion"] =
+            SvixConformanceProfileRegistry.SelfHostedCapabilityPolicyVersion;
         factory.AdditionalConfiguration["Webhooks:Svix:AppPortalEnabled"] = "true";
         return factory;
     }
@@ -181,7 +185,7 @@ public sealed class WebhookPortalHttpContainmentTests
     private static async Task<WebhookConsumerProviderBinding?> SeedConsumerAsync(
         PortalFactory factory,
         bool includeBinding,
-        string providerVersion = "1.96.1")
+        string providerVersion = SvixConformanceProfileRegistry.SelfHostedProviderVersion)
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
@@ -206,13 +210,13 @@ public sealed class WebhookPortalHttpContainmentTests
             WebhookProviderKind.Svix,
             providerVersion,
             WebhookProviderCapability.AppPortal | WebhookProviderCapability.EndpointManagement,
-            "svix-1.96.1-v1",
+            SvixConformanceProfileRegistry.SelfHostedCapabilityPolicyVersion,
             DateTimeOffset.UtcNow);
         var binding = WebhookConsumerProviderBinding.CreatePending(
             TenantId,
             ConsumerId,
             Guid.CreateVersion7(),
-            "production",
+            SvixConformanceProfileRegistry.SelfHostedEnvironment,
             profile,
             WebhookProviderCapability.AppPortal | WebhookProviderCapability.EndpointManagement);
         binding.VerifyOwnership(TenantId, ConsumerId, "app_http_containment", DateTimeOffset.UtcNow);

@@ -20,12 +20,17 @@ public sealed class WebhookLookupParityTests
         new(typeof(WebhookConsumerStatusLookup), typeof(WebhookConsumerStatus), "webhook_consumer_statuses", [new(typeof(WebhookConsumer), "StatusId")]),
         new(typeof(WebhookProviderModeLookup), typeof(WebhookProviderMode), "webhook_provider_modes", [new(typeof(WebhookConsumer), "ProviderModeId"), new(typeof(WebhookDeliveryPlanSnapshot), "ProviderModeId"), new(typeof(WebhookProviderPublication), "ModeSnapshotId")]),
         new(typeof(WebhookProviderKindLookup), typeof(WebhookProviderKind), "webhook_provider_kinds", [new(typeof(WebhookConsumerProviderBinding), "ProviderKindId"), new(typeof(WebhookProviderPublication), "ProviderKindId")]),
+        new(typeof(WebhookProviderCapabilityLookup), typeof(WebhookProviderCapability), "webhook_provider_capabilities", [], IncludeZero: false, IndividualFlagsOnly: true),
         new(typeof(WebhookEndpointStatusLookup), typeof(WebhookEndpointStatus), "webhook_endpoint_statuses", [new(typeof(WebhookEndpoint), "StatusId")]),
         new(typeof(WebhookLocalDeliveryStatusLookup), typeof(WebhookLocalDeliveryStatus), "webhook_local_delivery_statuses", [new(typeof(WebhookLocalTargetSnapshot), "DeliveryStatusId")]),
         new(typeof(WebhookDeliveryAttemptOutcomeLookup), typeof(WebhookDeliveryAttemptOutcome), "webhook_delivery_attempt_outcomes", [new(typeof(WebhookDeliveryAttempt), "OutcomeId")]),
         new(typeof(WebhookProviderBindingVerificationStateLookup), typeof(WebhookProviderBindingVerificationState), "webhook_provider_binding_verification_states", [new(typeof(WebhookConsumerProviderBinding), "VerificationStateId")]),
         new(typeof(IncomingWebhookMessageStatusLookup), typeof(IncomingWebhookMessageStatus), "incoming_webhook_message_statuses", [new(typeof(IncomingWebhookMessage), "StatusId")]),
+        new(typeof(IncomingWebhookProcessingAttemptOutcomeLookup), typeof(IncomingWebhookProcessingAttemptOutcome), "incoming_webhook_processing_attempt_outcomes", [new(typeof(IncomingWebhookProcessingAttempt), "OutcomeId")]),
+        new(typeof(IncomingWebhookSettlementSourceLookup), typeof(IncomingWebhookSettlementSource), "incoming_webhook_settlement_sources", [new(typeof(IncomingWebhookMessage), "SettlementSourceId")], IsRequired: false, IncludeZero: false),
+        new(typeof(IncomingWebhookRedriveResultLookup), typeof(IncomingWebhookRedriveResult), "incoming_webhook_redrive_results", [new(typeof(IncomingWebhookRedriveRecord), "ResultId")]),
         new(typeof(WebhookProviderPublicationStatusLookup), typeof(WebhookProviderPublicationStatus), "webhook_provider_publication_statuses", [new(typeof(WebhookProviderPublication), "StatusId")]),
+        new(typeof(WebhookProviderPublicationAttemptOutcomeLookup), typeof(WebhookProviderPublicationAttemptOutcome), "webhook_provider_publication_attempt_outcomes", [new(typeof(WebhookProviderPublicationAttempt), "OutcomeId")]),
         new(typeof(WebhookPayloadProvenanceLookup), typeof(WebhookPayloadProvenance), "webhook_payload_provenances", [new(typeof(WebhookMessage), "PayloadProvenanceId"), new(typeof(IncomingWebhookMessage), "PayloadProvenanceId")])
     ];
 
@@ -53,7 +58,7 @@ public sealed class WebhookLookupParityTests
                 var foreignKey = ownerEntity.GetForeignKeys().Single(candidate =>
                     candidate.PrincipalEntityType.ClrType == lookupCase.LookupType &&
                     candidate.Properties.Select(property => property.Name).SequenceEqual([owner.ForeignKeyProperty]));
-                await Assert.That(foreignKey.IsRequired).IsTrue();
+                await Assert.That(foreignKey.IsRequired).IsEqualTo(lookupCase.IsRequired);
                 await Assert.That(foreignKey.DeleteBehavior).IsEqualTo(DeleteBehavior.Restrict);
             }
         }
@@ -80,6 +85,16 @@ public sealed class WebhookLookupParityTests
                 var name = Enum.GetName(lookupCase.EnumType, value)!;
                 var code = ToMasterCode(name);
                 var id = Convert.ToInt32(value, System.Globalization.CultureInfo.InvariantCulture);
+                if (id == 0 && !lookupCase.IncludeZero)
+                {
+                    continue;
+                }
+
+                if (lookupCase.IndividualFlagsOnly && (id <= 0 || (id & (id - 1)) != 0))
+                {
+                    continue;
+                }
+
                 var seedPattern = $"Id = (int){lookupCase.EnumType.Name}.{name}, MasterCode = \"{code}\"";
                 await Assert.That(seeder).Contains(seedPattern);
                 await Assert.That(migrationSource).Contains($"table: \"{lookupCase.TableName}\"");
@@ -109,6 +124,7 @@ public sealed class WebhookLookupParityTests
         await AssertLookupTripleAsync(typeof(WebhookConsumerDto), "ConsumerKind");
         await AssertLookupTripleAsync(typeof(WebhookConsumerDto), "Status");
         await AssertLookupTripleAsync(typeof(WebhookConsumerDto), "ProviderMode");
+        await AssertLookupTripleAsync(typeof(WebhookProviderCapabilityDto), "Capability");
         await AssertLookupTripleAsync(typeof(WebhookEndpointDto), "Status");
         await AssertLookupTripleAsync(typeof(WebhookEndpointDto), "ProviderMode");
         await AssertLookupTripleAsync(typeof(WebhookDeliveryAttemptDto), "Outcome");
@@ -165,7 +181,10 @@ public sealed class WebhookLookupParityTests
         Type LookupType,
         Type EnumType,
         string TableName,
-        IReadOnlyList<LookupOwner> Owners);
+        IReadOnlyList<LookupOwner> Owners,
+        bool IsRequired = true,
+        bool IncludeZero = true,
+        bool IndividualFlagsOnly = false);
 
     private sealed record LookupOwner(Type OwnerType, string ForeignKeyProperty);
 }

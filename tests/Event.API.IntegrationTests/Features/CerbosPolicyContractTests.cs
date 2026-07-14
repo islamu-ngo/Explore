@@ -767,6 +767,50 @@ public class CerbosPolicyContractTests : IDisposable
     }
 
     [Test]
+    public async Task IncomingWebhookMachineScopes_ShouldMatchLocalAuthorizationBoundary()
+    {
+        var dedicatedWorker = await _cerbos.CheckResourceAsync(
+            principalId: "incoming-webhook-worker",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new
+            {
+                isInstanceAdmin = false,
+                tenantMemberships = new Dictionary<string, string> { ["tenant-1"] = "admin" },
+                orgMemberships = new { },
+                is_machine = true,
+                scopes = new[] { "internal:webhook:process-incoming" }
+            },
+            resourceKind: "islamuevent_webhook",
+            resourceId: "incoming-message-1",
+            resourceAttrs: new { tenantId = "tenant-1" },
+            actions: ["webhook:process-incoming", "webhook:redrive-incoming", "webhook:manage-provider"]);
+
+        dedicatedWorker.Should().ContainKey("webhook:process-incoming").WhoseValue.Should().Be("EFFECT_ALLOW");
+        dedicatedWorker.Should().ContainKey("webhook:redrive-incoming").WhoseValue.Should().Be("EFFECT_DENY");
+        dedicatedWorker.Should().ContainKey("webhook:manage-provider").WhoseValue.Should().Be("EFFECT_DENY");
+
+        var tenantAdminMachine = await _cerbos.CheckResourceAsync(
+            principalId: "tenant-admin-machine",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new
+            {
+                isInstanceAdmin = false,
+                tenantMemberships = new Dictionary<string, string> { ["tenant-1"] = "admin" },
+                orgMemberships = new { },
+                is_machine = true,
+                scopes = new[] { "admin:tenant" }
+            },
+            resourceKind: "islamuevent_webhook",
+            resourceId: "incoming-message-1",
+            resourceAttrs: new { tenantId = "tenant-1" },
+            actions: ["webhook:process-incoming", "webhook:redrive-incoming", "webhook:manage-provider"]);
+
+        tenantAdminMachine.Should().ContainKey("webhook:process-incoming").WhoseValue.Should().Be("EFFECT_DENY");
+        tenantAdminMachine.Should().ContainKey("webhook:redrive-incoming").WhoseValue.Should().Be("EFFECT_ALLOW");
+        tenantAdminMachine.Should().ContainKey("webhook:manage-provider").WhoseValue.Should().Be("EFFECT_ALLOW");
+    }
+
+    [Test]
     public async Task RegularUser_ShouldBeAllowed_RegisterForEvents()
     {
         var result = await _cerbos.CheckResourceAsync(

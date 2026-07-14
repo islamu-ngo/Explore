@@ -1,10 +1,12 @@
-// ABOUTME: Unit tests for canonical webhook message publication and provider dispatch.
-// ABOUTME: Covers idempotent creation, disabled mode, provider failures, and payload validation.
+// ABOUTME: Unit tests for immutable outgoing webhook message and delivery-plan materialization.
+// ABOUTME: Covers fail-closed resolution, exact bytes, idempotent replay, conflicts, and validation.
 
 using System.Diagnostics.Metrics;
+using System.Security.Cryptography;
 using System.Text;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
+using Explore.Application.Exceptions;
 using Explore.Application.Telemetry;
 using Explore.Application.Webhooks;
 using Explore.Domain;
@@ -19,11 +21,15 @@ public sealed class DefaultWebhookEventPublisherTests
     private static readonly Guid AggregateId = Guid.Parse("018f0000-0000-7000-8000-000000000001");
     private static readonly Guid ConsumerId = Guid.Parse("018f0000-0000-7000-8000-000000000050");
     private static readonly DateTimeOffset OccurredAt = new(2026, 7, 3, 10, 0, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset MaterializedAt = OccurredAt.AddMinutes(1);
+    private static readonly byte[] PayloadBytes = Encoding.UTF8.GetBytes("{\"type\":\"event.published\"}");
 
     [Test]
-    public async Task PublishAsync_WhenProviderDisabled_SkipsWithoutCreatingMessage()
+    public async Task PublishAsync_WhenResolutionUnavailable_SkipsBeforeBuildingOrMaterializing()
     {
-        var fixture = new Fixture("Disabled");
+        var fixture = new Fixture();
+        fixture.PlanResolver.ResolveAsync(Arg.Any<WebhookEventBuildContext>(), Arg.Any<CancellationToken>())
+            .Returns(WebhookDeliveryPlanResolution.Unavailable("webhooks_disabled", "No governed plan."));
         var context = CreateContext();
 
         var result = await fixture.Publisher.PublishAsync(context, CancellationToken.None);
@@ -31,102 +37,127 @@ public sealed class DefaultWebhookEventPublisherTests
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.Skipped).IsTrue();
         await Assert.That(result.FailureCategory).IsEqualTo("webhooks_disabled");
-        await fixture.MessageRepository.DidNotReceiveWithAnyArgs().GetByTenantAndIdAsync(default, default, default);
-        await fixture.MessageRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
-        await fixture.DeliveryProvider.DidNotReceiveWithAnyArgs().PublishAsync(default!, default);
+        await fixture.PayloadBuilder.DidNotReceiveWithAnyArgs().BuildAsync(default!, default);
+        await fixture.Materializer.DidNotReceiveWithAnyArgs().MaterializeAsync(default!, default);
     }
 
     [Test]
-    public async Task PublishAsync_WhenMessageIsNew_CreatesCanonicalMessageAndDispatchesExactBytes()
+    public async Task PublishAsync_WhenPlanIsResolved_MaterializesExactBytesAndFrozenPlanWithoutDispatch()
     {
-        var fixture = new Fixture("Local");
+        var fixture = new Fixture();
         var context = CreateContext();
-        WebhookMessage? createdMessage = null;
-        WebhookProviderMessage? providerMessage = null;
-        fixture.MessageRepository.GetByTenantAndIdAsync(TenantId, MessageId, Arg.Any<CancellationToken>())
-            .Returns((WebhookMessage?)null);
-        fixture.MessageRepository.CreateAsync(
-                Arg.Do<WebhookMessage>(message => createdMessage = message),
+        WebhookDeliveryMaterialization? captured = null;
+        fixture.Materializer.MaterializeAsync(
+                Arg.Do<WebhookDeliveryMaterialization>(value => captured = value),
                 Arg.Any<CancellationToken>())
-            .Returns(call => call.Arg<WebhookMessage>());
-        fixture.DeliveryProvider.PublishAsync(
-                Arg.Do<WebhookProviderMessage>(message => providerMessage = message),
-                Arg.Any<CancellationToken>())
-            .Returns(WebhookProviderPublishResult.Success("local-provider-message"));
+            .Returns(call =>
+            {
+                var value = call.Arg<WebhookDeliveryMaterialization>();
+                return new WebhookDeliveryMaterializationResult(
+                    value.Message,
+                    value.DeliveryPlan,
+                    Created: true);
+            });
 
         var result = await fixture.Publisher.PublishAsync(context, CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.Skipped).IsFalse();
         await Assert.That(result.MessageId).IsEqualTo(MessageId);
-        await Assert.That(result.ProviderMessageId).IsEqualTo("local-provider-message");
-        await Assert.That(createdMessage).IsNotNull();
-        await Assert.That(createdMessage!.Id).IsEqualTo(MessageId);
-        await Assert.That(createdMessage.TenantId).IsEqualTo(TenantId);
-        await Assert.That(createdMessage.ConsumerId).IsEqualTo(ConsumerId);
-        await Assert.That(createdMessage.EventType).IsEqualTo(WebhookEventNames.EventPublished);
-        await Assert.That(Encoding.UTF8.GetString(createdMessage.GetPayloadBytes()!)).Contains("\"event.published\"");
-        await Assert.That(providerMessage).IsNotNull();
-        await Assert.That(providerMessage!.MessageId).IsEqualTo(MessageId);
-        await Assert.That(providerMessage.ConsumerId).IsEqualTo(ConsumerId);
-        await Assert.That(providerMessage.PayloadBytes).IsEquivalentTo(createdMessage.GetPayloadBytes()!);
-        await Assert.That(providerMessage.PayloadHash).IsEqualTo(createdMessage.PayloadHash);
+        await Assert.That(result.ProviderMessageId).IsNull();
+        await Assert.That(captured).IsNotNull();
+        await Assert.That(captured!.Message.Id).IsEqualTo(MessageId);
+        await Assert.That(captured.Message.TenantId).IsEqualTo(TenantId);
+        await Assert.That(captured.Message.ConsumerId).IsEqualTo(ConsumerId);
+        await Assert.That(captured.Message.EventType).IsEqualTo(WebhookEventNames.EventPublished);
+        await Assert.That(captured.Message.MaterializedAt).IsEqualTo(MaterializedAt.UtcDateTime);
+        await Assert.That(captured.Message.GetPayloadBytes()!).IsEquivalentTo(PayloadBytes);
+        await Assert.That(captured.Message.PayloadHash).IsEqualTo(ComputePayloadHash(PayloadBytes));
+        await Assert.That(captured.DeliveryPlan.WebhookMessageId).IsEqualTo(MessageId);
+        await Assert.That(captured.DeliveryPlan.WebhookConsumerId).IsEqualTo(ConsumerId);
+        await Assert.That(captured.DeliveryPlan.ProviderMode).IsEqualTo(WebhookProviderMode.DryRun);
+        await Assert.That(captured.DeliveryPlan.ConfigurationVersion).IsEqualTo("configuration-v7");
+        await Assert.That(captured.DeliveryPlan.EventContractVersion).IsEqualTo("1");
+        await Assert.That(captured.DeliveryPlan.RetentionPolicy).IsEqualTo("standard");
+        await Assert.That(captured.DeliveryPlan.RetentionPolicyVersion).IsEqualTo("retention-v2");
+        await Assert.That(captured.LocalTargets).IsEmpty();
+        await Assert.That(captured.ProviderPublications).IsEmpty();
     }
 
     [Test]
-    public async Task PublishAsync_WhenExistingMessageHasSamePayload_DoesNotRepublish()
+    public async Task PublishAsync_WhenMaterializerReturnsExistingSemanticMessage_ReturnsIdempotentSuccess()
     {
-        var fixture = new Fixture("Local");
-        var existing = CreateMessage();
-        fixture.MessageRepository.GetByTenantAndIdAsync(TenantId, MessageId, Arg.Any<CancellationToken>())
-            .Returns(existing);
+        var fixture = new Fixture(created: false);
 
         var result = await fixture.Publisher.PublishAsync(CreateContext(), CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.MessageId).IsEqualTo(MessageId);
         await Assert.That(result.ProviderMessageId).IsNull();
-        await fixture.MessageRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
-        await fixture.DeliveryProvider.DidNotReceiveWithAnyArgs().PublishAsync(default!, default);
+        await fixture.Materializer.Received(1).MaterializeAsync(
+            Arg.Any<WebhookDeliveryMaterialization>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task PublishAsync_WhenProviderFails_ReturnsRetryableFailureWithoutMutatingMessage()
+    public async Task PublishAsync_WhenImmutableIdentityConflicts_ReturnsNonRetryableConflict()
     {
-        var fixture = new Fixture("Local");
-        fixture.MessageRepository.GetByTenantAndIdAsync(TenantId, MessageId, Arg.Any<CancellationToken>())
-            .Returns((WebhookMessage?)null);
-        fixture.MessageRepository.CreateAsync(Arg.Any<WebhookMessage>(), Arg.Any<CancellationToken>())
-            .Returns(call => call.Arg<WebhookMessage>());
-        fixture.DeliveryProvider.PublishAsync(Arg.Any<WebhookProviderMessage>(), Arg.Any<CancellationToken>())
-            .Returns(WebhookProviderPublishResult.Failure(
-                "webhook_provider_failed",
-                isRetryable: true,
-                "HttpRequestException"));
+        var fixture = new Fixture();
+        fixture.Materializer.MaterializeAsync(
+                Arg.Any<WebhookDeliveryMaterialization>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<WebhookDeliveryMaterializationResult>>(_ =>
+                throw new WebhookMaterializationConflictException("Changed immutable bytes."));
 
         var result = await fixture.Publisher.PublishAsync(CreateContext(), CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.MessageId).IsEqualTo(MessageId);
-        await Assert.That(result.IsRetryable).IsTrue();
-        await Assert.That(result.FailureCategory).IsEqualTo("webhook_provider_failed");
+        await Assert.That(result.IsRetryable).IsFalse();
+        await Assert.That(result.FailureCategory).IsEqualTo("webhook_payload_conflict");
     }
 
     [Test]
-    public async Task PublishAsync_WhenPayloadBuildFails_DoesNotPersistOrDispatch()
+    public async Task PublishAsync_WhenPayloadBuildFails_DoesNotMaterialize()
     {
-        var fixture = new Fixture("Local");
+        var fixture = new Fixture();
         var context = CreateContext("unknown.event");
-        fixture.MessageRepository.GetByTenantAndIdAsync(TenantId, MessageId, Arg.Any<CancellationToken>())
-            .Returns((WebhookMessage?)null);
+        fixture.PayloadBuilder.BuildAsync(context, Arg.Any<CancellationToken>())
+            .Returns(WebhookPayloadBuildResult.Failure("unknown_event_type"));
 
         var result = await fixture.Publisher.PublishAsync(context, CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.IsRetryable).IsFalse();
         await Assert.That(result.FailureCategory).IsEqualTo("unknown_event_type");
-        await fixture.MessageRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
-        await fixture.DeliveryProvider.DidNotReceiveWithAnyArgs().PublishAsync(default!, default);
+        await fixture.Materializer.DidNotReceiveWithAnyArgs().MaterializeAsync(default!, default);
+    }
+
+    [Test]
+    public async Task PublishAsync_WhenSuccessfulResolutionIsIncomplete_FailsClosedWithoutMaterializing()
+    {
+        var fixture = new Fixture();
+        fixture.PlanResolver.ResolveAsync(Arg.Any<WebhookEventBuildContext>(), Arg.Any<CancellationToken>())
+            .Returns(new WebhookDeliveryPlanResolution(
+                true,
+                ConsumerId,
+                WebhookProviderMode.DryRun,
+                null,
+                1,
+                "standard",
+                "retention-v2",
+                OccurredAt.AddDays(14).UtcDateTime,
+                [],
+                [],
+                null,
+                null));
+
+        var result = await fixture.Publisher.PublishAsync(CreateContext(), CancellationToken.None);
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.IsRetryable).IsFalse();
+        await Assert.That(result.FailureCategory).IsEqualTo("invalid_webhook_delivery_plan");
+        await fixture.Materializer.DidNotReceiveWithAnyArgs().MaterializeAsync(default!, default);
     }
 
     private static WebhookEventBuildContext CreateContext(
@@ -147,51 +178,77 @@ public sealed class DefaultWebhookEventPublisherTests
             },
             ConsumerId);
 
-    private static WebhookMessage CreateMessage()
-    {
-        var payload = new DefaultWebhookPayloadBuilder(new WebhookEventTypeRegistry())
-            .BuildAsync(CreateContext(), CancellationToken.None)
-            .GetAwaiter()
-            .GetResult();
-
-        return WebhookMessage.Create(
-            MessageId,
-            TenantId,
-            WebhookEventNames.EventPublished,
-            "domain-event-1",
-            "Event",
-            AggregateId,
-            ConsumerId,
-            payload.PayloadBytes!,
-            "application/json",
-            "utf-8",
-            OccurredAt.UtcDateTime,
-            OccurredAt.AddDays(14).UtcDateTime,
-            OccurredAt.UtcDateTime);
-    }
+    private static string ComputePayloadHash(ReadOnlySpan<byte> payloadBytes) =>
+        $"sha256:{Convert.ToHexString(SHA256.HashData(payloadBytes)).ToLowerInvariant()}";
 
     private sealed class Fixture
     {
-        public Fixture(string providerName)
+        public Fixture(bool created = true)
         {
-            MessageRepository = Substitute.For<IWebhookMessageRepository>();
-            DeliveryProvider = Substitute.For<IWebhookDeliveryProvider>();
-            DeliveryProvider.ProviderName.Returns(providerName);
+            PayloadBuilder = Substitute.For<IWebhookPayloadBuilder>();
+            PlanResolver = Substitute.For<IWebhookDeliveryPlanResolver>();
+            Materializer = Substitute.For<IWebhookDeliveryPlanMaterializer>();
+            PayloadBuilder.BuildAsync(Arg.Any<WebhookEventBuildContext>(), Arg.Any<CancellationToken>())
+                .Returns(CreatePayload());
+            PlanResolver.ResolveAsync(Arg.Any<WebhookEventBuildContext>(), Arg.Any<CancellationToken>())
+                .Returns(CreateResolution());
+            Materializer.MaterializeAsync(
+                    Arg.Any<WebhookDeliveryMaterialization>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(call =>
+                {
+                    var value = call.Arg<WebhookDeliveryMaterialization>();
+                    return new WebhookDeliveryMaterializationResult(
+                        value.Message,
+                        value.DeliveryPlan,
+                        created);
+                });
 
             var meterFactory = Substitute.For<IMeterFactory>();
             meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
 
             Publisher = new DefaultWebhookEventPublisher(
-                new DefaultWebhookPayloadBuilder(new WebhookEventTypeRegistry()),
-                MessageRepository,
-                DeliveryProvider,
-                new BusinessMetrics(meterFactory));
+                PayloadBuilder,
+                PlanResolver,
+                Materializer,
+                new BusinessMetrics(meterFactory),
+                new FixedTimeProvider(MaterializedAt));
         }
 
-        public IWebhookMessageRepository MessageRepository { get; }
+        public IWebhookPayloadBuilder PayloadBuilder { get; }
 
-        public IWebhookDeliveryProvider DeliveryProvider { get; }
+        public IWebhookDeliveryPlanResolver PlanResolver { get; }
+
+        public IWebhookDeliveryPlanMaterializer Materializer { get; }
 
         public DefaultWebhookEventPublisher Publisher { get; }
+
+        private static WebhookPayloadBuildResult CreatePayload() =>
+            WebhookPayloadBuildResult.Success(
+                new WebhookEventEnvelope(
+                    MessageId,
+                    WebhookEventNames.EventPublished,
+                    1,
+                    OccurredAt,
+                    TenantId,
+                    new Dictionary<string, object?>()),
+                PayloadBytes,
+                ComputePayloadHash(PayloadBytes),
+                OccurredAt.AddDays(14));
+
+        private static WebhookDeliveryPlanResolution CreateResolution() =>
+            WebhookDeliveryPlanResolution.Success(
+                ConsumerId,
+                WebhookProviderMode.DryRun,
+                "configuration-v7",
+                1,
+                "standard",
+                "retention-v2",
+                OccurredAt.AddDays(14).UtcDateTime);
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
     }
 }

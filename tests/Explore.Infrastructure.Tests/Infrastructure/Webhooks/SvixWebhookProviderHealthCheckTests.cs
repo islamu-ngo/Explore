@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Secrets;
 using Explore.Domain.Enums;
 using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.HealthChecks;
+using Explore.Infrastructure.Webhooks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
@@ -41,12 +42,7 @@ public sealed class SvixWebhookProviderHealthCheckTests
             {
                 Enabled = true,
                 Provider = WebhookOptions.ProviderSvix,
-                Svix = new WebhookSvixOptions
-                {
-                    BaseUrl = "http://svix:8071",
-                    AuthTokenSecretRef = "webhooks.svix.auth_token",
-                    OperationalWebhookSecretRef = null
-                }
+                Svix = SupportedSelfHostedOptions(operationalWebhookSecretRef: null)
             });
 
         var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
@@ -72,12 +68,7 @@ public sealed class SvixWebhookProviderHealthCheckTests
             {
                 Enabled = true,
                 Provider = WebhookOptions.ProviderComposite,
-                Svix = new WebhookSvixOptions
-                {
-                    BaseUrl = "http://svix:8071",
-                    AuthTokenSecretRef = "webhooks.svix.auth_token",
-                    OperationalWebhookSecretRef = "webhooks.svix.operational_webhook_secret"
-                }
+                Svix = SupportedSelfHostedOptions()
             });
 
         var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
@@ -86,6 +77,15 @@ public sealed class SvixWebhookProviderHealthCheckTests
         await Assert.That(result.Data["svixProviderSelected"]).IsEqualTo(true);
         await Assert.That(result.Data["authTokenResolved"]).IsEqualTo(true);
         await Assert.That(result.Data["operationalWebhookSecretResolved"]).IsEqualTo(true);
+        await Assert.That(result.Data["deploymentKind"]).IsEqualTo(nameof(SvixDeploymentKind.SelfHosted));
+        await Assert.That(result.Data["conformanceExecutedTestCount"]).IsEqualTo(11);
+        await Assert.That(result.Data["exactMessageLookupSupported"]).IsEqualTo(false);
+        await Assert.That(result.Data["providerCapabilityCount"]).IsEqualTo(4);
+        await Assert.That((string[])result.Data["providerCapabilityCodes"])
+            .IsEquivalentTo(["EndpointManagement", "PayloadInspection", "AppPortal", "EventCatalog"]);
+        await Assert.That(result.Data.Keys).DoesNotContain("baseUrl");
+        await Assert.That(result.Data.Keys).DoesNotContain("authToken");
+        await Assert.That(result.Data.Keys).DoesNotContain("secretRef");
     }
 
     [Test]
@@ -102,17 +102,65 @@ public sealed class SvixWebhookProviderHealthCheckTests
             {
                 Enabled = true,
                 Provider = WebhookOptions.ProviderSvix,
-                Svix = new WebhookSvixOptions
-                {
-                    AuthTokenSecretRef = "webhooks.svix.auth_token",
-                    OperationalWebhookSecretRef = "webhooks.svix.operational_webhook_secret"
-                }
+                Svix = SupportedSelfHostedOptions()
             });
 
         var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
 
         await Assert.That(result.Status).IsEqualTo(HealthStatus.Healthy);
         await Assert.That(result.Data["operationalWebhookSecretResolved"]).IsEqualTo(false);
+    }
+
+    [Test]
+    public async Task CheckHealthAsync_WhenProfileIsUnsupported_ReturnsUnhealthyWithoutResolvingSecrets()
+    {
+        var secretResolver = Substitute.For<ISecretResolver>();
+        var svixOptions = SupportedSelfHostedOptions();
+        svixOptions.ProviderVersion = "unsupported";
+        var healthCheck = CreateHealthCheck(
+            secretResolver,
+            new WebhookOptions
+            {
+                Enabled = true,
+                Provider = WebhookOptions.ProviderSvix,
+                Svix = svixOptions
+            });
+
+        var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Unhealthy);
+        await Assert.That(result.Description).Contains("absent from the conformance matrix");
+        await Assert.That(result.Data.Keys).DoesNotContain("authTokenResolved");
+        await secretResolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default, default);
+    }
+
+    [Test]
+    public async Task CheckHealthAsync_WhenManagedProfileHasNoEvidence_ReturnsUnhealthyWithoutResolvingSecrets()
+    {
+        var secretResolver = Substitute.For<ISecretResolver>();
+        var healthCheck = CreateHealthCheck(
+            secretResolver,
+            new WebhookOptions
+            {
+                Enabled = true,
+                Provider = WebhookOptions.ProviderSvix,
+                Svix = new WebhookSvixOptions
+                {
+                    BaseUrl = null,
+                    Environment = SvixConformanceProfileRegistry.ManagedEnvironment,
+                    ProviderVersion = SvixConformanceProfileRegistry.ManagedProviderVersion,
+                    CapabilityPolicyVersion = SvixConformanceProfileRegistry.ManagedCapabilityPolicyVersion,
+                    AuthTokenSecretRef = "webhooks.svix.auth_token"
+                }
+            });
+
+        var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Unhealthy);
+        await Assert.That(result.Description).Contains("no executed conformance evidence");
+        await Assert.That(result.Data["conformanceExecutedTestCount"]).IsEqualTo(0);
+        await Assert.That(result.Data["exactMessageLookupSupported"]).IsEqualTo(false);
+        await secretResolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default, default);
     }
 
     private static SvixWebhookProviderHealthCheck CreateHealthCheck(
@@ -136,6 +184,18 @@ public sealed class SvixWebhookProviderHealthCheckTests
             SecretScope.Instance,
             ScopeId: null,
             DateTimeOffset.UtcNow);
+
+    private static WebhookSvixOptions SupportedSelfHostedOptions(
+        string? operationalWebhookSecretRef = "webhooks.svix.operational_webhook_secret") =>
+        new()
+        {
+            BaseUrl = "http://svix:8071",
+            Environment = SvixConformanceProfileRegistry.SelfHostedEnvironment,
+            ProviderVersion = SvixConformanceProfileRegistry.SelfHostedProviderVersion,
+            CapabilityPolicyVersion = SvixConformanceProfileRegistry.SelfHostedCapabilityPolicyVersion,
+            AuthTokenSecretRef = "webhooks.svix.auth_token",
+            OperationalWebhookSecretRef = operationalWebhookSecretRef
+        };
 
     private sealed class StaticOptionsMonitor<T>(T currentValue) : IOptionsMonitor<T>
     {

@@ -3,6 +3,7 @@
 
 using Explore.Domain.Secrets;
 using Explore.Infrastructure.Configuration;
+using Explore.Infrastructure.Webhooks;
 
 namespace Explore.Infrastructure.Tests.Infrastructure.Webhooks;
 
@@ -89,4 +90,62 @@ public sealed class WebhookOptionsValidatorTests
         await Assert.That(result.FailureMessage).Contains("Webhooks:Svix:ProviderVersion is required");
         await Assert.That(result.FailureMessage).Contains("Webhooks:Svix:CapabilityPolicyVersion is required");
     }
+
+    [Test]
+    public async Task Validate_WhenSelfHostedProfileHasExecutedEvidence_ReturnsSuccess()
+    {
+        var result = _validator.Validate(null, new WebhookOptions
+        {
+            Provider = WebhookOptions.ProviderSvix,
+            Svix = SupportedSelfHostedOptions()
+        });
+
+        await Assert.That(result.Succeeded).IsTrue();
+    }
+
+    [Test]
+    public async Task Validate_WhenManagedProfileHasNoExecutedEvidence_ReturnsFailure()
+    {
+        var result = _validator.Validate(null, new WebhookOptions
+        {
+            Provider = WebhookOptions.ProviderSvix,
+            Svix = new WebhookSvixOptions
+            {
+                BaseUrl = null,
+                Environment = SvixConformanceProfileRegistry.ManagedEnvironment,
+                ProviderVersion = SvixConformanceProfileRegistry.ManagedProviderVersion,
+                CapabilityPolicyVersion = SvixConformanceProfileRegistry.ManagedCapabilityPolicyVersion,
+                AuthTokenSecretRef = SecretDefinitionRegistry.Keys.Webhooks.SvixAuthToken
+            }
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("no executed conformance evidence");
+    }
+
+    [Test]
+    public async Task Validate_WhenProfileTupleIsUnknown_ReturnsFailure()
+    {
+        var svix = SupportedSelfHostedOptions();
+        svix.ProviderVersion = "unsupported";
+
+        var result = _validator.Validate(null, new WebhookOptions
+        {
+            Provider = WebhookOptions.ProviderSvix,
+            Svix = svix
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("not present in the conformance matrix");
+    }
+
+    private static WebhookSvixOptions SupportedSelfHostedOptions() =>
+        new()
+        {
+            BaseUrl = "http://svix:8071",
+            Environment = SvixConformanceProfileRegistry.SelfHostedEnvironment,
+            ProviderVersion = SvixConformanceProfileRegistry.SelfHostedProviderVersion,
+            CapabilityPolicyVersion = SvixConformanceProfileRegistry.SelfHostedCapabilityPolicyVersion,
+            AuthTokenSecretRef = SecretDefinitionRegistry.Keys.Webhooks.SvixAuthToken
+        };
 }
