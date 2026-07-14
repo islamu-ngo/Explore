@@ -2,6 +2,7 @@
 // ABOUTME: Archives instead of deleting rows so delivery history and provider links remain auditable.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -9,7 +10,9 @@ using MediatR;
 
 namespace Explore.Application.Features.Webhooks.Handlers.Commands;
 
-public sealed class ArchiveWebhookEndpointCommandHandler(IWebhookEndpointRepository endpointRepository)
+public sealed class ArchiveWebhookEndpointCommandHandler(
+    IWebhookEndpointRepository endpointRepository,
+    IWebhookProviderCapabilityResolver capabilityResolver)
     : IRequestHandler<ArchiveWebhookEndpointCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -28,6 +31,23 @@ public sealed class ArchiveWebhookEndpointCommandHandler(IWebhookEndpointReposit
         if (endpoint is null)
         {
             return Failure("webhook_endpoint_not_found", ["Webhook endpoint was not found."]);
+        }
+
+        if (endpoint.Consumer is null)
+        {
+            return Failure(
+                "webhook_endpoint_management_unavailable",
+                ["Webhook consumer was not found."]);
+        }
+
+        if (!WebhookEndpointCapabilityPolicy.CanManageLocalEndpoint(
+                capabilityResolver,
+                endpoint.Consumer.ProviderMode,
+                out var capabilityFailure))
+        {
+            return Failure(
+                "webhook_endpoint_management_unavailable",
+                [capabilityFailure]);
         }
 
         if (endpoint.Status != WebhookEndpointStatus.Archived)

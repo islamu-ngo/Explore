@@ -9,10 +9,11 @@ namespace Explore.Domain;
 public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
 {
     public const int MaxIdentityLength = 256;
+    public const int MaxProviderApplicationIdLength = 500;
     public const int MaxVersionLength = 100;
     public const int MaxCredentialReferenceLength = 256;
     public const int MaxLeaseOwnerLength = 200;
-    public const int MaxExternalProviderMessageIdLength = 256;
+    public const int MaxExternalProviderMessageIdLength = 500;
     public const int MaxFailureCategoryLength = 100;
     public const int MaxSafeDetailLength = 1024;
     public static readonly TimeSpan MaximumIdempotencyValidity = TimeSpan.FromHours(12);
@@ -42,7 +43,7 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
     public string IdempotencyKey { get; private set; } = string.Empty;
     public string RequestHash { get; private set; } = string.Empty;
     public string ApplicationUid { get; private set; } = string.Empty;
-    public string ProviderApplicationId { get; private set; } = string.Empty;
+    public string? ProviderApplicationId { get; private set; }
     public string ProviderEnvironment { get; private set; } = string.Empty;
     public string CredentialReference { get; private set; } = string.Empty;
     public string CredentialVersion { get; private set; } = string.Empty;
@@ -201,6 +202,133 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
         };
     }
 
+    public static WebhookProviderPublication CreateLegacy(
+        Guid legacyProviderLinkId,
+        WebhookMessage message,
+        WebhookDeliveryPlanSnapshot deliveryPlan,
+        WebhookConsumerProviderBinding providerBinding,
+        string? providerApplicationId,
+        string? externalProviderMessageId,
+        WebhookProviderPublicationStatus status,
+        int retryCount,
+        string failureCategory,
+        string? safeDetail,
+        DateTime observedAt)
+    {
+        RequireGuid(legacyProviderLinkId, nameof(legacyProviderLinkId));
+        ArgumentNullException.ThrowIfNull(message);
+        ArgumentNullException.ThrowIfNull(deliveryPlan);
+        ArgumentNullException.ThrowIfNull(providerBinding);
+        if (status is not (WebhookProviderPublicationStatus.ProviderQueued or
+            WebhookProviderPublicationStatus.ManualReconciliation or
+            WebhookProviderPublicationStatus.Abandoned))
+        {
+            throw new ArgumentOutOfRangeException(nameof(status));
+        }
+
+        if (message.TenantId != deliveryPlan.TenantId ||
+            message.TenantId != providerBinding.TenantId ||
+            message.Id != deliveryPlan.WebhookMessageId ||
+            deliveryPlan.WebhookConsumerId != providerBinding.WebhookConsumerId)
+        {
+            throw new InvalidOperationException(
+                "Legacy provider evidence does not match the persisted tenant, message, plan, and binding.");
+        }
+
+        if (observedAt == default)
+        {
+            throw new ArgumentException("Observation time is required.", nameof(observedAt));
+        }
+
+        if (retryCount < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(retryCount));
+        }
+
+        var preparedAt = deliveryPlan.MaterializedAtUtc.UtcDateTime;
+        var payloadRetentionUntil = deliveryPlan.PayloadRetentionUntilUtc.UtcDateTime;
+        if (payloadRetentionUntil <= preparedAt)
+        {
+            payloadRetentionUntil = preparedAt.AddTicks(1);
+        }
+
+        var normalizedExternalMessageId = string.IsNullOrWhiteSpace(externalProviderMessageId)
+            ? null
+            : NormalizeRequired(
+                externalProviderMessageId,
+                MaxExternalProviderMessageIdLength,
+                nameof(externalProviderMessageId));
+        if (status == WebhookProviderPublicationStatus.ProviderQueued &&
+            normalizedExternalMessageId is null)
+        {
+            throw new ArgumentException(
+                "Evidence-backed provider-queued state requires an external provider message identifier.",
+                nameof(externalProviderMessageId));
+        }
+
+        var publication = new WebhookProviderPublication
+        {
+            Id = legacyProviderLinkId,
+            TenantId = message.TenantId,
+            WebhookMessageId = message.Id,
+            WebhookDeliveryPlanSnapshotId = deliveryPlan.Id,
+            ProviderKind = providerBinding.ProviderKind,
+            ProviderBindingId = providerBinding.Id,
+            ProviderVersion = providerBinding.ProviderVersion,
+            ProviderEventId = message.Id.ToString("D"),
+            IdempotencyKey = message.Id.ToString("D"),
+            RequestHash = NormalizeHash(message.PayloadHash, nameof(message)),
+            ApplicationUid = providerBinding.ApplicationUid,
+            ProviderApplicationId = string.IsNullOrWhiteSpace(providerApplicationId)
+                ? null
+                : NormalizeRequired(
+                    providerApplicationId,
+                    MaxProviderApplicationIdLength,
+                    nameof(providerApplicationId)),
+            ProviderEnvironment = providerBinding.ProviderEnvironment,
+            CredentialReference = "legacy-unavailable",
+            CredentialVersion = "legacy-unavailable",
+            ModeSnapshot = deliveryPlan.ProviderMode,
+            ProviderConfigurationVersion = deliveryPlan.ConfigurationVersion,
+            EventContractVersion = 1,
+            RetentionPolicyVersion = deliveryPlan.RetentionPolicyVersion,
+            PayloadRetentionUntil = payloadRetentionUntil,
+            PublicationRetentionUntil = payloadRetentionUntil,
+            IdempotencyValidUntil = preparedAt.Add(MaximumIdempotencyValidity),
+            Status = status,
+            ExternalProviderMessageId = normalizedExternalMessageId,
+            AutomaticPublicationAttemptCount = retryCount,
+            ConcurrencyVersion = 1,
+            PreparedAt = preparedAt,
+            CreatedAt = preparedAt
+        };
+
+        switch (status)
+        {
+            case WebhookProviderPublicationStatus.ProviderQueued:
+                publication.ProviderQueuedAt = observedAt;
+                publication.AppendAttempt(
+                    WebhookProviderPublicationAttemptOutcome.ProviderQueued,
+                    observedAt,
+                    normalizedExternalMessageId);
+                break;
+            case WebhookProviderPublicationStatus.ManualReconciliation:
+                publication.ManualReconciliationAt = observedAt;
+                publication.SetFailure(failureCategory, safeDetail);
+                publication.AppendAttempt(
+                    WebhookProviderPublicationAttemptOutcome.ManualReconciliationRequired,
+                    observedAt);
+                break;
+            case WebhookProviderPublicationStatus.Abandoned:
+                publication.AbandonedAt = observedAt;
+                publication.SetFailure(failureCategory, safeDetail);
+                publication.AppendAttempt(WebhookProviderPublicationAttemptOutcome.Abandoned, observedAt);
+                break;
+        }
+
+        return publication;
+    }
+
     public void ClaimForPublishing(
         string leaseOwner,
         Guid leaseToken,
@@ -218,6 +346,11 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
             throw new InvalidOperationException("Publication is not due.");
         }
 
+        if (claimedAt >= IdempotencyValidUntil)
+        {
+            throw new InvalidOperationException("The immutable idempotency validity window has expired.");
+        }
+
         ValidateBound(maxAutomaticPublicationAttempts, nameof(maxAutomaticPublicationAttempts));
         if (AutomaticPublicationAttemptCount >= maxAutomaticPublicationAttempts)
         {
@@ -230,7 +363,6 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
         NextActionAt = null;
         AutomaticPublicationAttemptCount = checked(AutomaticPublicationAttemptCount + 1);
         AppendAttempt(WebhookProviderPublicationAttemptOutcome.PublishingStarted, claimedAt);
-        UpdatedAt = claimedAt;
     }
 
     public void MarkProviderQueued(
@@ -256,7 +388,7 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
             queuedAt,
             ExternalProviderMessageId);
         ClearLease();
-        UpdatedAt = queuedAt;
+        AdvanceConcurrencyVersion(queuedAt);
     }
 
     public void ScheduleRetry(
@@ -278,7 +410,7 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
         SetFailure(failureCategory, safeDetail);
         AppendAttempt(WebhookProviderPublicationAttemptOutcome.RetryScheduled, failedAt);
         ClearLease();
-        UpdatedAt = failedAt;
+        AdvanceConcurrencyVersion(failedAt);
     }
 
     public void MarkPublicationUnknown(
@@ -301,7 +433,7 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
         SetFailure(failureCategory, safeDetail);
         AppendAttempt(WebhookProviderPublicationAttemptOutcome.PublicationUnknown, observedAt);
         ClearLease();
-        UpdatedAt = observedAt;
+        AdvanceConcurrencyVersion(observedAt);
     }
 
     public void MarkExpiredPublishingUnknown(
@@ -328,7 +460,7 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
         SetFailure(failureCategory, safeDetail);
         AppendAttempt(WebhookProviderPublicationAttemptOutcome.PublicationUnknown, observedAt);
         ClearLease();
-        UpdatedAt = observedAt;
+        AdvanceConcurrencyVersion(observedAt);
     }
 
     public void ClaimForAutomaticReconciliation(
@@ -364,7 +496,6 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
         LastAutomaticReconciliationAt = claimedAt;
         NextActionAt = null;
         AppendAttempt(WebhookProviderPublicationAttemptOutcome.AutomaticReconciliationStarted, claimedAt);
-        UpdatedAt = claimedAt;
     }
 
     public void RecordAutomaticReconciliationUnresolved(
@@ -385,7 +516,33 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
         SetFailure(failureCategory, safeDetail);
         AppendAttempt(WebhookProviderPublicationAttemptOutcome.AutomaticReconciliationUnresolved, observedAt);
         ClearLease();
-        UpdatedAt = observedAt;
+        AdvanceConcurrencyVersion(observedAt);
+    }
+
+    public void ScheduleRetryAfterConfirmedProviderAbsence(
+        Guid leaseToken,
+        long publicationFence,
+        DateTime nextActionAt,
+        DateTime confirmedAt)
+    {
+        EnsureUnknownLease(leaseToken, publicationFence, confirmedAt);
+        if (confirmedAt >= IdempotencyValidUntil)
+        {
+            throw new InvalidOperationException("Provider absence cannot be retried after idempotency expiry.");
+        }
+
+        if (nextActionAt <= confirmedAt || nextActionAt >= IdempotencyValidUntil)
+        {
+            throw new ArgumentOutOfRangeException(nameof(nextActionAt));
+        }
+
+        Status = WebhookProviderPublicationStatus.RetryDue;
+        NextActionAt = nextActionAt;
+        FailureCategory = null;
+        SafeDetail = null;
+        AppendAttempt(WebhookProviderPublicationAttemptOutcome.ProviderAbsenceConfirmed, confirmedAt);
+        ClearLease();
+        AdvanceConcurrencyVersion(confirmedAt);
     }
 
     public void RequireManualReconciliation(
@@ -406,7 +563,7 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
         SetFailure(failureCategory, safeDetail);
         AppendAttempt(WebhookProviderPublicationAttemptOutcome.ManualReconciliationRequired, requiredAt);
         ClearLease();
-        UpdatedAt = requiredAt;
+        AdvanceConcurrencyVersion(requiredAt);
     }
 
     public void ResolveManuallyAsProviderQueued(string externalProviderMessageId, DateTime resolvedAt)
@@ -428,7 +585,7 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
             WebhookProviderPublicationAttemptOutcome.ReconciledProviderQueued,
             resolvedAt,
             ExternalProviderMessageId);
-        UpdatedAt = resolvedAt;
+        AdvanceConcurrencyVersion(resolvedAt);
     }
 
     public void DeadLetter(
@@ -445,7 +602,7 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
         SetFailure(failureCategory, safeDetail);
         AppendAttempt(WebhookProviderPublicationAttemptOutcome.DeadLettered, deadLetteredAt);
         ClearLease();
-        UpdatedAt = deadLetteredAt;
+        AdvanceConcurrencyVersion(deadLetteredAt);
     }
 
     public void Abandon(string failureCategory, string? safeDetail, DateTime abandonedAt)
@@ -461,7 +618,7 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
         SetFailure(failureCategory, safeDetail);
         AppendAttempt(WebhookProviderPublicationAttemptOutcome.Abandoned, abandonedAt);
         ClearLease();
-        UpdatedAt = abandonedAt;
+        AdvanceConcurrencyVersion(abandonedAt);
     }
 
     private void SetLease(string leaseOwner, Guid leaseToken, DateTime leaseExpiresAt, DateTime claimedAt)
@@ -477,7 +634,13 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
         ProcessingLeaseExpiresAt = leaseExpiresAt;
         ProcessingStartedAt = claimedAt;
         PublicationFence = checked(PublicationFence + 1);
+        AdvanceConcurrencyVersion(claimedAt);
+    }
+
+    private void AdvanceConcurrencyVersion(DateTime changedAt)
+    {
         ConcurrencyVersion = checked(ConcurrencyVersion + 1);
+        UpdatedAt = changedAt;
     }
 
     private void EnsurePublishingLease(Guid leaseToken, long publicationFence, DateTime observedAt)

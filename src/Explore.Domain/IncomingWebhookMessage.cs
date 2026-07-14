@@ -25,6 +25,8 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
     public Guid Id { get; private set; }
     public Guid TenantId { get; set; }
     public Tenant? Tenant { get; private set; }
+    public Guid? WebhookConsumerProviderBindingId { get; private set; }
+    public WebhookConsumerProviderBinding? WebhookConsumerProviderBinding { get; private set; }
 
     public string Provider { get; private set; } = string.Empty;
     public string ProviderMessageId { get; private set; } = string.Empty;
@@ -69,8 +71,20 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
     public string? SafeDetail { get; private set; }
 
     public Guid? SettledByEffectReceiptId { get; private set; }
+    public IncomingWebhookEffectReceipt? SettledByEffectReceipt { get; private set; }
     public string? SettledEffectKind { get; private set; }
-    public IncomingWebhookSettlementSource SettlementSource { get; private set; }
+    public int? SettlementSourceId { get; private set; }
+    public IncomingWebhookSettlementSourceLookup? SettlementSourceLookup { get; private set; }
+    [NotMapped]
+    public IncomingWebhookSettlementSource SettlementSource
+    {
+        get => SettlementSourceId is null
+            ? IncomingWebhookSettlementSource.None
+            : (IncomingWebhookSettlementSource)SettlementSourceId.Value;
+        private set => SettlementSourceId = value == IncomingWebhookSettlementSource.None
+            ? null
+            : (int)value;
+    }
 
     public IReadOnlyCollection<IncomingWebhookProcessingAttempt> ProcessingAttempts => _processingAttempts;
     public IReadOnlyCollection<IncomingWebhookRedriveRecord> RedriveRecords => _redriveRecords;
@@ -93,7 +107,8 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
         string? headersJson,
         DateTime receivedAt,
         DateTime verifiedAt,
-        DateTime payloadRetentionUntil)
+        DateTime payloadRetentionUntil,
+        Guid? webhookConsumerProviderBindingId = null)
     {
         RequireGuid(tenantId, nameof(tenantId));
         if (payloadBytes.IsEmpty)
@@ -117,6 +132,7 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenantId,
+            WebhookConsumerProviderBindingId = webhookConsumerProviderBindingId,
             Provider = NormalizeRequired(provider, MaxProviderLength, nameof(provider)).ToLowerInvariant(),
             ProviderMessageId = NormalizeRequired(providerMessageId, MaxProviderMessageIdLength, nameof(providerMessageId)),
             IdempotencyKey = NormalizeOptional(idempotencyKey, MaxIdempotencyKeyLength, nameof(idempotencyKey)),
@@ -233,6 +249,28 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
         UpdatedAt = renewedAt;
     }
 
+    public void RecoverExpiredClaim(DateTime recoveredAt)
+    {
+        if (Status != IncomingWebhookMessageStatus.Processing ||
+            ProcessingLeaseExpiresAt is null ||
+            ProcessingLeaseExpiresAt > recoveredAt)
+        {
+            throw new InvalidOperationException("Only an expired incoming webhook processing claim can be recovered.");
+        }
+
+        Status = IncomingWebhookMessageStatus.RetryDue;
+        NextAttemptAt = recoveredAt;
+        FailureCategory = "processing_lease_expired";
+        SafeDetail = "The previous processing lease expired before settlement.";
+        AppendAttempt(
+            IncomingWebhookProcessingAttemptOutcome.LeaseExpired,
+            recoveredAt,
+            FailureCategory,
+            SafeDetail);
+        ClearLease();
+        UpdatedAt = recoveredAt;
+    }
+
     public void SettleProcessed(
         IncomingWebhookEffectReceipt receipt,
         string expectedEffectKind,
@@ -264,6 +302,29 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
             settledAt);
         ClearLease();
         UpdatedAt = settledAt;
+    }
+
+    public void RecordConcurrentReceiptRecovery(
+        IncomingWebhookEffectReceipt receipt,
+        string expectedEffectKind,
+        int processingGeneration,
+        DateTime observedAt)
+    {
+        if (observedAt.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("Timestamp must use UTC kind.", nameof(observedAt));
+        }
+
+        if (Status != IncomingWebhookMessageStatus.Processed ||
+            ProcessingGeneration != processingGeneration ||
+            SettledByEffectReceiptId != receipt.Id)
+        {
+            throw new InvalidOperationException("The concurrent effect receipt did not settle this processing generation.");
+        }
+
+        receipt.EnsureMatches(TenantId, Id, expectedEffectKind, PayloadHash, ProcessingGeneration);
+        AppendAttempt(IncomingWebhookProcessingAttemptOutcome.SettledFromReceipt, observedAt);
+        UpdatedAt = observedAt;
     }
 
     public void Ignore(
@@ -344,14 +405,28 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
         UpdatedAt = deadLetteredAt;
     }
 
-    public void Redrive(string actorId, string reason, DateTime requestedAt)
+    public IncomingWebhookRedriveRecord Redrive(
+        int expectedProcessingGeneration,
+        string actorId,
+        string reason,
+        DateTime requestedAt)
     {
+        if (requestedAt.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("Timestamp must use UTC kind.", nameof(requestedAt));
+        }
+
         if (Status != IncomingWebhookMessageStatus.DeadLettered)
         {
             throw new InvalidOperationException("Only dead-lettered incoming webhooks can be redriven.");
         }
 
         var sourceGeneration = ProcessingGeneration;
+        if (sourceGeneration != expectedProcessingGeneration)
+        {
+            throw new InvalidOperationException("The incoming webhook processing generation changed before redrive.");
+        }
+
         ProcessingGeneration = checked(ProcessingGeneration + 1);
         Status = IncomingWebhookMessageStatus.RetryDue;
         NextAttemptAt = requestedAt;
@@ -359,7 +434,7 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
         FailureCategory = null;
         SafeDetail = null;
         ClearLease();
-        _redriveRecords.Add(IncomingWebhookRedriveRecord.Create(
+        var record = IncomingWebhookRedriveRecord.Create(
             TenantId,
             Id,
             actorId,
@@ -367,8 +442,10 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
             requestedAt,
             sourceGeneration,
             ProcessingGeneration,
-            IncomingWebhookRedriveResult.Scheduled));
+            IncomingWebhookRedriveResult.Scheduled);
+        _redriveRecords.Add(record);
         UpdatedAt = requestedAt;
+        return record;
     }
 
     public void EnsureActiveClaim(
@@ -493,11 +570,4 @@ public enum IncomingWebhookDuplicateClassification
 {
     Duplicate = 1,
     PayloadConflict = 2
-}
-
-public enum IncomingWebhookSettlementSource
-{
-    None = 0,
-    EffectCommitted = 1,
-    ExistingReceipt = 2
 }

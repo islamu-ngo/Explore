@@ -20,6 +20,36 @@ public sealed class WebhookConsumerProviderBindingRepository(ExploreDbContext db
         return binding;
     }
 
+    public async Task<WebhookConsumerProviderBinding?> GetByConsumerAsync(
+        Guid tenantId,
+        Guid webhookConsumerId,
+        WebhookProviderKind providerKind,
+        string providerEnvironment,
+        CancellationToken cancellationToken)
+    {
+        var normalizedEnvironment = WebhookConsumerProviderBinding.NormalizeIdentity(
+            providerEnvironment,
+            nameof(providerEnvironment));
+
+        return await BindingQuery()
+            .SingleOrDefaultAsync(binding =>
+                binding.TenantId == tenantId &&
+                binding.WebhookConsumerId == webhookConsumerId &&
+                binding.ProviderKindId == (int)providerKind &&
+                binding.NormalizedEnvironment == normalizedEnvironment,
+                cancellationToken);
+    }
+
+    public Task<WebhookConsumerProviderBinding?> GetByTenantAndIdForUpdateAsync(
+        Guid tenantId,
+        Guid bindingId,
+        CancellationToken cancellationToken) =>
+        MutableBindingQuery()
+            .SingleOrDefaultAsync(binding =>
+                binding.TenantId == tenantId &&
+                binding.Id == bindingId,
+                cancellationToken);
+
     public async Task<WebhookConsumerProviderBinding?> GetVerifiedByConsumerAsync(
         Guid tenantId,
         Guid webhookConsumerId,
@@ -75,6 +105,38 @@ public sealed class WebhookConsumerProviderBindingRepository(ExploreDbContext db
                 cancellationToken);
     }
 
+    public async Task<WebhookConsumerProviderBinding?> ResolveVerifiedProviderIdentityAsync(
+        WebhookProviderKind providerKind,
+        string providerEnvironment,
+        string externalApplicationId,
+        string applicationUid,
+        CancellationToken cancellationToken)
+    {
+        var normalizedEnvironment = WebhookConsumerProviderBinding.NormalizeIdentity(
+            providerEnvironment,
+            nameof(providerEnvironment));
+        var normalizedExternalApplicationId = WebhookConsumerProviderBinding.NormalizeIdentity(
+            externalApplicationId,
+            nameof(externalApplicationId));
+        var normalizedApplicationUid = WebhookConsumerProviderBinding.NormalizeIdentity(
+            applicationUid,
+            nameof(applicationUid));
+
+        return await dbContext.WebhookConsumerProviderBindings
+            .IgnoreTenantFilter(TenantFilterBypassReasons.IncomingWebhookProviderAuthorityResolution)
+            .AsNoTracking()
+            .SingleOrDefaultAsync(binding =>
+                binding.ProviderKindId == (int)providerKind &&
+                binding.NormalizedEnvironment == normalizedEnvironment &&
+                binding.NormalizedExternalApplicationId == normalizedExternalApplicationId &&
+                binding.NormalizedApplicationUid == normalizedApplicationUid &&
+                binding.VerificationStateId == (int)WebhookProviderBindingVerificationState.Verified &&
+                binding.VerifiedTenantId == binding.TenantId &&
+                binding.VerifiedWebhookConsumerId == binding.WebhookConsumerId &&
+                binding.IsEnabled,
+                cancellationToken);
+    }
+
     public async Task<IReadOnlyList<WebhookConsumerProviderBinding>> GetVerifiedByConsumersAsync(
         Guid tenantId,
         IReadOnlyCollection<Guid> webhookConsumerIds,
@@ -113,104 +175,8 @@ public sealed class WebhookConsumerProviderBindingRepository(ExploreDbContext db
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<bool> TryVerifyAsync(
-        Guid tenantId,
-        Guid bindingId,
-        long expectedConcurrencyVersion,
-        long expectedVerificationFence,
-        string externalApplicationId,
-        DateTimeOffset verifiedAtUtc,
-        CancellationToken cancellationToken)
-    {
-        var providerApplicationId = externalApplicationId.Trim();
-        var normalizedExternalApplicationId = WebhookConsumerProviderBinding.NormalizeIdentity(
-            externalApplicationId,
-            nameof(externalApplicationId));
-
-        var updated = await MutableBindingQuery()
-            .Where(binding =>
-                binding.TenantId == tenantId &&
-                binding.Id == bindingId &&
-                binding.ConcurrencyVersion == expectedConcurrencyVersion &&
-                binding.VerificationFence == expectedVerificationFence &&
-                (binding.VerificationStateId == (int)WebhookProviderBindingVerificationState.Pending ||
-                 binding.VerificationStateId == (int)WebhookProviderBindingVerificationState.LegacyUnverified))
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(binding => binding.ExternalApplicationId, providerApplicationId)
-                .SetProperty(binding => binding.NormalizedExternalApplicationId, normalizedExternalApplicationId)
-                .SetProperty(binding => binding.VerifiedTenantId, tenantId)
-                .SetProperty(binding => binding.VerifiedWebhookConsumerId, binding => binding.WebhookConsumerId)
-                .SetProperty(binding => binding.VerifiedAtUtc, verifiedAtUtc)
-                .SetProperty(binding => binding.VerificationStateId, (int)WebhookProviderBindingVerificationState.Verified)
-                .SetProperty(binding => binding.IsEnabled, true)
-                .SetProperty(binding => binding.ConcurrencyVersion, binding => binding.ConcurrencyVersion + 1)
-                .SetProperty(binding => binding.VerificationFence, binding => binding.VerificationFence + 1)
-                .SetProperty(binding => binding.UpdatedAt, verifiedAtUtc.UtcDateTime),
-                cancellationToken);
-
-        return updated == 1;
-    }
-
-    public async Task<bool> TryDisableAsync(
-        Guid tenantId,
-        Guid bindingId,
-        long expectedConcurrencyVersion,
-        long expectedVerificationFence,
-        DateTimeOffset disabledAtUtc,
-        CancellationToken cancellationToken)
-    {
-        var updated = await MutableBindingQuery()
-            .Where(binding =>
-                binding.TenantId == tenantId &&
-                binding.Id == bindingId &&
-                binding.ConcurrencyVersion == expectedConcurrencyVersion &&
-                binding.VerificationFence == expectedVerificationFence &&
-                binding.IsEnabled)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(binding => binding.IsEnabled, false)
-                .SetProperty(binding => binding.ConcurrencyVersion, binding => binding.ConcurrencyVersion + 1)
-                .SetProperty(binding => binding.VerificationFence, binding => binding.VerificationFence + 1)
-                .SetProperty(binding => binding.UpdatedAt, disabledAtUtc.UtcDateTime),
-                cancellationToken);
-
-        return updated == 1;
-    }
-
-    public async Task<bool> TryRebindAsync(
-        Guid tenantId,
-        Guid bindingId,
-        long expectedConcurrencyVersion,
-        long expectedVerificationFence,
-        string externalApplicationId,
-        DateTimeOffset verifiedAtUtc,
-        CancellationToken cancellationToken)
-    {
-        var providerApplicationId = externalApplicationId.Trim();
-        var normalizedExternalApplicationId = WebhookConsumerProviderBinding.NormalizeIdentity(
-            externalApplicationId,
-            nameof(externalApplicationId));
-
-        var updated = await MutableBindingQuery()
-            .Where(binding =>
-                binding.TenantId == tenantId &&
-                binding.Id == bindingId &&
-                binding.ConcurrencyVersion == expectedConcurrencyVersion &&
-                binding.VerificationFence == expectedVerificationFence &&
-                binding.VerificationStateId == (int)WebhookProviderBindingVerificationState.Verified)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(binding => binding.ExternalApplicationId, providerApplicationId)
-                .SetProperty(binding => binding.NormalizedExternalApplicationId, normalizedExternalApplicationId)
-                .SetProperty(binding => binding.VerifiedTenantId, tenantId)
-                .SetProperty(binding => binding.VerifiedWebhookConsumerId, binding => binding.WebhookConsumerId)
-                .SetProperty(binding => binding.VerifiedAtUtc, verifiedAtUtc)
-                .SetProperty(binding => binding.IsEnabled, true)
-                .SetProperty(binding => binding.ConcurrencyVersion, binding => binding.ConcurrencyVersion + 1)
-                .SetProperty(binding => binding.VerificationFence, binding => binding.VerificationFence + 1)
-                .SetProperty(binding => binding.UpdatedAt, verifiedAtUtc.UtcDateTime),
-                cancellationToken);
-
-        return updated == 1;
-    }
+    public Task SaveChangesAsync(CancellationToken cancellationToken) =>
+        dbContext.SaveChangesAsync(cancellationToken);
 
     private IQueryable<WebhookConsumerProviderBinding> BindingQuery() =>
         MutableBindingQuery().AsNoTracking();

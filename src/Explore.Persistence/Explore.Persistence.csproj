@@ -32,4 +32,11 @@
     <Folder Include="Migrations\" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(EVENT_EF_MIGRATION_RECOVERY)' == 'true'">
+    <Compile Remove="Migrations/20260714090035_NormalizeWebhookProviderBindingInstanceIdentity.cs" />
+    <Compile Remove="Migrations/20260714090035_NormalizeWebhookProviderBindingInstanceIdentity.Designer.cs" />
+    <Compile Remove="Migrations/20260714094423_NormalizeWebhookProviderCapabilities.cs" />
+    <Compile Remove="Migrations/20260714094423_NormalizeWebhookProviderCapabilities.Designer.cs" />
+  </ItemGroup>
+
 </Project>

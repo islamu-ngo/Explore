@@ -84,6 +84,8 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(UpdateWebhookEndpointRequestDto))]
 [JsonSerializable(typeof(OpenSvixAppPortalRequestDto))]
 [JsonSerializable(typeof(WebhookConsumerDto))]
+[JsonSerializable(typeof(WebhookProviderCapabilityDto))]
+[JsonSerializable(typeof(IReadOnlyList<WebhookProviderCapabilityDto>))]
 [JsonSerializable(typeof(WebhookEndpointDto))]
 [JsonSerializable(typeof(WebhookEndpointSubscriptionDto))]
 [JsonSerializable(typeof(WebhookEventDataFieldDto))]

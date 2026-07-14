@@ -28,7 +28,7 @@ public sealed class WebhookProviderPublicationConfiguration
         builder.Property(publication => publication.IdempotencyKey).HasMaxLength(WebhookProviderPublication.MaxIdentityLength).IsRequired();
         builder.Property(publication => publication.RequestHash).HasMaxLength(71).IsRequired();
         builder.Property(publication => publication.ApplicationUid).HasMaxLength(WebhookProviderPublication.MaxIdentityLength).IsRequired();
-        builder.Property(publication => publication.ProviderApplicationId).HasMaxLength(WebhookProviderPublication.MaxIdentityLength).IsRequired();
+        builder.Property(publication => publication.ProviderApplicationId).HasMaxLength(WebhookProviderPublication.MaxProviderApplicationIdLength);
         builder.Property(publication => publication.ProviderEnvironment).HasMaxLength(WebhookProviderPublication.MaxIdentityLength).IsRequired();
         builder.Property(publication => publication.CredentialReference).HasMaxLength(WebhookProviderPublication.MaxCredentialReferenceLength).IsRequired();
         builder.Property(publication => publication.CredentialVersion).HasMaxLength(WebhookProviderPublication.MaxVersionLength).IsRequired();
@@ -106,6 +106,10 @@ public sealed class WebhookProviderPublicationAttemptConfiguration
         builder.Property(attempt => attempt.ExternalProviderMessageId).HasMaxLength(WebhookProviderPublication.MaxExternalProviderMessageIdLength);
         builder.Property(attempt => attempt.FailureCategory).HasMaxLength(WebhookProviderPublication.MaxFailureCategoryLength);
         builder.Property(attempt => attempt.SafeDetail).HasMaxLength(WebhookProviderPublication.MaxSafeDetailLength);
+        builder.HasOne(attempt => attempt.OutcomeLookup)
+            .WithMany()
+            .HasForeignKey(attempt => attempt.OutcomeId)
+            .OnDelete(DeleteBehavior.Restrict);
         builder.HasAlternateKey(attempt => new { attempt.TenantId, attempt.Id })
             .HasName("ak_webhook_provider_publication_attempts_tenant_id_id");
         builder.HasOne(attempt => attempt.Tenant)
@@ -117,5 +121,7 @@ public sealed class WebhookProviderPublicationAttemptConfiguration
             .IsUnique();
         builder.HasIndex(attempt => new { attempt.TenantId, attempt.RecordedAt, attempt.Id })
             .HasDatabaseName("ix_webhook_provider_publication_attempts_tenant_recorded");
+        builder.HasIndex(attempt => new { attempt.TenantId, attempt.OutcomeId, attempt.RecordedAt })
+            .HasDatabaseName("ix_webhook_provider_publication_attempts_tenant_outcome_recorded");
     }
 }

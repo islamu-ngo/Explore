@@ -2,6 +2,7 @@
 // ABOUTME: Keeps secret material external to the database and persists only secret references plus version metadata.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -9,7 +10,10 @@ using MediatR;
 
 namespace Explore.Application.Features.Webhooks.Handlers.Commands;
 
-public sealed class RotateWebhookEndpointSecretCommandHandler(IWebhookEndpointRepository endpointRepository)
+public sealed class RotateWebhookEndpointSecretCommandHandler(
+    IWebhookEndpointRepository endpointRepository,
+    IWebhookConsumerRepository consumerRepository,
+    IWebhookProviderCapabilityResolver capabilityResolver)
     : IRequestHandler<RotateWebhookEndpointSecretCommand, BaseCommandResponse<Guid>>
 {
     private const int DefaultPreviousSecretValidForSeconds = 86_400;
@@ -32,6 +36,27 @@ public sealed class RotateWebhookEndpointSecretCommandHandler(IWebhookEndpointRe
         if (endpoint is null || endpoint.Status == WebhookEndpointStatus.Archived)
         {
             return Failure("webhook_endpoint_not_found", ["Webhook endpoint was not found."]);
+        }
+
+        var consumer = await consumerRepository.GetByTenantAndIdAsync(
+            request.TenantId,
+            endpoint.ConsumerId,
+            cancellationToken);
+        if (consumer is null)
+        {
+            return Failure(
+                "webhook_endpoint_management_unavailable",
+                ["Webhook consumer was not found."]);
+        }
+
+        if (!WebhookEndpointCapabilityPolicy.CanManageLocalEndpoint(
+                capabilityResolver,
+                consumer.ProviderMode,
+                out var capabilityFailure))
+        {
+            return Failure(
+                "webhook_endpoint_management_unavailable",
+                [capabilityFailure]);
         }
 
         if (string.Equals(endpoint.SecretRef, normalizedSecretRef, StringComparison.Ordinal))

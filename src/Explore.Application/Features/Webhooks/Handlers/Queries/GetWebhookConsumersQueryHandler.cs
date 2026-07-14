@@ -2,13 +2,18 @@
 // ABOUTME: Applies conservative bounds before repository access and maps entities in Application.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.DTOs.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Queries;
+using Explore.Domain;
 using MediatR;
 
 namespace Explore.Application.Features.Webhooks.Handlers.Queries;
 
-public sealed class GetWebhookConsumersQueryHandler(IWebhookConsumerRepository consumerRepository)
+public sealed class GetWebhookConsumersQueryHandler(
+    IWebhookConsumerRepository consumerRepository,
+    IWebhookConsumerProviderBindingRepository bindingRepository,
+    IWebhookProviderCapabilityResolver capabilityResolver)
     : IRequestHandler<GetWebhookConsumersQuery, IReadOnlyList<WebhookConsumerDto>>
 {
     private const int DefaultLimit = 100;
@@ -32,6 +37,32 @@ public sealed class GetWebhookConsumersQueryHandler(IWebhookConsumerRepository c
             limit,
             cancellationToken);
 
-        return consumers.Select(WebhookConsumerDtoMapper.Map).ToList();
+        var resolutions = consumers.ToDictionary(
+            consumer => consumer.Id,
+            consumer => capabilityResolver.Resolve(consumer.ProviderMode));
+        var providerConsumerIds = consumers
+            .Where(consumer => consumer.ProviderMode is WebhookProviderMode.Svix or WebhookProviderMode.Composite)
+            .Select(consumer => consumer.Id)
+            .ToArray();
+        var providerEnvironment = resolutions.Values
+            .Select(resolution => resolution.ProviderEnvironment)
+            .FirstOrDefault(environment => !string.IsNullOrWhiteSpace(environment));
+        IReadOnlyList<WebhookConsumerProviderBinding> bindings = providerConsumerIds.Length > 0 &&
+            !string.IsNullOrWhiteSpace(providerEnvironment)
+                ? await bindingRepository.GetVerifiedByConsumersAsync(
+                    request.TenantId,
+                    providerConsumerIds,
+                    WebhookProviderKind.Svix,
+                    providerEnvironment,
+                    cancellationToken)
+                : [];
+        var bindingsByConsumer = bindings.ToDictionary(binding => binding.WebhookConsumerId);
+
+        return consumers
+            .Select(consumer => WebhookConsumerDtoMapper.Map(
+                consumer,
+                resolutions[consumer.Id],
+                bindingsByConsumer.GetValueOrDefault(consumer.Id)))
+            .ToList();
     }
 }

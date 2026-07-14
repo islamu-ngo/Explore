@@ -21,7 +21,8 @@ public class IncomingWebhookRedriveRecordConfiguration : IEntityTypeConfiguratio
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(e => e.ActorId).HasMaxLength(IncomingWebhookRedriveRecord.MaxActorIdLength).IsRequired();
         builder.Property(e => e.Reason).HasMaxLength(IncomingWebhookRedriveRecord.MaxReasonLength).IsRequired();
-        builder.Property(e => e.Result).IsRequired();
+        builder.Property(e => e.ResultId).IsRequired();
+        builder.Ignore(e => e.Result);
 
         builder.HasAlternateKey(e => new { e.TenantId, e.Id })
             .HasName("ak_incoming_webhook_redrive_records_tenant_id_id");
@@ -29,6 +30,11 @@ public class IncomingWebhookRedriveRecordConfiguration : IEntityTypeConfiguratio
         builder.HasOne(e => e.Tenant)
             .WithMany()
             .HasForeignKey(e => e.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.ResultLookup)
+            .WithMany()
+            .HasForeignKey(e => e.ResultId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new

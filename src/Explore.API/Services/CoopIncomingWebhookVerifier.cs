@@ -4,6 +4,8 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Infrastructure.Configuration;
 using Microsoft.Extensions.Options;
@@ -12,6 +14,7 @@ namespace Explore.API.Services;
 
 public sealed class CoopIncomingWebhookVerifier(
     IOptionsMonitor<CoopProviderOptions> options,
+    ITenantContextAccessor tenantContextAccessor,
     ILogger<CoopIncomingWebhookVerifier> logger) : IIncomingWebhookVerifier
 {
     private const string SignaturePrefix = "sha256";
@@ -55,7 +58,7 @@ public sealed class CoopIncomingWebhookVerifier(
                 "The Coop webhook signature header is required."));
         }
 
-        if (!HasValidSignature(currentOptions.WebhookSecret, timestampHeader, context.RawPayload, signatureHeader))
+        if (!HasValidSignature(currentOptions.WebhookSecret, timestampHeader, context.RawPayloadBytes.Span, signatureHeader))
         {
             logger.LogWarning("Coop webhook rejected because signature verification failed.");
             return Task.FromResult(IncomingWebhookVerificationResult.Rejected(
@@ -63,17 +66,29 @@ public sealed class CoopIncomingWebhookVerifier(
                 "The Coop webhook signature could not be verified."));
         }
 
-        var payloadHash = ComputePayloadHash(context.RawPayload);
-        return Task.FromResult(IncomingWebhookVerificationResult.Verified(
-            payloadHash,
+        var tenantId = tenantContextAccessor.TenantId;
+        if (tenantId is null || tenantId == Guid.Empty)
+        {
+            return Task.FromResult(IncomingWebhookVerificationResult.Rejected(
+                "coop_webhook_tenant_authority_missing",
+                "The authenticated Coop credential is not bound to a tenant."));
+        }
+
+        var payloadHash = ComputePayloadHash(context.RawPayloadBytes.Span);
+        var providerMessageId = TryResolveProviderDecisionId(context.RawPayloadBytes, out var decisionId)
+            ? decisionId
+            : payloadHash;
+        return Task.FromResult(IncomingWebhookVerificationResult.VerifiedTenantCredential(
+            tenantId.Value,
+            providerMessageId,
             "moderation.coop.decision",
-            payloadHash));
+            providerMessageId));
     }
 
     private static bool HasValidSignature(
         string webhookSecret,
         string timestampHeader,
-        string rawPayload,
+        ReadOnlySpan<byte> rawPayload,
         string signatureHeader)
     {
         var expected = ComputeSignature(webhookSecret.Trim(), timestampHeader.Trim(), rawPayload);
@@ -85,16 +100,52 @@ public sealed class CoopIncomingWebhookVerifier(
     private static byte[] ComputeSignature(
         string webhookSecret,
         string timestampHeader,
-        string rawPayload)
+        ReadOnlySpan<byte> rawPayload)
     {
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(webhookSecret));
-        return hmac.ComputeHash(Encoding.UTF8.GetBytes($"{timestampHeader}.{rawPayload}"));
+        var prefix = Encoding.UTF8.GetBytes($"{timestampHeader}.");
+        var signedContent = new byte[prefix.Length + rawPayload.Length];
+        prefix.CopyTo(signedContent, 0);
+        rawPayload.CopyTo(signedContent.AsSpan(prefix.Length));
+        return hmac.ComputeHash(signedContent);
     }
 
-    private static string ComputePayloadHash(string rawPayload)
+    private static string ComputePayloadHash(ReadOnlySpan<byte> rawPayload)
     {
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(rawPayload));
+        var hash = SHA256.HashData(rawPayload);
         return "sha256:" + Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    private static bool TryResolveProviderDecisionId(ReadOnlyMemory<byte> rawPayload, out string providerDecisionId)
+    {
+        providerDecisionId = string.Empty;
+        try
+        {
+            using var document = JsonDocument.Parse(rawPayload);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
+            return TryGetRequiredString(document.RootElement, "providerDecisionId", out providerDecisionId) ||
+                   TryGetRequiredString(document.RootElement, "provider_decision_id", out providerDecisionId);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryGetRequiredString(JsonElement element, string propertyName, out string value)
+    {
+        value = string.Empty;
+        if (!element.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        value = property.GetString()?.Trim() ?? string.Empty;
+        return value.Length > 0;
     }
 
     private static IEnumerable<string> ExtractSignatureCandidates(string headerValue)

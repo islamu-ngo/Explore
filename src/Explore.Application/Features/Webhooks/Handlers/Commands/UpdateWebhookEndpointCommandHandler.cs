@@ -2,6 +2,7 @@
 // ABOUTME: Keeps secret rotation separate from normal endpoint edits and delegates persistence to repositories.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -11,7 +12,9 @@ namespace Explore.Application.Features.Webhooks.Handlers.Commands;
 
 public sealed class UpdateWebhookEndpointCommandHandler(
     IWebhookEndpointRepository endpointRepository,
-    IWebhookEventTypeRepository eventTypeRepository)
+    IWebhookConsumerRepository consumerRepository,
+    IWebhookEventTypeRepository eventTypeRepository,
+    IWebhookProviderCapabilityResolver capabilityResolver)
     : IRequestHandler<UpdateWebhookEndpointCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -31,6 +34,23 @@ public sealed class UpdateWebhookEndpointCommandHandler(
         if (endpoint is null || endpoint.Status == WebhookEndpointStatus.Archived)
         {
             return Failure("webhook_endpoint_not_found", ["Webhook endpoint was not found."]);
+        }
+
+        var consumer = await consumerRepository.GetByTenantAndIdAsync(
+            request.TenantId,
+            endpoint.ConsumerId,
+            cancellationToken);
+        if (consumer is null || consumer.Status != WebhookConsumerStatus.Active)
+        {
+            return Failure("webhook_consumer_not_found", ["Webhook consumer was not found."]);
+        }
+
+        if (!WebhookEndpointCapabilityPolicy.CanManageLocalEndpoint(
+                capabilityResolver,
+                consumer.ProviderMode,
+                out var capabilityFailure))
+        {
+            return Failure("webhook_endpoint_management_unavailable", [capabilityFailure]);
         }
 
         var existingEndpoint = await endpointRepository.GetByTenantConsumerAndUrlAsync(

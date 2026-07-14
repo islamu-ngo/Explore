@@ -45,6 +45,11 @@ public sealed class WebhooksController(
         "Webhook provider portal validation failed",
         "Webhook provider portal access could not be created.");
 
+    private static readonly ApiValidationProblemDescriptor ProviderBindingValidationProblem = new(
+        "webhookProviderBinding",
+        "Webhook provider binding repair validation failed",
+        "Webhook provider binding could not be repaired.");
+
     private static readonly ApiValidationProblemDescriptor EndpointValidationProblem = new(
         "webhookEndpoint",
         "Webhook endpoint validation failed",
@@ -54,6 +59,11 @@ public sealed class WebhooksController(
         "webhookDeliveryRetry",
         "Webhook delivery retry validation failed",
         "Webhook delivery retry command failed.");
+
+    private static readonly ApiValidationProblemDescriptor IncomingRedriveValidationProblem = new(
+        "incomingWebhookRedrive",
+        "Incoming webhook redrive validation failed",
+        "Incoming webhook redrive command failed.");
 
     private static readonly ApiNotFoundProblemDescriptor ConsumerNotFoundProblem = new(
         "Webhook consumer not found",
@@ -74,6 +84,11 @@ public sealed class WebhooksController(
         "Webhook delivery attempt not found",
         "Webhook delivery attempt was not found.",
         "webhook_delivery_attempt_not_found");
+
+    private static readonly ApiNotFoundProblemDescriptor IncomingWebhookNotFoundProblem = new(
+        "Incoming webhook not found",
+        "Incoming webhook was not found.",
+        "incoming_webhook_not_found");
 
     [HttpGet("event-types", Name = RouteNames.GetWebhookEventTypes)]
     [AllowAnonymous]
@@ -183,6 +198,39 @@ public sealed class WebhooksController(
             RouteNames.GetWebhookConsumerById,
             new { consumerId = response.Id },
             response);
+    }
+
+    [HttpPost("consumers/{consumerId:guid}/provider-binding/repair", Name = RouteNames.RepairWebhookProviderBinding)]
+    [EndpointSummary("Repair webhook provider binding")]
+    [EndpointDescription("Verifies self-hosted provider ownership and atomically creates or rebinds the consumer application mapping.")]
+    [Consumes(HateoasConstants.JsonMediaType)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> RepairProviderBinding(
+        Guid consumerId,
+        [FromBody] RepairWebhookProviderBindingRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await mediator.Send(
+            new RepairWebhookProviderBindingCommand
+            {
+                TenantId = tenantContext.TenantId,
+                ConsumerId = consumerId,
+                ExternalApplicationId = request.ExternalApplicationId,
+                ReasonCode = request.ReasonCode
+            },
+            cancellationToken);
+
+        return response.Success
+            ? Ok(response)
+            : ToProviderBindingRepairProblem(response);
     }
 
     [HttpGet("endpoints", Name = RouteNames.GetWebhookEndpoints)]
@@ -610,6 +658,37 @@ public sealed class WebhooksController(
             : ToWebhookDeliveryRetryProblem(response);
     }
 
+    [HttpPost("incoming/{incomingWebhookMessageId:guid}/redrive", Name = RouteNames.RedriveIncomingWebhook)]
+    [EndpointSummary("Redrive incoming webhook")]
+    [EndpointDescription("Schedules a new processing generation for one tenant-scoped dead-lettered incoming webhook.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.DefaultPolicy)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> RedriveIncomingWebhook(
+        Guid incomingWebhookMessageId,
+        [FromBody] RedriveIncomingWebhookRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await mediator.Send(
+            new RedriveIncomingWebhookCommand
+            {
+                TenantId = tenantContext.TenantId,
+                IncomingWebhookMessageId = incomingWebhookMessageId,
+                ExpectedProcessingGeneration = request.ExpectedProcessingGeneration,
+                Reason = request.Reason
+            },
+            cancellationToken);
+
+        return response.Success
+            ? Ok(response)
+            : ToIncomingWebhookRedriveProblem(response);
+    }
+
     private ActionResult<BaseCommandResponse<Guid>> ToWebhookConsumerProblem(BaseCommandResponse<Guid> response)
     {
         if (string.Equals(response.FailureCode, "webhook_consumer_name_conflict", StringComparison.Ordinal))
@@ -621,6 +700,37 @@ public sealed class WebhooksController(
         }
 
         return this.ToCommandValidationProblem(response, ConsumerValidationProblem);
+    }
+
+    private ActionResult<BaseCommandResponse<Guid>> ToProviderBindingRepairProblem(
+        BaseCommandResponse<Guid> response)
+    {
+        return response.FailureCode switch
+        {
+            "webhook_consumer_not_found" => ApiProblemFactory.ToProblemResult(
+                ApiProblemFactory.CreateNotFoundProblem(HttpContext, ConsumerNotFoundProblem)),
+            "webhook_provider_binding_mismatched" or
+                "webhook_provider_application_not_found" or
+                "webhook_provider_binding_repair_not_available" or
+                "webhook_provider_binding_repair_conflict" => this.ToCommandConflictProblem(
+                    response,
+                    "Webhook provider binding cannot be repaired",
+                    response.Message ?? "Webhook provider binding repair is unavailable."),
+            "svix_provider_not_enabled" or
+                "svix_self_hosted_profile_unsupported" or
+                "webhook_provider_profile_unavailable" or
+                "webhook_instance_identity_unavailable" or
+                "svix_auth_token_secret_missing" or
+                "svix_auth_token_unresolved" or
+                "svix_auth_failed" or
+                "svix_provider_unavailable" => ApiProblemFactory.ToProblemResult(
+                    ApiProblemFactory.CreateServiceUnavailableProblem(
+                        HttpContext,
+                        "Webhook provider binding repair unavailable",
+                        response.Message ?? "Webhook provider binding repair is temporarily unavailable.",
+                        response.FailureCode ?? "webhook_provider_binding_repair_unavailable")),
+            _ => this.ToCommandValidationProblem(response, ProviderBindingValidationProblem)
+        };
     }
 
     private ActionResult<BaseCommandResponse<Guid>> ToWebhookEndpointProblem(BaseCommandResponse<Guid> response)
@@ -652,6 +762,22 @@ public sealed class WebhooksController(
                     "Webhook delivery retry not available",
                     response.Message ?? "Webhook delivery retry cannot be scheduled for this attempt."),
             _ => this.ToCommandValidationProblem(response, RetryValidationProblem)
+        };
+    }
+
+    private ActionResult<BaseCommandResponse<Guid>> ToIncomingWebhookRedriveProblem(BaseCommandResponse<Guid> response)
+    {
+        return response.FailureCode switch
+        {
+            "incoming_webhook_not_found" => ApiProblemFactory.ToProblemResult(
+                ApiProblemFactory.CreateNotFoundProblem(HttpContext, IncomingWebhookNotFoundProblem)),
+            "incoming_webhook_redrive_generation_conflict" or
+                "incoming_webhook_redrive_active_lease" or
+                "incoming_webhook_redrive_not_eligible" => this.ToCommandConflictProblem(
+                    response,
+                    "Incoming webhook redrive not available",
+                    response.Message ?? "Incoming webhook cannot be redriven in its current state."),
+            _ => this.ToCommandValidationProblem(response, IncomingRedriveValidationProblem)
         };
     }
 

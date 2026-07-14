@@ -15,15 +15,18 @@ using Microsoft.AspNetCore.Http;
 public sealed class WebhookConsumerResourceAssembler : ResourceAssemblerBase<WebhookConsumerDto, WebhookConsumerDto>
 {
     private readonly IWebhookProviderPortalEligibilityService _portalEligibilityService;
+    private readonly IWebhookProviderBindingAuthorityService _bindingAuthorityService;
 
     public WebhookConsumerResourceAssembler(
         IHateoasLinkGenerator linkGenerator,
         ILinkPolicy<WebhookConsumerDto> detailLinkPolicy,
         ICollectionLinkPolicy<WebhookConsumerDto> collectionLinkPolicy,
-        IWebhookProviderPortalEligibilityService portalEligibilityService)
+        IWebhookProviderPortalEligibilityService portalEligibilityService,
+        IWebhookProviderBindingAuthorityService bindingAuthorityService)
         : base(linkGenerator, detailLinkPolicy, collectionLinkPolicy)
     {
         _portalEligibilityService = portalEligibilityService;
+        _bindingAuthorityService = bindingAuthorityService;
     }
 
     protected override async Task<IReadOnlyList<LinkDefinition>> GetDetailLinkDefinitionsAsync(
@@ -32,6 +35,7 @@ public sealed class WebhookConsumerResourceAssembler : ResourceAssemblerBase<Web
         HttpContext httpContext)
     {
         var definitions = await base.GetDetailLinkDefinitionsAsync(dto, user, httpContext);
+        definitions = AddRepairLinkWhenEligible(dto, definitions);
         return await AddPortalLinkWhenEligibleAsync(dto, definitions, httpContext.RequestAborted);
     }
 
@@ -41,6 +45,7 @@ public sealed class WebhookConsumerResourceAssembler : ResourceAssemblerBase<Web
         HttpContext httpContext)
     {
         var definitions = await base.GetListItemLinkDefinitionsAsync(dto, user, httpContext);
+        definitions = AddRepairLinkWhenEligible(dto, definitions);
         return await AddPortalLinkWhenEligibleAsync(dto, definitions, httpContext.RequestAborted);
     }
 
@@ -54,6 +59,10 @@ public sealed class WebhookConsumerResourceAssembler : ResourceAssemblerBase<Web
         {
             return definitionsByItem;
         }
+
+        definitionsByItem = definitionsByItem
+            .Select((definitions, index) => AddRepairLinkWhenEligible(items[index], definitions))
+            .ToList();
 
         var tenantIds = items.Select(item => item.TenantId).Distinct().ToArray();
         if (tenantIds.Length != 1 || tenantIds[0] == Guid.Empty)
@@ -101,6 +110,13 @@ public sealed class WebhookConsumerResourceAssembler : ResourceAssemblerBase<Web
         WebhookConsumerDto dto,
         IReadOnlyList<LinkDefinition> definitions) =>
         [.. definitions, WebhookConsumerDetailLinkPolicy.CreateProviderPortalLink(dto)];
+
+    private IReadOnlyList<LinkDefinition> AddRepairLinkWhenEligible(
+        WebhookConsumerDto dto,
+        IReadOnlyList<LinkDefinition> definitions) =>
+        IsConsumerPortalCandidate(dto) && _bindingAuthorityService.ResolveCurrentProfile().Succeeded
+            ? [.. definitions, WebhookConsumerDetailLinkPolicy.CreateProviderBindingRepairLink(dto)]
+            : definitions;
 
     private static bool IsConsumerPortalCandidate(WebhookConsumerDto dto) =>
         dto.StatusId == (int)WebhookConsumerStatus.Active &&

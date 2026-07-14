@@ -2,6 +2,7 @@
 // ABOUTME: Persists canonical consumer rows without exposing provider internals to controllers.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -9,7 +10,9 @@ using MediatR;
 
 namespace Explore.Application.Features.Webhooks.Handlers.Commands;
 
-public sealed class CreateWebhookConsumerCommandHandler(IWebhookConsumerRepository consumerRepository)
+public sealed class CreateWebhookConsumerCommandHandler(
+    IWebhookConsumerRepository consumerRepository,
+    IWebhookProviderCapabilityResolver capabilityResolver)
     : IRequestHandler<CreateWebhookConsumerCommand, BaseCommandResponse<Guid>>
 {
     private const int MaxNameLength = 200;
@@ -25,6 +28,15 @@ public sealed class CreateWebhookConsumerCommandHandler(IWebhookConsumerReposito
                 "Webhook consumer validation failed.",
                 "webhook_consumer_validation_failed",
                 errors);
+        }
+
+        var capabilityResolution = capabilityResolver.Resolve((WebhookProviderMode)request.ProviderModeId);
+        if (!capabilityResolution.IsProviderModeAvailable)
+        {
+            return Failure(
+                "Webhook provider mode is unavailable.",
+                "webhook_provider_mode_capability_unavailable",
+                [capabilityResolution.UnavailableReasonCode ?? "Webhook provider capability authority is unavailable."]);
         }
 
         var name = request.Name.Trim();

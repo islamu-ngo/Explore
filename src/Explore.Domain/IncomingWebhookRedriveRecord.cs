@@ -1,6 +1,7 @@
 // ABOUTME: Append-only provenance for an operator redrive of a dead-lettered incoming webhook.
 // ABOUTME: Records actor, reason, time, source generation, target generation, and scheduling result.
 
+using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
@@ -20,7 +21,14 @@ public class IncomingWebhookRedriveRecord : ITenantEntity, IAuditableEntity
     public DateTime RequestedAt { get; private set; }
     public int SourceProcessingGeneration { get; private set; }
     public int TargetProcessingGeneration { get; private set; }
-    public IncomingWebhookRedriveResult Result { get; private set; }
+    public int ResultId { get; private set; }
+    public IncomingWebhookRedriveResultLookup ResultLookup { get; private set; } = null!;
+    [NotMapped]
+    public IncomingWebhookRedriveResult Result
+    {
+        get => (IncomingWebhookRedriveResult)ResultId;
+        private set => ResultId = (int)value;
+    }
 
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
@@ -55,9 +63,4 @@ public class IncomingWebhookRedriveRecord : ITenantEntity, IAuditableEntity
             CreatedAt = requestedAt
         };
     }
-}
-
-public enum IncomingWebhookRedriveResult
-{
-    Scheduled = 1
 }

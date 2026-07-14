@@ -1,8 +1,10 @@
-// ABOUTME: Default application service that persists canonical webhook messages and dispatches providers.
-// ABOUTME: Bridges payload building, idempotent message creation, provider publish, and safe business metrics.
+// ABOUTME: Default application service that materializes immutable outgoing webhook delivery plans.
+// ABOUTME: Resolves governed targets and atomically persists exact bytes without synchronous network dispatch.
 
+using System.Globalization;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
+using Explore.Application.Exceptions;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 
@@ -10,9 +12,10 @@ namespace Explore.Application.Webhooks;
 
 public sealed class DefaultWebhookEventPublisher(
     IWebhookPayloadBuilder payloadBuilder,
-    IWebhookMessageRepository messageRepository,
-    IWebhookDeliveryProvider deliveryProvider,
-    BusinessMetrics metrics) : IWebhookEventPublisher
+    IWebhookDeliveryPlanResolver deliveryPlanResolver,
+    IWebhookDeliveryPlanMaterializer deliveryPlanMaterializer,
+    BusinessMetrics metrics,
+    TimeProvider timeProvider) : IWebhookEventPublisher
 {
     public async Task<WebhookEventPublishResult> PublishAsync(
         WebhookEventBuildContext context,
@@ -20,95 +23,79 @@ public sealed class DefaultWebhookEventPublisher(
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var providerName = deliveryProvider.ProviderName;
-        if (IsDisabledProvider(providerName))
+        var resolution = await deliveryPlanResolver.ResolveAsync(context, cancellationToken);
+        if (!resolution.Succeeded)
         {
             return WebhookEventPublishResult.SkippedResult(
-                "webhooks_disabled",
-                "Outgoing product webhooks are disabled.");
+                resolution.FailureCategory ?? "webhook_delivery_plan_unavailable",
+                resolution.SafeDetail);
         }
 
-        var message = await messageRepository.GetByTenantAndIdAsync(
-            context.TenantId,
-            context.MessageId,
-            cancellationToken);
-
-        if (message is not null)
-        {
-            var duplicatePayload = await payloadBuilder.BuildAsync(context, cancellationToken);
-            if (!duplicatePayload.Succeeded)
-            {
-                return WebhookEventPublishResult.Failure(
-                    message.Id,
-                    duplicatePayload.FailureCategory ?? "webhook_payload_build_failed",
-                    isRetryable: false,
-                    duplicatePayload.SafeDetail);
-            }
-
-            if (!string.Equals(message.PayloadHash, duplicatePayload.PayloadHash, StringComparison.Ordinal))
-            {
-                return WebhookEventPublishResult.Failure(
-                    message.Id,
-                    "webhook_payload_conflict",
-                    isRetryable: false,
-                    "The message identity already exists with different payload bytes.");
-            }
-
-            return WebhookEventPublishResult.Success(message.Id);
-        }
-
-        var creation = await CreateMessageAsync(context, providerName, cancellationToken);
-        if (creation.Failure is not null)
-        {
-            return creation.Failure;
-        }
-
-        message = creation.Message!;
-
-        var payloadBytes = message.GetPayloadBytes();
-        if (payloadBytes is null)
-        {
-            return WebhookEventPublishResult.Failure(
-                message.Id,
-                message.PayloadClearedAt is null ? "payload_unavailable" : "message_payload_cleared",
-                isRetryable: false);
-        }
-
-        var providerResult = await deliveryProvider.PublishAsync(
-            CreateProviderMessage(message, payloadBytes),
-            cancellationToken);
-
-        if (providerResult.Succeeded)
-        {
-            return WebhookEventPublishResult.Success(message.Id, providerResult.ProviderMessageId);
-        }
-
-        var failureCategory = providerResult.FailureCategory ?? "webhook_provider_failed";
-        metrics.RecordWebhookProviderPublishFailure(
-            message.EventType,
-            providerName,
-            failureCategory);
-
-        return WebhookEventPublishResult.Failure(
-            message.Id,
-            failureCategory,
-            providerResult.IsRetryable,
-            providerResult.SafeDetail);
-    }
-
-    private async Task<MessageCreation> CreateMessageAsync(
-        WebhookEventBuildContext context,
-        string providerName,
-        CancellationToken cancellationToken)
-    {
         var payload = await payloadBuilder.BuildAsync(context, cancellationToken);
         if (!payload.Succeeded)
         {
-            return new MessageCreation(null, WebhookEventPublishResult.Failure(
+            return WebhookEventPublishResult.Failure(
                 context.MessageId,
                 payload.FailureCategory ?? "webhook_payload_build_failed",
                 isRetryable: false,
-                payload.SafeDetail));
+                payload.SafeDetail);
+        }
+
+        try
+        {
+            var materialization = CreateMaterialization(
+                context,
+                payload,
+                resolution,
+                timeProvider.GetUtcNow().UtcDateTime);
+            var result = await deliveryPlanMaterializer.MaterializeAsync(
+                materialization,
+                cancellationToken);
+            if (result.Created)
+            {
+                metrics.RecordWebhookMessageCreated(
+                    context.EventType,
+                    resolution.ProviderMode.ToString(),
+                    "created");
+            }
+
+            return WebhookEventPublishResult.Success(result.Message.Id);
+        }
+        catch (WebhookMaterializationConflictException)
+        {
+            return WebhookEventPublishResult.Failure(
+                context.MessageId,
+                "webhook_payload_conflict",
+                isRetryable: false,
+                "The message identity already exists with different immutable data.");
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
+        {
+            return WebhookEventPublishResult.Failure(
+                context.MessageId,
+                "invalid_webhook_delivery_plan",
+                isRetryable: false,
+                exception.GetType().Name);
+        }
+    }
+
+    private static WebhookDeliveryMaterialization CreateMaterialization(
+        WebhookEventBuildContext context,
+        WebhookPayloadBuildResult payload,
+        WebhookDeliveryPlanResolution resolution,
+        DateTime materializedAt)
+    {
+        if (resolution.WebhookConsumerId is not { } consumerId ||
+            resolution.ConfigurationVersion is null ||
+            resolution.EventContractVersion is not { } eventContractVersion ||
+            resolution.RetentionPolicy is null ||
+            resolution.RetentionPolicyVersion is null ||
+            resolution.PublicationRetentionUntil is not { } publicationRetentionUntil ||
+            payload.PayloadBytes is null ||
+            payload.PayloadHash is null ||
+            payload.PayloadRetentionUntil is null)
+        {
+            throw new InvalidOperationException("The resolved delivery plan is incomplete.");
         }
 
         var message = WebhookMessage.Create(
@@ -118,43 +105,95 @@ public sealed class DefaultWebhookEventPublisher(
             context.EventId,
             context.AggregateKind,
             context.AggregateId,
-            context.ConsumerId,
-            payload.PayloadBytes!,
+            consumerId,
+            payload.PayloadBytes,
             "application/json",
             "utf-8",
             context.OccurredAt.UtcDateTime,
-            payload.PayloadRetentionUntil!.Value.UtcDateTime,
-            DateTime.UtcNow);
-
+            payload.PayloadRetentionUntil.Value.UtcDateTime,
+            materializedAt);
         if (!string.Equals(message.PayloadHash, payload.PayloadHash, StringComparison.Ordinal))
         {
-            throw new InvalidOperationException("Payload builder hash does not match the exact bytes it returned.");
+            throw new InvalidOperationException("Payload builder hash does not match its exact bytes.");
         }
 
-        var created = await messageRepository.CreateAsync(message, cancellationToken);
-        metrics.RecordWebhookMessageCreated(
-            context.EventType,
-            providerName,
-            "created");
+        var deliveryPlan = WebhookDeliveryPlanSnapshot.Create(
+            message.TenantId,
+            message.Id,
+            consumerId,
+            resolution.ProviderMode,
+            resolution.ConfigurationVersion,
+            eventContractVersion.ToString(CultureInfo.InvariantCulture),
+            resolution.RetentionPolicy,
+            resolution.RetentionPolicyVersion,
+            payload.PayloadRetentionUntil.Value,
+            new DateTimeOffset(materializedAt));
+        var localTargets = resolution.LocalTargets
+            .Select(target => WebhookLocalTargetSnapshot.Create(
+                deliveryPlan,
+                target.Endpoint,
+                target.EndpointConfigurationVersion,
+                target.CredentialValidFromUtc,
+                target.CredentialValidUntilUtc,
+                new DateTimeOffset(materializedAt)))
+            .ToArray();
+        var providerPublications = resolution.ProviderTargets
+            .Select(target => CreateProviderPublication(
+                message,
+                deliveryPlan,
+                target,
+                resolution,
+                eventContractVersion,
+                publicationRetentionUntil,
+                materializedAt))
+            .ToArray();
 
-        return new MessageCreation(created, null);
+        return new WebhookDeliveryMaterialization(
+            message,
+            deliveryPlan,
+            localTargets,
+            providerPublications);
     }
 
-    private static WebhookProviderMessage CreateProviderMessage(WebhookMessage message, byte[] payloadBytes) =>
-        new(
-            message.Id,
+    private static WebhookProviderPublication CreateProviderPublication(
+        WebhookMessage message,
+        WebhookDeliveryPlanSnapshot deliveryPlan,
+        WebhookProviderTargetResolution target,
+        WebhookDeliveryPlanResolution resolution,
+        int eventContractVersion,
+        DateTime publicationRetentionUntil,
+        DateTime materializedAt)
+    {
+        var binding = target.Binding;
+        if (!binding.IsVerifiedFor(message.TenantId, deliveryPlan.WebhookConsumerId) ||
+            string.IsNullOrWhiteSpace(binding.ExternalApplicationId))
+        {
+            throw new InvalidOperationException("Provider publication requires a verified consumer binding.");
+        }
+
+        var stableIdentity = $"{message.Id:N}:{binding.Id:N}";
+        return WebhookProviderPublication.Create(
             message.TenantId,
-            message.ConsumerId,
-            message.EventType,
-            message.EventId,
-            message.AggregateKind,
-            message.AggregateId,
-            payloadBytes,
+            message.Id,
+            deliveryPlan.Id,
+            binding.ProviderKind,
+            binding.Id,
+            binding.ProviderVersion,
+            stableIdentity,
+            $"publication:{stableIdentity}",
             message.PayloadHash,
-            message.PayloadRetentionUntil);
-
-    private static bool IsDisabledProvider(string providerName) =>
-        string.Equals(providerName, "Disabled", StringComparison.OrdinalIgnoreCase);
-
-    private sealed record MessageCreation(WebhookMessage? Message, WebhookEventPublishResult? Failure);
+            binding.ApplicationUid,
+            binding.ExternalApplicationId,
+            binding.ProviderEnvironment,
+            target.CredentialReference,
+            target.CredentialVersion,
+            resolution.ProviderMode,
+            resolution.ConfigurationVersion!,
+            eventContractVersion,
+            resolution.RetentionPolicyVersion!,
+            message.PayloadRetentionUntil,
+            publicationRetentionUntil,
+            target.IdempotencyValidUntil,
+            materializedAt);
+    }
 }

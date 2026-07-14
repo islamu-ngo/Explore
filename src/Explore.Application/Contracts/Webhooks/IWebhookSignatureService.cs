@@ -12,7 +12,7 @@ public interface IWebhookSignatureService
         WebhookSecretMaterial secret);
 
     WebhookVerificationResult Verify(
-        string rawPayload,
+        ReadOnlySpan<byte> rawPayload,
         IReadOnlyDictionary<string, string> headers,
         WebhookSecretMaterial secret);
 }

@@ -27,6 +27,12 @@ public static class MachineScopeMapping
         if (scopeSet.Contains(ExternalApiKeyScopes.AdminInstance))
             return true;
 
+        if (scopeSet.Contains(InternalMachineScopes.ProcessIncomingWebhook))
+        {
+            return resourceKind == ResourceKinds.Webhook &&
+                   action == AuthorizationActions.Webhooks.ProcessIncoming;
+        }
+
         var isWrite = IsWriteAction(action);
 
         switch (resourceKind)
@@ -152,9 +158,11 @@ public static class MachineScopeMapping
         AuthorizationActions.Webhooks.RotateSecret => true,
         AuthorizationActions.Webhooks.Test => true,
         AuthorizationActions.Webhooks.Retry => true,
+        AuthorizationActions.Webhooks.RedriveIncoming => true,
         AuthorizationActions.Webhooks.Resume => true,
         AuthorizationActions.Webhooks.ManageProvider => true,
         AuthorizationActions.Webhooks.OpenProviderPortal => true,
+        AuthorizationActions.Webhooks.ProcessIncoming => true,
         AuthorizationActions.EmailDispatches.ManageTenant => true,
         AuthorizationActions.EmailDispatches.Park => true,
         AuthorizationActions.EmailDispatches.Replay => true,

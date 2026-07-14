@@ -338,6 +338,8 @@ public static class LinkRelations
 
     public const string OpenProviderPortal = "open-provider-portal";
 
+    public const string RepairProviderBinding = "repair-provider-binding";
+
     /// <summary>
     /// Action link for cancelling an AI provider run before it completes.
     /// </summary>

@@ -25,7 +25,8 @@ public class IncomingWebhookProcessingAttemptConfiguration : IEntityTypeConfigur
         });
 
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-        builder.Property(e => e.Outcome).IsRequired();
+        builder.Property(e => e.OutcomeId).IsRequired();
+        builder.Ignore(e => e.Outcome);
         builder.Property(e => e.FailureCategory).HasMaxLength(IncomingWebhookMessage.MaxFailureCodeLength);
         builder.Property(e => e.SafeDetail).HasMaxLength(IncomingWebhookMessage.MaxSafeDetailLength);
 
@@ -37,13 +38,18 @@ public class IncomingWebhookProcessingAttemptConfiguration : IEntityTypeConfigur
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(e => e.OutcomeLookup)
+            .WithMany()
+            .HasForeignKey(e => e.OutcomeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(e => new
         {
             e.TenantId,
             e.IncomingWebhookMessageId,
             e.ProcessingGeneration,
             e.ProcessingFence,
-            e.Outcome
+            e.OutcomeId
         })
             .HasDatabaseName("ux_incoming_webhook_processing_attempts_evidence")
             .IsUnique();

@@ -31,8 +31,20 @@ public sealed class WebhookConsumerDetailLinkPolicy : ILinkPolicy<WebhookConsume
             "POST",
             "Open provider portal",
             RequiresAuth: true)
+        .RequirePermission(AuthorizationActions.Webhooks.OpenProviderPortal,
+            ResourceDescriptors.WebhookConsumer,
+            dto);
+
+    public static LinkDefinition CreateProviderBindingRepairLink(WebhookConsumerDto dto) =>
+        new LinkDefinition(
+            LinkRelations.RepairProviderBinding,
+            RouteNames.RepairWebhookProviderBinding,
+            new { consumerId = dto.Id },
+            "POST",
+            "Repair provider binding",
+            RequiresAuth: true)
         .RequirePermission(
-            AuthorizationActions.Webhooks.OpenProviderPortal,
+            AuthorizationActions.Webhooks.ManageProvider,
             ResourceDescriptors.WebhookConsumer,
             dto);
 }

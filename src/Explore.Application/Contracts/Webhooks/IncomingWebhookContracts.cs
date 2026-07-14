@@ -6,36 +6,64 @@ namespace Explore.Application.Contracts.Webhooks;
 public sealed record IncomingWebhookContext(
     string Provider,
     string RawPayload,
+    ReadOnlyMemory<byte> RawPayloadBytes,
     IReadOnlyDictionary<string, string> Headers,
     DateTimeOffset ReceivedAt);
 
 public sealed record IncomingWebhookVerificationResult(
     bool IsVerified,
+    Guid? TenantId,
+    Guid? WebhookConsumerProviderBindingId,
     string? ProviderMessageId,
     string? EventType,
     string? IdempotencyKey,
     string? FailureCategory,
     string? SafeDetail)
 {
-    public static IncomingWebhookVerificationResult Verified(
+    public static IncomingWebhookVerificationResult VerifiedProviderBinding(
+        Guid tenantId,
+        Guid webhookConsumerProviderBindingId,
         string providerMessageId,
         string? eventType,
-        string idempotencyKey) =>
-        new(true, providerMessageId, eventType, idempotencyKey, null, null);
+        string idempotencyKey)
+    {
+        RequireGuid(tenantId, nameof(tenantId));
+        RequireGuid(webhookConsumerProviderBindingId, nameof(webhookConsumerProviderBindingId));
+        return new(true, tenantId, webhookConsumerProviderBindingId, providerMessageId, eventType, idempotencyKey, null, null);
+    }
+
+    public static IncomingWebhookVerificationResult VerifiedTenantCredential(
+        Guid tenantId,
+        string providerMessageId,
+        string? eventType,
+        string idempotencyKey)
+    {
+        RequireGuid(tenantId, nameof(tenantId));
+        return new(true, tenantId, null, providerMessageId, eventType, idempotencyKey, null, null);
+    }
 
     public static IncomingWebhookVerificationResult Rejected(
         string failureCategory,
         string? safeDetail = null) =>
-        new(false, null, null, null, failureCategory, safeDetail);
+        new(false, null, null, null, null, null, failureCategory, safeDetail);
+
+    private static void RequireGuid(Guid value, string parameterName)
+    {
+        if (value == Guid.Empty)
+        {
+            throw new ArgumentException("Identifier is required.", parameterName);
+        }
+    }
 }
 
 public sealed record IncomingWebhookProcessingResult(
     IncomingWebhookProcessingOutcome Outcome,
     string? FailureCategory = null,
-    string? SafeDetail = null)
+    string? SafeDetail = null,
+    string? SafeResultReference = null)
 {
-    public static IncomingWebhookProcessingResult Processed() =>
-        new(IncomingWebhookProcessingOutcome.Processed);
+    public static IncomingWebhookProcessingResult Processed(string? safeResultReference = null) =>
+        new(IncomingWebhookProcessingOutcome.Processed, SafeResultReference: safeResultReference);
 
     public static IncomingWebhookProcessingResult Ignored(string reasonCode, string? safeDetail = null) =>
         new(IncomingWebhookProcessingOutcome.Ignored, reasonCode, safeDetail);
@@ -71,6 +99,8 @@ public interface IIncomingWebhookVerifier
 public interface IIncomingWebhookHandler
 {
     string EffectKind { get; }
+
+    bool CanHandle(string provider, string? eventType);
 
     Task<IncomingWebhookProcessingResult> HandleAsync(
         IncomingWebhookProcessingContext context,

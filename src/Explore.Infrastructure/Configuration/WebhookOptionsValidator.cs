@@ -1,6 +1,7 @@
 // ABOUTME: Validates webhook provider runtime settings before provider selection starts.
 // ABOUTME: Rejects unsupported modes and unsafe LocalProvider delivery limits.
 
+using Explore.Domain;
 using Explore.Domain.Secrets;
 using Explore.Infrastructure.Webhooks;
 using Microsoft.Extensions.Options;
@@ -120,9 +121,31 @@ public sealed class WebhookOptionsValidator : IValidateOptions<WebhookOptions>
             failures.Add("Webhooks:Svix:CapabilityPolicyVersion is required and cannot exceed 100 characters.");
         }
 
-        if (!string.IsNullOrWhiteSpace(options.BaseUrl))
+        var normalizedBaseUrl = options.BaseUrl?.Trim();
+        var baseUrlConfigured = !string.IsNullOrWhiteSpace(normalizedBaseUrl);
+        if (!SvixConformanceProfileRegistry.TryResolve(
+                options.Environment,
+                options.ProviderVersion,
+                options.CapabilityPolicyVersion,
+                baseUrlConfigured,
+                out var profile))
         {
-            if (!Uri.TryCreate(options.BaseUrl.Trim(), UriKind.Absolute, out var baseUrl))
+            failures.Add(
+                "Webhooks:Svix provider environment/version/capability policy is not present in the conformance matrix.");
+        }
+        else if (profile is null || !profile.IsVerified)
+        {
+            failures.Add(
+                "Webhooks:Svix provider profile has no executed conformance evidence and cannot be selected.");
+        }
+        else
+        {
+            ValidateEnabledSvixCapabilities(options, profile, failures);
+        }
+
+        if (baseUrlConfigured)
+        {
+            if (!Uri.TryCreate(normalizedBaseUrl, UriKind.Absolute, out var baseUrl))
             {
                 failures.Add("Webhooks:Svix:BaseUrl must be an absolute URL when configured.");
             }
@@ -144,6 +167,31 @@ public sealed class WebhookOptionsValidator : IValidateOptions<WebhookOptions>
             failures.Add("Webhooks:Svix:AuthTokenSecretRef must reference a known secret definition.");
         }
     }
+
+    private static void ValidateEnabledSvixCapabilities(
+        WebhookSvixOptions options,
+        SvixConformanceProfile profile,
+        List<string> failures)
+    {
+        if (options.AppPortalEnabled &&
+            !Supports(profile.Capabilities, WebhookProviderCapability.AppPortal))
+        {
+            failures.Add(
+                "Webhooks:Svix:AppPortalEnabled requires the AppPortal capability in the verified provider profile.");
+        }
+
+        if (options.SyncEventTypesOnStartup &&
+            !Supports(profile.Capabilities, WebhookProviderCapability.EventCatalog))
+        {
+            failures.Add(
+                "Webhooks:Svix:SyncEventTypesOnStartup requires the EventCatalog capability in the verified provider profile.");
+        }
+    }
+
+    private static bool Supports(
+        WebhookProviderCapability available,
+        WebhookProviderCapability required) =>
+        (available & required) == required;
 
     private static void ValidateSvixOperationalOptions(WebhookSvixOptions options, List<string> failures)
     {

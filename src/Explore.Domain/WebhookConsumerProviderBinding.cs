@@ -122,6 +122,24 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
                 nameof(externalApplicationId)));
     }
 
+    public static WebhookConsumerProviderBinding CreateLegacyUnresolved(
+        Guid tenantId,
+        Guid webhookConsumerId,
+        Guid instanceId,
+        string providerEnvironment,
+        WebhookProviderCapabilityProfile capabilityProfile)
+    {
+        return Create(
+            tenantId,
+            webhookConsumerId,
+            instanceId,
+            providerEnvironment,
+            capabilityProfile,
+            WebhookProviderCapability.None,
+            WebhookProviderBindingVerificationState.LegacyUnverified,
+            externalApplicationId: null);
+    }
+
     public void VerifyOwnership(
         Guid verifiedTenantId,
         Guid verifiedWebhookConsumerId,
@@ -145,6 +163,63 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
             externalApplicationId,
             nameof(externalApplicationId));
         NormalizedExternalApplicationId = NormalizeIdentity(ExternalApplicationId, nameof(externalApplicationId));
+        VerifiedTenantId = verifiedTenantId;
+        VerifiedWebhookConsumerId = verifiedWebhookConsumerId;
+        VerifiedAtUtc = verifiedAtUtc;
+        VerificationState = WebhookProviderBindingVerificationState.Verified;
+        IsEnabled = true;
+        AdvanceVerificationGuard();
+    }
+
+    public void RepairAndVerifyOwnership(
+        Guid instanceId,
+        Guid verifiedTenantId,
+        Guid verifiedWebhookConsumerId,
+        string externalApplicationId,
+        WebhookProviderCapabilityProfile capabilityProfile,
+        WebhookProviderCapability governanceAllowedCapabilities,
+        DateTimeOffset verifiedAtUtc)
+    {
+        EnsureRequired(instanceId, nameof(instanceId));
+        ArgumentNullException.ThrowIfNull(capabilityProfile);
+
+        if (VerificationState is WebhookProviderBindingVerificationState.Rejected or
+            WebhookProviderBindingVerificationState.Revoked)
+        {
+            throw new InvalidOperationException(
+                "Rejected or revoked provider bindings cannot be repaired.");
+        }
+
+        if (verifiedTenantId != TenantId || verifiedWebhookConsumerId != WebhookConsumerId)
+        {
+            throw new InvalidOperationException(
+                "Provider application ownership does not match the persisted tenant and webhook consumer.");
+        }
+
+        if (capabilityProfile.ProviderKind != ProviderKind)
+        {
+            throw new InvalidOperationException(
+                "Provider binding repair cannot change the provider kind.");
+        }
+
+        WebhookProviderCapabilityProfile.EnsureKnownCapabilities(
+            governanceAllowedCapabilities,
+            nameof(governanceAllowedCapabilities));
+
+        InstanceId = instanceId;
+        ApplicationUid = CreateApplicationUid(instanceId, WebhookConsumerId);
+        NormalizedApplicationUid = NormalizeIdentity(ApplicationUid, nameof(ApplicationUid));
+        ProviderVersion = capabilityProfile.ProviderVersion;
+        Capabilities = capabilityProfile.Capabilities;
+        GovernanceAllowedCapabilities = governanceAllowedCapabilities;
+        CapabilityResolutionVersion = capabilityProfile.ResolutionVersion;
+        CapabilitiesResolvedAtUtc = capabilityProfile.ResolvedAtUtc;
+        ExternalApplicationId = WebhookProviderCapabilityProfile.NormalizeRequired(
+            externalApplicationId,
+            nameof(externalApplicationId));
+        NormalizedExternalApplicationId = NormalizeIdentity(
+            ExternalApplicationId,
+            nameof(externalApplicationId));
         VerifiedTenantId = verifiedTenantId;
         VerifiedWebhookConsumerId = verifiedWebhookConsumerId;
         VerifiedAtUtc = verifiedAtUtc;

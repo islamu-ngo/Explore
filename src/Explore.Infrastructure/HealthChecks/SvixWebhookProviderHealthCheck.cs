@@ -2,7 +2,9 @@
 // ABOUTME: Verifies provider selection and server-side secret resolution without exposing tokens or endpoint URLs.
 
 using Explore.Application.Contracts.Secrets;
+using Explore.Domain;
 using Explore.Infrastructure.Configuration;
+using Explore.Infrastructure.Webhooks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
@@ -27,6 +29,9 @@ public sealed class SvixWebhookProviderHealthCheck(
             ["provider"] = currentOptions.Provider,
             ["svixProviderSelected"] = svixSelected,
             ["baseUrlConfigured"] = !string.IsNullOrWhiteSpace(currentOptions.Svix.BaseUrl),
+            ["environment"] = currentOptions.Svix.Environment,
+            ["providerVersion"] = currentOptions.Svix.ProviderVersion,
+            ["capabilityPolicyVersion"] = currentOptions.Svix.CapabilityPolicyVersion,
             ["appPortalEnabled"] = currentOptions.Svix.AppPortalEnabled,
             ["syncEventTypesOnStartup"] = currentOptions.Svix.SyncEventTypesOnStartup,
             ["authTokenBindingConfigured"] = !string.IsNullOrWhiteSpace(currentOptions.Svix.AuthTokenSecretRef),
@@ -38,6 +43,54 @@ public sealed class SvixWebhookProviderHealthCheck(
             return HealthCheckResult.Healthy(
                 "Svix webhook provider is not the selected outgoing provider.",
                 data);
+        }
+
+        if (!SvixConformanceProfileRegistry.TryResolve(
+                currentOptions.Svix.Environment,
+                currentOptions.Svix.ProviderVersion,
+                currentOptions.Svix.CapabilityPolicyVersion,
+                !string.IsNullOrWhiteSpace(currentOptions.Svix.BaseUrl),
+                out var profile))
+        {
+            return HealthCheckResult.Unhealthy(
+                "The selected Svix deployment profile is absent from the conformance matrix.",
+                data: data);
+        }
+
+        if (profile is null)
+        {
+            return HealthCheckResult.Unhealthy(
+                "The selected Svix deployment profile could not be resolved.",
+                data: data);
+        }
+
+        data["deploymentKind"] = profile.DeploymentKind.ToString();
+        data["conformanceEvidenceRevision"] = profile.EvidenceRevision;
+        data["conformanceExecutedTestCount"] = profile.ExecutedTestCount;
+        data["exactMessageLookupSupported"] = profile.SupportsExactMessageLookup;
+        data["providerCapabilityCount"] = CountIndividualCapabilities(profile.Capabilities);
+        data["providerCapabilityCodes"] = ResolveCapabilityCodes(profile.Capabilities);
+        if (!profile.IsVerified)
+        {
+            return HealthCheckResult.Unhealthy(
+                "The selected Svix deployment profile has no executed conformance evidence.",
+                data: data);
+        }
+
+        if (currentOptions.Svix.AppPortalEnabled &&
+            !Supports(profile.Capabilities, WebhookProviderCapability.AppPortal))
+        {
+            return HealthCheckResult.Unhealthy(
+                "The selected Svix profile does not prove the enabled App Portal capability.",
+                data: data);
+        }
+
+        if (currentOptions.Svix.SyncEventTypesOnStartup &&
+            !Supports(profile.Capabilities, WebhookProviderCapability.EventCatalog))
+        {
+            return HealthCheckResult.Unhealthy(
+                "The selected Svix profile does not prove the enabled event catalog capability.",
+                data: data);
         }
 
         var authTokenSettingKey = currentOptions.Svix.AuthTokenSecretRef?.Trim();
@@ -74,5 +127,27 @@ public sealed class SvixWebhookProviderHealthCheck(
         return HealthCheckResult.Healthy(
             "Svix webhook provider configuration is ready.",
             data);
+    }
+
+    private static string[] ResolveCapabilityCodes(WebhookProviderCapability capabilities) =>
+        Enum.GetValues<WebhookProviderCapability>()
+            .Where(capability => capability != WebhookProviderCapability.None &&
+                IsSingleFlag(capability) &&
+                Supports(capabilities, capability))
+            .Select(capability => capability.ToString())
+            .ToArray();
+
+    private static int CountIndividualCapabilities(WebhookProviderCapability capabilities) =>
+        ResolveCapabilityCodes(capabilities).Length;
+
+    private static bool Supports(
+        WebhookProviderCapability available,
+        WebhookProviderCapability required) =>
+        (available & required) == required;
+
+    private static bool IsSingleFlag(WebhookProviderCapability capability)
+    {
+        var value = (long)capability;
+        return (value & (value - 1)) == 0;
     }
 }

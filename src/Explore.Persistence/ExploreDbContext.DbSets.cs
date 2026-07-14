@@ -289,13 +289,18 @@ public partial class ExploreDbContext
     public DbSet<WebhookConsumerStatusLookup> WebhookConsumerStatuses { get; set; }
     public DbSet<WebhookProviderModeLookup> WebhookProviderModes { get; set; }
     public DbSet<WebhookProviderKindLookup> WebhookProviderKinds { get; set; }
+    public DbSet<WebhookProviderCapabilityLookup> WebhookProviderCapabilities { get; set; }
     public DbSet<WebhookConsumerProviderBinding> WebhookConsumerProviderBindings { get; set; }
     public DbSet<WebhookProviderBindingVerificationStateLookup> WebhookProviderBindingVerificationStates { get; set; }
     public DbSet<WebhookEndpointStatusLookup> WebhookEndpointStatuses { get; set; }
     public DbSet<WebhookLocalDeliveryStatusLookup> WebhookLocalDeliveryStatuses { get; set; }
     public DbSet<WebhookDeliveryAttemptOutcomeLookup> WebhookDeliveryAttemptOutcomes { get; set; }
     public DbSet<IncomingWebhookMessageStatusLookup> IncomingWebhookMessageStatuses { get; set; }
+    public DbSet<IncomingWebhookProcessingAttemptOutcomeLookup> IncomingWebhookProcessingAttemptOutcomes { get; set; }
+    public DbSet<IncomingWebhookSettlementSourceLookup> IncomingWebhookSettlementSources { get; set; }
+    public DbSet<IncomingWebhookRedriveResultLookup> IncomingWebhookRedriveResults { get; set; }
     public DbSet<WebhookProviderPublicationStatusLookup> WebhookProviderPublicationStatuses { get; set; }
+    public DbSet<WebhookProviderPublicationAttemptOutcomeLookup> WebhookProviderPublicationAttemptOutcomes { get; set; }
     public DbSet<WebhookPayloadProvenanceLookup> WebhookPayloadProvenances { get; set; }
     public DbSet<WebhookEventType> WebhookEventTypes { get; set; }
     public DbSet<WebhookEndpoint> WebhookEndpoints { get; set; }
@@ -306,7 +311,6 @@ public partial class ExploreDbContext
     public DbSet<WebhookDeliveryAttempt> WebhookDeliveryAttempts { get; set; }
     public DbSet<WebhookProviderPublication> WebhookProviderPublications { get; set; }
     public DbSet<WebhookProviderPublicationAttempt> WebhookProviderPublicationAttempts { get; set; }
-    public DbSet<WebhookProviderLink> WebhookProviderLinks { get; set; }
     public DbSet<IncomingWebhookMessage> IncomingWebhookMessages { get; set; }
     public DbSet<IncomingWebhookEffectReceipt> IncomingWebhookEffectReceipts { get; set; }
     public DbSet<IncomingWebhookProcessingAttempt> IncomingWebhookProcessingAttempts { get; set; }

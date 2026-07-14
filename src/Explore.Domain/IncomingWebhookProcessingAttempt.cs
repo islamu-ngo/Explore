@@ -1,6 +1,7 @@
 // ABOUTME: Append-only bounded evidence for each incoming webhook claim and processing outcome.
 // ABOUTME: Carries generation and fence values so concurrent or stale executions remain distinguishable.
 
+using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
@@ -15,7 +16,14 @@ public class IncomingWebhookProcessingAttempt : ITenantEntity, IAuditableEntity
     public int ProcessingGeneration { get; private set; }
     public long ProcessingFence { get; private set; }
     public int AttemptNumber { get; private set; }
-    public IncomingWebhookProcessingAttemptOutcome Outcome { get; private set; }
+    public int OutcomeId { get; private set; }
+    public IncomingWebhookProcessingAttemptOutcomeLookup OutcomeLookup { get; private set; } = null!;
+    [NotMapped]
+    public IncomingWebhookProcessingAttemptOutcome Outcome
+    {
+        get => (IncomingWebhookProcessingAttemptOutcome)OutcomeId;
+        private set => OutcomeId = (int)value;
+    }
     public DateTime StartedAt { get; private set; }
     public DateTime RecordedAt { get; private set; }
     public string? FailureCategory { get; private set; }
@@ -62,16 +70,4 @@ public class IncomingWebhookProcessingAttempt : ITenantEntity, IAuditableEntity
             CreatedAt = recordedAt
         };
     }
-}
-
-public enum IncomingWebhookProcessingAttemptOutcome
-{
-    Claimed = 1,
-    Processed = 2,
-    SettledFromReceipt = 3,
-    Ignored = 4,
-    RejectedPermanent = 5,
-    RetryScheduled = 6,
-    DeadLettered = 7,
-    PayloadConflict = 8
 }

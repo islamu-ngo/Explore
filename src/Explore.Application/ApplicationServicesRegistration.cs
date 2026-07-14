@@ -136,6 +136,7 @@ public static class ApplicationServicesRegistration
         services.AddSingleton<IWebhookEventTypeRegistry, WebhookEventTypeRegistry>();
         services.AddSingleton<IWebhookEventSchemaProvider, WebhookEventSchemaProvider>();
         services.AddSingleton<IWebhookPayloadBuilder, DefaultWebhookPayloadBuilder>();
+        services.AddSingleton<IWebhookDeliveryPlanResolver, FailClosedWebhookDeliveryPlanResolver>();
         services.AddScoped<IWebhookEventTypeCatalogSyncService, WebhookEventTypeCatalogSyncService>();
         services.AddScoped<IWebhookEventPublisher, DefaultWebhookEventPublisher>();
 

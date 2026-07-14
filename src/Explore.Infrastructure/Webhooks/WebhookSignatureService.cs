@@ -43,11 +43,10 @@ public sealed class WebhookSignatureService : IWebhookSignatureService
     }
 
     public WebhookVerificationResult Verify(
-        string rawPayload,
+        ReadOnlySpan<byte> rawPayload,
         IReadOnlyDictionary<string, string> headers,
         WebhookSecretMaterial secret)
     {
-        ArgumentNullException.ThrowIfNull(rawPayload);
         ArgumentNullException.ThrowIfNull(headers);
 
         if (!TryGetHeader(headers, "svix-id", out var messageId)
@@ -136,16 +135,6 @@ public sealed class WebhookSignatureService : IWebhookSignatureService
         prefix.CopyTo(signedContent, 0);
         rawPayload.CopyTo(signedContent.AsSpan(prefix.Length));
         return HMACSHA256.HashData(secret, signedContent);
-    }
-
-    private static byte[] ComputeSignature(
-        string messageId,
-        string timestamp,
-        string rawPayload,
-        byte[] secret)
-    {
-        var signedContent = $"{messageId}.{timestamp}.{rawPayload}";
-        return HMACSHA256.HashData(secret, Encoding.UTF8.GetBytes(signedContent));
     }
 
     private static byte[] DecodeSecret(string secret)

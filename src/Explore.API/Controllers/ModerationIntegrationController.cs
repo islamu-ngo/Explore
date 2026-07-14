@@ -133,14 +133,8 @@ public sealed class ModerationIntegrationController(
                 "coop_webhook_body_required"));
         }
 
-        var tenantId = ResolveCoopTenantId(request);
-        var providerMessageId = ResolveCoopProviderMessageId(request, incoming);
         var capture = await incomingWebhookIntakeService.CaptureAsync(
             incoming,
-            tenantId,
-            providerMessageId,
-            "moderation.coop.decision",
-            providerMessageId,
             cancellationToken);
         if (!capture.Succeeded)
         {
@@ -166,7 +160,7 @@ public sealed class ModerationIntegrationController(
                 Id = capture.MessageId,
                 Message = "Coop decision callback was already captured."
             };
-            RecordCallback("coop", tenantId, duplicateResponse);
+            RecordCallback("coop", incoming.Verification!.TenantId!.Value, duplicateResponse);
             return Ok(duplicateResponse);
         }
 
@@ -177,7 +171,7 @@ public sealed class ModerationIntegrationController(
             Message = "Coop decision callback was captured for durable processing."
         };
 
-        RecordCallback("coop", tenantId, response);
+        RecordCallback("coop", incoming.Verification!.TenantId!.Value, response);
 
         return response.Success ? Ok(response) : this.ToEventReportProblem(response);
     }
@@ -198,21 +192,4 @@ public sealed class ModerationIntegrationController(
             failureCategory);
     }
 
-    private static Guid ResolveCoopTenantId(CoopDecisionCallbackRequestDto request)
-        => request.TenantId != Guid.Empty ? request.TenantId : request.TenantIdSnake;
-
-    private static string ResolveCoopProviderMessageId(
-        CoopDecisionCallbackRequestDto request,
-        IncomingWebhookReadResult incoming)
-        => FirstNonBlank(
-               request.ProviderDecisionId,
-               request.ProviderDecisionIdSnake,
-               request.CorrelationId,
-               request.CorrelationIdSnake,
-               incoming.Verification?.ProviderMessageId,
-               incoming.PayloadHash)
-           ?? $"coop:{Guid.CreateVersion7():N}";
-
-    private static string? FirstNonBlank(params string?[] values)
-        => values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))?.Trim();
 }

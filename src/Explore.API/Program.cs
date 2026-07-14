@@ -16,6 +16,7 @@ using Explore.Application;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Webhooks;
+using Explore.Application.Services.Webhooks;
 using Explore.Application.Telemetry;
 using Explore.Infrastructure;
 using Explore.Infrastructure.HealthChecks;
@@ -151,6 +152,9 @@ var emailDispatchProcessorSettings = builder.Configuration
 var webhookDeliveryProcessorSettings = builder.Configuration
     .GetSection(WebhookDeliveryProcessorSettings.SectionName)
     .Get<WebhookDeliveryProcessorSettings>() ?? new WebhookDeliveryProcessorSettings();
+var incomingWebhookProcessingSettings = builder.Configuration
+    .GetSection(IncomingWebhookProcessingSettings.SectionName)
+    .Get<IncomingWebhookProcessingSettings>() ?? new IncomingWebhookProcessingSettings();
 var emailDispatchRabbitMqSettings = builder.Configuration
     .GetSection(EmailDispatchRabbitMqSettings.SectionName)
     .Get<EmailDispatchRabbitMqSettings>() ?? new EmailDispatchRabbitMqSettings();
@@ -296,6 +300,11 @@ if (!isOpenApiGeneration)
     if (!builder.Environment.IsEnvironment("Testing") && webhookDeliveryProcessorSettings.Enabled)
     {
         builder.Services.AddHostedService<WebhookDeliveryProcessor>();
+    }
+
+    if (!builder.Environment.IsEnvironment("Testing") && incomingWebhookProcessingSettings.Enabled)
+    {
+        builder.Services.AddHostedService<IncomingWebhookProcessor>();
     }
 
     if (!builder.Environment.IsEnvironment("Testing"))

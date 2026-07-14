@@ -390,7 +390,7 @@
                                     <MudText Typo="Typo.caption" Color="Color.Secondary">@context.MessageEventType</MudText>
                                 </MudTd>
                                 <MudTd DataLabel="Status">
-                                    <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.StatusName)" Variant="Variant.Outlined">@context.StatusName</MudChip>
+                                    <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.OutcomeName)" Variant="Variant.Outlined">@context.OutcomeName</MudChip>
                                     @if (!string.IsNullOrWhiteSpace(context.FailureCategory))
                                     {
                                         <MudText Typo="Typo.caption" Color="Color.Secondary">@context.FailureCategory</MudText>
@@ -439,7 +439,7 @@
                                         <div class="webhook-management__mobile-row">
                                             <span class="webhook-management__mobile-label">Status</span>
                                             <span class="webhook-management__mobile-value">
-                                                <MudChip T="string" Size="Size.Small" Color="@StatusColor(attempt.StatusName)" Variant="Variant.Outlined">@attempt.StatusName</MudChip>
+                                                <MudChip T="string" Size="Size.Small" Color="@StatusColor(attempt.OutcomeName)" Variant="Variant.Outlined">@attempt.OutcomeName</MudChip>
                                                 @if (!string.IsNullOrWhiteSpace(attempt.FailureCategory))
                                                 {
                                                     <MudText Typo="Typo.caption" Color="Color.Secondary">@attempt.FailureCategory</MudText>

@@ -11,6 +11,18 @@ public interface IWebhookConsumerProviderBindingRepository
         WebhookConsumerProviderBinding binding,
         CancellationToken cancellationToken);
 
+    Task<WebhookConsumerProviderBinding?> GetByConsumerAsync(
+        Guid tenantId,
+        Guid webhookConsumerId,
+        WebhookProviderKind providerKind,
+        string providerEnvironment,
+        CancellationToken cancellationToken);
+
+    Task<WebhookConsumerProviderBinding?> GetByTenantAndIdForUpdateAsync(
+        Guid tenantId,
+        Guid bindingId,
+        CancellationToken cancellationToken);
+
     Task<WebhookConsumerProviderBinding?> GetVerifiedByConsumerAsync(
         Guid tenantId,
         Guid webhookConsumerId,
@@ -33,29 +45,12 @@ public interface IWebhookConsumerProviderBindingRepository
         string applicationUid,
         CancellationToken cancellationToken);
 
-    Task<bool> TryVerifyAsync(
-        Guid tenantId,
-        Guid bindingId,
-        long expectedConcurrencyVersion,
-        long expectedVerificationFence,
+    Task<WebhookConsumerProviderBinding?> ResolveVerifiedProviderIdentityAsync(
+        WebhookProviderKind providerKind,
+        string providerEnvironment,
         string externalApplicationId,
-        DateTimeOffset verifiedAtUtc,
+        string applicationUid,
         CancellationToken cancellationToken);
 
-    Task<bool> TryDisableAsync(
-        Guid tenantId,
-        Guid bindingId,
-        long expectedConcurrencyVersion,
-        long expectedVerificationFence,
-        DateTimeOffset disabledAtUtc,
-        CancellationToken cancellationToken);
-
-    Task<bool> TryRebindAsync(
-        Guid tenantId,
-        Guid bindingId,
-        long expectedConcurrencyVersion,
-        long expectedVerificationFence,
-        string externalApplicationId,
-        DateTimeOffset verifiedAtUtc,
-        CancellationToken cancellationToken);
+    Task SaveChangesAsync(CancellationToken cancellationToken);
 }

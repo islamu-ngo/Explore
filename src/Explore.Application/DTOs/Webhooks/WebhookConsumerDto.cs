@@ -31,9 +31,32 @@ public sealed class WebhookConsumerDto
 
     public required string ProviderModeName { get; init; }
 
+    public bool ProviderCapabilityAuthorityAvailable { get; init; }
+
+    public required string CapabilityResolutionVersion { get; init; }
+
+    public string? CapabilityUnavailableReasonCode { get; init; }
+
+    public required IReadOnlyList<WebhookProviderCapabilityDto> ProviderCapabilities { get; init; }
+
     public required string Name { get; init; }
 
     public DateTime CreatedAt { get; init; }
 
     public DateTime? UpdatedAt { get; init; }
+}
+
+public sealed class WebhookProviderCapabilityDto
+{
+    public int CapabilityId { get; init; }
+
+    public required string CapabilityCode { get; init; }
+
+    public required string CapabilityName { get; init; }
+
+    public bool IsAvailable { get; init; }
+
+    public required IReadOnlyList<string> AvailableFromProviderCodes { get; init; }
+
+    public string? UnavailableReasonCode { get; init; }
 }

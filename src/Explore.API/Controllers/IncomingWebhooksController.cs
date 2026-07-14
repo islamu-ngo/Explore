@@ -1,7 +1,6 @@
 // ABOUTME: REST API controller for provider operational webhooks that authenticate by signature.
 // ABOUTME: Keeps incoming callbacks independent from outgoing Local/Svix provider selection.
 
-using System.Text.Json;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
@@ -65,27 +64,17 @@ public sealed class IncomingWebhooksController(
                 incoming.Code));
         }
 
-        var tenantId = TryResolveTenantId(incoming.RawPayload);
-        if (tenantId.HasValue)
+        var capture = await incomingWebhookIntakeService.CaptureAsync(incoming, cancellationToken);
+        if (!capture.Succeeded)
         {
-            var capture = await incomingWebhookIntakeService.CaptureAsync(
-                incoming,
-                tenantId.Value,
-                incoming.Verification?.ProviderMessageId,
-                incoming.Verification?.EventType ?? "svix.operational",
-                incoming.Verification?.IdempotencyKey,
-                cancellationToken);
-            if (!capture.Succeeded)
-            {
-                metrics.RecordEventReportProviderCallback("svix", "failed", capture.Code);
-                return ApiProblemFactory.ToProblemResult(ApiProblemFactory.CreateProblem(
-                    HttpContext,
-                    capture.StatusCode,
-                    capture.Title,
-                    capture.Type,
-                    capture.Detail,
-                    capture.Code));
-            }
+            metrics.RecordEventReportProviderCallback("svix", "failed", capture.Code);
+            return ApiProblemFactory.ToProblemResult(ApiProblemFactory.CreateProblem(
+                HttpContext,
+                capture.StatusCode,
+                capture.Title,
+                capture.Type,
+                capture.Detail,
+                capture.Code));
         }
 
         metrics.RecordEventReportProviderCallback(
@@ -95,43 +84,4 @@ public sealed class IncomingWebhooksController(
         return Accepted();
     }
 
-    private static Guid? TryResolveTenantId(string? rawPayload)
-    {
-        if (string.IsNullOrWhiteSpace(rawPayload))
-        {
-            return null;
-        }
-
-        try
-        {
-            using var document = JsonDocument.Parse(rawPayload);
-            if (document.RootElement.ValueKind != JsonValueKind.Object)
-            {
-                return null;
-            }
-
-            if (TryGetGuidProperty(document.RootElement, "tenantId", out var tenantId) ||
-                TryGetGuidProperty(document.RootElement, "tenant_id", out tenantId))
-            {
-                return tenantId;
-            }
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-
-        return null;
-    }
-
-    private static bool TryGetGuidProperty(JsonElement element, string propertyName, out Guid value)
-    {
-        value = Guid.Empty;
-        if (!element.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.String)
-        {
-            return false;
-        }
-
-        return Guid.TryParse(property.GetString(), out value) && value != Guid.Empty;
-    }
 }

@@ -50,6 +50,8 @@ public class IncomingWebhookMessageConfiguration : IEntityTypeConfiguration<Inco
         builder.Property(e => e.FailureCategory).HasMaxLength(IncomingWebhookMessage.MaxFailureCodeLength);
         builder.Property(e => e.SafeDetail).HasMaxLength(IncomingWebhookMessage.MaxSafeDetailLength);
         builder.Property(e => e.SettledEffectKind).HasMaxLength(IncomingWebhookEffectReceipt.MaxEffectKindLength);
+        builder.Property(e => e.SettlementSourceId);
+        builder.Ignore(e => e.SettlementSource);
 
         builder.HasAlternateKey(e => new { e.TenantId, e.Id })
             .HasName("ak_incoming_webhook_messages_tenant_id");
@@ -57,6 +59,12 @@ public class IncomingWebhookMessageConfiguration : IEntityTypeConfiguration<Inco
         builder.HasOne(e => e.Tenant)
             .WithMany()
             .HasForeignKey(e => e.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.WebhookConsumerProviderBinding)
+            .WithMany()
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .HasForeignKey(e => new { e.TenantId, e.WebhookConsumerProviderBindingId })
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.StatusLookup)
@@ -67,6 +75,17 @@ public class IncomingWebhookMessageConfiguration : IEntityTypeConfiguration<Inco
         builder.HasOne(e => e.PayloadProvenanceLookup)
             .WithMany()
             .HasForeignKey(e => e.PayloadProvenanceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.SettlementSourceLookup)
+            .WithMany()
+            .HasForeignKey(e => e.SettlementSourceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.SettledByEffectReceipt)
+            .WithMany()
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .HasForeignKey(e => new { e.TenantId, e.SettledByEffectReceiptId })
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(e => e.ProcessingAttempts)
@@ -86,6 +105,10 @@ public class IncomingWebhookMessageConfiguration : IEntityTypeConfiguration<Inco
         builder.HasIndex(e => new { e.TenantId, e.Provider, e.ProviderMessageId })
             .HasDatabaseName("ux_incoming_webhook_messages_tenant_provider_message")
             .IsUnique();
+
+        builder.HasIndex(e => new { e.TenantId, e.WebhookConsumerProviderBindingId, e.ReceivedAt })
+            .HasDatabaseName("ix_incoming_webhook_messages_tenant_binding_received")
+            .HasFilter("webhook_consumer_provider_binding_id IS NOT NULL");
 
         builder.HasIndex(e => new { e.TenantId, e.Provider, e.IdempotencyKey })
             .HasDatabaseName("ix_incoming_webhook_messages_tenant_provider_idempotency")

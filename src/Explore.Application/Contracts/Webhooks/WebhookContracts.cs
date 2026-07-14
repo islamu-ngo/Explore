@@ -43,35 +43,6 @@ public sealed record WebhookPayloadBuildResult(
         new(false, null, null, null, null, failureCategory, safeDetail);
 }
 
-public sealed record WebhookProviderMessage(
-    Guid MessageId,
-    Guid TenantId,
-    Guid? ConsumerId,
-    string EventType,
-    string EventId,
-    string AggregateKind,
-    Guid AggregateId,
-    byte[] PayloadBytes,
-    string PayloadHash,
-    DateTimeOffset PayloadRetentionUntil);
-
-public sealed record WebhookProviderPublishResult(
-    bool Succeeded,
-    string? ProviderMessageId,
-    bool IsRetryable,
-    string? FailureCategory,
-    string? SafeDetail)
-{
-    public static WebhookProviderPublishResult Success(string? providerMessageId = null) =>
-        new(true, providerMessageId, false, null, null);
-
-    public static WebhookProviderPublishResult Failure(
-        string failureCategory,
-        bool isRetryable,
-        string? safeDetail = null) =>
-        new(false, null, isRetryable, failureCategory, safeDetail);
-}
-
 public sealed record WebhookEventPublishResult(
     bool Succeeded,
     bool Skipped,

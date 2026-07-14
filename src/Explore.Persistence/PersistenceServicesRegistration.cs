@@ -299,8 +299,10 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IWebhookEndpointRepository, WebhookEndpointRepository>();
         services.AddScoped<IWebhookMessageRepository, WebhookMessageRepository>();
         services.AddScoped<IWebhookDeliveryAttemptRepository, WebhookDeliveryAttemptRepository>();
-        services.AddScoped<IWebhookProviderLinkRepository, WebhookProviderLinkRepository>();
+        services.AddScoped<IWebhookProviderPublicationRepository, WebhookProviderPublicationRepository>();
+        services.AddScoped<IWebhookDeliveryPlanMaterializer, WebhookDeliveryPlanMaterializer>();
         services.AddScoped<IIncomingWebhookMessageRepository, IncomingWebhookMessageRepository>();
+        services.AddScoped<IIncomingWebhookEffectReceiptRepository, IncomingWebhookEffectReceiptRepository>();
 
         // Authorization (RBAC) Repositories
         services.AddScoped<IRoleRepository, RoleRepository>();

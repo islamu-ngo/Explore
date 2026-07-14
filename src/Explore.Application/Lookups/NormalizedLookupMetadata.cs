@@ -110,6 +110,23 @@ public static class NormalizedLookupMetadata
         _ => Unknown(id)
     };
 
+    public static LookupReference WebhookProviderCapability(int id) => id switch
+    {
+        (int)Explore.Domain.WebhookProviderCapability.EndpointManagement => new(id, "ENDPOINT_MANAGEMENT", "Endpoint management"),
+        (int)Explore.Domain.WebhookProviderCapability.ProviderAttemptVisibility => new(id, "PROVIDER_ATTEMPT_VISIBILITY", "Provider attempt visibility"),
+        (int)Explore.Domain.WebhookProviderCapability.Replay => new(id, "REPLAY", "Replay"),
+        (int)Explore.Domain.WebhookProviderCapability.PayloadInspection => new(id, "PAYLOAD_INSPECTION", "Payload inspection"),
+        (int)Explore.Domain.WebhookProviderCapability.AppPortal => new(id, "APP_PORTAL", "App portal"),
+        (int)Explore.Domain.WebhookProviderCapability.EventCatalog => new(id, "EVENT_CATALOG", "Event catalog"),
+        (int)Explore.Domain.WebhookProviderCapability.ProviderRetentionControl => new(id, "PROVIDER_RETENTION_CONTROL", "Provider retention control"),
+        (int)Explore.Domain.WebhookProviderCapability.ApplicationThrottling => new(id, "APPLICATION_THROTTLING", "Application throttling"),
+        (int)Explore.Domain.WebhookProviderCapability.EndpointThrottling => new(id, "ENDPOINT_THROTTLING", "Endpoint throttling"),
+        (int)Explore.Domain.WebhookProviderCapability.Transformations => new(id, "TRANSFORMATIONS", "Transformations"),
+        (int)Explore.Domain.WebhookProviderCapability.Ordering => new(id, "ORDERING", "Ordering"),
+        (int)Explore.Domain.WebhookProviderCapability.OperationalCallbacks => new(id, "OPERATIONAL_CALLBACKS", "Operational callbacks"),
+        _ => Unknown(id)
+    };
+
     public static LookupReference WebhookEndpointStatus(int id) => id switch
     {
         (int)Explore.Domain.WebhookEndpointStatus.Active => new(id, "ACTIVE", "Active"),

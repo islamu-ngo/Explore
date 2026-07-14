@@ -67,33 +67,44 @@ public sealed class WebhookConsumerProviderBindingConfiguration
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(binding => new
-            {
-                binding.TenantId,
-                binding.WebhookConsumerId,
-                binding.ProviderKindId,
-                binding.NormalizedEnvironment
-            })
+        {
+            binding.TenantId,
+            binding.WebhookConsumerId,
+            binding.ProviderKindId,
+            binding.NormalizedEnvironment
+        })
             .HasDatabaseName("ux_webhook_provider_bindings_tenant_consumer_provider_environment")
             .IsUnique();
 
         builder.HasIndex(binding => new
-            {
-                binding.TenantId,
-                binding.ProviderKindId,
-                binding.NormalizedEnvironment,
-                binding.NormalizedExternalApplicationId
-            })
+        {
+            binding.TenantId,
+            binding.ProviderKindId,
+            binding.NormalizedEnvironment,
+            binding.NormalizedExternalApplicationId
+        })
             .HasDatabaseName("ux_webhook_provider_bindings_tenant_provider_environment_external_app")
             .IsUnique()
             .HasFilter("normalized_external_application_id IS NOT NULL");
 
         builder.HasIndex(binding => new
-            {
-                binding.TenantId,
-                binding.ProviderKindId,
-                binding.NormalizedEnvironment,
-                binding.NormalizedApplicationUid
-            })
+        {
+            binding.ProviderKindId,
+            binding.NormalizedEnvironment,
+            binding.NormalizedExternalApplicationId,
+            binding.NormalizedApplicationUid
+        })
+            .HasDatabaseName("ux_webhook_provider_bindings_provider_application_identity")
+            .IsUnique()
+            .HasFilter("normalized_external_application_id IS NOT NULL");
+
+        builder.HasIndex(binding => new
+        {
+            binding.TenantId,
+            binding.ProviderKindId,
+            binding.NormalizedEnvironment,
+            binding.NormalizedApplicationUid
+        })
             .HasDatabaseName("ux_webhook_provider_bindings_tenant_provider_environment_application_uid")
             .IsUnique();
     }

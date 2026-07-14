@@ -62,10 +62,30 @@ public sealed class IncomingWebhookMessageStatusLookupConfiguration()
         "incoming_webhook_message_statuses",
         "ux_incoming_webhook_message_statuses_master_code");
 
+public sealed class IncomingWebhookProcessingAttemptOutcomeLookupConfiguration()
+    : WebhookLookupConfiguration<IncomingWebhookProcessingAttemptOutcomeLookup>(
+        "incoming_webhook_processing_attempt_outcomes",
+        "ux_incoming_webhook_processing_attempt_outcomes_master_code");
+
+public sealed class IncomingWebhookSettlementSourceLookupConfiguration()
+    : WebhookLookupConfiguration<IncomingWebhookSettlementSourceLookup>(
+        "incoming_webhook_settlement_sources",
+        "ux_incoming_webhook_settlement_sources_master_code");
+
+public sealed class IncomingWebhookRedriveResultLookupConfiguration()
+    : WebhookLookupConfiguration<IncomingWebhookRedriveResultLookup>(
+        "incoming_webhook_redrive_results",
+        "ux_incoming_webhook_redrive_results_master_code");
+
 public sealed class WebhookProviderPublicationStatusLookupConfiguration()
     : WebhookLookupConfiguration<WebhookProviderPublicationStatusLookup>(
         "webhook_provider_publication_statuses",
         "ux_webhook_provider_publication_statuses_master_code");
+
+public sealed class WebhookProviderPublicationAttemptOutcomeLookupConfiguration()
+    : WebhookLookupConfiguration<WebhookProviderPublicationAttemptOutcomeLookup>(
+        "webhook_provider_publication_attempt_outcomes",
+        "ux_webhook_provider_publication_attempt_outcomes_master_code");
 
 public sealed class WebhookPayloadProvenanceLookupConfiguration()
     : WebhookLookupConfiguration<WebhookPayloadProvenanceLookup>(

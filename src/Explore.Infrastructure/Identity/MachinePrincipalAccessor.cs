@@ -11,9 +11,10 @@ namespace Explore.Infrastructure.Identity;
 /// Resolves the machine principal context from the current <see cref="HttpContext.User"/> when the request
 /// was authenticated via an external API key. Returns <c>null</c> for JWT, anonymous, or absent contexts.
 /// </summary>
-public sealed class MachinePrincipalAccessor : IMachinePrincipalAccessor
+public sealed class MachinePrincipalAccessor : IMachinePrincipalAccessor, IMachinePrincipalExecutionAccessor
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private ApiKeyPrincipalContext? _executionPrincipal;
 
     public MachinePrincipalAccessor(IHttpContextAccessor httpContextAccessor)
     {
@@ -24,6 +25,11 @@ public sealed class MachinePrincipalAccessor : IMachinePrincipalAccessor
     {
         get
         {
+            if (_executionPrincipal is not null)
+            {
+                return _executionPrincipal;
+            }
+
             var user = _httpContextAccessor.HttpContext?.User;
             if (user?.Identity?.IsAuthenticated != true)
                 return null;
@@ -33,4 +39,20 @@ public sealed class MachinePrincipalAccessor : IMachinePrincipalAccessor
     }
 
     public bool IsMachineCaller => Current is not null;
+
+    public void SetPrincipal(ApiKeyPrincipalContext principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        if (_executionPrincipal is not null)
+        {
+            throw new InvalidOperationException("A machine principal is already bound to this execution scope.");
+        }
+
+        _executionPrincipal = principal;
+    }
+
+    public void Clear()
+    {
+        _executionPrincipal = null;
+    }
 }

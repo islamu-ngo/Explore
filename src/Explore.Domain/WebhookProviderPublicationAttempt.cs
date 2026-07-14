@@ -1,6 +1,7 @@
 // ABOUTME: Append-only safe evidence for one provider publication or reconciliation action.
 // ABOUTME: Records fences, outcomes, and bounded failure metadata without payloads or raw provider errors.
 
+using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
@@ -14,7 +15,14 @@ public sealed class WebhookProviderPublicationAttempt : ITenantEntity, IAuditabl
     public WebhookProviderPublication? WebhookProviderPublication { get; private set; }
     public int AttemptNumber { get; private set; }
     public long PublicationFence { get; private set; }
-    public WebhookProviderPublicationAttemptOutcome Outcome { get; private set; }
+    public int OutcomeId { get; private set; }
+    public WebhookProviderPublicationAttemptOutcomeLookup OutcomeLookup { get; private set; } = null!;
+    [NotMapped]
+    public WebhookProviderPublicationAttemptOutcome Outcome
+    {
+        get => (WebhookProviderPublicationAttemptOutcome)OutcomeId;
+        private set => OutcomeId = (int)value;
+    }
     public DateTime StartedAt { get; private set; }
     public DateTime RecordedAt { get; private set; }
     public string? ExternalProviderMessageId { get; private set; }
@@ -79,18 +87,4 @@ public sealed class WebhookProviderPublicationAttempt : ITenantEntity, IAuditabl
             CreatedAt = recordedAt
         };
     }
-}
-
-public enum WebhookProviderPublicationAttemptOutcome
-{
-    PublishingStarted = 1,
-    ProviderQueued = 2,
-    RetryScheduled = 3,
-    PublicationUnknown = 4,
-    DeadLettered = 5,
-    AutomaticReconciliationStarted = 6,
-    AutomaticReconciliationUnresolved = 7,
-    ManualReconciliationRequired = 8,
-    ReconciledProviderQueued = 9,
-    Abandoned = 10
 }

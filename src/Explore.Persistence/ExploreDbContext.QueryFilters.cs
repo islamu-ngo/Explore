@@ -163,9 +163,6 @@ public partial class ExploreDbContext
         modelBuilder.Entity<WebhookProviderPublicationAttempt>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
-        modelBuilder.Entity<WebhookProviderLink>()
-            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
-
         modelBuilder.Entity<IncomingWebhookMessage>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 

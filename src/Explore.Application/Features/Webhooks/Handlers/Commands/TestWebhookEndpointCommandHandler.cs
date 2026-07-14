@@ -14,7 +14,8 @@ public sealed class TestWebhookEndpointCommandHandler(
     IWebhookEndpointRepository endpointRepository,
     IWebhookMessageRepository messageRepository,
     IWebhookDeliveryAttemptRepository attemptRepository,
-    IWebhookPayloadBuilder payloadBuilder)
+    IWebhookPayloadBuilder payloadBuilder,
+    IWebhookProviderCapabilityResolver capabilityResolver)
     : IRequestHandler<TestWebhookEndpointCommand, BaseCommandResponse<Guid>>
 {
     private const int PayloadRetentionDays = 1;
@@ -48,7 +49,10 @@ public sealed class TestWebhookEndpointCommandHandler(
             return Failure("webhook_consumer_not_found", ["Webhook consumer was not found."]);
         }
 
-        if (!CanScheduleLocalTest(endpoint.Consumer.ProviderMode))
+        if (!WebhookEndpointCapabilityPolicy.CanManageLocalEndpoint(
+                capabilityResolver,
+                endpoint.Consumer.ProviderMode,
+                out _))
         {
             return Failure(
                 "webhook_endpoint_test_provider_managed",
@@ -128,9 +132,6 @@ public sealed class TestWebhookEndpointCommandHandler(
             },
             endpoint.ConsumerId,
             PayloadRetentionDays);
-
-    private static bool CanScheduleLocalTest(WebhookProviderMode providerMode) =>
-        providerMode is WebhookProviderMode.Local or WebhookProviderMode.Composite;
 
     private static List<string> Validate(TestWebhookEndpointCommand request)
     {

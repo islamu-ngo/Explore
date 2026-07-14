@@ -13,10 +13,5 @@ public interface IIncomingWebhookIntakeService
 
     Task<IncomingWebhookCaptureResult> CaptureAsync(
         IncomingWebhookReadResult readResult,
-        Guid tenantId,
-        string? providerMessageId,
-        string? eventType,
-        string? idempotencyKey,
         CancellationToken cancellationToken);
-
 }

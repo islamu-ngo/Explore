@@ -2,6 +2,7 @@
 // ABOUTME: Persists endpoint subscriptions through repository operations instead of mutating navigation collections.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -12,7 +13,8 @@ namespace Explore.Application.Features.Webhooks.Handlers.Commands;
 public sealed class CreateWebhookEndpointCommandHandler(
     IWebhookEndpointRepository endpointRepository,
     IWebhookConsumerRepository consumerRepository,
-    IWebhookEventTypeRepository eventTypeRepository)
+    IWebhookEventTypeRepository eventTypeRepository,
+    IWebhookProviderCapabilityResolver capabilityResolver)
     : IRequestHandler<CreateWebhookEndpointCommand, BaseCommandResponse<Guid>>
 {
     private const int DefaultMaxAttempts = 8;
@@ -35,6 +37,14 @@ public sealed class CreateWebhookEndpointCommandHandler(
         if (consumer is null || consumer.Status != WebhookConsumerStatus.Active)
         {
             return Failure("webhook_consumer_not_found", ["Webhook consumer was not found."]);
+        }
+
+        if (!WebhookEndpointCapabilityPolicy.CanManageLocalEndpoint(
+                capabilityResolver,
+                consumer.ProviderMode,
+                out var capabilityFailure))
+        {
+            return Failure("webhook_endpoint_management_unavailable", [capabilityFailure]);
         }
 
         var existingEndpoint = await endpointRepository.GetByTenantConsumerAndUrlAsync(
@@ -185,4 +195,24 @@ public sealed class CreateWebhookEndpointCommandHandler(
             FailureCode = code,
             Errors = errors.ToList()
         };
+}
+
+internal static class WebhookEndpointCapabilityPolicy
+{
+    public static bool CanManageLocalEndpoint(
+        IWebhookProviderCapabilityResolver capabilityResolver,
+        WebhookProviderMode providerMode,
+        out string failure)
+    {
+        var resolution = capabilityResolver.Resolve(providerMode);
+        if (resolution.SupportsLocalConfiguration(WebhookProviderCapability.EndpointManagement))
+        {
+            failure = string.Empty;
+            return true;
+        }
+
+        failure = resolution.UnavailableReasonCode ??
+            "Local endpoint management is unavailable for this webhook provider mode.";
+        return false;
+    }
 }

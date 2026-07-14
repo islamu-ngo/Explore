@@ -402,10 +402,12 @@ public static class AuthorizationActions
         public const string RotateSecret = "webhook:rotate-secret";
         public const string Test = "webhook:test";
         public const string Retry = "webhook:retry";
+        public const string RedriveIncoming = "webhook:redrive-incoming";
         public const string Resume = "webhook:resume";
         public const string ViewDelivery = "webhook:view-delivery";
         public const string ManageProvider = "webhook:manage-provider";
         public const string OpenProviderPortal = "webhook:open-provider-portal";
+        public const string ProcessIncoming = "webhook:process-incoming";
     }
 
     /// <summary>

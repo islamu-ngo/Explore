@@ -165,6 +165,22 @@ public static class LookupTableSeeder
             new() { Id = (int)WebhookProviderKind.Svix, MasterCode = "SVIX", FullName = "Svix", Description = "Svix application delivery provider" }
         ], cancellationToken);
 
+        await AddMissingLookupRowsAsync(context.WebhookProviderCapabilities,
+        [
+            new() { Id = (int)WebhookProviderCapability.EndpointManagement, MasterCode = "ENDPOINT_MANAGEMENT", FullName = "Endpoint management", Description = "Create and maintain delivery endpoints" },
+            new() { Id = (int)WebhookProviderCapability.ProviderAttemptVisibility, MasterCode = "PROVIDER_ATTEMPT_VISIBILITY", FullName = "Provider attempt visibility", Description = "Inspect delivery attempts recorded by the provider" },
+            new() { Id = (int)WebhookProviderCapability.Replay, MasterCode = "REPLAY", FullName = "Replay", Description = "Request provider-side replay or recovery" },
+            new() { Id = (int)WebhookProviderCapability.PayloadInspection, MasterCode = "PAYLOAD_INSPECTION", FullName = "Payload inspection", Description = "Inspect retained message payload content" },
+            new() { Id = (int)WebhookProviderCapability.AppPortal, MasterCode = "APP_PORTAL", FullName = "App portal", Description = "Issue tenant-scoped provider portal sessions" },
+            new() { Id = (int)WebhookProviderCapability.EventCatalog, MasterCode = "EVENT_CATALOG", FullName = "Event catalog", Description = "Synchronize webhook event definitions" },
+            new() { Id = (int)WebhookProviderCapability.ProviderRetentionControl, MasterCode = "PROVIDER_RETENTION_CONTROL", FullName = "Provider retention control", Description = "Select provider-side payload retention" },
+            new() { Id = (int)WebhookProviderCapability.ApplicationThrottling, MasterCode = "APPLICATION_THROTTLING", FullName = "Application throttling", Description = "Apply provider application-level throttling" },
+            new() { Id = (int)WebhookProviderCapability.EndpointThrottling, MasterCode = "ENDPOINT_THROTTLING", FullName = "Endpoint throttling", Description = "Apply provider endpoint-level throttling" },
+            new() { Id = (int)WebhookProviderCapability.Transformations, MasterCode = "TRANSFORMATIONS", FullName = "Transformations", Description = "Apply provider-managed payload transformations" },
+            new() { Id = (int)WebhookProviderCapability.Ordering, MasterCode = "ORDERING", FullName = "Ordering", Description = "Apply provider-managed delivery ordering" },
+            new() { Id = (int)WebhookProviderCapability.OperationalCallbacks, MasterCode = "OPERATIONAL_CALLBACKS", FullName = "Operational callbacks", Description = "Receive provider operational status callbacks" }
+        ], cancellationToken);
+
         await AddMissingLookupRowsAsync(context.WebhookEndpointStatuses,
         [
             new() { Id = (int)WebhookEndpointStatus.Active, MasterCode = "ACTIVE", FullName = "Active", Description = "Endpoint accepts newly materialized Local work" },
@@ -204,6 +220,30 @@ public static class LookupTableSeeder
             new() { Id = (int)IncomingWebhookMessageStatus.PayloadConflict, MasterCode = "PAYLOAD_CONFLICT", FullName = "Payload conflict", Description = "Provider identity was reused with different exact bytes" }
         ], cancellationToken);
 
+        await AddMissingLookupRowsAsync(context.IncomingWebhookProcessingAttemptOutcomes,
+        [
+            new() { Id = (int)IncomingWebhookProcessingAttemptOutcome.Claimed, MasterCode = "CLAIMED", FullName = "Claimed", Description = "A worker acquired a fenced processing lease" },
+            new() { Id = (int)IncomingWebhookProcessingAttemptOutcome.Processed, MasterCode = "PROCESSED", FullName = "Processed", Description = "A new business effect and receipt were committed" },
+            new() { Id = (int)IncomingWebhookProcessingAttemptOutcome.SettledFromReceipt, MasterCode = "SETTLED_FROM_RECEIPT", FullName = "Settled from receipt", Description = "An existing matching effect receipt proved prior completion" },
+            new() { Id = (int)IncomingWebhookProcessingAttemptOutcome.Ignored, MasterCode = "IGNORED", FullName = "Ignored", Description = "The verified callback required no business effect" },
+            new() { Id = (int)IncomingWebhookProcessingAttemptOutcome.RejectedPermanent, MasterCode = "REJECTED_PERMANENT", FullName = "Rejected permanently", Description = "The callback could not be processed safely" },
+            new() { Id = (int)IncomingWebhookProcessingAttemptOutcome.RetryScheduled, MasterCode = "RETRY_SCHEDULED", FullName = "Retry scheduled", Description = "A transient failure scheduled bounded retry work" },
+            new() { Id = (int)IncomingWebhookProcessingAttemptOutcome.DeadLettered, MasterCode = "DEAD_LETTERED", FullName = "Dead-lettered", Description = "Automatic processing attempts were exhausted" },
+            new() { Id = (int)IncomingWebhookProcessingAttemptOutcome.PayloadConflict, MasterCode = "PAYLOAD_CONFLICT", FullName = "Payload conflict", Description = "The provider identity was reused with different exact bytes" },
+            new() { Id = (int)IncomingWebhookProcessingAttemptOutcome.LeaseExpired, MasterCode = "LEASE_EXPIRED", FullName = "Lease expired", Description = "An unsettled processing lease expired and was recovered" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.IncomingWebhookSettlementSources,
+        [
+            new() { Id = (int)IncomingWebhookSettlementSource.EffectCommitted, MasterCode = "EFFECT_COMMITTED", FullName = "Effect committed", Description = "The current execution committed the business effect and receipt" },
+            new() { Id = (int)IncomingWebhookSettlementSource.ExistingReceipt, MasterCode = "EXISTING_RECEIPT", FullName = "Existing receipt", Description = "A matching prior receipt proved the business effect already committed" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.IncomingWebhookRedriveResults,
+        [
+            new() { Id = (int)IncomingWebhookRedriveResult.Scheduled, MasterCode = "SCHEDULED", FullName = "Scheduled", Description = "An authorized operator created a new processing generation" }
+        ], cancellationToken);
+
         await AddMissingLookupRowsAsync(context.WebhookProviderPublicationStatuses,
         [
             new() { Id = (int)WebhookProviderPublicationStatus.Prepared, MasterCode = "PREPARED", FullName = "Prepared", Description = "Provider publication is durably prepared" },
@@ -214,6 +254,21 @@ public static class LookupTableSeeder
             new() { Id = (int)WebhookProviderPublicationStatus.DeadLettered, MasterCode = "DEAD_LETTERED", FullName = "Dead-lettered", Description = "Provider publication exhausted automatic submission" },
             new() { Id = (int)WebhookProviderPublicationStatus.ManualReconciliation, MasterCode = "MANUAL_RECONCILIATION", FullName = "Manual reconciliation", Description = "Operator evidence is required before settlement" },
             new() { Id = (int)WebhookProviderPublicationStatus.Abandoned, MasterCode = "ABANDONED", FullName = "Abandoned", Description = "Provider publication was explicitly abandoned" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.WebhookProviderPublicationAttemptOutcomes,
+        [
+            new() { Id = (int)WebhookProviderPublicationAttemptOutcome.PublishingStarted, MasterCode = "PUBLISHING_STARTED", FullName = "Publishing started", Description = "A worker acquired a fenced provider submission claim" },
+            new() { Id = (int)WebhookProviderPublicationAttemptOutcome.ProviderQueued, MasterCode = "PROVIDER_QUEUED", FullName = "Provider queued", Description = "The provider accepted the publication" },
+            new() { Id = (int)WebhookProviderPublicationAttemptOutcome.RetryScheduled, MasterCode = "RETRY_SCHEDULED", FullName = "Retry scheduled", Description = "A definitely-not-accepted submission scheduled bounded retry" },
+            new() { Id = (int)WebhookProviderPublicationAttemptOutcome.PublicationUnknown, MasterCode = "PUBLICATION_UNKNOWN", FullName = "Publication unknown", Description = "Submission acceptance could not be determined safely" },
+            new() { Id = (int)WebhookProviderPublicationAttemptOutcome.DeadLettered, MasterCode = "DEAD_LETTERED", FullName = "Dead-lettered", Description = "Automatic provider submission cannot continue" },
+            new() { Id = (int)WebhookProviderPublicationAttemptOutcome.AutomaticReconciliationStarted, MasterCode = "AUTOMATIC_RECONCILIATION_STARTED", FullName = "Automatic reconciliation started", Description = "A worker acquired a fenced lookup-only reconciliation claim" },
+            new() { Id = (int)WebhookProviderPublicationAttemptOutcome.AutomaticReconciliationUnresolved, MasterCode = "AUTOMATIC_RECONCILIATION_UNRESOLVED", FullName = "Automatic reconciliation unresolved", Description = "Provider lookup was temporarily unavailable" },
+            new() { Id = (int)WebhookProviderPublicationAttemptOutcome.ManualReconciliationRequired, MasterCode = "MANUAL_RECONCILIATION_REQUIRED", FullName = "Manual reconciliation required", Description = "Automatic evidence was insufficient for a safe decision" },
+            new() { Id = (int)WebhookProviderPublicationAttemptOutcome.ReconciledProviderQueued, MasterCode = "RECONCILED_PROVIDER_QUEUED", FullName = "Reconciled provider queued", Description = "Exact provider evidence proved acceptance" },
+            new() { Id = (int)WebhookProviderPublicationAttemptOutcome.Abandoned, MasterCode = "ABANDONED", FullName = "Abandoned", Description = "The publication was explicitly abandoned" },
+            new() { Id = (int)WebhookProviderPublicationAttemptOutcome.ProviderAbsenceConfirmed, MasterCode = "PROVIDER_ABSENCE_CONFIRMED", FullName = "Provider absence confirmed", Description = "Conformance-proven lookup confirmed absence before unchanged-identity retry" }
         ], cancellationToken);
 
         await AddMissingLookupRowsAsync(context.WebhookPayloadProvenances,

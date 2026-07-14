@@ -322,6 +322,7 @@ public static class RouteNames
     public const string GetWebhookConsumers = "GetWebhookConsumers";
     public const string GetWebhookConsumerById = "GetWebhookConsumerById";
     public const string CreateWebhookConsumer = "CreateWebhookConsumer";
+    public const string RepairWebhookProviderBinding = "RepairWebhookProviderBinding";
     public const string GetWebhookEndpoints = "GetWebhookEndpoints";
     public const string GetWebhookEndpointById = "GetWebhookEndpointById";
     public const string CreateWebhookEndpoint = "CreateWebhookEndpoint";
@@ -335,6 +336,7 @@ public static class RouteNames
     public const string GetWebhookDeliveryAttempts = "GetWebhookDeliveryAttempts";
     public const string GetWebhookDeliveryAttemptById = "GetWebhookDeliveryAttemptById";
     public const string RetryWebhookDeliveryAttempt = "RetryWebhookDeliveryAttempt";
+    public const string RedriveIncomingWebhook = "RedriveIncomingWebhook";
     public const string OpenSvixAppPortal = "OpenSvixAppPortal";
 
     #endregion

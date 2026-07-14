@@ -18,6 +18,7 @@ using Explore.Application.Contracts.Strategies;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Management;
 using Explore.Application.Models;
+using Explore.Application.Services.Webhooks;
 using Explore.Application.Utilities;
 using Explore.Infrastructure.Ai;
 using Explore.Infrastructure.Analytics;
@@ -141,8 +142,14 @@ public static class InfrastructureServicesRegistration
         services.AddOptions<WebhookDeliveryProcessorSettings>()
             .Bind(configuration.GetSection(WebhookDeliveryProcessorSettings.SectionName))
             .ValidateOnStart();
+        services.AddOptions<WebhookProviderPublicationProcessorSettings>()
+            .Bind(configuration.GetSection(WebhookProviderPublicationProcessorSettings.SectionName))
+            .ValidateOnStart();
         services.AddSingleton<IValidateOptions<WebhookOptions>, WebhookOptionsValidator>();
         services.AddSingleton<IValidateOptions<WebhookDeliveryProcessorSettings>, WebhookDeliveryProcessorSettingsValidator>();
+        services.AddSingleton<
+            IValidateOptions<WebhookProviderPublicationProcessorSettings>,
+            WebhookProviderPublicationProcessorSettingsValidator>();
         services.AddSingleton<IWebhookSignatureService, WebhookSignatureService>();
         services.AddSingleton<WebhookRetryScheduler>();
         services.AddSingleton<WebhookEndpointSafetyPolicy>();
@@ -162,17 +169,20 @@ public static class InfrastructureServicesRegistration
                 UseCookies = false
             };
         });
-        services.AddScoped<DisabledWebhookDeliveryProvider>();
-        services.AddScoped<DryRunWebhookDeliveryProvider>();
-        services.AddScoped<LocalWebhookDeliveryProvider>();
         services.AddScoped<ISvixWebhookClient, SvixWebhookClient>();
-        services.AddScoped<SvixWebhookDeliveryProvider>();
+        services.AddScoped<WebhookProviderPublicationDispatcher>();
+        services.AddScoped<WebhookProviderPublicationReconciler>();
+        services.TryAddSingleton<
+            IWebhookProviderReconciliationCapabilityPolicy,
+            ConformanceBackedWebhookProviderReconciliationCapabilityPolicy>();
+        services.AddScoped<
+            IWebhookProviderPublicationDrainService,
+            WebhookProviderPublicationDrainService>();
         services.AddScoped<IWebhookProviderPortalService, SvixAppPortalService>();
         services.AddScoped<IWebhookProviderPortalEligibilityService, SvixPortalEligibilityService>();
+        services.AddSingleton<IWebhookProviderCapabilityResolver, WebhookProviderCapabilityResolver>();
+        services.AddScoped<IWebhookProviderBindingAuthorityService, SvixWebhookProviderBindingAuthorityService>();
         services.AddScoped<IWebhookProviderEventTypeSyncService, SvixEventTypeSyncService>();
-        services.AddScoped<RuntimeWebhookDeliveryProvider>();
-        services.AddScoped<IWebhookDeliveryProvider>(sp => sp.GetRequiredService<RuntimeWebhookDeliveryProvider>());
-
         // Memory cache for settings and module governance
         services.AddMemoryCache();
 
@@ -195,7 +205,17 @@ public static class InfrastructureServicesRegistration
 
         // Machine principal accessor: reads API-key-derived principal context from the current HttpContext.
         // Required so authorization providers (Cerbos + fallback) treat external API-key callers consistently with human users.
-        services.AddScoped<IMachinePrincipalAccessor, MachinePrincipalAccessor>();
+        services.AddScoped<MachinePrincipalAccessor>();
+        services.AddScoped<IMachinePrincipalAccessor>(provider => provider.GetRequiredService<MachinePrincipalAccessor>());
+        services.AddScoped<IMachinePrincipalExecutionAccessor>(provider => provider.GetRequiredService<MachinePrincipalAccessor>());
+        services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+        services.AddSingleton<IIncomingWebhookClaimExecutor, IncomingWebhookTenantExecutor>();
+        services.AddSingleton<IIncomingWebhookDrainService, IncomingWebhookDrainService>();
+        services.AddScoped<IIncomingWebhookProcessingService, IncomingWebhookProcessingService>();
+        services.AddOptions<IncomingWebhookProcessingSettings>()
+            .Bind(configuration.GetSection(IncomingWebhookProcessingSettings.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
         // Claims transformation: enriches the server ClaimsPrincipal with DB-resolved admin authority.
         // Admin authority is not serialized to Blazor WASM; browser affordances use BFF/API/HAL/status endpoints.
