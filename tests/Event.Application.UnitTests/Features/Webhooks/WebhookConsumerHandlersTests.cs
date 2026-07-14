@@ -134,6 +134,158 @@ public sealed class WebhookConsumerHandlersTests
     }
 
     [Test]
+    public async Task ProviderModeCommand_RequiresWebhookUpdateAuthorization()
+    {
+        var attribute = typeof(UpdateWebhookConsumerProviderModeCommand)
+            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
+            .Cast<AuthorizeResourceAttribute>()
+            .SingleOrDefault();
+
+        await Assert.That(attribute).IsNotNull();
+        await Assert.That(attribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
+        await Assert.That(attribute.Action).IsEqualTo(AuthorizationActions.Webhooks.Update);
+        await Assert.That(typeof(ISecureRequest)
+            .IsAssignableFrom(typeof(UpdateWebhookConsumerProviderModeCommand))).IsTrue();
+    }
+
+    [Test]
+    public async Task UpdateConsumerProviderMode_LocalToSvix_PreservesExistingWorkAndAdvancesVersion()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var consumer = CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local);
+        const string environment = "selfhost";
+        const string providerVersion = "1.96.1";
+        const string resolutionVersion = "selfhost-v1.96.1-v1";
+        var providerCapabilities = WebhookProviderCapability.EndpointManagement |
+            WebhookProviderCapability.EventCatalog;
+        var profile = WebhookProviderCapabilityProfile.Create(
+            WebhookProviderKind.Svix,
+            providerVersion,
+            providerCapabilities,
+            resolutionVersion,
+            DateTimeOffset.UtcNow);
+        var binding = WebhookConsumerProviderBinding.CreatePending(
+            tenantId,
+            consumer.Id,
+            Guid.CreateVersion7(),
+            environment,
+            profile,
+            providerCapabilities);
+        binding.VerifyOwnership(tenantId, consumer.Id, "app_mode_change", DateTimeOffset.UtcNow);
+        consumer.ProviderBindings.Add(binding);
+        _consumerRepository.GetByTenantAndIdForUpdateAsync(
+                tenantId,
+                consumer.Id,
+                Arg.Any<CancellationToken>())
+            .Returns(consumer);
+        _consumerRepository.UpdateAsync(consumer, Arg.Any<CancellationToken>()).Returns(consumer);
+        var handler = CreateUpdateConsumerProviderModeHandler(
+            new StaticWebhookProviderCapabilityResolver(new WebhookProviderModeCapabilityResolution(
+                WebhookProviderMode.Svix,
+                true,
+                WebhookProviderCapability.None,
+                providerCapabilities,
+                environment,
+                providerVersion,
+                resolutionVersion,
+                null)));
+
+        var result = await handler.Handle(
+            new UpdateWebhookConsumerProviderModeCommand
+            {
+                TenantId = tenantId,
+                ConsumerId = consumer.Id,
+                ProviderModeId = (int)WebhookProviderMode.Svix,
+                ExpectedConfigurationVersion = 1,
+                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+                PendingWorkReason = "Move new deliveries to the verified self-hosted provider."
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(consumer.ProviderMode).IsEqualTo(WebhookProviderMode.Svix);
+        await Assert.That(consumer.ConfigurationVersion).IsEqualTo(2);
+        await _auditLogRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
+            audit.Action == "WebhookConsumerProviderModeChanged" &&
+            audit.NewValues != null &&
+            audit.NewValues.Contains("\"providerMode\":\"SVIX\"", StringComparison.Ordinal) &&
+            audit.NewValues.Contains("\"pendingWorkDecision\":\"PRESERVE_EXISTING\"", StringComparison.Ordinal) &&
+            !audit.NewValues.Contains("app_mode_change", StringComparison.Ordinal)));
+    }
+
+    [Test]
+    public async Task UpdateConsumerProviderMode_SvixToLocal_RequiresActiveSubscribedEndpoint()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var consumer = CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Svix);
+        _consumerRepository.GetByTenantAndIdForUpdateAsync(
+                tenantId,
+                consumer.Id,
+                Arg.Any<CancellationToken>())
+            .Returns(consumer);
+        _endpointRepository.HasActiveSubscribedEndpointByConsumerAsync(
+                tenantId,
+                consumer.Id,
+                Arg.Any<CancellationToken>())
+            .Returns(false);
+        var handler = CreateUpdateConsumerProviderModeHandler(
+            new StaticWebhookProviderCapabilityResolver(new WebhookProviderModeCapabilityResolution(
+                WebhookProviderMode.Local,
+                true,
+                WebhookProviderCapability.EndpointManagement,
+                WebhookProviderCapability.None,
+                null,
+                null,
+                "event-local-v1",
+                null)));
+
+        var result = await handler.Handle(
+            new UpdateWebhookConsumerProviderModeCommand
+            {
+                TenantId = tenantId,
+                ConsumerId = consumer.Id,
+                ProviderModeId = (int)WebhookProviderMode.Local,
+                ExpectedConfigurationVersion = 1,
+                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+                PendingWorkReason = "Return new deliveries to Local endpoints."
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode)
+            .IsEqualTo("webhook_consumer_provider_mode_local_target_required");
+        await _consumerRepository.DidNotReceive().UpdateAsync(
+            Arg.Any<WebhookConsumer>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateConsumerProviderMode_WhenMigrationRequested_RejectsCrossProviderRewrite()
+    {
+        var handler = CreateUpdateConsumerProviderModeHandler(_capabilityResolver);
+
+        var result = await handler.Handle(
+            new UpdateWebhookConsumerProviderModeCommand
+            {
+                TenantId = Guid.CreateVersion7(),
+                ConsumerId = Guid.CreateVersion7(),
+                ProviderModeId = (int)WebhookProviderMode.Svix,
+                ExpectedConfigurationVersion = 1,
+                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.MigrateEligible,
+                PendingWorkReason = "Attempt to reroute pending work."
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode)
+            .IsEqualTo("webhook_consumer_provider_mode_pending_migration_unsupported");
+        await _consumerRepository.DidNotReceive().GetByTenantAndIdForUpdateAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task DeliveryAuditRequests_RequireWebhookDeliveryAuthorization()
     {
         var listMessagesAttribute = typeof(GetWebhookMessagesQuery)
@@ -777,7 +929,7 @@ public sealed class WebhookConsumerHandlersTests
         await _auditLogRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
             audit.Action == "WebhookEndpointConfigurationChanged" &&
             audit.NewValues != null &&
-            audit.NewValues.Contains("PreserveExisting", StringComparison.Ordinal)));
+            audit.NewValues.Contains("PRESERVE_EXISTING", StringComparison.Ordinal)));
     }
 
     [Test]
@@ -835,7 +987,7 @@ public sealed class WebhookConsumerHandlersTests
         await Assert.That(eligibleTarget.DeliveryStatus).IsEqualTo(WebhookLocalDeliveryStatus.Pending);
         await _auditLogRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
             audit.NewValues != null &&
-            audit.NewValues.Contains("MigrateEligible", StringComparison.Ordinal) &&
+            audit.NewValues.Contains("MIGRATE_ELIGIBLE", StringComparison.Ordinal) &&
             audit.NewValues.Contains("\"migratedTargetCount\":1", StringComparison.Ordinal)));
     }
 
@@ -1562,6 +1714,19 @@ public sealed class WebhookConsumerHandlersTests
             _eventTypeRepository,
             _providerPublicationRepository,
             _capabilityResolver,
+            _auditLogRepository,
+            _unitOfWork,
+            _currentUserService,
+            _machinePrincipalAccessor,
+            TimeProvider.System);
+
+    private UpdateWebhookConsumerProviderModeCommandHandler CreateUpdateConsumerProviderModeHandler(
+        IWebhookProviderCapabilityResolver capabilityResolver) =>
+        new(
+            _consumerRepository,
+            _endpointRepository,
+            _providerPublicationRepository,
+            capabilityResolver,
             _auditLogRepository,
             _unitOfWork,
             _currentUserService,

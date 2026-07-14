@@ -332,6 +332,27 @@ public sealed class WebhooksControllerTests
     }
 
     [Test]
+    public async Task ConsumerProviderModeRoute_UsesStableMetadataAndWebhookUpdateAuthorization()
+    {
+        var action = typeof(WebhooksController)
+            .GetMethod(nameof(WebhooksController.UpdateConsumerProviderMode))!;
+        var route = action.GetCustomAttribute<HttpPutAttribute>();
+        var authorization = typeof(UpdateWebhookConsumerProviderModeCommand)
+            .GetCustomAttribute<AuthorizeResourceAttribute>();
+
+        await Assert.That(route).IsNotNull();
+        await Assert.That(route!.Template).IsEqualTo("consumers/{consumerId:guid}/provider-mode");
+        await Assert.That(route.Name).IsEqualTo(RouteNames.UpdateWebhookConsumerProviderMode);
+        await Assert.That(action.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName)
+            .IsEqualTo(RateLimitingExtensions.WritePolicy);
+        await Assert.That(action.GetCustomAttribute<RequestTimeoutAttribute>()?.PolicyName)
+            .IsEqualTo(RequestTimeoutExtensions.ComplexPolicy);
+        await Assert.That(authorization).IsNotNull();
+        await Assert.That(authorization!.Resource).IsEqualTo(ResourceKinds.Webhook);
+        await Assert.That(authorization.Action).IsEqualTo(AuthorizationActions.Webhooks.Update);
+    }
+
+    [Test]
     public async Task GetConsumers_DispatchesTenantScopedQueryAndReturnsHalCollection()
     {
         var consumer = CreateConsumerDto();
@@ -677,6 +698,78 @@ public sealed class WebhooksControllerTests
     }
 
     [Test]
+    public async Task UpdateConsumerProviderMode_DispatchesGovernedTenantScopedCommandAndReturnsOk()
+    {
+        var consumerId = Guid.CreateVersion7();
+        _mediator.Send(Arg.Any<UpdateWebhookConsumerProviderModeCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid>
+            {
+                Success = true,
+                Id = consumerId,
+                Message = "Webhook consumer provider mode changed."
+            });
+        var controller = CreateController("keycloak-subject-update-consumer-provider-mode");
+
+        var result = await controller.UpdateConsumerProviderMode(
+            consumerId,
+            new UpdateWebhookConsumerProviderModeRequestDto
+            {
+                ProviderModeId = (int)WebhookProviderMode.Svix,
+                ExpectedConfigurationVersion = 5,
+                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+                PendingWorkReason = "Move new deliveries to self-hosted Svix.",
+                AcknowledgeUncertainProviderPublications = true
+            },
+            CancellationToken.None);
+
+        var ok = result.Result as OkObjectResult;
+        await Assert.That(ok).IsNotNull();
+        await _mediator.Received(1).Send(
+            Arg.Is<UpdateWebhookConsumerProviderModeCommand>(command =>
+                command.TenantId == _tenantId &&
+                command.ConsumerId == consumerId &&
+                command.ProviderModeId == (int)WebhookProviderMode.Svix &&
+                command.ExpectedConfigurationVersion == 5 &&
+                command.PendingWorkDecisionId == (int)WebhookPendingWorkDecision.PreserveExisting &&
+                command.PendingWorkReason == "Move new deliveries to self-hosted Svix." &&
+                command.AcknowledgeUncertainProviderPublications),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateConsumerProviderMode_WhenConfigurationConflicts_ReturnsConflictProblem()
+    {
+        _mediator.Send(Arg.Any<UpdateWebhookConsumerProviderModeCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                FailureCode = "webhook_consumer_configuration_conflict",
+                Message = "Webhook consumer configuration changed.",
+                Errors = ["Webhook consumer configuration changed."]
+            });
+        var controller = CreateController("keycloak-subject-update-consumer-provider-mode-conflict");
+
+        var result = await controller.UpdateConsumerProviderMode(
+            Guid.CreateVersion7(),
+            new UpdateWebhookConsumerProviderModeRequestDto
+            {
+                ProviderModeId = (int)WebhookProviderMode.Local,
+                ExpectedConfigurationVersion = 2,
+                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+                PendingWorkReason = "Preserve pending work."
+            },
+            CancellationToken.None);
+
+        var objectResult = result.Result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
+        var problem = objectResult.Value as ProblemDetails;
+        await Assert.That(problem).IsNotNull();
+        await Assert.That(problem!.Extensions["code"])
+            .IsEqualTo("webhook_consumer_configuration_conflict");
+    }
+
+    [Test]
     public async Task UpdateEndpoint_WhenMissing_ReturnsNotFoundProblem()
     {
         _mediator.Send(Arg.Any<UpdateWebhookEndpointCommand>(), Arg.Any<CancellationToken>())
@@ -878,6 +971,27 @@ public sealed class WebhooksControllerTests
         await Assert.That(test.PermissionAction).IsEqualTo(AuthorizationActions.Webhooks.Test);
         await Assert.That(delete.RouteName).IsEqualTo(RouteNames.DeleteWebhookEndpoint);
         await Assert.That(delete.PermissionAction).IsEqualTo(AuthorizationActions.Webhooks.Delete);
+    }
+
+    [Test]
+    public async Task ConsumerDetailLinks_ExposeProviderModeChangeOnlyForNonArchivedConsumers()
+    {
+        var activeConsumer = CreateConsumerDto();
+        var archivedConsumer = CreateConsumerDto(status: WebhookConsumerStatus.Archived);
+        var policy = new WebhookConsumerDetailLinkPolicy();
+
+        var activeLinks = policy
+            .GetLinks(activeConsumer, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .ToList();
+        var archivedLinks = policy
+            .GetLinks(archivedConsumer, new ClaimsPrincipal(new ClaimsIdentity("test")))
+            .ToList();
+
+        var changeMode = activeLinks.Single(link => link.Rel == LinkRelations.ChangeProviderMode);
+        await Assert.That(changeMode.RouteName).IsEqualTo(RouteNames.UpdateWebhookConsumerProviderMode);
+        await Assert.That(changeMode.Method).IsEqualTo("PUT");
+        await Assert.That(changeMode.PermissionAction).IsEqualTo(AuthorizationActions.Webhooks.Update);
+        await Assert.That(archivedLinks.Any(link => link.Rel == LinkRelations.ChangeProviderMode)).IsFalse();
     }
 
     [Test]
@@ -1493,7 +1607,9 @@ public sealed class WebhooksControllerTests
         return new WebhookConsumerDetailLinkPolicy();
     }
 
-    private WebhookConsumerDto CreateConsumerDto(string providerModeName = "Local") =>
+    private WebhookConsumerDto CreateConsumerDto(
+        string providerModeName = "Local",
+        WebhookConsumerStatus status = WebhookConsumerStatus.Active) =>
         new()
         {
             Id = Guid.CreateVersion7(),
@@ -1501,9 +1617,9 @@ public sealed class WebhooksControllerTests
             ConsumerKindId = 1,
             ConsumerKindCode = "TENANT",
             ConsumerKindName = "Tenant",
-            StatusId = 1,
-            StatusCode = "ACTIVE",
-            StatusName = "Active",
+            StatusId = (int)status,
+            StatusCode = status.ToString().ToUpperInvariant(),
+            StatusName = status.ToString(),
             ProviderModeId = ProviderModeId(providerModeName),
             ProviderModeCode = providerModeName == "DryRun" ? "DRY_RUN" : providerModeName.ToUpperInvariant(),
             ProviderModeName = providerModeName,
