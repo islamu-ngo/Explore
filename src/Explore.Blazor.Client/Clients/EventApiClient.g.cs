@@ -91877,6 +91877,10 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Name { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("configurationVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ConfigurationVersion { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
         public System.DateTimeOffset? CreatedAt { get; set; } = default!;
 
@@ -92055,6 +92059,10 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("secretVersion")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? SecretVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("configurationVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ConfigurationVersion { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("providerEndpointId")]
         public string? ProviderEndpointId { get; set; } = default!;
@@ -98356,6 +98364,21 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("previousSecretValidForSeconds")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? PreviousSecretValidForSeconds { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expectedConfigurationVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ExpectedConfigurationVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pendingWorkDecisionId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PendingWorkDecisionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pendingWorkReason")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PendingWorkReason { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("acknowledgeUncertainProviderPublications")]
+        public bool? AcknowledgeUncertainProviderPublications { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -105688,6 +105711,21 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? RateLimitPerMinute { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("expectedConfigurationVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ExpectedConfigurationVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pendingWorkDecisionId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PendingWorkDecisionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pendingWorkReason")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PendingWorkReason { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("acknowledgeUncertainProviderPublications")]
+        public bool? AcknowledgeUncertainProviderPublications { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]
@@ -106295,6 +106333,10 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Name { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("configurationVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ConfigurationVersion { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
         public System.DateTimeOffset? CreatedAt { get; set; } = default!;
 
@@ -106449,6 +106491,10 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("secretVersion")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? SecretVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("configurationVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ConfigurationVersion { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("providerEndpointId")]
         public string? ProviderEndpointId { get; set; } = default!;

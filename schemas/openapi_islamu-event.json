@@ -85022,6 +85022,14 @@
           "name": {
             "type": "string"
           },
+          "configurationVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -85258,6 +85266,14 @@
             "type": "string"
           },
           "secretVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "configurationVersion": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -92662,7 +92678,8 @@
       },
       "RotateWebhookEndpointSecretRequestDto": {
         "required": [
-          "newSecretRef"
+          "newSecretRef",
+          "pendingWorkReason"
         ],
         "type": "object",
         "properties": {
@@ -92677,6 +92694,28 @@
               "string"
             ],
             "format": "int32"
+          },
+          "expectedConfigurationVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pendingWorkDecisionId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pendingWorkReason": {
+            "type": "string"
+          },
+          "acknowledgeUncertainProviderPublications": {
+            "type": "boolean"
           }
         }
       },
@@ -99820,7 +99859,8 @@
       },
       "UpdateWebhookEndpointRequestDto": {
         "required": [
-          "url"
+          "url",
+          "pendingWorkReason"
         ],
         "type": "object",
         "properties": {
@@ -99866,6 +99906,28 @@
               "string"
             ],
             "format": "int32"
+          },
+          "expectedConfigurationVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pendingWorkDecisionId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pendingWorkReason": {
+            "type": "string"
+          },
+          "acknowledgeUncertainProviderPublications": {
+            "type": "boolean"
           }
         }
       },
@@ -100563,6 +100625,14 @@
           "name": {
             "type": "string"
           },
+          "configurationVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -100771,6 +100841,14 @@
             "type": "string"
           },
           "secretVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "configurationVersion": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",

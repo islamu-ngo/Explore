@@ -3810,6 +3810,64 @@ Table "idempotency_records" {
 
 
 // ============================================================
+// Webhook Provider Capability Authority
+// ============================================================
+
+Table "webhook_provider_capabilities" {
+  "id" int [pk, not null, note: 'Stable individual flag value; ValueGeneratedNever']
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ux_webhook_provider_capabilities_master_code']
+  }
+
+  Note: 'Normalized metadata for the twelve individually addressable provider capability flags (1..2048). Rows are inserted idempotently by the runtime lookup seeder; combinations remain persisted as bounded bitmasks.'
+}
+
+Table "webhook_consumer_provider_bindings" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "webhook_consumer_id" uuid [not null]
+  "instance_id" uuid [not null]
+  "provider_kind_id" int [not null]
+  "provider_version" varchar(100) [not null]
+  "provider_environment" varchar(500) [not null]
+  "normalized_environment" varchar(500) [not null]
+  "application_uid" varchar(500) [not null]
+  "normalized_application_uid" varchar(500) [not null]
+  "external_application_id" varchar(500)
+  "normalized_external_application_id" varchar(500)
+  "verification_state_id" int [not null]
+  "verified_tenant_id" uuid
+  "verified_webhook_consumer_id" uuid
+  "verified_at_utc" timestamptz
+  "capabilities" bigint [not null]
+  "governance_allowed_capabilities" bigint [not null]
+  "capability_resolution_version" varchar(100) [not null]
+  "capabilities_resolved_at_utc" timestamptz [not null]
+  "is_enabled" boolean [not null]
+  "concurrency_version" bigint [not null]
+  "verification_fence" bigint [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_webhook_consumer_provider_bindings_tenant_id_id']
+    (tenant_id, webhook_consumer_id, provider_kind_id, normalized_environment) [unique, name: 'ux_webhook_provider_bindings_tenant_consumer_provider_environment']
+    (tenant_id, provider_kind_id, normalized_environment, normalized_external_application_id) [unique, name: 'ux_webhook_provider_bindings_tenant_provider_environment_external_app', note: 'filter: normalized_external_application_id IS NOT NULL']
+    (provider_kind_id, normalized_environment, normalized_external_application_id, normalized_application_uid) [unique, name: 'ux_webhook_provider_bindings_provider_application_identity', note: 'filter: normalized_external_application_id IS NOT NULL']
+    (tenant_id, provider_kind_id, normalized_environment, normalized_application_uid) [unique, name: 'ux_webhook_provider_bindings_tenant_provider_environment_application_uid']
+  }
+
+  Note: 'Tenant-scoped provider ownership proof. Checks require concurrency_version and verification_fence > 0 and constrain capabilities/governance_allowed_capabilities to known masks 0..4095. Effective authority is capabilities & governance_allowed_capabilities; EF enforces restrictive tenant/consumer and normalized lookup foreign keys.'
+}
+
+
+// ============================================================
 // Views
 // ============================================================
 
