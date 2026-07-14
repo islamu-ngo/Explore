@@ -3,7 +3,7 @@
 
 # Webhook Delivery Redesign Plan
 
-Last Updated: 2026-07-13 Europe/Brussels
+Last Updated: 2026-07-14 Europe/Brussels
 
 ## Status
 
@@ -281,7 +281,7 @@ are allowed only while all of these remain true:
 Svix documents retention of a POST response for the same auth token and
 idempotency key for up to 12 hours. After that window or credential rotation,
 automatic create retry is forbidden. Lookup-based reconciliation is allowed only
-when the supported managed/self-hosted version's conformance suite proves the
+when the supported self-hosted version's conformance suite proves the
 lookup semantics. Otherwise the publication becomes `ManualReconciliation`.
 The system never creates a fresh provider identity to conceal unknown state.
 
@@ -463,7 +463,7 @@ path churn with reliability and migration work.
 - Introduce `WebhookProviderPublication` and attempts.
 - Migrate/retire message publication links.
 - Implement immutable Svix identity and bounded retry/reconciliation.
-- Run managed and supported self-hosted conformance suites.
+- Run every supported self-hosted conformance suite; managed SaaS is outside scope.
 
 ### Phase 3: Binding, Capabilities, and Configuration Authority
 
@@ -529,7 +529,7 @@ Implementation cannot ship until all of these are green:
 5. Svix-enabled profile.
 6. Latest-released-schema migration smoke with representative data and lock timing.
 7. Multi-worker PostgreSQL concurrency and failure-injection suite.
-8. Managed and supported self-hosted Svix conformance evidence.
+8. Every supported self-hosted Svix conformance profile has executed evidence.
 9. OpenAPI regeneration and generated-client drift check.
 10. No unresolved Critical or High finding without an explicit approved release waiver.
 

@@ -3,7 +3,7 @@
 
 # Webhook Delivery Redesign Context
 
-Last Updated: 2026-07-13 Europe/Brussels
+Last Updated: 2026-07-14 Europe/Brussels
 
 ## Current Status
 
@@ -175,7 +175,7 @@ These are not accepted from intuition or a client SDK alone:
 - Recovery after credential rotation.
 - Event-ID duplicate semantics for same and changed payload.
 - Lookup/list consistency after timeout following provider acceptance.
-- Managed Svix behavior matching every supported self-hosted version.
+- Behavior across every explicitly supported self-hosted Svix version.
 - Capability availability on older/self-hosted versions.
 
 The conformance suite records provider/version and covers repeat POST within the
@@ -242,6 +242,30 @@ data. Minimum hashes/identities/outcomes survive payload deletion.
 - Do not trust legacy provider ownership until the server verifies it.
 - Do not delete unresolved or unknown publication evidence.
 
+### Phase 0B migration rehearsal contract
+
+- The committed-development starting point is
+  `20260712144721_AddManagedTenantProvisioningOperationOutboxPointer`.
+- Deployment uses an inspected EF Core idempotent SQL script. Operators apply it with
+  `ON_ERROR_STOP`, record migration-history before/after, and do not run application
+  writers concurrently with the schema slice.
+- Declare a 15-minute write-maintenance window for the measured 10,000-row shape, with
+  a further 15-minute rollback/restore buffer. Before production deployment, scale the
+  window from a production-like rehearsal; if the projected migration exceeds five
+  minutes or the lock sample shows waiting writers, stop and split the backfill from DDL.
+- Take a PostgreSQL custom-format backup before migration and restore it into a clean
+  database. Compare migration history, row count, a deterministic payload checksum, and
+  semantic webhook schema. Column ordinal position is excluded because PostgreSQL dump/
+  restore may reorder physical columns without changing names, types, defaults,
+  constraints, indexes, or EF mappings.
+- Before traffic resumes, a failed validation restores the verified backup. After traffic
+  resumes, keep writers paused and use a new additive forward migration; do not execute a
+  destructive `Down()` or delete unresolved webhook evidence.
+- The 2026-07-14 PostgreSQL 18 rehearsal upgraded 10,000 committed-baseline rows in under
+  one second, canonicalized all 10,000 payloads, observed no waiting webhook-table lock at
+  the 250 ms sample, and restored the same data checksum and semantic schema hash. The
+  timing is release evidence for this fixture size, not a production capacity promise.
+
 ## Rename Boundary
 
 Production source paths and namespaces remain `Explore.*`, while much of the test
@@ -255,7 +279,8 @@ item because combining it with migrations would obscure review and rollback.
 
 - `src/Explore.Domain/IncomingWebhookMessage.cs`
 - `src/Explore.Domain/WebhookMessage.cs`
-- `src/Explore.Domain/WebhookProviderLink.cs`
+- `src/Explore.Domain/WebhookConsumerProviderBinding.cs`
+- `src/Explore.Domain/WebhookProviderPublication.cs`
 - `src/Explore.Domain/WebhookConsumer.cs`
 - `src/Explore.Domain/WebhookEndpoint.cs`
 - `src/Explore.Persistence/Configurations/Entities/IncomingWebhookMessageConfiguration.cs`
@@ -275,9 +300,9 @@ item because combining it with migrations would obscure review and rollback.
 - `src/Explore.API/Controllers/WebhooksController.cs`
 - `src/Explore.API/Hateoas/Policies/WebhookConsumerLinkPolicy.cs`
 - `src/Explore.API/Hateoas/Policies/WebhookDeliveryLinkPolicy.cs`
-- `src/Explore.Infrastructure/Webhooks/WebhookDeliveryDrainService.cs`
-- `src/Explore.Infrastructure/Webhooks/LocalWebhookDeliveryProvider.cs`
-- `src/Explore.Infrastructure/Webhooks/SvixWebhookDeliveryProvider.cs`
+- `src/Explore.Infrastructure/Webhooks/WebhookProviderPublicationDrainService.cs`
+- `src/Explore.Infrastructure/Webhooks/WebhookProviderPublicationDispatcher.cs`
+- `src/Explore.Infrastructure/Webhooks/SvixWebhookProviderBindingAuthorityService.cs`
 - `src/Explore.Infrastructure/Webhooks/SvixAppPortalService.cs`
 - `src/Explore.Infrastructure/Webhooks/WebhookSignatureService.cs`
 - `src/Explore.Infrastructure/Configuration/WebhookOptions.cs`

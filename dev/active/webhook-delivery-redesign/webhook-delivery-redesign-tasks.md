@@ -3,14 +3,156 @@
 
 # Webhook Delivery Redesign Tasks
 
-Last Updated: 2026-07-13 Europe/Brussels
+Last Updated: 2026-07-14 Europe/Brussels
 
 ## Status
 
 - Planning: **Approved**
-- Implementation: **Not started**
-- Current task: **0.1 Rebaseline the implementation and migration source**
+- Implementation: **In progress**
+- Current task: **3.2 Add typed provider capabilities**
+- Current blocker: **None**
 - Rule: complete tasks in order unless this document explicitly marks them parallel
+
+### Progress snapshot
+
+- Phase 0A portal authority containment is implemented: callers cannot choose portal
+  authority, persisted verified bindings and capability ceilings govern issuance, HAL
+  is fail-closed, successful responses are `no-store`, and audit failure suppresses the URL.
+- Phase 0B model/schema decisions are implemented through generated additive EF Core
+  migrations, normalized lookup tables, tenant-leading keys/indexes, composite tenant
+  foreign keys, named tenant filters, and repository-local bypass reasons.
+- Phase 1 processing is implemented through persisted claims, lease tokens/fences,
+  generation checks, per-claim tenant/machine execution scopes, transactional effect
+  receipts, append-only attempts, bounded retry/dead-letter handling, lease heartbeats,
+  and an authenticated/audited redrive command and API.
+- Verified focused suites currently cover 5 atomic-effect cases, 7 settlement/recovery
+  cases, 3 tenant-execution cases, 1 bounded-drain case, 4 redrive-handler cases, 3
+  redrive API cases, the repository aggregate-evidence save-boundary regression, live
+  Local/Cerbos machine-action parity, the real PostgreSQL two-tenant crash/isolation
+  recovery scenario, and lookup parity/model-drift checks.
+- The canonical Release build passes across 26 projects with 0 errors, and the full
+  PostgreSQL persistence regression now passes 329/329 after binding-identity normalization.
+- PostgreSQL 18 clean, committed-baseline, 10,000-row legacy, and backup/restore
+  rehearsals converge to one semantic schema; all representative legacy rows classify
+  deterministically and the restored data checksum is identical.
+- The latest full API regression run completed 1,762 cases with 1,743 passing, 3 skipped,
+  and 16 failures. Seven were stale webhook portal fixtures: the HTTP host used an
+  unregistered provider tuple and HAL fixtures inherited the zero-evidence managed
+  default. Those fixtures now use the pinned, executed self-hosted profile; all 5 HTTP
+  containment and all 7 HAL authority cases pass. The remaining 9 failures are outside
+  the webhook surface (public endpoint inventory, Control Plane tenant authorization,
+  non-testing authorization bootstrap, instance-setting policy contracts, and two
+  event-registration runtime fixtures). A broad API rerun remains required after the
+  unrelated baseline is repaired; no unrelated source/test was changed to hide it.
+- Wave 4.1 now has the plan-mandated `WebhookProviderPublicationStateTests`: eight
+  focused cases prove immutable plan/provider identity, ordered fenced evidence,
+  legal terminal and reconciliation paths, stale-lease rejection, bounded attempts,
+  and the twelve-hour idempotency ceiling. The red run exposed and the domain fix now
+  closes automatic publication claims at or after `IdempotencyValidUntil`.
+- Wave 4.2 adds an entity-returning publication repository with atomic PostgreSQL
+  due/unknown claims, explicit tenant predicates, bounded batches and attempts,
+  lease tokens/fences, append-only attempt tracking, and optimistic completion guards.
+  Four real-database cases pass, including concurrent claimers and a stale completion
+  race normalized from the evidence uniqueness constraint to an EF concurrency failure.
+- Wave 4.3 now materializes each exact-byte `WebhookMessage`, immutable delivery-plan
+  snapshot, Local target set, and provider publication set through one application
+  contract and one EF transaction. Semantic replay returns the frozen existing plan;
+  changed immutable data fails explicitly; unique-key races recover only a matching
+  winner; and target failure rolls the entire graph back. The active publisher now
+  resolves governance first, builds bytes once, and never performs synchronous network
+  dispatch. Six application cases, five infrastructure routing cases, and four real
+  PostgreSQL atomicity cases pass; `TimeProvider` supplies the materialization clock.
+- Wave 4.4 adds a disabled-by-default asynchronous provider-publication processor,
+  bounded claims, fenced dispatch, snapshot-only Svix requests, deterministic retry
+  jitter, and stable provider event/idempotency identities. Provider acceptance updates
+  only the publication; definitely-not-accepted failures may retry; timeout or malformed
+  acceptance becomes `PublicationUnknown`; and lease loss cannot write stale success.
+  Five focused dispatch identity cases pass, with no active provider-link dual write.
+- Wave 4.5 adds conformance-gated, lookup-only unknown reconciliation. One exact
+  event/hash evidence-tag match queues; proven absence schedules the unchanged identity;
+  conflicts, multiple matches, unsupported profiles, expiry, and exhausted attempts
+  require manual reconciliation. Lookup is bounded by pages and time window, the default
+  capability policy is fail-closed, and expired unleased rows use a separate repository
+  recovery path. Seven infrastructure cases pass. Publication-attempt outcomes are now
+  enum-backed normalized lookup rows with a restrictive FK, runtime/literal seeds, a
+  generated migration, and tenant-leading evidence indexing; lookup parity and the four
+  real PostgreSQL publication claim/concurrency cases pass after the schema change.
+- Wave 4.6 now has a live, pinned self-hosted Svix v1.96.1 Testcontainers matrix
+  backed by PostgreSQL and shared Redis queue/cache state. Two selected test methods
+  execute seven provider cases: version pinning, idempotent replay inside the twelve-hour
+  window, simulated window expiry, duplicate event identity with same/changed payload,
+  response loss after acceptance, real credential rotation, and list/get consistency.
+  The exact matrix command passes and writes secret-free JSON/TRX evidence. The live
+  profile proved that self-hosted v1.96.1 does not return message tags, so request-hash
+  exact lookup is deliberately disabled and unknown publications route to manual
+  reconciliation. Unsupported and zero-evidence profiles fail startup/readiness.
+  Managed Svix SaaS is outside the supported deployment matrix. Its zero-evidence profile
+  remains fail-closed and unselectable; the dormant manual harness does not count as
+  release evidence. Compose, Aspire, E2E infrastructure, runtime defaults, and operator
+  docs use the same pinned
+  tuple; Redis is explicit for both Svix queue and cache. Six readiness and eight option-
+  validation cases pass, the AppHost Release build is green, and Compose validates cleanly.
+  The canonical Release build was rerun across all 26 projects with 0 errors, and EF Core
+  reports no model changes since the latest generated migration; existing warnings remain.
+  The non-runtime infrastructure lane passes 773/773 after aligning two portal service
+  fixtures with their verified binding tuple. Application, Domain, Secrets, Persistence,
+  Blazor integration, and Blazor client projects pass their canonical Release test runs.
+  Architecture currently has four committed Management-surface convention failures
+  outside this redesign (command/query namespace/public-handler rules and seven DTO names).
+  The exact self-hosted conformance selector was rerun after this scope decision and passed.
+  `.env` and `.env.example` contain the matching local self-hosted JWT/signing-secret pair;
+  managed token placeholders remain blank and have no Infisical or cloud SaaS owner. A live
+  Aspire restart now runs healthy `svix/svix-server:v1.96.1`; the bundled JWT generator
+  returned a valid bearer-token shape without exposing it, and the `.env` JWT authenticated
+  successfully against the live self-hosted application-list endpoint.
+- Phase 2.6 now uses three ordered generated migrations: widen nullable legacy evidence
+  columns, perform a set-based evidence backfill with fail-fast ambiguity validation, then
+  drop the retired table. The backfill creates immutable plans, `LegacyUnverified` bindings,
+  provider publications, and normalized attempts; trims and normalizes provider identities;
+  copies endpoint identity; preserves the source link ID as publication provenance; and
+  never guesses provider success. Synced rows with one provider message ID become
+  `ProviderQueued`; unresolved rows require manual reconciliation and disabled rows become
+  terminal. Conflicting ownership or identifiers aborts the transaction before evidence loss.
+- New legacy-link writes are structurally retired: the synchronous provider contract,
+  runtime router, Local/DryRun/Disabled adapters, old Svix publisher, provider-link
+  repository, and all corresponding DI registrations are removed. Delivery now has one
+  authoritative route through immutable plan materialization plus asynchronous Local/Svix
+  drains. After the database rehearsal passed, the legacy entity, EF configuration, DbSet,
+  query filter, migration-service backfill adapter, and obsolete repository/provider tests
+  were removed from the runtime model.
+- The real PostgreSQL 18 retirement rehearsal upgrades 10,002 legacy links in an isolated
+  database, observes zero waiting locks at 250 ms, creates 10,002 plans/publications/attempts,
+  removes the legacy table, and verifies a custom-format backup/restore with identical
+  publication ID/status checksum and no restored legacy table. The complete case passes in
+  2 minutes 31.566 seconds, below the five-minute split threshold.
+- Post-retirement verification is green for the 26-project Release build and all 329
+  persistence tests. Architecture remains at the same unrelated Management baseline:
+  270 passed, 1 skipped, and 4 failures for command/handler namespace and visibility plus
+  seven Management DTO names; no webhook model, migration, dependency, or naming rule fails.
+- Phase 3.1 now has one authoritative consumer security boundary. Application UIDs are
+  recomputed as `islamu-{instance:N}-consumer-{consumer:N}` from the completed bootstrap
+  identity, the tenant-only mapper fallback is deleted, and same-tenant consumers receive
+  distinct provider identities. A generated forward migration normalizes placeholder legacy
+  instance IDs, invalidates stale ownership proof, records reversible audit evidence, and has
+  a passing 5.696-second PostgreSQL Up/Down rehearsal. The current 10,002-row upgrade,
+  backup, restore, and checksum rehearsal passes in 2 minutes 34.211 seconds, and the full
+  real-PostgreSQL persistence lane passes 329/329.
+- The authenticated repair endpoint verifies the exact self-hosted conformance profile, Svix
+  application ID/UID, and tenant/consumer metadata before opening a database transaction.
+  It then creates or rebinds the normalized entity under optimistic concurrency/fence guards
+  and commits a hashed, credential-free audit record atomically. `webhook:manage-provider`
+  authorization and a HAL `repair-provider-binding` relation keep this operation server-owned;
+  managed Svix SaaS and unsupported profiles fail closed.
+- Phase 3.2 implementation is in progress with a normalized
+  `webhook_provider_capabilities` lookup, an enum-backed twelve-capability bitmask, bounded
+  database constraints, and a provider/version resolver. Local deliberately exposes only
+  endpoint management and event-catalog authority; self-hosted Svix v1.96.1 exposes only the
+  four capabilities proven by the live matrix. Configuration validation, readiness metadata,
+  CQRS write boundaries, and consumer read models now fail closed through the same resolver.
+  EF CLI generated `20260714095353_NormalizeWebhookProviderCapabilities`; the removed empty
+  predecessor and model snapshot were handled exclusively by `dotnet ef`, and EF currently
+  reports no pending model changes. HAL/UI explanations, contract regeneration, and the full
+  focused verification matrix remain before the four 3.2 checklist items can be closed.
 
 ## Definition of Ready
 
@@ -20,49 +162,49 @@ Last Updated: 2026-07-13 Europe/Brussels
 - [x] `WebhookConsumer` selected as the Svix application security boundary.
 - [x] Provider assumptions bounded by official documentation/conformance proof.
 - [x] Audit, retention, fairness, signatures, migration, and release gates made mandatory.
-- [ ] Source/model/migration rebaseline completed after plan approval.
-- [ ] User explicitly starts implementation work.
+- [x] Source/model/migration rebaseline completed after plan approval.
+- [x] User explicitly starts implementation work.
 
 ## Phase 0A: Immediate App Portal Authority Containment
 
 ### 0.1 Rebaseline source and migrations
 
-- [ ] Inspect the current portal request, command, handler, validator, service,
+- [x] Inspect the current portal request, command, handler, validator, service,
   controller, HAL policy, OpenAPI schema, generated client, UI, and tests.
-- [ ] Inspect `ExploreDbContextModelSnapshot`, the latest webhook migration, and the
+- [x] Inspect `ExploreDbContextModelSnapshot`, the latest webhook migration, and the
   latest released-schema upgrade starting point.
-- [ ] Record source drift in this context file before editing if current behavior
+- [x] Record source drift in this context file before editing if current behavior
   differs from the approved plan.
-- [ ] Run the canonical Release build and existing focused webhook tests for a
+- [x] Run the canonical Release build and existing focused webhook tests for a
   green baseline. Stop and report if the baseline is not green.
 
 ### 0.2 Lock the server authority contract with failing tests
 
-- [ ] Add application/API tests proving callers cannot submit `ReadOnly` or
+- [x] Add application/API tests proving callers cannot submit `ReadOnly` or
   `FeatureFlags` portal authority.
-- [ ] Prove no portal session or HAL action for absent, disabled, tenant-mismatched,
+- [x] Prove no portal session or HAL action for absent, disabled, tenant-mismatched,
   or legacy-unverified binding.
-- [ ] Prove capabilities are derived as the minimum allowed by authorization,
+- [x] Prove capabilities are derived as the minimum allowed by authorization,
   verified binding, provider/version capability, and instance governance.
-- [ ] Prove portal responses include `Cache-Control: no-store`.
-- [ ] Prove URL/token values do not enter logs, traces, caches, or audit metadata.
-- [ ] Prove issuance fact is durably audited before the URL is returned.
+- [x] Prove portal responses include `Cache-Control: no-store`.
+- [x] Prove URL/token values do not enter logs, traces, caches, or audit metadata.
+- [x] Prove issuance fact is durably audited before the URL is returned.
 
 ### 0.3 Remove caller-controlled portal authority
 
-- [ ] Delete public `ReadOnly` and `FeatureFlags` request/command/client fields.
-- [ ] Derive portal capabilities server-side from the verified consumer binding.
-- [ ] Fail closed when binding verification or provider capability is unavailable.
-- [ ] Add safe issuance-fact audit; never persist URL/token.
-- [ ] Add no-store response handling.
-- [ ] Do not add compatibility parameters or a fallback endpoint.
+- [x] Delete public `ReadOnly` and `FeatureFlags` request/command/client fields.
+- [x] Derive portal capabilities server-side from the verified consumer binding.
+- [x] Fail closed when binding verification or provider capability is unavailable.
+- [x] Add safe issuance-fact audit; never persist URL/token.
+- [x] Add no-store response handling.
+- [x] Do not add compatibility parameters or a fallback endpoint.
 
 ### 0.4 Regenerate and verify contracts
 
-- [ ] Regenerate OpenAPI output from source.
-- [ ] Regenerate `EventApiClient.g.cs` through the repository workflow.
-- [ ] Update Blazor calls and tests; keep action rendering HAL-only.
-- [ ] Run application, API integration, infrastructure portal, client unit,
+- [x] Regenerate OpenAPI output from source.
+- [x] Regenerate `EventApiClient.g.cs` through the repository workflow.
+- [x] Update Blazor calls and tests; keep action rendering HAL-only.
+- [x] Run application, API integration, infrastructure portal, client unit,
   architecture, and generated-client drift checks.
 
 **Phase 0A exit:** caller-controlled portal authority is unreachable in the public
@@ -73,34 +215,34 @@ and issuance audit is proven.
 
 ### 0.5 Freeze schema decisions
 
-- [ ] Document concrete EF mappings for `IncomingWebhookEffectReceipt`,
+- [x] Document concrete EF mappings for `IncomingWebhookEffectReceipt`,
   `WebhookProviderPublication`, publication attempts, inbound attempts, delivery
   plan snapshots, retention holds, and audit records.
-- [ ] Confirm aggregate IDs use UUIDv7 `Guid`, lookups use `int`, and cursors use `long`.
-- [ ] Define the effect receipt unique key:
+- [x] Confirm aggregate IDs use UUIDv7 `Guid`, lookups use `int`, and cursors use `long`.
+- [x] Define the effect receipt unique key:
   `(TenantId, IncomingWebhookMessageId, EffectKind)`.
-- [ ] Define the publication unique key:
+- [x] Define the publication unique key:
   `(TenantId, WebhookMessageId, ProviderKind, ProviderBindingId)`.
-- [ ] Define all state transitions and terminal/nonterminal classifications.
-- [ ] Confirm repositories return entities and mapping remains in handlers.
+- [x] Define all state transitions and terminal/nonterminal classifications.
+- [x] Confirm repositories return entities and mapping remains in handlers.
 
 ### 0.6 Define deterministic legacy classification
 
-- [ ] Inventory every legacy incoming row, message/provider link, binding/application
+- [x] Inventory every legacy incoming row, message/provider link, binding/application
   ID, endpoint config, and unresolved delivery state.
-- [ ] Map externally supplied Svix identifiers to `LegacyUnverified`.
-- [ ] Map message/provider links to evidence-backed publication states; never guess success.
-- [ ] Define handling for orphaned, duplicate, conflicting, and unknown rows.
-- [ ] Define the provider-binding verification/repair flow before portal/publication use.
+- [x] Map externally supplied Svix identifiers to `LegacyUnverified`.
+- [x] Map message/provider links to evidence-backed publication states; never guess success.
+- [x] Define handling for orphaned, duplicate, conflicting, and unknown rows.
+- [x] Define the provider-binding verification/repair flow before portal/publication use.
 
 ### 0.7 Prepare migration proof
 
-- [ ] Split focused schema DDL from any resumable data backfill where lock duration requires it.
-- [ ] Specify indexes, foreign keys, unique constraints, and online/concurrent options
+- [x] Split focused schema DDL from any resumable data backfill where lock duration requires it.
+- [x] Specify indexes, foreign keys, unique constraints, and online/concurrent options
   supported by the target PostgreSQL deployment.
-- [ ] Prepare latest-release migration smoke data including legacy and conflict cases.
-- [ ] Define backup/restore rehearsal, maintenance window, and forward-fix procedure.
-- [ ] Add representative data-volume timing and lock observation to the release evidence.
+- [x] Prepare latest-release migration smoke data including legacy and conflict cases.
+- [x] Define backup/restore rehearsal, maintenance window, and forward-fix procedure.
+- [x] Add representative data-volume timing and lock observation to the release evidence.
 
 **Phase 0B exit:** there is one schema contract, every legacy class has a deterministic
 destination, and migration verification is executable before reliability code lands.
@@ -109,68 +251,75 @@ destination, and migration verification is executable before reliability code la
 
 ### 1.1 Add failing duplicate/effect crash tests first
 
-- [ ] Same provider ID and same payload hash returns duplicate success.
-- [ ] Same provider ID and changed payload hash persists `PayloadConflict`.
-- [ ] Crash after claim and before processing leaves retryable work.
-- [ ] Crash after mutation staging and before transaction commit leaves no mutation/receipt.
-- [ ] Simulate post-business-commit/pre-inbox-settlement failure and prove the chosen
+- [x] Same provider ID and same payload hash returns duplicate success.
+- [x] Same provider ID and changed payload hash persists `PayloadConflict`.
+- [x] Crash after claim and before processing leaves retryable work.
+- [x] Crash after mutation staging and before transaction commit leaves no mutation/receipt.
+- [x] Simulate post-business-commit/pre-inbox-settlement failure and prove the chosen
   transaction/receipt design cannot replay the committed effect.
-- [ ] Existing receipt with matching hash settles retry without applying effect again.
-- [ ] Existing receipt with mismatched hash fails closed.
-- [ ] Slow processing beyond lease expiry cannot commit a second effect.
-- [ ] Concurrent workers preserve one effect and append evidence for each execution.
+- [x] Existing receipt with matching hash settles retry without applying effect again.
+- [x] Existing receipt with mismatched hash fails closed.
+- [x] Slow processing beyond lease expiry cannot commit a second effect.
+- [x] Concurrent workers preserve one effect and append evidence for each execution.
 
 ### 1.2 Introduce stable processing context
 
-- [ ] Add `IncomingWebhookProcessingContext` with incoming ID, tenant, provider,
+- [x] Add `IncomingWebhookProcessingContext` with incoming ID, tenant, provider,
   provider message ID, event type, payload hash, and generation.
-- [ ] Populate it only from the claimed persisted inbox row.
-- [ ] Update processor contracts to require it.
-- [ ] Reject attempts to substitute tenant/message/provider identity.
+- [x] Populate it only from the claimed persisted inbox row.
+- [x] Update processor contracts to require it.
+- [x] Reject attempts to substitute tenant/message/provider identity.
 
 ### 1.3 Add transactional effect receipts
 
-- [ ] Add `IncomingWebhookEffectReceipt` entity and EF configuration.
-- [ ] Add the tenant-scoped unique constraint and payload-hash invariant.
-- [ ] Make processors declare stable `EffectKind` values.
-- [ ] Commit local mutation, receipt, and inbox `Processed` transition in one UoW.
-- [ ] For external effects, commit durable outbox/operation, receipt, and settlement
+- [x] Add `IncomingWebhookEffectReceipt` entity and EF configuration.
+- [x] Add the tenant-scoped unique constraint and payload-hash invariant.
+- [x] Make processors declare stable `EffectKind` values.
+- [x] Commit local mutation, receipt, and inbox `Processed` transition in one UoW.
+- [x] For external effects, commit durable outbox/operation, receipt, and settlement
   in one UoW; dispatch network work later.
-- [ ] Implement receipt-backed settlement without effect replay.
-- [ ] Translate unique-race outcomes to deterministic success/conflict behavior.
+- [x] Implement receipt-backed settlement without effect replay.
+- [x] Translate unique-race outcomes to deterministic success/conflict behavior.
 
 ### 1.4 Complete inbound states and evidence
 
-- [ ] Add `Ignored`, `RejectedPermanent`, and `PayloadConflict` outcomes.
-- [ ] Preserve `DeadLettered -> RetryDue` redrive with new processing generation.
-- [ ] Record actor, reason, time, source generation, and result for redrive.
-- [ ] Add append-only processing attempts with bounded failure details.
-- [ ] Ensure automatic retry never processes conflict/permanent-rejection states.
+- [x] Add `Ignored`, `RejectedPermanent`, and `PayloadConflict` outcomes.
+- [x] Preserve `DeadLettered -> RetryDue` redrive with new processing generation.
+- [x] Record actor, reason, time, source generation, and result for redrive.
+- [x] Add append-only processing attempts with bounded failure details.
+- [x] Ensure automatic retry never processes conflict/permanent-rejection states.
 
 ### 1.5 Add explicit worker tenant execution
 
-- [ ] Keep the cross-tenant coordinator limited to bounded candidate claim.
-- [ ] Return persisted tenant ID with each claim.
-- [ ] Create a fresh async DI scope, DbContext, `TenantExecutionContext`, and narrowly
+- [x] Keep the cross-tenant coordinator limited to bounded candidate claim.
+- [x] Return persisted tenant ID with each claim.
+- [x] Create a fresh async DI scope, DbContext, `TenantExecutionContext`, and narrowly
   scoped system principal per work item.
-- [ ] Constrain every resource lookup to persisted tenant and fail closed.
-- [ ] Document every necessary `IgnoreQueryFilters` use and add tenant predicates.
-- [ ] Dispose/clear tenant and principal context after every item, including failure.
-- [ ] Add Local/Cerbos parity tests for machine actions.
+- [x] Constrain every resource lookup to persisted tenant and fail closed.
+- [x] Document every necessary `IgnoreQueryFilters` use and add tenant predicates.
+- [x] Dispose/clear tenant and principal context after every item, including failure.
+- [x] Add Local/Cerbos parity tests for machine actions.
 
 ### 1.6 Prove tenant isolation under concurrency
 
-- [ ] Process tenant A and B concurrently and prove no context bleed.
-- [ ] Attempt cross-tenant resource identifier substitution and prove no lookup/mutation.
-- [ ] Prove stale ambient HTTP/browser tenant data is ignored.
-- [ ] Prove context cleanup after success, cancellation, exception, and lease loss.
-- [ ] Run multi-worker PostgreSQL tests, not only in-memory/unit tests.
+- [x] Process tenant A and B concurrently and prove no context bleed.
+- [x] Attempt cross-tenant resource identifier substitution and prove no lookup/mutation.
+- [x] Prove stale ambient HTTP/browser tenant data is ignored.
+- [x] Prove context cleanup after success, cancellation, exception, and lease loss.
+- [x] Run multi-worker PostgreSQL tests, not only in-memory/unit tests.
 
 ### 1.7 Add and verify focused migration
 
-- [ ] Add effect receipt, inbound state/evidence, generation, and required indexes.
-- [ ] Migrate legacy inbox rows according to Phase 0B classifications.
-- [ ] Run latest-release migration smoke, representative timing, backup/restore,
+- [x] Add effect receipt, inbound state/evidence, generation, and required indexes.
+- [x] Migrate legacy inbox rows according to Phase 0B classifications.
+- [x] Prove repository saves attach newly appended processing evidence before EF change
+  detection; the isolated tenant-bypass regression and atomic/recovery suites pass.
+- [x] Complete the full persistence regression rerun after the save-boundary fix.
+- [x] Complete the canonical Release build after all Phase 1 fixes.
+- [x] Add and pass the plan-mandated `IncomingWebhookCrashIsolationTests` fresh-state
+  recovery scenario with one effect, exact evidence, and no cross-tenant mutation.
+- [x] Reconcile or baseline the 8 non-webhook failures from the full API regression run.
+- [x] Run latest-release migration smoke, representative timing, backup/restore,
   Release build, and focused application/persistence/API tests.
 
 **Phase 1 exit:** a committed inbound effect cannot be committed twice, conflict is
@@ -180,59 +329,62 @@ explicit, every worker runs under the persisted tenant, and failure injection pa
 
 ### 2.1 Add failing aggregate/state tests
 
-- [ ] One publication per message/provider/binding unique key.
-- [ ] Immutable binding/application, event ID, idempotency key, request hash,
+- [x] One publication per message/provider/binding unique key.
+- [x] Immutable binding/application, event ID, idempotency key, request hash,
   credential version, mode/config/contract versions, and validity window.
-- [ ] Legal transitions among `Prepared`, `Publishing`, `ProviderQueued`,
+- [x] Legal transitions among `Prepared`, `Publishing`, `ProviderQueued`,
   `RetryDue`, `PublicationUnknown`, `DeadLettered`, `ManualReconciliation`, `Abandoned`.
-- [ ] Timeout after acceptance produces unknown state, not false failure/success.
-- [ ] Fresh identity cannot be used to escape unknown state.
+- [x] Timeout after acceptance produces unknown state, not false failure/success.
+- [x] Fresh identity cannot be used to escape unknown state.
 
 ### 2.2 Add `WebhookProviderPublication`
 
-- [ ] Add aggregate, EF configuration, repository contract/implementation, DbSet,
-  query filter, unique/index constraints, and DTO mapping in handlers.
-- [ ] Add append-only publication/reconciliation attempts.
-- [ ] Move mutable provider submission state off `WebhookMessage`.
-- [ ] Store external provider message mapping on the publication.
-- [ ] Stop new `WebhookProviderLink` publication writes.
+- [x] Add aggregate, EF configuration, repository contract/implementation, DbSet,
+  query filter, and unique/index constraints.
+- [ ] Add publication DTO mapping in the management/read handlers introduced in Phase 6.
+- [x] Add append-only publication/reconciliation attempts.
+- [x] Move mutable provider submission state off `WebhookMessage`.
+- [x] Store external provider message mapping on the publication.
+- [x] Stop new `WebhookProviderLink` publication writes.
 
 ### 2.3 Materialize publication atomically
 
-- [ ] Create `WebhookMessage`, delivery-plan snapshot, and all required publications/
+- [x] Create `WebhookMessage`, delivery-plan snapshot, and all required publications/
   Local target snapshots in one transaction.
-- [ ] Derive stable provider event and idempotency identities deterministically.
-- [ ] Snapshot provider binding/application/environment, configuration, mode,
+- [x] Derive stable provider event and idempotency identities deterministically.
+- [x] Snapshot provider binding/application/environment, configuration, mode,
   contract, retention, credential reference/version, and validity window.
-- [ ] Make materialization idempotent under outbox redelivery.
+- [x] Make materialization idempotent under outbox redelivery.
 
 ### 2.4 Bound automatic Svix recovery
 
-- [ ] Retry create only before `IdempotencyValidUntil` with unchanged token scope,
+- [x] Retry create only before `IdempotencyValidUntil` with unchanged token scope,
   environment, application, credential version, request hash, and idempotency key.
-- [ ] Persist `LastAutomaticReconciliationAt` and bounded counters.
-- [ ] After expiry/rotation, use only conformance-proven lookup.
+- [x] Persist `LastAutomaticReconciliationAt` and bounded counters.
+- [x] After expiry/rotation, use only conformance-proven lookup.
 - [ ] Otherwise transition to `ManualReconciliation` and expose safe HAL action.
-- [ ] Never make a fresh create call with a new identity for unknown work.
+- [x] Never make a fresh create call with a new identity for unknown work.
 
 ### 2.5 Build provider conformance suite
 
-- [ ] Run against managed Svix and every supported self-hosted version.
-- [ ] Cover repeat create inside the window.
-- [ ] Cover window expiry.
-- [ ] Cover duplicate event ID with same and changed payload.
-- [ ] Cover timeout after acceptance.
-- [ ] Cover credential rotation.
-- [ ] Cover list/get consistency.
-- [ ] Record capability/version results and reject unsupported configurations.
+- [x] Run against every supported self-hosted version (currently pinned v1.96.1).
+- [x] Keep managed SaaS outside the supported matrix; its zero-evidence profile remains
+  fail-closed and its token placeholders remain empty.
+- [x] Cover repeat create inside the window.
+- [x] Cover window expiry.
+- [x] Cover duplicate event ID with same and changed payload.
+- [x] Cover timeout after acceptance.
+- [x] Cover credential rotation.
+- [x] Cover list/get consistency.
+- [x] Record capability/version results and reject unsupported configurations.
 
 ### 2.6 Migrate and retire legacy links
 
-- [ ] Create provider publication rows from legacy links using deterministic evidence.
-- [ ] Preserve unknown/unresolved evidence and require reconciliation.
-- [ ] Verify legacy application IDs before enabling publish/portal actions.
-- [ ] Remove retired message-publication link model only after migration verification.
-- [ ] Run migration smoke, timing/lock checks, backup/restore, and focused tests.
+- [x] Create provider publication rows from legacy links using deterministic evidence.
+- [x] Preserve unknown/unresolved evidence and require reconciliation.
+- [x] Verify legacy application IDs before enabling publish/portal actions.
+- [x] Remove retired message-publication link model only after migration verification.
+- [x] Run migration smoke, timing/lock checks, backup/restore, and focused tests.
 
 **Phase 2 exit:** provider submissions have one authoritative aggregate, unknown state
 cannot be hidden, and automatic recovery never exceeds proven provider guarantees.
@@ -241,11 +393,11 @@ cannot be hidden, and automatic recovery never exceeds proven provider guarantee
 
 ### 3.1 Make consumer the provider security boundary
 
-- [ ] Derive Svix application UID from immutable instance identity plus consumer ID.
-- [ ] Verify each binding belongs to the persisted tenant and consumer.
-- [ ] Keep separate consumers/apps when portal administration or message visibility differs.
-- [ ] Add repair/rebind workflow with authorization and audit.
-- [ ] Prevent tenant ID alone from serving as the application UID.
+- [x] Derive Svix application UID from immutable instance identity plus consumer ID.
+- [x] Verify each binding belongs to the persisted tenant and consumer.
+- [x] Keep separate consumers/apps when portal administration or message visibility differs.
+- [x] Add repair/rebind workflow with authorization and audit.
+- [x] Prevent tenant ID alone from serving as the application UID.
 
 ### 3.2 Add typed provider capabilities
 
@@ -418,6 +570,7 @@ These require a new approved plan and are not implementation shortcuts:
 - [ ] CloudEvents envelope.
 - [ ] Ed25519 signature mode.
 - [ ] Additional provider-native features.
+- [ ] Managed Svix SaaS conformance and a selectable managed profile.
 - [ ] Kafka/Redis/CDC/proxy changes justified by measured bottlenecks.
 - [ ] `Explore.*` to `Event.*` project/repository rename.
 
@@ -431,7 +584,7 @@ These require a new approved plan and are not implementation shortcuts:
 - [ ] Latest-released-schema migration smoke with representative timing/lock evidence
 - [ ] Backup/restore and forward-fix rehearsal
 - [ ] Multi-worker PostgreSQL concurrency/failure-injection suite
-- [ ] Managed and supported self-hosted Svix conformance evidence
+- [x] Every supported self-hosted Svix conformance profile has executed evidence
 - [ ] OpenAPI/generated-client drift check
 - [ ] Security and privacy redaction review
 - [ ] No unresolved Critical/High finding without approved waiver naming owner,
