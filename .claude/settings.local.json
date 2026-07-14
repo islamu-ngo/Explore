@@ -47,7 +47,9 @@
       "Skill(update-config)",
       "Bash(rtk read *)",
       "Bash(rtk ls *)",
-      "Bash(rtk grep *)"
+      "Bash(rtk grep *)",
+      "Bash(rtk git *)",
+      "Bash(rtk proxy *)"
     ]
   },
   "enableAllProjectMcpServers": true,
