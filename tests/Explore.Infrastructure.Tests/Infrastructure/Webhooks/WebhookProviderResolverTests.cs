@@ -235,6 +235,130 @@ public sealed class WebhookProviderResolverTests
     }
 
     [Test]
+    public async Task DeliveryPlanResolver_AfterLocalToSvixModeChange_KeepsPriorResolutionFrozen()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var tenantId = Guid.CreateVersion7();
+        var consumerId = Guid.CreateVersion7();
+        var consumerRepository = Substitute.For<IWebhookConsumerRepository>();
+        var endpointRepository = Substitute.For<IWebhookEndpointRepository>();
+        var eventTypeRepository = Substitute.For<IWebhookEventTypeRepository>();
+        var secretBindingRepository = Substitute.For<ISecretBindingRepository>();
+        var options = SupportedSelfHostedOptions();
+        options.AllowTenantOverride = true;
+        var capabilityResolver = new WebhookProviderCapabilityResolver(
+            new StaticOptionsMonitor<WebhookOptions>(options));
+        var svixCapability = capabilityResolver.Resolve(WebhookProviderMode.Svix);
+        var profile = WebhookProviderCapabilityProfile.Create(
+            WebhookProviderKind.Svix,
+            svixCapability.ProviderVersion!,
+            svixCapability.ProviderCapabilities,
+            svixCapability.ResolutionVersion,
+            now.AddMinutes(-5));
+        var binding = WebhookConsumerProviderBinding.CreatePending(
+            tenantId,
+            consumerId,
+            Guid.CreateVersion7(),
+            svixCapability.ProviderEnvironment!,
+            profile,
+            svixCapability.ProviderCapabilities);
+        binding.VerifyOwnership(tenantId, consumerId, "app_mode_snapshot", now.AddMinutes(-4));
+        var consumer = new WebhookConsumer
+        {
+            Id = consumerId,
+            TenantId = tenantId,
+            ConsumerKind = WebhookConsumerKind.Tenant,
+            Name = "Mode snapshot integration",
+            Status = WebhookConsumerStatus.Active,
+            ProviderMode = WebhookProviderMode.Local,
+            ConfigurationVersion = 1,
+            CreatedAt = now.UtcDateTime.AddDays(-1)
+        };
+        consumer.ProviderBindings.Add(binding);
+        var endpoint = new WebhookEndpoint
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            ConsumerId = consumerId,
+            Url = "https://consumer.example.test/webhooks",
+            Status = WebhookEndpointStatus.Active,
+            SecretRef = "webhook:endpoint:primary",
+            SecretVersion = 1,
+            SecretActivatedAt = now.UtcDateTime.AddHours(-1),
+            ConfigurationVersion = 1,
+            MaxAttempts = 8,
+            TimeoutSeconds = 15,
+            CreatedAt = now.UtcDateTime.AddDays(-1)
+        };
+        var eventType = new WebhookEventType
+        {
+            Id = Guid.CreateVersion7(),
+            Name = WebhookEventNames.EventPublished,
+            GroupName = "events",
+            Description = "Event published",
+            SchemaJson = "{}",
+            SchemaVersion = 1,
+            IsEnabled = true,
+            PayloadRetentionDays = 14,
+            CreatedAt = now.UtcDateTime.AddDays(-1)
+        };
+        var tokenBinding = SecretBinding.CreateEnvironmentVariable(
+            SecretDefinitionRegistry.Keys.Webhooks.SvixAuthToken,
+            SecretScope.Instance,
+            null,
+            "WEBHOOKS_SVIX_AUTH_TOKEN");
+        tokenBinding.Id = Guid.CreateVersion7();
+        tokenBinding.CreatedAt = now.UtcDateTime.AddHours(-1);
+        consumerRepository.GetByTenantAndIdAsync(tenantId, consumerId, Arg.Any<CancellationToken>())
+            .Returns(consumer);
+        eventTypeRepository.GetByNameAsync(eventType.Name, Arg.Any<CancellationToken>())
+            .Returns(eventType);
+        endpointRepository.GetActiveSubscribedEndpointsByConsumerAsync(
+                tenantId,
+                consumerId,
+                eventType.Name,
+                Arg.Any<CancellationToken>())
+            .Returns([endpoint]);
+        secretBindingRepository.GetByKeyAndScopeAsync(
+                SecretDefinitionRegistry.Keys.Webhooks.SvixAuthToken,
+                SecretScope.Instance,
+                null,
+                Arg.Any<CancellationToken>())
+            .Returns(tokenBinding);
+        var resolver = new GovernedWebhookDeliveryPlanResolver(
+            consumerRepository,
+            endpointRepository,
+            eventTypeRepository,
+            secretBindingRepository,
+            capabilityResolver,
+            new StaticOptionsMonitor<WebhookOptions>(options),
+            new FixedTimeProvider(now));
+        var context = CreateContext() with
+        {
+            TenantId = tenantId,
+            ConsumerId = consumerId,
+            EventType = eventType.Name,
+            OccurredAt = now.AddMinutes(-2)
+        };
+
+        var localResolution = await resolver.ResolveAsync(context, CancellationToken.None);
+        consumer.ChangeProviderMode(WebhookProviderMode.Svix, now.UtcDateTime);
+        var svixResolution = await resolver.ResolveAsync(context, CancellationToken.None);
+
+        await Assert.That(localResolution.Succeeded).IsTrue();
+        await Assert.That(localResolution.ProviderMode).IsEqualTo(WebhookProviderMode.Local);
+        await Assert.That(localResolution.ConfigurationVersion).IsEqualTo("consumer-v1:event-local-v1");
+        await Assert.That(localResolution.LocalTargets.Count).IsEqualTo(1);
+        await Assert.That(localResolution.ProviderTargets).IsEmpty();
+        await Assert.That(svixResolution.Succeeded).IsTrue();
+        await Assert.That(svixResolution.ProviderMode).IsEqualTo(WebhookProviderMode.Svix);
+        await Assert.That(svixResolution.ConfigurationVersion)
+            .IsEqualTo($"consumer-v2:{svixCapability.ResolutionVersion}");
+        await Assert.That(svixResolution.LocalTargets).IsEmpty();
+        await Assert.That(svixResolution.ProviderTargets.Count).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task CapabilityResolver_WhenSelfHostedSvixProfileIsPinned_ReturnsOnlyProvenCapabilities()
     {
         var resolver = new WebhookProviderCapabilityResolver(

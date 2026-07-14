@@ -218,6 +218,71 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
         await Assert.That(attempted.DestinationUrl).IsEqualTo("https://webhook.example.test/events");
     }
 
+    [Test]
+    public async Task UpdateEndpointConfiguration_ConcurrentWritersRejectStaleConfigurationVersion()
+    {
+        var scenario = await SeedAuthorityAsync();
+        await using var winningContext = fixture.CreateDbContext();
+        await using var staleContext = fixture.CreateDbContext();
+        var winningEndpoint = await winningContext.WebhookEndpoints
+            .SingleAsync(endpoint => endpoint.Id == scenario.Endpoint.Id);
+        var staleEndpoint = await staleContext.WebhookEndpoints
+            .SingleAsync(endpoint => endpoint.Id == scenario.Endpoint.Id);
+
+        winningEndpoint.UpdateConfiguration(
+            "https://winner.example.test/events",
+            "Winning configuration",
+            maxAttempts: 10,
+            timeoutSeconds: 20,
+            rateLimitPerMinute: 180,
+            MaterializedAt.AddMinutes(3));
+        staleEndpoint.UpdateConfiguration(
+            "https://stale.example.test/events",
+            "Stale configuration",
+            maxAttempts: 12,
+            timeoutSeconds: 25,
+            rateLimitPerMinute: 240,
+            MaterializedAt.AddMinutes(4));
+
+        await winningContext.SaveChangesAsync();
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(async () =>
+            await staleContext.SaveChangesAsync());
+
+        await using var verificationContext = fixture.CreateDbContext();
+        var persisted = await verificationContext.WebhookEndpoints
+            .AsNoTracking()
+            .SingleAsync(endpoint => endpoint.Id == scenario.Endpoint.Id);
+        await Assert.That(persisted.ConfigurationVersion).IsEqualTo(2);
+        await Assert.That(persisted.Url).IsEqualTo("https://winner.example.test/events");
+        await Assert.That(persisted.Description).IsEqualTo("Winning configuration");
+    }
+
+    [Test]
+    public async Task ChangeConsumerProviderMode_ConcurrentWritersRejectStaleConfigurationVersion()
+    {
+        var scenario = await SeedAuthorityAsync();
+        await using var winningContext = fixture.CreateDbContext();
+        await using var staleContext = fixture.CreateDbContext();
+        var winningConsumer = await winningContext.WebhookConsumers
+            .SingleAsync(consumer => consumer.Id == scenario.ConsumerId);
+        var staleConsumer = await staleContext.WebhookConsumers
+            .SingleAsync(consumer => consumer.Id == scenario.ConsumerId);
+
+        winningConsumer.ChangeProviderMode(WebhookProviderMode.DryRun, MaterializedAt.AddMinutes(3));
+        staleConsumer.ChangeProviderMode(WebhookProviderMode.Disabled, MaterializedAt.AddMinutes(4));
+
+        await winningContext.SaveChangesAsync();
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(async () =>
+            await staleContext.SaveChangesAsync());
+
+        await using var verificationContext = fixture.CreateDbContext();
+        var persisted = await verificationContext.WebhookConsumers
+            .AsNoTracking()
+            .SingleAsync(consumer => consumer.Id == scenario.ConsumerId);
+        await Assert.That(persisted.ConfigurationVersion).IsEqualTo(2);
+        await Assert.That(persisted.ProviderMode).IsEqualTo(WebhookProviderMode.DryRun);
+    }
+
     private async Task<SeededAuthority> SeedAuthorityAsync()
     {
         await fixture.ResetAsync();
