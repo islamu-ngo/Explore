@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using DotNetEnv;
+using Explore.Infrastructure.Webhooks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -362,12 +363,16 @@ static LocalPlatformResources AddLocalPlatform(
         .WithEnvironment("POSTGRES_DB", configuration["SVIX_DB_NAME"] ?? "postgres")
         .WithVolume("islamu-event-svix-postgres-data", "/var/lib/postgresql/data");
 
-    var svix = builder.AddContainer("svix", "svix/svix-server", "latest")
+    var svix = builder.AddContainer(
+            "svix",
+            "svix/svix-server",
+            configuration["SVIX_TAG"] ?? $"v{SvixConformanceProfileRegistry.SelfHostedProviderVersion}")
         .WithEnvironment("WAIT_FOR", "true")
         .WithEnvironment(
             "SVIX_DB_DSN",
             $"postgresql://{configuration["SVIX_DB_USER"] ?? "postgres"}:{configuration["SVIX_DB_PASSWORD"] ?? "postgres"}@svix-postgres:5432/{configuration["SVIX_DB_NAME"] ?? "postgres"}")
         .WithEnvironment("SVIX_QUEUE_TYPE", configuration["SVIX_QUEUE_TYPE"] ?? "redis")
+        .WithEnvironment("SVIX_CACHE_TYPE", configuration["SVIX_CACHE_TYPE"] ?? "redis")
         .WithEnvironment("SVIX_JWT_SECRET", configuration["SVIX_JWT_SECRET"] ?? "local-dev-svix-jwt-secret-change-me")
         .WithHttpEndpoint(targetPort: 8071, port: 8071, name: "http")
         .WaitFor(svixDb);
@@ -707,7 +712,7 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
         .WithEnvironment("Reporting__EvaluateSignals", configuration["REPORTING_EVALUATE_SIGNALS"] ?? "false")
         .WithEnvironment("Reporting__MirrorReviewQueue", configuration["REPORTING_MIRROR_REVIEW_QUEUE"] ?? "true")
         .WithEnvironment("Reporting__ExecuteDecisions", configuration["REPORTING_EXECUTE_DECISIONS"] ?? "true")
-        .WithEnvironment("Reporting__Osprey__Enabled", configuration["REPORTING_OSPREY_ENABLED"] ?? "false")
+        .WithEnvironment("Reporting__Osprey__Enabled", resources.Osprey is not null ? (configuration["REPORTING_OSPREY_ENABLED"] ?? "false") : "false")
         .WithEnvironment("Reporting__Osprey__AllowLocalProviderEndpoints", configuration["REPORTING_OSPREY_ALLOW_LOCAL_PROVIDER_ENDPOINTS"] ?? "true")
         .WithEnvironment("Reporting__Coop__ApiKey", configuration["REPORTING_COOP_API_KEY"] ?? "local-dev-coop-api-key")
         .WithEnvironment("Reporting__Coop__AllowLocalProviderEndpoints", configuration["REPORTING_COOP_ALLOW_LOCAL_PROVIDER_ENDPOINTS"] ?? "true")
@@ -715,6 +720,9 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
         .WithEnvironment("Webhooks__Enabled", configuration["WEBHOOKS_ENABLED"] ?? "true")
         .WithEnvironment("Webhooks__Provider", configuration["WEBHOOKS_PROVIDER"] ?? "Svix")
         .WithEnvironment("Webhooks__Svix__BaseUrl", svixEndpoint)
+        .WithEnvironment("Webhooks__Svix__Environment", SvixConformanceProfileRegistry.SelfHostedEnvironment)
+        .WithEnvironment("Webhooks__Svix__ProviderVersion", SvixConformanceProfileRegistry.SelfHostedProviderVersion)
+        .WithEnvironment("Webhooks__Svix__CapabilityPolicyVersion", SvixConformanceProfileRegistry.SelfHostedCapabilityPolicyVersion)
         .WithEnvironment("Webhooks__Svix__AuthTokenSecretRef", "webhooks.svix.auth_token")
         .WithEnvironment("Webhooks__Svix__OperationalWebhookSecretRef", "webhooks.svix.operational_webhook_secret")
         .WithEnvironment("WEBHOOKS_SVIX_AUTH_TOKEN", configuration["WEBHOOKS_SVIX_AUTH_TOKEN"] ?? string.Empty)
@@ -725,7 +733,9 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
             .WithEnvironment("Reporting__Coop__Enabled", configuration["REPORTING_COOP_ENABLED"] ?? "true")
             .WithEnvironment("Reporting__Coop__EndpointUrl", EndpointUrl(resources.Coop, "http"))
             .WaitFor(resources.Coop)
-        : api.WithEnvironment("Reporting__Coop__Enabled", configuration["REPORTING_COOP_ENABLED"] ?? "false");
+        // Coop isn't provisioned outside local-full: force-disable regardless of any REPORTING_COOP_ENABLED
+        // value in .env, since there is no Coop container/endpoint for this profile to point at.
+        : api.WithEnvironment("Reporting__Coop__Enabled", "false");
 
     if (resources.Weblate is not null)
     {

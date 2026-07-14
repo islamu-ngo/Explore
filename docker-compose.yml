@@ -145,6 +145,9 @@ x-webhooks-env: &webhooks-env
   Webhooks__Enabled: ${WEBHOOKS_ENABLED:-true}
   Webhooks__Provider: ${WEBHOOKS_PROVIDER:-Svix}
   Webhooks__Svix__BaseUrl: ${WEBHOOKS_SVIX_BASE_URL:-http://svix:8071}
+  Webhooks__Svix__Environment: ${WEBHOOKS_SVIX_ENVIRONMENT:-self-hosted}
+  Webhooks__Svix__ProviderVersion: ${WEBHOOKS_SVIX_PROVIDER_VERSION:-1.96.1}
+  Webhooks__Svix__CapabilityPolicyVersion: ${WEBHOOKS_SVIX_CAPABILITY_POLICY_VERSION:-svix-self-hosted-1.96.1-v1}
   Webhooks__Svix__AuthTokenSecretRef: ${WEBHOOKS_SVIX_AUTH_TOKEN_SECRET_REF:-webhooks.svix.auth_token}
   Webhooks__Svix__OperationalWebhookSecretRef: ${WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET_REF:-webhooks.svix.operational_webhook_secret}
   WEBHOOKS_SVIX_AUTH_TOKEN: ${WEBHOOKS_SVIX_AUTH_TOKEN:-}
@@ -495,7 +498,7 @@ services:
       start_period: 10s
 
   svix:
-    image: svix/svix-server:${SVIX_TAG:-latest}
+    image: svix/svix-server:${SVIX_TAG:-v1.96.1}
     profiles: ["webhooks"]
     restart: unless-stopped
     environment:
@@ -503,6 +506,7 @@ services:
       SVIX_DB_DSN: ${SVIX_DB_DSN:-postgresql://postgres:postgres@svix-db:5432/postgres}
       SVIX_REDIS_DSN: ${SVIX_REDIS_DSN:-redis://redis:6379}
       SVIX_QUEUE_TYPE: ${SVIX_QUEUE_TYPE:-redis}
+      SVIX_CACHE_TYPE: ${SVIX_CACHE_TYPE:-redis}
       SVIX_JWT_SECRET: ${SVIX_JWT_SECRET:-local-dev-svix-jwt-secret-change-me}
     ports:
       - "${SVIX_HTTP_PORT:-8071}:8071"
