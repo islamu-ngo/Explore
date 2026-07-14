@@ -25,7 +25,7 @@ namespace Event.Api.IntegrationTests.Features;
 [ClassDataSource<ContractApiFixture>(Shared = SharedType.PerAssembly)]
 public class ContractInvariantsTests
 {
-    private const string OpenApiEndpoint = "/openapi/event-api.json";
+    private const string OpenApiEndpoint = "/openapi/islamu-event.json";
 
     /// <summary>HTTP verbs that carry an operation in OpenAPI 3.0.</summary>
     private static readonly string[] HttpVerbs =

@@ -17,7 +17,7 @@ namespace Event.Api.IntegrationTests.Features;
 [ClassDataSource<ContractApiFixture>(Shared = SharedType.PerAssembly)]
 public sealed class OpenApiParityTests
 {
-    private const string NativeOpenApiEndpoint = "/openapi/event-api.json";
+    private const string NativeOpenApiEndpoint = "/openapi/islamu-event.json";
     private const string SwashbuckleOpenApiEndpoint = "/swagger/v0.1/swagger.json";
     private const string KeycloakAuthorizationUrl = "https://auth.example.com/realms/ISLAMU/protocol/openid-connect/auth";
     private const string ManagedControlPlaneScheme = "ManagedControlPlane";

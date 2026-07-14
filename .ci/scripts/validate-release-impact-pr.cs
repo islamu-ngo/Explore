@@ -198,7 +198,7 @@ static HashSet<string> ClassifyRequiredCategories(IEnumerable<string> changedFil
             categories.Add("configuration");
         }
 
-        if (path.Contains("schemas/openapi.json", StringComparison.Ordinal)
+        if (path.Contains("schemas/openapi_islamu-event.json", StringComparison.Ordinal)
             || path.Contains("api_changelog", StringComparison.Ordinal)
             || path.Contains("api_contract", StringComparison.Ordinal)
             || path.Contains("eventapiclient.g.cs", StringComparison.Ordinal)

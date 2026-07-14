@@ -366,9 +366,8 @@ scenarios:
       - "src/Explore.Blazor.Client/**/*Webhook*"
       - "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"
       - "tests/**/*Webhook*.cs"
-      - "schemas/openapi.json"
+      - "schemas/openapi_islamu-event.json"
       - "schemas/islamu-event.md"
-      - "src/schemas/openapi_event-api.json"
       - "docs/WEBHOOKS.md"
       - "dev/active/webhook-delivery-redesign/**"
     expected_paths_forbidden:
