@@ -57,6 +57,11 @@ public sealed class WebhookLocalDeliveryStatusLookupConfiguration()
         "webhook_local_delivery_statuses",
         "ux_webhook_local_delivery_statuses_master_code");
 
+public sealed class WebhookPendingWorkDecisionLookupConfiguration()
+    : WebhookLookupConfiguration<WebhookPendingWorkDecisionLookup>(
+        "webhook_pending_work_decisions",
+        "ux_webhook_pending_work_decisions_master_code");
+
 public sealed class WebhookDeliveryAttemptOutcomeLookupConfiguration()
     : WebhookLookupConfiguration<WebhookDeliveryAttemptOutcomeLookup>(
         "webhook_delivery_attempt_outcomes",

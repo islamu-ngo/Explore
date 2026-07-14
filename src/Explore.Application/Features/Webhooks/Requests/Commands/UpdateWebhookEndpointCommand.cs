@@ -26,6 +26,14 @@ public sealed class UpdateWebhookEndpointCommand : IRequest<BaseCommandResponse<
 
     public int? RateLimitPerMinute { get; init; }
 
+    public int ExpectedConfigurationVersion { get; init; }
+
+    public int PendingWorkDecisionId { get; init; }
+
+    public required string PendingWorkReason { get; init; }
+
+    public bool AcknowledgeUncertainProviderPublications { get; init; }
+
     string? ISecureRequest.ResourceId => EndpointId.ToString("D");
 
     IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>

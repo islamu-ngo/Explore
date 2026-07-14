@@ -16,6 +16,12 @@ public static class WebhookClientLinkRelations
     public const string OpenProviderPortal = "open-provider-portal";
 }
 
+public static class WebhookPendingWorkDecisionIds
+{
+    public const int PreserveExisting = 1;
+    public const int MigrateEligible = 2;
+}
+
 public static class WebhookHal
 {
     public static bool HasLink<TLink>(IDictionary<string, TLink>? links, string relation) =>

@@ -27,12 +27,14 @@ public class WebhookEndpoint : ITenantEntity, IAuditableEntity
     }
     public required string SecretRef { get; set; }
     public int SecretVersion { get; set; }
+    public DateTime SecretActivatedAt { get; set; }
     public string? PreviousSecretRef { get; set; }
     public DateTime? PreviousSecretValidUntil { get; set; }
     public string? ProviderEndpointId { get; set; }
     public int MaxAttempts { get; set; }
     public int TimeoutSeconds { get; set; }
     public int? RateLimitPerMinute { get; set; }
+    public int ConfigurationVersion { get; set; }
     public DateTime? LastSuccessAt { get; set; }
     public DateTime? LastFailureAt { get; set; }
     public int ConsecutiveFailureCount { get; set; }
@@ -49,6 +51,73 @@ public class WebhookEndpoint : ITenantEntity, IAuditableEntity
     public Guid? UpdatedBy { get; set; }
 
     public List<WebhookEndpointSubscription> Subscriptions { get; } = [];
+
+    public void UpdateConfiguration(
+        string url,
+        string? description,
+        int maxAttempts,
+        int timeoutSeconds,
+        int? rateLimitPerMinute,
+        DateTime updatedAt)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            throw new ArgumentException("Endpoint URL is required.", nameof(url));
+        }
+
+        if (maxAttempts < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxAttempts));
+        }
+
+        if (timeoutSeconds < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(timeoutSeconds));
+        }
+
+        if (rateLimitPerMinute is < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(rateLimitPerMinute));
+        }
+
+        EnsureUtc(updatedAt, nameof(updatedAt));
+        Url = url.Trim();
+        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        MaxAttempts = maxAttempts;
+        TimeoutSeconds = timeoutSeconds;
+        RateLimitPerMinute = rateLimitPerMinute;
+        ConfigurationVersion = checked(ConfigurationVersion + 1);
+        UpdatedAt = updatedAt;
+    }
+
+    public void RotateSigningCredential(
+        string secretReference,
+        DateTime? previousSecretValidUntil,
+        DateTime updatedAt)
+    {
+        if (string.IsNullOrWhiteSpace(secretReference))
+        {
+            throw new ArgumentException("Secret reference is required.", nameof(secretReference));
+        }
+
+        EnsureUtc(updatedAt, nameof(updatedAt));
+        if (previousSecretValidUntil is { } validUntil)
+        {
+            EnsureUtc(validUntil, nameof(previousSecretValidUntil));
+            if (validUntil < updatedAt)
+            {
+                throw new ArgumentOutOfRangeException(nameof(previousSecretValidUntil));
+            }
+        }
+
+        PreviousSecretRef = SecretRef;
+        PreviousSecretValidUntil = previousSecretValidUntil;
+        SecretRef = secretReference.Trim();
+        SecretVersion = checked(SecretVersion + 1);
+        SecretActivatedAt = updatedAt;
+        ConfigurationVersion = checked(ConfigurationVersion + 1);
+        UpdatedAt = updatedAt;
+    }
 
     public bool RecordFailure(DateTime failedAt, string failureCategory, int autoPauseThreshold)
     {
@@ -108,5 +177,13 @@ public class WebhookEndpoint : ITenantEntity, IAuditableEntity
         UpdatedBy = actorUserId;
         DeliveryStateVersion++;
         return true;
+    }
+
+    private static void EnsureUtc(DateTime value, string parameterName)
+    {
+        if (value.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("Timestamp must use UTC kind.", parameterName);
+        }
     }
 }

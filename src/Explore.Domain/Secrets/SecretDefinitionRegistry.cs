@@ -367,13 +367,12 @@ public static class SecretDefinitionRegistry
                 Description = "Cerbos Admin API password used by server-side policy package sync.",
             },
 
-            // --- webhooks/WEBHOOKS_SVIX_AUTH_TOKEN ---
             new()
             {
                 Key = Keys.Webhooks.SvixAuthToken,
                 AllowedScopes = instanceOnly,
                 AllowedSources = nonBootstrapSources,
-                DefaultInfisicalPath = "/webhooks",
+                DefaultInfisicalPath = "/webhook",
                 DefaultInfisicalKey = "WEBHOOKS_SVIX_AUTH_TOKEN",
                 DefaultEnvironmentVariableName = "WEBHOOKS_SVIX_AUTH_TOKEN",
                 IsBootstrapSecret = false,
@@ -384,7 +383,7 @@ public static class SecretDefinitionRegistry
                 Key = Keys.Webhooks.SvixOperationalWebhookSecret,
                 AllowedScopes = instanceOnly,
                 AllowedSources = nonBootstrapSources,
-                DefaultInfisicalPath = "/webhooks",
+                DefaultInfisicalPath = "/webhook",
                 DefaultInfisicalKey = "WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET",
                 DefaultEnvironmentVariableName = "WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET",
                 IsBootstrapSecret = false,

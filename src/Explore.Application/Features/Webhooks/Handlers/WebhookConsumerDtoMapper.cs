@@ -51,6 +51,7 @@ internal static class WebhookConsumerDtoMapper
                 .Select(capability => MapCapability(capability, resolution, providerCapabilities, exactBinding))
                 .ToArray(),
             Name = consumer.Name,
+            ConfigurationVersion = consumer.ConfigurationVersion,
             CreatedAt = consumer.CreatedAt,
             UpdatedAt = consumer.UpdatedAt
         };

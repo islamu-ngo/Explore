@@ -29,6 +29,7 @@ internal static class WebhookEndpointDtoMapper
             StatusCode = status.Code,
             StatusName = status.Name,
             SecretVersion = endpoint.SecretVersion,
+            ConfigurationVersion = endpoint.ConfigurationVersion,
             ProviderEndpointId = endpoint.ProviderEndpointId,
             MaxAttempts = endpoint.MaxAttempts,
             TimeoutSeconds = endpoint.TimeoutSeconds,

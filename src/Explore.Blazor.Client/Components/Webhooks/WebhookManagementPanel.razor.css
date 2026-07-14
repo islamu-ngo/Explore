@@ -83,6 +83,18 @@
     gap: var(--isl-space-1);
 }
 
+.webhook-management__provider-summary {
+    display: grid;
+    justify-items: start;
+    gap: var(--isl-space-1);
+    min-width: 0;
+}
+
+.webhook-management__capability-summary {
+    max-width: 18rem;
+    overflow-wrap: anywhere;
+}
+
 .webhook-management__url,
 .webhook-management__mono {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;

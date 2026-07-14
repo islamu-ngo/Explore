@@ -52,8 +52,7 @@ public sealed class DefaultWebhookPayloadBuilder(IWebhookEventTypeRegistry event
             data);
         var payloadBytes = JsonSerializer.SerializeToUtf8Bytes(envelope, JsonOptions);
         var payloadHash = ComputeSha256Identifier(payloadBytes);
-        var retentionDays = context.PayloadRetentionDays ?? descriptor.PayloadRetentionDays;
-        var payloadRetentionUntil = context.OccurredAt.AddDays(retentionDays);
+        var payloadRetentionUntil = context.OccurredAt.AddDays(descriptor.PayloadRetentionDays);
 
         return Task.FromResult(WebhookPayloadBuildResult.Success(
             envelope,

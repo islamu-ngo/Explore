@@ -162,9 +162,17 @@ public sealed class WebhookOptionsValidator : IValidateOptions<WebhookOptions>
             return;
         }
 
-        if (!SecretDefinitionRegistry.IsKnown(options.AuthTokenSecretRef.Trim()))
+        var authTokenSecretRef = options.AuthTokenSecretRef.Trim();
+        if (!SecretDefinitionRegistry.IsKnown(authTokenSecretRef))
         {
             failures.Add("Webhooks:Svix:AuthTokenSecretRef must reference a known secret definition.");
+        }
+        else if (!string.Equals(
+                     authTokenSecretRef,
+                     SecretDefinitionRegistry.Keys.Webhooks.SvixAuthToken,
+                     StringComparison.Ordinal))
+        {
+            failures.Add("Webhooks:Svix:AuthTokenSecretRef must reference the dedicated Svix auth-token secret definition.");
         }
     }
 
@@ -200,10 +208,20 @@ public sealed class WebhookOptionsValidator : IValidateOptions<WebhookOptions>
             failures.Add("Webhooks:Svix:OperationalWebhookMaxBodyBytes must be greater than zero.");
         }
 
-        if (!string.IsNullOrWhiteSpace(options.OperationalWebhookSecretRef)
-            && !SecretDefinitionRegistry.IsKnown(options.OperationalWebhookSecretRef.Trim()))
+        if (!string.IsNullOrWhiteSpace(options.OperationalWebhookSecretRef))
         {
-            failures.Add("Webhooks:Svix:OperationalWebhookSecretRef must reference a known secret definition when configured.");
+            var operationalSecretRef = options.OperationalWebhookSecretRef.Trim();
+            if (!SecretDefinitionRegistry.IsKnown(operationalSecretRef))
+            {
+                failures.Add("Webhooks:Svix:OperationalWebhookSecretRef must reference a known secret definition when configured.");
+            }
+            else if (!string.Equals(
+                         operationalSecretRef,
+                         SecretDefinitionRegistry.Keys.Webhooks.SvixOperationalWebhookSecret,
+                         StringComparison.Ordinal))
+            {
+                failures.Add("Webhooks:Svix:OperationalWebhookSecretRef must reference the dedicated Svix operational-webhook secret definition.");
+            }
         }
     }
 }

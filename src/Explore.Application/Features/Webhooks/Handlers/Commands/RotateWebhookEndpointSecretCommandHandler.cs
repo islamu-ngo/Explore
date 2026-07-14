@@ -1,9 +1,13 @@
 // ABOUTME: Handles webhook endpoint signing secret reference rotation with bounded previous-secret overlap.
 // ABOUTME: Keeps secret material external to the database and persists only secret references plus version metadata.
 
+using System.Text.Json;
+using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Commands;
+using Explore.Application.Lookups;
 using Explore.Application.Responses;
 using Explore.Domain;
 using MediatR;
@@ -13,7 +17,13 @@ namespace Explore.Application.Features.Webhooks.Handlers.Commands;
 public sealed class RotateWebhookEndpointSecretCommandHandler(
     IWebhookEndpointRepository endpointRepository,
     IWebhookConsumerRepository consumerRepository,
-    IWebhookProviderCapabilityResolver capabilityResolver)
+    IWebhookProviderPublicationRepository providerPublicationRepository,
+    IWebhookProviderCapabilityResolver capabilityResolver,
+    IAuditLogRepository auditLogRepository,
+    IUnitOfWork unitOfWork,
+    ICurrentUserService currentUserService,
+    IMachinePrincipalAccessor machinePrincipalAccessor,
+    TimeProvider timeProvider)
     : IRequestHandler<RotateWebhookEndpointSecretCommand, BaseCommandResponse<Guid>>
 {
     private const int DefaultPreviousSecretValidForSeconds = 86_400;
@@ -29,58 +39,144 @@ public sealed class RotateWebhookEndpointSecretCommandHandler(
             return Failure("webhook_endpoint_secret_validation_failed", validationErrors);
         }
 
-        var endpoint = await endpointRepository.GetByTenantAndIdForUpdateAsync(
-            request.TenantId,
-            request.EndpointId,
-            cancellationToken);
-        if (endpoint is null || endpoint.Status == WebhookEndpointStatus.Archived)
-        {
-            return Failure("webhook_endpoint_not_found", ["Webhook endpoint was not found."]);
-        }
-
-        var consumer = endpoint.Consumer ?? await consumerRepository.GetByTenantAndIdAsync(
-            request.TenantId,
-            endpoint.ConsumerId,
-            cancellationToken);
-        if (consumer is null)
+        if (!TryResolveActor(out var actorReference, out var actorUserId))
         {
             return Failure(
-                "webhook_endpoint_management_unavailable",
-                ["Webhook consumer was not found."]);
+                "webhook_endpoint_configuration_actor_required",
+                ["An authenticated operator identity is required."]);
         }
 
-        if (!WebhookEndpointCapabilityPolicy.CanManageLocalEndpoint(
-                capabilityResolver,
-                consumer.ProviderMode,
-                out var capabilityFailure))
+        return await unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
         {
-            return Failure(
-                "webhook_endpoint_management_unavailable",
-                [capabilityFailure]);
-        }
+            var endpoint = await endpointRepository.GetByTenantAndIdForUpdateAsync(
+                request.TenantId,
+                request.EndpointId,
+                transactionCancellationToken);
+            if (endpoint is null || endpoint.Status == WebhookEndpointStatus.Archived)
+            {
+                return Failure("webhook_endpoint_not_found", ["Webhook endpoint was not found."]);
+            }
 
-        if (string.Equals(endpoint.SecretRef, normalizedSecretRef, StringComparison.Ordinal))
-        {
-            return Failure("webhook_endpoint_secret_unchanged", ["New secret reference must differ from the current secret reference."]);
-        }
+            if (endpoint.ConfigurationVersion != request.ExpectedConfigurationVersion)
+            {
+                return Failure(
+                    "webhook_endpoint_configuration_conflict",
+                    ["Webhook endpoint configuration changed. Reload it before rotating its signing credential."]);
+            }
 
-        var now = DateTime.UtcNow;
-        endpoint.PreviousSecretRef = endpoint.SecretRef;
-        endpoint.PreviousSecretValidUntil = previousSecretValidForSeconds == 0
-            ? now
-            : now.AddSeconds(previousSecretValidForSeconds);
-        endpoint.SecretRef = normalizedSecretRef;
-        endpoint.SecretVersion += 1;
-        endpoint.UpdatedAt = now;
+            var consumer = endpoint.Consumer ?? await consumerRepository.GetByTenantAndIdAsync(
+                request.TenantId,
+                endpoint.ConsumerId,
+                transactionCancellationToken);
+            if (consumer is null)
+            {
+                return Failure(
+                    "webhook_endpoint_management_unavailable",
+                    ["Webhook consumer was not found."]);
+            }
 
-        var persisted = await endpointRepository.UpdateAsync(endpoint, cancellationToken);
+            if (!WebhookEndpointCapabilityPolicy.CanManageLocalEndpoint(
+                    capabilityResolver,
+                    consumer.ProviderMode,
+                    out var capabilityFailure))
+            {
+                return Failure(
+                    "webhook_endpoint_management_unavailable",
+                    [capabilityFailure]);
+            }
 
-        return new BaseCommandResponse<Guid>
-        {
-            Id = persisted.Id,
-            Success = true,
-            Message = "Webhook endpoint secret rotated."
-        };
+            if (string.Equals(endpoint.SecretRef, normalizedSecretRef, StringComparison.Ordinal))
+            {
+                return Failure("webhook_endpoint_secret_unchanged", ["New secret reference must differ from the current secret reference."]);
+            }
+
+            var uncertainPublicationCount = await providerPublicationRepository.CountUncertainByConsumerAsync(
+                request.TenantId,
+                consumer.Id,
+                transactionCancellationToken);
+            if (uncertainPublicationCount > 0 && !request.AcknowledgeUncertainProviderPublications)
+            {
+                return Failure(
+                    "webhook_endpoint_configuration_uncertain_publications",
+                    [$"Acknowledge {uncertainPublicationCount} unknown or manual-reconciliation provider publication(s) before rotating configuration."]);
+            }
+
+            var eligibleTargets = await endpointRepository.GetEligiblePendingTargetsForUpdateAsync(
+                request.TenantId,
+                endpoint.Id,
+                transactionCancellationToken);
+            var previousConfigurationVersion = endpoint.ConfigurationVersion;
+            var previousCredentialVersion = endpoint.SecretVersion;
+            var now = timeProvider.GetUtcNow().UtcDateTime;
+            var previousSecretValidUntil = previousSecretValidForSeconds == 0
+                ? now
+                : now.AddSeconds(previousSecretValidForSeconds);
+            endpoint.RotateSigningCredential(normalizedSecretRef, previousSecretValidUntil, now);
+
+            var decision = (WebhookPendingWorkDecision)request.PendingWorkDecisionId;
+            var migratedTargetCount = 0;
+            if (decision == WebhookPendingWorkDecision.MigrateEligible)
+            {
+                foreach (var target in eligibleTargets.Where(target =>
+                    target.EndpointConfigurationVersion < endpoint.ConfigurationVersion))
+                {
+                    target.MigratePendingConfiguration(endpoint, new DateTimeOffset(now));
+                    migratedTargetCount++;
+                }
+            }
+
+            var persisted = await endpointRepository.UpdateAsync(endpoint, transactionCancellationToken);
+            await auditLogRepository.Create(new AuditLog
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = request.TenantId,
+                Tenant = null!,
+                EntityType = nameof(WebhookEndpoint),
+                EntityId = endpoint.Id.ToString("D"),
+                Action = "WebhookEndpointSigningCredentialRotated",
+                OldValues = JsonSerializer.Serialize(new
+                {
+                    configurationVersion = previousConfigurationVersion,
+                    credentialVersion = previousCredentialVersion
+                }),
+                NewValues = JsonSerializer.Serialize(new
+                {
+                    configurationVersion = endpoint.ConfigurationVersion,
+                    credentialVersion = endpoint.SecretVersion,
+                    credentialActivatedAt = endpoint.SecretActivatedAt,
+                    previousCredentialValidUntil = endpoint.PreviousSecretValidUntil,
+                    pendingWorkDecision = NormalizedLookupMetadata
+                        .WebhookPendingWorkDecision(request.PendingWorkDecisionId).Code,
+                    eligiblePendingTargetCount = eligibleTargets.Count,
+                    migratedTargetCount,
+                    uncertainProviderPublicationCount = uncertainPublicationCount,
+                    uncertainProviderPublicationsAcknowledged = request.AcknowledgeUncertainProviderPublications,
+                    reason = request.PendingWorkReason.Trim(),
+                    actorReference,
+                    outcome = "applied"
+                }),
+                AffectedColumns = JsonSerializer.Serialize(new[]
+                {
+                    nameof(WebhookEndpoint.SecretVersion),
+                    nameof(WebhookEndpoint.SecretActivatedAt),
+                    nameof(WebhookEndpoint.PreviousSecretRef),
+                    nameof(WebhookEndpoint.PreviousSecretValidUntil),
+                    nameof(WebhookEndpoint.ConfigurationVersion)
+                }),
+                ActorId = actorUserId,
+                Timestamp = now
+            });
+
+            var warning = uncertainPublicationCount > 0
+                ? $" {uncertainPublicationCount} uncertain provider publication(s) remain on their original snapshots."
+                : string.Empty;
+            return new BaseCommandResponse<Guid>
+            {
+                Id = persisted.Id,
+                Success = true,
+                Message = $"Webhook endpoint signing credential rotated; {migratedTargetCount} eligible pending target(s) migrated.{warning}"
+            };
+        }, cancellationToken);
     }
 
     private static List<string> Validate(
@@ -112,7 +208,43 @@ public sealed class RotateWebhookEndpointSecretCommandHandler(
             errors.Add("Previous secret validity must be between 0 and 2592000 seconds.");
         }
 
+        if (request.ExpectedConfigurationVersion < 1)
+        {
+            errors.Add("Expected configuration version must be positive.");
+        }
+
+        if (!Enum.IsDefined(typeof(WebhookPendingWorkDecision), request.PendingWorkDecisionId))
+        {
+            errors.Add("Pending work decision is invalid.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.PendingWorkReason) || request.PendingWorkReason.Trim().Length > 500)
+        {
+            errors.Add("Pending work reason is required and must be 500 characters or fewer.");
+        }
+
         return errors;
+    }
+
+    private bool TryResolveActor(out string actorReference, out Guid? actorUserId)
+    {
+        if (currentUserService.UserId is { } userId)
+        {
+            actorReference = $"user:{userId:D}";
+            actorUserId = userId;
+            return true;
+        }
+
+        if (machinePrincipalAccessor.Current is { } machine)
+        {
+            actorReference = $"machine:{machine.OwnerType}:{machine.OwnerId:D}";
+            actorUserId = null;
+            return true;
+        }
+
+        actorReference = string.Empty;
+        actorUserId = null;
+        return false;
     }
 
     private static BaseCommandResponse<Guid> Failure(string code, IReadOnlyList<string> errors) =>

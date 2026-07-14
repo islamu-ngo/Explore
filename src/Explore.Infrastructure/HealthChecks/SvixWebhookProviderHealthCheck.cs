@@ -2,6 +2,7 @@
 // ABOUTME: Verifies provider selection and server-side secret resolution without exposing tokens or endpoint URLs.
 
 using Explore.Application.Contracts.Secrets;
+using Explore.Application.Lookups;
 using Explore.Domain;
 using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.Webhooks;
@@ -134,7 +135,8 @@ public sealed class SvixWebhookProviderHealthCheck(
             .Where(capability => capability != WebhookProviderCapability.None &&
                 IsSingleFlag(capability) &&
                 Supports(capabilities, capability))
-            .Select(capability => capability.ToString())
+            .Select(capability =>
+                NormalizedLookupMetadata.WebhookProviderCapability((int)capability).Code)
             .ToArray();
 
     private static int CountIndividualCapabilities(WebhookProviderCapability capabilities) =>

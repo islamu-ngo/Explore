@@ -18,8 +18,6 @@ public sealed class TestWebhookEndpointCommandHandler(
     IWebhookProviderCapabilityResolver capabilityResolver)
     : IRequestHandler<TestWebhookEndpointCommand, BaseCommandResponse<Guid>>
 {
-    private const int PayloadRetentionDays = 1;
-
     public async Task<BaseCommandResponse<Guid>> Handle(
         TestWebhookEndpointCommand request,
         CancellationToken cancellationToken)
@@ -130,8 +128,7 @@ public sealed class TestWebhookEndpointCommandHandler(
                 ["providerMode"] = endpoint.Consumer!.ProviderMode.ToString(),
                 ["requestedAt"] = now.ToString("O")
             },
-            endpoint.ConsumerId,
-            PayloadRetentionDays);
+            endpoint.ConsumerId);
 
     private static List<string> Validate(TestWebhookEndpointCommand request)
     {

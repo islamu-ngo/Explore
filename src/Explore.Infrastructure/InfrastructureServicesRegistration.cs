@@ -181,6 +181,7 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IWebhookProviderPortalService, SvixAppPortalService>();
         services.AddScoped<IWebhookProviderPortalEligibilityService, SvixPortalEligibilityService>();
         services.AddSingleton<IWebhookProviderCapabilityResolver, WebhookProviderCapabilityResolver>();
+        services.Replace(ServiceDescriptor.Scoped<IWebhookDeliveryPlanResolver, GovernedWebhookDeliveryPlanResolver>());
         services.AddScoped<IWebhookProviderBindingAuthorityService, SvixWebhookProviderBindingAuthorityService>();
         services.AddScoped<IWebhookProviderEventTypeSyncService, SvixEventTypeSyncService>();
         // Memory cache for settings and module governance

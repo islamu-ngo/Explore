@@ -114,11 +114,19 @@ public sealed class WebhookConsumerResourceAssembler : ResourceAssemblerBase<Web
     private IReadOnlyList<LinkDefinition> AddRepairLinkWhenEligible(
         WebhookConsumerDto dto,
         IReadOnlyList<LinkDefinition> definitions) =>
-        IsConsumerPortalCandidate(dto) && _bindingAuthorityService.ResolveCurrentProfile().Succeeded
+        IsActiveSvixConsumer(dto) && _bindingAuthorityService.ResolveCurrentProfile().Succeeded
             ? [.. definitions, WebhookConsumerDetailLinkPolicy.CreateProviderBindingRepairLink(dto)]
             : definitions;
 
     private static bool IsConsumerPortalCandidate(WebhookConsumerDto dto) =>
+        IsActiveSvixConsumer(dto) &&
+        dto.ProviderCapabilityAuthorityAvailable &&
+        dto.ProviderCapabilities.Any(capability =>
+            capability.CapabilityId == (int)WebhookProviderCapability.AppPortal &&
+            capability.IsAvailable &&
+            capability.AvailableFromProviderCodes.Contains("SVIX", StringComparer.Ordinal));
+
+    private static bool IsActiveSvixConsumer(WebhookConsumerDto dto) =>
         dto.StatusId == (int)WebhookConsumerStatus.Active &&
         dto.ProviderModeId is (int)WebhookProviderMode.Svix or (int)WebhookProviderMode.Composite;
 }

@@ -363,7 +363,11 @@ public sealed class WebhooksController(
                 EventTypeIds = request.EventTypeIds,
                 MaxAttempts = request.MaxAttempts,
                 TimeoutSeconds = request.TimeoutSeconds,
-                RateLimitPerMinute = request.RateLimitPerMinute
+                RateLimitPerMinute = request.RateLimitPerMinute,
+                ExpectedConfigurationVersion = request.ExpectedConfigurationVersion,
+                PendingWorkDecisionId = request.PendingWorkDecisionId,
+                PendingWorkReason = request.PendingWorkReason,
+                AcknowledgeUncertainProviderPublications = request.AcknowledgeUncertainProviderPublications
             },
             cancellationToken);
 
@@ -427,7 +431,11 @@ public sealed class WebhooksController(
                 TenantId = tenantContext.TenantId,
                 EndpointId = endpointId,
                 NewSecretRef = request.NewSecretRef,
-                PreviousSecretValidForSeconds = request.PreviousSecretValidForSeconds
+                PreviousSecretValidForSeconds = request.PreviousSecretValidForSeconds,
+                ExpectedConfigurationVersion = request.ExpectedConfigurationVersion,
+                PendingWorkDecisionId = request.PendingWorkDecisionId,
+                PendingWorkReason = request.PendingWorkReason,
+                AcknowledgeUncertainProviderPublications = request.AcknowledgeUncertainProviderPublications
             },
             cancellationToken);
 

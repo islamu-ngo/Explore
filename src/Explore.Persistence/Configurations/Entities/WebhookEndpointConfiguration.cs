@@ -11,7 +11,12 @@ public class WebhookEndpointConfiguration : IEntityTypeConfiguration<WebhookEndp
 {
     public void Configure(EntityTypeBuilder<WebhookEndpoint> builder)
     {
-        builder.ToTable("webhook_endpoints");
+        builder.ToTable("webhook_endpoints", table =>
+        {
+            table.HasCheckConstraint(
+                "ck_webhook_endpoints_configuration_version",
+                "configuration_version > 0");
+        });
 
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(e => e.Url).HasMaxLength(2048).IsRequired();
@@ -20,6 +25,8 @@ public class WebhookEndpointConfiguration : IEntityTypeConfiguration<WebhookEndp
         builder.Ignore(e => e.Status);
         builder.Property(e => e.SecretRef).HasMaxLength(500).IsRequired();
         builder.Property(e => e.SecretVersion).HasDefaultValue(1);
+        builder.Property(e => e.SecretActivatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP").IsRequired();
+        builder.Property(e => e.ConfigurationVersion).HasDefaultValue(1).IsRequired().IsConcurrencyToken();
         builder.Property(e => e.PreviousSecretRef).HasMaxLength(500);
         builder.Property(e => e.ProviderEndpointId).HasMaxLength(500);
         builder.Property(e => e.MaxAttempts).HasDefaultValue(8);

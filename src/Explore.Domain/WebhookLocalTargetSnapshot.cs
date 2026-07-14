@@ -147,6 +147,63 @@ public sealed class WebhookLocalTargetSnapshot : ITenantEntity, IAuditableEntity
         };
     }
 
+    public void MigratePendingConfiguration(
+        WebhookEndpoint webhookEndpoint,
+        DateTimeOffset migratedAtUtc)
+    {
+        ArgumentNullException.ThrowIfNull(webhookEndpoint);
+        WebhookDeliveryPlanSnapshot.RequireTimestamp(migratedAtUtc, nameof(migratedAtUtc));
+        if (DeliveryStatus != WebhookLocalDeliveryStatus.Pending ||
+            ProcessingLeaseToken is not null ||
+            ProcessingLeaseExpiresAtUtc is not null ||
+            DeliveryFence != 0)
+        {
+            throw new InvalidOperationException(
+                "Only unclaimed pending Local work can migrate to a new endpoint configuration.");
+        }
+
+        if (webhookEndpoint.Id != WebhookEndpointId || webhookEndpoint.TenantId != TenantId)
+        {
+            throw new InvalidOperationException(
+                "The endpoint configuration must match the pending target tenant and endpoint.");
+        }
+
+        if (webhookEndpoint.ConfigurationVersion <= EndpointConfigurationVersion)
+        {
+            throw new InvalidOperationException(
+                "The endpoint configuration migration must advance the snapshotted version.");
+        }
+
+        var credentialChanged = webhookEndpoint.SecretVersion != CredentialVersion ||
+            !string.Equals(webhookEndpoint.SecretRef, CredentialReference, StringComparison.Ordinal);
+        EndpointConfigurationVersion = webhookEndpoint.ConfigurationVersion;
+        DestinationUrl = NormalizeDestinationUrl(webhookEndpoint.Url);
+        CredentialReference = WebhookDeliveryPlanSnapshot.NormalizeRequired(
+            webhookEndpoint.SecretRef,
+            MaxCredentialReferenceLength,
+            nameof(webhookEndpoint.SecretRef));
+        CredentialVersion = webhookEndpoint.SecretVersion;
+        if (credentialChanged)
+        {
+            if (webhookEndpoint.SecretActivatedAt == default ||
+                webhookEndpoint.SecretActivatedAt.Kind != DateTimeKind.Utc)
+            {
+                throw new InvalidOperationException(
+                    "Credential migration requires an authoritative UTC activation timestamp.");
+            }
+
+            CredentialValidFromUtc = new DateTimeOffset(webhookEndpoint.SecretActivatedAt);
+            CredentialValidUntilUtc = null;
+        }
+
+        MaxAttempts = webhookEndpoint.MaxAttempts;
+        TimeoutSeconds = webhookEndpoint.TimeoutSeconds;
+        RateLimitPerMinute = webhookEndpoint.RateLimitPerMinute;
+        CapturedAtUtc = migratedAtUtc;
+        ConcurrencyVersion = checked(ConcurrencyVersion + 1);
+        UpdatedAt = migratedAtUtc.UtcDateTime;
+    }
+
     private static string NormalizeDestinationUrl(string destinationUrl)
     {
         var normalized = WebhookDeliveryPlanSnapshot.NormalizeRequired(

@@ -59,6 +59,11 @@ public interface IWebhookProviderPublicationRepository
         int maxAutomaticReconciliationAttempts,
         CancellationToken cancellationToken);
 
+    Task<int> CountUncertainByConsumerAsync(
+        Guid tenantId,
+        Guid webhookConsumerId,
+        CancellationToken cancellationToken);
+
     Task<WebhookProviderPublication?> GetActiveClaimAsync(
         Guid tenantId,
         Guid publicationId,

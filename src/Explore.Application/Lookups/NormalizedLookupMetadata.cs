@@ -147,6 +147,13 @@ public static class NormalizedLookupMetadata
         _ => Unknown(id)
     };
 
+    public static LookupReference WebhookPendingWorkDecision(int id) => id switch
+    {
+        (int)Explore.Domain.WebhookPendingWorkDecision.PreserveExisting => new(id, "PRESERVE_EXISTING", "Preserve existing"),
+        (int)Explore.Domain.WebhookPendingWorkDecision.MigrateEligible => new(id, "MIGRATE_ELIGIBLE", "Migrate eligible"),
+        _ => Unknown(id)
+    };
+
     public static LookupReference WebhookDeliveryAttemptOutcome(int id) => id switch
     {
         (int)Explore.Domain.WebhookDeliveryAttemptOutcome.Scheduled => new(id, "SCHEDULED", "Scheduled"),

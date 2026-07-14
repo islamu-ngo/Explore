@@ -102,6 +102,22 @@ public sealed class WebhookProviderPublicationRepository : IWebhookProviderPubli
             .ToListAsync(cancellationToken);
     }
 
+    public Task<int> CountUncertainByConsumerAsync(
+        Guid tenantId,
+        Guid webhookConsumerId,
+        CancellationToken cancellationToken) =>
+        _dbContext.WebhookProviderPublications
+            .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+            .AsNoTracking()
+            .CountAsync(
+                publication =>
+                    publication.TenantId == tenantId &&
+                    publication.WebhookDeliveryPlanSnapshot != null &&
+                    publication.WebhookDeliveryPlanSnapshot.WebhookConsumerId == webhookConsumerId &&
+                    (publication.StatusId == (int)WebhookProviderPublicationStatus.PublicationUnknown ||
+                     publication.StatusId == (int)WebhookProviderPublicationStatus.ManualReconciliation),
+                cancellationToken);
+
     public Task<WebhookProviderPublication?> GetActiveClaimAsync(
         Guid tenantId,
         Guid publicationId,

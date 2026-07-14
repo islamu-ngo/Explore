@@ -64,6 +64,7 @@ public sealed class CreateWebhookConsumerCommandHandler(
             Status = WebhookConsumerStatus.Active,
             ProviderMode = (WebhookProviderMode)request.ProviderModeId,
             ExternalProviderAppId = null,
+            ConfigurationVersion = 1,
             CreatedAt = DateTime.UtcNow
         };
 

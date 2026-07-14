@@ -31,6 +31,8 @@ public sealed class WebhookEndpointDto
 
     public int SecretVersion { get; init; }
 
+    public int ConfigurationVersion { get; init; }
+
     public string? ProviderEndpointId { get; init; }
 
     public int MaxAttempts { get; init; }

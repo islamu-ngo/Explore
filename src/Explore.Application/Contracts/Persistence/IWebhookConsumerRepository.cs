@@ -14,6 +14,15 @@ public interface IWebhookConsumerRepository
         Guid consumerId,
         CancellationToken cancellationToken);
 
+    Task<WebhookConsumer?> GetByTenantAndIdForUpdateAsync(
+        Guid tenantId,
+        Guid consumerId,
+        CancellationToken cancellationToken);
+
+    Task<WebhookConsumer> UpdateAsync(
+        WebhookConsumer consumer,
+        CancellationToken cancellationToken);
+
     Task<WebhookConsumer?> GetByTenantAndNameAsync(
         Guid tenantId,
         string name,

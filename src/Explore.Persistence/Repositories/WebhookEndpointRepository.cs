@@ -202,6 +202,82 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<WebhookEndpoint>> GetActiveSubscribedEndpointsByConsumerAsync(
+        Guid tenantId,
+        Guid consumerId,
+        string eventTypeName,
+        CancellationToken cancellationToken)
+    {
+        if (tenantId == Guid.Empty || consumerId == Guid.Empty || string.IsNullOrWhiteSpace(eventTypeName))
+        {
+            return [];
+        }
+
+        return await _dbContext.WebhookEndpoints
+            .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+            .AsNoTracking()
+            .Include(endpoint => endpoint.Subscriptions)
+            .ThenInclude(subscription => subscription.EventType)
+            .Where(endpoint =>
+                endpoint.TenantId == tenantId &&
+                endpoint.ConsumerId == consumerId &&
+                endpoint.StatusId == (int)WebhookEndpointStatus.Active &&
+                endpoint.Subscriptions.Any(subscription =>
+                    subscription.TenantId == tenantId &&
+                    subscription.IsEnabled &&
+                    subscription.EventType != null &&
+                    subscription.EventType.IsEnabled &&
+                    subscription.EventType.Name == eventTypeName))
+            .OrderBy(endpoint => endpoint.CreatedAt)
+            .ThenBy(endpoint => endpoint.Id)
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<bool> HasActiveSubscribedEndpointByConsumerAsync(
+        Guid tenantId,
+        Guid consumerId,
+        CancellationToken cancellationToken)
+    {
+        if (tenantId == Guid.Empty || consumerId == Guid.Empty)
+        {
+            return Task.FromResult(false);
+        }
+
+        return _dbContext.WebhookEndpoints
+            .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+            .AsNoTracking()
+            .AnyAsync(endpoint =>
+                endpoint.TenantId == tenantId &&
+                endpoint.ConsumerId == consumerId &&
+                endpoint.StatusId == (int)WebhookEndpointStatus.Active &&
+                endpoint.Subscriptions.Any(subscription =>
+                    subscription.TenantId == tenantId && subscription.IsEnabled),
+                cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<WebhookLocalTargetSnapshot>> GetEligiblePendingTargetsForUpdateAsync(
+        Guid tenantId,
+        Guid endpointId,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.WebhookLocalTargetSnapshots
+            .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+            .Where(target =>
+                target.TenantId == tenantId &&
+                target.WebhookEndpointId == endpointId &&
+                target.DeliveryStatusId == (int)WebhookLocalDeliveryStatus.Pending &&
+                target.ProcessingLeaseToken == null &&
+                target.ProcessingLeaseExpiresAtUtc == null &&
+                target.DeliveryFence == 0 &&
+                !_dbContext.WebhookDeliveryAttempts.Any(attempt =>
+                    attempt.TenantId == tenantId &&
+                    attempt.MessageId == target.WebhookMessageId &&
+                    attempt.EndpointId == endpointId))
+            .OrderBy(target => target.CapturedAtUtc)
+            .ThenBy(target => target.Id)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task DisableAsync(
         Guid tenantId,
         Guid endpointId,

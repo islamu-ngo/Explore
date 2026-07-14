@@ -16,4 +16,12 @@ public sealed class UpdateWebhookEndpointRequestDto
     public int? TimeoutSeconds { get; init; }
 
     public int? RateLimitPerMinute { get; init; }
+
+    public int ExpectedConfigurationVersion { get; init; }
+
+    public int PendingWorkDecisionId { get; init; }
+
+    public required string PendingWorkReason { get; init; }
+
+    public bool AcknowledgeUncertainProviderPublications { get; init; }
 }

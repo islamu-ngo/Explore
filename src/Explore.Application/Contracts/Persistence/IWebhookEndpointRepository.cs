@@ -59,6 +59,22 @@ public interface IWebhookEndpointRepository
         WebhookProviderMode providerMode,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<WebhookEndpoint>> GetActiveSubscribedEndpointsByConsumerAsync(
+        Guid tenantId,
+        Guid consumerId,
+        string eventTypeName,
+        CancellationToken cancellationToken);
+
+    Task<bool> HasActiveSubscribedEndpointByConsumerAsync(
+        Guid tenantId,
+        Guid consumerId,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<WebhookLocalTargetSnapshot>> GetEligiblePendingTargetsForUpdateAsync(
+        Guid tenantId,
+        Guid endpointId,
+        CancellationToken cancellationToken);
+
     Task DisableAsync(
         Guid tenantId,
         Guid endpointId,

@@ -122,7 +122,15 @@
                         <MudTd DataLabel="Name">@context.Name</MudTd>
                         <MudTd DataLabel="Kind">@context.ConsumerKindName</MudTd>
                         <MudTd DataLabel="Provider">
-                            <MudChip T="string" Size="Size.Small" Color="@ProviderColor(context.ProviderModeName)" Variant="Variant.Outlined">@context.ProviderModeName</MudChip>
+                            <div class="webhook-management__provider-summary">
+                                <MudChip T="string" Size="Size.Small" Color="@ProviderColor(context.ProviderModeName)" Variant="Variant.Outlined">@context.ProviderModeName</MudChip>
+                                <MudText Typo="Typo.caption"
+                                         Color="Color.Secondary"
+                                         Class="webhook-management__capability-summary"
+                                         title="@ProviderCapabilityExplanation(context)">
+                                    @ProviderCapabilitySummary(context)
+                                </MudText>
+                            </div>
                         </MudTd>
                         <MudTd DataLabel="Status">
                             <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.StatusName)" Variant="Variant.Outlined">@context.StatusName</MudChip>
@@ -557,6 +565,43 @@
                         }
                     </div>
                 </div>
+                @if (_endpointDialogMode == EndpointDialogMode.Update)
+                {
+                    <MudDivider />
+                    <MudText Typo="Typo.subtitle2">Pending delivery work</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Choose whether already queued, never-attempted deliveries keep their frozen configuration or adopt this update.
+                    </MudText>
+                    <MudRadioGroup T="int" @bind-Value="_endpointForm.PendingWorkDecisionId" Class="webhook-management__pending-work-options">
+                        <MudRadio T="int"
+                                  Value="WebhookPendingWorkDecisionIds.PreserveExisting"
+                                  Color="Color.Primary"
+                                  Dense="true"
+                                  data-testid="webhook-update-preserve-pending">
+                            Preserve existing snapshots
+                        </MudRadio>
+                        <MudRadio T="int"
+                                  Value="WebhookPendingWorkDecisionIds.MigrateEligible"
+                                  Color="Color.Warning"
+                                  Dense="true"
+                                  data-testid="webhook-update-migrate-pending">
+                            Migrate eligible pending deliveries
+                        </MudRadio>
+                    </MudRadioGroup>
+                    <AppTextField T="string"
+                                  @bind-Value="_endpointForm.PendingWorkReason"
+                                  Label="Decision reason"
+                                  Required="true"
+                                  Immediate="true"
+                                  data-testid="webhook-update-pending-reason" />
+                    <MudCheckBox T="bool"
+                                 @bind-Value="_endpointForm.AcknowledgeUncertainProviderPublications"
+                                 Color="Color.Warning"
+                                 Dense="true"
+                                 data-testid="webhook-update-acknowledge-uncertain">
+                        Acknowledge that provider publications with an uncertain outcome may still use the previous configuration.
+                    </MudCheckBox>
+                }
             </MudStack>
         </DialogContent>
         <DialogActions>
@@ -576,11 +621,45 @@
                 <MudText Typo="Typo.body2">@_rotateEndpoint?.DestinationHost</MudText>
                 <AppTextField T="string" @bind-Value="_rotateForm.NewSecretRef" Label="New secret reference" Required="true" Immediate="true" />
                 <MudNumericField T="int?" @bind-Value="_rotateForm.PreviousSecretValidForSeconds" Label="Previous secret valid seconds" Variant="Variant.Outlined" Min="0" />
+                <MudDivider />
+                <MudText Typo="Typo.subtitle2">Pending delivery work</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Choose whether already queued, never-attempted deliveries keep their frozen credential reference or adopt this rotation.
+                </MudText>
+                <MudRadioGroup T="int" @bind-Value="_rotateForm.PendingWorkDecisionId" Class="webhook-management__pending-work-options">
+                    <MudRadio T="int"
+                              Value="WebhookPendingWorkDecisionIds.PreserveExisting"
+                              Color="Color.Primary"
+                              Dense="true"
+                              data-testid="webhook-rotate-preserve-pending">
+                        Preserve existing snapshots
+                    </MudRadio>
+                    <MudRadio T="int"
+                              Value="WebhookPendingWorkDecisionIds.MigrateEligible"
+                              Color="Color.Warning"
+                              Dense="true"
+                              data-testid="webhook-rotate-migrate-pending">
+                        Migrate eligible pending deliveries
+                    </MudRadio>
+                </MudRadioGroup>
+                <AppTextField T="string"
+                              @bind-Value="_rotateForm.PendingWorkReason"
+                              Label="Decision reason"
+                              Required="true"
+                              Immediate="true"
+                              data-testid="webhook-rotate-pending-reason" />
+                <MudCheckBox T="bool"
+                             @bind-Value="_rotateForm.AcknowledgeUncertainProviderPublications"
+                             Color="Color.Warning"
+                             Dense="true"
+                             data-testid="webhook-rotate-acknowledge-uncertain">
+                    Acknowledge that provider publications with an uncertain outcome may still use the previous credential.
+                </MudCheckBox>
             </MudStack>
         </DialogContent>
         <DialogActions>
             <AppButton Variant="Variant.Text" OnClick="@(() => _rotateDialogOpen = false)" Disabled="_isBusy">Cancel</AppButton>
-            <AppButton Color="Color.Primary" Variant="Variant.Filled" OnClick="RotateSecretAsync" Disabled="_isBusy || _rotateEndpoint?.Id is null || string.IsNullOrWhiteSpace(_rotateForm.NewSecretRef)">
+            <AppButton Color="Color.Primary" Variant="Variant.Filled" OnClick="RotateSecretAsync" Disabled="@RotateSaveDisabled">
                 @(_isBusy ? "Rotating..." : "Rotate")
             </AppButton>
         </DialogActions>
@@ -660,7 +739,19 @@
         _endpointForm.ConsumerId == Guid.Empty ||
         string.IsNullOrWhiteSpace(_endpointForm.Url) ||
         (_endpointDialogMode == EndpointDialogMode.Create && string.IsNullOrWhiteSpace(_endpointForm.SecretRef)) ||
+        (_endpointDialogMode == EndpointDialogMode.Update &&
+         (_endpointForm.ExpectedConfigurationVersion <= 0 ||
+          _endpointForm.PendingWorkDecisionId <= 0 ||
+          string.IsNullOrWhiteSpace(_endpointForm.PendingWorkReason))) ||
         _selectedEventTypeIds.Count == 0;
+
+    private bool RotateSaveDisabled =>
+        _isBusy ||
+        _rotateEndpoint?.Id is null ||
+        _rotateForm.ExpectedConfigurationVersion <= 0 ||
+        _rotateForm.PendingWorkDecisionId <= 0 ||
+        string.IsNullOrWhiteSpace(_rotateForm.NewSecretRef) ||
+        string.IsNullOrWhiteSpace(_rotateForm.PendingWorkReason);
 
     protected override async Task OnInitializedAsync()
     {
@@ -743,7 +834,8 @@
             Description = endpoint.Description ?? string.Empty,
             MaxAttempts = endpoint.MaxAttempts,
             TimeoutSeconds = endpoint.TimeoutSeconds,
-            RateLimitPerMinute = endpoint.RateLimitPerMinute
+            RateLimitPerMinute = endpoint.RateLimitPerMinute,
+            ExpectedConfigurationVersion = endpoint.ConfigurationVersion ?? 0
         };
         _selectedEventTypeIds.Clear();
         foreach (var eventTypeId in endpoint.Subscriptions?
@@ -792,7 +884,11 @@
                     EventTypeIds = _selectedEventTypeIds.ToList(),
                     MaxAttempts = _endpointForm.MaxAttempts,
                     TimeoutSeconds = _endpointForm.TimeoutSeconds,
-                    RateLimitPerMinute = _endpointForm.RateLimitPerMinute
+                    RateLimitPerMinute = _endpointForm.RateLimitPerMinute,
+                    ExpectedConfigurationVersion = _endpointForm.ExpectedConfigurationVersion,
+                    PendingWorkDecisionId = _endpointForm.PendingWorkDecisionId,
+                    PendingWorkReason = _endpointForm.PendingWorkReason.Trim(),
+                    AcknowledgeUncertainProviderPublications = _endpointForm.AcknowledgeUncertainProviderPublications
                 }),
             closeDialog: () => _endpointDialogOpen = false);
     }
@@ -800,7 +896,11 @@
     private void OpenRotateDialog(HalResourceOfWebhookEndpointDto endpoint)
     {
         _rotateEndpoint = endpoint;
-        _rotateForm = new RotateForm { PreviousSecretValidForSeconds = 86400 };
+        _rotateForm = new RotateForm
+        {
+            PreviousSecretValidForSeconds = 86400,
+            ExpectedConfigurationVersion = endpoint.ConfigurationVersion ?? 0
+        };
         _rotateDialogOpen = true;
     }
 
@@ -817,7 +917,11 @@
                 new RotateWebhookEndpointSecretRequestDto
                 {
                     NewSecretRef = _rotateForm.NewSecretRef.Trim(),
-                    PreviousSecretValidForSeconds = _rotateForm.PreviousSecretValidForSeconds
+                    PreviousSecretValidForSeconds = _rotateForm.PreviousSecretValidForSeconds,
+                    ExpectedConfigurationVersion = _rotateForm.ExpectedConfigurationVersion,
+                    PendingWorkDecisionId = _rotateForm.PendingWorkDecisionId,
+                    PendingWorkReason = _rotateForm.PendingWorkReason.Trim(),
+                    AcknowledgeUncertainProviderPublications = _rotateForm.AcknowledgeUncertainProviderPublications
                 }),
             closeDialog: () => _rotateDialogOpen = false);
     }
@@ -931,6 +1035,56 @@
     private static bool HasProviderPortalLink(HalResourceOfWebhookConsumerDto consumer) =>
         WebhookHal.HasLink(consumer._links, WebhookClientLinkRelations.OpenProviderPortal);
 
+    private static string ProviderCapabilitySummary(HalResourceOfWebhookConsumerDto consumer)
+    {
+        if (consumer.ProviderCapabilityAuthorityAvailable != true)
+        {
+            return "Capability authority unavailable";
+        }
+
+        var capabilities = consumer.ProviderCapabilities ?? [];
+        return capabilities.Count == 0
+            ? "Capability metadata unavailable"
+            : $"{capabilities.Count(capability => capability.IsAvailable == true)} of {capabilities.Count} capabilities available";
+    }
+
+    private static string ProviderCapabilityExplanation(HalResourceOfWebhookConsumerDto consumer)
+    {
+        if (consumer.ProviderCapabilityAuthorityAvailable != true)
+        {
+            return CapabilityReasonExplanation(consumer.CapabilityUnavailableReasonCode);
+        }
+
+        var capabilities = consumer.ProviderCapabilities ?? [];
+        var available = capabilities
+            .Where(capability => capability.IsAvailable == true)
+            .Select(capability =>
+            {
+                var sources = capability.AvailableFromProviderCodes?.Count > 0
+                    ? $" ({string.Join(" / ", capability.AvailableFromProviderCodes)})"
+                    : string.Empty;
+                return $"{capability.CapabilityName}{sources}";
+            })
+            .ToArray();
+
+        return available.Length == 0
+            ? "No capabilities are available for this provider mode."
+            : $"Available: {string.Join(", ", available)}.";
+    }
+
+    private static string CapabilityReasonExplanation(string? reasonCode) =>
+        reasonCode switch
+        {
+            "webhook_provider_binding_unverified" => "Provider binding verification is required.",
+            "svix_self_hosted_profile_unsupported" => "The configured self-hosted Svix profile is unsupported.",
+            "webhook_provider_disabled" => "The webhook provider is disabled by instance configuration.",
+            "webhook_provider_tenant_override_disabled" => "The instance provider mode does not permit this consumer mode.",
+            "webhook_provider_mode_invalid" => "The provider mode is invalid.",
+            "webhook_provider_capability_not_applicable" => "The capability does not apply to this provider mode.",
+            "webhook_provider_capability_unproven" => "The capability is not proven for the configured provider profile.",
+            _ => "Capability authority is unavailable."
+        };
+
     private static bool HasEndpointLink(HalResourceOfWebhookEndpointDto endpoint, string relation) =>
         WebhookHal.HasLink(endpoint._links, relation);
 
@@ -1033,6 +1187,14 @@
         public int? TimeoutSeconds { get; set; }
 
         public int? RateLimitPerMinute { get; set; }
+
+        public int ExpectedConfigurationVersion { get; set; }
+
+        public int PendingWorkDecisionId { get; set; }
+
+        public string PendingWorkReason { get; set; } = string.Empty;
+
+        public bool AcknowledgeUncertainProviderPublications { get; set; }
     }
 
     private sealed class RotateForm
@@ -1040,6 +1202,14 @@
         public string NewSecretRef { get; set; } = string.Empty;
 
         public int? PreviousSecretValidForSeconds { get; set; }
+
+        public int ExpectedConfigurationVersion { get; set; }
+
+        public int PendingWorkDecisionId { get; set; }
+
+        public string PendingWorkReason { get; set; } = string.Empty;
+
+        public bool AcknowledgeUncertainProviderPublications { get; set; }
     }
 
     private enum EndpointDialogMode

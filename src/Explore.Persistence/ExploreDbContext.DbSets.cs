@@ -294,6 +294,7 @@ public partial class ExploreDbContext
     public DbSet<WebhookProviderBindingVerificationStateLookup> WebhookProviderBindingVerificationStates { get; set; }
     public DbSet<WebhookEndpointStatusLookup> WebhookEndpointStatuses { get; set; }
     public DbSet<WebhookLocalDeliveryStatusLookup> WebhookLocalDeliveryStatuses { get; set; }
+    public DbSet<WebhookPendingWorkDecisionLookup> WebhookPendingWorkDecisions { get; set; }
     public DbSet<WebhookDeliveryAttemptOutcomeLookup> WebhookDeliveryAttemptOutcomes { get; set; }
     public DbSet<IncomingWebhookMessageStatusLookup> IncomingWebhookMessageStatuses { get; set; }
     public DbSet<IncomingWebhookProcessingAttemptOutcomeLookup> IncomingWebhookProcessingAttemptOutcomes { get; set; }

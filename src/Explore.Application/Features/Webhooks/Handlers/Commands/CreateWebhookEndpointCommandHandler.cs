@@ -74,6 +74,8 @@ public sealed class CreateWebhookEndpointCommandHandler(
             Status = WebhookEndpointStatus.Active,
             SecretRef = request.SecretRef.Trim(),
             SecretVersion = 1,
+            SecretActivatedAt = now,
+            ConfigurationVersion = 1,
             MaxAttempts = request.MaxAttempts ?? DefaultMaxAttempts,
             TimeoutSeconds = request.TimeoutSeconds ?? DefaultTimeoutSeconds,
             RateLimitPerMinute = request.RateLimitPerMinute,

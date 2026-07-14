@@ -90,12 +90,24 @@ public sealed class DefaultWebhookEventPublisher(
             resolution.EventContractVersion is not { } eventContractVersion ||
             resolution.RetentionPolicy is null ||
             resolution.RetentionPolicyVersion is null ||
+            resolution.PayloadRetentionUntil is not { } payloadRetentionUntil ||
             resolution.PublicationRetentionUntil is not { } publicationRetentionUntil ||
+            payload.Envelope is not { } envelope ||
             payload.PayloadBytes is null ||
             payload.PayloadHash is null ||
             payload.PayloadRetentionUntil is null)
         {
             throw new InvalidOperationException("The resolved delivery plan is incomplete.");
+        }
+
+        if (envelope.Id != context.MessageId ||
+            envelope.TenantId != context.TenantId ||
+            !string.Equals(envelope.Type, context.EventType, StringComparison.Ordinal) ||
+            envelope.Version != eventContractVersion ||
+            envelope.OccurredAt != context.OccurredAt ||
+            payload.PayloadRetentionUntil.Value != payloadRetentionUntil)
+        {
+            throw new InvalidOperationException("The payload does not match the authoritative delivery plan.");
         }
 
         var message = WebhookMessage.Create(
@@ -110,7 +122,7 @@ public sealed class DefaultWebhookEventPublisher(
             "application/json",
             "utf-8",
             context.OccurredAt.UtcDateTime,
-            payload.PayloadRetentionUntil.Value.UtcDateTime,
+            payloadRetentionUntil.UtcDateTime,
             materializedAt);
         if (!string.Equals(message.PayloadHash, payload.PayloadHash, StringComparison.Ordinal))
         {
@@ -126,7 +138,7 @@ public sealed class DefaultWebhookEventPublisher(
             eventContractVersion.ToString(CultureInfo.InvariantCulture),
             resolution.RetentionPolicy,
             resolution.RetentionPolicyVersion,
-            payload.PayloadRetentionUntil.Value,
+            payloadRetentionUntil,
             new DateTimeOffset(materializedAt));
         var localTargets = resolution.LocalTargets
             .Select(target => WebhookLocalTargetSnapshot.Create(

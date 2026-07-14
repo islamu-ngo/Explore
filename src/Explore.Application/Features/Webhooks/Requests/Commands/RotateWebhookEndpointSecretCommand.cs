@@ -18,6 +18,14 @@ public sealed class RotateWebhookEndpointSecretCommand : IRequest<BaseCommandRes
 
     public int? PreviousSecretValidForSeconds { get; init; }
 
+    public int ExpectedConfigurationVersion { get; init; }
+
+    public int PendingWorkDecisionId { get; init; }
+
+    public required string PendingWorkReason { get; init; }
+
+    public bool AcknowledgeUncertainProviderPublications { get; init; }
+
     string? ISecureRequest.ResourceId => EndpointId.ToString("D");
 
     IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>

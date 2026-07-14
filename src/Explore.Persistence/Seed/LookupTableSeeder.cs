@@ -199,6 +199,12 @@ public static class LookupTableSeeder
             new() { Id = (int)WebhookLocalDeliveryStatus.Abandoned, MasterCode = "ABANDONED", FullName = "Abandoned", Description = "Local target was explicitly abandoned" }
         ], cancellationToken);
 
+        await AddMissingLookupRowsAsync(context.WebhookPendingWorkDecisions,
+        [
+            new() { Id = (int)WebhookPendingWorkDecision.PreserveExisting, MasterCode = "PRESERVE_EXISTING", FullName = "Preserve existing", Description = "Keep already materialized work on its immutable configuration snapshots" },
+            new() { Id = (int)WebhookPendingWorkDecision.MigrateEligible, MasterCode = "MIGRATE_ELIGIBLE", FullName = "Migrate eligible", Description = "Move only unclaimed pending Local work to the new endpoint configuration" }
+        ], cancellationToken);
+
         await AddMissingLookupRowsAsync(context.WebhookDeliveryAttemptOutcomes,
         [
             new() { Id = (int)WebhookDeliveryAttemptOutcome.Scheduled, MasterCode = "SCHEDULED", FullName = "Scheduled", Description = "Attempt was scheduled for delivery" },

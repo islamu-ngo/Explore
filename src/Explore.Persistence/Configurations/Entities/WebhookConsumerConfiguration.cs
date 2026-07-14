@@ -11,13 +11,19 @@ public class WebhookConsumerConfiguration : IEntityTypeConfiguration<WebhookCons
 {
     public void Configure(EntityTypeBuilder<WebhookConsumer> builder)
     {
-        builder.ToTable("webhook_consumers");
+        builder.ToTable("webhook_consumers", table =>
+        {
+            table.HasCheckConstraint(
+                "ck_webhook_consumers_configuration_version",
+                "configuration_version > 0");
+        });
 
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(e => e.Name).HasMaxLength(200).IsRequired();
         builder.Property(e => e.ConsumerKindId).IsRequired();
         builder.Property(e => e.StatusId).IsRequired();
         builder.Property(e => e.ProviderModeId).IsRequired();
+        builder.Property(e => e.ConfigurationVersion).HasDefaultValue(1).IsRequired().IsConcurrencyToken();
         builder.Ignore(e => e.ConsumerKind);
         builder.Ignore(e => e.Status);
         builder.Ignore(e => e.ProviderMode);

@@ -20,8 +20,7 @@ public sealed record WebhookEventBuildContext(
     Guid AggregateId,
     DateTimeOffset OccurredAt,
     IReadOnlyDictionary<string, object?> Data,
-    Guid? ConsumerId = null,
-    int? PayloadRetentionDays = null);
+    Guid? ConsumerId = null);
 
 public sealed record WebhookPayloadBuildResult(
     bool Succeeded,

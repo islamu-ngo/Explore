@@ -41,6 +41,27 @@ public class WebhookConsumerRepository : IWebhookConsumerRepository
             .FirstOrDefaultAsync(e => e.TenantId == tenantId && e.Id == consumerId, cancellationToken);
     }
 
+    public async Task<WebhookConsumer?> GetByTenantAndIdForUpdateAsync(
+        Guid tenantId,
+        Guid consumerId,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.WebhookConsumers
+            .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+            .Include(consumer => consumer.ProviderBindings)
+            .FirstOrDefaultAsync(
+                consumer => consumer.TenantId == tenantId && consumer.Id == consumerId,
+                cancellationToken);
+    }
+
+    public async Task<WebhookConsumer> UpdateAsync(
+        WebhookConsumer consumer,
+        CancellationToken cancellationToken)
+    {
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return consumer;
+    }
+
     public async Task<WebhookConsumer?> GetByTenantAndNameAsync(
         Guid tenantId,
         string name,

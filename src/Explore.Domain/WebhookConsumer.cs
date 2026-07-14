@@ -43,6 +43,7 @@ public class WebhookConsumer : ITenantEntity, IAuditableEntity
         set => ProviderModeId = (int)value;
     }
     public string? ExternalProviderAppId { get; set; }
+    public int ConfigurationVersion { get; set; }
 
     public ICollection<WebhookConsumerProviderBinding> ProviderBindings { get; private set; } = [];
 
@@ -61,5 +62,32 @@ public class WebhookConsumer : ITenantEntity, IAuditableEntity
             .ToArray();
 
         return matchingBindings.Length == 1 ? matchingBindings[0] : null;
+    }
+
+    public void ChangeProviderMode(WebhookProviderMode providerMode, DateTime changedAtUtc)
+    {
+        if (!Enum.IsDefined(providerMode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(providerMode));
+        }
+
+        if (changedAtUtc.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("Provider-mode changes require a UTC timestamp.", nameof(changedAtUtc));
+        }
+
+        if (ProviderMode == providerMode)
+        {
+            throw new InvalidOperationException("The webhook consumer already uses the requested provider mode.");
+        }
+
+        if (ConfigurationVersion < 1)
+        {
+            throw new InvalidOperationException("The webhook consumer configuration version is invalid.");
+        }
+
+        ProviderMode = providerMode;
+        ConfigurationVersion = checked(ConfigurationVersion + 1);
+        UpdatedAt = changedAtUtc;
     }
 }
