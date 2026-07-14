@@ -11,15 +11,15 @@
 
 ## Summary
 
-- Total paths: **432**
-- Total operations: **586**
+- Total paths: **433**
+- Total operations: **587**
 - Operations missing `operationId`: **0**
 - Operation IDs with placeholder fallback pattern (ends in digit or `\dAsync`): **0**
 - URL-segment-versioned paths (`^/api/v\d`, banned by governance): **0**
 - Operations missing `x-endpoint-class` extension: **0**
-- Classification breakdown: `Admin`=56, `Authenticated`=406, `Public`=124
+- Classification breakdown: `Admin`=56, `Authenticated`=407, `Public`=124
 - Tenant-mode extension breakdown: `multi-tenant-required`=22
-- Rate-limit policy extension breakdown: `AiAssistant`=5, `AnalyticsRelay`=1, `Authenticated`=26, `ControlPlane`=31, `Global`=1, `PublicIngestion`=1, `SetupSecret`=10, `Write`=41
+- Rate-limit policy extension breakdown: `AiAssistant`=5, `AnalyticsRelay`=1, `Authenticated`=26, `ControlPlane`=31, `Global`=1, `PublicIngestion`=1, `SetupSecret`=10, `Write`=42
 - Output-cache policy extension breakdown: `DetailData`=51, `ListData`=38, `LookupData`=26, `PublicExperienceShell`=1, `SitemapData`=1, `SystemConfig`=1, `TenantNav`=1
 
 ## Operations
@@ -607,11 +607,12 @@
 | 579 | `/api/webhooks/endpoints/{endpointId}/rotate-secret` | `POST` | `RotateWebhookEndpointSecret` | Rotate webhook endpoint secret | Webhooks | `RotateWebhookEndpointSecret` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
 | 580 | `/api/webhooks/endpoints/{endpointId}/test` | `POST` | `TestWebhookEndpoint` | Test webhook endpoint | Webhooks | `TestWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
 | 581 | `/api/webhooks/event-types` | `GET` | `GetWebhookEventTypes` | Get webhook event types | Webhooks | `GetWebhookEventTypes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
-| 582 | `/api/webhooks/messages` | `GET` | `GetWebhookMessages` | Get webhook messages | Webhooks | `GetWebhookMessages` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 583 | `/api/webhooks/messages/{messageId}` | `GET` | `GetWebhookMessageById` | Get webhook message | Webhooks | `GetWebhookMessageById` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 584 | `/api/webhooks/svix/app-portal` | `POST` | `OpenSvixAppPortal` | Open Svix App Portal | Webhooks | `OpenSvixAppPortal` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 585 | `/sitemap.xml` | `GET` | `GetSitemap` | Get XML sitemap | Sitemap | `GetSitemap` | `Public` | no | _(none)_ | _(none)_ | `SitemapData` |
-| 586 | `/vapid-public-key` | `GET` | `GetVapidPublicKey` | Get VAPID public key | Notification | `GetVapidPublicKey` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 582 | `/api/webhooks/incoming/{incomingWebhookMessageId}/redrive` | `POST` | `RedriveIncomingWebhook` | Redrive incoming webhook | Webhooks | `RedriveIncomingWebhook` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 583 | `/api/webhooks/messages` | `GET` | `GetWebhookMessages` | Get webhook messages | Webhooks | `GetWebhookMessages` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 584 | `/api/webhooks/messages/{messageId}` | `GET` | `GetWebhookMessageById` | Get webhook message | Webhooks | `GetWebhookMessageById` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 585 | `/api/webhooks/svix/app-portal` | `POST` | `OpenSvixAppPortal` | Open Svix App Portal | Webhooks | `OpenSvixAppPortal` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 586 | `/sitemap.xml` | `GET` | `GetSitemap` | Get XML sitemap | Sitemap | `GetSitemap` | `Public` | no | _(none)_ | _(none)_ | `SitemapData` |
+| 587 | `/vapid-public-key` | `GET` | `GetVapidPublicKey` | Get VAPID public key | Notification | `GetVapidPublicKey` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
 
 ## Columns
 

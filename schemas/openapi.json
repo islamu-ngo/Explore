@@ -55134,6 +55134,137 @@
         "x-rate-limit-policy": "Authenticated"
       }
     },
+    "/api/webhooks/consumers/{consumerId}/provider-binding/repair": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Repair webhook provider binding",
+        "description": "Verifies self-hosted provider ownership and atomically creates or rebinds the consumer application mapping.",
+        "operationId": "RepairWebhookProviderBinding",
+        "parameters": [
+          {
+            "name": "consumerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/RepairWebhookProviderBindingRequestDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/RepairWebhookProviderBindingRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
     "/api/webhooks/endpoints": {
       "get": {
         "tags": [
@@ -56319,6 +56450,131 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/webhooks/incoming/{incomingWebhookMessageId}/redrive": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Redrive incoming webhook",
+        "description": "Schedules a new processing generation for one tenant-scoped dead-lettered incoming webhook.",
+        "operationId": "RedriveIncomingWebhook",
+        "parameters": [
+          {
+            "name": "incomingWebhookMessageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/RedriveIncomingWebhookRequestDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/RedriveIncomingWebhookRequestDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/RedriveIncomingWebhookRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -84639,6 +84895,8 @@
           "statusName",
           "providerModeCode",
           "providerModeName",
+          "capabilityResolutionVersion",
+          "providerCapabilities",
           "name"
         ],
         "type": "object",
@@ -84706,6 +84964,60 @@
           },
           "providerModeName": {
             "type": "string"
+          },
+          "providerCapabilityAuthorityAvailable": {
+            "type": "boolean"
+          },
+          "capabilityResolutionVersion": {
+            "type": "string"
+          },
+          "capabilityUnavailableReasonCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "providerCapabilities": {
+            "type": "array",
+            "items": {
+              "required": [
+                "capabilityCode",
+                "capabilityName",
+                "availableFromProviderCodes"
+              ],
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "pattern": "^-?(?:0|[1-9]\\d*)$",
+                  "type": [
+                    "integer",
+                    "string"
+                  ],
+                  "format": "int32"
+                },
+                "capabilityCode": {
+                  "type": "string"
+                },
+                "capabilityName": {
+                  "type": "string"
+                },
+                "isAvailable": {
+                  "type": "boolean"
+                },
+                "availableFromProviderCodes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "unavailableReasonCode": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                }
+              }
+            }
           },
           "name": {
             "type": "string"
@@ -91704,6 +92016,22 @@
           }
         }
       },
+      "RedriveIncomingWebhookRequestDto": {
+        "type": "object",
+        "properties": {
+          "expectedProcessingGeneration": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
       "RegistrationModeDto": {
         "required": [
           "masterCode",
@@ -91875,6 +92203,17 @@
           },
           "lockTenantAdminRenderPolicy": {
             "type": "boolean"
+          }
+        }
+      },
+      "RepairWebhookProviderBindingRequestDto": {
+        "type": "object",
+        "properties": {
+          "externalApplicationId": {
+            "type": "string"
+          },
+          "reasonCode": {
+            "type": "string"
           }
         }
       },
@@ -100097,6 +100436,8 @@
           "statusName",
           "providerModeCode",
           "providerModeName",
+          "capabilityResolutionVersion",
+          "providerCapabilities",
           "name"
         ],
         "type": "object",
@@ -100164,6 +100505,60 @@
           },
           "providerModeName": {
             "type": "string"
+          },
+          "providerCapabilityAuthorityAvailable": {
+            "type": "boolean"
+          },
+          "capabilityResolutionVersion": {
+            "type": "string"
+          },
+          "capabilityUnavailableReasonCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "providerCapabilities": {
+            "type": "array",
+            "items": {
+              "required": [
+                "capabilityCode",
+                "capabilityName",
+                "availableFromProviderCodes"
+              ],
+              "type": "object",
+              "properties": {
+                "capabilityId": {
+                  "pattern": "^-?(?:0|[1-9]\\d*)$",
+                  "type": [
+                    "integer",
+                    "string"
+                  ],
+                  "format": "int32"
+                },
+                "capabilityCode": {
+                  "type": "string"
+                },
+                "capabilityName": {
+                  "type": "string"
+                },
+                "isAvailable": {
+                  "type": "boolean"
+                },
+                "availableFromProviderCodes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "unavailableReasonCode": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                }
+              }
+            }
           },
           "name": {
             "type": "string"
