@@ -9,7 +9,9 @@ Verified: 2026-07-14 Europe/Brussels
 
 - PostgreSQL image: `postgres:18-alpine`
 - Starting migration: `20260712144721_AddManagedTenantProvisioningOperationOutboxPointer`
-- Final migration: `20260714090035_NormalizeWebhookProviderBindingInstanceIdentity`
+- Final migration: `20260714095353_NormalizeWebhookProviderCapabilities`
+- Last full volume/backup/restore rehearsal final migration:
+  `20260714090035_NormalizeWebhookProviderBindingInstanceIdentity`
 - Deployment artifact: EF Core idempotent SQL generated with `dotnet ef migrations script --idempotent`
 - Representative volume: 10,000 legacy incoming webhook rows, including 100 null legacy
   JSON payloads and 1,000 rows whose legacy `verified_at` was null
@@ -31,7 +33,8 @@ Verified: 2026-07-14 Europe/Brussels
 | Backup | PostgreSQL custom-format dump, 1.3 MiB, completed in 0.281 seconds |
 | Restore | Clean-database restore completed in 3.876 seconds |
 | Data checksum | Before/after count `10000`; MD5 `e0c37d4774413141bd9df31c4f503fdb` |
-| Migration history | 44 migrations; final migration identical before/after restore |
+| Last full volume/restore migration history | 44 applied migrations through binding identity normalization; final migration identical before/after restore |
+| Current source migration chain | 50 generated migrations; capability normalization is final and EF reports no pending model changes |
 | Restored idempotent reapply | Passed as a no-op in 0.366 seconds |
 | Binding identity normalization Up/Down | Passed in 5.696 seconds; canonical completed-bootstrap identity applied, stale ownership invalidated, and exact prior state restored from migration audit evidence |
 | 10,002-row provider-link end-to-end rehearsal | Passed in 2 minutes 34.211 seconds, including isolated database creation, current upgrade through identity normalization, lock monitoring, backup, restore, and verification |
@@ -41,6 +44,8 @@ Verified: 2026-07-14 Europe/Brussels
 | Provider-link backup/restore | PostgreSQL custom-format dump and clean-database restore passed; restored publication ID/status checksum identical |
 | Provider-link retirement | `webhook_provider_links` absent after upgrade and after restore |
 | Full persistence regression | 329/329 passed against PostgreSQL 18 |
+| Capability normalization | EF CLI generated the lookup table, unique code index, and bounded `0..4095` provider/governance bitmask constraints; lookup/DTO parity passes and `dotnet ef migrations has-pending-model-changes` reports no drift |
+| Capability-aware historical boundaries | Passed: isolated databases migrate to the current chain, seed current lookups, use generated Down migrations to the pre-capability boundary, then replay the binding-identity or 10,002-row provider-link Up/backup/restore verification |
 
 The first physical signature comparison differed only in column ordinal positions because
 `pg_restore` recreates columns in dump order. The semantic signature intentionally compares
@@ -57,6 +62,21 @@ The subsequent identity-normalization migration requires exactly one completed
 recomputes `islamu-{instance:N}-consumer-{consumer:N}`, invalidates stale verification, and
 never contacts the provider. Its canonical UUID selection uses portable ordered-row SQL rather
 than a PostgreSQL-unsupported UUID aggregate.
+
+The final capability-normalization migration is schema-only. It creates the independent
+`webhook_provider_capabilities` metadata table and constrains both persisted capability masks to
+the twelve known single-bit values represented by `0..4095`. Runtime seeding remains idempotent
+and owns the twelve lookup rows; provider proof remains versioned application authority rather
+than mutable model seed data. Migration creation, removal of the empty predecessor, snapshot
+updates, and model-drift verification were performed exclusively through `dotnet ef`.
+
+The first full persistence run after capability normalization passed 327/329. Both failures were
+historical-boundary setup failures: the current runtime seeder correctly queried
+`webhook_provider_capabilities`, but those isolated databases had intentionally stopped before
+the migration that creates it. The tests now migrate and seed at the current schema, clear the
+tracker, and use EF's generated Down chain to reach the intended historical boundary. This keeps
+runtime seeding strict and also verifies rollback compatibility. The two focused reruns and the
+complete 329-case PostgreSQL lane pass; no migration source or snapshot was hand-edited.
 
 ## Operator Decision
 

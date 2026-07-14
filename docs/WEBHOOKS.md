@@ -37,6 +37,41 @@ ISLAMU owns the canonical event catalog and `webhook_messages` ledger even when 
 
 LocalProvider is intentionally not a Svix clone. It does not include transformations, OAuth or mTLS endpoint auth, a customer-facing advanced portal, FIFO endpoints, polling endpoints, or advanced analytics.
 
+## Typed Provider Capability Authority
+
+Provider features are represented by twelve stable single-bit lookup IDs. Runtime decisions do
+not infer support from a provider name: they resolve the configured mode and exact supported
+version, then intersect provider proof with the verified consumer binding and instance governance.
+Unknown flags, an unsupported tuple, a missing binding, or managed Svix SaaS fail closed.
+
+| ID | Code | Local authority | Self-hosted Svix v1.96.1 proof |
+|---:|---|---|---|
+| 1 | `ENDPOINT_MANAGEMENT` | Yes | Yes |
+| 2 | `PROVIDER_ATTEMPT_VISIBILITY` | No | No |
+| 4 | `REPLAY` | No | No |
+| 8 | `PAYLOAD_INSPECTION` | No | Yes |
+| 16 | `APP_PORTAL` | No | Yes |
+| 32 | `EVENT_CATALOG` | Yes | Yes |
+| 64 | `PROVIDER_RETENTION_CONTROL` | No | No |
+| 128 | `APPLICATION_THROTTLING` | No | No |
+| 256 | `ENDPOINT_THROTTLING` | No | No |
+| 512 | `TRANSFORMATIONS` | No | No |
+| 1024 | `ORDERING` | No | No |
+| 2048 | `OPERATIONAL_CALLBACKS` | No | No |
+
+`Composite` is the union of the Local authority and the governed, verified Svix authority.
+`Disabled` and `DryRun` advertise no provider capabilities. This matrix is deliberately narrower
+than the full set of internal delivery operations: a feature is not advertised as provider
+authority until its control path and version evidence use this contract.
+
+Consumer creation rejects unavailable provider modes before persistence. Local endpoint create,
+update, secret rotation, test, and archive operations require Local endpoint-management authority;
+pure Svix endpoint management stays in the provider portal. Consumer read models expose all twelve
+lookup triples, source codes (`LOCAL` or `SVIX`), the resolution version, and bounded reason codes.
+HAL emits the App Portal relation only when the authoritative DTO capability, verified persisted
+binding, governance ceiling, and authorization all agree. Blazor renders actions only from HAL and
+uses capability metadata solely for safe operator explanations.
+
 ## Event Catalog And Payloads
 
 `GET /api/webhooks/event-types` exposes the canonical event catalog with names, groups, schema versions, JSON Schema, and example envelopes. Initial public event types include event lifecycle, registration, report, moderation, and organization verification events.
@@ -119,7 +154,7 @@ Mapping:
 
 `local-full` starts pinned `svix/svix-server:v1.96.1` through Aspire with PostgreSQL and Redis queue/cache. Both `SVIX_QUEUE_TYPE` and `SVIX_CACHE_TYPE` are `redis`: the queue carries provider work, while the shared cache preserves idempotency semantics across Svix replicas. Do not use the self-hosted in-memory cache in a multi-replica deployment. Aspire injects the current Svix HTTP endpoint and the proven `self-hosted`/`1.96.1`/`svix-self-hosted-1.96.1-v1` tuple into the API; use `aspire describe --format Json` to inspect the actual host port for the running session.
 
-The live conformance matrix proves the twelve-hour idempotency behavior, duplicate event identity conflicts, response-loss ambiguity, credential rotation, and list/get consistency. Self-hosted v1.96.1 does not return message tags from list/get, so request-hash exact lookup is not enabled for that profile. An accepted request followed by response loss therefore remains manual reconciliation rather than being guessed or blindly retried.
+The eleven-case live conformance matrix proves the twelve-hour idempotency behavior, duplicate event identity conflicts, response-loss ambiguity, credential rotation, list/get consistency, endpoint management, App Portal access, event-catalog management, and payload inspection. Self-hosted v1.96.1 does not return message tags from list/get, so request-hash exact lookup is not enabled for that profile. An accepted request followed by response loss therefore remains manual reconciliation rather than being guessed or blindly retried.
 
 ## Self-Hosted Svix Authentication
 
@@ -192,7 +227,7 @@ Environment variables used by local profiles:
 Readiness checks:
 
 - `webhook-local-delivery` reports LocalProvider queue backlog, stale sending leases, and processor settings.
-- `webhook-svix-provider` reports the safe conformance tuple, evidence revision/count, exact-lookup availability, provider selection, App Portal/event-type-sync flags, and whether server-side Svix secrets resolve. It does not expose tokens, secret refs, or provider URLs and does not perform an outbound network probe.
+- `webhook-svix-provider` reports the safe conformance tuple, evidence revision/count, exact-lookup availability, bounded capability count/codes, provider selection, App Portal/event-type-sync flags, and whether server-side Svix secrets resolve. It does not expose tokens, secret refs, or provider URLs and does not perform an outbound network probe.
 
 Business metrics use bounded labels:
 

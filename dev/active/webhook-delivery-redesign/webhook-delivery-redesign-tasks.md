@@ -9,8 +9,8 @@ Last Updated: 2026-07-14 Europe/Brussels
 
 - Planning: **Approved**
 - Implementation: **In progress**
-- Current task: **3.2 Add typed provider capabilities**
-- Current blocker: **None**
+- Current task: **3.4 Verify binding/capability/snapshot migration**
+- Current blocker: **None; mode-change, concurrency, and migration-smoke verification is in progress**
 - Rule: complete tasks in order unless this document explicitly marks them parallel
 
 ### Progress snapshot
@@ -100,11 +100,11 @@ Last Updated: 2026-07-14 Europe/Brussels
   Architecture currently has four committed Management-surface convention failures
   outside this redesign (command/query namespace/public-handler rules and seven DTO names).
   The exact self-hosted conformance selector was rerun after this scope decision and passed.
-  `.env` and `.env.example` contain the matching local self-hosted JWT/signing-secret pair;
-  managed token placeholders remain blank and have no Infisical or cloud SaaS owner. A live
-  Aspire restart now runs healthy `svix/svix-server:v1.96.1`; the bundled JWT generator
-  returned a valid bearer-token shape without exposing it, and the `.env` JWT authenticated
-  successfully against the live self-hosted application-list endpoint.
+  `.env` and `.env.example` retain the self-hosted Svix infrastructure settings while the
+  application auth token and operational-webhook secret are intentionally blank. They have no
+  cloud SaaS or Infisical owner in this development phase. Aspire can run the pinned
+  `svix/svix-server:v1.96.1`; application-level Svix operations remain fail-closed until those
+  local self-hosted credentials are deliberately configured.
 - Phase 2.6 now uses three ordered generated migrations: widen nullable legacy evidence
   columns, perform a set-based evidence backfill with fail-fast ambiguity validation, then
   drop the retired table. The backfill creates immutable plans, `LegacyUnverified` bindings,
@@ -151,8 +151,55 @@ Last Updated: 2026-07-14 Europe/Brussels
   CQRS write boundaries, and consumer read models now fail closed through the same resolver.
   EF CLI generated `20260714095353_NormalizeWebhookProviderCapabilities`; the removed empty
   predecessor and model snapshot were handled exclusively by `dotnet ef`, and EF currently
-  reports no pending model changes. HAL/UI explanations, contract regeneration, and the full
-  focused verification matrix remain before the four 3.2 checklist items can be closed.
+  reports no pending model changes. The remaining implementation and verification results are
+  recorded in the following Phase 3.2 entries.
+- Phase 3.2 capability authority is now exercised end to end. CQRS regression tests prove
+  unavailable modes fail before persistence, Local capability provenance remains distinct,
+  verified Svix authority is the intersection of live provider proof and binding governance,
+  and pure Svix cannot mutate Local endpoints. The pinned v1.96.1 Testcontainers matrix passes
+  both selected methods and all eleven executed cases; resolver, option-validation, readiness,
+  lookup/DTO parity, HAL authority, and Blazor component suites also pass. The canonical OpenAPI
+  document and NSwag client were regenerated, and EF CLI again reports no pending model changes.
+  The Blazor provider cell renders bounded capability counts and safe reason text, while portal
+  actions remain HAL-only. Independent screenshot review remains open because the applicable
+  visual-QA workflow requires reviewer subagents and the user explicitly prohibited subagents.
+- The canonical Release build passes all 26 projects. Full Application, non-runtime
+  Infrastructure, Blazor client, and 329-case PostgreSQL persistence suites pass; 20/20 stable
+  OpenAPI invariants and the generated inventory pass; all eight focused HAL authority cases and
+  the complete live self-hosted conformance selector pass. Readiness now publishes normalized
+  lookup codes rather than C# enum names. The first full persistence run exposed two historical
+  migration tests seeding the new lookup before its table existed. Their isolated setup now uses
+  the current EF chain and runtime seeder first, then generated Down migrations to the historical
+  boundary before replaying Up. Both 10,002-row backup/restore and binding-identity Up/Down cases
+  pass again without a production seeder bypass or any migration-file edit.
+- Phase 3.3 implementation now assigns authoritative positive configuration versions to webhook
+  consumers and endpoints and resolves delivery plans from active tenant/consumer/event/endpoint,
+  provider-capability, contract, retention, and secret-binding facts. Local target snapshots carry
+  the endpoint version; provider plans carry consumer/capability and credential-reference versions;
+  incomplete facts fail closed. Endpoint updates and signing-credential rotations now require the
+  caller's expected configuration version, an explicit normalized preserve-or-migrate decision, a
+  reason, and acknowledgement when provider publication outcomes are uncertain. Eligible migration
+  is restricted to pending, unclaimed, never-attempted Local targets and is committed atomically with
+  the configuration change and a credential-free audit record. Preserve leaves every existing
+  snapshot untouched. Local signing snapshots now use a dedicated credential-activation timestamp
+  instead of the endpoint's unrelated general update time. Materialization rejects payloads whose
+  identity, schema version, occurrence time, or retention boundary differs from the database-governed
+  event contract. The Blazor dialogs expose the same non-defaulted decision and remain HAL-gated.
+  EF CLI removed and regenerated the pending migration as
+  `20260714112331_EnforceWebhookConfigurationSnapshots`; its migration, designer, and model snapshot
+  have not been hand-edited. API, generated-client, Blazor, API-test, Domain-test,
+  Infrastructure-test, and Persistence-test projects build with zero errors. Focused payload,
+  resolver, options-validation, handler, domain, API, HAL, Blazor, atomic PostgreSQL, lookup-parity,
+  and four-case historical migration/backup/restore suites pass. The historical fixtures seed on the
+  current schema before generated `Down` replay, so their setup no longer writes current columns into
+  an intentionally older schema. Phase 3.3 is complete and Phase 3.4 verification is active.
+- Phase 3.4 implementation now has an authorized consumer provider-mode transition boundary with
+  expected configuration-version checks, normalized preserve/migrate governance, target capability,
+  Local-endpoint and verified Svix-binding prerequisites, uncertainty acknowledgement, and an atomic
+  credential-free audit. Existing pending work is always preserved on its immutable Local target or
+  provider-publication snapshot; cross-provider pending-work migration is rejected explicitly. The
+  API exposes this action through a permission-filtered `change-provider-mode` HAL affordance. Build,
+  concurrency, immutable-snapshot, generated-contract, and live migration evidence are still in progress.
 
 ## Definition of Ready
 
@@ -401,21 +448,21 @@ cannot be hidden, and automatic recovery never exceeds proven provider guarantee
 
 ### 3.2 Add typed provider capabilities
 
-- [ ] Model endpoint management, attempts, replay, payload inspection, portal,
+- [x] Model endpoint management, attempts, replay, payload inspection, portal,
   catalog, retention, app/endpoint throttling, transformations, ordering, callbacks.
-- [ ] Resolve capabilities by provider and supported version.
-- [ ] Validate configuration writes and startup against capabilities.
-- [ ] Drive readiness, HAL, and UI explanations from capabilities.
-- [ ] Do not claim Local parity for provider-native features.
+- [x] Resolve capabilities by provider and supported version.
+- [x] Validate configuration writes and startup against capabilities.
+- [x] Drive readiness, HAL, and UI explanations from capabilities.
+- [x] Do not claim Local parity for provider-native features.
 
 ### 3.3 Enforce immutable configuration snapshots
 
-- [ ] Persist delivery plan, provider mode, bindings, endpoint config version,
+- [x] Persist delivery plan, provider mode, bindings, endpoint config version,
   event-contract version, and retention snapshot when materializing.
-- [ ] Make later configuration changes affect new messages only.
-- [ ] Add explicit authorized/audited migration for eligible pending work.
-- [ ] Warn on unknown/reconciliation publications during config change.
-- [ ] Require an explicit pending-work decision; never silently reroute.
+- [x] Make later configuration changes affect new messages only.
+- [x] Add explicit authorized/audited migration for eligible pending work.
+- [x] Warn on unknown/reconciliation publications during config change.
+- [x] Require an explicit pending-work decision; never silently reroute.
 
 ### 3.4 Verify binding/capability/snapshot migration
 
