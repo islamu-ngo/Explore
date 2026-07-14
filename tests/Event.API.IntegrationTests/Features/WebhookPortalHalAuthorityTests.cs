@@ -49,10 +49,31 @@ public sealed class WebhookPortalHalAuthorityTests
     {
         var fixture = new Fixture([]);
 
-        var resource = await fixture.Assembler.ToResource(CreateConsumerDto(), fixture.HttpContext);
+        var resource = await fixture.Assembler.ToResource(
+            CreateConsumerDto(capabilityAuthorityAvailable: false),
+            fixture.HttpContext);
 
         await Assert.That(resource.Links.ContainsKey(LinkRelations.OpenProviderPortal)).IsFalse();
         await Assert.That(resource.Links.ContainsKey(LinkRelations.RepairProviderBinding)).IsTrue();
+    }
+
+    [Test]
+    public async Task MissingAuthoritativeAppPortalCapability_OmitsPortalLinkWithoutEligibilityLookup()
+    {
+        var fixture = new Fixture([CreateBinding()]);
+
+        var resource = await fixture.Assembler.ToResource(
+            CreateConsumerDto(appPortalAvailable: false),
+            fixture.HttpContext);
+
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.OpenProviderPortal)).IsFalse();
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.RepairProviderBinding)).IsTrue();
+        await fixture.BindingRepository.DidNotReceive().GetVerifiedByConsumersAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<WebhookProviderKind>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -161,7 +182,10 @@ public sealed class WebhookPortalHalAuthorityTests
         return binding;
     }
 
-    private static WebhookConsumerDto CreateConsumerDto(Guid? consumerId = null) => new()
+    private static WebhookConsumerDto CreateConsumerDto(
+        Guid? consumerId = null,
+        bool capabilityAuthorityAvailable = true,
+        bool appPortalAvailable = true) => new()
     {
         Id = consumerId ?? ConsumerId,
         TenantId = TenantId,
@@ -174,6 +198,25 @@ public sealed class WebhookPortalHalAuthorityTests
         ProviderModeId = (int)WebhookProviderMode.Svix,
         ProviderModeCode = "SVIX",
         ProviderModeName = nameof(WebhookProviderMode.Svix),
+        ProviderCapabilityAuthorityAvailable = capabilityAuthorityAvailable,
+        CapabilityResolutionVersion = SvixConformanceProfileRegistry.SelfHostedCapabilityPolicyVersion,
+        CapabilityUnavailableReasonCode = capabilityAuthorityAvailable
+            ? null
+            : "webhook_provider_binding_unverified",
+        ProviderCapabilities =
+        [
+            new WebhookProviderCapabilityDto
+            {
+                CapabilityId = (int)WebhookProviderCapability.AppPortal,
+                CapabilityCode = "APP_PORTAL",
+                CapabilityName = "App portal",
+                IsAvailable = appPortalAvailable,
+                AvailableFromProviderCodes = appPortalAvailable ? ["SVIX"] : [],
+                UnavailableReasonCode = appPortalAvailable
+                    ? null
+                    : "webhook_provider_capability_unproven"
+            }
+        ],
         Name = "HAL authority consumer",
         CreatedAt = DateTime.UtcNow
     };

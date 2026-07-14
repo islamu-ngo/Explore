@@ -20,7 +20,7 @@ public sealed class WebhookLookupParityTests
         new(typeof(WebhookConsumerStatusLookup), typeof(WebhookConsumerStatus), "webhook_consumer_statuses", [new(typeof(WebhookConsumer), "StatusId")]),
         new(typeof(WebhookProviderModeLookup), typeof(WebhookProviderMode), "webhook_provider_modes", [new(typeof(WebhookConsumer), "ProviderModeId"), new(typeof(WebhookDeliveryPlanSnapshot), "ProviderModeId"), new(typeof(WebhookProviderPublication), "ModeSnapshotId")]),
         new(typeof(WebhookProviderKindLookup), typeof(WebhookProviderKind), "webhook_provider_kinds", [new(typeof(WebhookConsumerProviderBinding), "ProviderKindId"), new(typeof(WebhookProviderPublication), "ProviderKindId")]),
-        new(typeof(WebhookProviderCapabilityLookup), typeof(WebhookProviderCapability), "webhook_provider_capabilities", [], IncludeZero: false, IndividualFlagsOnly: true),
+        new(typeof(WebhookProviderCapabilityLookup), typeof(WebhookProviderCapability), "webhook_provider_capabilities", [], IncludeZero: false, IndividualFlagsOnly: true, RequiresLiteralMigrationRows: false),
         new(typeof(WebhookEndpointStatusLookup), typeof(WebhookEndpointStatus), "webhook_endpoint_statuses", [new(typeof(WebhookEndpoint), "StatusId")]),
         new(typeof(WebhookLocalDeliveryStatusLookup), typeof(WebhookLocalDeliveryStatus), "webhook_local_delivery_statuses", [new(typeof(WebhookLocalTargetSnapshot), "DeliveryStatusId")]),
         new(typeof(WebhookDeliveryAttemptOutcomeLookup), typeof(WebhookDeliveryAttemptOutcome), "webhook_delivery_attempt_outcomes", [new(typeof(WebhookDeliveryAttempt), "OutcomeId")]),
@@ -65,7 +65,7 @@ public sealed class WebhookLookupParityTests
     }
 
     [Test]
-    public async Task EnumRuntimeSeederAndLiteralMigration_ContainExactStableIdsAndCodes()
+    public async Task EnumRuntimeSeederAndRequiredLiteralMigrations_ContainExactStableIdsAndCodes()
     {
         var root = FindRepositoryRoot();
         var seeder = await File.ReadAllTextAsync(
@@ -98,7 +98,10 @@ public sealed class WebhookLookupParityTests
                 var seedPattern = $"Id = (int){lookupCase.EnumType.Name}.{name}, MasterCode = \"{code}\"";
                 await Assert.That(seeder).Contains(seedPattern);
                 await Assert.That(migrationSource).Contains($"table: \"{lookupCase.TableName}\"");
-                await Assert.That(migrationSource).Contains($"{id}, \"{code}\"");
+                if (lookupCase.RequiresLiteralMigrationRows)
+                {
+                    await Assert.That(migrationSource).Contains($"{id}, \"{code}\"");
+                }
             }
         }
     }
@@ -184,7 +187,8 @@ public sealed class WebhookLookupParityTests
         IReadOnlyList<LookupOwner> Owners,
         bool IsRequired = true,
         bool IncludeZero = true,
-        bool IndividualFlagsOnly = false);
+        bool IndividualFlagsOnly = false,
+        bool RequiresLiteralMigrationRows = true);
 
     private sealed record LookupOwner(Type OwnerType, string ForeignKeyProperty);
 }

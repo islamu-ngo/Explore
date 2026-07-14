@@ -1484,6 +1484,9 @@ public sealed class WebhooksControllerTests
             ProviderModeId = ProviderModeId(providerModeName),
             ProviderModeCode = providerModeName == "DryRun" ? "DRY_RUN" : providerModeName.ToUpperInvariant(),
             ProviderModeName = providerModeName,
+            ProviderCapabilityAuthorityAvailable = true,
+            CapabilityResolutionVersion = "controller-test-v1",
+            ProviderCapabilities = [],
             Name = "Tenant automation",
             CreatedAt = DateTime.UtcNow
         };
