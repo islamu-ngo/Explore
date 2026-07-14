@@ -17,6 +17,7 @@ using Explore.Application.Features.Webhooks.Requests.Commands;
 using Explore.Application.Features.Webhooks.Requests.Queries;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
+using Explore.Domain;
 using Explore.Infrastructure.Configuration;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -647,7 +648,11 @@ public sealed class WebhooksControllerTests
                 EventTypeIds = [eventTypeId],
                 MaxAttempts = 6,
                 TimeoutSeconds = 12,
-                RateLimitPerMinute = 120
+                RateLimitPerMinute = 120,
+                ExpectedConfigurationVersion = 4,
+                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+                PendingWorkReason = "Preserve queued work.",
+                AcknowledgeUncertainProviderPublications = true
             },
             CancellationToken.None);
 
@@ -663,7 +668,11 @@ public sealed class WebhooksControllerTests
                 command.EventTypeIds.Contains(eventTypeId) &&
                 command.MaxAttempts == 6 &&
                 command.TimeoutSeconds == 12 &&
-                command.RateLimitPerMinute == 120),
+                command.RateLimitPerMinute == 120 &&
+                command.ExpectedConfigurationVersion == 4 &&
+                command.PendingWorkDecisionId == (int)WebhookPendingWorkDecision.PreserveExisting &&
+                command.PendingWorkReason == "Preserve queued work." &&
+                command.AcknowledgeUncertainProviderPublications),
             Arg.Any<CancellationToken>());
     }
 
@@ -685,7 +694,10 @@ public sealed class WebhooksControllerTests
             new UpdateWebhookEndpointRequestDto
             {
                 Url = "https://integrator.example/webhooks/islamu",
-                EventTypeIds = [Guid.CreateVersion7()]
+                EventTypeIds = [Guid.CreateVersion7()],
+                ExpectedConfigurationVersion = 1,
+                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+                PendingWorkReason = "Preserve queued work."
             },
             CancellationToken.None);
 
@@ -715,7 +727,11 @@ public sealed class WebhooksControllerTests
             new RotateWebhookEndpointSecretRequestDto
             {
                 NewSecretRef = "configuration:Webhooks:EndpointSecrets:integrator:v2",
-                PreviousSecretValidForSeconds = 3_600
+                PreviousSecretValidForSeconds = 3_600,
+                ExpectedConfigurationVersion = 7,
+                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.MigrateEligible,
+                PendingWorkReason = "Move pending work to the rotated credential.",
+                AcknowledgeUncertainProviderPublications = true
             },
             CancellationToken.None);
 
@@ -727,7 +743,11 @@ public sealed class WebhooksControllerTests
                 command.TenantId == _tenantId &&
                 command.EndpointId == endpointId &&
                 command.NewSecretRef == "configuration:Webhooks:EndpointSecrets:integrator:v2" &&
-                command.PreviousSecretValidForSeconds == 3_600),
+                command.PreviousSecretValidForSeconds == 3_600 &&
+                command.ExpectedConfigurationVersion == 7 &&
+                command.PendingWorkDecisionId == (int)WebhookPendingWorkDecision.MigrateEligible &&
+                command.PendingWorkReason == "Move pending work to the rotated credential." &&
+                command.AcknowledgeUncertainProviderPublications),
             Arg.Any<CancellationToken>());
     }
 
@@ -748,7 +768,10 @@ public sealed class WebhooksControllerTests
             Guid.CreateVersion7(),
             new RotateWebhookEndpointSecretRequestDto
             {
-                NewSecretRef = "configuration:Webhooks:EndpointSecrets:integrator:v2"
+                NewSecretRef = "configuration:Webhooks:EndpointSecrets:integrator:v2",
+                ExpectedConfigurationVersion = 1,
+                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+                PendingWorkReason = "Preserve queued work."
             },
             CancellationToken.None);
 

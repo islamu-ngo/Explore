@@ -42,9 +42,12 @@ public sealed class WebhookMigrationAndPortalPersistenceTests(PostgreSqlContaine
                      "FreezeWebhookDeliverySchema",
                      "FinalizeWebhookTenantConstraints",
                      "NormalizeWebhookProviderBindingInstanceIdentity",
+                     "NormalizeWebhookProviderCapabilities",
                      "webhook_delivery_plan_snapshots",
                      "webhook_local_target_snapshots",
                      "webhook_provider_publications",
+                     "webhook_provider_capabilities",
+                     "ck_webhook_consumer_provider_bindings_capabilities_known",
                      "LEGACY_JSON_CANONICALIZED"
                  })
         {
@@ -125,8 +128,7 @@ public sealed class WebhookMigrationAndPortalPersistenceTests(PostgreSqlContaine
             await using var context = new ExploreDbContext(options);
             context.EnableTenantFilterBypass("Webhook binding identity migration verification.");
             var migrator = context.GetService<IMigrator>();
-            await migrator.MigrateAsync("20260714080458_RetireLegacyWebhookProviderLinks");
-            await LookupTableSeeder.SeedAsync(context);
+            await MigrateCurrentSchemaAndSeedLookupsAsync(context, migrator);
 
             var now = new DateTime(2026, 7, 14, 8, 30, 0, DateTimeKind.Utc);
             var tenant = CreateTenantForMigration();
@@ -159,6 +161,10 @@ public sealed class WebhookMigrationAndPortalPersistenceTests(PostgreSqlContaine
             context.WebhookConsumerProviderBindings.Add(binding);
             await context.SaveChangesAsync();
             context.ChangeTracker.Clear();
+            await MigrateToHistoricalBoundaryAsync(
+                context,
+                migrator,
+                "20260714080458_RetireLegacyWebhookProviderLinks");
 
             await migrator.MigrateAsync();
             var normalized = await context.WebhookConsumerProviderBindings.SingleAsync();
@@ -208,8 +214,7 @@ public sealed class WebhookMigrationAndPortalPersistenceTests(PostgreSqlContaine
             await using var context = new ExploreDbContext(options);
             context.EnableTenantFilterBypass("Webhook legacy-link migration verification.");
             var migrator = context.GetService<IMigrator>();
-            await migrator.MigrateAsync("20260713232047_NormalizeWebhookProviderPublicationAttemptOutcomes");
-            await LookupTableSeeder.SeedAsync(context);
+            await MigrateCurrentSchemaAndSeedLookupsAsync(context, migrator);
 
             var now = new DateTime(2026, 7, 14, 8, 0, 0, DateTimeKind.Utc);
             var tenant = CreateTenantForMigration();
@@ -252,6 +257,11 @@ public sealed class WebhookMigrationAndPortalPersistenceTests(PostgreSqlContaine
             context.WebhookEndpoints.Add(endpoint);
             context.WebhookMessages.AddRange(queuedMessage, manualMessage);
             await context.SaveChangesAsync();
+            context.ChangeTracker.Clear();
+            await MigrateToHistoricalBoundaryAsync(
+                context,
+                migrator,
+                "20260713232047_NormalizeWebhookProviderPublicationAttemptOutcomes");
 
             var queuedLinkId = Guid.CreateVersion7();
             var manualLinkId = Guid.CreateVersion7();
@@ -431,6 +441,24 @@ public sealed class WebhookMigrationAndPortalPersistenceTests(PostgreSqlContaine
             WebhookProviderCapability.AppPortal,
             "svix-1.84.0-v1",
             DateTimeOffset.UtcNow);
+
+    private static async Task MigrateCurrentSchemaAndSeedLookupsAsync(
+        ExploreDbContext context,
+        IMigrator migrator)
+    {
+        await migrator.MigrateAsync();
+        await LookupTableSeeder.SeedAsync(context);
+        context.ChangeTracker.Clear();
+    }
+
+    private static async Task MigrateToHistoricalBoundaryAsync(
+        ExploreDbContext context,
+        IMigrator migrator,
+        string historicalMigration)
+    {
+        await migrator.MigrateAsync(historicalMigration);
+        context.ChangeTracker.Clear();
+    }
 
     private async Task<string> CreateDatabaseAsync(string databaseName)
     {

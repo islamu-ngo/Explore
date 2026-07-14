@@ -146,6 +146,7 @@ public sealed class DefaultWebhookEventPublisherTests
                 1,
                 "standard",
                 "retention-v2",
+                OccurredAt.AddDays(14),
                 OccurredAt.AddDays(14).UtcDateTime,
                 [],
                 [],
@@ -156,6 +157,34 @@ public sealed class DefaultWebhookEventPublisherTests
 
         await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.IsRetryable).IsFalse();
+        await Assert.That(result.FailureCategory).IsEqualTo("invalid_webhook_delivery_plan");
+        await fixture.Materializer.DidNotReceiveWithAnyArgs().MaterializeAsync(default!, default);
+    }
+
+    [Test]
+    public async Task PublishAsync_WhenPayloadSchemaDiffersFromGovernedContract_FailsClosed()
+    {
+        var fixture = new Fixture();
+        fixture.PayloadBuilder.BuildAsync(Arg.Any<WebhookEventBuildContext>(), Arg.Any<CancellationToken>())
+            .Returns(Fixture.CreatePayload(schemaVersion: 2));
+
+        var result = await fixture.Publisher.PublishAsync(CreateContext(), CancellationToken.None);
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureCategory).IsEqualTo("invalid_webhook_delivery_plan");
+        await fixture.Materializer.DidNotReceiveWithAnyArgs().MaterializeAsync(default!, default);
+    }
+
+    [Test]
+    public async Task PublishAsync_WhenPayloadRetentionDiffersFromGovernedPolicy_FailsClosed()
+    {
+        var fixture = new Fixture();
+        fixture.PayloadBuilder.BuildAsync(Arg.Any<WebhookEventBuildContext>(), Arg.Any<CancellationToken>())
+            .Returns(Fixture.CreatePayload(payloadRetentionUntil: OccurredAt.AddDays(1)));
+
+        var result = await fixture.Publisher.PublishAsync(CreateContext(), CancellationToken.None);
+
+        await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.FailureCategory).IsEqualTo("invalid_webhook_delivery_plan");
         await fixture.Materializer.DidNotReceiveWithAnyArgs().MaterializeAsync(default!, default);
     }
@@ -223,18 +252,20 @@ public sealed class DefaultWebhookEventPublisherTests
 
         public DefaultWebhookEventPublisher Publisher { get; }
 
-        private static WebhookPayloadBuildResult CreatePayload() =>
+        public static WebhookPayloadBuildResult CreatePayload(
+            int schemaVersion = 1,
+            DateTimeOffset? payloadRetentionUntil = null) =>
             WebhookPayloadBuildResult.Success(
                 new WebhookEventEnvelope(
                     MessageId,
                     WebhookEventNames.EventPublished,
-                    1,
+                    schemaVersion,
                     OccurredAt,
                     TenantId,
                     new Dictionary<string, object?>()),
                 PayloadBytes,
                 ComputePayloadHash(PayloadBytes),
-                OccurredAt.AddDays(14));
+                payloadRetentionUntil ?? OccurredAt.AddDays(14));
 
         private static WebhookDeliveryPlanResolution CreateResolution() =>
             WebhookDeliveryPlanResolution.Success(
@@ -244,6 +275,7 @@ public sealed class DefaultWebhookEventPublisherTests
                 1,
                 "standard",
                 "retention-v2",
+                OccurredAt.AddDays(14),
                 OccurredAt.AddDays(14).UtcDateTime);
     }
 

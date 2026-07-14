@@ -54,6 +54,22 @@ public sealed class WebhookOptionsValidatorTests
     }
 
     [Test]
+    public async Task Validate_WhenSvixUsesDifferentKnownSecretDefinition_ReturnsFailure()
+    {
+        var options = SupportedSelfHostedOptions();
+        options.AuthTokenSecretRef = SecretDefinitionRegistry.Keys.Storage.SecretAccessKey;
+
+        var result = _validator.Validate(null, new WebhookOptions
+        {
+            Provider = WebhookOptions.ProviderSvix,
+            Svix = options
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("dedicated Svix auth-token secret definition");
+    }
+
+    [Test]
     public async Task Validate_WhenSvixBaseUrlUsesNonHttpScheme_ReturnsFailure()
     {
         var result = _validator.Validate(null, new WebhookOptions

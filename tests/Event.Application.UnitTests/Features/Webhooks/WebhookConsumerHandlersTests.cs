@@ -3,6 +3,8 @@
 
 using System.Text;
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Webhooks;
@@ -25,8 +27,23 @@ public sealed class WebhookConsumerHandlersTests
     private readonly IWebhookMessageRepository _messageRepository = Substitute.For<IWebhookMessageRepository>();
     private readonly IWebhookDeliveryAttemptRepository _attemptRepository = Substitute.For<IWebhookDeliveryAttemptRepository>();
     private readonly IWebhookDeliveryDrainService _deliveryDrainService = Substitute.For<IWebhookDeliveryDrainService>();
+    private readonly IWebhookProviderPublicationRepository _providerPublicationRepository = Substitute.For<IWebhookProviderPublicationRepository>();
+    private readonly IAuditLogRepository _auditLogRepository = Substitute.For<IAuditLogRepository>();
+    private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
+    private readonly IMachinePrincipalAccessor _machinePrincipalAccessor = Substitute.For<IMachinePrincipalAccessor>();
+    private readonly IUnitOfWork _unitOfWork = new ImmediateUnitOfWork();
     private readonly IWebhookPayloadBuilder _payloadBuilder = new DefaultWebhookPayloadBuilder(new WebhookEventTypeRegistry());
     private readonly IWebhookProviderCapabilityResolver _capabilityResolver = new TestWebhookProviderCapabilityResolver();
+
+    public WebhookConsumerHandlersTests()
+    {
+        _currentUserService.UserId.Returns(Guid.Parse("018f0000-0000-7000-8000-000000000007"));
+        _endpointRepository.GetEligiblePendingTargetsForUpdateAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
+    }
 
     [Test]
     public async Task CreateCommand_RequiresWebhookCreateAuthorization()
@@ -249,6 +266,44 @@ public sealed class WebhookConsumerHandlersTests
     }
 
     [Test]
+    public async Task CreateHandler_WhenProviderModeCapabilityAuthorityUnavailable_DoesNotQueryRepository()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var handler = new CreateWebhookConsumerCommandHandler(
+            _consumerRepository,
+            new StaticWebhookProviderCapabilityResolver(new WebhookProviderModeCapabilityResolution(
+                WebhookProviderMode.Svix,
+                false,
+                WebhookProviderCapability.None,
+                WebhookProviderCapability.None,
+                null,
+                null,
+                "unavailable-v1",
+                "svix_self_hosted_profile_unsupported")));
+
+        var result = await handler.Handle(
+            new CreateWebhookConsumerCommand
+            {
+                TenantId = tenantId,
+                ConsumerKindId = (int)WebhookConsumerKind.Tenant,
+                Name = "Tenant automation",
+                ProviderModeId = (int)WebhookProviderMode.Svix
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("webhook_provider_mode_capability_unavailable");
+        await Assert.That(result.Errors).Contains("svix_self_hosted_profile_unsupported");
+        await _consumerRepository.DidNotReceive().GetByTenantAndNameAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        await _consumerRepository.DidNotReceive().CreateAsync(
+            Arg.Any<WebhookConsumer>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task ListHandler_MapsConsumersAndCapsLimit()
     {
         var tenantId = Guid.CreateVersion7();
@@ -301,6 +356,93 @@ public sealed class WebhookConsumerHandlersTests
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Name).IsEqualTo("Tenant automation");
         await Assert.That(result.StatusName).IsEqualTo(nameof(WebhookConsumerStatus.Active));
+        await Assert.That(result.ProviderCapabilityAuthorityAvailable).IsTrue();
+        await Assert.That(result.ProviderCapabilities.Count).IsEqualTo(12);
+        await Assert.That(result.ProviderCapabilities.Single(capability =>
+            capability.CapabilityId == (int)WebhookProviderCapability.EndpointManagement).IsAvailable).IsTrue();
+        await Assert.That(result.ProviderCapabilities.Single(capability =>
+            capability.CapabilityId == (int)WebhookProviderCapability.EndpointManagement)
+            .AvailableFromProviderCodes).IsEquivalentTo(["LOCAL"]);
+        await Assert.That(result.ProviderCapabilities.Single(capability =>
+            capability.CapabilityId == (int)WebhookProviderCapability.AppPortal).IsAvailable).IsFalse();
+        await _bindingRepository.DidNotReceive().GetVerifiedByConsumerAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<WebhookProviderKind>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ListHandler_VerifiedSvixBinding_IntersectsProviderProofWithGovernance()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var consumer = CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Svix);
+        const string environment = "selfhost";
+        const string providerVersion = "1.96.1";
+        const string policyVersion = "selfhost-v1.96.1-v1";
+        var providerCapabilities =
+            WebhookProviderCapability.EndpointManagement |
+            WebhookProviderCapability.PayloadInspection |
+            WebhookProviderCapability.AppPortal |
+            WebhookProviderCapability.EventCatalog;
+        var binding = WebhookConsumerProviderBinding.CreatePending(
+            tenantId,
+            consumer.Id,
+            Guid.CreateVersion7(),
+            environment,
+            WebhookProviderCapabilityProfile.Create(
+                WebhookProviderKind.Svix,
+                providerVersion,
+                providerCapabilities,
+                policyVersion,
+                DateTimeOffset.UtcNow),
+            WebhookProviderCapability.EndpointManagement | WebhookProviderCapability.AppPortal);
+        binding.VerifyOwnership(tenantId, consumer.Id, "app_capability_test", DateTimeOffset.UtcNow);
+        _consumerRepository.ListByTenantAsync(tenantId, 100, Arg.Any<CancellationToken>())
+            .Returns([consumer]);
+        _bindingRepository.GetVerifiedByConsumersAsync(
+                tenantId,
+                Arg.Any<IReadOnlyCollection<Guid>>(),
+                WebhookProviderKind.Svix,
+                environment,
+                Arg.Any<CancellationToken>())
+            .Returns([binding]);
+        var handler = new GetWebhookConsumersQueryHandler(
+            _consumerRepository,
+            _bindingRepository,
+            new StaticWebhookProviderCapabilityResolver(new WebhookProviderModeCapabilityResolution(
+                WebhookProviderMode.Svix,
+                true,
+                WebhookProviderCapability.None,
+                providerCapabilities,
+                environment,
+                providerVersion,
+                policyVersion,
+                null)));
+
+        var result = await handler.Handle(
+            new GetWebhookConsumersQuery { TenantId = tenantId },
+            CancellationToken.None);
+
+        var dto = result.Single();
+        await Assert.That(dto.ProviderCapabilityAuthorityAvailable).IsTrue();
+        await Assert.That(dto.CapabilityUnavailableReasonCode).IsNull();
+        await Assert.That(dto.ProviderCapabilities.Single(capability =>
+            capability.CapabilityId == (int)WebhookProviderCapability.EndpointManagement).IsAvailable).IsTrue();
+        await Assert.That(dto.ProviderCapabilities.Single(capability =>
+            capability.CapabilityId == (int)WebhookProviderCapability.AppPortal).IsAvailable).IsTrue();
+        await Assert.That(dto.ProviderCapabilities.Single(capability =>
+            capability.CapabilityId == (int)WebhookProviderCapability.PayloadInspection).IsAvailable).IsFalse();
+        await Assert.That(dto.ProviderCapabilities.Single(capability =>
+            capability.CapabilityId == (int)WebhookProviderCapability.PayloadInspection)
+            .UnavailableReasonCode).IsEqualTo("webhook_provider_capability_unproven");
+        await _bindingRepository.Received(1).GetVerifiedByConsumersAsync(
+            tenantId,
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(consumer.Id)),
+            WebhookProviderKind.Svix,
+            environment,
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -411,6 +553,36 @@ public sealed class WebhookConsumerHandlersTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("webhook_consumer_not_found");
+        await _endpointRepository.DidNotReceive().CreateWithSubscriptionsAsync(
+            Arg.Any<WebhookEndpoint>(),
+            Arg.Any<IReadOnlyCollection<WebhookEndpointSubscription>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task CreateEndpointHandler_WhenPureSvixModeHasNoLocalEndpointManagement_FailsClosed()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var consumer = CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Svix);
+        _consumerRepository.GetByTenantAndIdAsync(tenantId, consumer.Id, Arg.Any<CancellationToken>())
+            .Returns(consumer);
+        var handler = new CreateWebhookEndpointCommandHandler(
+            _endpointRepository,
+            _consumerRepository,
+            _eventTypeRepository,
+            _capabilityResolver);
+
+        var result = await handler.Handle(
+            CreateEndpointCommand(tenantId, consumer.Id, [Guid.CreateVersion7()]),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_management_unavailable");
+        await _endpointRepository.DidNotReceive().GetByTenantConsumerAndUrlAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
         await _endpointRepository.DidNotReceive().CreateWithSubscriptionsAsync(
             Arg.Any<WebhookEndpoint>(),
             Arg.Any<IReadOnlyCollection<WebhookEndpointSubscription>>(),
@@ -549,6 +721,7 @@ public sealed class WebhookConsumerHandlersTests
     {
         var tenantId = Guid.CreateVersion7();
         var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
+        var pendingTarget = CreatePendingTarget(endpoint);
         var replacementEventType = CreateEventType("registration.created");
         IReadOnlyCollection<WebhookEndpointSubscription>? capturedSubscriptions = null;
         _endpointRepository.GetByTenantAndIdForUpdateAsync(tenantId, endpoint.Id, Arg.Any<CancellationToken>())
@@ -561,16 +734,17 @@ public sealed class WebhookConsumerHandlersTests
             .Returns((WebhookEndpoint?)null);
         _eventTypeRepository.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([replacementEventType]);
+        _endpointRepository.GetEligiblePendingTargetsForUpdateAsync(
+                tenantId,
+                endpoint.Id,
+                Arg.Any<CancellationToken>())
+            .Returns([pendingTarget]);
         _endpointRepository.UpdateWithSubscriptionsAsync(
                 Arg.Any<WebhookEndpoint>(),
                 Arg.Do<IReadOnlyCollection<WebhookEndpointSubscription>>(subscriptions => capturedSubscriptions = subscriptions),
                 Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<WebhookEndpoint>());
-        var handler = new UpdateWebhookEndpointCommandHandler(
-            _endpointRepository,
-            _consumerRepository,
-            _eventTypeRepository,
-            _capabilityResolver);
+        var handler = CreateUpdateEndpointHandler();
 
         var result = await handler.Handle(
             new UpdateWebhookEndpointCommand
@@ -582,7 +756,10 @@ public sealed class WebhookConsumerHandlersTests
                 EventTypeIds = [replacementEventType.Id],
                 MaxAttempts = 6,
                 TimeoutSeconds = 12,
-                RateLimitPerMinute = 120
+                RateLimitPerMinute = 120,
+                ExpectedConfigurationVersion = endpoint.ConfigurationVersion,
+                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+                PendingWorkReason = "Keep already queued deliveries on their original destination."
             },
             CancellationToken.None);
 
@@ -592,8 +769,119 @@ public sealed class WebhookConsumerHandlersTests
         await Assert.That(endpoint.MaxAttempts).IsEqualTo(6);
         await Assert.That(endpoint.TimeoutSeconds).IsEqualTo(12);
         await Assert.That(endpoint.RateLimitPerMinute).IsEqualTo(120);
+        await Assert.That(endpoint.ConfigurationVersion).IsEqualTo(2);
+        await Assert.That(pendingTarget.EndpointConfigurationVersion).IsEqualTo(1);
+        await Assert.That(pendingTarget.DestinationUrl).IsEqualTo("https://integrator.example/webhooks/islamu");
         await Assert.That(capturedSubscriptions).IsNotNull();
         await Assert.That(capturedSubscriptions!.Single().EventTypeId).IsEqualTo(replacementEventType.Id);
+        await _auditLogRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
+            audit.Action == "WebhookEndpointConfigurationChanged" &&
+            audit.NewValues != null &&
+            audit.NewValues.Contains("PreserveExisting", StringComparison.Ordinal)));
+    }
+
+    [Test]
+    public async Task UpdateEndpointHandler_WhenMigrateEligible_AdvancesOnlyReturnedPendingSnapshots()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
+        var eligibleTarget = CreatePendingTarget(endpoint);
+        var eventType = CreateEventType("registration.created");
+        _endpointRepository.GetByTenantAndIdForUpdateAsync(tenantId, endpoint.Id, Arg.Any<CancellationToken>())
+            .Returns(endpoint);
+        _endpointRepository.GetByTenantConsumerAndUrlAsync(
+                tenantId,
+                endpoint.ConsumerId,
+                "https://integrator.example/hooks/updated",
+                Arg.Any<CancellationToken>())
+            .Returns((WebhookEndpoint?)null);
+        _eventTypeRepository.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([eventType]);
+        _endpointRepository.GetEligiblePendingTargetsForUpdateAsync(
+                tenantId,
+                endpoint.Id,
+                Arg.Any<CancellationToken>())
+            .Returns([eligibleTarget]);
+        _endpointRepository.UpdateWithSubscriptionsAsync(
+                Arg.Any<WebhookEndpoint>(),
+                Arg.Any<IReadOnlyCollection<WebhookEndpointSubscription>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<WebhookEndpoint>());
+        var handler = CreateUpdateEndpointHandler();
+
+        var result = await handler.Handle(
+            new UpdateWebhookEndpointCommand
+            {
+                TenantId = tenantId,
+                EndpointId = endpoint.Id,
+                Url = "https://integrator.example/hooks/updated",
+                EventTypeIds = [eventType.Id],
+                MaxAttempts = 10,
+                TimeoutSeconds = 20,
+                RateLimitPerMinute = 180,
+                ExpectedConfigurationVersion = endpoint.ConfigurationVersion,
+                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.MigrateEligible,
+                PendingWorkReason = "Apply the new integration route before first delivery."
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Message).Contains("1 eligible pending target(s) migrated", StringComparison.Ordinal);
+        await Assert.That(eligibleTarget.EndpointConfigurationVersion).IsEqualTo(2);
+        await Assert.That(eligibleTarget.DestinationUrl).IsEqualTo("https://integrator.example/hooks/updated");
+        await Assert.That(eligibleTarget.MaxAttempts).IsEqualTo(10);
+        await Assert.That(eligibleTarget.TimeoutSeconds).IsEqualTo(20);
+        await Assert.That(eligibleTarget.RateLimitPerMinute).IsEqualTo(180);
+        await Assert.That(eligibleTarget.DeliveryStatus).IsEqualTo(WebhookLocalDeliveryStatus.Pending);
+        await _auditLogRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
+            audit.NewValues != null &&
+            audit.NewValues.Contains("MigrateEligible", StringComparison.Ordinal) &&
+            audit.NewValues.Contains("\"migratedTargetCount\":1", StringComparison.Ordinal)));
+    }
+
+    [Test]
+    public async Task UpdateEndpointHandler_WhenUncertainPublicationsExist_RequiresExplicitAcknowledgement()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Composite));
+        var eventType = CreateEventType("registration.created");
+        _endpointRepository.GetByTenantAndIdForUpdateAsync(tenantId, endpoint.Id, Arg.Any<CancellationToken>())
+            .Returns(endpoint);
+        _endpointRepository.GetByTenantConsumerAndUrlAsync(
+                tenantId,
+                endpoint.ConsumerId,
+                "https://integrator.example/hooks/updated",
+                Arg.Any<CancellationToken>())
+            .Returns((WebhookEndpoint?)null);
+        _eventTypeRepository.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([eventType]);
+        _providerPublicationRepository.CountUncertainByConsumerAsync(
+                tenantId,
+                endpoint.ConsumerId,
+                Arg.Any<CancellationToken>())
+            .Returns(2);
+        var handler = CreateUpdateEndpointHandler();
+
+        var result = await handler.Handle(
+            new UpdateWebhookEndpointCommand
+            {
+                TenantId = tenantId,
+                EndpointId = endpoint.Id,
+                Url = "https://integrator.example/hooks/updated",
+                EventTypeIds = [eventType.Id],
+                ExpectedConfigurationVersion = endpoint.ConfigurationVersion,
+                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+                PendingWorkReason = "Preserve queued work."
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_configuration_uncertain_publications");
+        await _endpointRepository.DidNotReceive().UpdateWithSubscriptionsAsync(
+            Arg.Any<WebhookEndpoint>(),
+            Arg.Any<IReadOnlyCollection<WebhookEndpointSubscription>>(),
+            Arg.Any<CancellationToken>());
+        await _auditLogRepository.DidNotReceive().Create(Arg.Any<AuditLog>());
     }
 
     [Test]
@@ -603,11 +891,7 @@ public sealed class WebhookConsumerHandlersTests
         var endpointId = Guid.CreateVersion7();
         _endpointRepository.GetByTenantAndIdForUpdateAsync(tenantId, endpointId, Arg.Any<CancellationToken>())
             .Returns((WebhookEndpoint?)null);
-        var handler = new UpdateWebhookEndpointCommandHandler(
-            _endpointRepository,
-            _consumerRepository,
-            _eventTypeRepository,
-            _capabilityResolver);
+        var handler = CreateUpdateEndpointHandler();
 
         var result = await handler.Handle(
             CreateUpdateEndpointCommand(tenantId, endpointId, [Guid.CreateVersion7()]),
@@ -636,11 +920,7 @@ public sealed class WebhookConsumerHandlersTests
                 "https://integrator.example/webhooks/islamu",
                 Arg.Any<CancellationToken>())
             .Returns(conflictingEndpoint);
-        var handler = new UpdateWebhookEndpointCommandHandler(
-            _endpointRepository,
-            _consumerRepository,
-            _eventTypeRepository,
-            _capabilityResolver);
+        var handler = CreateUpdateEndpointHandler();
 
         var result = await handler.Handle(
             CreateUpdateEndpointCommand(tenantId, endpoint.Id, [Guid.CreateVersion7()]),
@@ -656,11 +936,7 @@ public sealed class WebhookConsumerHandlersTests
     [Test]
     public async Task UpdateEndpointHandler_WhenRequestInvalid_DoesNotQueryRepositories()
     {
-        var handler = new UpdateWebhookEndpointCommandHandler(
-            _endpointRepository,
-            _consumerRepository,
-            _eventTypeRepository,
-            _capabilityResolver);
+        var handler = CreateUpdateEndpointHandler();
 
         var result = await handler.Handle(
             new UpdateWebhookEndpointCommand
@@ -668,7 +944,8 @@ public sealed class WebhookConsumerHandlersTests
                 TenantId = Guid.Empty,
                 EndpointId = Guid.Empty,
                 Url = "file:///tmp/hook",
-                EventTypeIds = []
+                EventTypeIds = [],
+                PendingWorkReason = string.Empty
             },
             CancellationToken.None);
 
@@ -692,10 +969,7 @@ public sealed class WebhookConsumerHandlersTests
             .Returns(endpoint);
         _endpointRepository.UpdateAsync(Arg.Do<WebhookEndpoint>(updated => captured = updated), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<WebhookEndpoint>());
-        var handler = new RotateWebhookEndpointSecretCommandHandler(
-            _endpointRepository,
-            _consumerRepository,
-            _capabilityResolver);
+        var handler = CreateRotateEndpointSecretHandler();
         var before = DateTime.UtcNow;
 
         var result = await handler.Handle(
@@ -704,7 +978,10 @@ public sealed class WebhookConsumerHandlersTests
                 TenantId = tenantId,
                 EndpointId = endpoint.Id,
                 NewSecretRef = " configuration:Webhooks:EndpointSecrets:integrator:v2 ",
-                PreviousSecretValidForSeconds = 3_600
+                PreviousSecretValidForSeconds = 3_600,
+                ExpectedConfigurationVersion = endpoint.ConfigurationVersion,
+                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+                PendingWorkReason = "Keep queued deliveries on their original signing credential."
             },
             CancellationToken.None);
         var after = DateTime.UtcNow;
@@ -714,6 +991,7 @@ public sealed class WebhookConsumerHandlersTests
         await Assert.That(captured!.SecretRef).IsEqualTo("configuration:Webhooks:EndpointSecrets:integrator:v2");
         await Assert.That(captured.PreviousSecretRef).IsEqualTo("configuration:Webhooks:EndpointSecrets:integrator:v1");
         await Assert.That(captured.SecretVersion).IsEqualTo(4);
+        await Assert.That(captured.ConfigurationVersion).IsEqualTo(2);
         await Assert.That(captured.PreviousSecretValidUntil).IsNotNull();
         await Assert.That(captured.PreviousSecretValidUntil!.Value >= before.AddSeconds(3_600)).IsTrue();
         await Assert.That(captured.PreviousSecretValidUntil.Value <= after.AddSeconds(3_605)).IsTrue();
@@ -722,10 +1000,7 @@ public sealed class WebhookConsumerHandlersTests
     [Test]
     public async Task RotateEndpointSecretHandler_WhenRequestInvalid_DoesNotQueryRepository()
     {
-        var handler = new RotateWebhookEndpointSecretCommandHandler(
-            _endpointRepository,
-            _consumerRepository,
-            _capabilityResolver);
+        var handler = CreateRotateEndpointSecretHandler();
 
         var result = await handler.Handle(
             new RotateWebhookEndpointSecretCommand
@@ -733,7 +1008,8 @@ public sealed class WebhookConsumerHandlersTests
                 TenantId = Guid.Empty,
                 EndpointId = Guid.Empty,
                 NewSecretRef = "",
-                PreviousSecretValidForSeconds = -1
+                PreviousSecretValidForSeconds = -1,
+                PendingWorkReason = string.Empty
             },
             CancellationToken.None);
 
@@ -752,17 +1028,17 @@ public sealed class WebhookConsumerHandlersTests
         var endpointId = Guid.CreateVersion7();
         _endpointRepository.GetByTenantAndIdForUpdateAsync(tenantId, endpointId, Arg.Any<CancellationToken>())
             .Returns((WebhookEndpoint?)null);
-        var handler = new RotateWebhookEndpointSecretCommandHandler(
-            _endpointRepository,
-            _consumerRepository,
-            _capabilityResolver);
+        var handler = CreateRotateEndpointSecretHandler();
 
         var result = await handler.Handle(
             new RotateWebhookEndpointSecretCommand
             {
                 TenantId = tenantId,
                 EndpointId = endpointId,
-                NewSecretRef = "configuration:Webhooks:EndpointSecrets:integrator:v2"
+                NewSecretRef = "configuration:Webhooks:EndpointSecrets:integrator:v2",
+                ExpectedConfigurationVersion = 1,
+                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+                PendingWorkReason = "Preserve queued work."
             },
             CancellationToken.None);
 
@@ -780,17 +1056,17 @@ public sealed class WebhookConsumerHandlersTests
         var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
         _endpointRepository.GetByTenantAndIdForUpdateAsync(tenantId, endpoint.Id, Arg.Any<CancellationToken>())
             .Returns(endpoint);
-        var handler = new RotateWebhookEndpointSecretCommandHandler(
-            _endpointRepository,
-            _consumerRepository,
-            _capabilityResolver);
+        var handler = CreateRotateEndpointSecretHandler();
 
         var result = await handler.Handle(
             new RotateWebhookEndpointSecretCommand
             {
                 TenantId = tenantId,
                 EndpointId = endpoint.Id,
-                NewSecretRef = endpoint.SecretRef
+                NewSecretRef = endpoint.SecretRef,
+                ExpectedConfigurationVersion = endpoint.ConfigurationVersion,
+                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+                PendingWorkReason = "Preserve queued work."
             },
             CancellationToken.None);
 
@@ -1211,6 +1487,7 @@ public sealed class WebhookConsumerHandlersTests
             Name = name,
             Status = WebhookConsumerStatus.Active,
             ProviderMode = providerMode,
+            ConfigurationVersion = 1,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -1236,7 +1513,10 @@ public sealed class WebhookConsumerHandlersTests
             TenantId = tenantId,
             EndpointId = endpointId,
             Url = "https://integrator.example/webhooks/islamu",
-            EventTypeIds = eventTypeIds
+            EventTypeIds = eventTypeIds,
+            ExpectedConfigurationVersion = 1,
+            PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
+            PendingWorkReason = "Keep pending work on immutable snapshots."
         };
 
     private static WebhookEndpoint CreateEndpoint(Guid tenantId, WebhookConsumer consumer)
@@ -1253,6 +1533,7 @@ public sealed class WebhookConsumerHandlersTests
             Status = WebhookEndpointStatus.Active,
             SecretRef = "configuration:Webhooks:EndpointSecrets:integrator",
             SecretVersion = 1,
+            ConfigurationVersion = 1,
             MaxAttempts = 8,
             TimeoutSeconds = 15,
             RateLimitPerMinute = 60,
@@ -1274,6 +1555,31 @@ public sealed class WebhookConsumerHandlersTests
         return endpoint;
     }
 
+    private UpdateWebhookEndpointCommandHandler CreateUpdateEndpointHandler() =>
+        new(
+            _endpointRepository,
+            _consumerRepository,
+            _eventTypeRepository,
+            _providerPublicationRepository,
+            _capabilityResolver,
+            _auditLogRepository,
+            _unitOfWork,
+            _currentUserService,
+            _machinePrincipalAccessor,
+            TimeProvider.System);
+
+    private RotateWebhookEndpointSecretCommandHandler CreateRotateEndpointSecretHandler() =>
+        new(
+            _endpointRepository,
+            _consumerRepository,
+            _providerPublicationRepository,
+            _capabilityResolver,
+            _auditLogRepository,
+            _unitOfWork,
+            _currentUserService,
+            _machinePrincipalAccessor,
+            TimeProvider.System);
+
     private static WebhookEventType CreateEventType(string name) =>
         new()
         {
@@ -1288,6 +1594,29 @@ public sealed class WebhookConsumerHandlersTests
             PayloadRetentionDays = 14,
             CreatedAt = DateTime.UtcNow
         };
+
+    private static WebhookLocalTargetSnapshot CreatePendingTarget(WebhookEndpoint endpoint)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var plan = WebhookDeliveryPlanSnapshot.Create(
+            endpoint.TenantId,
+            Guid.CreateVersion7(),
+            endpoint.ConsumerId,
+            WebhookProviderMode.Local,
+            "consumer-v1",
+            "contract-v1",
+            "standard",
+            "retention-v1",
+            now.AddDays(14),
+            now);
+        return WebhookLocalTargetSnapshot.Create(
+            plan,
+            endpoint,
+            endpoint.ConfigurationVersion,
+            now.AddDays(-1),
+            null,
+            now);
+    }
 
     private static WebhookMessage CreateMessage(Guid tenantId, WebhookConsumer consumer)
     {
@@ -1350,5 +1679,25 @@ public sealed class WebhookConsumerHandlersTests
                 "test-capability-v1",
                 null);
         }
+    }
+
+    private sealed class StaticWebhookProviderCapabilityResolver(
+        WebhookProviderModeCapabilityResolution resolution) : IWebhookProviderCapabilityResolver
+    {
+        public WebhookProviderModeCapabilityResolution Resolve(WebhookProviderMode providerMode) =>
+            resolution with { ProviderMode = providerMode };
+    }
+
+    private sealed class ImmediateUnitOfWork : IUnitOfWork
+    {
+        public Task ExecuteInTransactionAsync(
+            Func<CancellationToken, Task> operation,
+            CancellationToken cancellationToken = default) =>
+            operation(cancellationToken);
+
+        public Task<T> ExecuteInTransactionAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default) =>
+            operation(cancellationToken);
     }
 }

@@ -23,6 +23,7 @@ public sealed class WebhookLookupParityTests
         new(typeof(WebhookProviderCapabilityLookup), typeof(WebhookProviderCapability), "webhook_provider_capabilities", [], IncludeZero: false, IndividualFlagsOnly: true, RequiresLiteralMigrationRows: false),
         new(typeof(WebhookEndpointStatusLookup), typeof(WebhookEndpointStatus), "webhook_endpoint_statuses", [new(typeof(WebhookEndpoint), "StatusId")]),
         new(typeof(WebhookLocalDeliveryStatusLookup), typeof(WebhookLocalDeliveryStatus), "webhook_local_delivery_statuses", [new(typeof(WebhookLocalTargetSnapshot), "DeliveryStatusId")]),
+        new(typeof(WebhookPendingWorkDecisionLookup), typeof(WebhookPendingWorkDecision), "webhook_pending_work_decisions", [], RequiresLiteralMigrationRows: false),
         new(typeof(WebhookDeliveryAttemptOutcomeLookup), typeof(WebhookDeliveryAttemptOutcome), "webhook_delivery_attempt_outcomes", [new(typeof(WebhookDeliveryAttempt), "OutcomeId")]),
         new(typeof(WebhookProviderBindingVerificationStateLookup), typeof(WebhookProviderBindingVerificationState), "webhook_provider_binding_verification_states", [new(typeof(WebhookConsumerProviderBinding), "VerificationStateId")]),
         new(typeof(IncomingWebhookMessageStatusLookup), typeof(IncomingWebhookMessageStatus), "incoming_webhook_message_statuses", [new(typeof(IncomingWebhookMessage), "StatusId")]),

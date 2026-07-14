@@ -8,6 +8,7 @@ using Explore.Application.Exceptions;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
+using Explore.Persistence.Repositories;
 using Explore.Persistence.Services;
 using Microsoft.EntityFrameworkCore;
 using TUnit.Core;
@@ -105,6 +106,118 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
         await Assert.That(await context.WebhookProviderPublications.CountAsync()).IsEqualTo(1);
     }
 
+    [Test]
+    public async Task MaterializeAsync_AfterEndpointUpdate_FreezesOldAndNewTargetVersions()
+    {
+        var scenario = await SeedAuthorityAsync();
+        await using var context = fixture.CreateDbContext();
+        var materializer = new WebhookDeliveryPlanMaterializer(context, new EfCoreUnitOfWork(context));
+        await materializer.MaterializeAsync(CreateMaterialization(scenario), CancellationToken.None);
+
+        var endpoint = await context.WebhookEndpoints.SingleAsync();
+        endpoint.UpdateConfiguration(
+            "https://webhook-v2.example.test/events",
+            "Version two",
+            maxAttempts: 12,
+            timeoutSeconds: 20,
+            rateLimitPerMinute: 240,
+            MaterializedAt.AddMinutes(1));
+        await context.SaveChangesAsync();
+
+        var nextScenario = scenario with
+        {
+            Endpoint = endpoint,
+            MessageId = Guid.CreateVersion7(),
+            AggregateId = Guid.CreateVersion7(),
+            EventId = $"domain-event-{Guid.NewGuid():N}"
+        };
+        await materializer.MaterializeAsync(CreateMaterialization(nextScenario), CancellationToken.None);
+
+        var targets = await context.WebhookLocalTargetSnapshots
+            .AsNoTracking()
+            .OrderBy(target => target.CapturedAtUtc)
+            .ThenBy(target => target.Id)
+            .ToListAsync();
+        var originalTarget = targets.Single(target => target.WebhookMessageId == scenario.MessageId);
+        var newTarget = targets.Single(target => target.WebhookMessageId == nextScenario.MessageId);
+
+        await Assert.That(originalTarget.EndpointConfigurationVersion).IsEqualTo(1);
+        await Assert.That(originalTarget.DestinationUrl).IsEqualTo("https://webhook.example.test/events");
+        await Assert.That(originalTarget.MaxAttempts).IsEqualTo(8);
+        await Assert.That(newTarget.EndpointConfigurationVersion).IsEqualTo(2);
+        await Assert.That(newTarget.DestinationUrl).IsEqualTo("https://webhook-v2.example.test/events");
+        await Assert.That(newTarget.MaxAttempts).IsEqualTo(12);
+    }
+
+    [Test]
+    public async Task GetEligiblePendingTargetsForUpdateAsync_ExcludesAttemptedWorkAndPersistsExplicitMigration()
+    {
+        var scenario = await SeedAuthorityAsync();
+        await using var context = fixture.CreateDbContext();
+        var materializer = new WebhookDeliveryPlanMaterializer(context, new EfCoreUnitOfWork(context));
+        await materializer.MaterializeAsync(CreateMaterialization(scenario), CancellationToken.None);
+
+        var attemptedScenario = scenario with
+        {
+            MessageId = Guid.CreateVersion7(),
+            AggregateId = Guid.CreateVersion7(),
+            EventId = $"domain-event-{Guid.NewGuid():N}"
+        };
+        await materializer.MaterializeAsync(CreateMaterialization(attemptedScenario), CancellationToken.None);
+        context.WebhookDeliveryAttempts.Add(new WebhookDeliveryAttempt
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = scenario.TenantId,
+            MessageId = attemptedScenario.MessageId,
+            EndpointId = scenario.Endpoint.Id,
+            AttemptNumber = 1,
+            Outcome = WebhookDeliveryAttemptOutcome.Failed,
+            ScheduledAt = MaterializedAt,
+            CompletedAt = MaterializedAt,
+            ProcessingFence = 1,
+            FailureCategory = "transport_failure",
+            CreatedAt = MaterializedAt
+        });
+
+        var endpoint = await context.WebhookEndpoints.SingleAsync();
+        endpoint.UpdateConfiguration(
+            "https://migrated.example.test/events",
+            endpoint.Description,
+            maxAttempts: 10,
+            timeoutSeconds: 25,
+            rateLimitPerMinute: 180,
+            MaterializedAt.AddMinutes(2));
+        await context.SaveChangesAsync();
+
+        var repository = new WebhookEndpointRepository(context);
+        var eligibleTargets = await repository.GetEligiblePendingTargetsForUpdateAsync(
+            scenario.TenantId,
+            endpoint.Id,
+            CancellationToken.None);
+
+        await Assert.That(eligibleTargets.Count).IsEqualTo(1);
+        await Assert.That(eligibleTargets.Single().WebhookMessageId).IsEqualTo(scenario.MessageId);
+
+        eligibleTargets.Single().MigratePendingConfiguration(
+            endpoint,
+            new DateTimeOffset(MaterializedAt.AddMinutes(2)));
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        var targets = await context.WebhookLocalTargetSnapshots
+            .AsNoTracking()
+            .OrderBy(target => target.WebhookMessageId)
+            .ToListAsync();
+        var migrated = targets.Single(target => target.WebhookMessageId == scenario.MessageId);
+        var attempted = targets.Single(target => target.WebhookMessageId == attemptedScenario.MessageId);
+
+        await Assert.That(migrated.EndpointConfigurationVersion).IsEqualTo(2);
+        await Assert.That(migrated.DestinationUrl).IsEqualTo("https://migrated.example.test/events");
+        await Assert.That(migrated.DeliveryStatus).IsEqualTo(WebhookLocalDeliveryStatus.Pending);
+        await Assert.That(attempted.EndpointConfigurationVersion).IsEqualTo(1);
+        await Assert.That(attempted.DestinationUrl).IsEqualTo("https://webhook.example.test/events");
+    }
+
     private async Task<SeededAuthority> SeedAuthorityAsync()
     {
         await fixture.ResetAsync();
@@ -162,7 +275,7 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
         var localTarget = WebhookLocalTargetSnapshot.Create(
             plan,
             authority.Endpoint,
-            endpointConfigurationVersion: 4,
+            authority.Endpoint.ConfigurationVersion,
             new DateTimeOffset(MaterializedAt.AddDays(-1)),
             new DateTimeOffset(MaterializedAt.AddDays(30)),
             new DateTimeOffset(MaterializedAt));
@@ -216,6 +329,7 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
         Status = WebhookEndpointStatus.Active,
         SecretRef = "secret:webhook-endpoint",
         SecretVersion = 3,
+        ConfigurationVersion = 1,
         MaxAttempts = 8,
         TimeoutSeconds = 15,
         RateLimitPerMinute = 120,
@@ -247,6 +361,7 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
         Name = $"Materialization Consumer {Guid.NewGuid():N}",
         Status = WebhookConsumerStatus.Active,
         ProviderMode = WebhookProviderMode.Composite,
+        ConfigurationVersion = 1,
         CreatedAt = MaterializedAt.AddDays(-1)
     };
 

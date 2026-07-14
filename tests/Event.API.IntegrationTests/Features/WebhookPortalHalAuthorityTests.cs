@@ -186,24 +186,24 @@ public sealed class WebhookPortalHalAuthorityTests
         Guid? consumerId = null,
         bool capabilityAuthorityAvailable = true,
         bool appPortalAvailable = true) => new()
-    {
-        Id = consumerId ?? ConsumerId,
-        TenantId = TenantId,
-        ConsumerKindId = (int)WebhookConsumerKind.Tenant,
-        ConsumerKindCode = "TENANT",
-        ConsumerKindName = nameof(WebhookConsumerKind.Tenant),
-        StatusId = (int)WebhookConsumerStatus.Active,
-        StatusCode = "ACTIVE",
-        StatusName = nameof(WebhookConsumerStatus.Active),
-        ProviderModeId = (int)WebhookProviderMode.Svix,
-        ProviderModeCode = "SVIX",
-        ProviderModeName = nameof(WebhookProviderMode.Svix),
-        ProviderCapabilityAuthorityAvailable = capabilityAuthorityAvailable,
-        CapabilityResolutionVersion = SvixConformanceProfileRegistry.SelfHostedCapabilityPolicyVersion,
-        CapabilityUnavailableReasonCode = capabilityAuthorityAvailable
+        {
+            Id = consumerId ?? ConsumerId,
+            TenantId = TenantId,
+            ConsumerKindId = (int)WebhookConsumerKind.Tenant,
+            ConsumerKindCode = "TENANT",
+            ConsumerKindName = nameof(WebhookConsumerKind.Tenant),
+            StatusId = (int)WebhookConsumerStatus.Active,
+            StatusCode = "ACTIVE",
+            StatusName = nameof(WebhookConsumerStatus.Active),
+            ProviderModeId = (int)WebhookProviderMode.Svix,
+            ProviderModeCode = "SVIX",
+            ProviderModeName = nameof(WebhookProviderMode.Svix),
+            ProviderCapabilityAuthorityAvailable = capabilityAuthorityAvailable,
+            CapabilityResolutionVersion = SvixConformanceProfileRegistry.SelfHostedCapabilityPolicyVersion,
+            CapabilityUnavailableReasonCode = capabilityAuthorityAvailable
             ? null
             : "webhook_provider_binding_unverified",
-        ProviderCapabilities =
+            ProviderCapabilities =
         [
             new WebhookProviderCapabilityDto
             {
@@ -217,9 +217,9 @@ public sealed class WebhookPortalHalAuthorityTests
                     : "webhook_provider_capability_unproven"
             }
         ],
-        Name = "HAL authority consumer",
-        CreatedAt = DateTime.UtcNow
-    };
+            Name = "HAL authority consumer",
+            CreatedAt = DateTime.UtcNow
+        };
 
     private sealed class Fixture
     {

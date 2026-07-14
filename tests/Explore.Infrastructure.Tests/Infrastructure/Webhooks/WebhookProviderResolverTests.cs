@@ -8,8 +8,12 @@ using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Telemetry;
 using Explore.Application.Webhooks;
 using Explore.Domain;
+using Explore.Domain.Enums;
+using Explore.Domain.Secrets;
 using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.Webhooks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -17,6 +21,219 @@ namespace Explore.Infrastructure.Tests.Infrastructure.Webhooks;
 
 public sealed class WebhookProviderResolverTests
 {
+    [Test]
+    public async Task ConfigureInfrastructureServices_ReplacesFailClosedPlanResolverWithGovernedScopedResolver()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IWebhookDeliveryPlanResolver, FailClosedWebhookDeliveryPlanResolver>();
+        var configuration = new ConfigurationBuilder().Build();
+
+        services.ConfigureInfrastructureServices(configuration);
+
+        var descriptors = services
+            .Where(descriptor => descriptor.ServiceType == typeof(IWebhookDeliveryPlanResolver))
+            .ToList();
+        await Assert.That(descriptors.Count).IsEqualTo(1);
+        await Assert.That(descriptors.Single().ImplementationType)
+            .IsEqualTo(typeof(GovernedWebhookDeliveryPlanResolver));
+        await Assert.That(descriptors.Single().Lifetime).IsEqualTo(ServiceLifetime.Scoped);
+    }
+
+    [Test]
+    public async Task DeliveryPlanResolver_WhenLocalAuthorityIsComplete_ReturnsVersionedEndpointSnapshotFacts()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var consumerId = Guid.CreateVersion7();
+        var consumerRepository = Substitute.For<IWebhookConsumerRepository>();
+        var endpointRepository = Substitute.For<IWebhookEndpointRepository>();
+        var eventTypeRepository = Substitute.For<IWebhookEventTypeRepository>();
+        var secretBindingRepository = Substitute.For<ISecretBindingRepository>();
+        var consumer = new WebhookConsumer
+        {
+            Id = consumerId,
+            TenantId = tenantId,
+            ConsumerKind = WebhookConsumerKind.Tenant,
+            Name = "Local integration",
+            Status = WebhookConsumerStatus.Active,
+            ProviderMode = WebhookProviderMode.Local,
+            ConfigurationVersion = 4,
+            CreatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+        var endpoint = new WebhookEndpoint
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            ConsumerId = consumerId,
+            Url = "https://consumer.example.test/webhooks",
+            Status = WebhookEndpointStatus.Active,
+            SecretRef = "webhook:endpoint:primary",
+            SecretVersion = 7,
+            SecretActivatedAt = DateTime.UtcNow.AddHours(-2),
+            ConfigurationVersion = 9,
+            MaxAttempts = 8,
+            TimeoutSeconds = 15,
+            CreatedAt = DateTime.UtcNow.AddHours(-1)
+        };
+        var eventType = new WebhookEventType
+        {
+            Id = Guid.CreateVersion7(),
+            Name = WebhookEventNames.EventPublished,
+            GroupName = "events",
+            Description = "Event published",
+            SchemaJson = "{}",
+            SchemaVersion = 3,
+            IsEnabled = true,
+            PayloadRetentionDays = 21,
+            CreatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+        consumerRepository.GetByTenantAndIdAsync(tenantId, consumerId, Arg.Any<CancellationToken>())
+            .Returns(consumer);
+        eventTypeRepository.GetByNameAsync(eventType.Name, Arg.Any<CancellationToken>())
+            .Returns(eventType);
+        endpointRepository.GetActiveSubscribedEndpointsByConsumerAsync(
+                tenantId,
+                consumerId,
+                eventType.Name,
+                Arg.Any<CancellationToken>())
+            .Returns([endpoint]);
+        var capabilityResolver = new WebhookProviderCapabilityResolver(
+            new StaticOptionsMonitor<WebhookOptions>(new WebhookOptions
+            {
+                Provider = WebhookOptions.ProviderLocal
+            }));
+        var resolver = new GovernedWebhookDeliveryPlanResolver(
+            consumerRepository,
+            endpointRepository,
+            eventTypeRepository,
+            secretBindingRepository,
+            capabilityResolver,
+            new StaticOptionsMonitor<WebhookOptions>(new WebhookOptions
+            {
+                Provider = WebhookOptions.ProviderLocal
+            }),
+            TimeProvider.System);
+        var context = CreateContext() with
+        {
+            TenantId = tenantId,
+            ConsumerId = consumerId,
+            EventType = eventType.Name
+        };
+
+        var resolution = await resolver.ResolveAsync(context, CancellationToken.None);
+
+        await Assert.That(resolution.Succeeded).IsTrue();
+        await Assert.That(resolution.ConfigurationVersion).IsEqualTo("consumer-v4:event-local-v1");
+        await Assert.That(resolution.EventContractVersion).IsEqualTo(3);
+        await Assert.That(resolution.RetentionPolicyVersion).IsEqualTo("event-contract-v3-days-21");
+        await Assert.That(resolution.PayloadRetentionUntil).IsEqualTo(context.OccurredAt.AddDays(21));
+        await Assert.That(resolution.LocalTargets.Count).IsEqualTo(1);
+        await Assert.That(resolution.LocalTargets.Single().EndpointConfigurationVersion).IsEqualTo(9);
+        await Assert.That(resolution.LocalTargets.Single().CredentialValidFromUtc)
+            .IsEqualTo(new DateTimeOffset(endpoint.SecretActivatedAt));
+        await Assert.That(resolution.ProviderTargets).IsEmpty();
+    }
+
+    [Test]
+    public async Task DeliveryPlanResolver_WhenSvixAuthorityIsComplete_UsesOnlyInstanceScopedTokenBinding()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var tenantId = Guid.CreateVersion7();
+        var consumerId = Guid.CreateVersion7();
+        var consumerRepository = Substitute.For<IWebhookConsumerRepository>();
+        var endpointRepository = Substitute.For<IWebhookEndpointRepository>();
+        var eventTypeRepository = Substitute.For<IWebhookEventTypeRepository>();
+        var secretBindingRepository = Substitute.For<ISecretBindingRepository>();
+        var options = SupportedSelfHostedOptions();
+        var capabilityResolver = new WebhookProviderCapabilityResolver(
+            new StaticOptionsMonitor<WebhookOptions>(options));
+        var capability = capabilityResolver.Resolve(WebhookProviderMode.Svix);
+        var profile = WebhookProviderCapabilityProfile.Create(
+            WebhookProviderKind.Svix,
+            capability.ProviderVersion!,
+            capability.ProviderCapabilities,
+            capability.ResolutionVersion,
+            now.AddMinutes(-1));
+        var binding = WebhookConsumerProviderBinding.CreatePending(
+            tenantId,
+            consumerId,
+            Guid.CreateVersion7(),
+            capability.ProviderEnvironment!,
+            profile,
+            capability.ProviderCapabilities);
+        binding.VerifyOwnership(tenantId, consumerId, "app_self_hosted_1", now);
+        var consumer = new WebhookConsumer
+        {
+            Id = consumerId,
+            TenantId = tenantId,
+            ConsumerKind = WebhookConsumerKind.Tenant,
+            Name = "Self-hosted Svix integration",
+            Status = WebhookConsumerStatus.Active,
+            ProviderMode = WebhookProviderMode.Svix,
+            ConfigurationVersion = 2,
+            CreatedAt = now.UtcDateTime.AddDays(-1)
+        };
+        consumer.ProviderBindings.Add(binding);
+        var eventType = new WebhookEventType
+        {
+            Id = Guid.CreateVersion7(),
+            Name = WebhookEventNames.EventPublished,
+            GroupName = "events",
+            Description = "Event published",
+            SchemaJson = "{}",
+            SchemaVersion = 1,
+            IsEnabled = true,
+            PayloadRetentionDays = 14,
+            CreatedAt = now.UtcDateTime.AddDays(-1)
+        };
+        var tokenBinding = SecretBinding.CreateEnvironmentVariable(
+            SecretDefinitionRegistry.Keys.Webhooks.SvixAuthToken,
+            SecretScope.Instance,
+            null,
+            "WEBHOOKS_SVIX_AUTH_TOKEN");
+        tokenBinding.Id = Guid.CreateVersion7();
+        tokenBinding.CreatedAt = now.UtcDateTime.AddHours(-1);
+        consumerRepository.GetByTenantAndIdAsync(tenantId, consumerId, Arg.Any<CancellationToken>())
+            .Returns(consumer);
+        eventTypeRepository.GetByNameAsync(eventType.Name, Arg.Any<CancellationToken>())
+            .Returns(eventType);
+        secretBindingRepository.GetByKeyAndScopeAsync(
+                SecretDefinitionRegistry.Keys.Webhooks.SvixAuthToken,
+                SecretScope.Instance,
+                null,
+                Arg.Any<CancellationToken>())
+            .Returns(tokenBinding);
+        var resolver = new GovernedWebhookDeliveryPlanResolver(
+            consumerRepository,
+            endpointRepository,
+            eventTypeRepository,
+            secretBindingRepository,
+            capabilityResolver,
+            new StaticOptionsMonitor<WebhookOptions>(options),
+            new FixedTimeProvider(now));
+        var context = CreateContext() with
+        {
+            TenantId = tenantId,
+            ConsumerId = consumerId,
+            EventType = eventType.Name,
+            OccurredAt = now.AddMinutes(-2)
+        };
+
+        var resolution = await resolver.ResolveAsync(context, CancellationToken.None);
+
+        await Assert.That(resolution.Succeeded).IsTrue();
+        await Assert.That(resolution.ProviderTargets.Count).IsEqualTo(1);
+        await secretBindingRepository.Received(1).GetByKeyAndScopeAsync(
+            SecretDefinitionRegistry.Keys.Webhooks.SvixAuthToken,
+            SecretScope.Instance,
+            null,
+            Arg.Any<CancellationToken>());
+        await secretBindingRepository.DidNotReceive().GetByKeyAndScopeAsync(
+            Arg.Any<string>(),
+            SecretScope.Tenant,
+            Arg.Any<Guid?>(),
+            Arg.Any<CancellationToken>());
+    }
+
     [Test]
     public async Task CapabilityResolver_WhenSelfHostedSvixProfileIsPinned_ReturnsOnlyProvenCapabilities()
     {
@@ -91,6 +308,7 @@ public sealed class WebhookProviderResolverTests
                 1,
                 "standard",
                 "retention-v1",
+                context.OccurredAt.AddDays(14),
                 context.OccurredAt.AddDays(14).UtcDateTime));
         materializer.MaterializeAsync(
                 Arg.Do<WebhookDeliveryMaterialization>(value => captured = value),
