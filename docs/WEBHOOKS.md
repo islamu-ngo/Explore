@@ -6,7 +6,7 @@ ABOUTME: Covers LocalProvider, SvixProvider, signatures, security, configuration
 > **Audience:** Operators | Integrators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-07-04
+> **Last Verified:** 2026-07-14
 > **Source Anchors:** `Explore.Application/Webhooks/`, `Explore.Infrastructure/Webhooks/`, `Explore.Infrastructure/HealthChecks/`, `Explore.API/Controllers/WebhookController.cs`, `Explore.API/Controllers/IncomingWebhooksController.cs`, `Explore.AppHost/AppHost.cs`, `docker-compose.yml`, `.env.example`, `docs/API.md`, `docs/SECURITY-MODEL.md`
 
 Webhooks in this document are outgoing product notifications sent by ISLAMU Event to external systems. Incoming provider callbacks are separate API ingestion routes; see [INTEGRATIONS.md](INTEGRATIONS.md).
@@ -101,7 +101,7 @@ Operators can opt into specific private CIDRs with `Webhooks:Local:AllowedPrivat
 
 ## SvixProvider
 
-SvixProvider uses the official Svix C# SDK. For self-hosted Svix, the SDK is configured with the deployment base URL through `SvixOptions`, while the API token stays server-side behind the ISLAMU secret resolver.
+SvixProvider uses the official Svix C# SDK. For self-hosted Svix, the SDK is configured with the deployment base URL through `SvixOptions`, while the API token stays server-side behind the ISLAMU secret resolver. Provider selection is guarded by an exact deployment-kind/environment/provider-version/capability-policy tuple backed by executed conformance evidence. Unknown and zero-evidence tuples fail startup validation and readiness before any secret is resolved.
 
 Mapping:
 
@@ -117,9 +117,31 @@ Mapping:
 
 ## Local-Full Svix
 
-`local-full` starts a local `svix/svix-server` through Aspire with PostgreSQL and Redis queue/cache. Aspire injects the current Svix HTTP endpoint into the API as `Webhooks:Svix:BaseUrl`; use `aspire describe --format Json` to inspect the actual host port for the running session.
+`local-full` starts pinned `svix/svix-server:v1.96.1` through Aspire with PostgreSQL and Redis queue/cache. Both `SVIX_QUEUE_TYPE` and `SVIX_CACHE_TYPE` are `redis`: the queue carries provider work, while the shared cache preserves idempotency semantics across Svix replicas. Do not use the self-hosted in-memory cache in a multi-replica deployment. Aspire injects the current Svix HTTP endpoint and the proven `self-hosted`/`1.96.1`/`svix-self-hosted-1.96.1-v1` tuple into the API; use `aspire describe --format Json` to inspect the actual host port for the running session.
 
-The local AppHost also supplies:
+The live conformance matrix proves the twelve-hour idempotency behavior, duplicate event identity conflicts, response-loss ambiguity, credential rotation, and list/get consistency. Self-hosted v1.96.1 does not return message tags from list/get, so request-hash exact lookup is not enabled for that profile. An accepted request followed by response loss therefore remains manual reconciliation rather than being guessed or blindly retried.
+
+## Self-Hosted Svix Authentication
+
+The supported Svix profile is self-hosted only. Managed Svix SaaS has no selectable
+conformance profile and is not a release gate. The managed conformance token fields in
+`.env` and `.env.example` remain intentionally empty; neither Infisical nor the Aspire
+container supplies cloud API keys.
+
+Self-hosted authentication uses a JWT signed with the server's `SVIX_JWT_SECRET`.
+The server does not publish a reusable client token during startup. Its bundled CLI can
+generate an organization-scoped bearer token with `svix-server jwt generate`; when the
+server runs in a container, execute that command inside the running container and place
+the resulting token in `WEBHOOKS_SVIX_AUTH_TOKEN`. The token is credential material and
+must not be written to logs, test reports, screenshots, or committed operator evidence.
+
+Aspire cannot treat command output from an already-running container as an environment
+input for the API resource. The local profile therefore reads a pre-generated matching
+development JWT and signing secret from `.env`; `.env.example` carries the same safe
+development pair. If either value is rotated, generate a new token from the container
+configured with the new signing secret, update both values together, and restart the API.
+
+The local AppHost supplies:
 
 - `SVIX_JWT_SECRET=local-dev-svix-jwt-secret-change-me` to the Svix container.
 - A matching development JWT in `WEBHOOKS_SVIX_AUTH_TOKEN` for the API.
@@ -144,6 +166,9 @@ Docker Compose starts Svix only when the `webhooks` profile is enabled. The same
 | `Webhooks:Local:ConnectTimeoutSeconds` | `3` | LocalProvider connect timeout. |
 | `Webhooks:Local:BlockPrivateNetworks` | `true` | SSRF protection default. |
 | `Webhooks:Svix:BaseUrl` | unset | Set for self-hosted Svix, for example `http://localhost:8071` in Aspire or `http://svix:8071` in Compose. |
+| `Webhooks:Svix:Environment` | `production` | Exact conformance environment identifier; Compose/Aspire use `self-hosted`. |
+| `Webhooks:Svix:ProviderVersion` | `managed-api-v1` | Exact conformance version identifier; Compose/Aspire use pinned `1.96.1`. |
+| `Webhooks:Svix:CapabilityPolicyVersion` | `svix-managed-api-v1` | Exact versioned capability policy; Compose/Aspire use `svix-self-hosted-1.96.1-v1`. |
 | `Webhooks:Svix:AuthTokenSecretRef` | `webhooks.svix.auth_token` | Server-side Svix API token secret binding. |
 | `Webhooks:Svix:OperationalWebhookSecretRef` | `webhooks.svix.operational_webhook_secret` | Secret used to verify incoming Svix operational callbacks. |
 | `Webhooks:Svix:AppPortalEnabled` | `true` | Allows backend App Portal URL generation. |
@@ -155,18 +180,19 @@ Environment variables used by local profiles:
 |---|---|
 | `WEBHOOKS_PROVIDER` | Compose-friendly provider mode. |
 | `WEBHOOKS_SVIX_BASE_URL` | Compose-friendly Svix base URL. |
+| `WEBHOOKS_SVIX_ENVIRONMENT`, `WEBHOOKS_SVIX_PROVIDER_VERSION`, `WEBHOOKS_SVIX_CAPABILITY_POLICY_VERSION` | Exact supported self-hosted conformance tuple. |
 | `WEBHOOKS_SVIX_AUTH_TOKEN_SECRET_REF` | Canonical auth token secret ref. |
 | `WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET_REF` | Canonical operational webhook secret ref. |
 | `WEBHOOKS_SVIX_AUTH_TOKEN` | Dev/deployment source value for the Svix API token binding. |
 | `WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET` | Dev/deployment source value for the Svix operational callback secret binding. |
-| `SVIX_DB_DSN`, `SVIX_REDIS_DSN`, `SVIX_QUEUE_TYPE`, `SVIX_JWT_SECRET` | Svix server container configuration. |
+| `SVIX_TAG`, `SVIX_DB_DSN`, `SVIX_REDIS_DSN`, `SVIX_QUEUE_TYPE`, `SVIX_CACHE_TYPE`, `SVIX_JWT_SECRET` | Pinned Svix server image and container configuration. Queue and cache must both use shared Redis for the supported profile. |
 
 ## Health, Metrics, And Retention
 
 Readiness checks:
 
 - `webhook-local-delivery` reports LocalProvider queue backlog, stale sending leases, and processor settings.
-- `webhook-svix-provider` reports Svix provider selection, App Portal/event-type-sync flags, and whether server-side Svix secrets resolve. It does not expose tokens, secret refs, or provider URLs and does not perform an outbound network probe.
+- `webhook-svix-provider` reports the safe conformance tuple, evidence revision/count, exact-lookup availability, provider selection, App Portal/event-type-sync flags, and whether server-side Svix secrets resolve. It does not expose tokens, secret refs, or provider URLs and does not perform an outbound network probe.
 
 Business metrics use bounded labels:
 

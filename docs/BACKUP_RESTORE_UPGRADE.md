@@ -91,6 +91,28 @@ docker compose up -d islamu-event-api islamu-event-ui
 8. Watch logs for migration failures, Keycloak discovery failures, secret-provider failures, storage readiness/reconciliation drift, and Cerbos readiness failures.
 9. Keep the previous images and backups until smoke tests pass.
 
+### Webhook redesign migration gate
+
+For webhook redesign schema slices, use a reviewed EF Core idempotent SQL script and a
+write-maintenance window. Apply the script with `ON_ERROR_STOP`; never allow a failed SQL
+statement to be followed by application startup. The release evidence must record:
+
+1. the exact committed migration used as the upgrade starting point;
+2. clean-install and committed-baseline-upgrade semantic schema signatures;
+3. representative legacy-row counts, classification counts, timing, and lock samples;
+4. a custom-format `pg_dump` restored into a clean database;
+5. matching migration history, row count, deterministic data checksum, constraints, and indexes;
+6. a successful idempotent reapply on the restored database.
+
+Use a 15-minute write window plus a 15-minute restore buffer for the currently measured
+10,000-row fixture. Rehearse with production-like volume before release and enlarge the
+window from measured evidence. If the projected run exceeds five minutes or lock sampling
+shows waiting writers, stop the rollout and split resumable data backfill from blocking DDL.
+
+Before traffic resumes, restore the verified backup on any failed validation. After traffic
+resumes, pause writers and deploy a new additive forward migration. Do not use destructive
+rollback for evidence-bearing webhook rows and do not guess provider success during repair.
+
 ## Rollback Rules
 
 Rollback depends on whether migrations are reversible:

@@ -19,11 +19,11 @@ For task-first integration guidance, use [API_COOKBOOK.md](API_COOKBOOK.md). Gen
 - API: `https://localhost:7039`
 - Swagger UI: `https://localhost:7039/swagger`
 - Scalar API reference: mapped by `MapScalarApiReference()` in Development and Testing.
-- OpenAPI document: `https://localhost:7039/openapi/event-api.json`
+- OpenAPI document: `https://localhost:7039/openapi/islamu-event.json`
 
 ### Docker Compose
 - API: `http://localhost:7039`
-- Compose runs the API with `ASPNETCORE_ENVIRONMENT=Production`, so Swagger UI, Scalar, and `/openapi/event-api.json` are not exposed there unless the environment is intentionally changed.
+- Compose runs the API with `ASPNETCORE_ENVIRONMENT=Production`, so Swagger UI, Scalar, and `/openapi/islamu-event.json` are not exposed there unless the environment is intentionally changed.
 
 ### Operational Endpoints
 
@@ -955,11 +955,11 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
 
 ## OpenAPI Export And Client Generation
 
-1. Building `Explore.API/Explore.API.csproj` in `Release` runs ASP.NET Core build-time OpenAPI generation and refreshes the checked-in `schemas/openapi.json` contract.
-2. Contract invariant and parity tests assert the runtime `/openapi/event-api.json` shape without writing generated files.
+1. Building `Explore.API/Explore.API.csproj` in `Release` runs ASP.NET Core build-time OpenAPI generation and refreshes the checked-in `schemas/openapi_islamu-event.json` contract.
+2. Contract invariant and parity tests assert the runtime `/openapi/islamu-event.json` shape without writing generated files.
 3. `ApiContractInventoryGeneratorTests` writes the committed endpoint inventory to [API_CONTRACT_INVENTORY.md](API_CONTRACT_INVENTORY.md).
 4. HAL schema transformers shape OpenAPI schemas so generated clients preserve HAL extension data.
-5. `Explore.Blazor.Client/Explore.Blazor.Client.csproj` uses `schemas/openapi.json` as NSwag input and regenerates `Explore.Blazor.Client/Clients/EventApiClient.g.cs` before `CoreCompile`.
+5. `Explore.Blazor.Client/Explore.Blazor.Client.csproj` uses `schemas/openapi_islamu-event.json` as NSwag input and regenerates `Explore.Blazor.Client/Clients/EventApiClient.g.cs` before `CoreCompile`.
 6. DTO changes should follow API-first regeneration workflow (see `docs/CONTRIBUTING.md`).
 
 Public HAL detail wrappers must be registered in `Explore.API/OpenApi/HalOpenApiSchemaCatalog.cs`. If a new `HalResourceOf*Dto` wrapper is omitted, OpenAPI can emit an empty wrapper schema and generated clients lose the DTO fields even though runtime HAL responses are correct.
