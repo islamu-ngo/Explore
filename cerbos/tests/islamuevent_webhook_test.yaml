@@ -48,6 +48,28 @@ principals:
       tenantMemberships: {}
       orgMemberships: {}
 
+  incoming_webhook_worker:
+    id: "incoming-webhook-worker"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-1": "admin"
+      orgMemberships: {}
+      is_machine: true
+      scopes: ["internal:webhook:process-incoming"]
+
+  incoming_webhook_worker_wrong_scope:
+    id: "incoming-webhook-worker-wrong-scope"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-1": "admin"
+      orgMemberships: {}
+      is_machine: true
+      scopes: ["admin:tenant"]
+
 resources:
   tenant_webhook:
     kind: "islamuevent_webhook"
@@ -91,15 +113,35 @@ tests:
     input:
       principals: ["islamuevent_tenant_admin"]
       resources: ["tenant_webhook"]
-      actions: ["webhook:view", "webhook:create", "webhook:manage-provider", "webhook:open-provider-portal"]
+      actions: ["webhook:view", "webhook:create", "webhook:redrive-incoming", "webhook:manage-provider", "webhook:open-provider-portal"]
     expected:
       - principal: "islamuevent_tenant_admin"
         resource: "tenant_webhook"
         actions:
           webhook:view: EFFECT_ALLOW
           webhook:create: EFFECT_ALLOW
+          webhook:redrive-incoming: EFFECT_ALLOW
           webhook:manage-provider: EFFECT_ALLOW
           webhook:open-provider-portal: EFFECT_ALLOW
+
+  - name: "Incoming worker can only process with the dedicated machine scope"
+    input:
+      principals: ["incoming_webhook_worker", "incoming_webhook_worker_wrong_scope"]
+      resources: ["tenant_webhook"]
+      actions: ["webhook:process-incoming", "webhook:redrive-incoming", "webhook:manage-provider"]
+    expected:
+      - principal: "incoming_webhook_worker"
+        resource: "tenant_webhook"
+        actions:
+          webhook:process-incoming: EFFECT_ALLOW
+          webhook:redrive-incoming: EFFECT_DENY
+          webhook:manage-provider: EFFECT_DENY
+      - principal: "incoming_webhook_worker_wrong_scope"
+        resource: "tenant_webhook"
+        actions:
+          webhook:process-incoming: EFFECT_DENY
+          webhook:redrive-incoming: EFFECT_ALLOW
+          webhook:manage-provider: EFFECT_ALLOW
 
   - name: "Organization admin can manage org-owned webhooks only when delegated"
     input:

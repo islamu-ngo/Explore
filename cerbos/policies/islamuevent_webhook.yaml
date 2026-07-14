@@ -26,6 +26,7 @@ resourcePolicy:
         - "webhook:rotate-secret"
         - "webhook:test"
         - "webhook:retry"
+        - "webhook:redrive-incoming"
         - "webhook:resume"
         - "webhook:view-delivery"
         - "webhook:manage-provider"
@@ -33,6 +34,26 @@ resourcePolicy:
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_tenant_admin
+      condition:
+        match:
+          expr: >
+            (!has(request.principal.attr.is_machine) ||
+             request.principal.attr.is_machine != true) ||
+            (has(request.principal.attr.scopes) &&
+             request.principal.attr.scopes.exists(scope, scope == "admin:tenant"))
+
+    - actions:
+        - "webhook:process-incoming"
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_tenant_admin
+      condition:
+        match:
+          expr: >
+            has(request.principal.attr.is_machine) &&
+            request.principal.attr.is_machine == true &&
+            has(request.principal.attr.scopes) &&
+            request.principal.attr.scopes.exists(scope, scope == "internal:webhook:process-incoming")
 
     - actions:
         - "webhook:view"
@@ -51,5 +72,7 @@ resourcePolicy:
       condition:
         match:
           expr: >
+            (!has(request.principal.attr.is_machine) ||
+             request.principal.attr.is_machine != true) &&
             has(request.resource.attr.allowOrganizationWebhooks) &&
             request.resource.attr.allowOrganizationWebhooks == true
