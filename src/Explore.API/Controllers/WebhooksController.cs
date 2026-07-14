@@ -200,6 +200,39 @@ public sealed class WebhooksController(
             response);
     }
 
+    [HttpPut("consumers/{consumerId:guid}/provider-mode", Name = RouteNames.UpdateWebhookConsumerProviderMode)]
+    [EndpointSummary("Change webhook consumer provider mode")]
+    [EndpointDescription("Changes the provider mode for new deliveries while preserving already materialized work on its immutable delivery snapshots.")]
+    [Consumes(HateoasConstants.JsonMediaType)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateConsumerProviderMode(
+        Guid consumerId,
+        [FromBody] UpdateWebhookConsumerProviderModeRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await mediator.Send(
+            new UpdateWebhookConsumerProviderModeCommand
+            {
+                TenantId = tenantContext.TenantId,
+                ConsumerId = consumerId,
+                ProviderModeId = request.ProviderModeId,
+                ExpectedConfigurationVersion = request.ExpectedConfigurationVersion,
+                PendingWorkDecisionId = request.PendingWorkDecisionId,
+                PendingWorkReason = request.PendingWorkReason,
+                AcknowledgeUncertainProviderPublications = request.AcknowledgeUncertainProviderPublications
+            },
+            cancellationToken);
+
+        return response.Success ? Ok(response) : ToWebhookConsumerProblem(response);
+    }
+
     [HttpPost("consumers/{consumerId:guid}/provider-binding/repair", Name = RouteNames.RepairWebhookProviderBinding)]
     [EndpointSummary("Repair webhook provider binding")]
     [EndpointDescription("Verifies self-hosted provider ownership and atomically creates or rebinds the consumer application mapping.")]
@@ -699,12 +732,25 @@ public sealed class WebhooksController(
 
     private ActionResult<BaseCommandResponse<Guid>> ToWebhookConsumerProblem(BaseCommandResponse<Guid> response)
     {
-        if (string.Equals(response.FailureCode, "webhook_consumer_name_conflict", StringComparison.Ordinal))
+        if (string.Equals(response.FailureCode, "webhook_consumer_not_found", StringComparison.Ordinal))
+        {
+            return ApiProblemFactory.ToProblemResult(
+                ApiProblemFactory.CreateNotFoundProblem(HttpContext, ConsumerNotFoundProblem));
+        }
+
+        if (response.FailureCode is "webhook_consumer_name_conflict" or
+            "webhook_consumer_configuration_conflict" or
+            "webhook_consumer_provider_mode_unchanged" or
+            "webhook_consumer_provider_mode_unavailable" or
+            "webhook_consumer_provider_mode_local_target_required" or
+            "webhook_consumer_provider_mode_binding_required" or
+            "webhook_consumer_provider_mode_pending_migration_unsupported" or
+            "webhook_consumer_provider_mode_uncertain_publications")
         {
             return this.ToCommandConflictProblem(
                 response,
-                "Webhook consumer already exists",
-                "Webhook consumer name is already in use.");
+                "Webhook consumer configuration conflict",
+                response.Message ?? "Webhook consumer configuration could not be changed.");
         }
 
         return this.ToCommandValidationProblem(response, ConsumerValidationProblem);

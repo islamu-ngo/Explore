@@ -322,6 +322,7 @@ public static class RouteNames
     public const string GetWebhookConsumers = "GetWebhookConsumers";
     public const string GetWebhookConsumerById = "GetWebhookConsumerById";
     public const string CreateWebhookConsumer = "CreateWebhookConsumer";
+    public const string UpdateWebhookConsumerProviderMode = "UpdateWebhookConsumerProviderMode";
     public const string RepairWebhookProviderBinding = "RepairWebhookProviderBinding";
     public const string GetWebhookEndpoints = "GetWebhookEndpoints";
     public const string GetWebhookEndpointById = "GetWebhookEndpointById";

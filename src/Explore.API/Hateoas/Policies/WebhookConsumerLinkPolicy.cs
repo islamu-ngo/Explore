@@ -21,6 +21,20 @@ public sealed class WebhookConsumerDetailLinkPolicy : ILinkPolicy<WebhookConsume
             "Webhook consumer")
             .RequirePermission(AuthorizationActions.Webhooks.View, ResourceDescriptors.WebhookConsumer, dto);
 
+        if (dto.StatusId != (int)Explore.Domain.WebhookConsumerStatus.Archived)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.ChangeProviderMode,
+                RouteNames.UpdateWebhookConsumerProviderMode,
+                new { consumerId = dto.Id },
+                "PUT",
+                "Change provider mode",
+                RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.Webhooks.Update,
+                    ResourceDescriptors.WebhookConsumer,
+                    dto);
+        }
     }
 
     public static LinkDefinition CreateProviderPortalLink(WebhookConsumerDto dto) =>

@@ -340,6 +340,8 @@ public static class LinkRelations
 
     public const string RepairProviderBinding = "repair-provider-binding";
 
+    public const string ChangeProviderMode = "change-provider-mode";
+
     /// <summary>
     /// Action link for cancelling an AI provider run before it completes.
     /// </summary>

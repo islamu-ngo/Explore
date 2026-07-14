@@ -3,6 +3,7 @@
 
 using System.Text.Json;
 using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Commands;
