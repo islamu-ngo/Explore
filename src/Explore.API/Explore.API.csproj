@@ -9,8 +9,8 @@
     <OpenApiGenerateDocuments>true</OpenApiGenerateDocuments>
     <OpenApiGenerateDocumentsOnBuild Condition="'$(Configuration)' == 'Release'">true</OpenApiGenerateDocumentsOnBuild>
     <OpenApiGenerateDocumentsOnBuild Condition="'$(Configuration)' != 'Release'">false</OpenApiGenerateDocumentsOnBuild>
-    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/../schemas</OpenApiDocumentsDirectory>
-    <OpenApiGenerateDocumentsOptions>--document-name event-api --file-name openapi</OpenApiGenerateDocumentsOptions>
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/../../schemas</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOptions>--document-name islamu-event --file-name openapi</OpenApiGenerateDocumentsOptions>
   </PropertyGroup>
 
   <ItemGroup>
@@ -80,15 +80,11 @@
 
   <!-- Include openapi.json as content (committed to source control) -->
   <ItemGroup>
-    <None Include="../../schemas/openapi.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('../../schemas/openapi.json')" />
+    <None Include="../../schemas/openapi_islamu-event.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('../../schemas/openapi_islamu-event.json')" />
   </ItemGroup>
 
-  <Target Name="InvalidateOpenApiDocumentCacheWhenCanonicalDocumentIsMissing" BeforeTargets="GenerateOpenApiDocuments" Condition="!Exists('$(MSBuildProjectDirectory)/../../schemas/openapi.json') And Exists('$(BaseIntermediateOutputPath)$(MSBuildProjectName).OpenApiFiles.cache')">
+  <Target Name="InvalidateOpenApiDocumentCacheWhenCanonicalDocumentIsMissing" BeforeTargets="GenerateOpenApiDocuments" Condition="!Exists('$(MSBuildProjectDirectory)/../../schemas/openapi_islamu-event.json') And Exists('$(BaseIntermediateOutputPath)$(MSBuildProjectName).OpenApiFiles.cache')">
     <Delete Files="$(BaseIntermediateOutputPath)$(MSBuildProjectName).OpenApiFiles.cache" />
-  </Target>
-
-  <Target Name="NormalizeGeneratedOpenApiDocument" AfterTargets="GenerateOpenApiDocuments" Condition="Exists('$(MSBuildProjectDirectory)/../schemas/openapi_event-api.json')">
-    <Copy SourceFiles="$(MSBuildProjectDirectory)/../schemas/openapi_event-api.json" DestinationFiles="$(MSBuildProjectDirectory)/../../schemas/openapi.json" SkipUnchangedFiles="true" />
   </Target>
 
 </Project>

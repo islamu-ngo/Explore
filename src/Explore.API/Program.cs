@@ -246,9 +246,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGenWithAuth(builder.Configuration);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 
-// Configure native OpenAPI (for /openapi/event-api.json endpoint)
+// Configure native OpenAPI (for /openapi/islamu-event.json endpoint)
 // Register document transformer to add missing DTO schemas that are hidden inside HAL wrappers
-builder.Services.AddOpenApi("event-api", options =>
+builder.Services.AddOpenApi("islamu-event", options =>
 {
     options.ShouldInclude = (description) => true;
     options.AddDocumentTransformer((document, _, _) =>

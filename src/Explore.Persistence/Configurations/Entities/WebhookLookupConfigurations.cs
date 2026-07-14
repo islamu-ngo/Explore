@@ -42,6 +42,11 @@ public sealed class WebhookProviderKindLookupConfiguration()
         "webhook_provider_kinds",
         "ux_webhook_provider_kinds_master_code");
 
+public sealed class WebhookProviderCapabilityLookupConfiguration()
+    : WebhookLookupConfiguration<WebhookProviderCapabilityLookup>(
+        "webhook_provider_capabilities",
+        "ux_webhook_provider_capabilities_master_code");
+
 public sealed class WebhookEndpointStatusLookupConfiguration()
     : WebhookLookupConfiguration<WebhookEndpointStatusLookup>(
         "webhook_endpoint_statuses",

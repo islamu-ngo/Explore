@@ -36,7 +36,7 @@ public sealed class UpdateWebhookEndpointCommandHandler(
             return Failure("webhook_endpoint_not_found", ["Webhook endpoint was not found."]);
         }
 
-        var consumer = await consumerRepository.GetByTenantAndIdAsync(
+        var consumer = endpoint.Consumer ?? await consumerRepository.GetByTenantAndIdAsync(
             request.TenantId,
             endpoint.ConsumerId,
             cancellationToken);

@@ -20,6 +20,12 @@ public sealed class WebhookConsumerProviderBindingConfiguration
             table.HasCheckConstraint(
                 "ck_webhook_consumer_provider_bindings_verification_fence_positive",
                 "verification_fence > 0");
+            table.HasCheckConstraint(
+                "ck_webhook_consumer_provider_bindings_capabilities_known",
+                "capabilities >= 0 AND capabilities <= 4095");
+            table.HasCheckConstraint(
+                "ck_webhook_consumer_provider_bindings_governance_capabilities_known",
+                "governance_allowed_capabilities >= 0 AND governance_allowed_capabilities <= 4095");
         });
 
         builder.HasKey(binding => binding.Id);

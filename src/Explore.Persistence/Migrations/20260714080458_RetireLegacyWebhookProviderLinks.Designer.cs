@@ -3,6 +3,7 @@ using System;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    partial class ExploreDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260714080458_RetireLegacyWebhookProviderLinks")]
+    partial class RetireLegacyWebhookProviderLinks
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -16939,11 +16942,7 @@ namespace Explore.Persistence.Migrations
 
                     b.ToTable("webhook_consumer_provider_bindings", null, t =>
                         {
-                            t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_capabilities_known", "capabilities >= 0 AND capabilities <= 4095");
-
                             t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_concurrency_version_positive", "concurrency_version > 0");
-
-                            t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_governance_capabilities_known", "governance_allowed_capabilities >= 0 AND governance_allowed_capabilities <= 4095");
 
                             t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_verification_fence_positive", "verification_fence > 0");
                         });
@@ -17935,39 +17934,6 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ux_webhook_provider_binding_verification_states_master_code");
 
                     b.ToTable("webhook_provider_binding_verification_states", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.WebhookProviderCapabilityLookup", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("full_name");
-
-                    b.Property<string>("MasterCode")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("master_code");
-
-                    b.HasKey("Id")
-                        .HasName("pk_webhook_provider_capabilities");
-
-                    b.HasIndex("MasterCode")
-                        .IsUnique()
-                        .HasDatabaseName("ux_webhook_provider_capabilities_master_code");
-
-                    b.ToTable("webhook_provider_capabilities", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.WebhookProviderKindLookup", b =>

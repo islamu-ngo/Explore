@@ -75,14 +75,6 @@ public partial class ExploreDbContext : DbContext
         base.OnModelCreating(modelBuilder);
         modelBuilder.HasPostgresExtension("btree_gist");
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ExploreDbContext).Assembly);
-        if (string.Equals(
-                Environment.GetEnvironmentVariable("EVENT_EF_MIGRATION_RECOVERY"),
-                "true",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            modelBuilder.Ignore<WebhookProviderCapabilityLookup>();
-        }
-
         ApplyGlobalQueryFilters(modelBuilder);
     }
 }

@@ -2,7 +2,7 @@
   "runtime": "Net100",
   "documentGenerator": {
     "fromDocument": {
-      "json": "../../schemas/openapi.json",
+      "json": "../../schemas/openapi_islamu-event.json",
       "url": "",
       "output": null
     }
