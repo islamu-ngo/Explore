@@ -1,0 +1,59 @@
+/* ABOUTME: Scoped responsive styling for provider publication operations. */
+/* ABOUTME: Uses the repository token system and BEM naming for dense administrative evidence. */
+
+.webhook-provider-publications {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.webhook-provider-publications__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--isl-space-4);
+}
+
+.webhook-provider-publications__table {
+    overflow-x: auto;
+    overflow-y: hidden;
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+}
+
+.webhook-provider-publications ::deep .webhook-provider-publications__mono {
+    overflow-wrap: anywhere;
+}
+
+.webhook-provider-publications ::deep .webhook-provider-publications__actions-cell {
+    text-align: end;
+}
+
+.webhook-provider-publications__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--isl-space-1);
+}
+
+.webhook-provider-publications__cell-content {
+    display: grid;
+    gap: var(--isl-space-1);
+    min-width: 0;
+    justify-items: start;
+}
+
+@media (max-width: 599.98px) {
+    .webhook-provider-publications__header {
+        align-items: stretch;
+    }
+
+    .webhook-provider-publications ::deep .webhook-provider-publications__actions-cell,
+    .webhook-provider-publications__actions {
+        text-align: start;
+        justify-content: flex-start;
+    }
+
+    .webhook-provider-publications__table {
+        overflow: visible;
+        border: 0;
+    }
+}

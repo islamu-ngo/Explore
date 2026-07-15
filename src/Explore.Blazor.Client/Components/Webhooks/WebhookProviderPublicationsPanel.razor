@@ -1,0 +1,340 @@
+@* ABOUTME: Provider publication evidence and manual reconciliation controls for webhook operators.
+   ABOUTME: Renders reconcile and abandon actions exclusively from item-level HAL relations. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Webhooks
+@using MudBlazor
+@inject IWebhookOperationsService WebhookOperations
+@inject ISnackbar Snackbar
+
+<section class="webhook-provider-publications" aria-labelledby="webhook-provider-publications-title">
+    <div class="webhook-provider-publications__header">
+        <div>
+            <MudText Typo="Typo.subtitle2" id="webhook-provider-publications-title">Provider publications</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Inspect self-hosted provider handoff evidence and resolve only states that expose a server-authorized action.
+            </MudText>
+        </div>
+        <MudTooltip Text="Refresh provider publications">
+            <AppIconButton Icon="@Icons.Material.Filled.Refresh"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           OnClick="LoadAsync"
+                           Disabled="_isLoading || _isBusy"
+                           aria-label="Refresh provider publications" />
+        </MudTooltip>
+    </div>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="Loading provider publications" />
+    }
+    else if (!_snapshot.IsSuccess)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_snapshot.ErrorMessage</MudAlert>
+    }
+    else
+    {
+        <div class="webhook-provider-publications__table">
+            <MudTable T="HalResourceOfWebhookProviderPublicationDto"
+                      Items="_snapshot.Publications"
+                      Dense="true"
+                      Hover="true"
+                      Elevation="0"
+                      Breakpoint="Breakpoint.Xl">
+                <HeaderContent>
+                    <MudTh>Provider</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Evidence</MudTh>
+                    <MudTh>Updated</MudTh>
+                    <MudTh>Availability</MudTh>
+                    <MudTh Class="webhook-provider-publications__actions-cell">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Provider">
+                        <div class="webhook-provider-publications__cell-content">
+                            <MudText Typo="Typo.body2">@context.ProviderKindName</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@context.ProviderVersion</MudText>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.StatusCode)" Variant="Variant.Outlined">
+                            @context.StatusName
+                        </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Evidence">
+                        <div class="webhook-provider-publications__cell-content">
+                            <MudText Typo="Typo.body2" Class="webhook-provider-publications__mono">
+                                @ShortText(context.ExternalProviderMessageId ?? context.ProviderEventId, 24)
+                            </MudText>
+                            @if (!string.IsNullOrWhiteSpace(context.FailureCategory))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@context.FailureCategory</MudText>
+                            }
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Updated">@FormatDate(context.UpdatedAt)</MudTd>
+                    <MudTd DataLabel="Availability">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @ActionAvailability(context)
+                        </MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Class="webhook-provider-publications__actions-cell">
+                        <div class="webhook-provider-publications__actions">
+                            @if (HasLink(context, WebhookClientLinkRelations.Reconcile))
+                            {
+                                <MudTooltip Text="Reconcile provider publication">
+                                    <AppIconButton Icon="@Icons.Material.Filled.FactCheck"
+                                                   Color="Color.Primary"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => OpenReconcileDialog(context))"
+                                                   Disabled="_isBusy"
+                                                   aria-label="Reconcile provider publication" />
+                                </MudTooltip>
+                            }
+                            @if (HasLink(context, WebhookClientLinkRelations.Abandon))
+                            {
+                                <MudTooltip Text="Abandon provider publication">
+                                    <AppIconButton Icon="@Icons.Material.Filled.Block"
+                                                   Color="Color.Error"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => OpenAbandonDialog(context))"
+                                                   Disabled="_isBusy"
+                                                   aria-label="Abandon provider publication" />
+                                </MudTooltip>
+                            }
+                        </div>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No provider publications.</MudText>
+                </NoRecordsContent>
+            </MudTable>
+        </div>
+    }
+
+    <MudDialog @bind-Visible="_reconcileDialogOpen" Options="DialogOptionsFactory.Small()">
+        <TitleContent>
+            <MudText Typo="Typo.h6">Reconcile Provider Publication</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Record the exact self-hosted provider message identifier after independent verification.
+                </MudText>
+                <AppTextField T="string"
+                              @bind-Value="_reconcileForm.ExternalProviderMessageId"
+                              Label="Provider message ID"
+                              Required="true"
+                              Immediate="true"
+                              data-testid="webhook-publication-provider-message-id" />
+                <AppTextField T="string"
+                              @bind-Value="_reconcileForm.ReasonCode"
+                              Label="Reason code"
+                              HelperText="Letters, digits, underscore, dash, dot, and colon only."
+                              Required="true"
+                              Immediate="true"
+                              data-testid="webhook-publication-reconcile-reason" />
+            </MudStack>
+        </DialogContent>
+        <DialogActions>
+            <AppButton Variant="Variant.Text" OnClick="CloseReconcileDialog" Disabled="_isBusy">Cancel</AppButton>
+            <AppButton Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       OnClick="ReconcileAsync"
+                       Disabled="@ReconcileDisabled">
+                @(_isBusy ? "Reconciling..." : "Reconcile")
+            </AppButton>
+        </DialogActions>
+    </MudDialog>
+
+    <MudDialog @bind-Visible="_abandonDialogOpen" Options="DialogOptionsFactory.Small()">
+        <TitleContent>
+            <MudText Typo="Typo.h6">Abandon Provider Publication</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudStack Spacing="3">
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                    Abandonment is terminal. It does not assert whether the provider accepted the message.
+                </MudAlert>
+                <AppTextField T="string"
+                              @bind-Value="_abandonReasonCode"
+                              Label="Reason code"
+                              HelperText="Letters, digits, underscore, dash, dot, and colon only."
+                              Required="true"
+                              Immediate="true"
+                              data-testid="webhook-publication-abandon-reason" />
+            </MudStack>
+        </DialogContent>
+        <DialogActions>
+            <AppButton Variant="Variant.Text" OnClick="CloseAbandonDialog" Disabled="_isBusy">Cancel</AppButton>
+            <AppButton Color="Color.Error"
+                       Variant="Variant.Filled"
+                       OnClick="AbandonAsync"
+                       Disabled="@AbandonDisabled">
+                @(_isBusy ? "Abandoning..." : "Abandon")
+            </AppButton>
+        </DialogActions>
+    </MudDialog>
+</section>
+
+@code {
+    private WebhookProviderPublicationSnapshot _snapshot = new();
+    private bool _isLoading = true;
+    private bool _isBusy;
+    private bool _reconcileDialogOpen;
+    private bool _abandonDialogOpen;
+    private HalResourceOfWebhookProviderPublicationDto? _selectedPublication;
+    private ReconcileForm _reconcileForm = new();
+    private string _abandonReasonCode = string.Empty;
+
+    private bool ReconcileDisabled =>
+        _isBusy ||
+        _selectedPublication?.Id is null ||
+        _selectedPublication.ConcurrencyVersion is null or <= 0 ||
+        string.IsNullOrWhiteSpace(_reconcileForm.ExternalProviderMessageId) ||
+        string.IsNullOrWhiteSpace(_reconcileForm.ReasonCode);
+
+    private bool AbandonDisabled =>
+        _isBusy ||
+        _selectedPublication?.Id is null ||
+        _selectedPublication.ConcurrencyVersion is null or <= 0 ||
+        string.IsNullOrWhiteSpace(_abandonReasonCode);
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _snapshot = await WebhookOperations.GetProviderPublicationsAsync();
+        _isLoading = false;
+    }
+
+    private void OpenReconcileDialog(HalResourceOfWebhookProviderPublicationDto publication)
+    {
+        _selectedPublication = publication;
+        _reconcileForm = new ReconcileForm();
+        _reconcileDialogOpen = true;
+    }
+
+    private void CloseReconcileDialog() => _reconcileDialogOpen = false;
+
+    private async Task ReconcileAsync()
+    {
+        if (_selectedPublication?.Id is not Guid publicationId ||
+            _selectedPublication.ConcurrencyVersion is not long concurrencyVersion)
+        {
+            return;
+        }
+
+        await RunActionAsync(
+            () => WebhookOperations.ReconcileProviderPublicationAsync(
+                publicationId,
+                new ReconcileWebhookProviderPublicationRequestDto
+                {
+                    ExpectedConcurrencyVersion = concurrencyVersion,
+                    ExternalProviderMessageId = _reconcileForm.ExternalProviderMessageId.Trim(),
+                    ReasonCode = _reconcileForm.ReasonCode.Trim()
+                }),
+            CloseReconcileDialog);
+    }
+
+    private void OpenAbandonDialog(HalResourceOfWebhookProviderPublicationDto publication)
+    {
+        _selectedPublication = publication;
+        _abandonReasonCode = string.Empty;
+        _abandonDialogOpen = true;
+    }
+
+    private void CloseAbandonDialog() => _abandonDialogOpen = false;
+
+    private async Task AbandonAsync()
+    {
+        if (_selectedPublication?.Id is not Guid publicationId ||
+            _selectedPublication.ConcurrencyVersion is not long concurrencyVersion)
+        {
+            return;
+        }
+
+        await RunActionAsync(
+            () => WebhookOperations.AbandonProviderPublicationAsync(
+                publicationId,
+                new AbandonWebhookProviderPublicationRequestDto
+                {
+                    ExpectedConcurrencyVersion = concurrencyVersion,
+                    ReasonCode = _abandonReasonCode.Trim()
+                }),
+            CloseAbandonDialog);
+    }
+
+    private async Task RunActionAsync(Func<Task<WebhookActionResult>> action, Action closeDialog)
+    {
+        _isBusy = true;
+        var result = await action();
+        _isBusy = false;
+        Snackbar.Add(result.Message, result.Success ? Severity.Success : Severity.Error);
+        if (!result.Success)
+        {
+            return;
+        }
+
+        closeDialog();
+        await LoadAsync();
+    }
+
+    private static bool HasLink(HalResourceOfWebhookProviderPublicationDto publication, string relation) =>
+        WebhookHal.HasLink(publication._links, relation);
+
+    private static string ActionAvailability(HalResourceOfWebhookProviderPublicationDto publication)
+    {
+        if (HasLink(publication, WebhookClientLinkRelations.Reconcile))
+        {
+            return "Verified evidence can be recorded.";
+        }
+
+        if (HasLink(publication, WebhookClientLinkRelations.Abandon))
+        {
+            return "Terminal abandonment is available.";
+        }
+
+        return publication.StatusCode switch
+        {
+            "PREPARED" or "PUBLISHING" or "PUBLICATION_UNKNOWN" => "Automatic provider processing is in progress.",
+            "PROVIDER_QUEUED" => "The provider accepted this publication.",
+            "ABANDONED" => "This publication is terminal.",
+            _ => "No operator action is available for the current state and capability."
+        };
+    }
+
+    private static string FormatDate(DateTimeOffset? value) =>
+        value.HasValue ? value.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "-";
+
+    private static string ShortText(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "-";
+        }
+
+        return value.Length <= maxLength
+            ? value
+            : string.Concat(value.AsSpan(0, maxLength - 1), "...");
+    }
+
+    private static Color StatusColor(string? statusCode) =>
+        statusCode switch
+        {
+            "PROVIDER_QUEUED" => Color.Success,
+            "PREPARED" or "PUBLISHING" => Color.Info,
+            "PUBLICATION_UNKNOWN" or "MANUAL_RECONCILIATION" => Color.Warning,
+            "DEAD_LETTERED" or "ABANDONED" => Color.Error,
+            _ => Color.Default
+        };
+
+    private sealed class ReconcileForm
+    {
+        public string ExternalProviderMessageId { get; set; } = string.Empty;
+
+        public string ReasonCode { get; set; } = string.Empty;
+    }
+}

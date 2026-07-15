@@ -1,0 +1,29 @@
+// ABOUTME: Authorized command for abandoning a terminal operator-owned provider publication.
+// ABOUTME: Requires tenant identity, optimistic version, actor, and normalized audit reason evidence.
+
+using Explore.Application.Authorization;
+using Explore.Application.Responses;
+using MediatR;
+
+namespace Explore.Application.Features.Webhooks.Requests.Commands;
+
+[AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.AbandonPublication)]
+public sealed class AbandonWebhookProviderPublicationCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+{
+    public Guid TenantId { get; init; }
+    public Guid PublicationId { get; init; }
+    public Guid ActorUserId { get; init; }
+    public long ExpectedConcurrencyVersion { get; init; }
+    public string ReasonCode { get; init; } = string.Empty;
+
+    string? ISecureRequest.ResourceId => PublicationId == Guid.Empty ? null : PublicationId.ToString("D");
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => PublicationId == Guid.Empty
+        ? null
+        : new Dictionary<string, object>
+        {
+            ["tenantId"] = TenantId.ToString("D"),
+            ["publicationId"] = PublicationId.ToString("D"),
+            ["webhookOperation"] = "abandon-publication"
+        };
+}

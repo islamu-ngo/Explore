@@ -1,0 +1,25 @@
+// ABOUTME: Validates manual provider publication abandonment evidence before aggregate mutation.
+// ABOUTME: Requires optimistic version and normalized audit reason values for operator accountability.
+
+using Explore.Application.Features.Webhooks.Requests.Commands;
+using Explore.Domain;
+using FluentValidation;
+
+namespace Explore.Application.Features.Webhooks.Validators;
+
+public sealed class AbandonWebhookProviderPublicationCommandValidator
+    : AbstractValidator<AbandonWebhookProviderPublicationCommand>
+{
+    public AbandonWebhookProviderPublicationCommandValidator()
+    {
+        RuleFor(command => command.TenantId).NotEmpty();
+        RuleFor(command => command.PublicationId).NotEmpty();
+        RuleFor(command => command.ActorUserId).NotEmpty();
+        RuleFor(command => command.ExpectedConcurrencyVersion).GreaterThan(0);
+        RuleFor(command => command.ReasonCode)
+            .NotEmpty()
+            .MaximumLength(WebhookAuditEvent.MaxReasonCodeLength)
+            .Matches("^[A-Za-z0-9_.:-]+$")
+            .WithMessage("ReasonCode must use only letters, digits, underscore, dash, dot, or colon.");
+    }
+}
