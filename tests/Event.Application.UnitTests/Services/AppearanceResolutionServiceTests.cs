@@ -7,7 +7,9 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Appearance;
 using Explore.Application.Services;
+using Explore.Application.Settings;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.ValueObjects;
 using NSubstitute;
@@ -77,6 +79,71 @@ public class AppearanceResolutionServiceTests
 
         await Assert.That(result.ResolutionSource).IsEqualTo("SystemPresetFallback");
         await Assert.That(result.Theme.DisplayName).IsEqualTo("Enterprise Blue");
+    }
+
+    [Test]
+    public async Task ResolveForCurrentUser_WhenNoDefaultIsConfigured_DoesNotSelectAlphabeticalPreset()
+    {
+        var userId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        _currentUserService.UserId.Returns((Guid?)userId);
+        _tenantContext.TenantId.Returns(tenantId);
+        _preferenceRepo.GetByUserAndTenantAsync(userId, Arg.Any<Guid?>()).Returns((UserAppearancePreference?)null);
+        _settingsResolver.ResolveWithMetadataAsync(
+                GovernanceSettingKeys.Appearance.DefaultPresetId,
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new ResolvedSetting
+            {
+                Key = GovernanceSettingKeys.Appearance.DefaultPresetId,
+                Value = "\"\"",
+                Source = SettingSource.SystemDefault
+            });
+
+        var alphabeticalPreset = CreateSystemPreset();
+        alphabeticalPreset.DisplayName = "Abyssal Dark";
+        alphabeticalPreset.ThemeKey = "abyssal-dark";
+        _presetRepo.GetDefaultPresetForTenantAsync(Arg.Any<Guid?>()).Returns(alphabeticalPreset);
+        _presetRepo.GetByThemeKeyAsync(null, "enterprise-blue").Returns(CreateSystemPreset());
+
+        var result = await CreateSut().ResolveForCurrentUserAsync();
+
+        await Assert.That(result.ResolutionSource).IsEqualTo("SystemPresetFallback");
+        await Assert.That(result.SourcePresetKey).IsEqualTo("enterprise-blue");
+        await Assert.That(result.ThemeMode).IsEqualTo("system");
+    }
+
+    [Test]
+    public async Task ResolveForCurrentUser_WhenTenantDefaultIsConfigured_UsesConfiguredPreset()
+    {
+        var userId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var configuredPreset = CreateSystemPreset();
+        configuredPreset.Id = Guid.NewGuid();
+        configuredPreset.TenantId = tenantId;
+        configuredPreset.ThemeKey = "tenant-default";
+        configuredPreset.DisplayName = "Tenant Default";
+
+        _currentUserService.UserId.Returns((Guid?)userId);
+        _tenantContext.TenantId.Returns(tenantId);
+        _preferenceRepo.GetByUserAndTenantAsync(userId, Arg.Any<Guid?>()).Returns((UserAppearancePreference?)null);
+        _settingsResolver.ResolveWithMetadataAsync(
+                GovernanceSettingKeys.Appearance.DefaultPresetId,
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new ResolvedSetting
+            {
+                Key = GovernanceSettingKeys.Appearance.DefaultPresetId,
+                Value = $"\"{configuredPreset.Id}\"",
+                Source = SettingSource.TenantOverride
+            });
+        _presetRepo.GetById(configuredPreset.Id).Returns(configuredPreset);
+
+        var result = await CreateSut().ResolveForCurrentUserAsync();
+
+        await Assert.That(result.ResolutionSource).IsEqualTo("TenantDefaultPreset");
+        await Assert.That(result.SourcePresetKey).IsEqualTo("tenant-default");
+        await Assert.That(result.ThemeMode).IsEqualTo("system");
     }
 
     [Test]

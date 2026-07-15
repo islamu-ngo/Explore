@@ -208,6 +208,86 @@ public class AppearanceThemeServiceTests
     }
 
     [Test]
+    public async Task ClonePresetAndActivateAsync_WithLegacyMalformedRgba_KeepsPresetsAfterReinitialize()
+    {
+        var requests = new List<string>();
+        var preset = CreatePreset();
+        var presetId = Guid.Parse("30000000-0000-0000-0000-000000000003");
+        var profile = CreateProfile(Guid.Parse("20000000-0000-0000-0000-000000000002"));
+        var darkPalette = CreatePalette(isDark: true);
+        darkPalette.AppbarBackground = "#RGBA(9,9,11,0.92)";
+        var appearanceReadCount = 0;
+
+        var service = CreateService(request =>
+        {
+            var path = request.RequestUri?.PathAndQuery;
+            requests.Add($"{request.Method} {path}");
+
+            if (request.Method == HttpMethod.Get && path == "/api/user/appearance")
+            {
+                appearanceReadCount++;
+                return CreateJsonResponse(new ClientResolvedAppearanceDto
+                {
+                    ThemeMode = "system",
+                    Theme = new ClientResolvedThemeDto
+                    {
+                        LightPalette = CreatePalette(),
+                        DarkPalette = appearanceReadCount == 1 ? CreatePalette(isDark: true) : darkPalette
+                    }
+                });
+            }
+
+            if (request.Method == HttpMethod.Get && path == "/api/user/appearance/presets")
+            {
+                return CreateJsonResponse<IReadOnlyList<ClientAvailablePresetDto>>([preset]);
+            }
+
+            if (request.Method == HttpMethod.Get && path == "/api/user/appearance/profiles")
+            {
+                return CreateJsonResponse<IReadOnlyList<ClientUserAppearanceProfileDto>>([]);
+            }
+
+            if (request.Method == HttpMethod.Post
+                && path == $"/api/user/appearance/profiles/from-preset/{presetId}")
+            {
+                return CreateJsonResponse(profile);
+            }
+
+            if (request.Method == HttpMethod.Put && path == "/api/user/appearance/active-profile")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        await service.InitializeAsync(null!);
+        IReadOnlyList<ClientAvailablePresetDto> observedPresets = [];
+        MudTheme? rebuiltTheme = null;
+        service.Changed += (_, _) => rebuiltTheme = service.CreateTheme("64px");
+        service.Changed += (_, args) => observedPresets = args.State.AvailablePresets;
+
+        await service.ClonePresetAndActivateAsync(presetId);
+        await service.InitializeAsync(null!);
+
+        await Assert.That(service.Current.ThemeMode).IsEqualTo("system");
+        await Assert.That(service.Current.AvailablePresets.Count).IsEqualTo(1);
+        await Assert.That(observedPresets.Select(item => item.ThemeKey)).Contains("standard");
+        await Assert.That(rebuiltTheme).IsNotNull();
+        await Assert.That(rebuiltTheme!.PaletteDark.AppbarBackground.ToString(MudColorOutputFormats.RGBA))
+            .Contains("9,9,11");
+        await Assert.That(string.Join("\n", requests)).IsEqualTo(string.Join("\n", new[]
+        {
+            "GET /api/user/appearance",
+            "GET /api/user/appearance/presets",
+            "GET /api/user/appearance/profiles",
+            $"POST /api/user/appearance/profiles/from-preset/{presetId}",
+            "PUT /api/user/appearance/active-profile",
+            "GET /api/user/appearance"
+        }));
+    }
+
+    [Test]
     public async Task CreateCustomProfileAsync_PostsToBffAndReturnsProfile()
     {
         HttpRequestMessage? capturedRequest = null;

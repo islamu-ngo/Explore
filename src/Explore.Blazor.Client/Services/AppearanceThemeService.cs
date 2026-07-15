@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Client.Clients;
 using MudBlazor;
+using MudBlazor.Utilities;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -492,8 +493,27 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         return (await _api.GetUserAppearanceProfilesAsync(cancellationToken: cancellationToken)).ToList();
     }
 
-    private static string PaletteValue(string? value, string fallback) =>
-        string.IsNullOrWhiteSpace(value) ? fallback : value;
+    private static string PaletteValue(string? value, string fallback)
+    {
+        var candidate = value?.Trim();
+        if (string.IsNullOrEmpty(candidate))
+        {
+            return fallback;
+        }
+
+        if (candidate.StartsWith("#rgb", StringComparison.OrdinalIgnoreCase)
+            && MudColor.TryParse(candidate[1..], out _))
+        {
+            return candidate[1..];
+        }
+
+        if (MudColor.TryParse(candidate, out _))
+        {
+            return candidate;
+        }
+
+        return fallback;
+    }
 
     private static PaletteLight ComposeLight(UiThemePaletteDto dto) => new()
     {

@@ -7,7 +7,9 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Appearance;
+using Explore.Application.Settings;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 
 public class AppearanceResolutionService : IAppearanceResolutionService
@@ -63,29 +65,52 @@ public class AppearanceResolutionService : IAppearanceResolutionService
             return CreateFromProfile(globalProfile, AppearanceResolutionSource.UserGlobalProfile);
         }
 
-        // 3. Try tenant default preset
-        var tenantDefaultPreset = await _presetRepository.GetDefaultPresetForTenantAsync(tenantId);
-        if (tenantDefaultPreset is not null)
+        // 3. Try the configured tenant/instance default preset
+        var configuredDefault = await ResolveConfiguredDefaultPresetAsync(tenantId, cancellationToken);
+        if (configuredDefault is not null)
         {
-            return CreateFromPreset(tenantDefaultPreset, AppearanceResolutionSource.TenantDefaultPreset);
+            return CreateFromPreset(configuredDefault.Value.Preset, configuredDefault.Value.Source);
         }
 
-        // 4. Try instance default preset (null tenant = platform-level)
-        var instanceDefaultPreset = await _presetRepository.GetDefaultPresetForTenantAsync(null);
-        if (instanceDefaultPreset is not null)
-        {
-            return CreateFromPreset(instanceDefaultPreset, AppearanceResolutionSource.InstanceDefaultPreset);
-        }
-
-        // 5. System fallback: enterprise-blue
+        // 4. System fallback: enterprise-blue
         var systemPreset = await _presetRepository.GetByThemeKeyAsync(null, "enterprise-blue");
         if (systemPreset is not null)
         {
             return CreateFromPreset(systemPreset, AppearanceResolutionSource.SystemPresetFallback);
         }
 
-        // 6. Emergency hardcoded fallback
+        // 5. Emergency hardcoded fallback
         return CreateEmergencyFallback();
+    }
+
+    private async Task<(UiThemePreset Preset, AppearanceResolutionSource Source)?> ResolveConfiguredDefaultPresetAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        var setting = await _settingsResolver.ResolveWithMetadataAsync(
+            GovernanceSettingKeys.Appearance.DefaultPresetId,
+            new SettingContext(TenantId: tenantId),
+            cancellationToken);
+
+        if (setting is null
+            || !Guid.TryParse(SettingValueSerializer.DeserializeString(setting.Value), out var presetId))
+        {
+            return null;
+        }
+
+        var isTenantSetting = setting.Source is SettingSource.TenantOverride or SettingSource.TenantLocked;
+        var preset = await _presetRepository.GetById(presetId);
+        if (preset is not { IsActive: true }
+            || preset.TenantId.HasValue && (!isTenantSetting || preset.TenantId != tenantId))
+        {
+            return null;
+        }
+
+        var source = isTenantSetting
+            ? AppearanceResolutionSource.TenantDefaultPreset
+            : AppearanceResolutionSource.InstanceDefaultPreset;
+
+        return (preset, source);
     }
 
     public async Task<IReadOnlyList<AvailablePresetDto>> GetAvailablePresetsAsync(CancellationToken cancellationToken = default)
@@ -508,9 +533,9 @@ public class AppearanceResolutionService : IAppearanceResolutionService
         SecondaryContrastText = Domain.ValueObjects.UiThemePalette.NormalizeHex(dto.SecondaryContrastText),
         Background = Domain.ValueObjects.UiThemePalette.NormalizeHex(dto.Background),
         Surface = Domain.ValueObjects.UiThemePalette.NormalizeHex(dto.Surface),
-        AppbarBackground = Domain.ValueObjects.UiThemePalette.NormalizeHex(dto.AppbarBackground),
+        AppbarBackground = UiThemeInputRules.NormalizeFlexibleColor(dto.AppbarBackground),
         AppbarText = Domain.ValueObjects.UiThemePalette.NormalizeHex(dto.AppbarText),
-        DrawerBackground = Domain.ValueObjects.UiThemePalette.NormalizeHex(dto.DrawerBackground),
+        DrawerBackground = UiThemeInputRules.NormalizeFlexibleColor(dto.DrawerBackground),
         DrawerText = Domain.ValueObjects.UiThemePalette.NormalizeHex(dto.DrawerText),
         DrawerIcon = Domain.ValueObjects.UiThemePalette.NormalizeHex(dto.DrawerIcon),
         TextPrimary = Domain.ValueObjects.UiThemePalette.NormalizeHex(dto.TextPrimary),
@@ -520,6 +545,6 @@ public class AppearanceResolutionService : IAppearanceResolutionService
         Warning = Domain.ValueObjects.UiThemePalette.NormalizeHex(dto.Warning),
         Error = Domain.ValueObjects.UiThemePalette.NormalizeHex(dto.Error),
         LinesDefault = Domain.ValueObjects.UiThemePalette.NormalizeHex(dto.LinesDefault),
-        Divider = Domain.ValueObjects.UiThemePalette.NormalizeHex(dto.Divider)
+        Divider = UiThemeInputRules.NormalizeFlexibleColor(dto.Divider)
     };
 }

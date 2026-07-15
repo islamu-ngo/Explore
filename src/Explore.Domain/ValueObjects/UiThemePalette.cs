@@ -1,6 +1,6 @@
 // ABOUTME: Bounded theme palette value object covering MudBlazor tokens used by the layouts.
 // ABOUTME: Mapped as explicit owned columns for light and dark palettes instead of JSON blobs.
-// ABOUTME: Domain-level hex normalization ensures consistent storage (#RRGGBB uppercase).
+// ABOUTME: Normalizes opaque hex colors while preserving supported translucent rgba values.
 
 namespace Explore.Domain.ValueObjects;
 
@@ -51,8 +51,16 @@ public class UiThemePalette
         };
     }
 
+    private static string NormalizeFlexibleColor(string value)
+    {
+        var trimmed = value.Trim();
+        return trimmed.StartsWith("rgba(", StringComparison.OrdinalIgnoreCase)
+            ? trimmed.ToLowerInvariant()
+            : NormalizeHex(value);
+    }
+
     /// <summary>
-    /// Returns a normalized palette with all hex values in #RRGGBB format.
+    /// Returns a normalized palette with opaque colors in #RRGGBB format and supported rgba values preserved.
     /// </summary>
     public UiThemePalette Normalized() => new()
     {
@@ -62,9 +70,9 @@ public class UiThemePalette
         SecondaryContrastText = NormalizeHex(SecondaryContrastText),
         Background = NormalizeHex(Background),
         Surface = NormalizeHex(Surface),
-        AppbarBackground = NormalizeHex(AppbarBackground),
+        AppbarBackground = NormalizeFlexibleColor(AppbarBackground),
         AppbarText = NormalizeHex(AppbarText),
-        DrawerBackground = NormalizeHex(DrawerBackground),
+        DrawerBackground = NormalizeFlexibleColor(DrawerBackground),
         DrawerText = NormalizeHex(DrawerText),
         DrawerIcon = NormalizeHex(DrawerIcon),
         TextPrimary = NormalizeHex(TextPrimary),
@@ -74,6 +82,6 @@ public class UiThemePalette
         Warning = NormalizeHex(Warning),
         Error = NormalizeHex(Error),
         LinesDefault = NormalizeHex(LinesDefault),
-        Divider = NormalizeHex(Divider)
+        Divider = NormalizeFlexibleColor(Divider)
     };
 }

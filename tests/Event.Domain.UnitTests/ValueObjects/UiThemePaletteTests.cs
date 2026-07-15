@@ -94,6 +94,16 @@ public class UiThemePaletteTests
     }
 
     [Test]
+    public async Task Normalized_Should_Preserve_Rgba_For_Translucent_Appbar()
+    {
+        var palette = CreateBlackPalette();
+
+        var normalized = palette.Normalized();
+
+        await Assert.That(normalized.AppbarBackground).IsEqualTo("rgba(18,18,18,0.92)");
+    }
+
+    [Test]
     public async Task UiThemePreset_Should_Have_Stable_Key_And_Null_TenantId_For_System_Presets()
     {
         var preset = CreateSystemPreset();
