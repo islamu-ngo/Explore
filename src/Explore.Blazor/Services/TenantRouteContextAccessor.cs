@@ -7,6 +7,8 @@ namespace Explore.Blazor.Services;
 
 public class TenantRouteContextAccessor : ITenantRouteContextAccessor
 {
+    private static readonly AsyncLocal<TenantSlugHolder?> CurrentTenantSlug = new();
+
     public const string TenantSlugItemKey = "__tenant_slug";
 
     private readonly IHttpContextAccessor _httpContextAccessor;
@@ -27,7 +29,7 @@ public class TenantRouteContextAccessor : ITenantRouteContextAccessor
                 return tenantSlug;
             }
 
-            return _tenantSlug;
+            return CurrentTenantSlug.Value?.Value ?? _tenantSlug;
         }
     }
 
@@ -50,8 +52,37 @@ public class TenantRouteContextAccessor : ITenantRouteContextAccessor
     public void Clear()
     {
         _tenantSlug = null;
+        CurrentTenantSlug.Value = null;
 
         var httpContext = _httpContextAccessor.HttpContext;
         httpContext?.Items.Remove(TenantSlugItemKey);
+    }
+
+    public IDisposable BeginActivityScope()
+    {
+        var previous = CurrentTenantSlug.Value;
+        CurrentTenantSlug.Value = new TenantSlugHolder { Value = _tenantSlug };
+        return new ActivityScope(() => CurrentTenantSlug.Value = previous);
+    }
+
+    private sealed class TenantSlugHolder
+    {
+        public string? Value { get; init; }
+    }
+
+    private sealed class ActivityScope(Action onDispose) : IDisposable
+    {
+        private bool _disposed;
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            onDispose();
+        }
     }
 }

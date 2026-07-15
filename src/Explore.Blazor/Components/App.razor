@@ -44,7 +44,7 @@
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<meta http-equiv="Content-Security-Policy" content="@csp">
-	<base href="/" />
+	<base href="@GetBaseHref()" />
 	<link href=@Assets["_content/MudBlazor/MudBlazor.min.css"] rel="stylesheet" />
 	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 	<link href="css/layers.css" rel="stylesheet" />
@@ -154,6 +154,14 @@
     private void LogBoundaryError(Exception exception)
     {
         Logger.LogError(exception, "Global Blazor error boundary caught an unhandled component exception.");
+    }
+
+    private string GetBaseHref()
+    {
+        var pathBase = HttpContextAccessor.HttpContext?.Request.PathBase.Value;
+        return string.IsNullOrWhiteSpace(pathBase)
+            ? "/"
+            : pathBase.TrimEnd('/') + "/";
     }
 
     private bool ShouldUseControlPlaneShell()

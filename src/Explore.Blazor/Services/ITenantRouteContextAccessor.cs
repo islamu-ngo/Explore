@@ -10,4 +10,6 @@ public interface ITenantRouteContextAccessor
     void SetTenantSlug(string slug);
 
     void Clear();
+
+    IDisposable BeginActivityScope();
 }

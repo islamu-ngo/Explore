@@ -24,6 +24,22 @@ public class PathTenantResolverMiddlewareTests
     }
 
     [Test]
+    public async Task BlazorDocument_WithTenantSlugInPath_UsesTenantBaseHref()
+    {
+        using var factory = new BlazorBffWebApplicationFactory();
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add(
+            TestAuthHandler.AuthHeaderName,
+            TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid()));
+
+        var response = await client.GetAsync("/t/acme/admin/tenant/settings");
+        var document = await response.Content.ReadAsStringAsync();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(document).Contains("<base href=\"/t/acme/\"");
+    }
+
+    [Test]
     public async Task Request_WithoutTenantPrefix_PassesThrough()
     {
         using var factory = new BlazorBffWebApplicationFactory();
