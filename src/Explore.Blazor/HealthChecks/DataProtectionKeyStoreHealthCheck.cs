@@ -1,22 +1,42 @@
-// ABOUTME: Readiness health check for the Blazor BFF Data Protection key store.
-// ABOUTME: Verifies the Redis key-ring store is reachable without exposing key material.
+// ABOUTME: Readiness health check for the active Blazor BFF Data Protection key store.
+// ABOUTME: Verifies Redis persistence or the native local fallback without exposing key material.
 
 using Explore.Blazor.Extensions;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using StackExchange.Redis;
 
 namespace Explore.Blazor.HealthChecks;
 
 public sealed class DataProtectionKeyStoreHealthCheck(
-    IConnectionMultiplexer connectionMultiplexer,
+    IEnumerable<IConnectionMultiplexer> connectionMultiplexers,
+    IDataProtectionProvider dataProtectionProvider,
     ILogger<DataProtectionKeyStoreHealthCheck> logger) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
+        var connectionMultiplexer = connectionMultiplexers.FirstOrDefault();
+        var store = connectionMultiplexer is null ? "local" : "redis";
+
         try
         {
+            if (connectionMultiplexer is null)
+            {
+                const string payload = "data-protection-health-check";
+                var protector = dataProtectionProvider.CreateProtector(nameof(DataProtectionKeyStoreHealthCheck));
+                var roundTrip = protector.Unprotect(protector.Protect(payload));
+
+                return string.Equals(payload, roundTrip, StringComparison.Ordinal)
+                    ? HealthCheckResult.Healthy(
+                        "Local Data Protection key store is usable.",
+                        new Dictionary<string, object> { ["store"] = store })
+                    : HealthCheckResult.Unhealthy(
+                        "Local Data Protection key store round-trip failed.",
+                        data: new Dictionary<string, object> { ["store"] = store });
+            }
+
             var database = connectionMultiplexer.GetDatabase();
             var latency = await database.PingAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
             var keyRingPresent = await database
@@ -30,7 +50,7 @@ public sealed class DataProtectionKeyStoreHealthCheck(
                 {
                     ["keyRingPresent"] = keyRingPresent,
                     ["latencyMilliseconds"] = latency.TotalMilliseconds,
-                    ["store"] = "redis"
+                    ["store"] = store
                 });
         }
         catch (Exception ex)
@@ -39,12 +59,14 @@ public sealed class DataProtectionKeyStoreHealthCheck(
             logger.LogWarning("Data Protection key store health check failed with {FailureType}.", failureType);
 
             return HealthCheckResult.Unhealthy(
-                "Data Protection key store is unreachable.",
+                store == "redis"
+                    ? "Data Protection key store is unreachable."
+                    : "Local Data Protection key store is unusable.",
                 ex,
                 new Dictionary<string, object>
                 {
                     ["failureType"] = failureType,
-                    ["store"] = "redis"
+                    ["store"] = store
                 });
         }
     }

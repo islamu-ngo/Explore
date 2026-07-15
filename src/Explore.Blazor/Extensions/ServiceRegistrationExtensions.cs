@@ -121,12 +121,6 @@ public static class ServiceRegistrationExtensions
     private static void RegisterBffDataProtection(IServiceCollection services, IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString("cache");
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            throw new InvalidOperationException(
-                "ConnectionStrings:cache is required for the Blazor Data Protection key store.");
-        }
-
         services.AddBffDataProtection(connectionString);
     }
 }

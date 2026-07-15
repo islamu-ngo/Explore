@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Extensions;
 using Explore.Blazor.HealthChecks;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -25,7 +26,8 @@ public sealed class DataProtectionKeyStoreHealthCheckTests
         connectionMultiplexer.GetDatabase(Arg.Any<int>(), Arg.Any<object?>()).Returns(database);
 
         var healthCheck = new DataProtectionKeyStoreHealthCheck(
-            connectionMultiplexer,
+            [connectionMultiplexer],
+            new EphemeralDataProtectionProvider(),
             NullLogger<DataProtectionKeyStoreHealthCheck>.Instance);
 
         var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
@@ -45,7 +47,8 @@ public sealed class DataProtectionKeyStoreHealthCheckTests
             .GetDatabase(Arg.Any<int>(), Arg.Any<object?>())
             .Returns(_ => throw new InvalidOperationException("Redis unavailable"));
         var healthCheck = new DataProtectionKeyStoreHealthCheck(
-            connectionMultiplexer,
+            [connectionMultiplexer],
+            new EphemeralDataProtectionProvider(),
             NullLogger<DataProtectionKeyStoreHealthCheck>.Instance);
 
         var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
@@ -53,6 +56,23 @@ public sealed class DataProtectionKeyStoreHealthCheckTests
         await Assert.That(result.Status).IsEqualTo(HealthStatus.Unhealthy);
         await Assert.That(result.Description).IsEqualTo("Data Protection key store is unreachable.");
         await Assert.That(result.Data["failureType"]).IsEqualTo(nameof(InvalidOperationException));
+        await Assert.That(result.Data.Keys).DoesNotContain("connectionString");
+    }
+
+    [Test]
+    public async Task CheckHealthAsync_WhenRedisIsNotConfigured_ValidatesLocalDataProtection()
+    {
+        var healthCheck = new DataProtectionKeyStoreHealthCheck(
+            [],
+            new EphemeralDataProtectionProvider(),
+            NullLogger<DataProtectionKeyStoreHealthCheck>.Instance);
+
+        var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Healthy);
+        await Assert.That(result.Description).IsEqualTo("Local Data Protection key store is usable.");
+        await Assert.That(result.Data["store"]).IsEqualTo("local");
+        await Assert.That(result.Data.Keys).DoesNotContain("xml");
         await Assert.That(result.Data.Keys).DoesNotContain("connectionString");
     }
 }

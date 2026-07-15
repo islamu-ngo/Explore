@@ -7,8 +7,10 @@ using Explore.Blazor.Extensions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.Redis;
 
 namespace Explore.Blazor.IntegrationTests.Endpoints;
@@ -16,6 +18,22 @@ namespace Explore.Blazor.IntegrationTests.Endpoints;
 public sealed class BffDataProtectionCookieRestartTests
 {
     private const string CookieName = ".AspNetCore.RestartProof";
+
+    [Test]
+    public async Task DataProtectionRoundTripWorksWhenRedisIsNotConfigured()
+    {
+        var services = new ServiceCollection();
+        services.AddBffDataProtection(string.Empty);
+        await using var provider = services.BuildServiceProvider();
+        var protector = provider
+            .GetRequiredService<IDataProtectionProvider>()
+            .CreateProtector(nameof(DataProtectionRoundTripWorksWhenRedisIsNotConfigured));
+
+        var protectedPayload = protector.Protect("local-lite");
+        var payload = protector.Unprotect(protectedPayload);
+
+        await Assert.That(payload).IsEqualTo("local-lite");
+    }
 
     [Test]
     public async Task CookieTicketSurvivesFreshBffHostWhenKeyRingPersists()

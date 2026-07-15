@@ -1,5 +1,5 @@
-// ABOUTME: Persists the Blazor BFF Data Protection key ring in its Redis resource.
-// ABOUTME: Keeps cookie cryptography durable without coupling the BFF to API persistence.
+// ABOUTME: Registers the Blazor BFF Data Protection key ring with optional Redis persistence.
+// ABOUTME: Uses the native local key store when Redis is absent in lightweight deployments.
 
 using Microsoft.AspNetCore.DataProtection;
 using StackExchange.Redis;
@@ -13,20 +13,24 @@ public static class BffDataProtectionExtensions
 
     public static IServiceCollection AddBffDataProtection(
         this IServiceCollection services,
-        string redisConnectionString)
+        string? redisConnectionString)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(redisConnectionString);
+        var dataProtection = services
+            .AddDataProtection()
+            .SetApplicationName(ApplicationName);
+
+        if (string.IsNullOrWhiteSpace(redisConnectionString))
+        {
+            return services;
+        }
 
         var connection = new Lazy<IConnectionMultiplexer>(
             () => ConnectionMultiplexer.Connect(redisConnectionString));
         services.AddSingleton(_ => connection.Value);
 
-        services
-            .AddDataProtection()
-            .SetApplicationName(ApplicationName)
-            .PersistKeysToStackExchangeRedis(
-                () => connection.Value.GetDatabase(),
-                KeyRingName);
+        dataProtection.PersistKeysToStackExchangeRedis(
+            () => connection.Value.GetDatabase(),
+            KeyRingName);
 
         return services;
     }
