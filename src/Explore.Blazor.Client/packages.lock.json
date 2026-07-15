@@ -71,12 +71,6 @@
           "Microsoft.AspNetCore.Components.Web": "10.0.7"
         }
       },
-      "Microsoft.Extensions.ApiDescription.Client": {
-        "type": "Direct",
-        "requested": "[10.0.7, )",
-        "resolved": "10.0.7",
-        "contentHash": "s87TklIpCWGRe/UsDlgndEyyMfSlebU5ERt9gzcfztCdBZQ0JzGFUiDVtFpyzp4SagPZmJqBCBtt1pgHNQkCZQ=="
-      },
       "Microsoft.Extensions.Http": {
         "type": "Direct",
         "requested": "[10.0.7, )",

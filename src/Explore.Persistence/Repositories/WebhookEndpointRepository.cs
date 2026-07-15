@@ -35,6 +35,7 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
             }
 
             subscription.TenantId = endpoint.TenantId;
+            subscription.InstanceId = endpoint.InstanceId;
             subscription.EndpointId = endpoint.Id;
         }
 
@@ -46,6 +47,70 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         return endpoint;
+    }
+
+    public async Task<WebhookEndpoint?> GetByIdForOwnerOperationAsync(
+        Guid endpointId,
+        bool forUpdate,
+        CancellationToken cancellationToken)
+    {
+        IQueryable<WebhookEndpoint> query = _dbContext.WebhookEndpoints
+            .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookOwnerOperation)
+            .Include(endpoint => endpoint.Consumer)
+            .ThenInclude(consumer => consumer!.ProviderBindings)
+            .Include(endpoint => endpoint.Subscriptions)
+            .ThenInclude(subscription => subscription.EventType);
+
+        if (!forUpdate)
+        {
+            query = query.AsNoTracking();
+        }
+
+        return await query.FirstOrDefaultAsync(endpoint => endpoint.Id == endpointId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<WebhookEndpoint>> ListByOwnerAsync(
+        WebhookOwnershipScope ownership,
+        Guid? consumerId,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var query = ApplyOwnerPredicate(
+                _dbContext.WebhookEndpoints
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookOwnerOperation),
+                ownership)
+            .AsNoTracking()
+            .Include(endpoint => endpoint.Consumer)
+            .Include(endpoint => endpoint.Subscriptions)
+            .ThenInclude(subscription => subscription.EventType)
+            .Where(endpoint => endpoint.StatusId != (int)WebhookEndpointStatus.Archived);
+
+        if (consumerId.HasValue)
+        {
+            query = query.Where(endpoint => endpoint.ConsumerId == consumerId.Value);
+        }
+
+        return await query
+            .OrderBy(endpoint => endpoint.Consumer != null ? endpoint.Consumer.Name : string.Empty)
+            .ThenBy(endpoint => endpoint.CreatedAt)
+            .ThenBy(endpoint => endpoint.Id)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<WebhookEndpoint?> GetByConsumerAndUrlForOwnerOperationAsync(
+        Guid consumerId,
+        string url,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.WebhookEndpoints
+            .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookOwnerOperation)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(endpoint =>
+                endpoint.ConsumerId == consumerId &&
+                endpoint.Url == url &&
+                endpoint.StatusId != (int)WebhookEndpointStatus.Archived,
+                cancellationToken);
     }
 
     public async Task<IReadOnlyList<WebhookEndpoint>> ListByTenantAsync(
@@ -134,6 +199,7 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
             }
 
             subscription.TenantId = endpoint.TenantId;
+            subscription.InstanceId = endpoint.InstanceId;
             subscription.EndpointId = endpoint.Id;
         }
 
@@ -158,14 +224,15 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
     }
 
     public async Task ArchiveAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid endpointId,
         DateTime archivedAt,
         CancellationToken cancellationToken)
     {
         await _dbContext.WebhookEndpoints
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
-            .Where(e => e.TenantId == tenantId && e.Id == endpointId)
+            .Where(e => e.Id == endpointId &&
+                (e.TenantId == tenantId || e.TenantId == null && e.InstanceId != null))
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(e => e.StatusId, (int)WebhookEndpointStatus.Archived)
                 .SetProperty(e => e.DeliveryStateVersion, e => e.DeliveryStateVersion + 1)
@@ -203,7 +270,7 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
     }
 
     public async Task<IReadOnlyList<WebhookEndpoint>> GetActiveSubscribedEndpointsByConsumerAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid consumerId,
         string eventTypeName,
         CancellationToken cancellationToken)
@@ -234,7 +301,7 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
     }
 
     public Task<bool> HasActiveSubscribedEndpointByConsumerAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid consumerId,
         CancellationToken cancellationToken)
     {
@@ -256,21 +323,21 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
     }
 
     public async Task<IReadOnlyList<WebhookLocalTargetSnapshot>> GetEligiblePendingTargetsForUpdateAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid endpointId,
         CancellationToken cancellationToken)
     {
         return await _dbContext.WebhookLocalTargetSnapshots
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
             .Where(target =>
-                target.TenantId == tenantId &&
+                (!tenantId.HasValue || target.TenantId == tenantId.Value) &&
                 target.WebhookEndpointId == endpointId &&
                 target.DeliveryStatusId == (int)WebhookLocalDeliveryStatus.Pending &&
                 target.ProcessingLeaseToken == null &&
                 target.ProcessingLeaseExpiresAtUtc == null &&
                 target.DeliveryFence == 0 &&
                 !_dbContext.WebhookDeliveryAttempts.Any(attempt =>
-                    attempt.TenantId == tenantId &&
+                    (!tenantId.HasValue || attempt.TenantId == tenantId.Value) &&
                     attempt.MessageId == target.WebhookMessageId &&
                     attempt.EndpointId == endpointId))
             .OrderBy(target => target.CapturedAtUtc)
@@ -278,20 +345,30 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task DisableAsync(
-        Guid tenantId,
+    public async Task<bool> TryPauseAsync(
+        Guid? tenantId,
         Guid endpointId,
-        DateTime disabledAt,
+        long expectedDeliveryStateVersion,
+        DateTime pausedAt,
+        Guid actorUserId,
         CancellationToken cancellationToken)
     {
-        await _dbContext.WebhookEndpoints
+        var updated = await _dbContext.WebhookEndpoints
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
-            .Where(e => e.TenantId == tenantId && e.Id == endpointId)
+            .Where(e => e.TenantId == tenantId
+                && e.Id == endpointId
+                && e.DeliveryStateVersion == expectedDeliveryStateVersion
+                && e.Consumer != null
+                && (e.Consumer.ProviderModeId == (int)WebhookProviderMode.Local
+                    || e.Consumer.ProviderModeId == (int)WebhookProviderMode.Composite)
+                && e.StatusId == (int)WebhookEndpointStatus.Active)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(e => e.StatusId, (int)WebhookEndpointStatus.Disabled)
-                .SetProperty(e => e.LastFailureAt, disabledAt)
                 .SetProperty(e => e.DeliveryStateVersion, e => e.DeliveryStateVersion + 1)
-                .SetProperty(e => e.UpdatedAt, disabledAt), cancellationToken);
+                .SetProperty(e => e.UpdatedAt, pausedAt)
+                .SetProperty(e => e.UpdatedBy, actorUserId), cancellationToken);
+
+        return updated == 1;
     }
 
     public async Task MarkSuccessAsync(
@@ -302,7 +379,8 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
     {
         await _dbContext.WebhookEndpoints
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
-            .Where(e => e.TenantId == tenantId && e.Id == endpointId)
+            .Where(e => e.Id == endpointId &&
+                (e.TenantId == tenantId || e.TenantId == null && e.InstanceId != null))
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(e => e.LastSuccessAt, succeededAt)
                 .SetProperty(
@@ -327,10 +405,10 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
         ArgumentOutOfRangeException.ThrowIfLessThan(autoPauseThreshold, 1);
         var normalizedFailureCategory = Truncate(failureCategory, 100);
 
-        await _dbContext.WebhookEndpoints
+        var updated = await _dbContext.WebhookEndpoints
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
-            .Where(e => e.TenantId == tenantId
-                && e.Id == endpointId
+            .Where(e => e.Id == endpointId
+                && (e.TenantId == tenantId || e.TenantId == null && e.InstanceId != null)
                 && e.StatusId == (int)WebhookEndpointStatus.Active)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(e => e.LastFailureAt, failedAt)
@@ -361,18 +439,21 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
         var state = await _dbContext.WebhookEndpoints
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
             .AsNoTracking()
-            .Where(e => e.TenantId == tenantId && e.Id == endpointId)
+            .Where(e => e.Id == endpointId &&
+                (e.TenantId == tenantId || e.TenantId == null && e.InstanceId != null))
             .Select(e => new WebhookEndpointFailureState(
                 e.ConsecutiveFailureCount,
-                e.StatusId == (int)WebhookEndpointStatus.AutoPaused))
+                e.StatusId == (int)WebhookEndpointStatus.AutoPaused,
+                updated == 1 && e.StatusId == (int)WebhookEndpointStatus.AutoPaused))
             .SingleOrDefaultAsync(cancellationToken);
 
         return state ?? new WebhookEndpointFailureState(0, false);
     }
 
     public async Task<bool> TryResumeAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid endpointId,
+        long expectedDeliveryStateVersion,
         DateTime resumedAt,
         Guid actorUserId,
         CancellationToken cancellationToken)
@@ -381,7 +462,12 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
             .Where(e => e.TenantId == tenantId
                 && e.Id == endpointId
-                && e.StatusId == (int)WebhookEndpointStatus.AutoPaused)
+                && e.DeliveryStateVersion == expectedDeliveryStateVersion
+                && e.Consumer != null
+                && (e.Consumer.ProviderModeId == (int)WebhookProviderMode.Local
+                    || e.Consumer.ProviderModeId == (int)WebhookProviderMode.Composite)
+                && (e.StatusId == (int)WebhookEndpointStatus.AutoPaused
+                    || e.StatusId == (int)WebhookEndpointStatus.Disabled))
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(e => e.StatusId, (int)WebhookEndpointStatus.Active)
                 .SetProperty(e => e.ConsecutiveFailureCount, 0)
@@ -397,6 +483,37 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
 
         return updated == 1;
     }
+
+    private static IQueryable<WebhookEndpoint> ApplyOwnerPredicate(
+        IQueryable<WebhookEndpoint> query,
+        WebhookOwnershipScope ownership) => ownership.Kind switch
+        {
+            WebhookConsumerKind.Instance => query.Where(endpoint =>
+                endpoint.InstanceId == ownership.InstanceId &&
+                endpoint.TenantId == null &&
+                endpoint.Consumer != null &&
+                endpoint.Consumer.ConsumerKindId == (int)WebhookConsumerKind.Instance),
+            WebhookConsumerKind.Tenant => query.Where(endpoint =>
+                endpoint.TenantId == ownership.TenantId &&
+                endpoint.Consumer != null &&
+                endpoint.Consumer.ConsumerKindId == (int)WebhookConsumerKind.Tenant),
+            WebhookConsumerKind.Organization => query.Where(endpoint =>
+                endpoint.TenantId == ownership.TenantId &&
+                endpoint.Consumer != null &&
+                endpoint.Consumer.ConsumerKindId == (int)WebhookConsumerKind.Organization &&
+                endpoint.Consumer.OrganizationId == ownership.OrganizationId),
+            WebhookConsumerKind.Group => query.Where(endpoint =>
+                endpoint.TenantId == ownership.TenantId &&
+                endpoint.Consumer != null &&
+                endpoint.Consumer.ConsumerKindId == (int)WebhookConsumerKind.Group &&
+                endpoint.Consumer.GroupId == ownership.GroupId),
+            WebhookConsumerKind.User => query.Where(endpoint =>
+                endpoint.TenantId == ownership.TenantId &&
+                endpoint.Consumer != null &&
+                endpoint.Consumer.ConsumerKindId == (int)WebhookConsumerKind.User &&
+                endpoint.Consumer.OwnerUserId == ownership.UserId),
+            _ => query.Where(_ => false)
+        };
 
     private static string Truncate(string value, int maxLength) =>
         value.Length <= maxLength ? value : value[..maxLength];

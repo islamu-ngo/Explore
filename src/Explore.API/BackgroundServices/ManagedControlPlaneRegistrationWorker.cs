@@ -1,7 +1,7 @@
 // ABOUTME: Retries the durable managed-registration callback until Event and Control Plane acknowledge the same attempt.
 // ABOUTME: Exits immediately in default standalone mode and never logs tokens or directional credentials.
 
-using Explore.Application.Features.Management.Requests;
+using Explore.Application.Features.Management.Requests.Commands;
 using Explore.Application.Management;
 using MediatR;
 using Microsoft.Extensions.Options;

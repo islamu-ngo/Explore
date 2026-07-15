@@ -200,7 +200,7 @@ public class GroupService : IGroupService
         {
             Id = group.Id.Value,
             FullName = group.FullName ?? string.Empty,
-            CurrentUserRole = group.CurrentUserRole,
+            CurrentUserRoleId = group.CurrentUserRoleId,
             ApprovalStatusFullName = group.ApprovalStatusFullName ?? string.Empty
         };
     }

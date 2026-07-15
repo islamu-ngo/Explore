@@ -446,7 +446,9 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         // Tenant override
         var source = SettingSource.SystemDefault;
         var isTenantLocked = false;
-        if (tenantDict is not null && tenantDict.TryGetValue(key, out var tenantOverride))
+        if (AllowsScope(definition, SettingScope.Tenant)
+            && tenantDict is not null
+            && tenantDict.TryGetValue(key, out var tenantOverride))
         {
             effectiveValue = tenantOverride.Value;
             source = SettingSource.TenantOverride;
@@ -471,14 +473,18 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         }
 
         // Organization override (not locked at instance or tenant)
-        if (orgDict is not null && orgDict.TryGetValue(key, out var orgOverride))
+        if (AllowsScope(definition, SettingScope.Organization)
+            && orgDict is not null
+            && orgDict.TryGetValue(key, out var orgOverride))
         {
             effectiveValue = orgOverride.Value;
             source = SettingSource.OrganizationOverride;
         }
 
         // Group override (not locked at instance or tenant)
-        if (groupDict is not null && groupDict.TryGetValue(key, out var groupOverride))
+        if (AllowsScope(definition, SettingScope.Group)
+            && groupDict is not null
+            && groupDict.TryGetValue(key, out var groupOverride))
         {
             effectiveValue = groupOverride.Value;
             source = SettingSource.GroupOverride;
@@ -507,6 +513,9 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
             AllowedValues = allowedValues
         };
     }
+
+    private static bool AllowsScope(SettingDefinition? definition, SettingScope scope) =>
+        definition is null || scope >= definition.MinScope && scope <= definition.MaxScope;
 
     private async Task<List<SystemSetting>> GetSystemSettingsAsync(CancellationToken ct)
     {

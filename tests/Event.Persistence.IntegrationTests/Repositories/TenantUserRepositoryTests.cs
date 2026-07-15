@@ -30,6 +30,7 @@ public sealed class TenantUserRepositoryTests(PostgreSqlContainerFixture fixture
         context.TenantUsers.Add(NewTenantUser(tenantB.Id, user.Id, TenantUserStatusEnum.Suspended));
         await context.SaveChangesAsync();
 
+        context.ChangeTracker.Clear();
         context.TenantUsers.Add(NewTenantUser(tenantA.Id, user.Id, TenantUserStatusEnum.Active));
 
         await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());

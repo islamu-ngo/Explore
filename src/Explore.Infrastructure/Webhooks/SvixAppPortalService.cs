@@ -75,7 +75,7 @@ public sealed class SvixAppPortalService(
             }
 
             var binding = await bindingRepository.GetVerifiedByConsumerAsync(
-                input.TenantId,
+                consumer.TenantId,
                 input.ConsumerId,
                 WebhookProviderKind.Svix,
                 currentOptions.Svix.Environment,
@@ -90,7 +90,7 @@ public sealed class SvixAppPortalService(
             if (!SvixPortalAuthorityPolicy.AllowsBinding(
                     binding,
                     currentOptions,
-                    input.TenantId,
+                    consumer.TenantId,
                     input.ConsumerId))
             {
                 return WebhookProviderPortalAccessResult.Failure(
@@ -107,7 +107,7 @@ public sealed class SvixAppPortalService(
             }
 
             var app = await svixClient.GetApplicationAsync(providerApplicationId, cancellationToken);
-            if (!SvixWebhookApplicationMapper.IsVerifiedConsumerBinding(app, input.TenantId, consumer, binding))
+            if (!SvixWebhookApplicationMapper.IsVerifiedConsumerBinding(app, consumer, binding))
             {
                 return WebhookProviderPortalAccessResult.Failure(
                     "webhook_provider_binding_mismatched",
@@ -119,7 +119,6 @@ public sealed class SvixAppPortalService(
             var featureFlags = ResolveFeatureFlags(binding);
             var portal = await svixClient.CreateAppPortalAccessAsync(
                 new SvixAppPortalAccessRequest(
-                    input.TenantId,
                     providerApplicationId,
                     input.SessionId.Trim(),
                     readOnly,
@@ -170,9 +169,9 @@ public sealed class SvixAppPortalService(
         WebhookProviderPortalAccessInput input,
         CancellationToken cancellationToken)
     {
-        return await consumerRepository.GetByTenantAndIdAsync(
-            input.TenantId,
+        return await consumerRepository.GetByIdForOwnerOperationAsync(
             input.ConsumerId,
+            forUpdate: false,
             cancellationToken);
     }
 

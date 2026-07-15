@@ -5,15 +5,32 @@
   "properties": {
     "tenantId": {
       "type": "string",
-      "description": "Owning tenant identifier. Used by islamuevent_tenant_admin derived role."
+      "description": "Owning tenant identifier for tenant-bound owners or source-tenant delivery operations."
+    },
+    "instanceId": {
+      "type": "string",
+      "description": "Immutable owning instance identifier for instance-owned webhook configuration."
+    },
+    "ownerKindId": {
+      "type": "integer",
+      "enum": [1, 2, 3, 4, 5],
+      "description": "Canonical owner kind: Tenant, Organization, Group, User, or Instance."
+    },
+    "ownerId": {
+      "type": "string",
+      "description": "Canonical identifier of the typed webhook owner."
     },
     "organizationId": {
       "type": "string",
       "description": "Owning organization identifier. Used by islamuevent_org_admin derived role for organization-owned webhook resources."
     },
-    "allowOrganizationWebhooks": {
-      "type": "boolean",
-      "description": "Whether tenant policy delegates organization-owned webhook management to organization admins."
+    "groupId": {
+      "type": "string",
+      "description": "Owning group identifier for group-owned webhook resources."
+    },
+    "userId": {
+      "type": "string",
+      "description": "Owning user identifier for user-owned webhook resources."
     },
     "consumerId": {
       "type": "string",
@@ -31,6 +48,5 @@
       "type": "string",
       "description": "Optional provider name, such as local or svix."
     }
-  },
-  "required": ["tenantId"]
+  }
 }

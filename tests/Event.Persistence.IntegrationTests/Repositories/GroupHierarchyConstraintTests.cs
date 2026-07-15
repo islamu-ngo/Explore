@@ -3,6 +3,7 @@
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,40 @@ namespace Event.Persistence.IntegrationTests.Repositories;
 [NotInParallel("PersistenceDb")]
 public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
 {
+    [Test]
+    public async Task ActorTypeLookup_ShouldContainEveryDefinedActorType()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var seededIds = await context.Set<ActorType>()
+            .Select(actorType => actorType.Id)
+            .ToArrayAsync();
+
+        var missingIds = Enum.GetValues<ActorTypeEnum>()
+            .Select(actorType => (int)actorType)
+            .Except(seededIds)
+            .ToArray();
+
+        await Assert.That(missingIds).IsEmpty();
+    }
+
+    [Test]
+    public async Task RoleLookup_ShouldContainEveryDefinedRole()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var seededIds = await context.Roles
+            .Select(role => role.Id)
+            .ToArrayAsync();
+
+        var missingIds = Enum.GetValues<RoleEnum>()
+            .Select(role => (int)role)
+            .Except(seededIds)
+            .ToArray();
+
+        await Assert.That(missingIds).IsEmpty();
+    }
+
     [Test]
     public async Task Group_ShouldRejectDualParentReferences()
     {
@@ -220,15 +255,20 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
     public async Task ExecuteWithHierarchyMutationLock_ShouldRunOperationInsideTransaction()
     {
         await fixture.ResetAsync();
-        using var context = fixture.CreateDbContext();
-        var tenant = await SeedTenantAsync(context, "lock");
+        Guid tenantId;
+        await using (var seedContext = fixture.CreateDbContext())
+        {
+            tenantId = (await SeedTenantAsync(seedContext, "lock")).Id;
+        }
+
+        await using var context = CreateRetryingDbContext();
         var repository = new GroupRepository(context);
 
         var createdId = await repository.ExecuteWithHierarchyMutationLock(
-            tenant.Id,
+            tenantId,
             async token =>
             {
-                var group = NewGroup(tenant.Id, "Locked Mutation");
+                var group = NewGroup(tenantId, "Locked Mutation");
                 context.Groups.Add(group);
                 await context.SaveChangesAsync(token);
                 return group.Id;
@@ -237,6 +277,18 @@ public class GroupHierarchyConstraintTests(PostgreSqlContainerFixture fixture)
 
         var exists = await context.Groups.AnyAsync(group => group.Id == createdId);
         await Assert.That(exists).IsTrue();
+    }
+
+    private ExploreDbContext CreateRetryingDbContext()
+    {
+        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseNpgsql(fixture.ConnectionString, npgsql => npgsql.EnableRetryOnFailure())
+            .UseSnakeCaseNamingConvention()
+            .Options;
+
+        var context = new ExploreDbContext(options);
+        context.EnableTenantFilterBypass("Retry-enabled group hierarchy mutation integration test.");
+        return context;
     }
 
     private static async Task<Tenant> SeedTenantAsync(ExploreDbContext context, string slugPrefix)

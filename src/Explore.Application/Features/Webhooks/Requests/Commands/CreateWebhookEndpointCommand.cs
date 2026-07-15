@@ -1,5 +1,5 @@
-// ABOUTME: Authorized command for creating an outgoing webhook endpoint and subscriptions.
-// ABOUTME: Carries endpoint configuration without exposing raw signing secret values.
+// ABOUTME: Authorized command for creating an owner-inherited outgoing endpoint and subscriptions.
+// ABOUTME: Resolves ownership from the persisted consumer without exposing raw signing secret values.
 
 using Explore.Application.Authorization;
 using Explore.Application.Responses;
@@ -8,10 +8,9 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.Create)]
-public sealed class CreateWebhookEndpointCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed class CreateWebhookEndpointCommand
+    : IRequest<BaseCommandResponse<Guid>>, ISecureRequest, IWebhookPersistedOwnerRequest
 {
-    public Guid TenantId { get; init; }
-
     public Guid ConsumerId { get; init; }
 
     public required string Url { get; init; }
@@ -32,7 +31,11 @@ public sealed class CreateWebhookEndpointCommand : IRequest<BaseCommandResponse<
 
     IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
     {
-        ["tenantId"] = TenantId.ToString("D"),
         ["consumerId"] = ConsumerId.ToString("D")
     };
+
+    WebhookOwnedResourceKind IWebhookPersistedOwnerRequest.OwnedResourceKind =>
+        WebhookOwnedResourceKind.Consumer;
+
+    Guid IWebhookPersistedOwnerRequest.OwnedResourceId => ConsumerId;
 }

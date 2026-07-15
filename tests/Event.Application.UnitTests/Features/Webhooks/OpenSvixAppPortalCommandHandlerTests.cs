@@ -2,11 +2,11 @@
 // ABOUTME: Verifies validation and provider-neutral portal service mapping for webhook management.
 
 using Explore.Application.Authorization;
-using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Handlers.Commands;
 using Explore.Application.Features.Webhooks.Requests.Commands;
+using Explore.Domain;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.Webhooks;
@@ -14,8 +14,8 @@ namespace Event.Application.UnitTests.Features.Webhooks;
 public sealed class OpenSvixAppPortalCommandHandlerTests
 {
     private readonly IWebhookProviderPortalService _portalService = Substitute.For<IWebhookProviderPortalService>();
-    private readonly IAuditLogRepository _auditLogRepository = Substitute.For<IAuditLogRepository>();
-    private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
+    private readonly IWebhookAuditEventWriter _auditWriter = Substitute.For<IWebhookAuditEventWriter>();
+    private readonly IWebhookConsumerRepository _consumerRepository = Substitute.For<IWebhookConsumerRepository>();
 
     [Test]
     public async Task Command_RequiresWebhookOpenProviderPortalAuthorization()
@@ -38,6 +38,8 @@ public sealed class OpenSvixAppPortalCommandHandlerTests
         var consumerId = Guid.CreateVersion7();
         var providerBindingId = Guid.CreateVersion7();
         var expiresAt = DateTimeOffset.UtcNow.AddMinutes(15);
+        _consumerRepository.GetByIdForOwnerOperationAsync(consumerId, false, Arg.Any<CancellationToken>())
+            .Returns(CreateConsumer(tenantId, consumerId));
         _portalService.CreateAccessAsync(Arg.Any<WebhookProviderPortalAccessInput>(), Arg.Any<CancellationToken>())
             .Returns(WebhookProviderPortalAccessResult.Success(
                 "https://svix.example/app-portal/session",
@@ -50,7 +52,6 @@ public sealed class OpenSvixAppPortalCommandHandlerTests
         var result = await handler.Handle(
             new OpenSvixAppPortalCommand
             {
-                TenantId = tenantId,
                 ConsumerId = consumerId,
                 SessionId = "session-1",
                 ExpiresInSeconds = 900
@@ -64,16 +65,18 @@ public sealed class OpenSvixAppPortalCommandHandlerTests
         await Assert.That(result.Id.ExpiresAt).IsEqualTo(expiresAt);
         await _portalService.Received(1).CreateAccessAsync(
             Arg.Is<WebhookProviderPortalAccessInput>(input =>
-                input.TenantId == tenantId &&
                 input.ConsumerId == consumerId &&
                 input.SessionId == "session-1" &&
                 input.ExpiresIn == TimeSpan.FromSeconds(900)),
             Arg.Any<CancellationToken>());
-        await _auditLogRepository.Received(1).Create(
-            Arg.Is<Explore.Domain.AuditLog>(log =>
-                log.TenantId == tenantId &&
-                log.EntityId == consumerId.ToString("D") &&
-                log.NewValues.Contains(providerBindingId.ToString("D"), StringComparison.OrdinalIgnoreCase)));
+        await _auditWriter.Received(1).AppendAsync(
+            Arg.Is<WebhookAuditWriteRequest>(audit =>
+                audit.TenantId == tenantId &&
+                audit.TargetId == consumerId &&
+                audit.Action == WebhookAuditAction.PortalAccessIssued &&
+                audit.SafeAfterJson != null &&
+                audit.SafeAfterJson.Contains(providerBindingId.ToString("D"), StringComparison.OrdinalIgnoreCase)),
+            CancellationToken.None);
     }
 
     [Test]
@@ -84,7 +87,6 @@ public sealed class OpenSvixAppPortalCommandHandlerTests
         var result = await handler.Handle(
             new OpenSvixAppPortalCommand
             {
-                TenantId = Guid.CreateVersion7(),
                 SessionId = "session-1",
                 ExpiresInSeconds = 0
             },
@@ -105,13 +107,16 @@ public sealed class OpenSvixAppPortalCommandHandlerTests
                 "svix_provider_unavailable",
                 isRetryable: true,
                 "SvixApi:503"));
+        var consumerId = Guid.CreateVersion7();
+        var tenantId = Guid.CreateVersion7();
+        _consumerRepository.GetByIdForOwnerOperationAsync(consumerId, false, Arg.Any<CancellationToken>())
+            .Returns(CreateConsumer(tenantId, consumerId));
         var handler = CreateHandler();
 
         var result = await handler.Handle(
             new OpenSvixAppPortalCommand
             {
-                TenantId = Guid.CreateVersion7(),
-                ConsumerId = Guid.CreateVersion7(),
+                ConsumerId = consumerId,
                 SessionId = "session-1"
             },
             CancellationToken.None);
@@ -120,13 +125,28 @@ public sealed class OpenSvixAppPortalCommandHandlerTests
         await Assert.That(result.FailureCode).IsEqualTo("svix_provider_unavailable");
         await Assert.That(result.IsRetryable).IsTrue();
         await Assert.That(result.Errors).Contains("SvixApi:503");
-        await _auditLogRepository.Received(1).Create(
-            Arg.Is<Explore.Domain.AuditLog>(log =>
-                log.NewValues != null &&
-                log.NewValues.Contains("svix_provider_unavailable", StringComparison.Ordinal) &&
-                !log.NewValues.Contains("SvixApi:503", StringComparison.Ordinal)));
+        await _auditWriter.Received(1).AppendAsync(
+            Arg.Is<WebhookAuditWriteRequest>(audit =>
+                audit.Action == WebhookAuditAction.PortalAccessRejected &&
+                audit.SafeAfterJson != null &&
+                audit.SafeAfterJson.Contains("svix_provider_unavailable", StringComparison.Ordinal) &&
+                !audit.SafeAfterJson.Contains("SvixApi:503", StringComparison.Ordinal)),
+            CancellationToken.None);
     }
 
     private OpenSvixAppPortalCommandHandler CreateHandler() =>
-        new(_portalService, _auditLogRepository, _currentUserService);
+        new(_portalService, _auditWriter, _consumerRepository);
+
+    private static WebhookConsumer CreateConsumer(Guid tenantId, Guid consumerId) =>
+        new()
+        {
+            Id = consumerId,
+            TenantId = tenantId,
+            ConsumerKind = WebhookConsumerKind.Tenant,
+            Name = "Portal consumer",
+            Status = WebhookConsumerStatus.Active,
+            ProviderMode = WebhookProviderMode.Svix,
+            ConfigurationVersion = 1,
+            CreatedAt = DateTime.UtcNow
+        };
 }

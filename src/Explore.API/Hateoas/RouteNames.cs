@@ -332,12 +332,23 @@ public static class RouteNames
     public const string RotateWebhookEndpointSecret = "RotateWebhookEndpointSecret";
     public const string TestWebhookEndpoint = "TestWebhookEndpoint";
     public const string ResumeWebhookEndpoint = "ResumeWebhookEndpoint";
+    public const string PauseWebhookEndpoint = "PauseWebhookEndpoint";
     public const string GetWebhookMessages = "GetWebhookMessages";
     public const string GetWebhookMessageById = "GetWebhookMessageById";
+    public const string GetWebhookMessagePayload = "GetWebhookMessagePayload";
     public const string GetWebhookDeliveryAttempts = "GetWebhookDeliveryAttempts";
     public const string GetWebhookDeliveryAttemptById = "GetWebhookDeliveryAttemptById";
     public const string RetryWebhookDeliveryAttempt = "RetryWebhookDeliveryAttempt";
     public const string RedriveIncomingWebhook = "RedriveIncomingWebhook";
+    public const string GetWebhookProviderPublications = "GetWebhookProviderPublications";
+    public const string GetWebhookProviderPublicationById = "GetWebhookProviderPublicationById";
+    public const string ReconcileWebhookProviderPublication = "ReconcileWebhookProviderPublication";
+    public const string AbandonWebhookProviderPublication = "AbandonWebhookProviderPublication";
+    public const string GetWebhookBulkReplays = "GetWebhookBulkReplays";
+    public const string GetWebhookBulkReplayById = "GetWebhookBulkReplayById";
+    public const string PreviewWebhookBulkReplay = "PreviewWebhookBulkReplay";
+    public const string ScheduleWebhookBulkReplay = "ScheduleWebhookBulkReplay";
+    public const string CancelWebhookBulkReplay = "CancelWebhookBulkReplay";
     public const string OpenSvixAppPortal = "OpenSvixAppPortal";
 
     #endregion

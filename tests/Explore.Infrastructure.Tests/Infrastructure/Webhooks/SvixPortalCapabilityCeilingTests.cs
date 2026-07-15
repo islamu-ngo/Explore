@@ -33,7 +33,7 @@ public sealed class SvixPortalCapabilityCeilingTests
             WebhookProviderCapability.EndpointManagement);
 
         var result = await fixture.Service.CreateAccessAsync(
-            new WebhookProviderPortalAccessInput(TenantId, ConsumerId, "session-1", null),
+            new WebhookProviderPortalAccessInput(ConsumerId, "session-1", null),
             CancellationToken.None);
 
         await Assert.That(authorization.Resource).IsEqualTo(ResourceKinds.Webhook);
@@ -53,7 +53,7 @@ public sealed class SvixPortalCapabilityCeilingTests
             persistBinding: false);
 
         var result = await fixture.Service.CreateAccessAsync(
-            new WebhookProviderPortalAccessInput(TenantId, ConsumerId, "session-1", null),
+            new WebhookProviderPortalAccessInput(ConsumerId, "session-1", null),
             CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();
@@ -70,7 +70,7 @@ public sealed class SvixPortalCapabilityCeilingTests
             WebhookProviderCapability.AppPortal | WebhookProviderCapability.EndpointManagement);
 
         var result = await fixture.Service.CreateAccessAsync(
-            new WebhookProviderPortalAccessInput(TenantId, ConsumerId, "session-1", null),
+            new WebhookProviderPortalAccessInput(ConsumerId, "session-1", null),
             CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();
@@ -87,7 +87,7 @@ public sealed class SvixPortalCapabilityCeilingTests
             WebhookProviderCapability.EndpointManagement);
 
         var result = await fixture.Service.CreateAccessAsync(
-            new WebhookProviderPortalAccessInput(TenantId, ConsumerId, "session-1", null),
+            new WebhookProviderPortalAccessInput(ConsumerId, "session-1", null),
             CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();
@@ -105,7 +105,7 @@ public sealed class SvixPortalCapabilityCeilingTests
             providerVersion: "unknown");
 
         var result = await fixture.Service.CreateAccessAsync(
-            new WebhookProviderPortalAccessInput(TenantId, ConsumerId, "session-1", null),
+            new WebhookProviderPortalAccessInput(ConsumerId, "session-1", null),
             CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();
@@ -123,7 +123,7 @@ public sealed class SvixPortalCapabilityCeilingTests
             capabilityPolicyVersion: "svix-stale-v1");
 
         var result = await fixture.Service.CreateAccessAsync(
-            new WebhookProviderPortalAccessInput(TenantId, ConsumerId, "session-1", null),
+            new WebhookProviderPortalAccessInput(ConsumerId, "session-1", null),
             CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();
@@ -176,7 +176,10 @@ public sealed class SvixPortalCapabilityCeilingTests
             governanceCapabilities);
         binding.VerifyOwnership(TenantId, ConsumerId, "app_capability_ceiling", DateTimeOffset.UtcNow);
 
-        consumerRepository.GetByTenantAndIdAsync(TenantId, ConsumerId, Arg.Any<CancellationToken>())
+        consumerRepository.GetByIdForOwnerOperationAsync(
+                ConsumerId,
+                false,
+                Arg.Any<CancellationToken>())
             .Returns(consumer);
         if (persistBinding)
         {
@@ -196,7 +199,9 @@ public sealed class SvixPortalCapabilityCeilingTests
                 new Dictionary<string, string>
                 {
                     ["islamu.tenant_id"] = TenantId.ToString("D"),
-                    ["islamu.consumer_id"] = ConsumerId.ToString("D")
+                    ["islamu.consumer_id"] = ConsumerId.ToString("D"),
+                    ["islamu.owner_id"] = TenantId.ToString("D"),
+                    ["islamu.owner_kind_id"] = ((int)WebhookConsumerKind.Tenant).ToString()
                 }));
         SvixAppPortalAccessRequest? portalRequest = null;
         svixClient.CreateAppPortalAccessAsync(

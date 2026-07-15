@@ -203,6 +203,7 @@ public sealed class WebhookProviderUnknownReconciliationTests
         private WebhookProviderPublicationClaim ClaimForReconciliation()
         {
             var claimedAt = Time.GetUtcNow().UtcDateTime;
+            var dueAt = Publication.NextActionAt ?? Publication.PreparedAt;
             var leaseToken = Guid.CreateVersion7();
             var leaseExpiresAt = claimedAt.AddMinutes(2);
             Publication.ClaimForAutomaticReconciliation(
@@ -216,7 +217,8 @@ public sealed class WebhookProviderUnknownReconciliationTests
                 leaseToken,
                 Publication.PublicationFence,
                 claimedAt,
-                leaseExpiresAt);
+                leaseExpiresAt,
+                dueAt);
         }
 
         private static WebhookMessage CreateMessage() =>

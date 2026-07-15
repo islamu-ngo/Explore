@@ -40,6 +40,21 @@ public sealed class AspireLocalInfrastructureArchitectureTests
         await Assert.That(compose).Contains("CERBOS_PG_URL:");
     }
 
+    [Test]
+    public async Task MigrationWorker_MustBeRegisteredBeforeOptionalLocalDatabaseWiring()
+    {
+        var appHost = await File.ReadAllTextAsync(Path.Combine(RepoRoot, "src", "Explore.AppHost", "AppHost.cs"));
+
+        var registrationIndex = appHost.IndexOf("var migrations = WithProfileSecretMode(", StringComparison.Ordinal);
+        await Assert.That(registrationIndex).IsGreaterThanOrEqualTo(0);
+
+        var localDatabaseWiringIndex = appHost.IndexOf(
+            "if (database is not null)",
+            registrationIndex,
+            StringComparison.Ordinal);
+        await Assert.That(localDatabaseWiringIndex).IsGreaterThan(registrationIndex);
+    }
+
     private static string ResolveRepoRoot()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

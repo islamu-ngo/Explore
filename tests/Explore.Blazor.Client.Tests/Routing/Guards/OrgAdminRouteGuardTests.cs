@@ -1,5 +1,5 @@
-// ABOUTME: Unit tests for OrgAdminRouteGuard that restricts organization admin routes to users
-// with org-specific organization admin claims for the targeted organization.
+// ABOUTME: Unit tests for the organization settings guard's persisted authority checks.
+// ABOUTME: Verifies targeted organization access through the tenant-scoped BFF authority API.
 
 using Blazouter.Models;
 using Explore.Blazor.Client.Routing.Guards;
@@ -26,7 +26,7 @@ public class OrgAdminRouteGuardTests
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
-        var guard = new OrgAdminRouteGuard(authStateProvider);
+        var guard = CreateGuard(authStateProvider);
         var routeMatch = new RouteMatch { MatchedPath = $"/admin/organization/{TestOrgId}/settings" };
 
         // Act
@@ -48,7 +48,7 @@ public class OrgAdminRouteGuardTests
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
-        var guard = new OrgAdminRouteGuard(authStateProvider);
+        var guard = CreateGuard(authStateProvider);
         var routeMatch = new RouteMatch { MatchedPath = $"/admin/organization/{TestOrgId}/settings" };
 
         // Act
@@ -71,7 +71,7 @@ public class OrgAdminRouteGuardTests
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
-        var guard = new OrgAdminRouteGuard(authStateProvider);
+        var guard = CreateGuard(authStateProvider, OtherOrgId);
         var routeMatch = new RouteMatch { MatchedPath = $"/admin/organization/{TestOrgId}/settings" };
 
         // Act
@@ -94,7 +94,7 @@ public class OrgAdminRouteGuardTests
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
-        var guard = new OrgAdminRouteGuard(authStateProvider);
+        var guard = CreateGuard(authStateProvider, TestOrgId);
         var routeMatch = new RouteMatch { MatchedPath = "/admin/organization/invalid-id/settings" };
 
         // Act
@@ -117,7 +117,7 @@ public class OrgAdminRouteGuardTests
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
-        var guard = new OrgAdminRouteGuard(authStateProvider);
+        var guard = CreateGuard(authStateProvider, TestOrgId);
         var routeMatch = new RouteMatch { MatchedPath = null };
 
         // Act
@@ -144,7 +144,7 @@ public class OrgAdminRouteGuardTests
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
-        var guard = new OrgAdminRouteGuard(authStateProvider);
+        var guard = CreateGuard(authStateProvider);
         var routeMatch = new RouteMatch { MatchedPath = $"/admin/organization/{TestOrgId}/settings" };
 
         // Act
@@ -167,7 +167,7 @@ public class OrgAdminRouteGuardTests
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
-        var guard = new OrgAdminRouteGuard(authStateProvider);
+        var guard = CreateGuard(authStateProvider);
         var routeMatch = new RouteMatch { MatchedPath = $"/admin/organization/{TestOrgId}/settings" };
 
         // Act
@@ -190,7 +190,7 @@ public class OrgAdminRouteGuardTests
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
-        var guard = new OrgAdminRouteGuard(authStateProvider);
+        var guard = CreateGuard(authStateProvider, TestOrgId);
         var routeMatch = new RouteMatch { MatchedPath = $"/admin/organization/{TestOrgId}/settings" };
 
         // Act
@@ -214,7 +214,7 @@ public class OrgAdminRouteGuardTests
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
-        var guard = new OrgAdminRouteGuard(authStateProvider);
+        var guard = CreateGuard(authStateProvider, OtherOrgId, TestOrgId);
         var routeMatch = new RouteMatch { MatchedPath = $"/admin/organization/{TestOrgId}/settings" };
 
         // Act
@@ -238,7 +238,7 @@ public class OrgAdminRouteGuardTests
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
-        var guard = new OrgAdminRouteGuard(authStateProvider);
+        var guard = CreateGuard(authStateProvider, TestOrgId);
         var routeMatch = new RouteMatch { MatchedPath = $"/admin/organization/{uppercaseOrgId}/settings" };
 
         // Act
@@ -256,8 +256,8 @@ public class OrgAdminRouteGuardTests
     public async Task GetRedirectPathAsync_WithMatchedPath_ReturnsLoginUrlWithReturnUrl()
     {
         // Arrange
-        var authStateProvider = Substitute.For<AuthenticationStateProvider>();
-        var guard = new OrgAdminRouteGuard(authStateProvider);
+        var authStateProvider = CreateAnonymousAuthStateProvider();
+        var guard = CreateGuard(authStateProvider);
         var routeMatch = new RouteMatch { MatchedPath = $"/admin/organization/{TestOrgId}/settings" };
 
         // Act
@@ -272,8 +272,8 @@ public class OrgAdminRouteGuardTests
     public async Task GetRedirectPathAsync_WithEmptyMatchedPath_ReturnsLoginWithRootReturnUrl()
     {
         // Arrange
-        var authStateProvider = Substitute.For<AuthenticationStateProvider>();
-        var guard = new OrgAdminRouteGuard(authStateProvider);
+        var authStateProvider = CreateAnonymousAuthStateProvider();
+        var guard = CreateGuard(authStateProvider);
         var routeMatch = new RouteMatch { MatchedPath = "" };
 
         // Act
@@ -287,8 +287,8 @@ public class OrgAdminRouteGuardTests
     public async Task GetRedirectPathAsync_WithNullMatchedPath_ReturnsLoginWithRootReturnUrl()
     {
         // Arrange
-        var authStateProvider = Substitute.For<AuthenticationStateProvider>();
-        var guard = new OrgAdminRouteGuard(authStateProvider);
+        var authStateProvider = CreateAnonymousAuthStateProvider();
+        var guard = CreateGuard(authStateProvider);
         var routeMatch = new RouteMatch { MatchedPath = null };
 
         // Act
@@ -299,4 +299,26 @@ public class OrgAdminRouteGuardTests
     }
 
     #endregion
+
+    private static OrgAdminRouteGuard CreateGuard(
+        AuthenticationStateProvider authStateProvider,
+        params Guid[] adminOrganizationIds)
+    {
+        var userService = Substitute.For<IUserService>();
+        userService.GetAdminAuthorityAsync().Returns(new AdminAuthorityDto
+        {
+            AdminOrganizationIds = adminOrganizationIds
+        });
+
+        return new OrgAdminRouteGuard(authStateProvider, userService);
+    }
+
+    private static AuthenticationStateProvider CreateAnonymousAuthStateProvider()
+    {
+        var principal = new AuthenticationTestBuilder().AsAnonymous().BuildPrincipal();
+        var authStateProvider = Substitute.For<AuthenticationStateProvider>();
+        authStateProvider.GetAuthenticationStateAsync()
+            .Returns(Task.FromResult(new AuthenticationState(principal)));
+        return authStateProvider;
+    }
 }

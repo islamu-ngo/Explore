@@ -1,18 +1,23 @@
-@* ABOUTME: Page wrapper for the Organization Admin Settings sidebar layout. *@
-@* ABOUTME: Routes to /admin/organization/:id/settings with authenticated user authorization. *@
+@* ABOUTME: Page wrapper for organization settings with Blazouter route-parameter resolution. *@
+@* ABOUTME: Renders the typed organization administration layout for the matched organization UUID. *@
 
 @page "/admin/organization/{OrganizationId:guid}/settings"
 @using MudBlazor
+@using Blazouter.Services
 @using Microsoft.AspNetCore.Authorization
 @using Explore.Blazor.Client.Pages.Admin.Organization.Components
 @attribute [Authorize]
 @rendermode InteractiveServer
+@inject RouterStateService RouterState
 
 <PageTitle>Organization Settings</PageTitle>
 
 <OrganizationAdminSettingsLayout OrganizationId="OrganizationId" />
 
 @code {
-    [Parameter]
-    public Guid OrganizationId { get; set; }
+    private Guid OrganizationId => Guid.TryParse(
+        RouterState.GetParam(nameof(OrganizationId)),
+        out var organizationId)
+            ? organizationId
+            : Guid.Empty;
 }

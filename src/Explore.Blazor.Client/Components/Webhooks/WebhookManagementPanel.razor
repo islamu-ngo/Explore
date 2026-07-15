@@ -5,15 +5,19 @@
 @using Explore.Blazor.Client.Contracts.Services.Webhooks
 @using MudBlazor
 @inject IWebhookManagementService WebhookService
+@inject IWebhookOperationsService WebhookOperations
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 
-<div class="settings-section webhook-management">
+<div class="settings-section webhook-management"
+     role="region"
+     aria-label="@($"{Owner.DisplayName} webhook management")"
+     aria-busy="@_isLoading.ToString().ToLowerInvariant()">
     <div class="settings-section-header webhook-management__header">
         <div>
             <MudText Typo="Typo.h5" Style="font-weight: 700;">Webhooks</MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
-                Manage outgoing webhook consumers, endpoints, delivery activity, and provider handoff.
+                Manage @Owner.DisplayName.ToLowerInvariant()-owned outgoing webhook consumers, endpoints, and delivery activity.
             </MudText>
         </div>
         <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Class="webhook-management__header-actions">
@@ -109,7 +113,7 @@
                           Dense="true"
                           Hover="true"
                           Elevation="0"
-                          Breakpoint="Breakpoint.Sm"
+                          Breakpoint="Breakpoint.Xl"
                           Class="webhook-management__table">
                     <HeaderContent>
                         <MudTh>Name</MudTh>
@@ -163,7 +167,7 @@
                           Dense="true"
                           Hover="true"
                           Elevation="0"
-                          Breakpoint="Breakpoint.Sm"
+                          Breakpoint="Breakpoint.Xl"
                           Class="webhook-management__table">
                     <HeaderContent>
                         <MudTh>Destination</MudTh>
@@ -175,67 +179,100 @@
                     </HeaderContent>
                     <RowTemplate>
                         <MudTd DataLabel="Destination">
-                            <div class="webhook-management__url">@context.DestinationHost</div>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Secret v@(context.SecretVersion ?? 0)</MudText>
+                            <div class="webhook-management__cell-content">
+                                <div class="webhook-management__url">@context.DestinationHost</div>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Secret v@(context.SecretVersion ?? 0)</MudText>
+                            </div>
                         </MudTd>
                         <MudTd DataLabel="Consumer">
-                            <MudText Typo="Typo.body2">@context.ConsumerName</MudText>
-                            <MudChip T="string" Size="Size.Small" Color="@ProviderColor(context.ProviderModeName)" Variant="Variant.Text">@ShortText(context.ProviderModeName, 24)</MudChip>
+                            <div class="webhook-management__cell-content">
+                                <MudText Typo="Typo.body2">@context.ConsumerName</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="@ProviderColor(context.ProviderModeName)" Variant="Variant.Text">@ShortText(context.ProviderModeName, 24)</MudChip>
+                            </div>
                         </MudTd>
                         <MudTd DataLabel="Status">
                             <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.StatusName)" Variant="Variant.Outlined">@context.StatusName</MudChip>
                         </MudTd>
                         <MudTd DataLabel="Events">@SubscriptionSummary(context)</MudTd>
                         <MudTd DataLabel="Last Result">
-                            <MudText Typo="Typo.caption">OK @FormatDate(context.LastSuccessAt)</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Fail @FormatDate(context.LastFailureAt)</MudText>
+                            <div class="webhook-management__cell-content">
+                                <MudText Typo="Typo.caption">OK @FormatDate(context.LastSuccessAt)</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Fail @FormatDate(context.LastFailureAt)</MudText>
+                            </div>
                         </MudTd>
                         <MudTd DataLabel="Actions" Class="webhook-management__actions-cell">
-                            <div class="webhook-management__action-group">
-                                @if (HasEndpointLink(context, WebhookClientLinkRelations.Update))
-                                {
-                                    <MudTooltip Text="Update endpoint">
-                                        <AppIconButton Icon="@Icons.Material.Filled.Edit"
-                                                       Color="Color.Primary"
-                                                       Size="Size.Small"
-                                                       OnClick="@(() => OpenUpdateEndpointDialog(context))"
-                                                       Disabled="_isBusy"
-                                                       aria-label="Update endpoint" />
-                                    </MudTooltip>
-                                }
-                                @if (HasEndpointLink(context, WebhookClientLinkRelations.RotateSecret))
-                                {
-                                    <MudTooltip Text="Rotate signing secret">
-                                        <AppIconButton Icon="@Icons.Material.Filled.Key"
-                                                       Color="Color.Warning"
-                                                       Size="Size.Small"
-                                                       OnClick="@(() => OpenRotateDialog(context))"
-                                                       Disabled="_isBusy"
-                                                       aria-label="Rotate signing secret" />
-                                    </MudTooltip>
-                                }
-                                @if (HasEndpointLink(context, WebhookClientLinkRelations.Test))
-                                {
-                                    <MudTooltip Text="Send test webhook">
-                                        <AppIconButton Icon="@Icons.Material.Filled.Bolt"
-                                                       Color="Color.Info"
-                                                       Size="Size.Small"
-                                                       OnClick="@(() => TestEndpointAsync(context))"
-                                                       Disabled="_isBusy"
-                                                       aria-label="Send test webhook" />
-                                    </MudTooltip>
-                                }
-                                @if (HasEndpointLink(context, WebhookClientLinkRelations.Delete))
-                                {
-                                    <MudTooltip Text="Archive endpoint">
-                                        <AppIconButton Icon="@Icons.Material.Filled.Archive"
-                                                       Color="Color.Error"
-                                                       Size="Size.Small"
-                                                       OnClick="@(() => OpenArchiveDialog(context))"
-                                                       Disabled="_isBusy"
-                                                       aria-label="Archive endpoint" />
-                                    </MudTooltip>
-                                }
+                            <div class="webhook-management__action-content">
+                                <div class="webhook-management__action-group">
+                                    @if (HasEndpointLink(context, WebhookClientLinkRelations.Update))
+                                    {
+                                        <MudTooltip Text="Update endpoint">
+                                            <AppIconButton Icon="@Icons.Material.Filled.Edit"
+                                                           Color="Color.Primary"
+                                                           Size="Size.Small"
+                                                           OnClick="@(() => OpenUpdateEndpointDialog(context))"
+                                                           Disabled="_isBusy"
+                                                           aria-label="Update endpoint" />
+                                        </MudTooltip>
+                                    }
+                                    @if (HasEndpointLink(context, WebhookClientLinkRelations.RotateSecret))
+                                    {
+                                        <MudTooltip Text="Rotate signing secret">
+                                            <AppIconButton Icon="@Icons.Material.Filled.Key"
+                                                           Color="Color.Warning"
+                                                           Size="Size.Small"
+                                                           OnClick="@(() => OpenRotateDialog(context))"
+                                                           Disabled="_isBusy"
+                                                           aria-label="Rotate signing secret" />
+                                        </MudTooltip>
+                                    }
+                                    @if (HasEndpointLink(context, WebhookClientLinkRelations.Test))
+                                    {
+                                        <MudTooltip Text="Send test webhook">
+                                            <AppIconButton Icon="@Icons.Material.Filled.Bolt"
+                                                           Color="Color.Info"
+                                                           Size="Size.Small"
+                                                           OnClick="@(() => TestEndpointAsync(context))"
+                                                           Disabled="_isBusy"
+                                                           aria-label="Send test webhook" />
+                                        </MudTooltip>
+                                    }
+                                    @if (HasEndpointLink(context, WebhookClientLinkRelations.Pause))
+                                    {
+                                        <MudTooltip Text="Pause Local delivery">
+                                            <AppIconButton Icon="@Icons.Material.Filled.PauseCircle"
+                                                           Color="Color.Warning"
+                                                           Size="Size.Small"
+                                                           OnClick="@(() => OpenEndpointControlDialog(context, EndpointControlMode.Pause))"
+                                                           Disabled="_isBusy"
+                                                           aria-label="Pause webhook endpoint" />
+                                        </MudTooltip>
+                                    }
+                                    @if (HasEndpointLink(context, WebhookClientLinkRelations.Resume))
+                                    {
+                                        <MudTooltip Text="Resume Local delivery">
+                                            <AppIconButton Icon="@Icons.Material.Filled.PlayCircle"
+                                                           Color="Color.Success"
+                                                           Size="Size.Small"
+                                                           OnClick="@(() => OpenEndpointControlDialog(context, EndpointControlMode.Resume))"
+                                                           Disabled="_isBusy"
+                                                           aria-label="Resume webhook endpoint" />
+                                        </MudTooltip>
+                                    }
+                                    @if (HasEndpointLink(context, WebhookClientLinkRelations.Delete))
+                                    {
+                                        <MudTooltip Text="Archive endpoint">
+                                            <AppIconButton Icon="@Icons.Material.Filled.Archive"
+                                                           Color="Color.Error"
+                                                           Size="Size.Small"
+                                                           OnClick="@(() => OpenArchiveDialog(context))"
+                                                           Disabled="_isBusy"
+                                                           aria-label="Archive endpoint" />
+                                        </MudTooltip>
+                                    }
+                                </div>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="webhook-management__action-availability">
+                                    @EndpointDeliveryControlAvailability(context)
+                                </MudText>
                             </div>
                         </MudTd>
                     </RowTemplate>
@@ -283,7 +320,7 @@
                                   Dense="true"
                                   Hover="true"
                                   Elevation="0"
-                                  Breakpoint="Breakpoint.Sm"
+                                  Breakpoint="Breakpoint.Xl"
                                   Class="webhook-management__table webhook-management__desktop-table">
                             <HeaderContent>
                                 <MudTh>Event</MudTh>
@@ -304,14 +341,28 @@
                                     <div class="webhook-management__action-group">
                                         @if (context.Id is Guid messageId)
                                         {
-                                            <MudTooltip Text="View delivery attempts">
-                                                <AppIconButton Icon="@Icons.Material.Filled.ListAlt"
-                                                               Color="Color.Primary"
-                                                               Size="Size.Small"
-                                                               OnClick="@(() => LoadAttemptsForMessageAsync(messageId, context.EventType))"
-                                                               Disabled="_isBusy"
-                                                               aria-label="View delivery attempts" />
-                                            </MudTooltip>
+                                            @if (HasMessageLink(context, WebhookClientLinkRelations.DeliveryAttempts))
+                                            {
+                                                <MudTooltip Text="View delivery attempts">
+                                                    <AppIconButton Icon="@Icons.Material.Filled.ListAlt"
+                                                                   Color="Color.Primary"
+                                                                   Size="Size.Small"
+                                                                   OnClick="@(() => LoadAttemptsForMessageAsync(messageId, context.EventType))"
+                                                                   Disabled="_isBusy"
+                                                                   aria-label="View delivery attempts" />
+                                                </MudTooltip>
+                                            }
+                                            @if (HasMessageLink(context, WebhookClientLinkRelations.Payload))
+                                            {
+                                                <MudTooltip Text="View retained payload">
+                                                    <AppIconButton Icon="@Icons.Material.Filled.DataObject"
+                                                                   Color="Color.Info"
+                                                                   Size="Size.Small"
+                                                                   OnClick="@(() => ViewPayloadAsync(messageId))"
+                                                                   Disabled="_isBusy"
+                                                                   aria-label="View webhook payload" />
+                                                </MudTooltip>
+                                            }
                                         }
                                     </div>
                                 </MudTd>
@@ -329,7 +380,8 @@
                             {
                                 @foreach (var message in _snapshot.Messages)
                                 {
-                                    <section class="webhook-management__mobile-card">
+                                    <section class="webhook-management__mobile-card"
+                                             aria-label="@($"Webhook message {message.EventType}")">
                                         <div class="webhook-management__mobile-row">
                                             <span class="webhook-management__mobile-label">Event</span>
                                             <span class="webhook-management__mobile-value">
@@ -352,14 +404,28 @@
                                             <span class="webhook-management__mobile-value">
                                                 @if (message.Id is Guid messageId)
                                                 {
-                                                    <MudTooltip Text="View delivery attempts">
-                                                        <AppIconButton Icon="@Icons.Material.Filled.ListAlt"
-                                                                       Color="Color.Primary"
-                                                                       Size="Size.Small"
-                                                                       OnClick="@(() => LoadAttemptsForMessageAsync(messageId, message.EventType))"
-                                                                       Disabled="_isBusy"
-                                                                       aria-label="View delivery attempts" />
-                                                    </MudTooltip>
+                                                    @if (HasMessageLink(message, WebhookClientLinkRelations.DeliveryAttempts))
+                                                    {
+                                                        <MudTooltip Text="View delivery attempts">
+                                                            <AppIconButton Icon="@Icons.Material.Filled.ListAlt"
+                                                                           Color="Color.Primary"
+                                                                           Size="Size.Small"
+                                                                           OnClick="@(() => LoadAttemptsForMessageAsync(messageId, message.EventType))"
+                                                                           Disabled="_isBusy"
+                                                                           aria-label="View delivery attempts" />
+                                                        </MudTooltip>
+                                                    }
+                                                    @if (HasMessageLink(message, WebhookClientLinkRelations.Payload))
+                                                    {
+                                                        <MudTooltip Text="View retained payload">
+                                                            <AppIconButton Icon="@Icons.Material.Filled.DataObject"
+                                                                           Color="Color.Info"
+                                                                           Size="Size.Small"
+                                                                           OnClick="@(() => ViewPayloadAsync(messageId))"
+                                                                           Disabled="_isBusy"
+                                                                           aria-label="View webhook payload" />
+                                                        </MudTooltip>
+                                                    }
                                                 }
                                             </span>
                                         </div>
@@ -383,7 +449,7 @@
                                   Dense="true"
                                   Hover="true"
                                   Elevation="0"
-                                  Breakpoint="Breakpoint.Sm"
+                                  Breakpoint="Breakpoint.Xl"
                                   Class="webhook-management__table webhook-management__desktop-table">
                             <HeaderContent>
                                 <MudTh>Endpoint</MudTh>
@@ -436,7 +502,8 @@
                             {
                                 @foreach (var attempt in _visibleAttempts)
                                 {
-                                    <section class="webhook-management__mobile-card">
+                                    <section class="webhook-management__mobile-card"
+                                             aria-label="@($"Delivery attempt {attempt.AttemptNumber} for {ShortId(attempt.EndpointId)}")">
                                         <div class="webhook-management__mobile-row">
                                             <span class="webhook-management__mobile-label">Endpoint</span>
                                             <span class="webhook-management__mobile-value">
@@ -486,21 +553,38 @@
                     </MudItem>
                 </MudGrid>
             </MudTabPanel>
+
+            @if (_snapshot.CanViewProviderPublications)
+            {
+                <MudTabPanel Text="Provider" Icon="@Icons.Material.Filled.CloudSync">
+                    <WebhookProviderPublicationsPanel />
+                </MudTabPanel>
+            }
+
+            @if (_snapshot.CanUseBulkReplay)
+            {
+                <MudTabPanel Text="Replay" Icon="@Icons.Material.Filled.ReplayCircleFilled">
+                    <WebhookBulkReplayPanel Consumers="_snapshot.Consumers"
+                                            Endpoints="_snapshot.Endpoints"
+                                            EventTypes="_snapshot.EventTypes" />
+                </MudTabPanel>
+            }
         </MudTabs>
     }
 
-    <MudDialog @bind-Visible="_consumerDialogOpen">
+    <MudDialog @bind-Visible="_consumerDialogOpen" Options="DialogOptionsFactory.Medium()">
         <TitleContent>
             <MudText Typo="Typo.h6">Create Webhook Consumer</MudText>
         </TitleContent>
         <DialogContent>
             <MudStack Spacing="3">
                 <AppTextField T="string" @bind-Value="_consumerForm.Name" Label="Name" Required="true" Immediate="true" />
-                <MudSelect T="int" @bind-Value="_consumerForm.ConsumerKindId" Label="Kind" Variant="Variant.Outlined" Dense="true">
-                    <MudSelectItem T="int" Value="1">Tenant</MudSelectItem>
-                    <MudSelectItem T="int" Value="2">Organization</MudSelectItem>
-                    <MudSelectItem T="int" Value="5">System integration</MudSelectItem>
-                </MudSelect>
+                <MudTextField T="string"
+                              Value="@Owner.DisplayName"
+                              Label="Owner scope"
+                              Variant="Variant.Outlined"
+                              Dense="true"
+                              ReadOnly="true" />
                 <MudSelect T="int" @bind-Value="_consumerForm.ProviderModeId" Label="Provider" Variant="Variant.Outlined" Dense="true">
                     <MudSelectItem T="int" Value="1">Disabled</MudSelectItem>
                     <MudSelectItem T="int" Value="2">Local</MudSelectItem>
@@ -512,13 +596,13 @@
         </DialogContent>
         <DialogActions>
             <AppButton Variant="Variant.Text" OnClick="@(() => _consumerDialogOpen = false)" Disabled="_isBusy">Cancel</AppButton>
-            <AppButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateConsumerAsync" Disabled="_isBusy || string.IsNullOrWhiteSpace(_consumerForm.Name)">
+            <AppButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateConsumerAsync" Disabled="_isBusy || !_snapshot.CanCreateConsumer || string.IsNullOrWhiteSpace(_consumerForm.Name)">
                 @(_isBusy ? "Saving..." : "Create")
             </AppButton>
         </DialogActions>
     </MudDialog>
 
-    <MudDialog @bind-Visible="_endpointDialogOpen">
+    <MudDialog @bind-Visible="_endpointDialogOpen" Options="DialogOptionsFactory.Medium()">
         <TitleContent>
             <MudText Typo="Typo.h6">@(_endpointDialogMode == EndpointDialogMode.Create ? "Create Webhook Endpoint" : "Update Webhook Endpoint")</MudText>
         </TitleContent>
@@ -612,7 +696,7 @@
         </DialogActions>
     </MudDialog>
 
-    <MudDialog @bind-Visible="_rotateDialogOpen">
+    <MudDialog @bind-Visible="_rotateDialogOpen" Options="DialogOptionsFactory.Small()">
         <TitleContent>
             <MudText Typo="Typo.h6">Rotate Signing Secret</MudText>
         </TitleContent>
@@ -665,7 +749,7 @@
         </DialogActions>
     </MudDialog>
 
-    <MudDialog @bind-Visible="_archiveDialogOpen">
+    <MudDialog @bind-Visible="_archiveDialogOpen" Options="DialogOptionsFactory.Small()">
         <TitleContent>
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                 <MudIcon Icon="@Icons.Material.Filled.Archive" Color="Color.Error" />
@@ -677,15 +761,81 @@
         </DialogContent>
         <DialogActions>
             <AppButton Variant="Variant.Text" OnClick="@(() => _archiveDialogOpen = false)" Disabled="_isBusy">Cancel</AppButton>
-            <AppButton Color="Color.Error" Variant="Variant.Filled" OnClick="ArchiveEndpointAsync" Disabled="_isBusy || _archiveEndpoint?.Id is null">
+            <AppButton Color="Color.Error" Variant="Variant.Filled" OnClick="ArchiveEndpointAsync" Disabled="_isBusy || !HasCurrentEndpointLink(_archiveEndpoint, WebhookClientLinkRelations.Delete)">
                 @(_isBusy ? "Archiving..." : "Archive")
             </AppButton>
+        </DialogActions>
+    </MudDialog>
+
+    <MudDialog @bind-Visible="_endpointControlDialogOpen" Options="DialogOptionsFactory.Small()">
+        <TitleContent>
+            <MudText Typo="Typo.h6">@EndpointControlTitle</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.body2">@_endpointControlTarget?.DestinationHost</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@EndpointControlExplanation</MudText>
+                <AppTextField T="string"
+                              @bind-Value="_endpointControlReasonCode"
+                              Label="Reason code"
+                              HelperText="Letters, digits, underscore, dash, dot, and colon only."
+                              Required="true"
+                              Immediate="true"
+                              data-testid="webhook-endpoint-control-reason" />
+            </MudStack>
+        </DialogContent>
+        <DialogActions>
+            <AppButton Variant="Variant.Text" OnClick="CloseEndpointControlDialog" Disabled="_isBusy">Cancel</AppButton>
+            <AppButton Color="@EndpointControlColor"
+                       Variant="Variant.Filled"
+                       OnClick="ApplyEndpointControlAsync"
+                       Disabled="@EndpointControlDisabled">
+                @(_isBusy ? "Applying..." : EndpointControlActionLabel)
+            </AppButton>
+        </DialogActions>
+    </MudDialog>
+
+    <MudDialog @bind-Visible="_payloadDialogOpen" Options="DialogOptionsFactory.Medium()">
+        <TitleContent>
+            <MudText Typo="Typo.h6">Webhook Payload</MudText>
+        </TitleContent>
+        <DialogContent>
+            @if (_payload is not null)
+            {
+                <MudStack Spacing="2">
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                        Sensitive payload access is audited. This response is not cached by the API.
+                    </MudAlert>
+                    <div class="webhook-management__payload-metadata">
+                        <MudText Typo="Typo.caption">@_payload.ContentType / @_payload.ContentEncoding</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @(_payload.PayloadByteLength ?? 0) bytes / retained until @FormatDate(_payload.PayloadRetentionUntil)
+                        </MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@_payload.PayloadHash</MudText>
+                    </div>
+                    <MudTabs Elevation="0" Rounded="false" Color="Color.Transparent" SliderColor="Color.Primary">
+                        <MudTabPanel Text="Decoded">
+                            <pre class="webhook-management__payload" data-testid="webhook-payload-decoded">@_payloadDisplayText</pre>
+                        </MudTabPanel>
+                        <MudTabPanel Text="Exact base64">
+                            <pre class="webhook-management__payload" data-testid="webhook-payload-base64">@_payload.PayloadBase64</pre>
+                        </MudTabPanel>
+                    </MudTabs>
+                </MudStack>
+            }
+        </DialogContent>
+        <DialogActions>
+            <AppButton Variant="Variant.Text" OnClick="ClosePayloadDialog">Close</AppButton>
         </DialogActions>
     </MudDialog>
 </div>
 
 @code {
+    [Parameter, EditorRequired]
+    public WebhookOwnerSelection Owner { get; set; } = null!;
+
     private WebhookManagementSnapshot _snapshot = new();
+    private WebhookOwnerSelection? _loadedOwner;
     private IReadOnlyList<HalResourceOfWebhookDeliveryAttemptDto> _visibleAttempts = [];
     private bool _isLoading = true;
     private bool _isBusy;
@@ -708,6 +858,40 @@
 
     private bool _archiveDialogOpen;
     private HalResourceOfWebhookEndpointDto? _archiveEndpoint;
+
+    private bool _endpointControlDialogOpen;
+    private HalResourceOfWebhookEndpointDto? _endpointControlTarget;
+    private EndpointControlMode _endpointControlMode;
+    private string _endpointControlReasonCode = string.Empty;
+
+    private bool _payloadDialogOpen;
+    private WebhookMessagePayloadDto? _payload;
+    private string _payloadDisplayText = string.Empty;
+
+    private string EndpointControlTitle =>
+        _endpointControlMode == EndpointControlMode.Pause ? "Pause Webhook Endpoint" : "Resume Webhook Endpoint";
+
+    private string EndpointControlActionLabel =>
+        _endpointControlMode == EndpointControlMode.Pause ? "Pause" : "Resume";
+
+    private string EndpointControlExplanation =>
+        _endpointControlMode == EndpointControlMode.Pause
+            ? "Pausing stops new Local delivery claims. Existing immutable delivery evidence remains intact."
+            : "Resuming resets the Local delivery circuit and allows eligible work to be claimed again.";
+
+    private Color EndpointControlColor =>
+        _endpointControlMode == EndpointControlMode.Pause ? Color.Warning : Color.Success;
+
+    private bool EndpointControlDisabled =>
+        _isBusy ||
+        _endpointControlTarget?.Id is null ||
+        _endpointControlTarget.DeliveryStateVersion is null or < 0 ||
+        !HasCurrentEndpointLink(
+            _endpointControlTarget,
+            _endpointControlMode == EndpointControlMode.Pause
+                ? WebhookClientLinkRelations.Pause
+                : WebhookClientLinkRelations.Resume) ||
+        string.IsNullOrWhiteSpace(_endpointControlReasonCode);
 
     private IReadOnlyList<WebhookEventTypeDto> SelectableEventTypes =>
         _snapshot.EventTypes
@@ -736,6 +920,9 @@
 
     private bool EndpointSaveDisabled =>
         _isBusy ||
+        (_endpointDialogMode == EndpointDialogMode.Create
+            ? !_snapshot.CanCreateEndpoint
+            : !HasCurrentEndpointLink(_editingEndpointId, WebhookClientLinkRelations.Update)) ||
         _endpointForm.ConsumerId == Guid.Empty ||
         string.IsNullOrWhiteSpace(_endpointForm.Url) ||
         (_endpointDialogMode == EndpointDialogMode.Create && string.IsNullOrWhiteSpace(_endpointForm.SecretRef)) ||
@@ -748,13 +935,21 @@
     private bool RotateSaveDisabled =>
         _isBusy ||
         _rotateEndpoint?.Id is null ||
+        !HasCurrentEndpointLink(_rotateEndpoint, WebhookClientLinkRelations.RotateSecret) ||
         _rotateForm.ExpectedConfigurationVersion <= 0 ||
         _rotateForm.PendingWorkDecisionId <= 0 ||
         string.IsNullOrWhiteSpace(_rotateForm.NewSecretRef) ||
         string.IsNullOrWhiteSpace(_rotateForm.PendingWorkReason);
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
+        ArgumentNullException.ThrowIfNull(Owner);
+        if (Owner == _loadedOwner)
+        {
+            return;
+        }
+
+        _loadedOwner = Owner;
         await LoadSnapshotAsync();
     }
 
@@ -768,7 +963,7 @@
         _isLoading = true;
         _errorMessage = null;
 
-        _snapshot = await WebhookService.GetSnapshotAsync();
+        _snapshot = await WebhookService.GetSnapshotAsync(Owner);
         _visibleAttempts = _snapshot.DeliveryAttempts;
         _attemptScopeLabel = "Delivery attempts";
         _attemptScopeMessageId = null;
@@ -783,17 +978,28 @@
 
     private void OpenCreateConsumerDialog()
     {
+        if (!_snapshot.CanCreateConsumer)
+        {
+            return;
+        }
+
         _consumerForm = new ConsumerForm();
         _consumerDialogOpen = true;
     }
 
     private async Task CreateConsumerAsync()
     {
+        if (!_snapshot.CanCreateConsumer)
+        {
+            return;
+        }
+
         await RunActionAsync(
             () => WebhookService.CreateConsumerAsync(
                 new CreateWebhookConsumerRequestDto
                 {
-                    ConsumerKindId = _consumerForm.ConsumerKindId,
+                    OwnerId = Owner.OwnerId,
+                    ConsumerKindId = Owner.OwnerKindId,
                     Name = _consumerForm.Name.Trim(),
                     ProviderModeId = _consumerForm.ProviderModeId
                 }),
@@ -802,6 +1008,11 @@
 
     private void OpenCreateEndpointDialog()
     {
+        if (!_snapshot.CanCreateEndpoint)
+        {
+            return;
+        }
+
         var defaultConsumer = _snapshot.Consumers.FirstOrDefault(consumer =>
             string.Equals(consumer.ProviderModeName, "Local", StringComparison.Ordinal)) ??
             _snapshot.Consumers.FirstOrDefault(consumer => consumer.Id.HasValue);
@@ -825,6 +1036,11 @@
 
     private void OpenUpdateEndpointDialog(HalResourceOfWebhookEndpointDto endpoint)
     {
+        if (!HasEndpointLink(endpoint, WebhookClientLinkRelations.Update))
+        {
+            return;
+        }
+
         _endpointDialogMode = EndpointDialogMode.Update;
         _editingEndpointId = endpoint.Id;
         _endpointForm = new EndpointForm
@@ -852,6 +1068,11 @@
     {
         if (_endpointDialogMode == EndpointDialogMode.Create)
         {
+            if (!_snapshot.CanCreateEndpoint)
+            {
+                return;
+            }
+
             await RunActionAsync(
                 () => WebhookService.CreateEndpointAsync(
                     new CreateWebhookEndpointRequestDto
@@ -869,7 +1090,8 @@
             return;
         }
 
-        if (_editingEndpointId is not Guid endpointId)
+        if (_editingEndpointId is not Guid endpointId ||
+            !HasCurrentEndpointLink(endpointId, WebhookClientLinkRelations.Update))
         {
             return;
         }
@@ -895,6 +1117,11 @@
 
     private void OpenRotateDialog(HalResourceOfWebhookEndpointDto endpoint)
     {
+        if (!HasEndpointLink(endpoint, WebhookClientLinkRelations.RotateSecret))
+        {
+            return;
+        }
+
         _rotateEndpoint = endpoint;
         _rotateForm = new RotateForm
         {
@@ -906,7 +1133,8 @@
 
     private async Task RotateSecretAsync()
     {
-        if (_rotateEndpoint?.Id is not Guid endpointId)
+        if (_rotateEndpoint?.Id is not Guid endpointId ||
+            !HasCurrentEndpointLink(_rotateEndpoint, WebhookClientLinkRelations.RotateSecret))
         {
             return;
         }
@@ -928,13 +1156,19 @@
 
     private void OpenArchiveDialog(HalResourceOfWebhookEndpointDto endpoint)
     {
+        if (!HasEndpointLink(endpoint, WebhookClientLinkRelations.Delete))
+        {
+            return;
+        }
+
         _archiveEndpoint = endpoint;
         _archiveDialogOpen = true;
     }
 
     private async Task ArchiveEndpointAsync()
     {
-        if (_archiveEndpoint?.Id is not Guid endpointId)
+        if (_archiveEndpoint?.Id is not Guid endpointId ||
+            !HasCurrentEndpointLink(_archiveEndpoint, WebhookClientLinkRelations.Delete))
         {
             return;
         }
@@ -946,20 +1180,107 @@
 
     private async Task TestEndpointAsync(HalResourceOfWebhookEndpointDto endpoint)
     {
-        if (endpoint.Id is Guid endpointId)
+        if (endpoint.Id is Guid endpointId &&
+            HasEndpointLink(endpoint, WebhookClientLinkRelations.Test))
         {
             await RunActionAsync(() => WebhookService.TestEndpointAsync(endpointId));
         }
     }
 
+    private void OpenEndpointControlDialog(
+        HalResourceOfWebhookEndpointDto endpoint,
+        EndpointControlMode mode)
+    {
+        var relation = mode == EndpointControlMode.Pause
+            ? WebhookClientLinkRelations.Pause
+            : WebhookClientLinkRelations.Resume;
+        if (!HasEndpointLink(endpoint, relation))
+        {
+            return;
+        }
+
+        _endpointControlTarget = endpoint;
+        _endpointControlMode = mode;
+        _endpointControlReasonCode = string.Empty;
+        _endpointControlDialogOpen = true;
+    }
+
+    private void CloseEndpointControlDialog() => _endpointControlDialogOpen = false;
+
+    private async Task ApplyEndpointControlAsync()
+    {
+        if (_endpointControlTarget?.Id is not Guid endpointId ||
+            _endpointControlTarget.DeliveryStateVersion is not long deliveryStateVersion ||
+            !HasCurrentEndpointLink(
+                _endpointControlTarget,
+                _endpointControlMode == EndpointControlMode.Pause
+                    ? WebhookClientLinkRelations.Pause
+                    : WebhookClientLinkRelations.Resume))
+        {
+            return;
+        }
+
+        var reasonCode = _endpointControlReasonCode.Trim();
+        await RunActionAsync(
+            _endpointControlMode == EndpointControlMode.Pause
+                ? () => WebhookOperations.PauseEndpointAsync(
+                    endpointId,
+                    new PauseWebhookEndpointRequestDto
+                    {
+                        ExpectedDeliveryStateVersion = deliveryStateVersion,
+                        ReasonCode = reasonCode
+                    })
+                : () => WebhookOperations.ResumeEndpointAsync(
+                    endpointId,
+                    new ResumeWebhookEndpointRequestDto
+                    {
+                        ExpectedDeliveryStateVersion = deliveryStateVersion,
+                        ReasonCode = reasonCode
+                    }),
+            CloseEndpointControlDialog);
+    }
+
+    private async Task ViewPayloadAsync(Guid messageId)
+    {
+        if (!HasCurrentMessageLink(messageId, WebhookClientLinkRelations.Payload))
+        {
+            return;
+        }
+
+        _isBusy = true;
+        var result = await WebhookOperations.GetMessagePayloadAsync(messageId);
+        _isBusy = false;
+        if (!result.Success || result.Payload is null)
+        {
+            Snackbar.Add(result.Message, Severity.Error);
+            return;
+        }
+
+        _payload = result.Payload;
+        _payloadDisplayText = DecodePayload(result.Payload);
+        _payloadDialogOpen = true;
+    }
+
+    private void ClosePayloadDialog()
+    {
+        _payloadDialogOpen = false;
+        _payload = null;
+        _payloadDisplayText = string.Empty;
+    }
+
     private async Task RetryAttemptAsync(Guid attemptId)
     {
+        if (!HasCurrentAttemptLink(attemptId, WebhookClientLinkRelations.Retry))
+        {
+            return;
+        }
+
         await RunActionAsync(() => WebhookService.RetryDeliveryAttemptAsync(attemptId));
     }
 
     private async Task OpenProviderPortalAsync(HalResourceOfWebhookConsumerDto consumer)
     {
-        if (consumer.Id is not Guid consumerId)
+        if (consumer.Id is not Guid consumerId || !HasProviderPortalLink(consumer))
         {
             return;
         }
@@ -979,8 +1300,13 @@
 
     private async Task LoadAttemptsForMessageAsync(Guid messageId, string eventType)
     {
+        if (!HasCurrentMessageLink(messageId, WebhookClientLinkRelations.DeliveryAttempts))
+        {
+            return;
+        }
+
         _isBusy = true;
-        _visibleAttempts = await WebhookService.GetDeliveryAttemptsAsync(messageId: messageId);
+        _visibleAttempts = await WebhookService.GetDeliveryAttemptsAsync(Owner, messageId: messageId);
         _attemptScopeMessageId = messageId;
         _attemptScopeLabel = $"Attempts for {eventType}";
         _isBusy = false;
@@ -989,7 +1315,7 @@
     private async Task ClearAttemptFilterAsync()
     {
         _isBusy = true;
-        _visibleAttempts = await WebhookService.GetDeliveryAttemptsAsync();
+        _visibleAttempts = await WebhookService.GetDeliveryAttemptsAsync(Owner);
         _attemptScopeMessageId = null;
         _attemptScopeLabel = "Delivery attempts";
         _isBusy = false;
@@ -1091,6 +1417,81 @@
     private static bool HasAttemptLink(HalResourceOfWebhookDeliveryAttemptDto attempt, string relation) =>
         WebhookHal.HasLink(attempt._links, relation);
 
+    private static bool HasMessageLink(HalResourceOfWebhookMessageDto message, string relation) =>
+        WebhookHal.HasLink(message._links, relation);
+
+    private bool HasCurrentEndpointLink(Guid? endpointId, string relation) =>
+        endpointId is Guid id &&
+        HasCurrentEndpointLink(
+            _snapshot.Endpoints.SingleOrDefault(endpoint => endpoint.Id == id),
+            relation);
+
+    private static bool HasCurrentEndpointLink(
+        HalResourceOfWebhookEndpointDto? endpoint,
+        string relation) =>
+        endpoint is not null && HasEndpointLink(endpoint, relation);
+
+    private bool HasCurrentMessageLink(Guid messageId, string relation) =>
+        _snapshot.Messages.Any(message =>
+            message.Id == messageId && HasMessageLink(message, relation));
+
+    private bool HasCurrentAttemptLink(Guid attemptId, string relation) =>
+        _visibleAttempts.Any(attempt =>
+            attempt.Id == attemptId && HasAttemptLink(attempt, relation));
+
+    private static string EndpointDeliveryControlAvailability(HalResourceOfWebhookEndpointDto endpoint)
+    {
+        if (HasEndpointLink(endpoint, WebhookClientLinkRelations.Pause))
+        {
+            return "Local delivery can be paused.";
+        }
+
+        if (HasEndpointLink(endpoint, WebhookClientLinkRelations.Resume))
+        {
+            return "Local delivery can be resumed.";
+        }
+
+        if (!string.Equals(endpoint.ProviderModeCode, "LOCAL", StringComparison.Ordinal) &&
+            !string.Equals(endpoint.ProviderModeCode, "COMPOSITE", StringComparison.Ordinal))
+        {
+            return "Delivery control is managed by the configured provider mode.";
+        }
+
+        return string.Equals(endpoint.StatusCode, "ARCHIVED", StringComparison.Ordinal)
+            ? "Archived endpoints have no delivery controls."
+            : "Delivery control is unavailable for the current state and capability.";
+    }
+
+    private static string DecodePayload(WebhookMessagePayloadDto payload)
+    {
+        try
+        {
+            var bytes = Convert.FromBase64String(payload.PayloadBase64);
+            var text = new System.Text.UTF8Encoding(false, true).GetString(bytes);
+            if (!payload.ContentType.Contains("json", StringComparison.OrdinalIgnoreCase))
+            {
+                return text;
+            }
+
+            using var document = System.Text.Json.JsonDocument.Parse(bytes);
+            return System.Text.Json.JsonSerializer.Serialize(
+                document.RootElement,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch (FormatException)
+        {
+            return "The payload could not be decoded. Use the exact base64 view.";
+        }
+        catch (System.Text.DecoderFallbackException)
+        {
+            return "The payload is not UTF-8 text. Use the exact base64 view.";
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return "The payload is not valid JSON. Use the exact base64 view.";
+        }
+    }
+
     private static string SubscriptionSummary(HalResourceOfWebhookEndpointDto endpoint)
     {
         var subscriptions = endpoint.Subscriptions?
@@ -1166,8 +1567,6 @@
     {
         public string Name { get; set; } = string.Empty;
 
-        public int ConsumerKindId { get; set; } = 1;
-
         public int ProviderModeId { get; set; } = 2;
 
     }
@@ -1216,5 +1615,11 @@
     {
         Create,
         Update
+    }
+
+    private enum EndpointControlMode
+    {
+        Pause,
+        Resume
     }
 }

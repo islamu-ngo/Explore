@@ -2,6 +2,7 @@
 // ABOUTME: Reports queue backlog and stale sending leases without exposing endpoints, payloads, or secrets.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Telemetry;
 using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.Webhooks;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,7 +14,8 @@ namespace Explore.Infrastructure.HealthChecks;
 public sealed class LocalWebhookDeliveryHealthCheck(
     IOptions<WebhookDeliveryProcessorSettings> settings,
     IOptionsMonitor<WebhookOptions> webhookOptions,
-    IServiceScopeFactory scopeFactory) : IHealthCheck
+    IServiceScopeFactory scopeFactory,
+    BusinessMetrics metrics) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
@@ -38,47 +40,79 @@ public sealed class LocalWebhookDeliveryHealthCheck(
 
         if (!localProviderSelected)
         {
-            return HealthCheckResult.Healthy(
-                "Local webhook delivery is not the selected outgoing provider.",
-                data: data);
+            return Report(
+                HealthCheckResult.Healthy(
+                    "Local webhook delivery is not the selected outgoing provider.",
+                    data: data),
+                WebhookTelemetryOutcome.NotSelected);
         }
 
         if (!processorSettings.Enabled)
         {
-            return HealthCheckResult.Degraded(
-                "Local webhook delivery processor is disabled.",
-                data: data);
+            return Report(
+                HealthCheckResult.Degraded(
+                    "Local webhook delivery processor is disabled.",
+                    data: data),
+                WebhookTelemetryOutcome.Disabled);
         }
 
-        var now = DateTime.UtcNow;
-        var processingStartedBefore = now.AddSeconds(-processorSettings.ProcessingLeaseTimeoutSeconds);
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var attemptRepository = scope.ServiceProvider.GetRequiredService<IWebhookDeliveryAttemptRepository>();
-        var dueScheduledAttempts = await attemptRepository.CountDueScheduledAsync(now, cancellationToken);
-        var staleSendingAttempts = await attemptRepository.CountStaleSendingAsync(
-            processingStartedBefore,
-            cancellationToken);
-
-        data["dueScheduledAttempts"] = dueScheduledAttempts;
-        data["staleSendingAttempts"] = staleSendingAttempts;
-        data["processingStartedBefore"] = processingStartedBefore;
-
-        if (staleSendingAttempts >= processorSettings.HealthStaleSendingWarningThreshold)
+        var now = DateTimeOffset.UtcNow;
+        int dueLocalTargets;
+        int staleDeliveringTargets;
+        try
         {
-            return HealthCheckResult.Degraded(
-                "Local webhook delivery has stale sending attempts.",
-                data: data);
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var targetRepository = scope.ServiceProvider.GetRequiredService<IWebhookLocalTargetRepository>();
+            dueLocalTargets = await targetRepository.CountDueAsync(now, cancellationToken);
+            staleDeliveringTargets = await targetRepository.CountStaleDeliveringAsync(now, cancellationToken);
         }
-
-        if (dueScheduledAttempts >= processorSettings.HealthDueAttemptWarningThreshold)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            return HealthCheckResult.Degraded(
-                "Local webhook delivery due-attempt backlog is above the configured threshold.",
-                data: data);
+            throw;
+        }
+        catch (Exception)
+        {
+            return Report(
+                HealthCheckResult.Unhealthy(
+                    "Local webhook delivery readiness query failed.",
+                    data: data),
+                WebhookTelemetryOutcome.Unhealthy);
         }
 
-        return HealthCheckResult.Healthy(
-            "Local webhook delivery queue is healthy.",
-            data: data);
+        data["dueLocalTargets"] = dueLocalTargets;
+        data["staleDeliveringTargets"] = staleDeliveringTargets;
+        data["observedAtUtc"] = now;
+
+        if (staleDeliveringTargets >= processorSettings.HealthStaleSendingWarningThreshold)
+        {
+            return Report(
+                HealthCheckResult.Degraded(
+                    "Local webhook delivery has stale target claims.",
+                    data: data),
+                WebhookTelemetryOutcome.Degraded);
+        }
+
+        if (dueLocalTargets >= processorSettings.HealthDueAttemptWarningThreshold)
+        {
+            return Report(
+                HealthCheckResult.Degraded(
+                    "Local webhook delivery due-target backlog is above the configured threshold.",
+                    data: data),
+                WebhookTelemetryOutcome.Degraded);
+        }
+
+        return Report(
+            HealthCheckResult.Healthy(
+                "Local webhook delivery queue is healthy.",
+                data: data),
+            WebhookTelemetryOutcome.Healthy);
+    }
+
+    private HealthCheckResult Report(
+        HealthCheckResult result,
+        WebhookTelemetryOutcome outcome)
+    {
+        metrics.RecordWebhookProviderHealthCheck(WebhookTelemetryProvider.Local, outcome);
+        return result;
     }
 }

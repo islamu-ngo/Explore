@@ -120,13 +120,13 @@ public class UserController : ExploreControllerBase
     }
 
     /// <summary>
-    /// Returns the admin authority of the current authenticated user.
+    /// Returns the persisted admin authority of the current authenticated user.
     /// Used by the BFF claims transformation to enrich the ClaimsPrincipal with admin claims.
     /// </summary>
     [HttpGet("admin-authority", Name = RouteNames.GetCurrentUserAdminAuthority)]
     [Authorize]
     [EndpointSummary("Get current user's admin authority")]
-    [EndpointDescription("Returns instance, tenant, and organization admin status for the authenticated user. Consumed by BFF claims transformation.")]
+    [EndpointDescription("Returns instance, tenant, organization, and group admin status for the authenticated user. Consumed by BFF and route authorization.")]
     public async Task<ActionResult<AdminAuthorityDto>> GetAdminAuthority(CancellationToken cancellationToken = default)
     {
         var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);

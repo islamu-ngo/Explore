@@ -81,7 +81,7 @@ public static class NormalizedLookupMetadata
         (int)Explore.Domain.WebhookConsumerKind.Organization => new(id, "ORGANIZATION", "Organization"),
         (int)Explore.Domain.WebhookConsumerKind.Group => new(id, "GROUP", "Group"),
         (int)Explore.Domain.WebhookConsumerKind.User => new(id, "USER", "User"),
-        (int)Explore.Domain.WebhookConsumerKind.SystemIntegration => new(id, "SYSTEM_INTEGRATION", "System integration"),
+        (int)Explore.Domain.WebhookConsumerKind.Instance => new(id, "INSTANCE", "Instance"),
         _ => Unknown(id)
     };
 
@@ -147,6 +147,16 @@ public static class NormalizedLookupMetadata
         _ => Unknown(id)
     };
 
+    public static LookupReference WebhookBulkReplayStatus(int id) => id switch
+    {
+        (int)Explore.Domain.WebhookBulkReplayStatus.Queued => new(id, "QUEUED", "Queued"),
+        (int)Explore.Domain.WebhookBulkReplayStatus.Executing => new(id, "EXECUTING", "Executing"),
+        (int)Explore.Domain.WebhookBulkReplayStatus.Completed => new(id, "COMPLETED", "Completed"),
+        (int)Explore.Domain.WebhookBulkReplayStatus.Cancelled => new(id, "CANCELLED", "Cancelled"),
+        (int)Explore.Domain.WebhookBulkReplayStatus.Failed => new(id, "FAILED", "Failed"),
+        _ => Unknown(id)
+    };
+
     public static LookupReference WebhookPendingWorkDecision(int id) => id switch
     {
         (int)Explore.Domain.WebhookPendingWorkDecision.PreserveExisting => new(id, "PRESERVE_EXISTING", "Preserve existing"),
@@ -187,6 +197,22 @@ public static class NormalizedLookupMetadata
         (int)Explore.Domain.WebhookProviderPublicationStatus.DeadLettered => new(id, "DEAD_LETTERED", "Dead-lettered"),
         (int)Explore.Domain.WebhookProviderPublicationStatus.ManualReconciliation => new(id, "MANUAL_RECONCILIATION", "Manual reconciliation"),
         (int)Explore.Domain.WebhookProviderPublicationStatus.Abandoned => new(id, "ABANDONED", "Abandoned"),
+        _ => Unknown(id)
+    };
+
+    public static LookupReference WebhookProviderPublicationAttemptOutcome(int id) => id switch
+    {
+        (int)Explore.Domain.WebhookProviderPublicationAttemptOutcome.PublishingStarted => new(id, "PUBLISHING_STARTED", "Publishing started"),
+        (int)Explore.Domain.WebhookProviderPublicationAttemptOutcome.ProviderQueued => new(id, "PROVIDER_QUEUED", "Provider queued"),
+        (int)Explore.Domain.WebhookProviderPublicationAttemptOutcome.RetryScheduled => new(id, "RETRY_SCHEDULED", "Retry scheduled"),
+        (int)Explore.Domain.WebhookProviderPublicationAttemptOutcome.PublicationUnknown => new(id, "PUBLICATION_UNKNOWN", "Publication unknown"),
+        (int)Explore.Domain.WebhookProviderPublicationAttemptOutcome.DeadLettered => new(id, "DEAD_LETTERED", "Dead-lettered"),
+        (int)Explore.Domain.WebhookProviderPublicationAttemptOutcome.AutomaticReconciliationStarted => new(id, "AUTOMATIC_RECONCILIATION_STARTED", "Automatic reconciliation started"),
+        (int)Explore.Domain.WebhookProviderPublicationAttemptOutcome.AutomaticReconciliationUnresolved => new(id, "AUTOMATIC_RECONCILIATION_UNRESOLVED", "Automatic reconciliation unresolved"),
+        (int)Explore.Domain.WebhookProviderPublicationAttemptOutcome.ManualReconciliationRequired => new(id, "MANUAL_RECONCILIATION_REQUIRED", "Manual reconciliation required"),
+        (int)Explore.Domain.WebhookProviderPublicationAttemptOutcome.ReconciledProviderQueued => new(id, "RECONCILED_PROVIDER_QUEUED", "Reconciled provider queued"),
+        (int)Explore.Domain.WebhookProviderPublicationAttemptOutcome.Abandoned => new(id, "ABANDONED", "Abandoned"),
+        (int)Explore.Domain.WebhookProviderPublicationAttemptOutcome.ProviderAbsenceConfirmed => new(id, "PROVIDER_ABSENCE_CONFIRMED", "Provider absence confirmed"),
         _ => Unknown(id)
     };
 

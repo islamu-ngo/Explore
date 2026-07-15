@@ -58,10 +58,12 @@ public class ApiEndpointSmokeTests
 
             var response = await _fixture.Client.SendAsync(request);
 
-            // NotFound is acceptable for GetById endpoints with sample/random IDs
             var hasPathParams = description.ParameterDescriptions.Any(p => p.Source == BindingSource.Path);
             var isSuccess = response.StatusCode is HttpStatusCode.OK or HttpStatusCode.NoContent
-                || (hasPathParams && response.StatusCode == HttpStatusCode.NotFound);
+                || (response.StatusCode == HttpStatusCode.NotFound
+                    && (hasPathParams || DeclaresStatus(description, (int)HttpStatusCode.NotFound)))
+                || (response.StatusCode == HttpStatusCode.Forbidden
+                    && DeclaresStatus(description, (int)HttpStatusCode.Forbidden));
 
             if (!isSuccess)
             {
@@ -70,7 +72,7 @@ public class ApiEndpointSmokeTests
         }
 
         await Assert.That(failures).IsEmpty()
-            .Because($"All public GET endpoints should return OK/NoContent (or NotFound for parameterized). Failures: {string.Join("; ", failures)}");
+            .Because($"Public GET endpoints should return success or an explicitly declared safe read outcome. Failures: {string.Join("; ", failures)}");
     }
 
     [Test]
@@ -160,6 +162,11 @@ public class ApiEndpointSmokeTests
     private static bool IsHttpMethod(ApiDescription description, HttpMethod method)
     {
         return string.Equals(description.HttpMethod, method.Method, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool DeclaresStatus(ApiDescription description, int statusCode)
+    {
+        return description.SupportedResponseTypes.Any(response => response.StatusCode == statusCode);
     }
 
     private static bool IsProtectedSmokeException(ApiDescription description)

@@ -1,6 +1,7 @@
-// ABOUTME: Handles endpoint creation with tenant, consumer, event-type, and safe delivery-control validation.
-// ABOUTME: Persists endpoint subscriptions through repository operations instead of mutating navigation collections.
+// ABOUTME: Handles endpoint creation with inherited owner scope and safe delivery-control validation.
+// ABOUTME: Persists endpoint subscriptions through repository operations instead of mutating navigations.
 
+using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Commands;
@@ -14,7 +15,9 @@ public sealed class CreateWebhookEndpointCommandHandler(
     IWebhookEndpointRepository endpointRepository,
     IWebhookConsumerRepository consumerRepository,
     IWebhookEventTypeRepository eventTypeRepository,
-    IWebhookProviderCapabilityResolver capabilityResolver)
+    IWebhookProviderCapabilityResolver capabilityResolver,
+    IWebhookAuditEventWriter auditWriter,
+    IUnitOfWork unitOfWork)
     : IRequestHandler<CreateWebhookEndpointCommand, BaseCommandResponse<Guid>>
 {
     private const int DefaultMaxAttempts = 8;
@@ -30,9 +33,9 @@ public sealed class CreateWebhookEndpointCommandHandler(
             return Failure("webhook_endpoint_validation_failed", validationErrors);
         }
 
-        var consumer = await consumerRepository.GetByTenantAndIdAsync(
-            request.TenantId,
+        var consumer = await consumerRepository.GetByIdForOwnerOperationAsync(
             request.ConsumerId,
+            forUpdate: false,
             cancellationToken);
         if (consumer is null || consumer.Status != WebhookConsumerStatus.Active)
         {
@@ -47,8 +50,7 @@ public sealed class CreateWebhookEndpointCommandHandler(
             return Failure("webhook_endpoint_management_unavailable", [capabilityFailure]);
         }
 
-        var existingEndpoint = await endpointRepository.GetByTenantConsumerAndUrlAsync(
-            request.TenantId,
+        var existingEndpoint = await endpointRepository.GetByConsumerAndUrlForOwnerOperationAsync(
             request.ConsumerId,
             normalizedUrl,
             cancellationToken);
@@ -67,7 +69,8 @@ public sealed class CreateWebhookEndpointCommandHandler(
         var endpoint = new WebhookEndpoint
         {
             Id = Guid.CreateVersion7(),
-            TenantId = request.TenantId,
+            TenantId = consumer.TenantId,
+            InstanceId = consumer.InstanceId,
             ConsumerId = request.ConsumerId,
             Url = normalizedUrl,
             Description = NormalizeOptional(request.Description),
@@ -86,7 +89,8 @@ public sealed class CreateWebhookEndpointCommandHandler(
             .Select(eventType => new WebhookEndpointSubscription
             {
                 Id = Guid.CreateVersion7(),
-                TenantId = request.TenantId,
+                TenantId = consumer.TenantId,
+                InstanceId = consumer.InstanceId,
                 EndpointId = endpoint.Id,
                 EventTypeId = eventType.Id,
                 IsEnabled = true,
@@ -94,17 +98,44 @@ public sealed class CreateWebhookEndpointCommandHandler(
             })
             .ToArray();
 
-        var persisted = await endpointRepository.CreateWithSubscriptionsAsync(
-            endpoint,
-            subscriptions,
-            cancellationToken);
-
-        return new BaseCommandResponse<Guid>
+        return await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
-            Id = persisted.Id,
-            Success = true,
-            Message = "Webhook endpoint created."
-        };
+            var persisted = await endpointRepository.CreateWithSubscriptionsAsync(
+                endpoint,
+                subscriptions,
+                token);
+            await auditWriter.AppendAsync(
+                new WebhookAuditWriteRequest(
+                    persisted.TenantId,
+                    WebhookAuditAction.EndpointCreated,
+                    WebhookAuditTargetKind.Endpoint,
+                    persisted.Id,
+                    "endpoint_created",
+                    WebhookAuditOutcome.Succeeded,
+                    SafeAfterJson: JsonSerializer.Serialize(new
+                    {
+                        persisted.ConsumerId,
+                        destinationHost = new Uri(persisted.Url).DnsSafeHost,
+                        status = persisted.Status.ToString(),
+                        persisted.ConfigurationVersion,
+                        persisted.SecretVersion,
+                        persisted.MaxAttempts,
+                        persisted.TimeoutSeconds,
+                        persisted.RateLimitPerMinute,
+                        subscriptionCount = subscriptions.Length
+                    }),
+                    ConfigurationVersion: $"endpoint-v{persisted.ConfigurationVersion}:credential-v{persisted.SecretVersion}",
+                    EffectiveScopeKind: consumer.Ownership.AuditScopeKind,
+                    EffectiveScopeId: consumer.OwnerId),
+                token);
+
+            return new BaseCommandResponse<Guid>
+            {
+                Id = persisted.Id,
+                Success = true,
+                Message = "Webhook endpoint created."
+            };
+        }, cancellationToken);
     }
 
     private static List<string> Validate(
@@ -118,11 +149,6 @@ public sealed class CreateWebhookEndpointCommandHandler(
             .Where(id => id != Guid.Empty)
             .Distinct()
             .ToArray();
-
-        if (request.TenantId == Guid.Empty)
-        {
-            errors.Add("Tenant id is required.");
-        }
 
         if (request.ConsumerId == Guid.Empty)
         {

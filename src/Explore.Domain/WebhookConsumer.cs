@@ -1,21 +1,33 @@
-// ABOUTME: Tenant-scoped webhook consumer that owns endpoint subscriptions and provider mapping state.
-// ABOUTME: Represents a tenant, organization, group, user, or system integration receiving outgoing webhooks.
+// ABOUTME: Typed webhook consumer that owns endpoint subscriptions and provider mapping state.
+// ABOUTME: Enforces one Instance, Tenant, Organization, Group, or User ownership scope.
 
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class WebhookConsumer : ITenantEntity, IAuditableEntity
+public class WebhookConsumer : IAuditableEntity
 {
+    private Guid _configurationScopeId;
+
     public Guid Id { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid? TenantId { get; set; }
     public Tenant? Tenant { get; set; }
 
-    public Guid? OwnerActorId { get; set; }
-    public Actor? OwnerActor { get; set; }
+    public Guid? InstanceId { get; set; }
+    public InstanceBootstrapState? Instance { get; set; }
+
+    public Guid? OrganizationId { get; set; }
+    public Organization? Organization { get; set; }
+    public Guid? GroupId { get; set; }
+    public Group? Group { get; set; }
     public Guid? OwnerUserId { get; set; }
-    public User? OwnerUser { get; set; }
+    public TenantUser? OwnerTenantUser { get; set; }
+    public Guid ConfigurationScopeId
+    {
+        get => TenantId ?? InstanceId ?? _configurationScopeId;
+        private set => _configurationScopeId = value;
+    }
 
     public int ConsumerKindId { get; set; }
     public WebhookConsumerKindLookup ConsumerKindLookup { get; set; } = null!;
@@ -25,6 +37,12 @@ public class WebhookConsumer : ITenantEntity, IAuditableEntity
         get => (WebhookConsumerKind)ConsumerKindId;
         set => ConsumerKindId = (int)value;
     }
+
+    [NotMapped]
+    public WebhookOwnershipScope Ownership => WebhookOwnershipScope.FromConsumer(this);
+
+    [NotMapped]
+    public Guid OwnerId => Ownership.OwnerId;
     public required string Name { get; set; }
     public int StatusId { get; set; }
     public WebhookConsumerStatusLookup StatusLookup { get; set; } = null!;
@@ -51,6 +69,45 @@ public class WebhookConsumer : ITenantEntity, IAuditableEntity
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public Guid? UpdatedBy { get; set; }
+
+    public static WebhookConsumer Create(
+        WebhookOwnershipScope ownership,
+        string name,
+        WebhookProviderMode providerMode,
+        DateTime createdAtUtc)
+    {
+        ArgumentNullException.ThrowIfNull(ownership);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Webhook consumer name is required.", nameof(name));
+        }
+
+        if (!Enum.IsDefined(providerMode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(providerMode));
+        }
+
+        if (createdAtUtc.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("Webhook consumer creation requires a UTC timestamp.", nameof(createdAtUtc));
+        }
+
+        return new WebhookConsumer
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = ownership.TenantId,
+            InstanceId = ownership.InstanceId,
+            OrganizationId = ownership.OrganizationId,
+            GroupId = ownership.GroupId,
+            OwnerUserId = ownership.UserId,
+            ConsumerKind = ownership.Kind,
+            Name = name.Trim(),
+            Status = WebhookConsumerStatus.Active,
+            ProviderMode = providerMode,
+            ConfigurationVersion = 1,
+            CreatedAt = createdAtUtc
+        };
+    }
 
     public WebhookConsumerProviderBinding? GetVerifiedProviderBinding(WebhookProviderKind providerKind)
     {
@@ -90,4 +147,5 @@ public class WebhookConsumer : ITenantEntity, IAuditableEntity
         ConfigurationVersion = checked(ConfigurationVersion + 1);
         UpdatedAt = changedAtUtc;
     }
+
 }

@@ -27,7 +27,7 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
         var publishedType = CreateEventType("event.published");
         var updatedType = CreateEventType("event.updated");
         var consumerA = CreateConsumer(tenantA.Id, "Tenant A Consumer", WebhookProviderMode.Local, "shared-app");
-        var consumerB = CreateConsumer(tenantB.Id, "Tenant B Consumer", WebhookProviderMode.Local, "shared-app");
+        var consumerB = CreateConsumer(tenantB.Id, "Tenant B Consumer", WebhookProviderMode.Local, "tenant-b-app");
         var endpointA = CreateEndpoint(tenantA.Id, consumerA.Id, "tenant-a", WebhookEndpointStatus.Active);
         var disabledEndpointA = CreateEndpoint(tenantA.Id, consumerA.Id, "tenant-a-disabled", WebhookEndpointStatus.Disabled);
         var wrongEventEndpointA = CreateEndpoint(tenantA.Id, consumerA.Id, "tenant-a-wrong-event", WebhookEndpointStatus.Active);
@@ -105,16 +105,6 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
             endpointB.Id,
             limit: 10,
             CancellationToken.None);
-        var nextAttemptNumber = await attemptRepository.GetNextAttemptNumberAsync(
-            tenantA.Id,
-            messageA.Id,
-            endpointA.Id,
-            CancellationToken.None);
-        var activeAttemptExists = await attemptRepository.HasActiveAttemptForEndpointAsync(
-            tenantA.Id,
-            messageA.Id,
-            endpointA.Id,
-            CancellationToken.None);
         var tenantAIncoming = await incomingRepository.GetByProviderMessageIdForUpdateAsync(
             tenantA.Id,
             "coop",
@@ -164,8 +154,6 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
         await Assert.That(wrongTenantMessage).IsNull();
         await Assert.That(tenantAAttempts.Select(row => row.Id)).IsEquivalentTo([attemptA.Id]);
         await Assert.That(tenantAAttemptsForForeignEndpoint).IsEmpty();
-        await Assert.That(nextAttemptNumber).IsEqualTo(2);
-        await Assert.That(activeAttemptExists).IsFalse();
         await Assert.That(tenantAIncoming).IsNotNull();
         await Assert.That(tenantAIncoming!.Id).IsEqualTo(incomingA.Id);
         await Assert.That(endpoints[disabledEndpointA.Id].Status).IsEqualTo(WebhookEndpointStatus.Archived);
@@ -177,188 +165,96 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
     }
 
     [Test]
-    public async Task WorkerQueueBypasses_WithAmbientTenant_ReturnOnlyEligibleRowsAndMutateExactWebhookRows()
+    public async Task WorkerQueueBypasses_WithAmbientTenant_ClaimAndSettleExactLocalTarget()
     {
         await fixture.ResetAsync();
         await using var seedContext = fixture.CreateDbContext();
-
         var tenantA = CreateTenant("webhook-worker-a");
         var tenantB = CreateTenant("webhook-worker-b");
         var consumerA = CreateConsumer(tenantA.Id, "Tenant A Worker", WebhookProviderMode.Local, "worker-a");
         var consumerB = CreateConsumer(tenantB.Id, "Tenant B Worker", WebhookProviderMode.Local, "worker-b");
         var endpointA = CreateEndpoint(tenantA.Id, consumerA.Id, "worker-a", WebhookEndpointStatus.Active);
         var endpointB = CreateEndpoint(tenantB.Id, consumerB.Id, "worker-b", WebhookEndpointStatus.Active);
-        var now = new DateTime(2026, 1, 8, 12, 0, 0, DateTimeKind.Utc);
-
-        var dueMessageA = CreateMessage(tenantA.Id, consumerA.Id, "due-a");
-        var dueMessageB = CreateMessage(tenantB.Id, consumerB.Id, "due-b");
-        var futureMessageA = CreateMessage(tenantA.Id, consumerA.Id, "future-a");
-        var staleMessageA = CreateMessage(tenantA.Id, consumerA.Id, "stale-a");
-        var statusMessageA = CreateMessage(tenantA.Id, consumerA.Id, "status-a");
-        var expiredMessageA = CreateMessage(tenantA.Id, consumerA.Id, "expired-a", now.AddMinutes(-1));
-        var expiredMessageB = CreateMessage(tenantB.Id, consumerB.Id, "expired-b", now.AddMinutes(-1));
-        var retainedMessageA = CreateMessage(tenantA.Id, consumerA.Id, "retained-a", now.AddDays(1));
-
-        var dueAttemptA = CreateDeliveryAttempt(
-            tenantA.Id,
-            dueMessageA.Id,
-            endpointA.Id,
-            WebhookDeliveryAttemptOutcome.Scheduled,
-            now.AddMinutes(-10));
-        var dueAttemptB = CreateDeliveryAttempt(
-            tenantB.Id,
-            dueMessageB.Id,
-            endpointB.Id,
-            WebhookDeliveryAttemptOutcome.Scheduled,
-            now.AddMinutes(-9));
-        var futureAttemptA = CreateDeliveryAttempt(
-            tenantA.Id,
-            futureMessageA.Id,
-            endpointA.Id,
-            WebhookDeliveryAttemptOutcome.Scheduled,
-            now.AddMinutes(10));
-        var staleAttemptA = CreateDeliveryAttempt(
-            tenantA.Id,
-            staleMessageA.Id,
-            endpointA.Id,
-            WebhookDeliveryAttemptOutcome.Sending,
-            now.AddMinutes(-30));
-        staleAttemptA.ProcessingStartedAt = now.AddMinutes(-30);
-        staleAttemptA.ProcessingLeaseToken = Guid.CreateVersion7();
-        var statusSucceededAttemptA = CreateDeliveryAttempt(
-            tenantA.Id,
-            statusMessageA.Id,
-            endpointA.Id,
-            WebhookDeliveryAttemptOutcome.Succeeded,
-            now.AddMinutes(-20));
-        var statusFailedAttemptA = CreateDeliveryAttempt(
-            tenantA.Id,
-            statusMessageA.Id,
-            endpointA.Id,
-            WebhookDeliveryAttemptOutcome.Failed,
-            now.AddMinutes(-19),
-            attemptNumber: 2);
-        seedContext.Tenants.AddRange(tenantA, tenantB);
-        seedContext.WebhookConsumers.AddRange(consumerA, consumerB);
-        seedContext.WebhookEndpoints.AddRange(endpointA, endpointB);
-        seedContext.WebhookMessages.AddRange(
-            dueMessageA,
-            dueMessageB,
-            futureMessageA,
-            staleMessageA,
-            statusMessageA,
-            expiredMessageA,
-            expiredMessageB,
-            retainedMessageA);
-        seedContext.WebhookDeliveryAttempts.AddRange(
-            dueAttemptA,
-            dueAttemptB,
-            futureAttemptA,
-            staleAttemptA,
-            statusSucceededAttemptA,
-            statusFailedAttemptA);
+        var messageA = CreateMessage(tenantA.Id, consumerA.Id, "due-a");
+        var messageB = CreateMessage(tenantB.Id, consumerB.Id, "due-b");
+        var now = new DateTimeOffset(2026, 1, 8, 12, 0, 0, TimeSpan.Zero);
+        var graphA = CreateTargetGraph(messageA, endpointA, consumerA, now.AddMinutes(-2));
+        var graphB = CreateTargetGraph(messageB, endpointB, consumerB, now.AddMinutes(-1));
+        seedContext.AddRange(
+            tenantA,
+            tenantB,
+            consumerA,
+            consumerB,
+            endpointA,
+            endpointB,
+            messageA,
+            messageB,
+            graphA.Plan,
+            graphB.Plan,
+            graphA.Target,
+            graphB.Target);
         await seedContext.SaveChangesAsync();
 
         await using var tenantBContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantB.Id));
-        var visibleAttempts = await tenantBContext.WebhookDeliveryAttempts
+        var visibleTargets = await tenantBContext.WebhookLocalTargetSnapshots
             .AsNoTracking()
-            .Select(row => row.Id)
+            .Select(target => target.Id)
             .ToListAsync();
-        var visibleMessages = await tenantBContext.WebhookMessages
-            .AsNoTracking()
-            .Select(row => row.Id)
-            .ToListAsync();
-        var attemptRepository = new WebhookDeliveryAttemptRepository(tenantBContext);
-        var messageRepository = new WebhookMessageRepository(tenantBContext);
-
-        var dueTenantIds = await attemptRepository.GetDueTenantIdsAsync(10, now, CancellationToken.None);
-        var dueAttemptCount = await attemptRepository.CountDueScheduledAsync(now, CancellationToken.None);
-        var staleSendingCount = await attemptRepository.CountStaleSendingAsync(now.AddMinutes(-10), CancellationToken.None);
-        var wrongTenantClaims = await attemptRepository.ClaimDueAsync(
-            new WebhookDeliveryClaimRequest(
+        var repository = new WebhookLocalTargetRepository(tenantBContext);
+        var dueTenantIds = await repository.GetDueTenantIdsAsync(10, now, CancellationToken.None);
+        var dueTargetCount = await repository.CountDueAsync(now, CancellationToken.None);
+        var wrongTenantClaims = await repository.ClaimDueAsync(
+            new WebhookLocalTargetClaimRequest(
                 1,
                 10,
                 10,
                 [tenantB.Id],
                 now,
                 TimeSpan.FromMinutes(5),
-                dueAttemptA.Id),
+                graphA.Target.Id),
             new Dictionary<Guid, WebhookDeliveryClaimLimits>
             {
                 [tenantB.Id] = new(10, 10, 10)
             },
             CancellationToken.None);
-        var claims = await attemptRepository.ClaimDueAsync(
-            new WebhookDeliveryClaimRequest(
+        var claim = (await repository.ClaimDueAsync(
+            new WebhookLocalTargetClaimRequest(
                 1,
                 10,
                 10,
                 [tenantA.Id],
                 now,
                 TimeSpan.FromMinutes(5),
-                dueAttemptA.Id),
+                graphA.Target.Id),
             new Dictionary<Guid, WebhookDeliveryClaimLimits>
             {
                 [tenantA.Id] = new(10, 10, 10)
             },
-            CancellationToken.None);
-        var leaseToken = claims.Single().LeaseToken;
-        var processingFence = claims.Single().ProcessingFence;
-        await attemptRepository.MarkSucceededAsync(
+            CancellationToken.None)).Single();
+        var ownedTarget = await repository.GetActiveClaimAsync(
             tenantA.Id,
-            dueAttemptA.Id,
-            leaseToken,
-            processingFence,
-            now,
+            graphA.Target.Id,
+            claim.LeaseToken,
+            claim.DeliveryFence,
             now.AddSeconds(1),
-            httpStatusCode: 204,
-            durationMs: 25,
-            cancellationToken: CancellationToken.None);
-        var recovered = await attemptRepository.ResetStaleSendingAsync(
-            now.AddMinutes(-10),
-            now,
-            "worker_recovered",
-            batchSize: 10,
             CancellationToken.None);
-        var clearedPayloads = await messageRepository.ClearExpiredPayloadsAsync(now, 10, CancellationToken.None);
-        await using var verifyContext = fixture.CreateDbContext();
-        var attempts = await verifyContext.WebhookDeliveryAttempts
-            .IgnoreQueryFilters()
-            .AsNoTracking()
-            .Where(row => row.Id == dueAttemptA.Id
-                || row.Id == dueAttemptB.Id
-                || row.Id == futureAttemptA.Id
-                || row.Id == staleAttemptA.Id)
-            .ToDictionaryAsync(row => row.Id);
-        var messages = await verifyContext.WebhookMessages
-            .IgnoreQueryFilters()
-            .AsNoTracking()
-            .Where(row => row.Id == expiredMessageA.Id
-                || row.Id == expiredMessageB.Id
-                || row.Id == retainedMessageA.Id
-                || row.Id == statusMessageA.Id)
-            .ToDictionaryAsync(row => row.Id);
+        ownedTarget!.MarkSucceeded(
+            claim.LeaseToken,
+            claim.DeliveryFence,
+            now.AddSeconds(1));
+        await repository.SaveChangesAsync(CancellationToken.None);
 
-        await Assert.That(visibleAttempts).IsEquivalentTo([dueAttemptB.Id]);
-        await Assert.That(visibleMessages).Contains(dueMessageB.Id);
-        await Assert.That(visibleMessages).DoesNotContain(dueMessageA.Id);
+        await using var verifyContext = fixture.CreateDbContext();
+        var targets = await verifyContext.WebhookLocalTargetSnapshots
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .ToDictionaryAsync(target => target.Id);
+        await Assert.That(visibleTargets).IsEquivalentTo([graphB.Target.Id]);
         await Assert.That(dueTenantIds).IsEquivalentTo(new[] { tenantA.Id, tenantB.Id });
-        await Assert.That(dueAttemptCount).IsEqualTo(2);
-        await Assert.That(staleSendingCount).IsEqualTo(1);
+        await Assert.That(dueTargetCount).IsEqualTo(2);
         await Assert.That(wrongTenantClaims).IsEmpty();
-        await Assert.That(claims.Select(claim => claim.Attempt.Id)).IsEquivalentTo(new[] { dueAttemptA.Id });
-        await Assert.That(recovered).IsEqualTo(1);
-        await Assert.That(clearedPayloads).IsEqualTo(2);
-        await Assert.That(attempts[dueAttemptA.Id].Outcome).IsEqualTo(WebhookDeliveryAttemptOutcome.Succeeded);
-        await Assert.That(attempts[dueAttemptA.Id].HttpStatusCode).IsEqualTo(204);
-        await Assert.That(attempts[dueAttemptB.Id].Outcome).IsEqualTo(WebhookDeliveryAttemptOutcome.Scheduled);
-        await Assert.That(attempts[futureAttemptA.Id].Outcome).IsEqualTo(WebhookDeliveryAttemptOutcome.Scheduled);
-        await Assert.That(attempts[staleAttemptA.Id].Outcome).IsEqualTo(WebhookDeliveryAttemptOutcome.Scheduled);
-        await Assert.That(attempts[staleAttemptA.Id].FailureCategory).IsEqualTo("worker_recovered");
-        await Assert.That(messages[expiredMessageA.Id].GetPayloadBytes()).IsNull();
-        await Assert.That(messages[expiredMessageB.Id].GetPayloadBytes()).IsNull();
-        await Assert.That(messages[retainedMessageA.Id].GetPayloadBytes()).IsNotNull();
-        await Assert.That(messages[statusMessageA.Id].PayloadHash).IsEqualTo(statusMessageA.PayloadHash);
+        await Assert.That(targets[graphA.Target.Id].DeliveryStatus).IsEqualTo(WebhookLocalDeliveryStatus.Succeeded);
+        await Assert.That(targets[graphB.Target.Id].DeliveryStatus).IsEqualTo(WebhookLocalDeliveryStatus.Pending);
     }
 
     private static Tenant CreateTenant(string slugPrefix)
@@ -388,6 +284,7 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
             Status = WebhookConsumerStatus.Active,
             ProviderMode = providerMode,
             ExternalProviderAppId = externalProviderAppId,
+            ConfigurationVersion = 1,
             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         };
     }
@@ -423,6 +320,8 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
             Status = status,
             SecretRef = $"webhooks/{name}/secret",
             SecretVersion = 1,
+            SecretActivatedAt = new DateTime(2025, 12, 31, 23, 0, 0, DateTimeKind.Utc),
+            ConfigurationVersion = 1,
             MaxAttempts = 8,
             TimeoutSeconds = 15,
             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -466,6 +365,37 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
             createdAt,
             retentionUntil ?? new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
             createdAt);
+    }
+
+    private static (WebhookDeliveryPlanSnapshot Plan, WebhookLocalTargetSnapshot Target) CreateTargetGraph(
+        WebhookMessage message,
+        WebhookEndpoint endpoint,
+        WebhookConsumer consumer,
+        DateTimeOffset capturedAtUtc)
+    {
+        var plan = WebhookDeliveryPlanSnapshot.Create(
+            message.TenantId,
+            message.Id,
+            consumer.Id,
+            WebhookProviderMode.Local,
+            $"consumer-v{consumer.ConfigurationVersion}",
+            "contract-v1",
+            "standard",
+            "retention-v1",
+            new DateTimeOffset(message.PayloadRetentionUntil),
+            capturedAtUtc.AddDays(30),
+            capturedAtUtc.AddDays(90),
+            capturedAtUtc.AddDays(90),
+            capturedAtUtc.AddDays(30),
+            capturedAtUtc);
+        var target = WebhookLocalTargetSnapshot.Create(
+            plan,
+            endpoint,
+            endpoint.ConfigurationVersion,
+            new DateTimeOffset(endpoint.SecretActivatedAt),
+            null,
+            capturedAtUtc);
+        return (plan, target);
     }
 
     private static WebhookDeliveryAttempt CreateDeliveryAttempt(
@@ -520,7 +450,12 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
             $"{{\"svix-id\":\"{providerMessageId}\"}}",
             receivedAt,
             verifiedAt,
-            verifiedAt.AddDays(14));
+            verifiedAt.AddDays(14),
+            "webhook-retention-test-v1",
+            verifiedAt.AddDays(30),
+            verifiedAt.AddDays(90),
+            verifiedAt.AddDays(14),
+            verifiedAt.AddDays(30));
     }
 
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;

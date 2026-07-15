@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    [Migration("20260715105506_AddTypedWebhookOwnership")]
+    [Migration("20260715172404_AddTypedWebhookOwnership")]
     partial class AddTypedWebhookOwnership
     {
         /// <inheritdoc />
@@ -17238,6 +17238,12 @@ namespace Explore.Persistence.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("uuidv7()");
 
+                    b.Property<Guid>("ConfigurationScopeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("configuration_scope_id")
+                        .HasComputedColumnSql("COALESCE(tenant_id, instance_id)", true);
+
                     b.Property<int>("ConfigurationVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
@@ -17307,6 +17313,9 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_webhook_consumers");
 
+                    b.HasAlternateKey("ConfigurationScopeId", "Id")
+                        .HasName("ak_webhook_consumers_configuration_scope_id");
+
                     b.HasIndex("ConsumerKindId")
                         .HasDatabaseName("ix_webhook_consumers_consumer_kind_id");
 
@@ -17355,6 +17364,8 @@ namespace Explore.Persistence.Migrations
 
                     b.ToTable("webhook_consumers", null, t =>
                         {
+                            t.HasCheckConstraint("ck_webhook_consumers_configuration_scope", "configuration_scope_id = COALESCE(tenant_id, instance_id)");
+
                             t.HasCheckConstraint("ck_webhook_consumers_configuration_version", "configuration_version > 0");
 
                             t.HasCheckConstraint("ck_webhook_consumers_typed_owner", "(consumer_kind_id = 1 AND tenant_id IS NOT NULL AND instance_id IS NULL AND organization_id IS NULL AND group_id IS NULL AND owner_user_id IS NULL) OR (consumer_kind_id = 2 AND tenant_id IS NOT NULL AND instance_id IS NULL AND organization_id IS NOT NULL AND group_id IS NULL AND owner_user_id IS NULL) OR (consumer_kind_id = 3 AND tenant_id IS NOT NULL AND instance_id IS NULL AND organization_id IS NULL AND group_id IS NOT NULL AND owner_user_id IS NULL) OR (consumer_kind_id = 4 AND tenant_id IS NOT NULL AND instance_id IS NULL AND organization_id IS NULL AND group_id IS NULL AND owner_user_id IS NOT NULL) OR (consumer_kind_id = 5 AND tenant_id IS NULL AND instance_id IS NOT NULL AND organization_id IS NULL AND group_id IS NULL AND owner_user_id IS NULL)");
@@ -17426,6 +17437,12 @@ namespace Explore.Persistence.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("bigint")
                         .HasColumnName("concurrency_version");
+
+                    b.Property<Guid>("ConfigurationScopeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("configuration_scope_id")
+                        .HasComputedColumnSql("COALESCE(tenant_id, instance_id)", true);
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -17530,6 +17547,9 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("VerificationStateId")
                         .HasDatabaseName("ix_webhook_consumer_provider_bindings_verification_state_id");
 
+                    b.HasIndex("ConfigurationScopeId", "WebhookConsumerId")
+                        .HasDatabaseName("ix_webhook_consumer_provider_bindings_configuration_scope_id_w");
+
                     b.HasIndex("ProviderKindId", "NormalizedEnvironment", "NormalizedApplicationUid")
                         .IsUnique()
                         .HasDatabaseName("ux_webhook_provider_bindings_provider_environment_application_uid");
@@ -17554,11 +17574,13 @@ namespace Explore.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_concurrency_version_positive", "concurrency_version > 0");
 
+                            t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_configuration_scope", "configuration_scope_id = COALESCE(tenant_id, instance_id)");
+
                             t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_governance_capabilities_known", "governance_allowed_capabilities >= 0 AND governance_allowed_capabilities <= 4095");
 
                             t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_verification_fence_positive", "verification_fence > 0");
 
-                            t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_verified_scope", "verification_state_id <> 2 OR verified_tenant_id IS NOT DISTINCT FROM tenant_id");
+                            t.HasCheckConstraint("ck_webhook_consumer_provider_bindings_verified_scope", "verification_state_id <> 3 OR (verified_tenant_id IS NOT DISTINCT FROM tenant_id AND verified_webhook_consumer_id = webhook_consumer_id)");
                         });
                 });
 
@@ -17897,6 +17919,12 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("circuit_opened_at");
 
+                    b.Property<Guid>("ConfigurationScopeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("configuration_scope_id")
+                        .HasComputedColumnSql("COALESCE(tenant_id, instance_id)", true);
+
                     b.Property<int>("ConfigurationVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
@@ -18027,11 +18055,14 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_webhook_endpoints");
 
-                    b.HasIndex("ConsumerId")
-                        .HasDatabaseName("ix_webhook_endpoints_consumer_id");
+                    b.HasAlternateKey("ConfigurationScopeId", "Id")
+                        .HasName("ak_webhook_endpoints_configuration_scope_id");
 
                     b.HasIndex("StatusId")
                         .HasDatabaseName("ix_webhook_endpoints_status_id");
+
+                    b.HasIndex("ConfigurationScopeId", "ConsumerId")
+                        .HasDatabaseName("ix_webhook_endpoints_configuration_scope_id_consumer_id");
 
                     b.HasIndex("InstanceId", "ProviderEndpointId")
                         .IsUnique()
@@ -18056,6 +18087,8 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("webhook_endpoints", null, t =>
                         {
                             t.HasCheckConstraint("ck_webhook_endpoints_configuration_scope", "(tenant_id IS NOT NULL AND instance_id IS NULL) OR (tenant_id IS NULL AND instance_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_webhook_endpoints_configuration_scope_key", "configuration_scope_id = COALESCE(tenant_id, instance_id)");
 
                             t.HasCheckConstraint("ck_webhook_endpoints_configuration_version", "configuration_version > 0");
                         });
@@ -18102,6 +18135,12 @@ namespace Explore.Persistence.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("uuidv7()");
 
+                    b.Property<Guid>("ConfigurationScopeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("configuration_scope_id")
+                        .HasComputedColumnSql("COALESCE(tenant_id, instance_id)", true);
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -18143,11 +18182,11 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_webhook_endpoint_subscriptions");
 
-                    b.HasIndex("EndpointId")
-                        .HasDatabaseName("ix_webhook_endpoint_subscriptions_endpoint_id");
-
                     b.HasIndex("EventTypeId")
                         .HasDatabaseName("ix_webhook_endpoint_subscriptions_event_type_id");
+
+                    b.HasIndex("ConfigurationScopeId", "EndpointId")
+                        .HasDatabaseName("ix_webhook_endpoint_subscriptions_configuration_scope_id_endpo");
 
                     b.HasIndex("InstanceId", "EndpointId", "EventTypeId")
                         .IsUnique()
@@ -18169,6 +18208,8 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("webhook_endpoint_subscriptions", null, t =>
                         {
                             t.HasCheckConstraint("ck_webhook_endpoint_subscriptions_configuration_scope", "(tenant_id IS NOT NULL AND instance_id IS NULL) OR (tenant_id IS NULL AND instance_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_webhook_endpoint_subscriptions_configuration_scope_key", "configuration_scope_id = COALESCE(tenant_id, instance_id)");
                         });
                 });
 
@@ -26704,10 +26745,11 @@ namespace Explore.Persistence.Migrations
 
                     b.HasOne("Explore.Domain.WebhookConsumer", "WebhookConsumer")
                         .WithMany("ProviderBindings")
-                        .HasForeignKey("WebhookConsumerId")
+                        .HasForeignKey("ConfigurationScopeId", "WebhookConsumerId")
+                        .HasPrincipalKey("ConfigurationScopeId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_webhook_consumer_provider_bindings_webhook_consumers_webhoo");
+                        .HasConstraintName("fk_webhook_consumer_provider_bindings_webhook_consumers_config");
 
                     b.Navigation("ProviderKindLookup");
 
@@ -26800,13 +26842,6 @@ namespace Explore.Persistence.Migrations
 
             modelBuilder.Entity("Explore.Domain.WebhookEndpoint", b =>
                 {
-                    b.HasOne("Explore.Domain.WebhookConsumer", "Consumer")
-                        .WithMany()
-                        .HasForeignKey("ConsumerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_webhook_endpoints_webhook_consumers_consumer_id");
-
                     b.HasOne("Explore.Domain.InstanceBootstrapState", "Instance")
                         .WithMany()
                         .HasForeignKey("InstanceId")
@@ -26826,6 +26861,14 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_webhook_endpoints_tenants_tenant_id");
 
+                    b.HasOne("Explore.Domain.WebhookConsumer", "Consumer")
+                        .WithMany()
+                        .HasForeignKey("ConfigurationScopeId", "ConsumerId")
+                        .HasPrincipalKey("ConfigurationScopeId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_webhook_endpoints_webhook_consumers_configuration_scope_id_");
+
                     b.Navigation("Consumer");
 
                     b.Navigation("Instance");
@@ -26837,13 +26880,6 @@ namespace Explore.Persistence.Migrations
 
             modelBuilder.Entity("Explore.Domain.WebhookEndpointSubscription", b =>
                 {
-                    b.HasOne("Explore.Domain.WebhookEndpoint", "Endpoint")
-                        .WithMany("Subscriptions")
-                        .HasForeignKey("EndpointId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_webhook_endpoint_subscriptions_webhook_endpoints_endpoint_id");
-
                     b.HasOne("Explore.Domain.WebhookEventType", "EventType")
                         .WithMany()
                         .HasForeignKey("EventTypeId")
@@ -26862,6 +26898,14 @@ namespace Explore.Persistence.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_webhook_endpoint_subscriptions_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.WebhookEndpoint", "Endpoint")
+                        .WithMany("Subscriptions")
+                        .HasForeignKey("ConfigurationScopeId", "EndpointId")
+                        .HasPrincipalKey("ConfigurationScopeId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_webhook_endpoint_subscriptions_webhook_endpoints_configurat");
 
                     b.Navigation("Endpoint");
 

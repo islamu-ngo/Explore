@@ -84,12 +84,6 @@
           "Microsoft.Extensions.Resilience": "10.1.0"
         }
       },
-      "Microsoft.OpenApi": {
-        "type": "Direct",
-        "requested": "[2.1.0, )",
-        "resolved": "2.1.0",
-        "contentHash": "8eVvfjERqtZ+bwuX7HiKzbidCQSxBe86z6RSy7b9WJ35kMDtxUE6+sMXDMWXWOhrlIwid3MEpVvLSlI8vki7bQ=="
-      },
       "Microsoft.VisualStudio.Azure.Containers.Tools.Targets": {
         "type": "Direct",
         "requested": "[1.23.0, )",

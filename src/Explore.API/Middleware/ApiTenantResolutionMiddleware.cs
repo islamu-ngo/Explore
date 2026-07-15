@@ -168,6 +168,8 @@ public sealed class ApiTenantResolutionMiddleware
     {
         return path.StartsWithSegments("/api/InstanceOnboarding", StringComparison.OrdinalIgnoreCase)
             || path.StartsWithSegments("/api/System", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/api/admin/control-plane", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/api/managed-provider-provisioning", StringComparison.OrdinalIgnoreCase)
             || string.Equals(
                 path.Value,
                 "/api/instance/settings/resolver-config",

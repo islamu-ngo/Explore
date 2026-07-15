@@ -1,4 +1,4 @@
-// ABOUTME: Handles tenant-scoped webhook delivery attempt detail reads.
+// ABOUTME: Handles persisted-owner webhook delivery attempt detail reads.
 // ABOUTME: Maps LocalProvider delivery ledger entities to safe operations DTOs.
 
 using Explore.Application.Contracts.Persistence;
@@ -15,13 +15,12 @@ public sealed class GetWebhookDeliveryAttemptByIdQueryHandler(IWebhookDeliveryAt
         GetWebhookDeliveryAttemptByIdQuery request,
         CancellationToken cancellationToken)
     {
-        if (request.TenantId == Guid.Empty || request.AttemptId == Guid.Empty)
+        if (request.AttemptId == Guid.Empty)
         {
             return null;
         }
 
-        var attempt = await attemptRepository.GetByTenantAndIdAsync(
-            request.TenantId,
+        var attempt = await attemptRepository.GetByIdForOwnerOperationAsync(
             request.AttemptId,
             cancellationToken);
 

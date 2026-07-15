@@ -1,32 +1,20 @@
-// ABOUTME: Route guard that restricts org admin routes to org-scoped administrators for the specific org.
-// ABOUTME: Requires organization admin claims derived from OrganizationMember role assignments.
+// ABOUTME: Route guard that restricts organization settings to current persisted administrators.
+// ABOUTME: Resolves organization authority through the tenant-scoped BFF API and fails closed.
 
 using System.Text.RegularExpressions;
 using Blazouter.Interfaces;
 using Blazouter.Models;
+using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 
 namespace Explore.Blazor.Client.Routing.Guards;
 
-/// <summary>
-/// Guards organization admin routes by verifying the user has admin authority for the
-/// specific organization in the route.
-/// Requires a matching organization-admin claim for the targeted organization ID.
-/// The organization ID is extracted from the route path via regex.
-/// </summary>
-public sealed partial class OrgAdminRouteGuard(AuthenticationStateProvider authStateProvider) : IRouteGuard
+public sealed partial class OrgAdminRouteGuard(
+    AuthenticationStateProvider authStateProvider,
+    IUserService userService) : IRouteGuard
 {
-    // Claim names are part of the authenticated API/BFF protocol.
-    // Duplicated here because Blazor.Client does not reference Application.
-    private const string OrgAdminClaim = "explore:admin:organization";
-
     public async Task<bool> CanActivateAsync(RouteMatch match)
     {
-        if (authStateProvider is null)
-        {
-            return false;
-        }
-
         var authState = await authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
         var user = authState.User;
         if (user.Identity?.IsAuthenticated != true)
@@ -34,26 +22,22 @@ public sealed partial class OrgAdminRouteGuard(AuthenticationStateProvider authS
             return false;
         }
 
-        // Extract organization ID from the route path (e.g., /admin/organization/{guid}/settings)
-        var orgId = ExtractOrgIdFromPath(match.MatchedPath);
-        if (orgId is null)
+        var organizationId = ExtractOrganizationIdFromPath(match.MatchedPath);
+        if (!organizationId.HasValue)
         {
             return false;
         }
 
-        return user.HasClaim(c => c.Type == OrgAdminClaim
-                                  && string.Equals(c.Value, orgId, StringComparison.OrdinalIgnoreCase));
+        var authority = await userService.GetAdminAuthorityAsync().ConfigureAwait(false);
+        return authority?.AdminOrganizationIds?.Contains(organizationId.Value) == true;
     }
 
     public async Task<string?> GetRedirectPathAsync(RouteMatch match)
     {
-        if (authStateProvider is not null)
+        var authState = await authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
+        if (authState.User.Identity?.IsAuthenticated == true)
         {
-            var authState = await authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
-            if (authState?.User?.Identity?.IsAuthenticated == true)
-            {
-                return "/";
-            }
+            return "/";
         }
 
         var returnUrl = string.IsNullOrWhiteSpace(match.MatchedPath)
@@ -63,14 +47,17 @@ public sealed partial class OrgAdminRouteGuard(AuthenticationStateProvider authS
         return $"/login?returnUrl={Uri.EscapeDataString(returnUrl)}";
     }
 
-    private static string? ExtractOrgIdFromPath(string? path)
+    private static Guid? ExtractOrganizationIdFromPath(string? path)
     {
         if (string.IsNullOrWhiteSpace(path))
+        {
             return null;
+        }
 
-        // Match GUID segment after /organization/ in the path
         var match = OrgIdPattern().Match(path);
-        return match.Success ? match.Groups[1].Value : null;
+        return match.Success && Guid.TryParse(match.Groups[1].Value, out var organizationId)
+            ? organizationId
+            : null;
     }
 
     [GeneratedRegex(@"/organization/([0-9a-fA-F\-]{36})", RegexOptions.IgnoreCase | RegexOptions.Compiled)]

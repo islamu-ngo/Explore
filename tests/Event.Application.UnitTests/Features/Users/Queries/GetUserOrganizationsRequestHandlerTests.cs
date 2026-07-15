@@ -94,7 +94,7 @@ public sealed class GetUserOrganizationsRequestHandlerTests
         var result = await _handler.Handle(new GetUserOrganizationsRequest { UserId = userId }, CancellationToken.None);
 
         await Assert.That(result.Count).IsEqualTo(1);
-        await Assert.That(result[0].CurrentUserRole).IsEqualTo(RoleEnum.OrgAdmin);
+        await Assert.That(result[0].CurrentUserRoleId).IsEqualTo((int)RoleEnum.OrgAdmin);
         await _organizationMemberRepository.Received(1).GetMembershipsByUser(userId);
     }
 }

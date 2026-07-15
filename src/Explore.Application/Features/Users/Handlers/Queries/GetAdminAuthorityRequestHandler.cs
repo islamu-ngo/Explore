@@ -1,5 +1,5 @@
-// ABOUTME: Handler for GetAdminAuthorityRequest. Resolves admin authority from IAdminContext.
-// Returns AdminAuthorityDto used by the BFF claims transformation to enrich ClaimsPrincipal.
+// ABOUTME: Resolves the current user's persisted administrative authority through IAdminContext.
+// ABOUTME: Returns normalized instance, tenant, organization, and group scope identifiers.
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.DTOs.User;
@@ -22,12 +22,14 @@ public class GetAdminAuthorityRequestHandler : IRequestHandler<GetAdminAuthority
         var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken);
         var tenantIds = await _adminContext.GetAdminTenantIdsAsync(request.UserId, cancellationToken);
         var orgIds = await _adminContext.GetAdminOrganizationIdsAsync(request.UserId, cancellationToken);
+        var groupIds = await _adminContext.GetAdminGroupIdsAsync(request.UserId, cancellationToken);
 
         return new AdminAuthorityDto
         {
             IsInstanceAdmin = isInstanceAdmin,
             AdminTenantIds = tenantIds.ToList(),
-            AdminOrganizationIds = orgIds.ToList()
+            AdminOrganizationIds = orgIds.ToList(),
+            AdminGroupIds = groupIds.ToList()
         };
     }
 }

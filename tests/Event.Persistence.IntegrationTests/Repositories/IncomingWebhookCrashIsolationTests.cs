@@ -200,7 +200,12 @@ public sealed class IncomingWebhookCrashIsolationTests(PostgreSqlContainerFixtur
             null,
             now,
             now,
-            now.AddDays(14));
+            now.AddDays(14),
+            "webhook-retention-test-v1",
+            now.AddDays(30),
+            now.AddDays(90),
+            now.AddDays(14),
+            now.AddDays(30));
     }
 
     private sealed record SeededTenants(

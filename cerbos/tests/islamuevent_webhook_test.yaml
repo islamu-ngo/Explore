@@ -1,196 +1,254 @@
-# ABOUTME: Cerbos policy test suite for outgoing webhook management resources.
-# ABOUTME: Covers tenant-admin authority and delegated organization-admin webhook authority.
+# ABOUTME: Cerbos policy tests for exact typed webhook ownership and privileged operations.
+# ABOUTME: Covers all five owner kinds, unrelated-owner denial, and tenant-only sensitive actions.
 
 name: WebhookPolicyTests
-description: "Validates outgoing webhook management policy boundaries"
+description: "Validates exact outgoing webhook ownership boundaries"
 
 principals:
-  islamuevent_instance_admin:
-    id: "user-instance-admin"
+  instance_admin:
+    id: "instance-admin"
     roles: ["islamuevent_authenticated_user"]
     attr:
+      userId: "instance-admin"
       isInstanceAdmin: true
       tenantMemberships: {}
       orgMemberships: {}
+      groupMemberships: {}
 
-  islamuevent_tenant_admin:
-    id: "user-tenant-admin"
+  tenant_admin:
+    id: "tenant-admin"
     roles: ["islamuevent_authenticated_user"]
     attr:
+      userId: "tenant-admin"
       isInstanceAdmin: false
-      tenantMemberships:
-        "tenant-1": "admin"
+      tenantMemberships: { "tenant-1": "admin" }
       orgMemberships: {}
+      groupMemberships: {}
 
-  islamuevent_org_admin:
-    id: "user-org-admin"
+  org_admin:
+    id: "org-admin"
     roles: ["islamuevent_authenticated_user"]
     attr:
+      userId: "org-admin"
       isInstanceAdmin: false
       tenantMemberships: {}
-      orgMemberships:
-        "org-1": "admin"
+      orgMemberships: { "org-1": "admin" }
+      groupMemberships: {}
 
-  unrelated_org_admin:
-    id: "user-other-org-admin"
+  group_admin:
+    id: "group-admin"
     roles: ["islamuevent_authenticated_user"]
     attr:
-      isInstanceAdmin: false
-      tenantMemberships: {}
-      orgMemberships:
-        "org-other": "admin"
-
-  regular_user:
-    id: "user-regular"
-    roles: ["islamuevent_authenticated_user"]
-    attr:
+      userId: "group-admin"
       isInstanceAdmin: false
       tenantMemberships: {}
       orgMemberships: {}
+      groupMemberships: { "group-1": "admin" }
 
-  incoming_webhook_worker:
-    id: "incoming-webhook-worker"
+  owning_user:
+    id: "subject-user-1"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      userId: "user-1"
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+      groupMemberships: {}
+
+  unrelated_user:
+    id: "subject-user-2"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      userId: "user-2"
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: { "org-other": "admin" }
+      groupMemberships: { "group-other": "admin" }
+
+  incoming_worker:
+    id: "incoming-worker"
     roles: ["islamuevent_authenticated_user"]
     attr:
       isInstanceAdmin: false
-      tenantMemberships:
-        "tenant-1": "admin"
+      tenantMemberships: { "tenant-1": "admin" }
       orgMemberships: {}
+      groupMemberships: {}
       is_machine: true
       scopes: ["internal:webhook:process-incoming"]
 
-  incoming_webhook_worker_wrong_scope:
-    id: "incoming-webhook-worker-wrong-scope"
-    roles: ["islamuevent_authenticated_user"]
-    attr:
-      isInstanceAdmin: false
-      tenantMemberships:
-        "tenant-1": "admin"
-      orgMemberships: {}
-      is_machine: true
-      scopes: ["admin:tenant"]
-
 resources:
+  instance_webhook:
+    kind: "islamuevent_webhook"
+    id: "instance-consumer"
+    attr:
+      ownerKindId: 5
+      ownerId: "instance-1"
+      instanceId: "instance-1"
+      consumerId: "instance-consumer"
+
   tenant_webhook:
     kind: "islamuevent_webhook"
-    id: "tenant-1"
+    id: "tenant-consumer"
     attr:
+      ownerKindId: 1
+      ownerId: "tenant-1"
       tenantId: "tenant-1"
+      consumerId: "tenant-consumer"
 
-  org_webhook_allowed:
+  org_webhook:
     kind: "islamuevent_webhook"
-    id: "consumer-org-1"
+    id: "org-consumer"
     attr:
+      ownerKindId: 2
+      ownerId: "org-1"
       tenantId: "tenant-1"
       organizationId: "org-1"
-      allowOrganizationWebhooks: true
-      consumerId: "consumer-org-1"
+      consumerId: "org-consumer"
 
-  org_webhook_disabled:
+  group_webhook:
     kind: "islamuevent_webhook"
-    id: "consumer-org-1-disabled"
+    id: "group-consumer"
     attr:
+      ownerKindId: 3
+      ownerId: "group-1"
       tenantId: "tenant-1"
-      organizationId: "org-1"
-      allowOrganizationWebhooks: false
-      consumerId: "consumer-org-1"
+      groupId: "group-1"
+      consumerId: "group-consumer"
+
+  user_webhook:
+    kind: "islamuevent_webhook"
+    id: "user-consumer"
+    attr:
+      ownerKindId: 4
+      ownerId: "user-1"
+      tenantId: "tenant-1"
+      userId: "user-1"
+      consumerId: "user-consumer"
 
 tests:
-  - name: "Instance admin can manage webhook provider state"
+  - name: "Instance administrator manages instance-owned webhooks"
     input:
-      principals: ["islamuevent_instance_admin"]
-      resources: ["tenant_webhook"]
-      actions: ["webhook:view", "webhook:manage-provider", "webhook:open-provider-portal"]
+      principals: ["instance_admin"]
+      resources: ["instance_webhook"]
+      actions: ["webhook:view", "webhook:create", "webhook:update", "webhook:manage-provider", "webhook:view-payload", "webhook:bulk-replay"]
     expected:
-      - principal: "islamuevent_instance_admin"
-        resource: "tenant_webhook"
-        actions:
-          webhook:view: EFFECT_ALLOW
-          webhook:manage-provider: EFFECT_ALLOW
-          webhook:open-provider-portal: EFFECT_ALLOW
-
-  - name: "Tenant admin can manage tenant webhooks"
-    input:
-      principals: ["islamuevent_tenant_admin"]
-      resources: ["tenant_webhook"]
-      actions: ["webhook:view", "webhook:create", "webhook:redrive-incoming", "webhook:manage-provider", "webhook:open-provider-portal"]
-    expected:
-      - principal: "islamuevent_tenant_admin"
-        resource: "tenant_webhook"
+      - principal: "instance_admin"
+        resource: "instance_webhook"
         actions:
           webhook:view: EFFECT_ALLOW
           webhook:create: EFFECT_ALLOW
-          webhook:redrive-incoming: EFFECT_ALLOW
+          webhook:update: EFFECT_ALLOW
           webhook:manage-provider: EFFECT_ALLOW
-          webhook:open-provider-portal: EFFECT_ALLOW
+          webhook:view-payload: EFFECT_ALLOW
+          webhook:bulk-replay: EFFECT_ALLOW
 
-  - name: "Incoming worker can only process with the dedicated machine scope"
+  - name: "Tenant administrator manages only tenant-owned webhooks"
     input:
-      principals: ["incoming_webhook_worker", "incoming_webhook_worker_wrong_scope"]
-      resources: ["tenant_webhook"]
-      actions: ["webhook:process-incoming", "webhook:redrive-incoming", "webhook:manage-provider"]
+      principals: ["tenant_admin"]
+      resources: ["tenant_webhook", "org_webhook", "group_webhook", "user_webhook", "instance_webhook"]
+      actions: ["webhook:view", "webhook:update", "webhook:manage-provider", "webhook:view-payload", "webhook:bulk-replay"]
     expected:
-      - principal: "incoming_webhook_worker"
+      - principal: "tenant_admin"
         resource: "tenant_webhook"
         actions:
-          webhook:process-incoming: EFFECT_ALLOW
-          webhook:redrive-incoming: EFFECT_DENY
+          webhook:view: EFFECT_ALLOW
+          webhook:update: EFFECT_ALLOW
+          webhook:manage-provider: EFFECT_ALLOW
+          webhook:view-payload: EFFECT_ALLOW
+          webhook:bulk-replay: EFFECT_ALLOW
+      - principal: "tenant_admin"
+        resource: "org_webhook"
+        actions: &tenant_admin_denied
+          webhook:view: EFFECT_DENY
+          webhook:update: EFFECT_DENY
           webhook:manage-provider: EFFECT_DENY
-      - principal: "incoming_webhook_worker_wrong_scope"
-        resource: "tenant_webhook"
-        actions:
-          webhook:process-incoming: EFFECT_DENY
-          webhook:redrive-incoming: EFFECT_ALLOW
-          webhook:manage-provider: EFFECT_ALLOW
+          webhook:view-payload: EFFECT_DENY
+          webhook:bulk-replay: EFFECT_DENY
+      - principal: "tenant_admin"
+        resource: "group_webhook"
+        actions: *tenant_admin_denied
+      - principal: "tenant_admin"
+        resource: "user_webhook"
+        actions: *tenant_admin_denied
+      - principal: "tenant_admin"
+        resource: "instance_webhook"
+        actions: *tenant_admin_denied
 
-  - name: "Organization admin can manage org-owned webhooks only when delegated"
+  - name: "Organization and group administrators manage only their exact owner"
     input:
-      principals: ["islamuevent_org_admin"]
-      resources: ["org_webhook_allowed", "org_webhook_disabled"]
-      actions: ["webhook:view", "webhook:create", "webhook:update", "webhook:delete", "webhook:rotate-secret", "webhook:test", "webhook:retry", "webhook:view-delivery", "webhook:manage-provider", "webhook:open-provider-portal"]
+      principals: ["org_admin", "group_admin"]
+      resources: ["org_webhook", "group_webhook"]
+      actions: ["webhook:view", "webhook:create", "webhook:update", "webhook:delete", "webhook:rotate-secret", "webhook:test", "webhook:pause", "webhook:resume", "webhook:open-provider-portal", "webhook:manage-provider", "webhook:view-payload", "webhook:bulk-replay"]
     expected:
-      - principal: "islamuevent_org_admin"
-        resource: "org_webhook_allowed"
-        actions:
+      - principal: "org_admin"
+        resource: "org_webhook"
+        actions: &delegated_allowed
           webhook:view: EFFECT_ALLOW
           webhook:create: EFFECT_ALLOW
           webhook:update: EFFECT_ALLOW
           webhook:delete: EFFECT_ALLOW
           webhook:rotate-secret: EFFECT_ALLOW
           webhook:test: EFFECT_ALLOW
-          webhook:retry: EFFECT_ALLOW
-          webhook:view-delivery: EFFECT_ALLOW
-          webhook:manage-provider: EFFECT_DENY
+          webhook:pause: EFFECT_ALLOW
+          webhook:resume: EFFECT_ALLOW
           webhook:open-provider-portal: EFFECT_ALLOW
-      - principal: "islamuevent_org_admin"
-        resource: "org_webhook_disabled"
-        actions:
+          webhook:manage-provider: EFFECT_DENY
+          webhook:view-payload: EFFECT_DENY
+          webhook:bulk-replay: EFFECT_DENY
+      - principal: "org_admin"
+        resource: "group_webhook"
+        actions: &delegated_denied
           webhook:view: EFFECT_DENY
           webhook:create: EFFECT_DENY
           webhook:update: EFFECT_DENY
           webhook:delete: EFFECT_DENY
           webhook:rotate-secret: EFFECT_DENY
           webhook:test: EFFECT_DENY
-          webhook:retry: EFFECT_DENY
-          webhook:view-delivery: EFFECT_DENY
+          webhook:pause: EFFECT_DENY
+          webhook:resume: EFFECT_DENY
+          webhook:open-provider-portal: EFFECT_DENY
           webhook:manage-provider: EFFECT_DENY
-          webhook:open-provider-portal: EFFECT_DENY
+          webhook:view-payload: EFFECT_DENY
+          webhook:bulk-replay: EFFECT_DENY
+      - principal: "group_admin"
+        resource: "group_webhook"
+        actions: *delegated_allowed
+      - principal: "group_admin"
+        resource: "org_webhook"
+        actions: *delegated_denied
 
-  - name: "Unrelated organization admin and regular user cannot manage org webhook"
+  - name: "User manages only their own user-owned webhook"
     input:
-      principals: ["unrelated_org_admin", "regular_user"]
-      resources: ["org_webhook_allowed"]
-      actions: ["webhook:view", "webhook:update", "webhook:open-provider-portal"]
+      principals: ["owning_user", "unrelated_user"]
+      resources: ["user_webhook"]
+      actions: ["webhook:view", "webhook:update", "webhook:open-provider-portal", "webhook:manage-provider", "webhook:view-payload"]
     expected:
-      - principal: "unrelated_org_admin"
-        resource: "org_webhook_allowed"
+      - principal: "owning_user"
+        resource: "user_webhook"
+        actions:
+          webhook:view: EFFECT_ALLOW
+          webhook:update: EFFECT_ALLOW
+          webhook:open-provider-portal: EFFECT_ALLOW
+          webhook:manage-provider: EFFECT_DENY
+          webhook:view-payload: EFFECT_DENY
+      - principal: "unrelated_user"
+        resource: "user_webhook"
         actions:
           webhook:view: EFFECT_DENY
           webhook:update: EFFECT_DENY
           webhook:open-provider-portal: EFFECT_DENY
-      - principal: "regular_user"
-        resource: "org_webhook_allowed"
+          webhook:manage-provider: EFFECT_DENY
+          webhook:view-payload: EFFECT_DENY
+
+  - name: "Incoming processing requires its dedicated machine scope"
+    input:
+      principals: ["incoming_worker"]
+      resources: ["tenant_webhook"]
+      actions: ["webhook:process-incoming", "webhook:redrive-incoming", "webhook:update"]
+    expected:
+      - principal: "incoming_worker"
+        resource: "tenant_webhook"
         actions:
-          webhook:view: EFFECT_DENY
+          webhook:process-incoming: EFFECT_ALLOW
+          webhook:redrive-incoming: EFFECT_DENY
           webhook:update: EFFECT_DENY
-          webhook:open-provider-portal: EFFECT_DENY

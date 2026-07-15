@@ -118,7 +118,6 @@ public enum SvixProviderPublicationLookupOutcome
 }
 
 public sealed record SvixAppPortalAccessRequest(
-    Guid TenantId,
     string AppId,
     string SessionId,
     bool ReadOnly,

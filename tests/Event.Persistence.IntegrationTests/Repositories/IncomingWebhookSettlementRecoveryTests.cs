@@ -15,6 +15,7 @@ using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
+using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using TUnit.Core;
@@ -306,12 +307,19 @@ public sealed class IncomingWebhookSettlementRecoveryTests(PostgreSqlContainerFi
         var redrivenAt = seeded.ObservedAt.AddMinutes(1);
         await using (var redriveContext = fixture.CreateDbContext())
         {
+            var currentUser = new StaticCurrentUserService(actorUserId);
+            var machinePrincipal = new NoMachinePrincipalAccessor();
             var handler = new RedriveIncomingWebhookCommandHandler(
                 new IncomingWebhookMessageRepository(redriveContext),
-                new AuditLogRepository(redriveContext),
+                new WebhookAuditEventWriter(
+                    new WebhookAuditEventRepository(redriveContext),
+                    currentUser,
+                    machinePrincipal,
+                    new FixedWebhookRetentionPolicyResolver(),
+                    new FixedTimeProvider(redrivenAt)),
                 new EfCoreUnitOfWork(redriveContext),
-                new StaticCurrentUserService(actorUserId),
-                new NoMachinePrincipalAccessor(),
+                currentUser,
+                machinePrincipal,
                 new FixedTimeProvider(redrivenAt));
             var response = await handler.Handle(new RedriveIncomingWebhookCommand
             {
@@ -330,20 +338,19 @@ public sealed class IncomingWebhookSettlementRecoveryTests(PostgreSqlContainerFi
             .AsNoTracking()
             .Include(candidate => candidate.RedriveRecords)
             .SingleAsync(candidate => candidate.Id == seeded.Claim.IncomingWebhookMessageId);
-        var audit = await verificationContext.AuditLogs
+        var audit = await verificationContext.WebhookAuditEvents
             .AsNoTracking()
-            .SingleAsync(candidate =>
-                candidate.TenantId == seeded.Claim.TenantId &&
-                candidate.EntityId == message.Id.ToString("D") &&
-                candidate.Action == "IncomingWebhookRedriven");
+            .SingleAsync(candidate => candidate.TenantId == seeded.Claim.TenantId &&
+                candidate.TargetId == message.Id &&
+                candidate.ActionId == (int)WebhookAuditAction.IncomingRedriveScheduled);
 
         await Assert.That(message.Status).IsEqualTo(IncomingWebhookMessageStatus.RetryDue);
         await Assert.That(message.ProcessingGeneration).IsEqualTo(2);
         await Assert.That(message.RedriveRecords).HasSingleItem();
         await Assert.That(message.RedriveRecords.Single().Result)
             .IsEqualTo(IncomingWebhookRedriveResult.Scheduled);
-        await Assert.That(audit.ActorId).IsEqualTo(actorUserId);
-        await Assert.That(audit.NewValues).DoesNotContain("operator-confirmed-recovery");
+        await Assert.That(audit.PrincipalReference).IsEqualTo($"user:{actorUserId:D}");
+        await Assert.That(audit.SafeAfterJson).DoesNotContain("operator-confirmed-recovery");
     }
 
     private async Task<SeededClaim> SeedAndClaimAsync(string identity)
@@ -352,6 +359,7 @@ public sealed class IncomingWebhookSettlementRecoveryTests(PostgreSqlContainerFi
         Guid tenantId;
         await using (var setupContext = fixture.CreateDbContext())
         {
+            await LookupTableSeeder.SeedAsync(setupContext);
             var tenant = new Tenant
             {
                 Id = Guid.CreateVersion7(),
@@ -433,7 +441,12 @@ public sealed class IncomingWebhookSettlementRecoveryTests(PostgreSqlContainerFi
             null,
             now,
             now,
-            now.AddDays(14));
+            now.AddDays(14),
+            "webhook-retention-test-v1",
+            now.AddDays(30),
+            now.AddDays(90),
+            now.AddDays(14),
+            now.AddDays(30));
     }
 
     private static byte[] CreatePayload(string identity) =>

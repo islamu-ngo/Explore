@@ -38,7 +38,7 @@ public sealed class GroupServiceTests
                         {
                             Id = groupId,
                             FullName = "Community Group",
-                            CurrentUserRole = 2
+                            CurrentUserRoleId = 2
                         }
                     ]
                 }
@@ -50,7 +50,7 @@ public sealed class GroupServiceTests
         var group = groups.Single();
         await Assert.That(group.Id).IsEqualTo(groupId);
         await Assert.That(group.FullName).IsEqualTo("Community Group");
-        await Assert.That(group.CurrentUserRole).IsEqualTo(2);
+        await Assert.That(group.CurrentUserRoleId).IsEqualTo(2);
         await _apiClient.Received(1).GetMyGroupsAsync(
             1,
             100,

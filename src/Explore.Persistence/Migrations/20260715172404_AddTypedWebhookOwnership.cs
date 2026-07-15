@@ -216,6 +216,48 @@ namespace Explore.Persistence.Migrations
                 oldClrType: typeof(Guid),
                 oldType: "uuid");
 
+            migrationBuilder.AddColumn<Guid>(
+                name: "configuration_scope_id",
+                table: "webhook_endpoints",
+                type: "uuid",
+                nullable: false,
+                computedColumnSql: "COALESCE(tenant_id, instance_id)",
+                stored: true);
+
+            migrationBuilder.AddColumn<Guid>(
+                name: "configuration_scope_id",
+                table: "webhook_endpoint_subscriptions",
+                type: "uuid",
+                nullable: false,
+                computedColumnSql: "COALESCE(tenant_id, instance_id)",
+                stored: true);
+
+            migrationBuilder.AddColumn<Guid>(
+                name: "configuration_scope_id",
+                table: "webhook_consumers",
+                type: "uuid",
+                nullable: false,
+                computedColumnSql: "COALESCE(tenant_id, instance_id)",
+                stored: true);
+
+            migrationBuilder.AddColumn<Guid>(
+                name: "configuration_scope_id",
+                table: "webhook_consumer_provider_bindings",
+                type: "uuid",
+                nullable: false,
+                computedColumnSql: "COALESCE(tenant_id, instance_id)",
+                stored: true);
+
+            migrationBuilder.AddUniqueConstraint(
+                name: "ak_webhook_endpoints_configuration_scope_id",
+                table: "webhook_endpoints",
+                columns: new[] { "configuration_scope_id", "id" });
+
+            migrationBuilder.AddUniqueConstraint(
+                name: "ak_webhook_consumers_configuration_scope_id",
+                table: "webhook_consumers",
+                columns: new[] { "configuration_scope_id", "id" });
+
             migrationBuilder.AddUniqueConstraint(
                 name: "ak_tenant_users_tenant_id_user_id",
                 table: "tenant_users",
@@ -237,9 +279,9 @@ namespace Explore.Persistence.Migrations
                 column: "webhook_endpoint_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_webhook_endpoints_consumer_id",
+                name: "ix_webhook_endpoints_configuration_scope_id_consumer_id",
                 table: "webhook_endpoints",
-                column: "consumer_id");
+                columns: new[] { "configuration_scope_id", "consumer_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_webhook_endpoints_instance_consumer_status",
@@ -266,10 +308,15 @@ namespace Explore.Persistence.Migrations
                 table: "webhook_endpoints",
                 sql: "(tenant_id IS NOT NULL AND instance_id IS NULL) OR (tenant_id IS NULL AND instance_id IS NOT NULL)");
 
+            migrationBuilder.AddCheckConstraint(
+                name: "ck_webhook_endpoints_configuration_scope_key",
+                table: "webhook_endpoints",
+                sql: "configuration_scope_id = COALESCE(tenant_id, instance_id)");
+
             migrationBuilder.CreateIndex(
-                name: "ix_webhook_endpoint_subscriptions_endpoint_id",
+                name: "ix_webhook_endpoint_subscriptions_configuration_scope_id_endpo",
                 table: "webhook_endpoint_subscriptions",
-                column: "endpoint_id");
+                columns: new[] { "configuration_scope_id", "endpoint_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_webhook_endpoint_subscriptions_instance_event_type",
@@ -295,6 +342,11 @@ namespace Explore.Persistence.Migrations
                 name: "ck_webhook_endpoint_subscriptions_configuration_scope",
                 table: "webhook_endpoint_subscriptions",
                 sql: "(tenant_id IS NOT NULL AND instance_id IS NULL) OR (tenant_id IS NULL AND instance_id IS NOT NULL)");
+
+            migrationBuilder.AddCheckConstraint(
+                name: "ck_webhook_endpoint_subscriptions_configuration_scope_key",
+                table: "webhook_endpoint_subscriptions",
+                sql: "configuration_scope_id = COALESCE(tenant_id, instance_id)");
 
             migrationBuilder.CreateIndex(
                 name: "ix_webhook_delivery_plan_snapshots_webhook_consumer_id",
@@ -355,9 +407,19 @@ namespace Explore.Persistence.Migrations
                 filter: "consumer_kind_id = 4");
 
             migrationBuilder.AddCheckConstraint(
+                name: "ck_webhook_consumers_configuration_scope",
+                table: "webhook_consumers",
+                sql: "configuration_scope_id = COALESCE(tenant_id, instance_id)");
+
+            migrationBuilder.AddCheckConstraint(
                 name: "ck_webhook_consumers_typed_owner",
                 table: "webhook_consumers",
                 sql: "(consumer_kind_id = 1 AND tenant_id IS NOT NULL AND instance_id IS NULL AND organization_id IS NULL AND group_id IS NULL AND owner_user_id IS NULL) OR (consumer_kind_id = 2 AND tenant_id IS NOT NULL AND instance_id IS NULL AND organization_id IS NOT NULL AND group_id IS NULL AND owner_user_id IS NULL) OR (consumer_kind_id = 3 AND tenant_id IS NOT NULL AND instance_id IS NULL AND organization_id IS NULL AND group_id IS NOT NULL AND owner_user_id IS NULL) OR (consumer_kind_id = 4 AND tenant_id IS NOT NULL AND instance_id IS NULL AND organization_id IS NULL AND group_id IS NULL AND owner_user_id IS NOT NULL) OR (consumer_kind_id = 5 AND tenant_id IS NULL AND instance_id IS NOT NULL AND organization_id IS NULL AND group_id IS NULL AND owner_user_id IS NULL)");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_webhook_consumer_provider_bindings_configuration_scope_id_w",
+                table: "webhook_consumer_provider_bindings",
+                columns: new[] { "configuration_scope_id", "webhook_consumer_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_webhook_consumer_provider_bindings_tenant_id",
@@ -384,9 +446,14 @@ namespace Explore.Persistence.Migrations
                 filter: "normalized_external_application_id IS NOT NULL");
 
             migrationBuilder.AddCheckConstraint(
+                name: "ck_webhook_consumer_provider_bindings_configuration_scope",
+                table: "webhook_consumer_provider_bindings",
+                sql: "configuration_scope_id = COALESCE(tenant_id, instance_id)");
+
+            migrationBuilder.AddCheckConstraint(
                 name: "ck_webhook_consumer_provider_bindings_verified_scope",
                 table: "webhook_consumer_provider_bindings",
-                sql: "verification_state_id <> 2 OR verified_tenant_id IS NOT DISTINCT FROM tenant_id");
+                sql: "verification_state_id <> 3 OR (verified_tenant_id IS NOT DISTINCT FROM tenant_id AND verified_webhook_consumer_id = webhook_consumer_id)");
 
             migrationBuilder.CreateIndex(
                 name: "ix_webhook_bulk_replay_operations_webhook_consumer_id",
@@ -439,11 +506,11 @@ namespace Explore.Persistence.Migrations
                 onDelete: ReferentialAction.Restrict);
 
             migrationBuilder.AddForeignKey(
-                name: "fk_webhook_consumer_provider_bindings_webhook_consumers_webhoo",
+                name: "fk_webhook_consumer_provider_bindings_webhook_consumers_config",
                 table: "webhook_consumer_provider_bindings",
-                column: "webhook_consumer_id",
+                columns: new[] { "configuration_scope_id", "webhook_consumer_id" },
                 principalTable: "webhook_consumers",
-                principalColumn: "id",
+                principalColumns: new[] { "configuration_scope_id", "id" },
                 onDelete: ReferentialAction.Restrict);
 
             migrationBuilder.AddForeignKey(
@@ -503,11 +570,11 @@ namespace Explore.Persistence.Migrations
                 onDelete: ReferentialAction.Restrict);
 
             migrationBuilder.AddForeignKey(
-                name: "fk_webhook_endpoint_subscriptions_webhook_endpoints_endpoint_id",
+                name: "fk_webhook_endpoint_subscriptions_webhook_endpoints_configurat",
                 table: "webhook_endpoint_subscriptions",
-                column: "endpoint_id",
+                columns: new[] { "configuration_scope_id", "endpoint_id" },
                 principalTable: "webhook_endpoints",
-                principalColumn: "id",
+                principalColumns: new[] { "configuration_scope_id", "id" },
                 onDelete: ReferentialAction.Restrict);
 
             migrationBuilder.AddForeignKey(
@@ -519,11 +586,11 @@ namespace Explore.Persistence.Migrations
                 onDelete: ReferentialAction.Restrict);
 
             migrationBuilder.AddForeignKey(
-                name: "fk_webhook_endpoints_webhook_consumers_consumer_id",
+                name: "fk_webhook_endpoints_webhook_consumers_configuration_scope_id_",
                 table: "webhook_endpoints",
-                column: "consumer_id",
+                columns: new[] { "configuration_scope_id", "consumer_id" },
                 principalTable: "webhook_consumers",
-                principalColumn: "id",
+                principalColumns: new[] { "configuration_scope_id", "id" },
                 onDelete: ReferentialAction.Restrict);
 
             migrationBuilder.AddForeignKey(
@@ -567,7 +634,7 @@ namespace Explore.Persistence.Migrations
                 table: "webhook_bulk_replay_operations");
 
             migrationBuilder.DropForeignKey(
-                name: "fk_webhook_consumer_provider_bindings_webhook_consumers_webhoo",
+                name: "fk_webhook_consumer_provider_bindings_webhook_consumers_config",
                 table: "webhook_consumer_provider_bindings");
 
             migrationBuilder.DropForeignKey(
@@ -599,7 +666,7 @@ namespace Explore.Persistence.Migrations
                 table: "webhook_endpoint_subscriptions");
 
             migrationBuilder.DropForeignKey(
-                name: "fk_webhook_endpoint_subscriptions_webhook_endpoints_endpoint_id",
+                name: "fk_webhook_endpoint_subscriptions_webhook_endpoints_configurat",
                 table: "webhook_endpoint_subscriptions");
 
             migrationBuilder.DropForeignKey(
@@ -607,7 +674,7 @@ namespace Explore.Persistence.Migrations
                 table: "webhook_endpoints");
 
             migrationBuilder.DropForeignKey(
-                name: "fk_webhook_endpoints_webhook_consumers_consumer_id",
+                name: "fk_webhook_endpoints_webhook_consumers_configuration_scope_id_",
                 table: "webhook_endpoints");
 
             migrationBuilder.DropForeignKey(
@@ -634,8 +701,12 @@ namespace Explore.Persistence.Migrations
                 name: "ix_webhook_local_target_snapshots_webhook_endpoint_id",
                 table: "webhook_local_target_snapshots");
 
+            migrationBuilder.DropUniqueConstraint(
+                name: "ak_webhook_endpoints_configuration_scope_id",
+                table: "webhook_endpoints");
+
             migrationBuilder.DropIndex(
-                name: "ix_webhook_endpoints_consumer_id",
+                name: "ix_webhook_endpoints_configuration_scope_id_consumer_id",
                 table: "webhook_endpoints");
 
             migrationBuilder.DropIndex(
@@ -654,8 +725,12 @@ namespace Explore.Persistence.Migrations
                 name: "ck_webhook_endpoints_configuration_scope",
                 table: "webhook_endpoints");
 
+            migrationBuilder.DropCheckConstraint(
+                name: "ck_webhook_endpoints_configuration_scope_key",
+                table: "webhook_endpoints");
+
             migrationBuilder.DropIndex(
-                name: "ix_webhook_endpoint_subscriptions_endpoint_id",
+                name: "ix_webhook_endpoint_subscriptions_configuration_scope_id_endpo",
                 table: "webhook_endpoint_subscriptions");
 
             migrationBuilder.DropIndex(
@@ -674,6 +749,10 @@ namespace Explore.Persistence.Migrations
                 name: "ck_webhook_endpoint_subscriptions_configuration_scope",
                 table: "webhook_endpoint_subscriptions");
 
+            migrationBuilder.DropCheckConstraint(
+                name: "ck_webhook_endpoint_subscriptions_configuration_scope_key",
+                table: "webhook_endpoint_subscriptions");
+
             migrationBuilder.DropIndex(
                 name: "ix_webhook_delivery_plan_snapshots_webhook_consumer_id",
                 table: "webhook_delivery_plan_snapshots");
@@ -681,6 +760,10 @@ namespace Explore.Persistence.Migrations
             migrationBuilder.DropIndex(
                 name: "ix_webhook_delivery_attempts_endpoint_id",
                 table: "webhook_delivery_attempts");
+
+            migrationBuilder.DropUniqueConstraint(
+                name: "ak_webhook_consumers_configuration_scope_id",
+                table: "webhook_consumers");
 
             migrationBuilder.DropIndex(
                 name: "ix_webhook_consumers_instance_status_provider",
@@ -711,8 +794,16 @@ namespace Explore.Persistence.Migrations
                 table: "webhook_consumers");
 
             migrationBuilder.DropCheckConstraint(
+                name: "ck_webhook_consumers_configuration_scope",
+                table: "webhook_consumers");
+
+            migrationBuilder.DropCheckConstraint(
                 name: "ck_webhook_consumers_typed_owner",
                 table: "webhook_consumers");
+
+            migrationBuilder.DropIndex(
+                name: "ix_webhook_consumer_provider_bindings_configuration_scope_id_w",
+                table: "webhook_consumer_provider_bindings");
 
             migrationBuilder.DropIndex(
                 name: "ix_webhook_consumer_provider_bindings_tenant_id",
@@ -728,6 +819,10 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropIndex(
                 name: "ux_webhook_provider_bindings_provider_environment_external_app",
+                table: "webhook_consumer_provider_bindings");
+
+            migrationBuilder.DropCheckConstraint(
+                name: "ck_webhook_consumer_provider_bindings_configuration_scope",
                 table: "webhook_consumer_provider_bindings");
 
             migrationBuilder.DropCheckConstraint(
@@ -757,6 +852,22 @@ namespace Explore.Persistence.Migrations
             migrationBuilder.DropIndex(
                 name: "ix_incoming_webhook_messages_webhook_consumer_provider_binding",
                 table: "incoming_webhook_messages");
+
+            migrationBuilder.DropColumn(
+                name: "configuration_scope_id",
+                table: "webhook_endpoints");
+
+            migrationBuilder.DropColumn(
+                name: "configuration_scope_id",
+                table: "webhook_endpoint_subscriptions");
+
+            migrationBuilder.DropColumn(
+                name: "configuration_scope_id",
+                table: "webhook_consumers");
+
+            migrationBuilder.DropColumn(
+                name: "configuration_scope_id",
+                table: "webhook_consumer_provider_bindings");
 
             migrationBuilder.DropColumn(
                 name: "instance_id",

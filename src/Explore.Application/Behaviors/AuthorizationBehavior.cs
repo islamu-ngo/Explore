@@ -7,6 +7,7 @@ using System.Reflection;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Exceptions;
 using Explore.Domain;
 using MediatR;
@@ -32,6 +33,7 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
     private readonly IOrganizationMemberRepository? _organizationMemberRepository;
     private readonly IStorageObjectRepository? _storageObjectRepository;
     private readonly IEventSessionRepository? _eventSessionRepository;
+    private readonly IWebhookOwnershipScopeResolver? _webhookOwnershipScopeResolver;
 
     public AuthorizationBehavior(
         IAuthorizationProvider authorizationProvider,
@@ -39,7 +41,8 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         IEventRepository? eventRepository = null,
         IOrganizationMemberRepository? organizationMemberRepository = null,
         IStorageObjectRepository? storageObjectRepository = null,
-        IEventSessionRepository? eventSessionRepository = null)
+        IEventSessionRepository? eventSessionRepository = null,
+        IWebhookOwnershipScopeResolver? webhookOwnershipScopeResolver = null)
     {
         _authorizationProvider = authorizationProvider;
         _logger = logger;
@@ -47,6 +50,7 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         _organizationMemberRepository = organizationMemberRepository;
         _storageObjectRepository = storageObjectRepository;
         _eventSessionRepository = eventSessionRepository;
+        _webhookOwnershipScopeResolver = webhookOwnershipScopeResolver;
     }
 
     public async Task<TResponse> Handle(
@@ -85,6 +89,23 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
             var resourceAttributes = (request is ISecureRequest sr)
                 ? sr.ResourceAttributes
                 : null;
+            if (attribute.Resource == ResourceKinds.Webhook &&
+                request is IWebhookPersistedOwnerRequest persistedOwnerRequest)
+            {
+                var ownership = await ResolvePersistedWebhookOwnershipAsync(
+                    persistedOwnerRequest,
+                    cancellationToken);
+                resourceId = persistedOwnerRequest.OwnedResourceId.ToString("D");
+                resourceAttributes = CreateWebhookOwnerAttributes(ownership);
+            }
+            else if (attribute.Resource == ResourceKinds.Webhook &&
+                request is IWebhookOwnerScopedRequest ownerScopedRequest)
+            {
+                var ownership = await ResolveWebhookOwnershipAsync(ownerScopedRequest, cancellationToken);
+                resourceId = ownership.OwnerId.ToString("D");
+                resourceAttributes = CreateWebhookOwnerAttributes(ownership);
+            }
+
             resourceAttributes = await EnrichResourceAttributesAsync(
                 attribute.Resource,
                 resourceId,
@@ -104,6 +125,56 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
 
         // No authorization requirements — pass through
         return await next(cancellationToken);
+    }
+
+    private async Task<WebhookOwnershipScope> ResolveWebhookOwnershipAsync(
+        IWebhookOwnerScopedRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (_webhookOwnershipScopeResolver is null)
+        {
+            throw new AuthorizationException(ResourceKinds.Webhook, "resolve-owner");
+        }
+
+        var resolution = await _webhookOwnershipScopeResolver.ResolveAsync(
+            request.OwnerKindId,
+            request.OwnerId,
+            cancellationToken);
+        return resolution.Scope ?? throw new AuthorizationException(ResourceKinds.Webhook, "resolve-owner");
+    }
+
+    private async Task<WebhookOwnershipScope> ResolvePersistedWebhookOwnershipAsync(
+        IWebhookPersistedOwnerRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (_webhookOwnershipScopeResolver is null)
+        {
+            throw new AuthorizationException(ResourceKinds.Webhook, "resolve-persisted-owner");
+        }
+
+        var resolution = await _webhookOwnershipScopeResolver.ResolvePersistedAsync(
+            request.OwnedResourceKind,
+            request.OwnedResourceId,
+            cancellationToken);
+        return resolution.Scope ??
+            throw new AuthorizationException(ResourceKinds.Webhook, "resolve-persisted-owner");
+    }
+
+    private static Dictionary<string, object> CreateWebhookOwnerAttributes(WebhookOwnershipScope ownership)
+    {
+        var attributes = new Dictionary<string, object>
+        {
+            ["ownerKindId"] = (int)ownership.Kind,
+            ["ownerKind"] = ownership.Kind.ToString().ToUpperInvariant(),
+            ["ownerId"] = ownership.OwnerId.ToString("D")
+        };
+
+        AddIfMissing(attributes, "tenantId", ownership.TenantId);
+        AddIfMissing(attributes, "instanceId", ownership.InstanceId);
+        AddIfMissing(attributes, "organizationId", ownership.OrganizationId);
+        AddIfMissing(attributes, "groupId", ownership.GroupId);
+        AddIfMissing(attributes, "userId", ownership.UserId);
+        return attributes;
     }
 
     private async Task<IDictionary<string, object>?> EnrichResourceAttributesAsync(

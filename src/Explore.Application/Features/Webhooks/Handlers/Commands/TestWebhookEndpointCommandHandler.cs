@@ -1,6 +1,8 @@
-// ABOUTME: Handles endpoint test-webhook scheduling through canonical message and LocalProvider attempt rows.
-// ABOUTME: Keeps endpoint tests durable and worker-driven instead of sending HTTP inside the API request.
+// ABOUTME: Handles endpoint test-webhook scheduling through the canonical immutable delivery graph.
+// ABOUTME: Persists one message, delivery plan, and Local target atomically with its audit event.
 
+using System.Globalization;
+using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Commands;
@@ -12,10 +14,12 @@ namespace Explore.Application.Features.Webhooks.Handlers.Commands;
 
 public sealed class TestWebhookEndpointCommandHandler(
     IWebhookEndpointRepository endpointRepository,
-    IWebhookMessageRepository messageRepository,
-    IWebhookDeliveryAttemptRepository attemptRepository,
+    IWebhookDeliveryPlanMaterializer deliveryPlanMaterializer,
     IWebhookPayloadBuilder payloadBuilder,
-    IWebhookProviderCapabilityResolver capabilityResolver)
+    IWebhookProviderCapabilityResolver capabilityResolver,
+    IWebhookRetentionPolicyResolver retentionPolicyResolver,
+    IWebhookAuditEventWriter auditWriter,
+    IUnitOfWork unitOfWork)
     : IRequestHandler<TestWebhookEndpointCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -28,9 +32,9 @@ public sealed class TestWebhookEndpointCommandHandler(
             return Failure("webhook_endpoint_test_validation_failed", validationErrors);
         }
 
-        var endpoint = await endpointRepository.GetByTenantAndIdAsync(
-            request.TenantId,
+        var endpoint = await endpointRepository.GetByIdForOwnerOperationAsync(
             request.EndpointId,
+            forUpdate: false,
             cancellationToken);
         if (endpoint is null || endpoint.Status == WebhookEndpointStatus.Archived)
         {
@@ -47,6 +51,13 @@ public sealed class TestWebhookEndpointCommandHandler(
             return Failure("webhook_consumer_not_found", ["Webhook consumer was not found."]);
         }
 
+        if (endpoint.TenantId.HasValue && endpoint.TenantId != request.SourceTenantId)
+        {
+            return Failure(
+                "webhook_endpoint_test_source_tenant_mismatch",
+                ["The endpoint owner tenant does not match the source tenant."]);
+        }
+
         if (!WebhookEndpointCapabilityPolicy.CanManageLocalEndpoint(
                 capabilityResolver,
                 endpoint.Consumer.ProviderMode,
@@ -60,7 +71,7 @@ public sealed class TestWebhookEndpointCommandHandler(
         var now = DateTimeOffset.UtcNow;
         var messageId = Guid.CreateVersion7();
         var payload = await payloadBuilder.BuildAsync(
-            CreateBuildContext(request.TenantId, endpoint, messageId, now),
+            CreateBuildContext(request.SourceTenantId, endpoint, messageId, now),
             cancellationToken);
         if (!payload.Succeeded)
         {
@@ -69,43 +80,89 @@ public sealed class TestWebhookEndpointCommandHandler(
                 [payload.SafeDetail ?? "Webhook endpoint test payload could not be built."]);
         }
 
-        var created = await messageRepository.CreateAsync(
-            WebhookMessage.Create(
-                messageId,
-                request.TenantId,
-                WebhookEventNames.WebhookTest,
-                messageId.ToString("D"),
-                "WebhookEndpoint",
-                endpoint.Id,
-                endpoint.ConsumerId,
-                payload.PayloadBytes!,
-                "application/json",
-                "utf-8",
-                now.UtcDateTime,
-                payload.PayloadRetentionUntil!.Value.UtcDateTime,
-                now.UtcDateTime),
-            cancellationToken);
-
-        await attemptRepository.CreateAsync(
-            new WebhookDeliveryAttempt
-            {
-                Id = Guid.CreateVersion7(),
-                TenantId = request.TenantId,
-                MessageId = created.Id,
-                EndpointId = endpoint.Id,
-                AttemptNumber = 1,
-                Outcome = WebhookDeliveryAttemptOutcome.Scheduled,
-                ScheduledAt = now.UtcDateTime,
-                CreatedAt = now.UtcDateTime
-            },
-            cancellationToken);
-
-        return new BaseCommandResponse<Guid>
+        if (payload.Envelope is null ||
+            payload.PayloadBytes is null ||
+            payload.PayloadRetentionUntil is null ||
+            endpoint.SecretActivatedAt == default ||
+            endpoint.SecretActivatedAt.Kind != DateTimeKind.Utc)
         {
-            Id = created.Id,
-            Success = true,
-            Message = "Webhook endpoint test scheduled."
-        };
+            return Failure(
+                "webhook_endpoint_test_plan_invalid",
+                ["Authoritative endpoint-test delivery facts are unavailable."]);
+        }
+
+        var message = WebhookMessage.Create(
+            messageId,
+            request.SourceTenantId,
+            WebhookEventNames.WebhookTest,
+            messageId.ToString("D"),
+            "WebhookEndpoint",
+            endpoint.Id,
+            endpoint.ConsumerId,
+            payload.PayloadBytes,
+            "application/json",
+            "utf-8",
+            now.UtcDateTime,
+            payload.PayloadRetentionUntil.Value.UtcDateTime,
+            now.UtcDateTime);
+        var retention = retentionPolicyResolver.Resolve(now, now);
+        var deliveryPlan = WebhookDeliveryPlanSnapshot.Create(
+            request.SourceTenantId,
+            message.Id,
+            endpoint.ConsumerId,
+            endpoint.Consumer.ProviderMode,
+            $"consumer-v{endpoint.Consumer.ConfigurationVersion}:endpoint-v{endpoint.ConfigurationVersion}",
+            payload.Envelope.Version.ToString(CultureInfo.InvariantCulture),
+            "webhook-endpoint-test",
+            retention.PolicyVersion,
+            payload.PayloadRetentionUntil.Value,
+            retention.ProcessingAttemptRetentionUntil,
+            retention.DeadLetterEvidenceRetentionUntil,
+            retention.ProviderPublicationRetentionUntil,
+            retention.OperationalLogRetentionUntil,
+            now);
+        var target = WebhookLocalTargetSnapshot.Create(
+            deliveryPlan,
+            endpoint,
+            endpoint.ConfigurationVersion,
+            new DateTimeOffset(endpoint.SecretActivatedAt),
+            null,
+            now);
+
+        return await unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            var materialized = await deliveryPlanMaterializer.MaterializeAsync(
+                new WebhookDeliveryMaterialization(message, deliveryPlan, [target], []),
+                token);
+
+            await auditWriter.AppendAsync(
+                new WebhookAuditWriteRequest(
+                    endpoint.TenantId,
+                    WebhookAuditAction.EndpointTestScheduled,
+                    WebhookAuditTargetKind.Endpoint,
+                    endpoint.Id,
+                    "endpoint_test_scheduled",
+                    WebhookAuditOutcome.Succeeded,
+                    SafeAfterJson: JsonSerializer.Serialize(new
+                    {
+                        messageId = materialized.Message.Id,
+                        localTargetId = target.Id,
+                        endpoint.ConsumerId,
+                        providerMode = endpoint.Consumer.ProviderMode.ToString(),
+                        targetStatus = target.DeliveryStatus.ToString()
+                    }),
+                    ConfigurationVersion: $"endpoint-v{endpoint.ConfigurationVersion}:credential-v{endpoint.SecretVersion}",
+                    EffectiveScopeKind: endpoint.Consumer.Ownership.AuditScopeKind,
+                    EffectiveScopeId: endpoint.Consumer.OwnerId),
+                token);
+
+            return new BaseCommandResponse<Guid>
+            {
+                Id = materialized.Message.Id,
+                Success = true,
+                Message = "Webhook endpoint test scheduled."
+            };
+        }, cancellationToken);
     }
 
     private static WebhookEventBuildContext CreateBuildContext(
@@ -133,9 +190,9 @@ public sealed class TestWebhookEndpointCommandHandler(
     private static List<string> Validate(TestWebhookEndpointCommand request)
     {
         var errors = new List<string>();
-        if (request.TenantId == Guid.Empty)
+        if (request.SourceTenantId == Guid.Empty)
         {
-            errors.Add("Tenant id is required.");
+            errors.Add("Source tenant id is required.");
         }
 
         if (request.EndpointId == Guid.Empty)

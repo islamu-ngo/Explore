@@ -140,7 +140,7 @@ public static class LookupTableSeeder
             new() { Id = (int)WebhookConsumerKind.Organization, MasterCode = "ORGANIZATION", FullName = "Organization", Description = "Organization-owned webhook consumer" },
             new() { Id = (int)WebhookConsumerKind.Group, MasterCode = "GROUP", FullName = "Group", Description = "Group-owned webhook consumer" },
             new() { Id = (int)WebhookConsumerKind.User, MasterCode = "USER", FullName = "User", Description = "User-owned webhook consumer" },
-            new() { Id = (int)WebhookConsumerKind.SystemIntegration, MasterCode = "SYSTEM_INTEGRATION", FullName = "System integration", Description = "System integration webhook consumer" }
+            new() { Id = (int)WebhookConsumerKind.Instance, MasterCode = "INSTANCE", FullName = "Instance", Description = "Instance-owned webhook consumer" }
         ], cancellationToken);
 
         await AddMissingLookupRowsAsync(context.WebhookConsumerStatuses,
@@ -199,10 +199,96 @@ public static class LookupTableSeeder
             new() { Id = (int)WebhookLocalDeliveryStatus.Abandoned, MasterCode = "ABANDONED", FullName = "Abandoned", Description = "Local target was explicitly abandoned" }
         ], cancellationToken);
 
+        await AddMissingLookupRowsAsync(context.WebhookBulkReplayStatuses,
+        [
+            new() { Id = (int)WebhookBulkReplayStatus.Queued, MasterCode = "QUEUED", FullName = "Queued", Description = "Replay operation is waiting for worker execution" },
+            new() { Id = (int)WebhookBulkReplayStatus.Executing, MasterCode = "EXECUTING", FullName = "Executing", Description = "Replay operation is re-evaluating and scheduling eligible Local targets" },
+            new() { Id = (int)WebhookBulkReplayStatus.Completed, MasterCode = "COMPLETED", FullName = "Completed", Description = "Replay operation completed its bounded Local-target scheduling" },
+            new() { Id = (int)WebhookBulkReplayStatus.Cancelled, MasterCode = "CANCELLED", FullName = "Cancelled", Description = "Replay operation was cancelled before worker execution" },
+            new() { Id = (int)WebhookBulkReplayStatus.Failed, MasterCode = "FAILED", FullName = "Failed", Description = "Replay operation could not safely complete" }
+        ], cancellationToken);
+
         await AddMissingLookupRowsAsync(context.WebhookPendingWorkDecisions,
         [
             new() { Id = (int)WebhookPendingWorkDecision.PreserveExisting, MasterCode = "PRESERVE_EXISTING", FullName = "Preserve existing", Description = "Keep already materialized work on its immutable configuration snapshots" },
             new() { Id = (int)WebhookPendingWorkDecision.MigrateEligible, MasterCode = "MIGRATE_ELIGIBLE", FullName = "Migrate eligible", Description = "Move only unclaimed pending Local work to the new endpoint configuration" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.WebhookRetentionSubjectKinds,
+        [
+            new() { Id = (int)WebhookRetentionSubjectKind.OutgoingMessage, MasterCode = "OUTGOING_MESSAGE", FullName = "Outgoing message" },
+            new() { Id = (int)WebhookRetentionSubjectKind.IncomingMessage, MasterCode = "INCOMING_MESSAGE", FullName = "Incoming message" },
+            new() { Id = (int)WebhookRetentionSubjectKind.DeliveryAttempt, MasterCode = "DELIVERY_ATTEMPT", FullName = "Delivery attempt" },
+            new() { Id = (int)WebhookRetentionSubjectKind.ProviderPublication, MasterCode = "PROVIDER_PUBLICATION", FullName = "Provider publication" },
+            new() { Id = (int)WebhookRetentionSubjectKind.AdministrativeAudit, MasterCode = "ADMINISTRATIVE_AUDIT", FullName = "Administrative audit" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.WebhookAuditActions,
+        [
+            new() { Id = (int)WebhookAuditAction.ConsumerCreated, MasterCode = "CONSUMER_CREATED", FullName = "Consumer created" },
+            new() { Id = (int)WebhookAuditAction.ConsumerProviderModeChanged, MasterCode = "CONSUMER_PROVIDER_MODE_CHANGED", FullName = "Consumer provider mode changed" },
+            new() { Id = (int)WebhookAuditAction.EndpointCreated, MasterCode = "ENDPOINT_CREATED", FullName = "Endpoint created" },
+            new() { Id = (int)WebhookAuditAction.EndpointUpdated, MasterCode = "ENDPOINT_UPDATED", FullName = "Endpoint updated" },
+            new() { Id = (int)WebhookAuditAction.EndpointArchived, MasterCode = "ENDPOINT_ARCHIVED", FullName = "Endpoint archived" },
+            new() { Id = (int)WebhookAuditAction.EndpointSecretRotated, MasterCode = "ENDPOINT_SECRET_ROTATED", FullName = "Endpoint signing credential rotated" },
+            new() { Id = (int)WebhookAuditAction.EndpointTestScheduled, MasterCode = "ENDPOINT_TEST_SCHEDULED", FullName = "Endpoint test scheduled" },
+            new() { Id = (int)WebhookAuditAction.ProviderBindingRepairSucceeded, MasterCode = "PROVIDER_BINDING_REPAIR_SUCCEEDED", FullName = "Provider binding repair succeeded" },
+            new() { Id = (int)WebhookAuditAction.ProviderBindingRepairRejected, MasterCode = "PROVIDER_BINDING_REPAIR_REJECTED", FullName = "Provider binding repair rejected" },
+            new() { Id = (int)WebhookAuditAction.PortalAccessIssued, MasterCode = "PORTAL_ACCESS_ISSUED", FullName = "Portal access issued" },
+            new() { Id = (int)WebhookAuditAction.PortalAccessRejected, MasterCode = "PORTAL_ACCESS_REJECTED", FullName = "Portal access rejected" },
+            new() { Id = (int)WebhookAuditAction.DeliveryRetryScheduled, MasterCode = "DELIVERY_RETRY_SCHEDULED", FullName = "Delivery retry scheduled" },
+            new() { Id = (int)WebhookAuditAction.IncomingRedriveScheduled, MasterCode = "INCOMING_REDRIVE_SCHEDULED", FullName = "Incoming redrive scheduled" },
+            new() { Id = (int)WebhookAuditAction.EndpointAutoPaused, MasterCode = "ENDPOINT_AUTO_PAUSED", FullName = "Endpoint automatically paused" },
+            new() { Id = (int)WebhookAuditAction.EndpointResumed, MasterCode = "ENDPOINT_RESUMED", FullName = "Endpoint resumed" },
+            new() { Id = (int)WebhookAuditAction.ProviderPublicationReconciled, MasterCode = "PROVIDER_PUBLICATION_RECONCILED", FullName = "Provider publication reconciled" },
+            new() { Id = (int)WebhookAuditAction.ProviderPublicationAbandoned, MasterCode = "PROVIDER_PUBLICATION_ABANDONED", FullName = "Provider publication abandoned" },
+            new() { Id = (int)WebhookAuditAction.BulkReplayScheduled, MasterCode = "BULK_REPLAY_SCHEDULED", FullName = "Bulk replay scheduled" },
+            new() { Id = (int)WebhookAuditAction.PendingWorkMigrated, MasterCode = "PENDING_WORK_MIGRATED", FullName = "Pending work migrated" },
+            new() { Id = (int)WebhookAuditAction.PayloadViewed, MasterCode = "PAYLOAD_VIEWED", FullName = "Payload viewed" },
+            new() { Id = (int)WebhookAuditAction.RetentionPolicyChanged, MasterCode = "RETENTION_POLICY_CHANGED", FullName = "Retention policy changed" },
+            new() { Id = (int)WebhookAuditAction.RetentionCleanupCompleted, MasterCode = "RETENTION_CLEANUP_COMPLETED", FullName = "Retention cleanup completed" },
+            new() { Id = (int)WebhookAuditAction.EndpointPaused, MasterCode = "ENDPOINT_PAUSED", FullName = "Endpoint manually paused" },
+            new() { Id = (int)WebhookAuditAction.BulkReplayCancelled, MasterCode = "BULK_REPLAY_CANCELLED", FullName = "Bulk replay cancelled" },
+            new() { Id = (int)WebhookAuditAction.BulkReplayCompleted, MasterCode = "BULK_REPLAY_COMPLETED", FullName = "Bulk replay completed" },
+            new() { Id = (int)WebhookAuditAction.BulkReplayFailed, MasterCode = "BULK_REPLAY_FAILED", FullName = "Bulk replay failed" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.WebhookAuditOutcomes,
+        [
+            new() { Id = (int)WebhookAuditOutcome.Succeeded, MasterCode = "SUCCEEDED", FullName = "Succeeded" },
+            new() { Id = (int)WebhookAuditOutcome.Rejected, MasterCode = "REJECTED", FullName = "Rejected" },
+            new() { Id = (int)WebhookAuditOutcome.Failed, MasterCode = "FAILED", FullName = "Failed" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.WebhookAuditPrincipalKinds,
+        [
+            new() { Id = (int)WebhookAuditPrincipalKind.User, MasterCode = "USER", FullName = "User" },
+            new() { Id = (int)WebhookAuditPrincipalKind.Machine, MasterCode = "MACHINE", FullName = "Machine" },
+            new() { Id = (int)WebhookAuditPrincipalKind.System, MasterCode = "SYSTEM", FullName = "System" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.WebhookAuditScopeKinds,
+        [
+            new() { Id = (int)WebhookAuditScopeKind.Tenant, MasterCode = "TENANT", FullName = "Tenant" },
+            new() { Id = (int)WebhookAuditScopeKind.Instance, MasterCode = "INSTANCE", FullName = "Instance" },
+            new() { Id = (int)WebhookAuditScopeKind.Organization, MasterCode = "ORGANIZATION", FullName = "Organization" },
+            new() { Id = (int)WebhookAuditScopeKind.Group, MasterCode = "GROUP", FullName = "Group" },
+            new() { Id = (int)WebhookAuditScopeKind.User, MasterCode = "USER", FullName = "User" }
+        ], cancellationToken);
+
+        await AddMissingLookupRowsAsync(context.WebhookAuditTargetKinds,
+        [
+            new() { Id = (int)WebhookAuditTargetKind.Consumer, MasterCode = "CONSUMER", FullName = "Consumer" },
+            new() { Id = (int)WebhookAuditTargetKind.Endpoint, MasterCode = "ENDPOINT", FullName = "Endpoint" },
+            new() { Id = (int)WebhookAuditTargetKind.ProviderBinding, MasterCode = "PROVIDER_BINDING", FullName = "Provider binding" },
+            new() { Id = (int)WebhookAuditTargetKind.PortalSession, MasterCode = "PORTAL_SESSION", FullName = "Portal session" },
+            new() { Id = (int)WebhookAuditTargetKind.DeliveryAttempt, MasterCode = "DELIVERY_ATTEMPT", FullName = "Delivery attempt" },
+            new() { Id = (int)WebhookAuditTargetKind.IncomingMessage, MasterCode = "INCOMING_MESSAGE", FullName = "Incoming message" },
+            new() { Id = (int)WebhookAuditTargetKind.ProviderPublication, MasterCode = "PROVIDER_PUBLICATION", FullName = "Provider publication" },
+            new() { Id = (int)WebhookAuditTargetKind.RetentionPolicy, MasterCode = "RETENTION_POLICY", FullName = "Retention policy" },
+            new() { Id = (int)WebhookAuditTargetKind.CleanupRun, MasterCode = "CLEANUP_RUN", FullName = "Cleanup run" },
+            new() { Id = (int)WebhookAuditTargetKind.Payload, MasterCode = "PAYLOAD", FullName = "Payload" },
+            new() { Id = (int)WebhookAuditTargetKind.BulkReplayOperation, MasterCode = "BULK_REPLAY_OPERATION", FullName = "Bulk replay operation" }
         ], cancellationToken);
 
         await AddMissingLookupRowsAsync(context.WebhookDeliveryAttemptOutcomes,
@@ -586,12 +672,24 @@ public static class LookupTableSeeder
 
     private static async Task SeedActorTypesAsync(ExploreDbContext context, CancellationToken ct)
     {
-        if (await context.Set<ActorType>().AnyAsync(ct)) return;
-
-        context.Set<ActorType>().AddRange(
+        ActorType[] actorTypes =
+        [
             new ActorType { Id = (int)ActorTypeEnum.User, MasterCode = "USER", FullName = "User", Description = "Individual user actor" },
             new ActorType { Id = (int)ActorTypeEnum.Organization, MasterCode = "ORGANIZATION", FullName = "Organization", Description = "Organization actor" },
-            new ActorType { Id = (int)ActorTypeEnum.Bot, MasterCode = "BOT", FullName = "Bot", Description = "Automated bot actor" });
+            new ActorType { Id = (int)ActorTypeEnum.Bot, MasterCode = "BOT", FullName = "Bot", Description = "Automated bot actor" },
+            new ActorType { Id = (int)ActorTypeEnum.Group, MasterCode = "GROUP", FullName = "Group", Description = "Group actor" },
+            new ActorType { Id = (int)ActorTypeEnum.System, MasterCode = "SYSTEM", FullName = "System", Description = "System actor" }
+        ];
+
+        var existingIds = await context.Set<ActorType>()
+            .Select(actorType => actorType.Id)
+            .ToHashSetAsync(ct);
+        var missingActorTypes = actorTypes
+            .Where(actorType => !existingIds.Contains(actorType.Id))
+            .ToArray();
+        if (missingActorTypes.Length == 0) return;
+
+        context.Set<ActorType>().AddRange(missingActorTypes);
         await context.SaveChangesAsync(ct);
     }
 
@@ -1350,6 +1448,11 @@ public static class LookupTableSeeder
             new Role { Id = (int)RoleEnum.OrgAdmin, MasterCode = "org.admin", FullName = "Admin", Description = "Organization administrator", Scope = RoleScopeEnum.Organization, IsSystem = true },
             new Role { Id = (int)RoleEnum.OrgModerator, MasterCode = "org.moderator", FullName = "Moderator", Description = "Organization moderator", Scope = RoleScopeEnum.Organization, IsSystem = true },
             new Role { Id = (int)RoleEnum.OrgMember, MasterCode = "org.member", FullName = "Member", Description = "Regular organization member", Scope = RoleScopeEnum.Organization, IsSystem = true },
+
+            // Group scope (30-39)
+            new Role { Id = (int)RoleEnum.GroupAdmin, MasterCode = "group.admin", FullName = "Admin", Description = "Group administrator", Scope = RoleScopeEnum.Group, IsSystem = true },
+            new Role { Id = (int)RoleEnum.GroupModerator, MasterCode = "group.moderator", FullName = "Moderator", Description = "Group moderator", Scope = RoleScopeEnum.Group, IsSystem = true },
+            new Role { Id = (int)RoleEnum.GroupMember, MasterCode = "group.member", FullName = "Member", Description = "Regular group member", Scope = RoleScopeEnum.Group, IsSystem = true },
 
             // Event scope (40-49) - first-release operational roles only
             new Role { Id = (int)RoleEnum.EventOwner, MasterCode = "event.owner", FullName = "Event Owner", Description = "Owns event team authority and ownership transfer", Scope = RoleScopeEnum.Event, IsSystem = true },

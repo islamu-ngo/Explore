@@ -20,10 +20,6 @@
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" />
-    <PackageReference Include="Microsoft.Extensions.ApiDescription.Client">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="MudBlazor" />
     <!-- Newtonsoft.Json removed: NSwag client + HalResourceExtensions migrated to System.Text.Json -->

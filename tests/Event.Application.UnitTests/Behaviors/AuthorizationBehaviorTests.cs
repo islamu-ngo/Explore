@@ -272,6 +272,7 @@ public class AuthorizationBehaviorTests
             Substitute.For<ILogger<AuthorizationBehavior<CreateOrganizationCommand, BaseCommandResponse<Guid>>>>());
         var command = new CreateOrganizationCommand
         {
+            CreatorUserId = Guid.NewGuid(),
             OrganizationDto = new()
             {
                 FullName = "Community Organization",

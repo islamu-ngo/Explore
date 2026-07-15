@@ -1,7 +1,9 @@
 // ABOUTME: Unit tests for LocalProvider webhook retry backoff scheduling.
 // ABOUTME: Locks bounded exponential full-jitter behavior used by delivery workers and manual retries.
 
+using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.Webhooks;
+using Microsoft.Extensions.Options;
 
 namespace Explore.Infrastructure.Tests.Infrastructure.Webhooks;
 
@@ -42,5 +44,35 @@ public sealed class WebhookRetrySchedulerTests
         await Assert.That(scheduler.CanScheduleAttempt(8, endpointMaxAttempts: 8)).IsTrue();
         await Assert.That(scheduler.CanScheduleAttempt(9, endpointMaxAttempts: 20)).IsFalse();
         await Assert.That(scheduler.CanScheduleAttempt(4, endpointMaxAttempts: 3)).IsFalse();
+    }
+
+    [Test]
+    public async Task GetDelay_BoundsRetryAfterAndIgnoresNonPositiveValues()
+    {
+        var scheduler = new WebhookRetryScheduler(new StaticOptionsMonitor<WebhookOptions>(new WebhookOptions
+        {
+            Local = new WebhookLocalOptions
+            {
+                InitialRetryDelaySeconds = 1,
+                MaxRetryDelaySeconds = 120,
+                MaxRetryAfterSeconds = 30
+            }
+        }));
+
+        var bounded = scheduler.GetDelay(2, TimeSpan.FromHours(1));
+        var ignored = scheduler.GetDelay(2, TimeSpan.FromSeconds(-1));
+
+        await Assert.That(bounded).IsEqualTo(TimeSpan.FromSeconds(30));
+        await Assert.That(ignored).IsGreaterThanOrEqualTo(TimeSpan.Zero);
+        await Assert.That(ignored).IsLessThanOrEqualTo(TimeSpan.FromSeconds(1));
+    }
+
+    private sealed class StaticOptionsMonitor<T>(T currentValue) : IOptionsMonitor<T>
+    {
+        public T CurrentValue => currentValue;
+
+        public T Get(string? name) => currentValue;
+
+        public IDisposable? OnChange(Action<T, string?> listener) => null;
     }
 }

@@ -1,5 +1,5 @@
 // ABOUTME: Handles retrieval of Groups the current user belongs to, with pagination.
-// ABOUTME: Enriches each GroupListDto with the user's CurrentUserRole from membership data.
+// ABOUTME: Enriches each GroupListDto with the user's normalized CurrentUserRoleId from membership data.
 
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
@@ -54,7 +54,7 @@ public class GetMyGroupsRequestHandler : IRequestHandler<GetMyGroupsRequest, Pag
             var dto = _mapper.Map<GroupListDto>(group);
             if (membershipDict.TryGetValue(group.Id, out var roleId))
             {
-                dto.CurrentUserRole = (RoleEnum)roleId;
+                dto.CurrentUserRoleId = roleId;
             }
             dto.ActorProfilePictureUri = await ResolveImageUrl(dto.ActorProfilePictureUri);
             dtos.Add(dto);

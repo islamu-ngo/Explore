@@ -1,18 +1,13 @@
-// ABOUTME: Unit tests for webhook consumer command and query handlers.
-// ABOUTME: Verifies tenant-scoped validation, entity persistence, and DTO projection behavior.
+// ABOUTME: Unit tests for typed-owner webhook consumer and endpoint management handlers.
+// ABOUTME: Verifies canonical owner resolution, inherited child scope, authorization, and entity-first persistence.
 
-using System.Text;
 using Explore.Application.Authorization;
-using Explore.Application.Contracts.Identity;
-using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Handlers.Commands;
 using Explore.Application.Features.Webhooks.Handlers.Queries;
 using Explore.Application.Features.Webhooks.Requests.Commands;
 using Explore.Application.Features.Webhooks.Requests.Queries;
-using Explore.Application.Webhooks;
 using Explore.Domain;
 using NSubstitute;
 
@@ -20,477 +15,169 @@ namespace Event.Application.UnitTests.Features.Webhooks;
 
 public sealed class WebhookConsumerHandlersTests
 {
-    private readonly IWebhookConsumerRepository _consumerRepository = Substitute.For<IWebhookConsumerRepository>();
-    private readonly IWebhookConsumerProviderBindingRepository _bindingRepository = Substitute.For<IWebhookConsumerProviderBindingRepository>();
-    private readonly IWebhookEndpointRepository _endpointRepository = Substitute.For<IWebhookEndpointRepository>();
-    private readonly IWebhookEventTypeRepository _eventTypeRepository = Substitute.For<IWebhookEventTypeRepository>();
-    private readonly IWebhookMessageRepository _messageRepository = Substitute.For<IWebhookMessageRepository>();
-    private readonly IWebhookDeliveryAttemptRepository _attemptRepository = Substitute.For<IWebhookDeliveryAttemptRepository>();
-    private readonly IWebhookDeliveryDrainService _deliveryDrainService = Substitute.For<IWebhookDeliveryDrainService>();
-    private readonly IWebhookProviderPublicationRepository _providerPublicationRepository = Substitute.For<IWebhookProviderPublicationRepository>();
-    private readonly IAuditLogRepository _auditLogRepository = Substitute.For<IAuditLogRepository>();
-    private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
-    private readonly IMachinePrincipalAccessor _machinePrincipalAccessor = Substitute.For<IMachinePrincipalAccessor>();
+    private readonly IWebhookConsumerRepository _consumerRepository =
+        Substitute.For<IWebhookConsumerRepository>();
+    private readonly IWebhookConsumerProviderBindingRepository _bindingRepository =
+        Substitute.For<IWebhookConsumerProviderBindingRepository>();
+    private readonly IWebhookEndpointRepository _endpointRepository =
+        Substitute.For<IWebhookEndpointRepository>();
+    private readonly IWebhookEventTypeRepository _eventTypeRepository =
+        Substitute.For<IWebhookEventTypeRepository>();
+    private readonly IWebhookOwnershipScopeResolver _ownershipScopeResolver =
+        Substitute.For<IWebhookOwnershipScopeResolver>();
+    private readonly IWebhookAuditEventWriter _auditWriter =
+        Substitute.For<IWebhookAuditEventWriter>();
+    private readonly IWebhookProviderCapabilityResolver _capabilityResolver =
+        new LocalWebhookProviderCapabilityResolver();
     private readonly IUnitOfWork _unitOfWork = new ImmediateUnitOfWork();
-    private readonly IWebhookPayloadBuilder _payloadBuilder = new DefaultWebhookPayloadBuilder(new WebhookEventTypeRegistry());
-    private readonly IWebhookProviderCapabilityResolver _capabilityResolver = new TestWebhookProviderCapabilityResolver();
 
-    public WebhookConsumerHandlersTests()
+    [Test]
+    [Arguments(WebhookConsumerKind.Tenant)]
+    [Arguments(WebhookConsumerKind.Organization)]
+    [Arguments(WebhookConsumerKind.Group)]
+    [Arguments(WebhookConsumerKind.User)]
+    [Arguments(WebhookConsumerKind.Instance)]
+    public async Task CreateConsumer_UsesResolvedCanonicalOwner(WebhookConsumerKind ownerKind)
     {
-        _currentUserService.UserId.Returns(Guid.Parse("018f0000-0000-7000-8000-000000000007"));
-        _endpointRepository.GetEligiblePendingTargetsForUpdateAsync(
-                Arg.Any<Guid>(),
-                Arg.Any<Guid>(),
+        var ownership = CreateOwnership(ownerKind);
+        _ownershipScopeResolver.ResolveAsync(
+                (int)ownerKind,
+                ownership.OwnerId,
                 Arg.Any<CancellationToken>())
-            .Returns([]);
-    }
-
-    [Test]
-    public async Task CreateCommand_RequiresWebhookCreateAuthorization()
-    {
-        var attribute = typeof(CreateWebhookConsumerCommand)
-            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
-            .Cast<AuthorizeResourceAttribute>()
-            .SingleOrDefault();
-
-        await Assert.That(attribute).IsNotNull();
-        await Assert.That(attribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
-        await Assert.That(attribute.Action).IsEqualTo(AuthorizationActions.Webhooks.Create);
-        await Assert.That(typeof(ISecureRequest).IsAssignableFrom(typeof(CreateWebhookConsumerCommand))).IsTrue();
-    }
-
-    [Test]
-    public async Task QueryRequests_RequireWebhookViewAuthorization()
-    {
-        var listAttribute = typeof(GetWebhookConsumersQuery)
-            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
-            .Cast<AuthorizeResourceAttribute>()
-            .SingleOrDefault();
-        var detailAttribute = typeof(GetWebhookConsumerByIdQuery)
-            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
-            .Cast<AuthorizeResourceAttribute>()
-            .SingleOrDefault();
-
-        await Assert.That(listAttribute).IsNotNull();
-        await Assert.That(listAttribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
-        await Assert.That(listAttribute.Action).IsEqualTo(AuthorizationActions.Webhooks.View);
-        await Assert.That(detailAttribute).IsNotNull();
-        await Assert.That(detailAttribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
-        await Assert.That(detailAttribute.Action).IsEqualTo(AuthorizationActions.Webhooks.View);
-    }
-
-    [Test]
-    public async Task EndpointRequests_RequireWebhookAuthorization()
-    {
-        var listAttribute = typeof(GetWebhookEndpointsQuery)
-            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
-            .Cast<AuthorizeResourceAttribute>()
-            .SingleOrDefault();
-        var detailAttribute = typeof(GetWebhookEndpointByIdQuery)
-            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
-            .Cast<AuthorizeResourceAttribute>()
-            .SingleOrDefault();
-        var createAttribute = typeof(CreateWebhookEndpointCommand)
-            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
-            .Cast<AuthorizeResourceAttribute>()
-            .SingleOrDefault();
-        var updateAttribute = typeof(UpdateWebhookEndpointCommand)
-            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
-            .Cast<AuthorizeResourceAttribute>()
-            .SingleOrDefault();
-        var rotateAttribute = typeof(RotateWebhookEndpointSecretCommand)
-            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
-            .Cast<AuthorizeResourceAttribute>()
-            .SingleOrDefault();
-        var testAttribute = typeof(TestWebhookEndpointCommand)
-            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
-            .Cast<AuthorizeResourceAttribute>()
-            .SingleOrDefault();
-        var archiveAttribute = typeof(ArchiveWebhookEndpointCommand)
-            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
-            .Cast<AuthorizeResourceAttribute>()
-            .SingleOrDefault();
-
-        await Assert.That(listAttribute).IsNotNull();
-        await Assert.That(listAttribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
-        await Assert.That(listAttribute.Action).IsEqualTo(AuthorizationActions.Webhooks.View);
-        await Assert.That(detailAttribute).IsNotNull();
-        await Assert.That(detailAttribute!.Action).IsEqualTo(AuthorizationActions.Webhooks.View);
-        await Assert.That(createAttribute).IsNotNull();
-        await Assert.That(createAttribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
-        await Assert.That(createAttribute.Action).IsEqualTo(AuthorizationActions.Webhooks.Create);
-        await Assert.That(updateAttribute).IsNotNull();
-        await Assert.That(updateAttribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
-        await Assert.That(updateAttribute.Action).IsEqualTo(AuthorizationActions.Webhooks.Update);
-        await Assert.That(rotateAttribute).IsNotNull();
-        await Assert.That(rotateAttribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
-        await Assert.That(rotateAttribute.Action).IsEqualTo(AuthorizationActions.Webhooks.RotateSecret);
-        await Assert.That(testAttribute).IsNotNull();
-        await Assert.That(testAttribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
-        await Assert.That(testAttribute.Action).IsEqualTo(AuthorizationActions.Webhooks.Test);
-        await Assert.That(archiveAttribute).IsNotNull();
-        await Assert.That(archiveAttribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
-        await Assert.That(archiveAttribute.Action).IsEqualTo(AuthorizationActions.Webhooks.Delete);
-    }
-
-    [Test]
-    public async Task ProviderModeCommand_RequiresWebhookUpdateAuthorization()
-    {
-        var attribute = typeof(UpdateWebhookConsumerProviderModeCommand)
-            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
-            .Cast<AuthorizeResourceAttribute>()
-            .SingleOrDefault();
-
-        await Assert.That(attribute).IsNotNull();
-        await Assert.That(attribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
-        await Assert.That(attribute.Action).IsEqualTo(AuthorizationActions.Webhooks.Update);
-        await Assert.That(typeof(ISecureRequest)
-            .IsAssignableFrom(typeof(UpdateWebhookConsumerProviderModeCommand))).IsTrue();
-    }
-
-    [Test]
-    public async Task UpdateConsumerProviderMode_LocalToSvix_PreservesExistingWorkAndAdvancesVersion()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var consumer = CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local);
-        const string environment = "selfhost";
-        const string providerVersion = "1.96.1";
-        const string resolutionVersion = "selfhost-v1.96.1-v1";
-        var providerCapabilities = WebhookProviderCapability.EndpointManagement |
-            WebhookProviderCapability.EventCatalog;
-        var profile = WebhookProviderCapabilityProfile.Create(
-            WebhookProviderKind.Svix,
-            providerVersion,
-            providerCapabilities,
-            resolutionVersion,
-            DateTimeOffset.UtcNow);
-        var binding = WebhookConsumerProviderBinding.CreatePending(
-            tenantId,
-            consumer.Id,
-            Guid.CreateVersion7(),
-            environment,
-            profile,
-            providerCapabilities);
-        binding.VerifyOwnership(tenantId, consumer.Id, "app_mode_change", DateTimeOffset.UtcNow);
-        consumer.ProviderBindings.Add(binding);
-        _consumerRepository.GetByTenantAndIdForUpdateAsync(
-                tenantId,
-                consumer.Id,
+            .Returns(WebhookOwnershipScopeResolution.Resolved(ownership));
+        _consumerRepository.GetByOwnerAndNameAsync(
+                ownership,
+                "Operations",
                 Arg.Any<CancellationToken>())
-            .Returns(consumer);
-        _consumerRepository.UpdateAsync(consumer, Arg.Any<CancellationToken>()).Returns(consumer);
-        var handler = CreateUpdateConsumerProviderModeHandler(
-            new StaticWebhookProviderCapabilityResolver(new WebhookProviderModeCapabilityResolution(
-                WebhookProviderMode.Svix,
-                true,
-                WebhookProviderCapability.None,
-                providerCapabilities,
-                environment,
-                providerVersion,
-                resolutionVersion,
-                null)));
-
-        var result = await handler.Handle(
-            new UpdateWebhookConsumerProviderModeCommand
-            {
-                TenantId = tenantId,
-                ConsumerId = consumer.Id,
-                ProviderModeId = (int)WebhookProviderMode.Svix,
-                ExpectedConfigurationVersion = 1,
-                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
-                PendingWorkReason = "Move new deliveries to the verified self-hosted provider."
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(consumer.ProviderMode).IsEqualTo(WebhookProviderMode.Svix);
-        await Assert.That(consumer.ConfigurationVersion).IsEqualTo(2);
-        await _auditLogRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
-            audit.Action == "WebhookConsumerProviderModeChanged" &&
-            audit.NewValues != null &&
-            audit.NewValues.Contains("\"providerMode\":\"SVIX\"", StringComparison.Ordinal) &&
-            audit.NewValues.Contains("\"pendingWorkDecision\":\"PRESERVE_EXISTING\"", StringComparison.Ordinal) &&
-            !audit.NewValues.Contains("app_mode_change", StringComparison.Ordinal)));
-    }
-
-    [Test]
-    public async Task UpdateConsumerProviderMode_SvixToLocal_RequiresActiveSubscribedEndpoint()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var consumer = CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Svix);
-        _consumerRepository.GetByTenantAndIdForUpdateAsync(
-                tenantId,
-                consumer.Id,
-                Arg.Any<CancellationToken>())
-            .Returns(consumer);
-        _endpointRepository.HasActiveSubscribedEndpointByConsumerAsync(
-                tenantId,
-                consumer.Id,
-                Arg.Any<CancellationToken>())
-            .Returns(false);
-        var handler = CreateUpdateConsumerProviderModeHandler(
-            new StaticWebhookProviderCapabilityResolver(new WebhookProviderModeCapabilityResolution(
-                WebhookProviderMode.Local,
-                true,
-                WebhookProviderCapability.EndpointManagement,
-                WebhookProviderCapability.None,
-                null,
-                null,
-                "event-local-v1",
-                null)));
-
-        var result = await handler.Handle(
-            new UpdateWebhookConsumerProviderModeCommand
-            {
-                TenantId = tenantId,
-                ConsumerId = consumer.Id,
-                ProviderModeId = (int)WebhookProviderMode.Local,
-                ExpectedConfigurationVersion = 1,
-                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
-                PendingWorkReason = "Return new deliveries to Local endpoints."
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode)
-            .IsEqualTo("webhook_consumer_provider_mode_local_target_required");
-        await _consumerRepository.DidNotReceive().UpdateAsync(
-            Arg.Any<WebhookConsumer>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task UpdateConsumerProviderMode_WhenMigrationRequested_RejectsCrossProviderRewrite()
-    {
-        var handler = CreateUpdateConsumerProviderModeHandler(_capabilityResolver);
-
-        var result = await handler.Handle(
-            new UpdateWebhookConsumerProviderModeCommand
-            {
-                TenantId = Guid.CreateVersion7(),
-                ConsumerId = Guid.CreateVersion7(),
-                ProviderModeId = (int)WebhookProviderMode.Svix,
-                ExpectedConfigurationVersion = 1,
-                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.MigrateEligible,
-                PendingWorkReason = "Attempt to reroute pending work."
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode)
-            .IsEqualTo("webhook_consumer_provider_mode_pending_migration_unsupported");
-        await _consumerRepository.DidNotReceive().GetByTenantAndIdForUpdateAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<Guid>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task DeliveryAuditRequests_RequireWebhookDeliveryAuthorization()
-    {
-        var listMessagesAttribute = typeof(GetWebhookMessagesQuery)
-            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
-            .Cast<AuthorizeResourceAttribute>()
-            .SingleOrDefault();
-        var detailMessageAttribute = typeof(GetWebhookMessageByIdQuery)
-            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
-            .Cast<AuthorizeResourceAttribute>()
-            .SingleOrDefault();
-        var listAttemptsAttribute = typeof(GetWebhookDeliveryAttemptsQuery)
-            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
-            .Cast<AuthorizeResourceAttribute>()
-            .SingleOrDefault();
-        var detailAttemptAttribute = typeof(GetWebhookDeliveryAttemptByIdQuery)
-            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
-            .Cast<AuthorizeResourceAttribute>()
-            .SingleOrDefault();
-        var retryAttribute = typeof(RetryWebhookDeliveryAttemptCommand)
-            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
-            .Cast<AuthorizeResourceAttribute>()
-            .SingleOrDefault();
-
-        await Assert.That(listMessagesAttribute).IsNotNull();
-        await Assert.That(listMessagesAttribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
-        await Assert.That(listMessagesAttribute.Action).IsEqualTo(AuthorizationActions.Webhooks.ViewDelivery);
-        await Assert.That(detailMessageAttribute).IsNotNull();
-        await Assert.That(detailMessageAttribute!.Action).IsEqualTo(AuthorizationActions.Webhooks.ViewDelivery);
-        await Assert.That(listAttemptsAttribute).IsNotNull();
-        await Assert.That(listAttemptsAttribute!.Action).IsEqualTo(AuthorizationActions.Webhooks.ViewDelivery);
-        await Assert.That(detailAttemptAttribute).IsNotNull();
-        await Assert.That(detailAttemptAttribute!.Action).IsEqualTo(AuthorizationActions.Webhooks.ViewDelivery);
-        await Assert.That(retryAttribute).IsNotNull();
-        await Assert.That(retryAttribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
-        await Assert.That(retryAttribute.Action).IsEqualTo(AuthorizationActions.Webhooks.Retry);
-        await Assert.That(typeof(ISecureRequest).IsAssignableFrom(typeof(GetWebhookMessagesQuery))).IsTrue();
-        await Assert.That(typeof(ISecureRequest).IsAssignableFrom(typeof(GetWebhookMessageByIdQuery))).IsTrue();
-        await Assert.That(typeof(ISecureRequest).IsAssignableFrom(typeof(GetWebhookDeliveryAttemptsQuery))).IsTrue();
-        await Assert.That(typeof(ISecureRequest).IsAssignableFrom(typeof(GetWebhookDeliveryAttemptByIdQuery))).IsTrue();
-        await Assert.That(typeof(ISecureRequest).IsAssignableFrom(typeof(RetryWebhookDeliveryAttemptCommand))).IsTrue();
-    }
-
-    [Test]
-    public async Task CreateHandler_WhenRequestValid_PersistsActiveConsumer()
-    {
-        var tenantId = Guid.CreateVersion7();
-        WebhookConsumer? captured = null;
-        var persisted = CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local);
-        _consumerRepository.GetByTenantAndNameAsync(tenantId, "Tenant automation", Arg.Any<CancellationToken>())
             .Returns((WebhookConsumer?)null);
-        _consumerRepository.CreateAsync(Arg.Do<WebhookConsumer>(consumer => captured = consumer), Arg.Any<CancellationToken>())
-            .Returns(persisted);
-        var handler = new CreateWebhookConsumerCommandHandler(_consumerRepository, _capabilityResolver);
-
-        var result = await handler.Handle(
-            new CreateWebhookConsumerCommand
-            {
-                TenantId = tenantId,
-                ConsumerKindId = (int)WebhookConsumerKind.Tenant,
-                Name = " Tenant automation ",
-                ProviderModeId = (int)WebhookProviderMode.Local
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
-        await Assert.That(captured).IsNotNull();
-        await Assert.That(captured!.TenantId).IsEqualTo(tenantId);
-        await Assert.That(captured.Name).IsEqualTo("Tenant automation");
-        await Assert.That(captured.ConsumerKind).IsEqualTo(WebhookConsumerKind.Tenant);
-        await Assert.That(captured.Status).IsEqualTo(WebhookConsumerStatus.Active);
-        await Assert.That(captured.ProviderMode).IsEqualTo(WebhookProviderMode.Local);
-        await Assert.That(captured.ExternalProviderAppId).IsNull();
-    }
-
-    [Test]
-    public async Task CreateHandler_WhenNameAlreadyExists_ReturnsConflictFailure()
-    {
-        var tenantId = Guid.CreateVersion7();
-        _consumerRepository.GetByTenantAndNameAsync(tenantId, "Tenant automation", Arg.Any<CancellationToken>())
-            .Returns(new WebhookConsumer
-            {
-                Id = Guid.CreateVersion7(),
-                TenantId = tenantId,
-                ConsumerKind = WebhookConsumerKind.Tenant,
-                Name = "Tenant automation",
-                Status = WebhookConsumerStatus.Active,
-                ProviderMode = WebhookProviderMode.Local
-            });
-        var handler = new CreateWebhookConsumerCommandHandler(_consumerRepository, _capabilityResolver);
-
-        var result = await handler.Handle(
-            new CreateWebhookConsumerCommand
-            {
-                TenantId = tenantId,
-                ConsumerKindId = (int)WebhookConsumerKind.Tenant,
-                Name = "Tenant automation",
-                ProviderModeId = (int)WebhookProviderMode.Local
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_consumer_name_conflict");
-        await _consumerRepository.DidNotReceive().CreateAsync(
-            Arg.Any<WebhookConsumer>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task CreateHandler_WhenRequestInvalid_DoesNotQueryRepository()
-    {
-        var handler = new CreateWebhookConsumerCommandHandler(_consumerRepository, _capabilityResolver);
-
-        var result = await handler.Handle(
-            new CreateWebhookConsumerCommand
-            {
-                TenantId = Guid.Empty,
-                ConsumerKindId = 999,
-                Name = "",
-                ProviderModeId = 999
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_consumer_validation_failed");
-        await _consumerRepository.DidNotReceive().GetByTenantAndNameAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task CreateHandler_WhenProviderModeCapabilityAuthorityUnavailable_DoesNotQueryRepository()
-    {
-        var tenantId = Guid.CreateVersion7();
+        _consumerRepository.CreateAsync(
+                Arg.Any<WebhookConsumer>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<WebhookConsumer>());
         var handler = new CreateWebhookConsumerCommandHandler(
             _consumerRepository,
-            new StaticWebhookProviderCapabilityResolver(new WebhookProviderModeCapabilityResolution(
-                WebhookProviderMode.Svix,
-                false,
-                WebhookProviderCapability.None,
-                WebhookProviderCapability.None,
-                null,
-                null,
-                "unavailable-v1",
-                "svix_self_hosted_profile_unsupported")));
+            _ownershipScopeResolver,
+            _capabilityResolver,
+            _auditWriter,
+            _unitOfWork);
 
         var result = await handler.Handle(
             new CreateWebhookConsumerCommand
             {
-                TenantId = tenantId,
-                ConsumerKindId = (int)WebhookConsumerKind.Tenant,
-                Name = "Tenant automation",
-                ProviderModeId = (int)WebhookProviderMode.Svix
+                ConsumerKindId = (int)ownerKind,
+                OwnerId = ownership.OwnerId,
+                Name = "  Operations  ",
+                ProviderModeId = (int)WebhookProviderMode.Local
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _consumerRepository.Received(1).CreateAsync(
+            Arg.Is<WebhookConsumer>(consumer =>
+                consumer.ConsumerKind == ownerKind &&
+                consumer.OwnerId == ownership.OwnerId &&
+                consumer.TenantId == ownership.TenantId &&
+                consumer.InstanceId == ownership.InstanceId &&
+                consumer.OrganizationId == ownership.OrganizationId &&
+                consumer.GroupId == ownership.GroupId &&
+                consumer.OwnerUserId == ownership.UserId &&
+                consumer.Name == "Operations"),
+            Arg.Any<CancellationToken>());
+        await _auditWriter.Received(1).AppendAsync(
+            Arg.Is<WebhookAuditWriteRequest>(audit =>
+                audit.TenantId == ownership.TenantId &&
+                audit.EffectiveScopeKind == ownership.AuditScopeKind &&
+                audit.EffectiveScopeId == ownership.OwnerId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task CreateConsumer_WhenOwnerResolutionFails_DoesNotPersist()
+    {
+        var ownerId = Guid.CreateVersion7();
+        _ownershipScopeResolver.ResolveAsync(
+                (int)WebhookConsumerKind.Organization,
+                ownerId,
+                Arg.Any<CancellationToken>())
+            .Returns(WebhookOwnershipScopeResolution.Failed(
+                "webhook_owner_organization_not_found",
+                "Organization owner was not found."));
+        var handler = new CreateWebhookConsumerCommandHandler(
+            _consumerRepository,
+            _ownershipScopeResolver,
+            _capabilityResolver,
+            _auditWriter,
+            _unitOfWork);
+
+        var result = await handler.Handle(
+            new CreateWebhookConsumerCommand
+            {
+                ConsumerKindId = (int)WebhookConsumerKind.Organization,
+                OwnerId = ownerId,
+                Name = "Operations",
+                ProviderModeId = (int)WebhookProviderMode.Local
             },
             CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_provider_mode_capability_unavailable");
-        await Assert.That(result.Errors).Contains("svix_self_hosted_profile_unsupported");
-        await _consumerRepository.DidNotReceive().GetByTenantAndNameAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
+        await Assert.That(result.FailureCode).IsEqualTo("webhook_owner_organization_not_found");
         await _consumerRepository.DidNotReceive().CreateAsync(
             Arg.Any<WebhookConsumer>(),
             Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task ListHandler_MapsConsumersAndCapsLimit()
+    [Arguments(WebhookConsumerKind.Tenant)]
+    [Arguments(WebhookConsumerKind.Organization)]
+    [Arguments(WebhookConsumerKind.Group)]
+    [Arguments(WebhookConsumerKind.User)]
+    [Arguments(WebhookConsumerKind.Instance)]
+    public async Task ListConsumers_UsesExactResolvedOwner(WebhookConsumerKind ownerKind)
     {
-        var tenantId = Guid.CreateVersion7();
-        var consumer = CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Svix);
-        _consumerRepository.ListByTenantAsync(tenantId, 500, Arg.Any<CancellationToken>())
+        var ownership = CreateOwnership(ownerKind);
+        var consumer = CreateConsumer(ownership);
+        _ownershipScopeResolver.ResolveAsync(
+                (int)ownerKind,
+                ownership.OwnerId,
+                Arg.Any<CancellationToken>())
+            .Returns(WebhookOwnershipScopeResolution.Resolved(ownership));
+        _consumerRepository.ListByOwnerAsync(
+                ownership,
+                25,
+                Arg.Any<CancellationToken>())
             .Returns([consumer]);
         var handler = new GetWebhookConsumersQueryHandler(
             _consumerRepository,
             _bindingRepository,
-            _capabilityResolver);
+            _capabilityResolver,
+            _ownershipScopeResolver);
 
         var result = await handler.Handle(
             new GetWebhookConsumersQuery
             {
-                TenantId = tenantId,
-                Limit = 10_000
+                OwnerKindId = (int)ownerKind,
+                OwnerId = ownership.OwnerId,
+                Limit = 25
             },
             CancellationToken.None);
 
-        await Assert.That(result.Count).IsEqualTo(1);
-        await Assert.That(result[0].Id).IsEqualTo(consumer.Id);
-        await Assert.That(result[0].ProviderModeId).IsEqualTo((int)WebhookProviderMode.Svix);
-        await Assert.That(result[0].ProviderModeName).IsEqualTo(nameof(WebhookProviderMode.Svix));
-        await _consumerRepository.Received(1).ListByTenantAsync(
-            tenantId,
-            500,
+        await Assert.That(result).HasSingleItem();
+        await Assert.That(result[0].ConsumerKindId).IsEqualTo((int)ownerKind);
+        await Assert.That(result[0].OwnerId).IsEqualTo(ownership.OwnerId);
+        await _consumerRepository.Received(1).ListByOwnerAsync(
+            ownership,
+            25,
             Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task DetailHandler_WhenConsumerExists_ReturnsMappedDto()
+    public async Task ConsumerDetail_UsesPersistedOwnerRepositoryBoundary()
     {
-        var tenantId = Guid.CreateVersion7();
-        var consumer = CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local);
-        _consumerRepository.GetByTenantAndIdAsync(tenantId, consumer.Id, Arg.Any<CancellationToken>())
+        var consumer = CreateConsumer(CreateOwnership(WebhookConsumerKind.Group));
+        _consumerRepository.GetByIdForOwnerOperationAsync(
+                consumer.Id,
+                false,
+                Arg.Any<CancellationToken>())
             .Returns(consumer);
         var handler = new GetWebhookConsumerByIdQueryHandler(
             _consumerRepository,
@@ -498,1260 +185,205 @@ public sealed class WebhookConsumerHandlersTests
             _capabilityResolver);
 
         var result = await handler.Handle(
-            new GetWebhookConsumerByIdQuery
-            {
-                TenantId = tenantId,
-                ConsumerId = consumer.Id
-            },
+            new GetWebhookConsumerByIdQuery { ConsumerId = consumer.Id },
             CancellationToken.None);
 
         await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Name).IsEqualTo("Tenant automation");
-        await Assert.That(result.StatusName).IsEqualTo(nameof(WebhookConsumerStatus.Active));
-        await Assert.That(result.ProviderCapabilityAuthorityAvailable).IsTrue();
-        await Assert.That(result.ProviderCapabilities.Count).IsEqualTo(12);
-        await Assert.That(result.ProviderCapabilities.Single(capability =>
-            capability.CapabilityId == (int)WebhookProviderCapability.EndpointManagement).IsAvailable).IsTrue();
-        await Assert.That(result.ProviderCapabilities.Single(capability =>
-            capability.CapabilityId == (int)WebhookProviderCapability.EndpointManagement)
-            .AvailableFromProviderCodes).IsEquivalentTo(["LOCAL"]);
-        await Assert.That(result.ProviderCapabilities.Single(capability =>
-            capability.CapabilityId == (int)WebhookProviderCapability.AppPortal).IsAvailable).IsFalse();
-        await _bindingRepository.DidNotReceive().GetVerifiedByConsumerAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<Guid>(),
-            Arg.Any<WebhookProviderKind>(),
-            Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
+        await Assert.That(result!.OwnerId).IsEqualTo(consumer.OwnerId);
+        await Assert.That(result.ConsumerKindId).IsEqualTo((int)WebhookConsumerKind.Group);
     }
 
     [Test]
-    public async Task ListHandler_VerifiedSvixBinding_IntersectsProviderProofWithGovernance()
+    [Arguments(WebhookConsumerKind.Tenant)]
+    [Arguments(WebhookConsumerKind.Organization)]
+    [Arguments(WebhookConsumerKind.Group)]
+    [Arguments(WebhookConsumerKind.User)]
+    [Arguments(WebhookConsumerKind.Instance)]
+    public async Task CreateEndpoint_InheritsConsumerConfigurationScope(WebhookConsumerKind ownerKind)
     {
-        var tenantId = Guid.CreateVersion7();
-        var consumer = CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Svix);
-        const string environment = "selfhost";
-        const string providerVersion = "1.96.1";
-        const string policyVersion = "selfhost-v1.96.1-v1";
-        var providerCapabilities =
-            WebhookProviderCapability.EndpointManagement |
-            WebhookProviderCapability.PayloadInspection |
-            WebhookProviderCapability.AppPortal |
-            WebhookProviderCapability.EventCatalog;
-        var binding = WebhookConsumerProviderBinding.CreatePending(
-            tenantId,
-            consumer.Id,
-            Guid.CreateVersion7(),
-            environment,
-            WebhookProviderCapabilityProfile.Create(
-                WebhookProviderKind.Svix,
-                providerVersion,
-                providerCapabilities,
-                policyVersion,
-                DateTimeOffset.UtcNow),
-            WebhookProviderCapability.EndpointManagement | WebhookProviderCapability.AppPortal);
-        binding.VerifyOwnership(tenantId, consumer.Id, "app_capability_test", DateTimeOffset.UtcNow);
-        _consumerRepository.ListByTenantAsync(tenantId, 100, Arg.Any<CancellationToken>())
-            .Returns([consumer]);
-        _bindingRepository.GetVerifiedByConsumersAsync(
-                tenantId,
-                Arg.Any<IReadOnlyCollection<Guid>>(),
-                WebhookProviderKind.Svix,
-                environment,
-                Arg.Any<CancellationToken>())
-            .Returns([binding]);
-        var handler = new GetWebhookConsumersQueryHandler(
-            _consumerRepository,
-            _bindingRepository,
-            new StaticWebhookProviderCapabilityResolver(new WebhookProviderModeCapabilityResolution(
-                WebhookProviderMode.Svix,
-                true,
-                WebhookProviderCapability.None,
-                providerCapabilities,
-                environment,
-                providerVersion,
-                policyVersion,
-                null)));
-
-        var result = await handler.Handle(
-            new GetWebhookConsumersQuery { TenantId = tenantId },
-            CancellationToken.None);
-
-        var dto = result.Single();
-        await Assert.That(dto.ProviderCapabilityAuthorityAvailable).IsTrue();
-        await Assert.That(dto.CapabilityUnavailableReasonCode).IsNull();
-        await Assert.That(dto.ProviderCapabilities.Single(capability =>
-            capability.CapabilityId == (int)WebhookProviderCapability.EndpointManagement).IsAvailable).IsTrue();
-        await Assert.That(dto.ProviderCapabilities.Single(capability =>
-            capability.CapabilityId == (int)WebhookProviderCapability.AppPortal).IsAvailable).IsTrue();
-        await Assert.That(dto.ProviderCapabilities.Single(capability =>
-            capability.CapabilityId == (int)WebhookProviderCapability.PayloadInspection).IsAvailable).IsFalse();
-        await Assert.That(dto.ProviderCapabilities.Single(capability =>
-            capability.CapabilityId == (int)WebhookProviderCapability.PayloadInspection)
-            .UnavailableReasonCode).IsEqualTo("webhook_provider_capability_unproven");
-        await _bindingRepository.Received(1).GetVerifiedByConsumersAsync(
-            tenantId,
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(consumer.Id)),
-            WebhookProviderKind.Svix,
-            environment,
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task CreateEndpointHandler_WhenRequestValid_PersistsActiveEndpointWithSubscriptions()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var consumer = CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local);
-        var eventType = CreateEventType("event.published");
-        WebhookEndpoint? capturedEndpoint = null;
-        IReadOnlyCollection<WebhookEndpointSubscription>? capturedSubscriptions = null;
-        _consumerRepository.GetByTenantAndIdAsync(tenantId, consumer.Id, Arg.Any<CancellationToken>())
-            .Returns(consumer);
-        _endpointRepository.GetByTenantConsumerAndUrlAsync(
-                tenantId,
+        var ownership = CreateOwnership(ownerKind);
+        var consumer = CreateConsumer(ownership);
+        var eventType = CreateEventType();
+        _consumerRepository.GetByIdForOwnerOperationAsync(
                 consumer.Id,
-                "https://integrator.example/webhooks/islamu",
+                false,
+                Arg.Any<CancellationToken>())
+            .Returns(consumer);
+        _endpointRepository.GetByConsumerAndUrlForOwnerOperationAsync(
+                consumer.Id,
+                "https://integrator.example/webhook",
                 Arg.Any<CancellationToken>())
             .Returns((WebhookEndpoint?)null);
-        _eventTypeRepository.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _eventTypeRepository.GetByIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(),
+                Arg.Any<CancellationToken>())
             .Returns([eventType]);
         _endpointRepository.CreateWithSubscriptionsAsync(
-                Arg.Do<WebhookEndpoint>(endpoint => capturedEndpoint = endpoint),
-                Arg.Do<IReadOnlyCollection<WebhookEndpointSubscription>>(subscriptions => capturedSubscriptions = subscriptions),
-                Arg.Any<CancellationToken>())
-            .Returns(call => call.Arg<WebhookEndpoint>());
-        var handler = new CreateWebhookEndpointCommandHandler(
-            _endpointRepository,
-            _consumerRepository,
-            _eventTypeRepository,
-            _capabilityResolver);
-
-        var result = await handler.Handle(
-            new CreateWebhookEndpointCommand
-            {
-                TenantId = tenantId,
-                ConsumerId = consumer.Id,
-                Url = " https://integrator.example/webhooks/islamu ",
-                Description = " Integrator endpoint ",
-                SecretRef = " configuration:Webhooks:EndpointSecrets:integrator ",
-                EventTypeIds = [eventType.Id],
-                MaxAttempts = 8,
-                TimeoutSeconds = 15,
-                RateLimitPerMinute = 60
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(capturedEndpoint).IsNotNull();
-        await Assert.That(capturedEndpoint!.TenantId).IsEqualTo(tenantId);
-        await Assert.That(capturedEndpoint.ConsumerId).IsEqualTo(consumer.Id);
-        await Assert.That(capturedEndpoint.Url).IsEqualTo("https://integrator.example/webhooks/islamu");
-        await Assert.That(capturedEndpoint.Description).IsEqualTo("Integrator endpoint");
-        await Assert.That(capturedEndpoint.SecretRef).IsEqualTo("configuration:Webhooks:EndpointSecrets:integrator");
-        await Assert.That(capturedEndpoint.Status).IsEqualTo(WebhookEndpointStatus.Active);
-        await Assert.That(capturedEndpoint.SecretVersion).IsEqualTo(1);
-        await Assert.That(capturedSubscriptions).IsNotNull();
-        await Assert.That(capturedSubscriptions!.Count).IsEqualTo(1);
-        await Assert.That(capturedSubscriptions.Single().EventTypeId).IsEqualTo(eventType.Id);
-        await Assert.That(capturedSubscriptions.Single().IsEnabled).IsTrue();
-    }
-
-    [Test]
-    public async Task CreateEndpointHandler_WhenRequestInvalid_DoesNotQueryRepositories()
-    {
-        var handler = new CreateWebhookEndpointCommandHandler(
-            _endpointRepository,
-            _consumerRepository,
-            _eventTypeRepository,
-            _capabilityResolver);
-
-        var result = await handler.Handle(
-            new CreateWebhookEndpointCommand
-            {
-                TenantId = Guid.Empty,
-                ConsumerId = Guid.Empty,
-                Url = "ftp://example.invalid/hook",
-                SecretRef = "",
-                EventTypeIds = []
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_validation_failed");
-        await _consumerRepository.DidNotReceive().GetByTenantAndIdAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<Guid>(),
-            Arg.Any<CancellationToken>());
-        await _endpointRepository.DidNotReceive().CreateWithSubscriptionsAsync(
-            Arg.Any<WebhookEndpoint>(),
-            Arg.Any<IReadOnlyCollection<WebhookEndpointSubscription>>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task CreateEndpointHandler_WhenConsumerMissing_ReturnsNotFoundFailure()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var consumerId = Guid.CreateVersion7();
-        _consumerRepository.GetByTenantAndIdAsync(tenantId, consumerId, Arg.Any<CancellationToken>())
-            .Returns((WebhookConsumer?)null);
-        var handler = new CreateWebhookEndpointCommandHandler(
-            _endpointRepository,
-            _consumerRepository,
-            _eventTypeRepository,
-            _capabilityResolver);
-
-        var result = await handler.Handle(CreateEndpointCommand(tenantId, consumerId, [Guid.CreateVersion7()]), CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_consumer_not_found");
-        await _endpointRepository.DidNotReceive().CreateWithSubscriptionsAsync(
-            Arg.Any<WebhookEndpoint>(),
-            Arg.Any<IReadOnlyCollection<WebhookEndpointSubscription>>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task CreateEndpointHandler_WhenPureSvixModeHasNoLocalEndpointManagement_FailsClosed()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var consumer = CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Svix);
-        _consumerRepository.GetByTenantAndIdAsync(tenantId, consumer.Id, Arg.Any<CancellationToken>())
-            .Returns(consumer);
-        var handler = new CreateWebhookEndpointCommandHandler(
-            _endpointRepository,
-            _consumerRepository,
-            _eventTypeRepository,
-            _capabilityResolver);
-
-        var result = await handler.Handle(
-            CreateEndpointCommand(tenantId, consumer.Id, [Guid.CreateVersion7()]),
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_management_unavailable");
-        await _endpointRepository.DidNotReceive().GetByTenantConsumerAndUrlAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<Guid>(),
-            Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
-        await _endpointRepository.DidNotReceive().CreateWithSubscriptionsAsync(
-            Arg.Any<WebhookEndpoint>(),
-            Arg.Any<IReadOnlyCollection<WebhookEndpointSubscription>>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task CreateEndpointHandler_WhenEventTypeMissing_ReturnsInvalidEventTypeFailure()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var consumer = CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local);
-        _consumerRepository.GetByTenantAndIdAsync(tenantId, consumer.Id, Arg.Any<CancellationToken>())
-            .Returns(consumer);
-        _endpointRepository.GetByTenantConsumerAndUrlAsync(
-                tenantId,
-                consumer.Id,
-                "https://integrator.example/webhooks/islamu",
-                Arg.Any<CancellationToken>())
-            .Returns((WebhookEndpoint?)null);
-        _eventTypeRepository.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns([]);
-        var handler = new CreateWebhookEndpointCommandHandler(
-            _endpointRepository,
-            _consumerRepository,
-            _eventTypeRepository,
-            _capabilityResolver);
-
-        var result = await handler.Handle(CreateEndpointCommand(tenantId, consumer.Id, [Guid.CreateVersion7()]), CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_event_types_invalid");
-        await _endpointRepository.DidNotReceive().CreateWithSubscriptionsAsync(
-            Arg.Any<WebhookEndpoint>(),
-            Arg.Any<IReadOnlyCollection<WebhookEndpointSubscription>>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task EndpointListHandler_MapsEndpointsAndCapsLimit()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
-        _endpointRepository.ListByTenantAsync(tenantId, endpoint.ConsumerId, 500, Arg.Any<CancellationToken>())
-            .Returns([endpoint]);
-        var handler = new GetWebhookEndpointsQueryHandler(_endpointRepository);
-
-        var result = await handler.Handle(
-            new GetWebhookEndpointsQuery
-            {
-                TenantId = tenantId,
-                ConsumerId = endpoint.ConsumerId,
-                Limit = 10_000
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Count).IsEqualTo(1);
-        await Assert.That(result[0].Id).IsEqualTo(endpoint.Id);
-        await Assert.That(result[0].ProviderModeId).IsEqualTo((int)WebhookProviderMode.Local);
-        await Assert.That(result[0].ProviderModeName).IsEqualTo(nameof(WebhookProviderMode.Local));
-        await Assert.That(result[0].SecretVersion).IsEqualTo(1);
-        await Assert.That(result[0].Subscriptions.Count).IsEqualTo(1);
-        await _endpointRepository.Received(1).ListByTenantAsync(
-            tenantId,
-            endpoint.ConsumerId,
-            500,
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task EndpointListHandler_WhenTenantIdEmpty_DoesNotQueryRepository()
-    {
-        var handler = new GetWebhookEndpointsQueryHandler(_endpointRepository);
-
-        var result = await handler.Handle(
-            new GetWebhookEndpointsQuery
-            {
-                TenantId = Guid.Empty,
-                Limit = 100
-            },
-            CancellationToken.None);
-
-        await Assert.That(result).IsEmpty();
-        await _endpointRepository.DidNotReceive().ListByTenantAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<Guid?>(),
-            Arg.Any<int>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task EndpointDetailHandler_WhenEndpointExists_ReturnsMappedDto()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
-        _endpointRepository.GetByTenantAndIdAsync(tenantId, endpoint.Id, Arg.Any<CancellationToken>())
-            .Returns(endpoint);
-        var handler = new GetWebhookEndpointByIdQueryHandler(_endpointRepository);
-
-        var result = await handler.Handle(
-            new GetWebhookEndpointByIdQuery
-            {
-                TenantId = tenantId,
-                EndpointId = endpoint.Id
-            },
-            CancellationToken.None);
-
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.DestinationHost).IsEqualTo("integrator.example");
-        await Assert.That(result.StatusName).IsEqualTo(nameof(WebhookEndpointStatus.Active));
-        await Assert.That(result.ProviderModeName).IsEqualTo(nameof(WebhookProviderMode.Local));
-        await Assert.That(result.Subscriptions.Single().EventTypeName).IsEqualTo("event.published");
-    }
-
-    [Test]
-    public async Task EndpointDetailHandler_WhenIdsEmpty_DoesNotQueryRepository()
-    {
-        var handler = new GetWebhookEndpointByIdQueryHandler(_endpointRepository);
-
-        var result = await handler.Handle(
-            new GetWebhookEndpointByIdQuery
-            {
-                TenantId = Guid.Empty,
-                EndpointId = Guid.Empty
-            },
-            CancellationToken.None);
-
-        await Assert.That(result).IsNull();
-        await _endpointRepository.DidNotReceive().GetByTenantAndIdAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<Guid>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task UpdateEndpointHandler_WhenRequestValid_UpdatesEndpointAndReplacesSubscriptions()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
-        var pendingTarget = CreatePendingTarget(endpoint);
-        var replacementEventType = CreateEventType("registration.created");
-        IReadOnlyCollection<WebhookEndpointSubscription>? capturedSubscriptions = null;
-        _endpointRepository.GetByTenantAndIdForUpdateAsync(tenantId, endpoint.Id, Arg.Any<CancellationToken>())
-            .Returns(endpoint);
-        _endpointRepository.GetByTenantConsumerAndUrlAsync(
-                tenantId,
-                endpoint.ConsumerId,
-                "https://integrator.example/hooks/updated",
-                Arg.Any<CancellationToken>())
-            .Returns((WebhookEndpoint?)null);
-        _eventTypeRepository.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns([replacementEventType]);
-        _endpointRepository.GetEligiblePendingTargetsForUpdateAsync(
-                tenantId,
-                endpoint.Id,
-                Arg.Any<CancellationToken>())
-            .Returns([pendingTarget]);
-        _endpointRepository.UpdateWithSubscriptionsAsync(
-                Arg.Any<WebhookEndpoint>(),
-                Arg.Do<IReadOnlyCollection<WebhookEndpointSubscription>>(subscriptions => capturedSubscriptions = subscriptions),
-                Arg.Any<CancellationToken>())
-            .Returns(call => call.Arg<WebhookEndpoint>());
-        var handler = CreateUpdateEndpointHandler();
-
-        var result = await handler.Handle(
-            new UpdateWebhookEndpointCommand
-            {
-                TenantId = tenantId,
-                EndpointId = endpoint.Id,
-                Url = " https://integrator.example/hooks/updated ",
-                Description = " Updated endpoint ",
-                EventTypeIds = [replacementEventType.Id],
-                MaxAttempts = 6,
-                TimeoutSeconds = 12,
-                RateLimitPerMinute = 120,
-                ExpectedConfigurationVersion = endpoint.ConfigurationVersion,
-                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
-                PendingWorkReason = "Keep already queued deliveries on their original destination."
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(endpoint.Url).IsEqualTo("https://integrator.example/hooks/updated");
-        await Assert.That(endpoint.Description).IsEqualTo("Updated endpoint");
-        await Assert.That(endpoint.MaxAttempts).IsEqualTo(6);
-        await Assert.That(endpoint.TimeoutSeconds).IsEqualTo(12);
-        await Assert.That(endpoint.RateLimitPerMinute).IsEqualTo(120);
-        await Assert.That(endpoint.ConfigurationVersion).IsEqualTo(2);
-        await Assert.That(pendingTarget.EndpointConfigurationVersion).IsEqualTo(1);
-        await Assert.That(pendingTarget.DestinationUrl).IsEqualTo("https://integrator.example/webhooks/islamu");
-        await Assert.That(capturedSubscriptions).IsNotNull();
-        await Assert.That(capturedSubscriptions!.Single().EventTypeId).IsEqualTo(replacementEventType.Id);
-        await _auditLogRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
-            audit.Action == "WebhookEndpointConfigurationChanged" &&
-            audit.NewValues != null &&
-            audit.NewValues.Contains("PRESERVE_EXISTING", StringComparison.Ordinal)));
-    }
-
-    [Test]
-    public async Task UpdateEndpointHandler_WhenMigrateEligible_AdvancesOnlyReturnedPendingSnapshots()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
-        var eligibleTarget = CreatePendingTarget(endpoint);
-        var eventType = CreateEventType("registration.created");
-        _endpointRepository.GetByTenantAndIdForUpdateAsync(tenantId, endpoint.Id, Arg.Any<CancellationToken>())
-            .Returns(endpoint);
-        _endpointRepository.GetByTenantConsumerAndUrlAsync(
-                tenantId,
-                endpoint.ConsumerId,
-                "https://integrator.example/hooks/updated",
-                Arg.Any<CancellationToken>())
-            .Returns((WebhookEndpoint?)null);
-        _eventTypeRepository.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns([eventType]);
-        _endpointRepository.GetEligiblePendingTargetsForUpdateAsync(
-                tenantId,
-                endpoint.Id,
-                Arg.Any<CancellationToken>())
-            .Returns([eligibleTarget]);
-        _endpointRepository.UpdateWithSubscriptionsAsync(
                 Arg.Any<WebhookEndpoint>(),
                 Arg.Any<IReadOnlyCollection<WebhookEndpointSubscription>>(),
                 Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<WebhookEndpoint>());
-        var handler = CreateUpdateEndpointHandler();
-
-        var result = await handler.Handle(
-            new UpdateWebhookEndpointCommand
-            {
-                TenantId = tenantId,
-                EndpointId = endpoint.Id,
-                Url = "https://integrator.example/hooks/updated",
-                EventTypeIds = [eventType.Id],
-                MaxAttempts = 10,
-                TimeoutSeconds = 20,
-                RateLimitPerMinute = 180,
-                ExpectedConfigurationVersion = endpoint.ConfigurationVersion,
-                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.MigrateEligible,
-                PendingWorkReason = "Apply the new integration route before first delivery."
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(result.Message).Contains("1 eligible pending target(s) migrated", StringComparison.Ordinal);
-        await Assert.That(eligibleTarget.EndpointConfigurationVersion).IsEqualTo(2);
-        await Assert.That(eligibleTarget.DestinationUrl).IsEqualTo("https://integrator.example/hooks/updated");
-        await Assert.That(eligibleTarget.MaxAttempts).IsEqualTo(10);
-        await Assert.That(eligibleTarget.TimeoutSeconds).IsEqualTo(20);
-        await Assert.That(eligibleTarget.RateLimitPerMinute).IsEqualTo(180);
-        await Assert.That(eligibleTarget.DeliveryStatus).IsEqualTo(WebhookLocalDeliveryStatus.Pending);
-        await _auditLogRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
-            audit.NewValues != null &&
-            audit.NewValues.Contains("MIGRATE_ELIGIBLE", StringComparison.Ordinal) &&
-            audit.NewValues.Contains("\"migratedTargetCount\":1", StringComparison.Ordinal)));
-    }
-
-    [Test]
-    public async Task UpdateEndpointHandler_WhenUncertainPublicationsExist_RequiresExplicitAcknowledgement()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Composite));
-        var eventType = CreateEventType("registration.created");
-        _endpointRepository.GetByTenantAndIdForUpdateAsync(tenantId, endpoint.Id, Arg.Any<CancellationToken>())
-            .Returns(endpoint);
-        _endpointRepository.GetByTenantConsumerAndUrlAsync(
-                tenantId,
-                endpoint.ConsumerId,
-                "https://integrator.example/hooks/updated",
-                Arg.Any<CancellationToken>())
-            .Returns((WebhookEndpoint?)null);
-        _eventTypeRepository.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns([eventType]);
-        _providerPublicationRepository.CountUncertainByConsumerAsync(
-                tenantId,
-                endpoint.ConsumerId,
-                Arg.Any<CancellationToken>())
-            .Returns(2);
-        var handler = CreateUpdateEndpointHandler();
-
-        var result = await handler.Handle(
-            new UpdateWebhookEndpointCommand
-            {
-                TenantId = tenantId,
-                EndpointId = endpoint.Id,
-                Url = "https://integrator.example/hooks/updated",
-                EventTypeIds = [eventType.Id],
-                ExpectedConfigurationVersion = endpoint.ConfigurationVersion,
-                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
-                PendingWorkReason = "Preserve queued work."
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_configuration_uncertain_publications");
-        await _endpointRepository.DidNotReceive().UpdateWithSubscriptionsAsync(
-            Arg.Any<WebhookEndpoint>(),
-            Arg.Any<IReadOnlyCollection<WebhookEndpointSubscription>>(),
-            Arg.Any<CancellationToken>());
-        await _auditLogRepository.DidNotReceive().Create(Arg.Any<AuditLog>());
-    }
-
-    [Test]
-    public async Task UpdateEndpointHandler_WhenEndpointMissing_ReturnsNotFoundFailure()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var endpointId = Guid.CreateVersion7();
-        _endpointRepository.GetByTenantAndIdForUpdateAsync(tenantId, endpointId, Arg.Any<CancellationToken>())
-            .Returns((WebhookEndpoint?)null);
-        var handler = CreateUpdateEndpointHandler();
-
-        var result = await handler.Handle(
-            CreateUpdateEndpointCommand(tenantId, endpointId, [Guid.CreateVersion7()]),
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_not_found");
-        await _endpointRepository.DidNotReceive().UpdateWithSubscriptionsAsync(
-            Arg.Any<WebhookEndpoint>(),
-            Arg.Any<IReadOnlyCollection<WebhookEndpointSubscription>>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task UpdateEndpointHandler_WhenUrlConflicts_ReturnsConflictFailure()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
-        var conflictingEndpoint = CreateEndpoint(tenantId, endpoint.Consumer!);
-        conflictingEndpoint.Id = Guid.CreateVersion7();
-        _endpointRepository.GetByTenantAndIdForUpdateAsync(tenantId, endpoint.Id, Arg.Any<CancellationToken>())
-            .Returns(endpoint);
-        _endpointRepository.GetByTenantConsumerAndUrlAsync(
-                tenantId,
-                endpoint.ConsumerId,
-                "https://integrator.example/webhooks/islamu",
-                Arg.Any<CancellationToken>())
-            .Returns(conflictingEndpoint);
-        var handler = CreateUpdateEndpointHandler();
-
-        var result = await handler.Handle(
-            CreateUpdateEndpointCommand(tenantId, endpoint.Id, [Guid.CreateVersion7()]),
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_url_conflict");
-        await _eventTypeRepository.DidNotReceive().GetByIdsAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task UpdateEndpointHandler_WhenRequestInvalid_DoesNotQueryRepositories()
-    {
-        var handler = CreateUpdateEndpointHandler();
-
-        var result = await handler.Handle(
-            new UpdateWebhookEndpointCommand
-            {
-                TenantId = Guid.Empty,
-                EndpointId = Guid.Empty,
-                Url = "file:///tmp/hook",
-                EventTypeIds = [],
-                PendingWorkReason = string.Empty
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_validation_failed");
-        await _endpointRepository.DidNotReceive().GetByTenantAndIdForUpdateAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<Guid>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task RotateEndpointSecretHandler_WhenRequestValid_RotatesSecretReferenceAndPreservesPreviousWindow()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
-        endpoint.SecretRef = "configuration:Webhooks:EndpointSecrets:integrator:v1";
-        endpoint.SecretVersion = 3;
-        WebhookEndpoint? captured = null;
-        _endpointRepository.GetByTenantAndIdForUpdateAsync(tenantId, endpoint.Id, Arg.Any<CancellationToken>())
-            .Returns(endpoint);
-        _endpointRepository.UpdateAsync(Arg.Do<WebhookEndpoint>(updated => captured = updated), Arg.Any<CancellationToken>())
-            .Returns(call => call.Arg<WebhookEndpoint>());
-        var handler = CreateRotateEndpointSecretHandler();
-        var before = DateTime.UtcNow;
-
-        var result = await handler.Handle(
-            new RotateWebhookEndpointSecretCommand
-            {
-                TenantId = tenantId,
-                EndpointId = endpoint.Id,
-                NewSecretRef = " configuration:Webhooks:EndpointSecrets:integrator:v2 ",
-                PreviousSecretValidForSeconds = 3_600,
-                ExpectedConfigurationVersion = endpoint.ConfigurationVersion,
-                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
-                PendingWorkReason = "Keep queued deliveries on their original signing credential."
-            },
-            CancellationToken.None);
-        var after = DateTime.UtcNow;
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(captured).IsNotNull();
-        await Assert.That(captured!.SecretRef).IsEqualTo("configuration:Webhooks:EndpointSecrets:integrator:v2");
-        await Assert.That(captured.PreviousSecretRef).IsEqualTo("configuration:Webhooks:EndpointSecrets:integrator:v1");
-        await Assert.That(captured.SecretVersion).IsEqualTo(4);
-        await Assert.That(captured.ConfigurationVersion).IsEqualTo(2);
-        await Assert.That(captured.PreviousSecretValidUntil).IsNotNull();
-        await Assert.That(captured.PreviousSecretValidUntil!.Value >= before.AddSeconds(3_600)).IsTrue();
-        await Assert.That(captured.PreviousSecretValidUntil.Value <= after.AddSeconds(3_605)).IsTrue();
-    }
-
-    [Test]
-    public async Task RotateEndpointSecretHandler_WhenRequestInvalid_DoesNotQueryRepository()
-    {
-        var handler = CreateRotateEndpointSecretHandler();
-
-        var result = await handler.Handle(
-            new RotateWebhookEndpointSecretCommand
-            {
-                TenantId = Guid.Empty,
-                EndpointId = Guid.Empty,
-                NewSecretRef = "",
-                PreviousSecretValidForSeconds = -1,
-                PendingWorkReason = string.Empty
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_secret_validation_failed");
-        await _endpointRepository.DidNotReceive().GetByTenantAndIdForUpdateAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<Guid>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task RotateEndpointSecretHandler_WhenEndpointMissing_ReturnsNotFoundFailure()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var endpointId = Guid.CreateVersion7();
-        _endpointRepository.GetByTenantAndIdForUpdateAsync(tenantId, endpointId, Arg.Any<CancellationToken>())
-            .Returns((WebhookEndpoint?)null);
-        var handler = CreateRotateEndpointSecretHandler();
-
-        var result = await handler.Handle(
-            new RotateWebhookEndpointSecretCommand
-            {
-                TenantId = tenantId,
-                EndpointId = endpointId,
-                NewSecretRef = "configuration:Webhooks:EndpointSecrets:integrator:v2",
-                ExpectedConfigurationVersion = 1,
-                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
-                PendingWorkReason = "Preserve queued work."
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_not_found");
-        await _endpointRepository.DidNotReceive().UpdateAsync(
-            Arg.Any<WebhookEndpoint>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task RotateEndpointSecretHandler_WhenSecretReferenceUnchanged_ReturnsValidationFailure()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
-        _endpointRepository.GetByTenantAndIdForUpdateAsync(tenantId, endpoint.Id, Arg.Any<CancellationToken>())
-            .Returns(endpoint);
-        var handler = CreateRotateEndpointSecretHandler();
-
-        var result = await handler.Handle(
-            new RotateWebhookEndpointSecretCommand
-            {
-                TenantId = tenantId,
-                EndpointId = endpoint.Id,
-                NewSecretRef = endpoint.SecretRef,
-                ExpectedConfigurationVersion = endpoint.ConfigurationVersion,
-                PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
-                PendingWorkReason = "Preserve queued work."
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_secret_unchanged");
-        await _endpointRepository.DidNotReceive().UpdateAsync(
-            Arg.Any<WebhookEndpoint>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task TestEndpointHandler_WhenEndpointActiveLocal_SchedulesMessageAndDeliveryAttempt()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
-        WebhookMessage? capturedMessage = null;
-        WebhookDeliveryAttempt? capturedAttempt = null;
-        _endpointRepository.GetByTenantAndIdAsync(tenantId, endpoint.Id, Arg.Any<CancellationToken>())
-            .Returns(endpoint);
-        _messageRepository.CreateAsync(Arg.Do<WebhookMessage>(message => capturedMessage = message), Arg.Any<CancellationToken>())
-            .Returns(call => call.Arg<WebhookMessage>());
-        _attemptRepository.CreateAsync(Arg.Do<WebhookDeliveryAttempt>(attempt => capturedAttempt = attempt), Arg.Any<CancellationToken>())
-            .Returns(call => call.Arg<WebhookDeliveryAttempt>());
-        var handler = new TestWebhookEndpointCommandHandler(
-            _endpointRepository,
-            _messageRepository,
-            _attemptRepository,
-            _payloadBuilder,
-            _capabilityResolver);
-        var before = DateTime.UtcNow;
-
-        var result = await handler.Handle(
-            new TestWebhookEndpointCommand
-            {
-                TenantId = tenantId,
-                EndpointId = endpoint.Id
-            },
-            CancellationToken.None);
-        var after = DateTime.UtcNow;
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
-        await Assert.That(capturedMessage).IsNotNull();
-        await Assert.That(capturedMessage!.Id).IsEqualTo(result.Id);
-        await Assert.That(capturedMessage.EventType).IsEqualTo(WebhookEventNames.WebhookTest);
-        await Assert.That(capturedMessage.AggregateKind).IsEqualTo("WebhookEndpoint");
-        await Assert.That(capturedMessage.AggregateId).IsEqualTo(endpoint.Id);
-        await Assert.That(capturedMessage.ConsumerId).IsEqualTo(endpoint.ConsumerId);
-        var payloadJson = Encoding.UTF8.GetString(capturedMessage.GetPayloadBytes()!);
-        await Assert.That(payloadJson).Contains(endpoint.Id.ToString("D"));
-        await Assert.That(payloadJson).DoesNotContain(endpoint.SecretRef);
-        await Assert.That(capturedMessage.PayloadRetentionUntil >= before.AddDays(1).AddSeconds(-1)).IsTrue();
-        await Assert.That(capturedMessage.PayloadRetentionUntil <= after.AddDays(1).AddSeconds(1)).IsTrue();
-        await Assert.That(capturedAttempt).IsNotNull();
-        await Assert.That(capturedAttempt!.TenantId).IsEqualTo(tenantId);
-        await Assert.That(capturedAttempt.MessageId).IsEqualTo(capturedMessage.Id);
-        await Assert.That(capturedAttempt.EndpointId).IsEqualTo(endpoint.Id);
-        await Assert.That(capturedAttempt.AttemptNumber).IsEqualTo(1);
-        await Assert.That(capturedAttempt.Outcome).IsEqualTo(WebhookDeliveryAttemptOutcome.Scheduled);
-        await Assert.That(capturedAttempt.ScheduledAt >= before.AddSeconds(-1)).IsTrue();
-        await Assert.That(capturedAttempt.ScheduledAt <= after.AddSeconds(1)).IsTrue();
-    }
-
-    [Test]
-    public async Task TestEndpointHandler_WhenConsumerProviderIsSvix_ReturnsProviderManagedFailure()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Svix));
-        _endpointRepository.GetByTenantAndIdAsync(tenantId, endpoint.Id, Arg.Any<CancellationToken>())
-            .Returns(endpoint);
-        var handler = new TestWebhookEndpointCommandHandler(
-            _endpointRepository,
-            _messageRepository,
-            _attemptRepository,
-            _payloadBuilder,
-            _capabilityResolver);
-
-        var result = await handler.Handle(
-            new TestWebhookEndpointCommand
-            {
-                TenantId = tenantId,
-                EndpointId = endpoint.Id
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_test_provider_managed");
-        await _messageRepository.DidNotReceive().CreateAsync(
-            Arg.Any<WebhookMessage>(),
-            Arg.Any<CancellationToken>());
-        await _attemptRepository.DidNotReceive().CreateAsync(
-            Arg.Any<WebhookDeliveryAttempt>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task TestEndpointHandler_WhenRequestInvalid_DoesNotQueryRepository()
-    {
-        var handler = new TestWebhookEndpointCommandHandler(
-            _endpointRepository,
-            _messageRepository,
-            _attemptRepository,
-            _payloadBuilder,
-            _capabilityResolver);
-
-        var result = await handler.Handle(
-            new TestWebhookEndpointCommand
-            {
-                TenantId = Guid.Empty,
-                EndpointId = Guid.Empty
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_test_validation_failed");
-        await _endpointRepository.DidNotReceive().GetByTenantAndIdAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<Guid>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task MessageListHandler_MapsSafeMetadataAndCapsLimit()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var consumer = CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local);
-        var message = CreateMessage(tenantId, consumer);
-        _messageRepository.ListByTenantAsync(tenantId, 500, Arg.Any<CancellationToken>())
-            .Returns([message]);
-        var handler = new GetWebhookMessagesQueryHandler(_messageRepository);
-
-        var result = await handler.Handle(
-            new GetWebhookMessagesQuery
-            {
-                TenantId = tenantId,
-                Limit = 10_000
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Count).IsEqualTo(1);
-        await Assert.That(result[0].Id).IsEqualTo(message.Id);
-        await Assert.That(result[0].TenantId).IsEqualTo(tenantId);
-        await Assert.That(result[0].ConsumerName).IsNull();
-        await Assert.That(result[0].PayloadHash).IsEqualTo(message.PayloadHash);
-        await Assert.That(typeof(Explore.Application.DTOs.Webhooks.WebhookMessageDto).GetProperty("PayloadJson")).IsNull();
-        await _messageRepository.Received(1).ListByTenantAsync(
-            tenantId,
-            500,
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task MessageDetailHandler_UsesTenantScopedRepositoryLookup()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var message = CreateMessage(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
-        _messageRepository.GetByTenantAndIdAsync(tenantId, message.Id, Arg.Any<CancellationToken>())
-            .Returns(message);
-        var handler = new GetWebhookMessageByIdQueryHandler(_messageRepository);
-
-        var result = await handler.Handle(
-            new GetWebhookMessageByIdQuery
-            {
-                TenantId = tenantId,
-                MessageId = message.Id
-            },
-            CancellationToken.None);
-
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Id).IsEqualTo(message.Id);
-        await Assert.That(result.PayloadHash).IsEqualTo(message.PayloadHash);
-        await _messageRepository.Received(1).GetByTenantAndIdAsync(
-            tenantId,
-            message.Id,
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task MessageDetailHandler_WhenIdentifiersAreEmpty_DoesNotQueryRepository()
-    {
-        var handler = new GetWebhookMessageByIdQueryHandler(_messageRepository);
-
-        var result = await handler.Handle(
-            new GetWebhookMessageByIdQuery
-            {
-                TenantId = Guid.Empty,
-                MessageId = Guid.Empty
-            },
-            CancellationToken.None);
-
-        await Assert.That(result).IsNull();
-        await _messageRepository.DidNotReceive().GetByTenantAndIdAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<Guid>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task DeliveryAttemptListHandler_NormalizesFiltersMapsSafeMetadataAndCapsLimit()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
-        var message = CreateMessage(tenantId, endpoint.Consumer!);
-        var attempt = CreateDeliveryAttempt(tenantId, message, endpoint, WebhookDeliveryAttemptOutcome.Failed);
-        _attemptRepository.ListByTenantAsync(
-                tenantId,
-                null,
-                endpoint.Id,
-                500,
-                Arg.Any<CancellationToken>())
-            .Returns([attempt]);
-        var handler = new GetWebhookDeliveryAttemptsQueryHandler(_attemptRepository);
-
-        var result = await handler.Handle(
-            new GetWebhookDeliveryAttemptsQuery
-            {
-                TenantId = tenantId,
-                MessageId = Guid.Empty,
-                EndpointId = endpoint.Id,
-                Limit = 10_000
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Count).IsEqualTo(1);
-        await Assert.That(result[0].Id).IsEqualTo(attempt.Id);
-        await Assert.That(result[0].TenantId).IsEqualTo(tenantId);
-        await Assert.That(result[0].MessageEventType).IsEqualTo(WebhookEventNames.EventPublished);
-        await Assert.That(typeof(Explore.Application.DTOs.Webhooks.WebhookDeliveryAttemptDto).GetProperty("EndpointUrl")).IsNull();
-        await Assert.That(typeof(Explore.Application.DTOs.Webhooks.WebhookDeliveryAttemptDto).GetProperty("ResponseBodyPreview")).IsNull();
-        await Assert.That(typeof(Explore.Application.DTOs.Webhooks.WebhookDeliveryAttemptDto).GetProperty("ResponseBody")).IsNull();
-        await Assert.That(typeof(Explore.Application.DTOs.Webhooks.WebhookDeliveryAttemptDto).GetProperty("SecretRef")).IsNull();
-        await _attemptRepository.Received(1).ListByTenantAsync(
-            tenantId,
-            null,
-            endpoint.Id,
-            500,
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task DeliveryAttemptDetailHandler_UsesTenantScopedRepositoryLookup()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
-        var message = CreateMessage(tenantId, endpoint.Consumer!);
-        var attempt = CreateDeliveryAttempt(tenantId, message, endpoint, WebhookDeliveryAttemptOutcome.Abandoned);
-        _attemptRepository.GetByTenantAndIdAsync(tenantId, attempt.Id, Arg.Any<CancellationToken>())
-            .Returns(attempt);
-        var handler = new GetWebhookDeliveryAttemptByIdQueryHandler(_attemptRepository);
-
-        var result = await handler.Handle(
-            new GetWebhookDeliveryAttemptByIdQuery
-            {
-                TenantId = tenantId,
-                AttemptId = attempt.Id
-            },
-            CancellationToken.None);
-
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Id).IsEqualTo(attempt.Id);
-        await Assert.That(result.OutcomeName).IsEqualTo(nameof(WebhookDeliveryAttemptOutcome.Abandoned));
-        await _attemptRepository.Received(1).GetByTenantAndIdAsync(
-            tenantId,
-            attempt.Id,
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task DeliveryAttemptDetailHandler_WhenIdentifiersAreEmpty_DoesNotQueryRepository()
-    {
-        var handler = new GetWebhookDeliveryAttemptByIdQueryHandler(_attemptRepository);
-
-        var result = await handler.Handle(
-            new GetWebhookDeliveryAttemptByIdQuery
-            {
-                TenantId = Guid.Empty,
-                AttemptId = Guid.Empty
-            },
-            CancellationToken.None);
-
-        await Assert.That(result).IsNull();
-        await _attemptRepository.DidNotReceive().GetByTenantAndIdAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<Guid>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task RetryDeliveryAttemptHandler_SchedulesManualRetryWithTenantAndAttempt()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var attemptId = Guid.CreateVersion7();
-        var retryAttemptId = Guid.CreateVersion7();
-        _deliveryDrainService.ScheduleManualRetryAsync(tenantId, attemptId, Arg.Any<CancellationToken>())
-            .Returns(new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.RetryScheduled, retryAttemptId));
-        var handler = new RetryWebhookDeliveryAttemptCommandHandler(_deliveryDrainService);
-
-        var result = await handler.Handle(
-            new RetryWebhookDeliveryAttemptCommand
-            {
-                TenantId = tenantId,
-                AttemptId = attemptId
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(result.Id).IsEqualTo(retryAttemptId);
-        await _deliveryDrainService.Received(1).ScheduleManualRetryAsync(
-            tenantId,
-            attemptId,
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task RetryDeliveryAttemptHandler_WhenRetryAlreadyDeferred_ReturnsConflictCode()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var attemptId = Guid.CreateVersion7();
-        _deliveryDrainService.ScheduleManualRetryAsync(tenantId, attemptId, Arg.Any<CancellationToken>())
-            .Returns(new WebhookDeliverySingleDrainResult(WebhookDeliveryDrainOutcome.Deferred, attemptId));
-        var handler = new RetryWebhookDeliveryAttemptCommandHandler(_deliveryDrainService);
-
-        var result = await handler.Handle(
-            new RetryWebhookDeliveryAttemptCommand
-            {
-                TenantId = tenantId,
-                AttemptId = attemptId
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Id).IsEqualTo(attemptId);
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_delivery_retry_deferred");
-        await Assert.That(result.Errors).Contains("A scheduled or active delivery attempt already exists for this message and endpoint.");
-    }
-
-    [Test]
-    public async Task RetryDeliveryAttemptHandler_WhenRequestInvalid_DoesNotCallDrainService()
-    {
-        var handler = new RetryWebhookDeliveryAttemptCommandHandler(_deliveryDrainService);
-
-        var result = await handler.Handle(
-            new RetryWebhookDeliveryAttemptCommand
-            {
-                TenantId = Guid.Empty,
-                AttemptId = Guid.Empty
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_delivery_retry_validation_failed");
-        await _deliveryDrainService.DidNotReceive().ScheduleManualRetryAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<Guid>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task ArchiveEndpointHandler_WhenEndpointExists_ArchivesEndpoint()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var endpoint = CreateEndpoint(tenantId, CreateConsumer(tenantId, "Tenant automation", WebhookProviderMode.Local));
-        _endpointRepository.GetByTenantAndIdAsync(tenantId, endpoint.Id, Arg.Any<CancellationToken>())
-            .Returns(endpoint);
-        var handler = new ArchiveWebhookEndpointCommandHandler(_endpointRepository, _capabilityResolver);
-
-        var result = await handler.Handle(
-            new ArchiveWebhookEndpointCommand
-            {
-                TenantId = tenantId,
-                EndpointId = endpoint.Id
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsTrue();
-        await _endpointRepository.Received(1).ArchiveAsync(
-            tenantId,
-            endpoint.Id,
-            Arg.Any<DateTime>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task ArchiveEndpointHandler_WhenEndpointMissing_ReturnsNotFoundFailure()
-    {
-        var tenantId = Guid.CreateVersion7();
-        var endpointId = Guid.CreateVersion7();
-        _endpointRepository.GetByTenantAndIdAsync(tenantId, endpointId, Arg.Any<CancellationToken>())
-            .Returns((WebhookEndpoint?)null);
-        var handler = new ArchiveWebhookEndpointCommandHandler(_endpointRepository, _capabilityResolver);
-
-        var result = await handler.Handle(
-            new ArchiveWebhookEndpointCommand
-            {
-                TenantId = tenantId,
-                EndpointId = endpointId
-            },
-            CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("webhook_endpoint_not_found");
-        await _endpointRepository.DidNotReceive().ArchiveAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<Guid>(),
-            Arg.Any<DateTime>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    private static WebhookConsumer CreateConsumer(
-        Guid tenantId,
-        string name,
-        WebhookProviderMode providerMode) =>
-        new()
-        {
-            Id = Guid.CreateVersion7(),
-            TenantId = tenantId,
-            ConsumerKind = WebhookConsumerKind.Tenant,
-            Name = name,
-            Status = WebhookConsumerStatus.Active,
-            ProviderMode = providerMode,
-            ConfigurationVersion = 1,
-            CreatedAt = DateTime.UtcNow
-        };
-
-    private static CreateWebhookEndpointCommand CreateEndpointCommand(
-        Guid tenantId,
-        Guid consumerId,
-        IReadOnlyList<Guid> eventTypeIds) =>
-        new()
-        {
-            TenantId = tenantId,
-            ConsumerId = consumerId,
-            Url = "https://integrator.example/webhooks/islamu",
-            SecretRef = "configuration:Webhooks:EndpointSecrets:integrator",
-            EventTypeIds = eventTypeIds
-        };
-
-    private static UpdateWebhookEndpointCommand CreateUpdateEndpointCommand(
-        Guid tenantId,
-        Guid endpointId,
-        IReadOnlyList<Guid> eventTypeIds) =>
-        new()
-        {
-            TenantId = tenantId,
-            EndpointId = endpointId,
-            Url = "https://integrator.example/webhooks/islamu",
-            EventTypeIds = eventTypeIds,
-            ExpectedConfigurationVersion = 1,
-            PendingWorkDecisionId = (int)WebhookPendingWorkDecision.PreserveExisting,
-            PendingWorkReason = "Keep pending work on immutable snapshots."
-        };
-
-    private static WebhookEndpoint CreateEndpoint(Guid tenantId, WebhookConsumer consumer)
-    {
-        var eventType = CreateEventType("event.published");
-        var endpoint = new WebhookEndpoint
-        {
-            Id = Guid.CreateVersion7(),
-            TenantId = tenantId,
-            ConsumerId = consumer.Id,
-            Consumer = consumer,
-            Url = "https://integrator.example/webhooks/islamu",
-            Description = "Integrator endpoint",
-            Status = WebhookEndpointStatus.Active,
-            SecretRef = "configuration:Webhooks:EndpointSecrets:integrator",
-            SecretVersion = 1,
-            ConfigurationVersion = 1,
-            MaxAttempts = 8,
-            TimeoutSeconds = 15,
-            RateLimitPerMinute = 60,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        endpoint.Subscriptions.Add(new WebhookEndpointSubscription
-        {
-            Id = Guid.CreateVersion7(),
-            TenantId = tenantId,
-            EndpointId = endpoint.Id,
-            Endpoint = endpoint,
-            EventTypeId = eventType.Id,
-            EventType = eventType,
-            IsEnabled = true,
-            CreatedAt = DateTime.UtcNow
-        });
-
-        return endpoint;
-    }
-
-    private UpdateWebhookEndpointCommandHandler CreateUpdateEndpointHandler() =>
-        new(
+        var handler = new CreateWebhookEndpointCommandHandler(
             _endpointRepository,
             _consumerRepository,
             _eventTypeRepository,
-            _providerPublicationRepository,
             _capabilityResolver,
-            _auditLogRepository,
-            _unitOfWork,
-            _currentUserService,
-            _machinePrincipalAccessor,
-            TimeProvider.System);
+            _auditWriter,
+            _unitOfWork);
 
-    private UpdateWebhookConsumerProviderModeCommandHandler CreateUpdateConsumerProviderModeHandler(
-        IWebhookProviderCapabilityResolver capabilityResolver) =>
-        new(
-            _consumerRepository,
+        var result = await handler.Handle(
+            new CreateWebhookEndpointCommand
+            {
+                ConsumerId = consumer.Id,
+                Url = "https://integrator.example/webhook",
+                SecretRef = "configuration:webhook:endpoint-secret",
+                EventTypeIds = [eventType.Id]
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _endpointRepository.Received(1).CreateWithSubscriptionsAsync(
+            Arg.Is<WebhookEndpoint>(endpoint =>
+                endpoint.ConsumerId == consumer.Id &&
+                endpoint.TenantId == ownership.TenantId &&
+                endpoint.InstanceId == ownership.InstanceId),
+            Arg.Is<IReadOnlyCollection<WebhookEndpointSubscription>>(subscriptions =>
+                subscriptions.Count == 1 &&
+                subscriptions.Single().TenantId == ownership.TenantId &&
+                subscriptions.Single().InstanceId == ownership.InstanceId &&
+                subscriptions.Single().EventTypeId == eventType.Id),
+            Arg.Any<CancellationToken>());
+        await _auditWriter.Received(1).AppendAsync(
+            Arg.Is<WebhookAuditWriteRequest>(audit =>
+                audit.TenantId == ownership.TenantId &&
+                audit.EffectiveScopeKind == ownership.AuditScopeKind &&
+                audit.EffectiveScopeId == ownership.OwnerId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Arguments(WebhookConsumerKind.Tenant)]
+    [Arguments(WebhookConsumerKind.Organization)]
+    [Arguments(WebhookConsumerKind.Group)]
+    [Arguments(WebhookConsumerKind.User)]
+    [Arguments(WebhookConsumerKind.Instance)]
+    public async Task ListEndpoints_UsesExactOwnerAndConsumerFilter(WebhookConsumerKind ownerKind)
+    {
+        var ownership = CreateOwnership(ownerKind);
+        var consumer = CreateConsumer(ownership);
+        var endpoint = CreateEndpoint(consumer);
+        _ownershipScopeResolver.ResolveAsync(
+                (int)ownerKind,
+                ownership.OwnerId,
+                Arg.Any<CancellationToken>())
+            .Returns(WebhookOwnershipScopeResolution.Resolved(ownership));
+        _endpointRepository.ListByOwnerAsync(
+                ownership,
+                consumer.Id,
+                50,
+                Arg.Any<CancellationToken>())
+            .Returns([endpoint]);
+        var handler = new GetWebhookEndpointsQueryHandler(
             _endpointRepository,
-            _providerPublicationRepository,
-            capabilityResolver,
-            _auditLogRepository,
-            _unitOfWork,
-            _currentUserService,
-            _machinePrincipalAccessor,
-            TimeProvider.System);
+            _ownershipScopeResolver);
 
-    private RotateWebhookEndpointSecretCommandHandler CreateRotateEndpointSecretHandler() =>
-        new(
-            _endpointRepository,
-            _consumerRepository,
-            _providerPublicationRepository,
-            _capabilityResolver,
-            _auditLogRepository,
-            _unitOfWork,
-            _currentUserService,
-            _machinePrincipalAccessor,
-            TimeProvider.System);
+        var result = await handler.Handle(
+            new GetWebhookEndpointsQuery
+            {
+                OwnerKindId = (int)ownerKind,
+                OwnerId = ownership.OwnerId,
+                ConsumerId = consumer.Id,
+                Limit = 50
+            },
+            CancellationToken.None);
 
-    private static WebhookEventType CreateEventType(string name) =>
+        await Assert.That(result).HasSingleItem();
+        await Assert.That(result[0].OwnerKindId).IsEqualTo((int)ownerKind);
+        await Assert.That(result[0].OwnerId).IsEqualTo(ownership.OwnerId);
+        await _endpointRepository.Received(1).ListByOwnerAsync(
+            ownership,
+            consumer.Id,
+            50,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task EndpointDetail_UsesPersistedOwnerRepositoryBoundary()
+    {
+        var consumer = CreateConsumer(CreateOwnership(WebhookConsumerKind.User));
+        var endpoint = CreateEndpoint(consumer);
+        _endpointRepository.GetByIdForOwnerOperationAsync(
+                endpoint.Id,
+                false,
+                Arg.Any<CancellationToken>())
+            .Returns(endpoint);
+        var handler = new GetWebhookEndpointByIdQueryHandler(_endpointRepository);
+
+        var result = await handler.Handle(
+            new GetWebhookEndpointByIdQuery { EndpointId = endpoint.Id },
+            CancellationToken.None);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.OwnerKindId).IsEqualTo((int)WebhookConsumerKind.User);
+        await Assert.That(result.OwnerId).IsEqualTo(consumer.OwnerId);
+    }
+
+    [Test]
+    [Arguments(typeof(CreateWebhookConsumerCommand), AuthorizationActions.Webhooks.Create)]
+    [Arguments(typeof(GetWebhookConsumersQuery), AuthorizationActions.Webhooks.View)]
+    [Arguments(typeof(GetWebhookConsumerByIdQuery), AuthorizationActions.Webhooks.View)]
+    [Arguments(typeof(CreateWebhookEndpointCommand), AuthorizationActions.Webhooks.Create)]
+    [Arguments(typeof(GetWebhookEndpointsQuery), AuthorizationActions.Webhooks.View)]
+    [Arguments(typeof(GetWebhookEndpointByIdQuery), AuthorizationActions.Webhooks.View)]
+    public async Task ManagementRequests_DeclareWebhookAuthorization(
+        Type requestType,
+        string expectedAction)
+    {
+        var attribute = requestType
+            .GetCustomAttributes(typeof(AuthorizeResourceAttribute), inherit: true)
+            .Cast<AuthorizeResourceAttribute>()
+            .SingleOrDefault();
+
+        await Assert.That(attribute).IsNotNull();
+        await Assert.That(attribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
+        await Assert.That(attribute.Action).IsEqualTo(expectedAction);
+        await Assert.That(typeof(ISecureRequest).IsAssignableFrom(requestType)).IsTrue();
+    }
+
+    private static WebhookOwnershipScope CreateOwnership(WebhookConsumerKind ownerKind)
+    {
+        var tenantId = Guid.CreateVersion7();
+        var ownerId = Guid.CreateVersion7();
+        return ownerKind switch
+        {
+            WebhookConsumerKind.Tenant => WebhookOwnershipScope.Create(
+                ownerKind, ownerId, null, null, null, null),
+            WebhookConsumerKind.Organization => WebhookOwnershipScope.Create(
+                ownerKind, tenantId, null, ownerId, null, null),
+            WebhookConsumerKind.Group => WebhookOwnershipScope.Create(
+                ownerKind, tenantId, null, null, ownerId, null),
+            WebhookConsumerKind.User => WebhookOwnershipScope.Create(
+                ownerKind, tenantId, null, null, null, ownerId),
+            WebhookConsumerKind.Instance => WebhookOwnershipScope.Create(
+                ownerKind, null, ownerId, null, null, null),
+            _ => throw new ArgumentOutOfRangeException(nameof(ownerKind))
+        };
+    }
+
+    private static WebhookConsumer CreateConsumer(WebhookOwnershipScope ownership) =>
+        WebhookConsumer.Create(
+            ownership,
+            "Operations",
+            WebhookProviderMode.Local,
+            DateTime.UtcNow);
+
+    private static WebhookEventType CreateEventType() =>
         new()
         {
             Id = Guid.CreateVersion7(),
-            Name = name,
+            Name = "event.published",
             GroupName = "event",
-            Description = "Raised when an event changes.",
+            Description = "Raised when an event is published.",
             SchemaJson = "{}",
             SchemaVersion = 1,
             IsPublic = true,
@@ -1760,97 +392,38 @@ public sealed class WebhookConsumerHandlersTests
             CreatedAt = DateTime.UtcNow
         };
 
-    private static WebhookLocalTargetSnapshot CreatePendingTarget(WebhookEndpoint endpoint)
-    {
-        var now = DateTimeOffset.UtcNow;
-        var plan = WebhookDeliveryPlanSnapshot.Create(
-            endpoint.TenantId,
-            Guid.CreateVersion7(),
-            endpoint.ConsumerId,
-            WebhookProviderMode.Local,
-            "consumer-v1",
-            "contract-v1",
-            "standard",
-            "retention-v1",
-            now.AddDays(14),
-            now);
-        return WebhookLocalTargetSnapshot.Create(
-            plan,
-            endpoint,
-            endpoint.ConfigurationVersion,
-            now.AddDays(-1),
-            null,
-            now);
-    }
-
-    private static WebhookMessage CreateMessage(Guid tenantId, WebhookConsumer consumer)
-    {
-        var createdAt = DateTime.UtcNow;
-        return WebhookMessage.Create(
-            Guid.CreateVersion7(),
-            tenantId,
-            WebhookEventNames.EventPublished,
-            Guid.CreateVersion7().ToString("D"),
-            "Event",
-            Guid.CreateVersion7(),
-            consumer.Id,
-            Encoding.UTF8.GetBytes("""{"secret":"must-not-leak"}"""),
-            "application/json",
-            "utf-8",
-            createdAt,
-            createdAt.AddDays(14),
-            createdAt);
-    }
-
-    private static WebhookDeliveryAttempt CreateDeliveryAttempt(
-        Guid tenantId,
-        WebhookMessage message,
-        WebhookEndpoint endpoint,
-        WebhookDeliveryAttemptOutcome status) =>
+    private static WebhookEndpoint CreateEndpoint(WebhookConsumer consumer) =>
         new()
         {
             Id = Guid.CreateVersion7(),
-            TenantId = tenantId,
-            MessageId = message.Id,
-            Message = message,
-            EndpointId = endpoint.Id,
-            Endpoint = endpoint,
-            AttemptNumber = 2,
-            Outcome = status,
-            ScheduledAt = DateTime.UtcNow.AddMinutes(-5),
-            SentAt = DateTime.UtcNow.AddMinutes(-4),
-            CompletedAt = DateTime.UtcNow.AddMinutes(-4),
-            HttpStatusCode = 500,
-            FailureCategory = "server_error",
-            DurationMs = 150,
-            NextRetryAt = DateTime.UtcNow.AddMinutes(10),
+            TenantId = consumer.TenantId,
+            InstanceId = consumer.InstanceId,
+            ConsumerId = consumer.Id,
+            Consumer = consumer,
+            Url = "https://integrator.example/webhook",
+            Status = WebhookEndpointStatus.Active,
+            SecretRef = "configuration:webhook:endpoint-secret",
+            SecretVersion = 1,
+            SecretActivatedAt = DateTime.UtcNow,
+            ConfigurationVersion = 1,
+            MaxAttempts = 8,
+            TimeoutSeconds = 15,
             CreatedAt = DateTime.UtcNow
         };
 
-    private sealed class TestWebhookProviderCapabilityResolver : IWebhookProviderCapabilityResolver
+    private sealed class LocalWebhookProviderCapabilityResolver : IWebhookProviderCapabilityResolver
     {
-        public WebhookProviderModeCapabilityResolution Resolve(WebhookProviderMode providerMode)
-        {
-            var localCapabilities = providerMode is WebhookProviderMode.Local or WebhookProviderMode.Composite
-                ? WebhookProviderCapability.EndpointManagement | WebhookProviderCapability.EventCatalog
-                : WebhookProviderCapability.None;
-            return new WebhookProviderModeCapabilityResolution(
+        public WebhookProviderModeCapabilityResolution Resolve(WebhookProviderMode providerMode) =>
+            new(
                 providerMode,
                 true,
-                localCapabilities,
+                WebhookProviderCapability.EndpointManagement |
+                WebhookProviderCapability.EventCatalog,
                 WebhookProviderCapability.None,
                 null,
                 null,
                 "test-capability-v1",
                 null);
-        }
-    }
-
-    private sealed class StaticWebhookProviderCapabilityResolver(
-        WebhookProviderModeCapabilityResolution resolution) : IWebhookProviderCapabilityResolver
-    {
-        public WebhookProviderModeCapabilityResolution Resolve(WebhookProviderMode providerMode) =>
-            resolution with { ProviderMode = providerMode };
     }
 
     private sealed class ImmediateUnitOfWork : IUnitOfWork

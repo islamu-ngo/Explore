@@ -228,6 +228,7 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         IDistributedApplicationTestingBuilder builder,
         string connectionString)
     {
+        ConfigureProjectDatabase(builder, "event-migrationservice", connectionString);
         ConfigureProjectDatabase(builder, "explore-api", connectionString);
     }
 
@@ -328,25 +329,76 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     {
         var tokens = await GetTestAdminTokensAsync();
         var api = CreateApiClient(tokens.AccessToken, includeSetupSecret: true);
-        var onboarding = await api.CompleteInstanceOnboardingAsync(new CompleteInstanceOnboardingRequest
+        var preflight = await api.GetSystemOnboardingPreflightAsync();
+        if (preflight.IsReadyToLaunch != true)
         {
-            DeploymentMode = DeploymentMode.SingleTenant,
-            InstanceName = "ISLAMU Event E2E"
-        });
+            var blockers = preflight.BlockingChecks?
+                .Where(check => !string.Equals(check.Status, "Pass", StringComparison.OrdinalIgnoreCase))
+                .Select(check => $"{check.Code}: {check.Message} {check.Detail}".Trim())
+                .ToArray() ?? [];
+            throw new InvalidOperationException(
+                $"E2E instance onboarding preflight failed: {string.Join(" | ", blockers)}");
+        }
+
+        BaseCommandResponseOfGuid onboarding;
+        try
+        {
+            onboarding = await api.CompleteInstanceOnboardingAsync(new CompleteInstanceOnboardingRequest
+            {
+                DeploymentMode = DeploymentMode.SingleTenant,
+                SiteProfile = new SelfHostOnboardingProfileDto
+                {
+                    SiteName = "ISLAMU Event E2E",
+                    Locale = "en",
+                    TimeZone = "UTC"
+                },
+                AdministrationAccessMode = "Embedded",
+                InstanceName = "ISLAMU Event E2E"
+            });
+        }
+        catch (ApiException<ValidationProblemDetails> exception)
+        {
+            var errors = exception.Result.Errors?
+                .SelectMany(pair => pair.Value.Select(message => $"{pair.Key}: {message}"))
+                .ToArray() ?? [];
+            throw new InvalidOperationException(
+                "E2E instance onboarding request was rejected. " +
+                $"Title={exception.Result.Title}. Detail={exception.Result.Detail}. " +
+                $"Errors={string.Join(" | ", errors)}",
+                exception);
+        }
         EnsureSuccess(onboarding, "completing E2E instance onboarding");
 
         var sync = await api.SyncUserAsync();
         EnsureSuccess(sync, "syncing the E2E instance administrator");
 
-        var smtp = await api.UpdateInstanceSmtpSettingsAsync(new InstanceSmtpSettingsDto
+        BaseCommandResponseOfGuid smtp;
+        try
         {
-            Host = _mailpit.SmtpHost,
-            Port = _mailpit.SmtpPort,
-            Security = "None",
-            FromAddress = "noreply@registration-e2e.test",
-            FromName = "ISLAMU Event E2E",
-            TimeoutSeconds = 10
-        });
+            smtp = await api.UpdateInstanceSmtpSettingsAsync(new InstanceSmtpSettingsDto
+            {
+                Host = _mailpit.SmtpHost,
+                Port = _mailpit.SmtpPort,
+                Username = string.Empty,
+                Password = string.Empty,
+                Security = "None",
+                FromAddress = "noreply@registration-e2e.test",
+                FromName = "ISLAMU Event E2E",
+                TimeoutSeconds = 10,
+                SkipCertificateValidation = false
+            });
+        }
+        catch (ApiException<ValidationProblemDetails> exception)
+        {
+            var errors = exception.Result.Errors?
+                .SelectMany(pair => pair.Value.Select(message => $"{pair.Key}: {message}"))
+                .ToArray() ?? [];
+            throw new InvalidOperationException(
+                "E2E SMTP configuration request was rejected. " +
+                $"Title={exception.Result.Title}. Detail={exception.Result.Detail}. " +
+                $"Errors={string.Join(" | ", errors)}",
+                exception);
+        }
         EnsureSuccess(smtp, "configuring E2E SMTP");
     }
 
@@ -356,6 +408,7 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         var configuration = IsDebugBuild() ? "Debug" : "Release";
         var assemblyPath = Path.Combine(
             repositoryRoot,
+            "src",
             "Explore.AppHost",
             "bin",
             configuration,

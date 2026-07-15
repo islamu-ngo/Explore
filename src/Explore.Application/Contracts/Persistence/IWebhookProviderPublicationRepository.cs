@@ -17,7 +17,8 @@ public sealed record WebhookProviderPublicationClaim(
     Guid LeaseToken,
     long PublicationFence,
     DateTime ClaimedAt,
-    DateTime LeaseExpiresAt);
+    DateTime LeaseExpiresAt,
+    DateTime DueAt);
 
 public sealed class WebhookProviderPublicationConcurrencyException : InvalidOperationException
 {
@@ -45,6 +46,14 @@ public interface IWebhookProviderPublicationRepository
         Guid publicationId,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<WebhookProviderPublication>> ListByTenantAsync(
+        Guid tenantId,
+        Guid? webhookMessageId,
+        Guid? webhookConsumerId,
+        int? statusId,
+        int limit,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<WebhookProviderPublicationClaim>> ClaimDueAsync(
         WebhookProviderPublicationClaimRequest request,
         CancellationToken cancellationToken);
@@ -60,7 +69,7 @@ public interface IWebhookProviderPublicationRepository
         CancellationToken cancellationToken);
 
     Task<int> CountUncertainByConsumerAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid webhookConsumerId,
         CancellationToken cancellationToken);
 

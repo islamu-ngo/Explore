@@ -1,3 +1,7 @@
+@* ABOUTME: Sidebar layout for user-owned account settings and self-service integrations. *@
+@* ABOUTME: Exposes personal webhook management through the fixed current-user ownership scope. *@
+
+@using Explore.Blazor.Client.Contracts.Services.Webhooks
 @using MudBlazor
 @using Microsoft.AspNetCore.Components
 @inject NavigationManager Navigation
@@ -48,6 +52,10 @@
                                       Text="API Keys" 
                                      Class="@GetNavItemClass("api-keys")"
                                      OnClick="@(() => SelectSection("api-keys"))" />
+                        <MudListItem Icon="@Icons.Material.Filled.Webhook"
+                                     Text="Webhooks"
+                                     Class="@GetNavItemClass("webhooks")"
+                                     OnClick="@(() => SelectSection("webhooks"))" />
                     </MudList>
                 </MudPaper>
             </MudItem>
@@ -92,6 +100,10 @@
                     {
                         <Explore.Blazor.Client.Pages.Admin.Components.ApiKeysSection OwnerType="1" Title="API Keys" Description="Create and manage personal API keys for programmatic access to your account." />
                     }
+                    else if (CurrentSection == "webhooks")
+                    {
+                        <Explore.Blazor.Client.Components.Webhooks.WebhookManagementPanel Owner="@WebhookOwnerSelection.User" />
+                    }
                 </MudPaper>
             </MudItem>
         </MudGrid>
@@ -102,7 +114,7 @@
     private static readonly string[] AllowedSections =
     {
         "personal", "security", "privacy", "notifications",
-        "connected-apps", "appearance", "ai-assistant", "api-keys"
+        "connected-apps", "appearance", "ai-assistant", "api-keys", "webhooks"
     };
 
     private string CurrentSection { get; set; } = "personal";

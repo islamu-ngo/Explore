@@ -1,5 +1,5 @@
-// ABOUTME: Authorized query for tenant-scoped webhook endpoint management rows.
-// ABOUTME: Supports optional consumer filtering while keeping resource checks tenant-bound.
+// ABOUTME: Authorized query for webhook endpoints belonging to one canonical typed owner.
+// ABOUTME: Supports a bounded consumer filter inside the selected persisted ownership scope.
 
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Webhooks;
@@ -8,19 +8,23 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.View)]
-public sealed class GetWebhookEndpointsQuery : IRequest<IReadOnlyList<WebhookEndpointDto>>, ISecureRequest
+public sealed class GetWebhookEndpointsQuery
+    : IRequest<IReadOnlyList<WebhookEndpointDto>>, ISecureRequest, IWebhookOwnerScopedRequest
 {
-    public Guid TenantId { get; init; }
+    public int OwnerKindId { get; init; }
+
+    public Guid? OwnerId { get; init; }
 
     public Guid? ConsumerId { get; init; }
 
     public int Limit { get; init; } = 100;
 
-    string? ISecureRequest.ResourceId => ConsumerId?.ToString("D") ?? TenantId.ToString("D");
+    string? ISecureRequest.ResourceId => OwnerId?.ToString("D");
 
     IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
     {
-        ["tenantId"] = TenantId.ToString("D"),
+        ["ownerKindId"] = OwnerKindId,
+        ["ownerId"] = OwnerId?.ToString("D") ?? string.Empty,
         ["consumerId"] = ConsumerId?.ToString("D") ?? string.Empty
     };
 }

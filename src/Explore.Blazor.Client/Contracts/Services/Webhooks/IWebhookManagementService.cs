@@ -7,9 +7,12 @@ namespace Explore.Blazor.Client.Contracts.Services.Webhooks;
 
 public interface IWebhookManagementService
 {
-    Task<WebhookManagementSnapshot> GetSnapshotAsync(CancellationToken cancellationToken = default);
+    Task<WebhookManagementSnapshot> GetSnapshotAsync(
+        WebhookOwnerSelection owner,
+        CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<HalResourceOfWebhookDeliveryAttemptDto>> GetDeliveryAttemptsAsync(
+        WebhookOwnerSelection owner,
         Guid? messageId = null,
         Guid? endpointId = null,
         int limit = 100,

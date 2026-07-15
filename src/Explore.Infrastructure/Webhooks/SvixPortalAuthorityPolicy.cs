@@ -19,7 +19,7 @@ internal static class SvixPortalAuthorityPolicy
     public static bool AllowsBinding(
         WebhookConsumerProviderBinding binding,
         WebhookOptions options,
-        Guid tenantId,
+        Guid? tenantId,
         Guid consumerId) =>
         IsRuntimeEnabled(options) &&
         binding.ProviderKind == WebhookProviderKind.Svix &&

@@ -2,7 +2,6 @@
 // ABOUTME: Includes ConcurrencyStamp for list-driven editors that issue route-authoritative PATCH updates.
 
 using System;
-using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.Group;
 
@@ -17,7 +16,7 @@ public class GroupListDto
     public int ApprovalStatusId { get; set; }
     public required string ApprovalStatusFullName { get; set; }
     public DateTime CreatedAt { get; set; }
-    public RoleEnum? CurrentUserRole { get; set; }
+    public int? CurrentUserRoleId { get; set; }
 
     // Profile Picture (resolved to presigned URL)
     public Guid? ActorProfilePictureId { get; set; }

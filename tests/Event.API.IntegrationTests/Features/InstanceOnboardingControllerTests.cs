@@ -124,6 +124,39 @@ public class InstanceOnboardingControllerTests
     }
 
     [Test]
+    public async Task Complete_WithUnlinkedGuidProviderSubject_ShouldAllocateDistinctLocalUserId()
+    {
+        using var factory = CreateFactoryWithSetupSecretWithoutClaimsTransformation();
+        using var client = factory.CreateClient();
+
+        var providerId = Guid.NewGuid().ToString("D");
+        var email = $"{Guid.NewGuid():N}@integration.test";
+        using var request = CreateCustomAuthRequest(
+            HttpMethod.Post,
+            $"{BaseUrl}/complete",
+            CreateValidOnboardingRequest(),
+            includeSetupSecret: true,
+            new(ClaimTypes.Name, "Unlinked Bootstrap User"),
+            new("sid", providerId),
+            new("idp", "keycloak"),
+            new("email", email),
+            new("email_verified", bool.TrueString));
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var externalLogin = await dbContext.UserExternalLogins
+            .SingleAsync(candidate => candidate.Provider == "keycloak" && candidate.ProviderKey == providerId);
+        var user = await dbContext.Users.SingleAsync(candidate => candidate.Id == externalLogin.UserId);
+
+        await Assert.That(user.Id).IsNotEqualTo(Guid.Parse(providerId));
+        await Assert.That(user.Pii.Email).IsEqualTo(email);
+    }
+
+    [Test]
     public async Task Complete_WithSidOnlyPrincipal_ShouldPersistSidAsAuthProviderId()
     {
         using var factory = CreateFactoryWithSetupSecret();

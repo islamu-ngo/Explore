@@ -85,6 +85,44 @@ public class MiddlewareOrderTests
     }
 
     [Test]
+    public async Task ControlPlane_MultiTenant_SkipsTenantResolutionAndReachesAuthentication()
+    {
+        var app = _fixture.Factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IDeploymentModeProvider>();
+                services.AddSingleton<IDeploymentModeProvider>(new TestDeploymentModeProvider(DeploymentMode.MultiTenant));
+            });
+        });
+
+        using var client = app.CreateClient();
+        var response = await client.GetAsync("/api/admin/control-plane/tenants");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task ManagedProviderProvisioning_MultiTenant_SkipsTenantResolutionAndReachesAuthentication()
+    {
+        var app = _fixture.Factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IDeploymentModeProvider>();
+                services.AddSingleton<IDeploymentModeProvider>(new TestDeploymentModeProvider(DeploymentMode.MultiTenant));
+            });
+        });
+
+        using var client = app.CreateClient();
+        var response = await client.PostAsync(
+            "/api/managed-provider-provisioning/clients:ensure",
+            content: null);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
     public async Task ExceptionHandler_CatchesControllerExceptions_ReturnsProblemDetails()
     {
         // When a controller action throws (via MediatR), the exception handler should

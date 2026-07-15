@@ -294,7 +294,17 @@ public partial class ExploreDbContext
     public DbSet<WebhookProviderBindingVerificationStateLookup> WebhookProviderBindingVerificationStates { get; set; }
     public DbSet<WebhookEndpointStatusLookup> WebhookEndpointStatuses { get; set; }
     public DbSet<WebhookLocalDeliveryStatusLookup> WebhookLocalDeliveryStatuses { get; set; }
+    public DbSet<WebhookBulkReplayStatusLookup> WebhookBulkReplayStatuses { get; set; }
+    public DbSet<WebhookBulkReplayOperation> WebhookBulkReplayOperations { get; set; }
     public DbSet<WebhookPendingWorkDecisionLookup> WebhookPendingWorkDecisions { get; set; }
+    public DbSet<WebhookRetentionSubjectKindLookup> WebhookRetentionSubjectKinds { get; set; }
+    public DbSet<WebhookRetentionHold> WebhookRetentionHolds { get; set; }
+    public DbSet<WebhookAuditActionLookup> WebhookAuditActions { get; set; }
+    public DbSet<WebhookAuditOutcomeLookup> WebhookAuditOutcomes { get; set; }
+    public DbSet<WebhookAuditPrincipalKindLookup> WebhookAuditPrincipalKinds { get; set; }
+    public DbSet<WebhookAuditScopeKindLookup> WebhookAuditScopeKinds { get; set; }
+    public DbSet<WebhookAuditTargetKindLookup> WebhookAuditTargetKinds { get; set; }
+    public DbSet<WebhookAuditEvent> WebhookAuditEvents { get; set; }
     public DbSet<WebhookDeliveryAttemptOutcomeLookup> WebhookDeliveryAttemptOutcomes { get; set; }
     public DbSet<IncomingWebhookMessageStatusLookup> IncomingWebhookMessageStatuses { get; set; }
     public DbSet<IncomingWebhookProcessingAttemptOutcomeLookup> IncomingWebhookProcessingAttemptOutcomes { get; set; }

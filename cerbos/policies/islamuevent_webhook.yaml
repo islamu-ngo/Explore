@@ -1,5 +1,5 @@
 # ABOUTME: Cerbos resource policy for outgoing webhook management and provider portal actions.
-# ABOUTME: Grants tenant admins tenant scope and org admins delegated org-owned webhook scope.
+# ABOUTME: Enforces exact Instance, Tenant, Organization, Group, and User webhook ownership.
 
 apiVersion: api.cerbos.dev/v1
 resourcePolicy:
@@ -27,8 +27,13 @@ resourcePolicy:
         - "webhook:test"
         - "webhook:retry"
         - "webhook:redrive-incoming"
+        - "webhook:pause"
         - "webhook:resume"
+        - "webhook:reconcile-publication"
+        - "webhook:abandon-publication"
         - "webhook:view-delivery"
+        - "webhook:view-payload"
+        - "webhook:bulk-replay"
         - "webhook:manage-provider"
         - "webhook:open-provider-portal"
       effect: EFFECT_ALLOW
@@ -37,10 +42,12 @@ resourcePolicy:
       condition:
         match:
           expr: >
-            (!has(request.principal.attr.is_machine) ||
-             request.principal.attr.is_machine != true) ||
-            (has(request.principal.attr.scopes) &&
-             request.principal.attr.scopes.exists(scope, scope == "admin:tenant"))
+            (!has(request.resource.attr.ownerKindId) ||
+             request.resource.attr.ownerKindId == 1) &&
+            ((!has(request.principal.attr.is_machine) ||
+              request.principal.attr.is_machine != true) ||
+             (has(request.principal.attr.scopes) &&
+              request.principal.attr.scopes.exists(scope, scope == "admin:tenant")))
 
     - actions:
         - "webhook:process-incoming"
@@ -63,6 +70,7 @@ resourcePolicy:
         - "webhook:rotate-secret"
         - "webhook:test"
         - "webhook:retry"
+        - "webhook:pause"
         - "webhook:resume"
         - "webhook:view-delivery"
         - "webhook:open-provider-portal"
@@ -74,5 +82,51 @@ resourcePolicy:
           expr: >
             (!has(request.principal.attr.is_machine) ||
              request.principal.attr.is_machine != true) &&
-            has(request.resource.attr.allowOrganizationWebhooks) &&
-            request.resource.attr.allowOrganizationWebhooks == true
+            has(request.resource.attr.ownerKindId) &&
+            request.resource.attr.ownerKindId == 2
+
+    - actions:
+        - "webhook:view"
+        - "webhook:create"
+        - "webhook:update"
+        - "webhook:delete"
+        - "webhook:rotate-secret"
+        - "webhook:test"
+        - "webhook:retry"
+        - "webhook:pause"
+        - "webhook:resume"
+        - "webhook:view-delivery"
+        - "webhook:open-provider-portal"
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_group_admin
+      condition:
+        match:
+          expr: >
+            (!has(request.principal.attr.is_machine) ||
+             request.principal.attr.is_machine != true) &&
+            has(request.resource.attr.ownerKindId) &&
+            request.resource.attr.ownerKindId == 3
+
+    - actions:
+        - "webhook:view"
+        - "webhook:create"
+        - "webhook:update"
+        - "webhook:delete"
+        - "webhook:rotate-secret"
+        - "webhook:test"
+        - "webhook:retry"
+        - "webhook:pause"
+        - "webhook:resume"
+        - "webhook:view-delivery"
+        - "webhook:open-provider-portal"
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_actor_user_owner
+      condition:
+        match:
+          expr: >
+            (!has(request.principal.attr.is_machine) ||
+             request.principal.attr.is_machine != true) &&
+            has(request.resource.attr.ownerKindId) &&
+            request.resource.attr.ownerKindId == 4

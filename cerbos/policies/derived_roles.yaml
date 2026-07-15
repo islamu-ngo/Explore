@@ -44,6 +44,15 @@ derivedRoles:
             has(request.resource.attr.organizationId) &&
             request.resource.attr.organizationId in request.principal.attr.orgMemberships
 
+    - name: islamuevent_group_admin
+      parentRoles: ["islamuevent_authenticated_user"]
+      condition:
+        match:
+          expr: >
+            has(request.resource.attr.groupId) &&
+            has(request.principal.attr.groupMemberships) &&
+            request.resource.attr.groupId in request.principal.attr.groupMemberships
+
     - name: islamuevent_actor_user_owner
       parentRoles: ["islamuevent_authenticated_user"]
       condition:

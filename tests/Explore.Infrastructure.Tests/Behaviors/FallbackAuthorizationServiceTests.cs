@@ -27,6 +27,31 @@ public class FallbackAuthorizationServiceTests
 
     private static readonly Guid TestTenantId = Guid.NewGuid();
     private static readonly Guid TestOrgId = Guid.NewGuid();
+    private static readonly Guid TestGroupId = Guid.NewGuid();
+    private static readonly Guid TestUserId = Guid.NewGuid();
+    private static readonly Guid TestInstanceId = Guid.NewGuid();
+    private static readonly string[] DelegatedWebhookActions =
+    [
+        AuthorizationActions.Webhooks.View,
+        AuthorizationActions.Webhooks.Create,
+        AuthorizationActions.Webhooks.Update,
+        AuthorizationActions.Webhooks.Delete,
+        AuthorizationActions.Webhooks.RotateSecret,
+        AuthorizationActions.Webhooks.Test,
+        AuthorizationActions.Webhooks.Retry,
+        AuthorizationActions.Webhooks.Pause,
+        AuthorizationActions.Webhooks.Resume,
+        AuthorizationActions.Webhooks.ViewDelivery,
+        AuthorizationActions.Webhooks.OpenProviderPortal
+    ];
+    private static readonly string[] SensitiveWebhookActions =
+    [
+        AuthorizationActions.Webhooks.ManageProvider,
+        AuthorizationActions.Webhooks.ReconcilePublication,
+        AuthorizationActions.Webhooks.AbandonPublication,
+        AuthorizationActions.Webhooks.ViewPayload,
+        AuthorizationActions.Webhooks.BulkReplay
+    ];
     private static readonly string[] SupportAccessLifecycleActions =
     [
         AuthorizationActions.SupportAccessSessions.View,
@@ -82,6 +107,43 @@ public class FallbackAuthorizationServiceTests
         ["mode"] = "ReadOnly",
         ["status"] = "Active"
     };
+
+    private static Dictionary<string, object> WebhookOwnerAttributes(
+        WebhookConsumerKind ownerKind,
+        Guid ownerId)
+    {
+        var attributes = new Dictionary<string, object>
+        {
+            ["ownerKindId"] = (int)ownerKind,
+            ["ownerId"] = ownerId.ToString("D")
+        };
+
+        switch (ownerKind)
+        {
+            case WebhookConsumerKind.Instance:
+                attributes["instanceId"] = ownerId.ToString("D");
+                break;
+            case WebhookConsumerKind.Tenant:
+                attributes["tenantId"] = ownerId.ToString("D");
+                break;
+            case WebhookConsumerKind.Organization:
+                attributes["tenantId"] = TestTenantId.ToString("D");
+                attributes["organizationId"] = ownerId.ToString("D");
+                break;
+            case WebhookConsumerKind.Group:
+                attributes["tenantId"] = TestTenantId.ToString("D");
+                attributes["groupId"] = ownerId.ToString("D");
+                break;
+            case WebhookConsumerKind.User:
+                attributes["tenantId"] = TestTenantId.ToString("D");
+                attributes["userId"] = ownerId.ToString("D");
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(ownerKind));
+        }
+
+        return attributes;
+    }
 
     // === Instance Admin Tests ===
 
@@ -253,7 +315,7 @@ public class FallbackAuthorizationServiceTests
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
-        var attrs = new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") };
+        var attrs = WebhookOwnerAttributes(WebhookConsumerKind.Tenant, TestTenantId);
         string[] actions =
         [
             AuthorizationActions.Webhooks.View,
@@ -263,7 +325,14 @@ public class FallbackAuthorizationServiceTests
             AuthorizationActions.Webhooks.RotateSecret,
             AuthorizationActions.Webhooks.Test,
             AuthorizationActions.Webhooks.Retry,
+            AuthorizationActions.Webhooks.RedriveIncoming,
+            AuthorizationActions.Webhooks.Pause,
+            AuthorizationActions.Webhooks.Resume,
+            AuthorizationActions.Webhooks.ReconcilePublication,
+            AuthorizationActions.Webhooks.AbandonPublication,
             AuthorizationActions.Webhooks.ViewDelivery,
+            AuthorizationActions.Webhooks.ViewPayload,
+            AuthorizationActions.Webhooks.BulkReplay,
             AuthorizationActions.Webhooks.ManageProvider,
             AuthorizationActions.Webhooks.OpenProviderPortal
         ];
@@ -308,38 +377,58 @@ public class FallbackAuthorizationServiceTests
             Guid.NewGuid().ToString("D"),
             AuthorizationActions.Webhooks.ManageProvider,
             attributes);
+        var pauseAllowed = await _service.IsAllowedAsync(
+            ResourceKinds.Webhook,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Webhooks.Pause,
+            attributes);
+        var reconcileAllowed = await _service.IsAllowedAsync(
+            ResourceKinds.Webhook,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Webhooks.ReconcilePublication,
+            attributes);
+        var payloadAllowed = await _service.IsAllowedAsync(
+            ResourceKinds.Webhook,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Webhooks.ViewPayload,
+            attributes);
+        var bulkReplayAllowed = await _service.IsAllowedAsync(
+            ResourceKinds.Webhook,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Webhooks.BulkReplay,
+            attributes);
 
         await Assert.That(processAllowed).IsTrue();
         await Assert.That(redriveAllowed).IsFalse();
         await Assert.That(providerManagementAllowed).IsFalse();
+        await Assert.That(pauseAllowed).IsFalse();
+        await Assert.That(reconcileAllowed).IsFalse();
+        await Assert.That(payloadAllowed).IsFalse();
+        await Assert.That(bulkReplayAllowed).IsFalse();
     }
 
     [Test]
-    public async Task IsAllowed_WebhookOrganizationAdmin_AllowsOrganizationWebhookManagementWhenTenantSettingAllows()
+    [Arguments(WebhookConsumerKind.Organization)]
+    [Arguments(WebhookConsumerKind.Group)]
+    [Arguments(WebhookConsumerKind.User)]
+    public async Task IsAllowed_DelegatedWebhookOwner_AllowsExactOwnerManagementActions(
+        WebhookConsumerKind ownerKind)
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
-        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
-        var attrs = new Dictionary<string, object>
+        var ownerId = ownerKind switch
         {
-            ["tenantId"] = TestTenantId.ToString("D"),
-            ["organizationId"] = TestOrgId.ToString("D"),
-            ["allowOrganizationWebhooks"] = true
+            WebhookConsumerKind.Organization => TestOrgId,
+            WebhookConsumerKind.Group => TestGroupId,
+            WebhookConsumerKind.User => TestUserId,
+            _ => throw new ArgumentOutOfRangeException(nameof(ownerKind))
         };
-        string[] actions =
-        [
-            AuthorizationActions.Webhooks.View,
-            AuthorizationActions.Webhooks.Create,
-            AuthorizationActions.Webhooks.Update,
-            AuthorizationActions.Webhooks.Delete,
-            AuthorizationActions.Webhooks.RotateSecret,
-            AuthorizationActions.Webhooks.Test,
-            AuthorizationActions.Webhooks.Retry,
-            AuthorizationActions.Webhooks.ViewDelivery,
-            AuthorizationActions.Webhooks.OpenProviderPortal
-        ];
+        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.IsGroupAdminAsync(TestGroupId, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.UserId.Returns(TestUserId);
+        var attrs = WebhookOwnerAttributes(ownerKind, ownerId);
 
-        foreach (var action in actions)
+        foreach (var action in DelegatedWebhookActions)
         {
             var result = await _service.IsAllowedAsync(
                 ResourceKinds.Webhook,
@@ -352,81 +441,75 @@ public class FallbackAuthorizationServiceTests
     }
 
     [Test]
-    public async Task IsAllowed_WebhookOrganizationAdmin_DeniesOrganizationWebhookManagementWhenTenantSettingDisallows()
+    [Arguments(WebhookConsumerKind.Organization)]
+    [Arguments(WebhookConsumerKind.Group)]
+    [Arguments(WebhookConsumerKind.User)]
+    public async Task IsAllowed_DelegatedWebhookOwner_DeniesUnrelatedOwner(
+        WebhookConsumerKind ownerKind)
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
-        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
-        var attrs = new Dictionary<string, object>
+        _adminContext.UserId.Returns(Guid.NewGuid());
+        var ownerId = ownerKind switch
         {
-            ["tenantId"] = TestTenantId.ToString("D"),
-            ["organizationId"] = TestOrgId.ToString("D"),
-            ["allowOrganizationWebhooks"] = false
+            WebhookConsumerKind.Organization => TestOrgId,
+            WebhookConsumerKind.Group => TestGroupId,
+            WebhookConsumerKind.User => TestUserId,
+            _ => throw new ArgumentOutOfRangeException(nameof(ownerKind))
         };
 
         var result = await _service.IsAllowedAsync(
             ResourceKinds.Webhook,
             Guid.NewGuid().ToString("D"),
             AuthorizationActions.Webhooks.Update,
-            attrs);
+            WebhookOwnerAttributes(ownerKind, ownerId));
 
         await Assert.That(result).IsFalse();
     }
 
     [Test]
-    public async Task IsAllowed_WebhookOrganizationAdmin_DeniesTenantScopedWebhookManagement()
+    [Arguments(WebhookConsumerKind.Organization)]
+    [Arguments(WebhookConsumerKind.Group)]
+    [Arguments(WebhookConsumerKind.User)]
+    public async Task IsAllowed_DelegatedWebhookOwner_DeniesSensitiveActions(
+        WebhookConsumerKind ownerKind)
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
-        var attrs = new Dictionary<string, object>
+        _adminContext.IsGroupAdminAsync(TestGroupId, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.UserId.Returns(TestUserId);
+        var ownerId = ownerKind switch
         {
-            ["tenantId"] = TestTenantId.ToString("D"),
-            ["allowOrganizationWebhooks"] = true
+            WebhookConsumerKind.Organization => TestOrgId,
+            WebhookConsumerKind.Group => TestGroupId,
+            WebhookConsumerKind.User => TestUserId,
+            _ => throw new ArgumentOutOfRangeException(nameof(ownerKind))
         };
+        var attrs = WebhookOwnerAttributes(ownerKind, ownerId);
 
-        var result = await _service.IsAllowedAsync(
-            ResourceKinds.Webhook,
-            Guid.NewGuid().ToString("D"),
-            AuthorizationActions.Webhooks.Update,
-            attrs);
+        foreach (var action in SensitiveWebhookActions)
+        {
+            var result = await _service.IsAllowedAsync(
+                ResourceKinds.Webhook,
+                Guid.NewGuid().ToString("D"),
+                action,
+                attrs);
 
-        await Assert.That(result).IsFalse();
+            await Assert.That(result).IsFalse();
+        }
     }
 
     [Test]
-    public async Task IsAllowed_WebhookOrganizationAdmin_DeniesProviderManagement()
+    public async Task IsAllowed_InstanceWebhookOwner_DeniesNonInstanceAdministrator()
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
-        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
-        _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
-        var attrs = new Dictionary<string, object>
-        {
-            ["tenantId"] = TestTenantId.ToString("D"),
-            ["organizationId"] = TestOrgId.ToString("D"),
-            ["allowOrganizationWebhooks"] = true
-        };
 
         var result = await _service.IsAllowedAsync(
             ResourceKinds.Webhook,
-            Guid.NewGuid().ToString("D"),
-            AuthorizationActions.Webhooks.ManageProvider,
-            attrs);
-
-        await Assert.That(result).IsFalse();
-    }
-
-    [Test]
-    public async Task IsAllowed_WebhookRegularUser_DeniesWebhookManagement()
-    {
-        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
-        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
-
-        var result = await _service.IsAllowedAsync(
-            ResourceKinds.Webhook,
-            Guid.NewGuid().ToString("D"),
+            TestInstanceId.ToString("D"),
             AuthorizationActions.Webhooks.Create,
-            new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString("D") });
+            WebhookOwnerAttributes(WebhookConsumerKind.Instance, TestInstanceId));
 
         await Assert.That(result).IsFalse();
     }

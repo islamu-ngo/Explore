@@ -29,7 +29,6 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
 	<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
 	<PackageReference Include="Microsoft.Extensions.Http.Resilience" />
-	<PackageReference Include="Microsoft.OpenApi" />
 	<ProjectReference Include="..\Event.Web.BffHosting\Event.Web.BffHosting.csproj" />
 	<PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Serilog.Enrichers.Environment" />

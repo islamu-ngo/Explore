@@ -3,6 +3,7 @@
 
 using System.Reflection;
 using Blazouter.Services;
+using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Pages.Events.Models;
 using Explore.Blazor.Client.Services;
@@ -94,7 +95,7 @@ public class CreateEventTests : IDisposable
         {
             Id = orgId,
             FullName = "Test Organization",
-            CurrentUserRole = RoleEnum.OrgAdmin
+            CurrentUserRoleId = RoleHelper.OrgAdmin
         };
         _organizationService.GetOrganizationsByUserAsync(Arg.Any<Guid>()).Returns(new List<OrganizationListDto> { org });
         _organizationService.GetMyOrganizationsAsync().Returns(new List<OrganizationListDto> { org });

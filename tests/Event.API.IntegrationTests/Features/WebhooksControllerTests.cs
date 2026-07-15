@@ -10,8 +10,10 @@ using Explore.API.Hateoas;
 using Explore.API.Hateoas.Assemblers;
 using Explore.API.Hateoas.Policies;
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Hateoas;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.DTOs.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Commands;
 using Explore.Application.Features.Webhooks.Requests.Queries;
@@ -38,6 +40,8 @@ public sealed class WebhooksControllerTests
     private readonly Guid _tenantId = Guid.CreateVersion7();
     private readonly IMediator _mediator = Substitute.For<IMediator>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
+    private readonly IWebhookOwnershipScopeResolver _ownershipScopeResolver =
+        Substitute.For<IWebhookOwnershipScopeResolver>();
     private readonly IResourceAssembler<WebhookConsumerDto, WebhookConsumerDto> _consumerAssembler =
         Substitute.For<IResourceAssembler<WebhookConsumerDto, WebhookConsumerDto>>();
     private readonly IResourceAssembler<WebhookEndpointDto, WebhookEndpointDto> _endpointAssembler =
@@ -50,6 +54,17 @@ public sealed class WebhooksControllerTests
     public WebhooksControllerTests()
     {
         _tenantContext.TenantId.Returns(_tenantId);
+        _ownershipScopeResolver.ResolveAsync(
+                (int)WebhookConsumerKind.Tenant,
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(WebhookOwnershipScopeResolution.Resolved(WebhookOwnershipScope.Create(
+                WebhookConsumerKind.Tenant,
+                _tenantId,
+                null,
+                null,
+                null,
+                null)));
     }
 
     [Test]
@@ -178,7 +193,6 @@ public sealed class WebhooksControllerTests
         await Assert.That(result.Result).IsTypeOf<OkObjectResult>();
         await _mediator.Received(1).Send(
             Arg.Is<RepairWebhookProviderBindingCommand>(command =>
-                command.TenantId == _tenantId &&
                 command.ConsumerId == consumerId &&
                 command.ExternalApplicationId == request.ExternalApplicationId &&
                 command.ReasonCode == request.ReasonCode),
@@ -254,6 +268,82 @@ public sealed class WebhooksControllerTests
 
         await Assert.That(links.Any(link => link.Rel == LinkRelations.OpenProviderPortal)).IsFalse();
         await Assert.That(links.Any(link => link.Rel == LinkRelations.Self)).IsTrue();
+    }
+
+    [Test]
+    [Arguments(WebhookConsumerKind.Instance)]
+    [Arguments(WebhookConsumerKind.Tenant)]
+    [Arguments(WebhookConsumerKind.Organization)]
+    [Arguments(WebhookConsumerKind.Group)]
+    [Arguments(WebhookConsumerKind.User)]
+    public async Task WebhookCreateCollectionLinks_UseCanonicalTypedOwnerAuthorization(
+        WebhookConsumerKind ownerKind)
+    {
+        var ownerId = ownerKind == WebhookConsumerKind.Tenant
+            ? _tenantId
+            : Guid.CreateVersion7();
+        var ownership = CreateOwnershipScope(ownerKind, ownerId);
+        var context = Substitute.For<ICollectionAuthorizationContext>();
+        context.AuthorizationResourceId.Returns(ownerId.ToString("D"));
+        context.AuthorizationResourceAttributes.Returns(
+            ResourceDescriptors.GetWebhookOwnerAttributes(ownership));
+
+        LinkDefinition[] links =
+        [
+            new WebhookConsumerCollectionLinkPolicy(new WebhookConsumerDetailLinkPolicy())
+                .GetCollectionLinks(null, context)
+                .Single(),
+            new WebhookEndpointCollectionLinkPolicy()
+                .GetCollectionLinks(null, context)
+                .Single()
+        ];
+
+        foreach (var link in links)
+        {
+            await Assert.That(link.PermissionAction).IsEqualTo(AuthorizationActions.Webhooks.Create);
+            await Assert.That(link.PermissionResourceKind).IsEqualTo(ResourceKinds.Webhook);
+            await Assert.That(link.PermissionResourceId).IsEqualTo(ownerId.ToString("D"));
+            await Assert.That(link.PermissionResourceAttributes!["ownerKindId"]).IsEqualTo((int)ownerKind);
+            await Assert.That(link.PermissionResourceAttributes["ownerId"]).IsEqualTo(ownerId.ToString("D"));
+            await Assert.That(link.PermissionResourceAttributes.ContainsKey("tenantId"))
+                .IsEqualTo(ownerKind != WebhookConsumerKind.Instance);
+        }
+    }
+
+    [Test]
+    [Arguments(WebhookConsumerKind.Instance, false)]
+    [Arguments(WebhookConsumerKind.Tenant, true)]
+    [Arguments(WebhookConsumerKind.Organization, false)]
+    [Arguments(WebhookConsumerKind.Group, false)]
+    [Arguments(WebhookConsumerKind.User, false)]
+    public async Task WebhookMessageCollectionLinks_ExposeTenantOperationsOnlyAtApprovedScope(
+        WebhookConsumerKind ownerKind,
+        bool expectsTenantOperations)
+    {
+        var ownerId = ownerKind == WebhookConsumerKind.Tenant
+            ? _tenantId
+            : Guid.CreateVersion7();
+        var ownership = CreateOwnershipScope(ownerKind, ownerId);
+        var context = Substitute.For<ICollectionAuthorizationContext>();
+        context.AuthorizationResourceId.Returns(ownerId.ToString("D"));
+        context.AuthorizationResourceAttributes.Returns(
+            ResourceDescriptors.GetWebhookOwnerAttributes(ownership));
+
+        var links = new WebhookMessageCollectionLinkPolicy(TimeProvider.System)
+            .GetCollectionLinks(null, context)
+            .ToList();
+
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.Self)).IsTrue();
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.ProviderPublications))
+            .IsEqualTo(expectsTenantOperations);
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.BulkReplayPreview))
+            .IsEqualTo(expectsTenantOperations);
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.BulkReplays))
+            .IsEqualTo(expectsTenantOperations);
+        await Assert.That(links.All(link => link.PermissionResourceId == ownerId.ToString("D"))).IsTrue();
+        await Assert.That(links.All(link =>
+                link.PermissionResourceAttributes!["ownerKindId"].Equals((int)ownerKind)))
+            .IsTrue();
     }
 
     [Test]
@@ -375,14 +465,19 @@ public sealed class WebhooksControllerTests
             .Returns(halCollection);
         var controller = CreateController("keycloak-subject-consumers");
 
-        var result = await controller.GetConsumers(25, CancellationToken.None);
+        var result = await controller.GetConsumers(
+            (int)WebhookConsumerKind.Tenant,
+            _tenantId,
+            25,
+            CancellationToken.None);
 
         var ok = result.Result as OkObjectResult;
         await Assert.That(ok).IsNotNull();
         await Assert.That(ok!.Value).IsEqualTo(halCollection);
         await _mediator.Received(1).Send(
             Arg.Is<GetWebhookConsumersQuery>(query =>
-                query.TenantId == _tenantId &&
+                query.OwnerKindId == (int)WebhookConsumerKind.Tenant &&
+                query.OwnerId == _tenantId &&
                 query.Limit == 25),
             Arg.Any<CancellationToken>());
     }
@@ -405,7 +500,6 @@ public sealed class WebhooksControllerTests
         await Assert.That(ok!.Value).IsEqualTo(halResource);
         await _mediator.Received(1).Send(
             Arg.Is<GetWebhookConsumerByIdQuery>(query =>
-                query.TenantId == _tenantId &&
                 query.ConsumerId == consumer.Id),
             Arg.Any<CancellationToken>());
     }
@@ -443,6 +537,7 @@ public sealed class WebhooksControllerTests
         var result = await controller.CreateConsumer(
             new CreateWebhookConsumerRequestDto
             {
+                OwnerId = _tenantId,
                 ConsumerKindId = 1,
                 Name = "Tenant automation",
                 ProviderModeId = 2
@@ -455,7 +550,7 @@ public sealed class WebhooksControllerTests
         await Assert.That(created.RouteValues!["consumerId"]).IsEqualTo(consumerId);
         await _mediator.Received(1).Send(
             Arg.Is<CreateWebhookConsumerCommand>(command =>
-                command.TenantId == _tenantId &&
+                command.OwnerId == _tenantId &&
                 command.ConsumerKindId == 1 &&
                 command.Name == "Tenant automation" &&
                 command.ProviderModeId == 2),
@@ -515,14 +610,20 @@ public sealed class WebhooksControllerTests
             .Returns(halCollection);
         var controller = CreateController("keycloak-subject-endpoints");
 
-        var result = await controller.GetEndpoints(endpoint.ConsumerId, 25, CancellationToken.None);
+        var result = await controller.GetEndpoints(
+            (int)WebhookConsumerKind.Tenant,
+            _tenantId,
+            endpoint.ConsumerId,
+            25,
+            CancellationToken.None);
 
         var ok = result.Result as OkObjectResult;
         await Assert.That(ok).IsNotNull();
         await Assert.That(ok!.Value).IsEqualTo(halCollection);
         await _mediator.Received(1).Send(
             Arg.Is<GetWebhookEndpointsQuery>(query =>
-                query.TenantId == _tenantId &&
+                query.OwnerKindId == (int)WebhookConsumerKind.Tenant &&
+                query.OwnerId == _tenantId &&
                 query.ConsumerId == endpoint.ConsumerId &&
                 query.Limit == 25),
             Arg.Any<CancellationToken>());
@@ -546,7 +647,6 @@ public sealed class WebhooksControllerTests
         await Assert.That(ok!.Value).IsEqualTo(halResource);
         await _mediator.Received(1).Send(
             Arg.Is<GetWebhookEndpointByIdQuery>(query =>
-                query.TenantId == _tenantId &&
                 query.EndpointId == endpoint.Id),
             Arg.Any<CancellationToken>());
     }
@@ -603,7 +703,6 @@ public sealed class WebhooksControllerTests
         await Assert.That(created.RouteValues!["endpointId"]).IsEqualTo(endpointId);
         await _mediator.Received(1).Send(
             Arg.Is<CreateWebhookEndpointCommand>(command =>
-                command.TenantId == _tenantId &&
                 command.ConsumerId == consumerId &&
                 command.Url == "https://integrator.example/webhooks/islamu" &&
                 command.Description == "Integrator endpoint" &&
@@ -682,7 +781,6 @@ public sealed class WebhooksControllerTests
         await Assert.That(ok!.Value).IsTypeOf<BaseCommandResponse<Guid>>();
         await _mediator.Received(1).Send(
             Arg.Is<UpdateWebhookEndpointCommand>(command =>
-                command.TenantId == _tenantId &&
                 command.EndpointId == endpointId &&
                 command.Url == "https://integrator.example/hooks/updated" &&
                 command.Description == "Updated endpoint" &&
@@ -726,7 +824,6 @@ public sealed class WebhooksControllerTests
         await Assert.That(ok).IsNotNull();
         await _mediator.Received(1).Send(
             Arg.Is<UpdateWebhookConsumerProviderModeCommand>(command =>
-                command.TenantId == _tenantId &&
                 command.ConsumerId == consumerId &&
                 command.ProviderModeId == (int)WebhookProviderMode.Svix &&
                 command.ExpectedConfigurationVersion == 5 &&
@@ -833,7 +930,6 @@ public sealed class WebhooksControllerTests
         await Assert.That(ok!.Value).IsTypeOf<BaseCommandResponse<Guid>>();
         await _mediator.Received(1).Send(
             Arg.Is<RotateWebhookEndpointSecretCommand>(command =>
-                command.TenantId == _tenantId &&
                 command.EndpointId == endpointId &&
                 command.NewSecretRef == "configuration:Webhooks:EndpointSecrets:integrator:v2" &&
                 command.PreviousSecretValidForSeconds == 3_600 &&
@@ -899,7 +995,6 @@ public sealed class WebhooksControllerTests
         await Assert.That(response!.Id).IsEqualTo(messageId);
         await _mediator.Received(1).Send(
             Arg.Is<TestWebhookEndpointCommand>(command =>
-                command.TenantId == _tenantId &&
                 command.EndpointId == endpointId),
             Arg.Any<CancellationToken>());
     }
@@ -945,7 +1040,6 @@ public sealed class WebhooksControllerTests
         await Assert.That(result).IsTypeOf<NoContentResult>();
         await _mediator.Received(1).Send(
             Arg.Is<ArchiveWebhookEndpointCommand>(command =>
-                command.TenantId == _tenantId &&
                 command.EndpointId == endpointId),
             Arg.Any<CancellationToken>());
     }
@@ -971,6 +1065,151 @@ public sealed class WebhooksControllerTests
         await Assert.That(test.PermissionAction).IsEqualTo(AuthorizationActions.Webhooks.Test);
         await Assert.That(delete.RouteName).IsEqualTo(RouteNames.DeleteWebhookEndpoint);
         await Assert.That(delete.PermissionAction).IsEqualTo(AuthorizationActions.Webhooks.Delete);
+    }
+
+    [Test]
+    public async Task EndpointDetailLinks_ExposeResumeOnlyForAutoPausedLocalDelivery()
+    {
+        var localAutoPaused = CreateEndpointDto(3, "AutoPaused", "Local");
+        var localDisabled = CreateEndpointDto(2, "Disabled", "Local");
+        var localActive = CreateEndpointDto();
+        var managedAutoPaused = CreateEndpointDto(3, "AutoPaused", "Svix");
+        var policy = new WebhookEndpointDetailLinkPolicy();
+
+        var localLinks = policy.GetLinks(localAutoPaused, null).ToList();
+        var disabledLinks = policy.GetLinks(localDisabled, null).ToList();
+        var activeLinks = policy.GetLinks(localActive, null).ToList();
+        var managedLinks = policy.GetLinks(managedAutoPaused, null).ToList();
+
+        var resume = localLinks.Single(link => link.Rel == LinkRelations.Resume);
+        await Assert.That(resume.RouteName).IsEqualTo(RouteNames.ResumeWebhookEndpoint);
+        await Assert.That(resume.Method).IsEqualTo("POST");
+        await Assert.That(resume.PermissionAction).IsEqualTo(AuthorizationActions.Webhooks.Resume);
+        await Assert.That(disabledLinks.Any(link => link.Rel == LinkRelations.Resume)).IsTrue();
+        await Assert.That(activeLinks.Any(link => link.Rel == LinkRelations.Resume)).IsFalse();
+        await Assert.That(managedLinks.Any(link => link.Rel == LinkRelations.Resume)).IsFalse();
+    }
+
+    [Test]
+    public async Task EndpointDetailLinks_ExposePauseOnlyForActiveLocalDelivery()
+    {
+        var localActive = CreateEndpointDto();
+        var localDisabled = CreateEndpointDto(2, "Disabled", "Local");
+        var managedActive = CreateEndpointDto(1, "Active", "Svix");
+        var policy = new WebhookEndpointDetailLinkPolicy();
+
+        var activeLinks = policy.GetLinks(localActive, null).ToList();
+        var disabledLinks = policy.GetLinks(localDisabled, null).ToList();
+        var managedLinks = policy.GetLinks(managedActive, null).ToList();
+
+        var pause = activeLinks.Single(link => link.Rel == LinkRelations.Pause);
+        await Assert.That(pause.RouteName).IsEqualTo(RouteNames.PauseWebhookEndpoint);
+        await Assert.That(pause.PermissionAction).IsEqualTo(AuthorizationActions.Webhooks.Pause);
+        await Assert.That(disabledLinks.Any(link => link.Rel == LinkRelations.Pause)).IsFalse();
+        await Assert.That(managedLinks.Any(link => link.Rel == LinkRelations.Pause)).IsFalse();
+    }
+
+    [Test]
+    public async Task PauseEndpointRoute_UsesWriteControlsAndWebhookPauseAuthorization()
+    {
+        var action = typeof(WebhookEndpointOperationsController)
+            .GetMethod(nameof(WebhookEndpointOperationsController.Pause))!;
+        var route = action.GetCustomAttribute<HttpPostAttribute>();
+        var authorization = typeof(PauseWebhookEndpointCommand)
+            .GetCustomAttribute<AuthorizeResourceAttribute>();
+
+        await Assert.That(route?.Template).IsEqualTo("{endpointId:guid}/pause");
+        await Assert.That(route?.Name).IsEqualTo(RouteNames.PauseWebhookEndpoint);
+        await Assert.That(action.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName)
+            .IsEqualTo(RateLimitingExtensions.WritePolicy);
+        await Assert.That(authorization?.Action).IsEqualTo(AuthorizationActions.Webhooks.Pause);
+    }
+
+    [Test]
+    public async Task PauseEndpoint_DispatchesTenantActorAndReasonCode()
+    {
+        var endpointId = Guid.CreateVersion7();
+        var actorUserId = Guid.CreateVersion7();
+        _mediator.Send(Arg.Any<PauseWebhookEndpointCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid>
+            {
+                Success = true,
+                Id = endpointId,
+                Message = "Webhook endpoint paused."
+            });
+        var controller = CreateEndpointOperationsController(actorUserId);
+
+        var result = await controller.Pause(
+            endpointId,
+            new PauseWebhookEndpointRequestDto
+            {
+                ExpectedDeliveryStateVersion = 17,
+                ReasonCode = "operator.maintenance"
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Result).IsTypeOf<OkObjectResult>();
+        await _mediator.Received(1).Send(
+            Arg.Is<PauseWebhookEndpointCommand>(command =>
+                command.EndpointId == endpointId &&
+                command.ActorUserId == actorUserId &&
+                command.ExpectedDeliveryStateVersion == 17 &&
+                command.ReasonCode == "operator.maintenance"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ResumeEndpointRoute_UsesWriteControlsAndWebhookResumeAuthorization()
+    {
+        var action = typeof(WebhookEndpointOperationsController)
+            .GetMethod(nameof(WebhookEndpointOperationsController.Resume))!;
+        var route = action.GetCustomAttribute<HttpPostAttribute>();
+        var authorization = typeof(ResumeWebhookEndpointCommand)
+            .GetCustomAttribute<AuthorizeResourceAttribute>();
+
+        await Assert.That(route).IsNotNull();
+        await Assert.That(route!.Template).IsEqualTo("{endpointId:guid}/resume");
+        await Assert.That(route.Name).IsEqualTo(RouteNames.ResumeWebhookEndpoint);
+        await Assert.That(action.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName)
+            .IsEqualTo(RateLimitingExtensions.WritePolicy);
+        await Assert.That(action.GetCustomAttribute<RequestTimeoutAttribute>()?.PolicyName)
+            .IsEqualTo(RequestTimeoutExtensions.DefaultPolicy);
+        await Assert.That(authorization).IsNotNull();
+        await Assert.That(authorization!.Resource).IsEqualTo(ResourceKinds.Webhook);
+        await Assert.That(authorization.Action).IsEqualTo(AuthorizationActions.Webhooks.Resume);
+    }
+
+    [Test]
+    public async Task ResumeEndpoint_DispatchesTenantAndActorScopedCommand()
+    {
+        var endpointId = Guid.CreateVersion7();
+        var actorUserId = Guid.CreateVersion7();
+        _mediator.Send(Arg.Any<ResumeWebhookEndpointCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid>
+            {
+                Success = true,
+                Id = endpointId,
+                Message = "Webhook endpoint resumed."
+            });
+        var controller = CreateEndpointOperationsController(actorUserId);
+
+        var result = await controller.Resume(
+            endpointId,
+            new ResumeWebhookEndpointRequestDto
+            {
+                ExpectedDeliveryStateVersion = 19,
+                ReasonCode = "operator.recovered"
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Result).IsTypeOf<OkObjectResult>();
+        await _mediator.Received(1).Send(
+            Arg.Is<ResumeWebhookEndpointCommand>(command =>
+                command.EndpointId == endpointId
+                && command.ActorUserId == actorUserId
+                && command.ExpectedDeliveryStateVersion == 19
+                && command.ReasonCode == "operator.recovered"),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -1086,6 +1325,7 @@ public sealed class WebhooksControllerTests
         await Assert.That(messageProperties).Contains(nameof(WebhookMessageDto.PayloadRetentionUntil));
         await Assert.That(messageProperties).DoesNotContain("PayloadJson");
         await Assert.That(messageProperties).DoesNotContain("RawPayloadJson");
+        await Assert.That(messageProperties).DoesNotContain(nameof(WebhookMessagePayloadDto.PayloadBase64));
         await Assert.That(messageProperties).DoesNotContain("SecretRef");
         await Assert.That(messageProperties).DoesNotContain("Signature");
         await Assert.That(attemptProperties).DoesNotContain("ResponseBodyPreview");
@@ -1102,16 +1342,19 @@ public sealed class WebhooksControllerTests
         var controllerType = typeof(WebhooksController);
         var listMessagesAction = controllerType.GetMethod(nameof(WebhooksController.GetMessages))!;
         var detailMessageAction = controllerType.GetMethod(nameof(WebhooksController.GetMessage))!;
+        var payloadAction = controllerType.GetMethod(nameof(WebhooksController.GetMessagePayload))!;
         var listAttemptsAction = controllerType.GetMethod(nameof(WebhooksController.GetDeliveryAttempts))!;
         var detailAttemptAction = controllerType.GetMethod(nameof(WebhooksController.GetDeliveryAttempt))!;
         var retryAttemptAction = controllerType.GetMethod(nameof(WebhooksController.RetryDeliveryAttempt))!;
         var listMessagesRoute = listMessagesAction.GetCustomAttribute<HttpGetAttribute>();
         var detailMessageRoute = detailMessageAction.GetCustomAttribute<HttpGetAttribute>();
+        var payloadRoute = payloadAction.GetCustomAttribute<HttpGetAttribute>();
         var listAttemptsRoute = listAttemptsAction.GetCustomAttribute<HttpGetAttribute>();
         var detailAttemptRoute = detailAttemptAction.GetCustomAttribute<HttpGetAttribute>();
         var retryAttemptRoute = retryAttemptAction.GetCustomAttribute<HttpPostAttribute>();
         var listMessagesAuthorization = typeof(GetWebhookMessagesQuery).GetCustomAttribute<AuthorizeResourceAttribute>();
         var detailMessageAuthorization = typeof(GetWebhookMessageByIdQuery).GetCustomAttribute<AuthorizeResourceAttribute>();
+        var payloadAuthorization = typeof(GetWebhookMessagePayloadQuery).GetCustomAttribute<AuthorizeResourceAttribute>();
         var listAttemptsAuthorization = typeof(GetWebhookDeliveryAttemptsQuery).GetCustomAttribute<AuthorizeResourceAttribute>();
         var detailAttemptAuthorization = typeof(GetWebhookDeliveryAttemptByIdQuery).GetCustomAttribute<AuthorizeResourceAttribute>();
         var retryAttemptAuthorization = typeof(RetryWebhookDeliveryAttemptCommand).GetCustomAttribute<AuthorizeResourceAttribute>();
@@ -1122,6 +1365,9 @@ public sealed class WebhooksControllerTests
         await Assert.That(detailMessageRoute).IsNotNull();
         await Assert.That(detailMessageRoute!.Template).IsEqualTo("messages/{messageId:guid}");
         await Assert.That(detailMessageRoute.Name).IsEqualTo(RouteNames.GetWebhookMessageById);
+        await Assert.That(payloadRoute).IsNotNull();
+        await Assert.That(payloadRoute!.Template).IsEqualTo("messages/{messageId:guid}/payload");
+        await Assert.That(payloadRoute.Name).IsEqualTo(RouteNames.GetWebhookMessagePayload);
         await Assert.That(listAttemptsRoute).IsNotNull();
         await Assert.That(listAttemptsRoute!.Template).IsEqualTo("delivery-attempts");
         await Assert.That(listAttemptsRoute.Name).IsEqualTo(RouteNames.GetWebhookDeliveryAttempts);
@@ -1135,6 +1381,8 @@ public sealed class WebhooksControllerTests
             .IsEqualTo(RateLimitingExtensions.AuthenticatedPolicy);
         await Assert.That(detailMessageAction.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName)
             .IsEqualTo(RateLimitingExtensions.AuthenticatedPolicy);
+        await Assert.That(payloadAction.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName)
+            .IsEqualTo(RateLimitingExtensions.AuthenticatedPolicy);
         await Assert.That(listAttemptsAction.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName)
             .IsEqualTo(RateLimitingExtensions.AuthenticatedPolicy);
         await Assert.That(detailAttemptAction.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName)
@@ -1145,6 +1393,12 @@ public sealed class WebhooksControllerTests
             .IsEqualTo(RequestTimeoutExtensions.DefaultPolicy);
         await Assert.That(listMessagesAction.GetCustomAttribute<OutputCacheAttribute>()).IsNull();
         await Assert.That(detailMessageAction.GetCustomAttribute<OutputCacheAttribute>()).IsNull();
+        await Assert.That(payloadAction.GetCustomAttribute<OutputCacheAttribute>()).IsNull();
+        var payloadResponseCache = payloadAction.GetCustomAttribute<ResponseCacheAttribute>();
+        await Assert.That(payloadResponseCache).IsNotNull();
+        await Assert.That(payloadResponseCache!.NoStore).IsTrue();
+        await Assert.That(payloadResponseCache.Location).IsEqualTo(ResponseCacheLocation.None);
+        await Assert.That(payloadResponseCache.Duration).IsEqualTo(0);
         await Assert.That(listAttemptsAction.GetCustomAttribute<OutputCacheAttribute>()).IsNull();
         await Assert.That(detailAttemptAction.GetCustomAttribute<OutputCacheAttribute>()).IsNull();
         await Assert.That(listMessagesAuthorization).IsNotNull();
@@ -1152,6 +1406,8 @@ public sealed class WebhooksControllerTests
         await Assert.That(listMessagesAuthorization.Action).IsEqualTo(AuthorizationActions.Webhooks.ViewDelivery);
         await Assert.That(detailMessageAuthorization).IsNotNull();
         await Assert.That(detailMessageAuthorization!.Action).IsEqualTo(AuthorizationActions.Webhooks.ViewDelivery);
+        await Assert.That(payloadAuthorization).IsNotNull();
+        await Assert.That(payloadAuthorization!.Action).IsEqualTo(AuthorizationActions.Webhooks.ViewPayload);
         await Assert.That(listAttemptsAuthorization).IsNotNull();
         await Assert.That(listAttemptsAuthorization!.Action).IsEqualTo(AuthorizationActions.Webhooks.ViewDelivery);
         await Assert.That(detailAttemptAuthorization).IsNotNull();
@@ -1183,7 +1439,11 @@ public sealed class WebhooksControllerTests
             .Returns(halCollection);
         var controller = CreateController("keycloak-subject-webhook-messages");
 
-        var result = await controller.GetMessages(25, CancellationToken.None);
+        var result = await controller.GetMessages(
+            (int)WebhookConsumerKind.Tenant,
+            _tenantId,
+            25,
+            CancellationToken.None);
 
         var ok = result.Result as OkObjectResult;
         await Assert.That(ok).IsNotNull();
@@ -1191,7 +1451,8 @@ public sealed class WebhooksControllerTests
         await _mediator.Received(1).Send(
             Arg.Is<GetWebhookMessagesQuery>(query =>
                 query != null &&
-                query.TenantId == _tenantId &&
+                query.OwnerKindId == (int)WebhookConsumerKind.Tenant &&
+                query.OwnerId == _tenantId &&
                 query.Limit == 25),
             Arg.Any<CancellationToken>());
     }
@@ -1215,7 +1476,6 @@ public sealed class WebhooksControllerTests
         await _mediator.Received(1).Send(
             Arg.Is<GetWebhookMessageByIdQuery>(query =>
                 query != null &&
-                query.TenantId == _tenantId &&
                 query.MessageId == message.Id),
             Arg.Any<CancellationToken>());
     }
@@ -1235,6 +1495,70 @@ public sealed class WebhooksControllerTests
         var problem = objectResult.Value as ProblemDetails;
         await Assert.That(problem).IsNotNull();
         await Assert.That(problem!.Extensions["code"]).IsEqualTo("webhook_message_not_found");
+    }
+
+    [Test]
+    public async Task GetMessagePayload_WhenAvailable_ReturnsDedicatedPayloadContract()
+    {
+        var messageId = Guid.CreateVersion7();
+        var payload = new WebhookMessagePayloadDto
+        {
+            MessageId = messageId,
+            ContentType = "application/json",
+            ContentEncoding = "utf-8",
+            PayloadBase64 = Convert.ToBase64String("{}"u8),
+            PayloadHash = "sha256:ab3d5f2c4e8a",
+            PayloadByteLength = 2,
+            PayloadRetentionUntil = DateTime.UtcNow.AddHours(1),
+            RetrievedAt = DateTime.UtcNow
+        };
+        _mediator.Send(Arg.Any<GetWebhookMessagePayloadQuery>(), Arg.Any<CancellationToken>())
+            .Returns(WebhookMessagePayloadReadResult.Available(payload));
+        var controller = CreateController("keycloak-subject-webhook-payload");
+
+        var result = await controller.GetMessagePayload(messageId, CancellationToken.None);
+
+        var ok = result.Result as OkObjectResult;
+        await Assert.That(ok).IsNotNull();
+        await Assert.That(ok!.Value).IsEqualTo(payload);
+        await _mediator.Received(1).Send(
+            Arg.Is<GetWebhookMessagePayloadQuery>(query =>
+                query.MessageId == messageId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GetMessagePayload_WhenOutsideTenant_ReturnsGenericNotFoundProblem()
+    {
+        _mediator.Send(Arg.Any<GetWebhookMessagePayloadQuery>(), Arg.Any<CancellationToken>())
+            .Returns(WebhookMessagePayloadReadResult.NotFound());
+        var controller = CreateController("keycloak-subject-webhook-payload-missing");
+
+        var result = await controller.GetMessagePayload(Guid.CreateVersion7(), CancellationToken.None);
+
+        var objectResult = result.Result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(StatusCodes.Status404NotFound);
+        var problem = objectResult.Value as ProblemDetails;
+        await Assert.That(problem).IsNotNull();
+        await Assert.That(problem!.Extensions["code"]).IsEqualTo("webhook_message_payload_not_found");
+    }
+
+    [Test]
+    public async Task GetMessagePayload_WhenRetentionEnded_ReturnsGoneProblem()
+    {
+        _mediator.Send(Arg.Any<GetWebhookMessagePayloadQuery>(), Arg.Any<CancellationToken>())
+            .Returns(WebhookMessagePayloadReadResult.Gone());
+        var controller = CreateController("keycloak-subject-webhook-payload-gone");
+
+        var result = await controller.GetMessagePayload(Guid.CreateVersion7(), CancellationToken.None);
+
+        var objectResult = result.Result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(StatusCodes.Status410Gone);
+        var problem = objectResult.Value as ProblemDetails;
+        await Assert.That(problem).IsNotNull();
+        await Assert.That(problem!.Extensions["code"]).IsEqualTo("webhook_message_payload_gone");
     }
 
     [Test]
@@ -1260,7 +1584,13 @@ public sealed class WebhooksControllerTests
             .Returns(halCollection);
         var controller = CreateController("keycloak-subject-webhook-attempts");
 
-        var result = await controller.GetDeliveryAttempts(Guid.Empty, attempt.EndpointId, 25, CancellationToken.None);
+        var result = await controller.GetDeliveryAttempts(
+            (int)WebhookConsumerKind.Tenant,
+            _tenantId,
+            null,
+            attempt.EndpointId,
+            25,
+            CancellationToken.None);
 
         var ok = result.Result as OkObjectResult;
         await Assert.That(ok).IsNotNull();
@@ -1268,7 +1598,8 @@ public sealed class WebhooksControllerTests
         await _mediator.Received(1).Send(
             Arg.Is<GetWebhookDeliveryAttemptsQuery>(query =>
                 query != null &&
-                query.TenantId == _tenantId &&
+                query.OwnerKindId == (int)WebhookConsumerKind.Tenant &&
+                query.OwnerId == _tenantId &&
                 query.MessageId == null &&
                 query.EndpointId == attempt.EndpointId &&
                 query.Limit == 25),
@@ -1294,7 +1625,6 @@ public sealed class WebhooksControllerTests
         await _mediator.Received(1).Send(
             Arg.Is<GetWebhookDeliveryAttemptByIdQuery>(query =>
                 query != null &&
-                query.TenantId == _tenantId &&
                 query.AttemptId == attempt.Id),
             Arg.Any<CancellationToken>());
     }
@@ -1340,7 +1670,6 @@ public sealed class WebhooksControllerTests
         await _mediator.Received(1).Send(
             Arg.Is<RetryWebhookDeliveryAttemptCommand>(command =>
                 command != null &&
-                command.TenantId == _tenantId &&
                 command.AttemptId == attemptId),
             Arg.Any<CancellationToken>());
     }
@@ -1453,18 +1782,39 @@ public sealed class WebhooksControllerTests
     [Test]
     public async Task WebhookMessageLinks_ExposeViewDeliveryAuditAffordances()
     {
-        var message = CreateMessageDto();
+        var now = DateTime.UtcNow;
+        var message = CreateMessageDto(payloadRetentionUntil: now.AddHours(1));
 
-        var links = new WebhookMessageDetailLinkPolicy()
+        var links = new WebhookMessageDetailLinkPolicy(new FixedTimeProvider(now))
             .GetLinks(message, new ClaimsPrincipal(new ClaimsIdentity("test")))
             .ToList();
 
         var self = links.Single(link => link.Rel == LinkRelations.Self);
         var deliveryAttempts = links.Single(link => link.Rel == LinkRelations.DeliveryAttempts);
+        var payload = links.Single(link => link.Rel == LinkRelations.Payload);
         await Assert.That(self.RouteName).IsEqualTo(RouteNames.GetWebhookMessageById);
         await Assert.That(self.PermissionAction).IsEqualTo(AuthorizationActions.Webhooks.ViewDelivery);
         await Assert.That(deliveryAttempts.RouteName).IsEqualTo(RouteNames.GetWebhookDeliveryAttempts);
         await Assert.That(deliveryAttempts.PermissionAction).IsEqualTo(AuthorizationActions.Webhooks.ViewDelivery);
+        await Assert.That(payload.RouteName).IsEqualTo(RouteNames.GetWebhookMessagePayload);
+        await Assert.That(payload.PermissionAction).IsEqualTo(AuthorizationActions.Webhooks.ViewPayload);
+    }
+
+    [Test]
+    public async Task WebhookMessageLinks_OmitPayloadWhenExpiredOrCleared()
+    {
+        var now = DateTime.UtcNow;
+        var policy = new WebhookMessageDetailLinkPolicy(new FixedTimeProvider(now));
+        var expired = CreateMessageDto(payloadRetentionUntil: now.AddTicks(-1));
+        var cleared = CreateMessageDto(
+            payloadRetentionUntil: now.AddHours(1),
+            payloadClearedAt: now.AddMinutes(-1));
+
+        var expiredLinks = policy.GetLinks(expired, null).ToList();
+        var clearedLinks = policy.GetLinks(cleared, null).ToList();
+
+        await Assert.That(expiredLinks.Any(link => link.Rel == LinkRelations.Payload)).IsFalse();
+        await Assert.That(clearedLinks.Any(link => link.Rel == LinkRelations.Payload)).IsFalse();
     }
 
     [Test]
@@ -1517,7 +1867,6 @@ public sealed class WebhooksControllerTests
         await Assert.That(ok!.Value).IsEqualTo(responseDto);
         await _mediator.Received(1).Send(
             Arg.Is<OpenSvixAppPortalCommand>(command =>
-                command.TenantId == _tenantId &&
                 command.ConsumerId == consumerId &&
                 command.SessionId == "keycloak-subject-1" &&
                 command.ExpiresInSeconds == 900),
@@ -1589,10 +1938,30 @@ public sealed class WebhooksControllerTests
         return new WebhooksController(
             _mediator,
             _tenantContext,
+            _ownershipScopeResolver,
             _consumerAssembler,
             _endpointAssembler,
             _messageAssembler,
             _attemptAssembler)
+        {
+            ControllerContext = new ControllerContext { HttpContext = httpContext }
+        };
+    }
+
+    private WebhookEndpointOperationsController CreateEndpointOperationsController(Guid actorUserId)
+    {
+        var userContext = Substitute.For<IUserContext>();
+        userContext.UserId.Returns(actorUserId);
+        userContext.GetRequiredUserId().Returns(actorUserId);
+        var httpContext = new DefaultHttpContext
+        {
+            RequestServices = new ServiceCollection()
+                .AddSingleton(userContext)
+                .BuildServiceProvider(),
+            User = new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "TestAuth"))
+        };
+
+        return new WebhookEndpointOperationsController(_mediator)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
         };
@@ -1640,6 +2009,10 @@ public sealed class WebhooksControllerTests
         {
             Id = Guid.CreateVersion7(),
             TenantId = _tenantId,
+            OwnerId = _tenantId,
+            OwnerKindId = (int)WebhookConsumerKind.Tenant,
+            OwnerKindCode = "TENANT",
+            OwnerKindName = "Tenant",
             ConsumerId = Guid.CreateVersion7(),
             ConsumerName = "Tenant automation",
             ProviderModeId = ProviderModeId(providerModeName),
@@ -1648,7 +2021,11 @@ public sealed class WebhooksControllerTests
             DestinationHost = "integrator.example",
             Description = "Integrator endpoint",
             StatusId = statusId,
-            StatusCode = statusName.ToUpperInvariant(),
+            StatusCode = statusName switch
+            {
+                "AutoPaused" => "AUTO_PAUSED",
+                _ => statusName.ToUpperInvariant()
+            },
             StatusName = statusName,
             SecretVersion = 1,
             MaxAttempts = 8,
@@ -1681,11 +2058,24 @@ public sealed class WebhooksControllerTests
             _ => 2
         };
 
-    private WebhookMessageDto CreateMessageDto() =>
+    private WebhookOwnershipScope CreateOwnershipScope(WebhookConsumerKind ownerKind, Guid ownerId) =>
+        WebhookOwnershipScope.Create(
+            ownerKind,
+            ownerKind is WebhookConsumerKind.Instance ? null : _tenantId,
+            ownerKind is WebhookConsumerKind.Instance ? ownerId : null,
+            ownerKind is WebhookConsumerKind.Organization ? ownerId : null,
+            ownerKind is WebhookConsumerKind.Group ? ownerId : null,
+            ownerKind is WebhookConsumerKind.User ? ownerId : null);
+
+    private WebhookMessageDto CreateMessageDto(
+        DateTime? payloadRetentionUntil = null,
+        DateTime? payloadClearedAt = null) =>
         new()
         {
             Id = Guid.CreateVersion7(),
             TenantId = _tenantId,
+            OwnerKindId = (int)WebhookConsumerKind.Tenant,
+            OwnerId = _tenantId,
             EventType = "event.published",
             EventId = Guid.CreateVersion7().ToString("D"),
             AggregateKind = "Event",
@@ -1693,15 +2083,23 @@ public sealed class WebhooksControllerTests
             ConsumerId = Guid.CreateVersion7(),
             ConsumerName = "Tenant automation",
             PayloadHash = "sha256:ab3d5f2c4e8a",
-            PayloadRetentionUntil = DateTime.UtcNow.AddDays(14),
+            PayloadRetentionUntil = payloadRetentionUntil ?? DateTime.UtcNow.AddDays(14),
+            PayloadClearedAt = payloadClearedAt,
             CreatedAt = DateTime.UtcNow
         };
+
+    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(utcNow);
+    }
 
     private WebhookDeliveryAttemptDto CreateDeliveryAttemptDto(string statusName = "Failed") =>
         new()
         {
             Id = Guid.CreateVersion7(),
             TenantId = _tenantId,
+            OwnerKindId = (int)WebhookConsumerKind.Tenant,
+            OwnerId = _tenantId,
             MessageId = Guid.CreateVersion7(),
             MessageEventType = "event.published",
             EndpointId = Guid.CreateVersion7(),

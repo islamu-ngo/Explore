@@ -57,10 +57,45 @@ public sealed class WebhookLocalDeliveryStatusLookupConfiguration()
         "webhook_local_delivery_statuses",
         "ux_webhook_local_delivery_statuses_master_code");
 
+public sealed class WebhookBulkReplayStatusLookupConfiguration()
+    : WebhookLookupConfiguration<WebhookBulkReplayStatusLookup>(
+        "webhook_bulk_replay_statuses",
+        "ux_webhook_bulk_replay_statuses_master_code");
+
 public sealed class WebhookPendingWorkDecisionLookupConfiguration()
     : WebhookLookupConfiguration<WebhookPendingWorkDecisionLookup>(
         "webhook_pending_work_decisions",
         "ux_webhook_pending_work_decisions_master_code");
+
+public sealed class WebhookRetentionSubjectKindLookupConfiguration()
+    : WebhookLookupConfiguration<WebhookRetentionSubjectKindLookup>(
+        "webhook_retention_subject_kinds",
+        "ux_webhook_retention_subject_kinds_master_code");
+
+public sealed class WebhookAuditActionLookupConfiguration()
+    : WebhookLookupConfiguration<WebhookAuditActionLookup>(
+        "webhook_audit_actions",
+        "ux_webhook_audit_actions_master_code");
+
+public sealed class WebhookAuditOutcomeLookupConfiguration()
+    : WebhookLookupConfiguration<WebhookAuditOutcomeLookup>(
+        "webhook_audit_outcomes",
+        "ux_webhook_audit_outcomes_master_code");
+
+public sealed class WebhookAuditPrincipalKindLookupConfiguration()
+    : WebhookLookupConfiguration<WebhookAuditPrincipalKindLookup>(
+        "webhook_audit_principal_kinds",
+        "ux_webhook_audit_principal_kinds_master_code");
+
+public sealed class WebhookAuditScopeKindLookupConfiguration()
+    : WebhookLookupConfiguration<WebhookAuditScopeKindLookup>(
+        "webhook_audit_scope_kinds",
+        "ux_webhook_audit_scope_kinds_master_code");
+
+public sealed class WebhookAuditTargetKindLookupConfiguration()
+    : WebhookLookupConfiguration<WebhookAuditTargetKindLookup>(
+        "webhook_audit_target_kinds",
+        "ux_webhook_audit_target_kinds_master_code");
 
 public sealed class WebhookDeliveryAttemptOutcomeLookupConfiguration()
     : WebhookLookupConfiguration<WebhookDeliveryAttemptOutcomeLookup>(

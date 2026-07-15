@@ -334,7 +334,21 @@ public static class LinkRelations
 
     public const string Retry = "retry";
 
+    public const string Pause = "pause";
+
     public const string Resume = "resume";
+
+    public const string ProviderPublications = "provider-publications";
+
+    public const string Payload = "payload";
+
+    public const string Reconcile = "reconcile";
+
+    public const string Abandon = "abandon";
+
+    public const string BulkReplays = "bulk-replays";
+
+    public const string BulkReplayPreview = "bulk-replay-preview";
 
     public const string OpenProviderPortal = "open-provider-portal";
 

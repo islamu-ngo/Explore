@@ -307,6 +307,12 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<WebhookDeliveryAttemptDto>, WebhookDeliveryAttemptDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<WebhookDeliveryAttemptDto>, WebhookDeliveryAttemptCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<WebhookDeliveryAttemptDto, WebhookDeliveryAttemptDto>, WebhookDeliveryAttemptResourceAssembler>();
+        services.AddScoped<ILinkPolicy<WebhookProviderPublicationDto>, WebhookProviderPublicationDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<WebhookProviderPublicationDto>, WebhookProviderPublicationCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<WebhookProviderPublicationDto, WebhookProviderPublicationDto>, WebhookProviderPublicationResourceAssembler>();
+        services.AddScoped<ILinkPolicy<WebhookBulkReplayOperationDto>, WebhookBulkReplayDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<WebhookBulkReplayOperationDto>, WebhookBulkReplayCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<WebhookBulkReplayOperationDto, WebhookBulkReplayOperationDto>, WebhookBulkReplayResourceAssembler>();
 
         // Custom Property Governance (D2 Operability)
         services.AddScoped<ICollectionLinkPolicy<CustomPropertyGovernanceRowDto>, CustomPropertyGovernanceCollectionLinkPolicy>();

@@ -14,6 +14,7 @@ namespace Explore.Infrastructure.Tests.Infrastructure.Webhooks;
 [Category(InfrastructureTestCategories.Runtime)]
 [Category(InfrastructureTestCategories.Slow)]
 [Category(InfrastructureTestCategories.Manual)]
+[Explicit]
 [NotInParallel("SvixManagedConformance")]
 public sealed class SvixManagedConformanceTests
 {

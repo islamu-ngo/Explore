@@ -6,6 +6,7 @@
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Components.Forms
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Webhooks
 
 @inject ITenantOnboardingService TenantOnboardingService
 @inject IInstanceOnboardingService InstanceOnboardingService
@@ -145,6 +146,10 @@
                                          Text="API Keys"
                                          Class="@GetNavItemClass("api-keys")"
                                          OnClick="@(() => SelectSection("api-keys"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.Webhook"
+                                         Text="Webhooks"
+                                         Class="@GetNavItemClass("webhooks")"
+                                         OnClick="@(() => SelectSection("webhooks"))" />
                             <MudListItem Icon="@Icons.Material.Filled.ReceiptLong"
                                          Text="Support Evidence"
                                          Class="@GetNavItemClass("support-access-evidence")"
@@ -271,6 +276,10 @@
                         else if (_currentSection == "api-keys")
                         {
                             <Explore.Blazor.Client.Pages.Admin.Components.ApiKeysSection OwnerType="4" Title="Tenant API Keys" Description="Create and manage API keys for this tenant." />
+                        }
+                        else if (_currentSection == "webhooks")
+                        {
+                            <Explore.Blazor.Client.Components.Webhooks.WebhookManagementPanel Owner="@WebhookOwnerSelection.Tenant" />
                         }
                         else if (_currentSection == "support-access-evidence")
                         {
@@ -601,7 +610,7 @@
         };
 
     private bool IsReadOnlySection =>
-        _currentSection is "nav-links" or "support-access-evidence";
+        _currentSection is "nav-links" or "support-access-evidence" or "webhooks";
 
     private async Task RefreshShellExperienceAsync()
     {

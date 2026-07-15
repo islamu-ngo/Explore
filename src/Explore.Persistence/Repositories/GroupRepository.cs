@@ -1,3 +1,6 @@
+// ABOUTME: Persists tenant-scoped groups and provides hierarchy validation queries.
+// ABOUTME: Serializes hierarchy mutations with a retry-safe PostgreSQL advisory transaction lock.
+
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -249,14 +252,27 @@ public class GroupRepository : GenericRepository<Group, Guid>, IGroupRepository
 
     public async Task<T> ExecuteWithHierarchyMutationLock<T>(Guid tenantId, Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken)
     {
-        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var strategy = _dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            try
+            {
+                await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
 
-        await _dbContext.Database.ExecuteSqlRawAsync(
-            "SELECT pg_advisory_xact_lock(hashtext({0}))",
-            $"group-hierarchy:{tenantId}");
+                await _dbContext.Database.ExecuteSqlRawAsync(
+                    "SELECT pg_advisory_xact_lock(hashtext({0}))",
+                    [$"group-hierarchy:{tenantId}"],
+                    cancellationToken);
 
-        var result = await operation(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        return result;
+                var result = await operation(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return result;
+            }
+            catch
+            {
+                _dbContext.ChangeTracker.Clear();
+                throw;
+            }
+        });
     }
 }

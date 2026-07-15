@@ -11,7 +11,7 @@ public interface IManagedProviderClientProvisioner
 {
     Task<BaseCommandResponse<ManagedProviderClientProvisioningResultDto>> EnsureAsync(
         ManagedProviderClientProvisioningDto provisioningDto,
-        ManagementTenantProvisioningRequest? managementRequest,
+        ManagementTenantProvisioningRequestDto? managementRequest,
         Guid? operationId,
         Guid? expectedOutboxMessageId,
         CancellationToken cancellationToken);

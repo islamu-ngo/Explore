@@ -1,6 +1,5 @@
-// ABOUTME: BFF-side admin claims enrichment service that resolves admin authority from the API.
-// Bridges the gap between the API's DB-first admin context and the Blazor client's claim-based checks.
-// This service enriches the cookie principal at session boundaries instead of using per-request claims transformation.
+// ABOUTME: Enriches the BFF cookie principal with persisted administrative authority from the API.
+// ABOUTME: Projects instance, tenant, organization, and group scopes at trusted session boundaries.
 
 using System.Net.Http.Headers;
 using System.Security.Claims;
@@ -37,6 +36,7 @@ public sealed class BffAdminClaimsTransformation
     private const string InstanceAdminClaim = "explore:admin:instance";
     private const string TenantAdminClaim = "explore:admin:tenant";
     private const string OrganizationAdminClaim = "explore:admin:organization";
+    private const string GroupAdminClaim = "explore:admin:group";
 
     public BffAdminClaimsTransformation(
         IHttpClientFactory httpClientFactory,
@@ -174,6 +174,11 @@ public sealed class BffAdminClaimsTransformation
             identity.AddClaim(new Claim(OrganizationAdminClaim, orgId.ToString()));
         }
 
+        foreach (var groupId in authority.AdminGroupIds ?? [])
+        {
+            identity.AddClaim(new Claim(GroupAdminClaim, groupId.ToString()));
+        }
+
         if (identity.Claims.Any())
         {
             principal.AddIdentity(identity);
@@ -182,7 +187,10 @@ public sealed class BffAdminClaimsTransformation
 
     private static bool HasAnyAdminClaims(ClaimsPrincipal principal)
     {
-        return principal.HasClaim(c => c.Type is InstanceAdminClaim or TenantAdminClaim or OrganizationAdminClaim);
+        return principal.HasClaim(c => c.Type is InstanceAdminClaim
+            or TenantAdminClaim
+            or OrganizationAdminClaim
+            or GroupAdminClaim);
     }
 
     private static void RemoveAdminClaims(ClaimsPrincipal principal)
@@ -190,7 +198,10 @@ public sealed class BffAdminClaimsTransformation
         foreach (var identity in principal.Identities)
         {
             foreach (var claim in identity.Claims
-                         .Where(c => c.Type is InstanceAdminClaim or TenantAdminClaim or OrganizationAdminClaim)
+                         .Where(c => c.Type is InstanceAdminClaim
+                             or TenantAdminClaim
+                             or OrganizationAdminClaim
+                             or GroupAdminClaim)
                          .ToList())
             {
                 identity.RemoveClaim(claim);

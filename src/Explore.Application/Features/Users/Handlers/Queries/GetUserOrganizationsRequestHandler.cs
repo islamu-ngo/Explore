@@ -51,7 +51,7 @@ public class GetUserOrganizationsRequestHandler : IRequestHandler<GetUserOrganiz
             if (membership.Organization == null) continue;
 
             var dto = _mapper.Map<OrganizationListDto>(membership.Organization);
-            dto.CurrentUserRole = (RoleEnum)membership.RoleId;
+            dto.CurrentUserRoleId = membership.RoleId;
             dtos.Add(dto);
         }
 

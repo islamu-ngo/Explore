@@ -1,6 +1,7 @@
 // ABOUTME: API controller tests for tenant storage settings routes.
 // ABOUTME: Verifies CQRS dispatch and HTTP result mapping for tenant storage administration.
 
+using System.Security.Claims;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Controllers;
 using Explore.API.Hateoas;
@@ -122,11 +123,15 @@ public sealed class TenantStorageSettingsControllerTests
         Guid? userId = null,
         IResourceAssembler<TenantStorageSettingsDto, TenantStorageSettingsDto>? storageSettingsAssembler = null)
     {
+        var resolvedUserId = userId ?? Guid.NewGuid();
         var userContext = Substitute.For<IUserContext>();
-        userContext.UserId.Returns(userId ?? Guid.NewGuid());
+        userContext.UserId.Returns(resolvedUserId);
         var services = new ServiceCollection()
             .AddSingleton(userContext)
             .BuildServiceProvider();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("internal_user_id", resolvedUserId.ToString("D"))],
+            authenticationType: "Test"));
 
         return new TenantStorageSettingsController(
             mediator,
@@ -136,7 +141,8 @@ public sealed class TenantStorageSettingsControllerTests
             {
                 HttpContext = new DefaultHttpContext
                 {
-                    RequestServices = services
+                    RequestServices = services,
+                    User = principal
                 }
             }
         };

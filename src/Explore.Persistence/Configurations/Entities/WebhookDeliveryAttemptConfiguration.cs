@@ -37,8 +37,7 @@ public class WebhookDeliveryAttemptConfiguration : IEntityTypeConfiguration<Webh
 
         builder.HasOne(e => e.Endpoint)
             .WithMany()
-            .HasForeignKey(e => new { e.TenantId, e.EndpointId })
-            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .HasForeignKey(e => e.EndpointId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.OutcomeLookup)

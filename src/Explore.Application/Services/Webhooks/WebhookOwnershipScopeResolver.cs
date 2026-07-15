@@ -13,7 +13,7 @@ namespace Explore.Application.Services.Webhooks;
 
 public sealed class WebhookOwnershipScopeResolver(
     ITenantContext tenantContext,
-    IUserContext userContext,
+    ICurrentUserService currentUserService,
     IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
     IOrganizationRepository organizationRepository,
     IGroupRepository groupRepository,
@@ -212,7 +212,13 @@ public sealed class WebhookOwnershipScopeResolver(
         Guid? requestedOwnerId,
         CancellationToken cancellationToken)
     {
-        var userId = userContext.GetRequiredUserId();
+        if (currentUserService.UserId is not { } userId || userId == Guid.Empty)
+        {
+            return Failed(
+                "webhook_user_identity_unavailable",
+                "User webhook ownership requires a resolved local user identity.");
+        }
+
         if (requestedOwnerId.HasValue && requestedOwnerId != userId)
         {
             return Failed("webhook_owner_mismatch", "Users can select only their own webhook ownership scope.");
@@ -233,7 +239,7 @@ public sealed class WebhookOwnershipScopeResolver(
             null,
             null,
             null,
-            tenantUser.UserId));
+            userId));
     }
 
     private static WebhookOwnershipScopeResolution Resolved(WebhookOwnershipScope scope) =>

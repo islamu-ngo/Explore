@@ -207,6 +207,32 @@ public sealed class IncomingWebhookFrameworkTests
     }
 
     [Test]
+    public async Task IncomingWebhookIntakeService_WithDuplicateSignatureHeaders_AcceptsMatchingValue()
+    {
+        var secret = CreateSvixSecret();
+        var binding = CreateVerifiedSvixBinding();
+        var payload = $"{{\"type\":\"endpoint.created\",\"appId\":\"{binding.ExternalApplicationId}\",\"appUid\":\"{binding.ApplicationUid}\"}}";
+        var signed = new WebhookSignatureService().Sign(
+            "msg_duplicate_headers",
+            DateTimeOffset.UtcNow,
+            Encoding.UTF8.GetBytes(payload),
+            new WebhookSecretMaterial(secret, 1));
+        var request = CreateSvixRequest(payload);
+        request.Headers["svix-id"] = signed.SvixId;
+        request.Headers["svix-timestamp"] = signed.SvixTimestamp;
+        request.Headers.Append("svix-signature", "v1,not-valid-base64");
+        request.Headers.Append("svix-signature", signed.SvixSignature);
+        request.Headers["svix-event-type"] = "endpoint.created";
+        var service = CreateSvixIntakeService(secret, binding);
+
+        var result = await service.ReadAndVerifyAsync(request, "svix", 65_536, CancellationToken.None);
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.Verification).IsNotNull();
+        await Assert.That(result.Verification!.ProviderMessageId).IsEqualTo("msg_duplicate_headers");
+    }
+
+    [Test]
     public async Task IncomingWebhookIntakeService_WithMissingSvixSignature_ReturnsUnauthorizedWithoutUnsafeDetail()
     {
         const string payload = "{\"tenantId\":\"018f0000-0000-7000-8000-000000000001\",\"secret\":\"raw-provider-secret\"}";
@@ -272,7 +298,8 @@ public sealed class IncomingWebhookFrameworkTests
         var service = new IncomingWebhookIntakeService(
             new IncomingWebhookVerifierRegistry([verifier]),
             repository,
-            Options.Create(new WebhookOptions()),
+            CreateRetentionPolicyResolver(),
+            TimeProvider.System,
             NullLogger<IncomingWebhookIntakeService>.Instance);
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(rawPayload));
@@ -305,7 +332,8 @@ public sealed class IncomingWebhookFrameworkTests
         var service = new IncomingWebhookIntakeService(
             new IncomingWebhookVerifierRegistry([verifier]),
             repository,
-            Options.Create(new WebhookOptions()),
+            CreateRetentionPolicyResolver(),
+            TimeProvider.System,
             NullLogger<IncomingWebhookIntakeService>.Instance);
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes("{\"oversized\":true}"));
@@ -352,6 +380,7 @@ public sealed class IncomingWebhookFrameworkTests
         var repository = Substitute.For<IIncomingWebhookMessageRepository>();
         repository.TryCreateAsync(Arg.Any<IncomingWebhookMessage>(), Arg.Any<CancellationToken>())
             .Returns(false);
+        var verifiedAt = DateTime.UtcNow;
         var existing = IncomingWebhookMessage.CreateVerified(
             tenantId,
             "svix",
@@ -363,9 +392,14 @@ public sealed class IncomingWebhookFrameworkTests
             "application/json",
             "utf-8",
             headersJson: null,
-            DateTime.UtcNow.AddMinutes(-1),
-            DateTime.UtcNow.AddMinutes(-1),
-            DateTime.UtcNow.AddDays(14));
+            verifiedAt.AddMinutes(-1),
+            verifiedAt,
+            verifiedAt.AddDays(14),
+            "webhook-retention-test-v1",
+            verifiedAt.AddDays(30),
+            verifiedAt.AddDays(90),
+            verifiedAt.AddDays(14),
+            verifiedAt.AddDays(30));
         repository.GetByProviderMessageIdForUpdateAsync(
                 tenantId,
                 "svix",
@@ -376,7 +410,8 @@ public sealed class IncomingWebhookFrameworkTests
         var service = new IncomingWebhookIntakeService(
             new IncomingWebhookVerifierRegistry([]),
             repository,
-            Options.Create(new WebhookOptions()),
+            CreateRetentionPolicyResolver(),
+            TimeProvider.System,
             logger);
 
         var result = await service.CaptureAsync(read, CancellationToken.None);
@@ -444,7 +479,9 @@ public sealed class IncomingWebhookFrameworkTests
             NullLogger<CoopIncomingWebhookVerifier>.Instance);
     }
 
-    private static IncomingWebhookIntakeService CreateSvixIntakeService(string secret)
+    private static IncomingWebhookIntakeService CreateSvixIntakeService(
+        string secret,
+        WebhookConsumerProviderBinding? binding = null)
     {
         const string secretRef = "webhooks.svix.operational_webhook_secret";
         var secretResolver = Substitute.For<ISecretResolver>();
@@ -466,15 +503,21 @@ public sealed class IncomingWebhookFrameworkTests
             }),
             secretResolver,
             new WebhookSignatureService(),
-            Substitute.For<IWebhookConsumerProviderBindingRepository>(),
+            binding is null
+                ? Substitute.For<IWebhookConsumerProviderBindingRepository>()
+                : CreateBindingRepository(binding),
             NullLogger<SvixIncomingWebhookVerifier>.Instance);
 
         return new IncomingWebhookIntakeService(
             new IncomingWebhookVerifierRegistry([verifier]),
             Substitute.For<IIncomingWebhookMessageRepository>(),
-            Options.Create(new WebhookOptions()),
+            CreateRetentionPolicyResolver(),
+            TimeProvider.System,
             NullLogger<IncomingWebhookIntakeService>.Instance);
     }
+
+    private static WebhookRetentionPolicyResolver CreateRetentionPolicyResolver() =>
+        new(new StaticOptionsMonitor<WebhookRetentionSettings>(new WebhookRetentionSettings()));
 
     private static HttpRequest CreateSvixRequest(string body)
     {

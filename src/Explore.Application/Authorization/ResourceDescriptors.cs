@@ -35,6 +35,7 @@ using Explore.Application.DTOs.TenantSettingsDocuments;
 using Explore.Application.DTOs.TenantUserRoleGrant;
 using Explore.Application.DTOs.User;
 using Explore.Application.DTOs.Webhooks;
+using Explore.Domain;
 
 namespace Explore.Application.Authorization;
 
@@ -54,6 +55,21 @@ namespace Explore.Application.Authorization;
 /// </summary>
 public static class ResourceDescriptors
 {
+    public static IReadOnlyDictionary<string, object> GetWebhookOwnerAttributes(WebhookOwnershipScope ownership)
+    {
+        ArgumentNullException.ThrowIfNull(ownership);
+
+        var attributes = WebhookOwnerAttributes(
+            (int)ownership.Kind,
+            ownership.OwnerId,
+            ownership.TenantId,
+            ownership.InstanceId);
+        AddIfPresent(attributes, "organizationId", ownership.OrganizationId);
+        AddIfPresent(attributes, "groupId", ownership.GroupId);
+        AddIfPresent(attributes, "userId", ownership.UserId);
+        return attributes;
+    }
+
     #region Core resources with unique Cerbos resource kinds
 
     public static readonly ResourceDescriptor<EventDto> Event = new(
@@ -149,50 +165,55 @@ public static class ResourceDescriptors
     public static readonly ResourceDescriptor<WebhookConsumerDto> WebhookConsumer = new(
         ResourceKinds.Webhook,
         dto => dto.Id.ToString(),
-        dto => new Dictionary<string, object>
-        {
-            ["tenantId"] = dto.TenantId.ToString(),
-            ["consumerId"] = dto.Id.ToString(),
-            ["consumerKind"] = dto.ConsumerKindName,
-            ["providerMode"] = dto.ProviderModeName,
-            ["status"] = dto.StatusName
-        },
-        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+        WebhookConsumerAttributes,
+        dto => new AuthorizationScope(
+            TenantId: dto.TenantId?.ToString(),
+            OrganizationId: dto.OrganizationId?.ToString()));
 
     public static readonly ResourceDescriptor<WebhookEndpointDto> WebhookEndpoint = new(
         ResourceKinds.Webhook,
         dto => dto.Id.ToString(),
-        dto => new Dictionary<string, object>
-        {
-            ["tenantId"] = dto.TenantId.ToString(),
-            ["consumerId"] = dto.ConsumerId.ToString(),
-            ["endpointId"] = dto.Id.ToString(),
-            ["status"] = dto.StatusName
-        },
-        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+        WebhookEndpointAttributes,
+        dto => new AuthorizationScope(
+            TenantId: dto.TenantId?.ToString(),
+            OrganizationId: dto.OwnerKindId == (int)WebhookConsumerKind.Organization
+                ? dto.OwnerId.ToString()
+                : null));
 
     public static readonly ResourceDescriptor<WebhookMessageDto> WebhookMessage = new(
         ResourceKinds.Webhook,
         dto => dto.Id.ToString(),
-        dto => new Dictionary<string, object>
-        {
-            ["tenantId"] = dto.TenantId.ToString(),
-            ["messageId"] = dto.Id.ToString(),
-            ["eventType"] = dto.EventType,
-            ["aggregateKind"] = dto.AggregateKind
-        },
+        WebhookMessageAttributes,
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 
     public static readonly ResourceDescriptor<WebhookDeliveryAttemptDto> WebhookDeliveryAttempt = new(
         ResourceKinds.Webhook,
         dto => dto.Id.ToString(),
+        WebhookDeliveryAttemptAttributes,
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<WebhookProviderPublicationDto> WebhookProviderPublication = new(
+        ResourceKinds.Webhook,
+        dto => dto.Id.ToString(),
         dto => new Dictionary<string, object>
         {
             ["tenantId"] = dto.TenantId.ToString(),
-            ["attemptId"] = dto.Id.ToString(),
-            ["messageId"] = dto.MessageId.ToString(),
-            ["endpointId"] = dto.EndpointId.ToString(),
-            ["outcome"] = dto.OutcomeCode
+            ["consumerId"] = dto.WebhookConsumerId.ToString(),
+            ["messageId"] = dto.WebhookMessageId.ToString(),
+            ["publicationId"] = dto.Id.ToString(),
+            ["providerKind"] = dto.ProviderKindCode,
+            ["status"] = dto.StatusCode
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<WebhookBulkReplayOperationDto> WebhookBulkReplayOperation = new(
+        ResourceKinds.Webhook,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["tenantId"] = dto.TenantId.ToString(),
+            ["bulkReplayOperationId"] = dto.Id.ToString(),
+            ["status"] = dto.StatusCode
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 
@@ -550,6 +571,109 @@ public static class ResourceDescriptors
         AddIfPresent(attributes, "userId", dto.ActorUserId);
         AddIfPresent(attributes, "organizationId", dto.ActorOrganizationId);
         AddIfPresent(attributes, "groupId", dto.ActorGroupId);
+        return attributes;
+    }
+
+    private static Dictionary<string, object> WebhookConsumerAttributes(WebhookConsumerDto dto)
+    {
+        var attributes = WebhookOwnerAttributes(
+            dto.ConsumerKindId,
+            dto.OwnerId,
+            dto.TenantId,
+            dto.InstanceId);
+        attributes["consumerId"] = dto.Id.ToString();
+        attributes["consumerKind"] = dto.ConsumerKindName;
+        attributes["providerMode"] = dto.ProviderModeName;
+        attributes["status"] = dto.StatusName;
+        AddIfPresent(attributes, "organizationId", dto.OrganizationId);
+        AddIfPresent(attributes, "groupId", dto.GroupId);
+        AddIfPresent(attributes, "userId", dto.OwnerUserId);
+        return attributes;
+    }
+
+    private static Dictionary<string, object> WebhookEndpointAttributes(WebhookEndpointDto dto)
+    {
+        var attributes = WebhookOwnerAttributes(
+            dto.OwnerKindId,
+            dto.OwnerId,
+            dto.TenantId,
+            dto.InstanceId);
+        attributes["consumerId"] = dto.ConsumerId.ToString();
+        attributes["endpointId"] = dto.Id.ToString();
+        attributes["status"] = dto.StatusName;
+
+        var ownerKind = (WebhookConsumerKind)dto.OwnerKindId;
+        var ownerAttribute = ownerKind switch
+        {
+            WebhookConsumerKind.Organization => "organizationId",
+            WebhookConsumerKind.Group => "groupId",
+            WebhookConsumerKind.User => "userId",
+            _ => null
+        };
+        if (ownerAttribute is not null)
+        {
+            attributes[ownerAttribute] = dto.OwnerId.ToString();
+        }
+
+        return attributes;
+    }
+
+    private static Dictionary<string, object> WebhookMessageAttributes(WebhookMessageDto dto)
+    {
+        var attributes = WebhookDeliveryOwnerAttributes(dto.OwnerKindId, dto.OwnerId, dto.TenantId);
+        attributes["messageId"] = dto.Id.ToString();
+        attributes["eventType"] = dto.EventType;
+        attributes["aggregateKind"] = dto.AggregateKind;
+        return attributes;
+    }
+
+    private static Dictionary<string, object> WebhookDeliveryAttemptAttributes(WebhookDeliveryAttemptDto dto)
+    {
+        var attributes = WebhookDeliveryOwnerAttributes(dto.OwnerKindId, dto.OwnerId, dto.TenantId);
+        attributes["attemptId"] = dto.Id.ToString();
+        attributes["messageId"] = dto.MessageId.ToString();
+        attributes["endpointId"] = dto.EndpointId.ToString();
+        attributes["outcome"] = dto.OutcomeCode;
+        return attributes;
+    }
+
+    private static Dictionary<string, object> WebhookDeliveryOwnerAttributes(
+        int ownerKindId,
+        Guid ownerId,
+        Guid sourceTenantId)
+    {
+        var instanceId = ownerKindId == (int)WebhookConsumerKind.Instance ? ownerId : (Guid?)null;
+        Guid? ownerTenantId = ownerKindId == (int)WebhookConsumerKind.Instance ? null : sourceTenantId;
+        var attributes = WebhookOwnerAttributes(ownerKindId, ownerId, ownerTenantId, instanceId);
+        var ownerAttribute = (WebhookConsumerKind)ownerKindId switch
+        {
+            WebhookConsumerKind.Organization => "organizationId",
+            WebhookConsumerKind.Group => "groupId",
+            WebhookConsumerKind.User => "userId",
+            _ => null
+        };
+        if (ownerAttribute is not null)
+        {
+            attributes[ownerAttribute] = ownerId.ToString();
+        }
+
+        return attributes;
+    }
+
+    private static Dictionary<string, object> WebhookOwnerAttributes(
+        int ownerKindId,
+        Guid ownerId,
+        Guid? tenantId,
+        Guid? instanceId)
+    {
+        var attributes = new Dictionary<string, object>
+        {
+            ["ownerKindId"] = ownerKindId,
+            ["ownerKind"] = ((WebhookConsumerKind)ownerKindId).ToString().ToUpperInvariant(),
+            ["ownerId"] = ownerId.ToString()
+        };
+        AddIfPresent(attributes, "tenantId", tenantId);
+        AddIfPresent(attributes, "instanceId", instanceId);
         return attributes;
     }
 

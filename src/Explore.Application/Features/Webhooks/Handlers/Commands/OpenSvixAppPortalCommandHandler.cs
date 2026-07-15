@@ -2,7 +2,6 @@
 // ABOUTME: Keeps provider SDK calls in Infrastructure while preserving command-response API conventions.
 
 using System.Text.Json;
-using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.DTOs.Webhooks;
@@ -15,8 +14,8 @@ namespace Explore.Application.Features.Webhooks.Handlers.Commands;
 
 public sealed class OpenSvixAppPortalCommandHandler(
     IWebhookProviderPortalService portalService,
-    IAuditLogRepository auditLogRepository,
-    ICurrentUserService currentUserService)
+    IWebhookAuditEventWriter auditWriter,
+    IWebhookConsumerRepository consumerRepository)
     : IRequestHandler<OpenSvixAppPortalCommand, WebhookProviderPortalAccessCommandResponse>
 {
     private const string ValidationFailure = "webhook_portal_validation_failed";
@@ -35,9 +34,21 @@ public sealed class OpenSvixAppPortalCommandHandler(
                 validationErrors);
         }
 
+        var consumer = await consumerRepository.GetByIdForOwnerOperationAsync(
+            request.ConsumerId,
+            forUpdate: false,
+            cancellationToken);
+        if (consumer is null)
+        {
+            return Failure(
+                "Webhook consumer was not found.",
+                "webhook_consumer_not_found",
+                isRetryable: false,
+                ["Webhook consumer was not found."]);
+        }
+
         var result = await portalService.CreateAccessAsync(
             new WebhookProviderPortalAccessInput(
-                request.TenantId,
                 request.ConsumerId,
                 request.SessionId,
                 request.ExpiresInSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null),
@@ -51,6 +62,7 @@ public sealed class OpenSvixAppPortalCommandHandler(
 
             await CreateAuditAsync(
                 request,
+                consumer,
                 result,
                 "provider_failure",
                 failureCategory);
@@ -62,7 +74,7 @@ public sealed class OpenSvixAppPortalCommandHandler(
                 [result.SafeDetail ?? failureCategory]);
         }
 
-        await CreateAuditAsync(request, result, "issued", failureCategory: null);
+        await CreateAuditAsync(request, consumer, result, "issued", failureCategory: null);
 
         return new WebhookProviderPortalAccessCommandResponse
         {
@@ -79,44 +91,39 @@ public sealed class OpenSvixAppPortalCommandHandler(
 
     private async Task CreateAuditAsync(
         OpenSvixAppPortalCommand request,
+        WebhookConsumer consumer,
         WebhookProviderPortalAccessResult result,
         string outcome,
         string? failureCategory)
     {
-        var correlationId = Guid.CreateVersion7();
-        await auditLogRepository.Create(new AuditLog
-        {
-            Id = correlationId,
-            TenantId = request.TenantId,
-            Tenant = null!,
-            EntityType = nameof(WebhookConsumer),
-            EntityId = request.ConsumerId.ToString("D"),
-            Action = "WebhookPortalSessionIssued",
-            NewValues = JsonSerializer.Serialize(new
-            {
-                consumerId = request.ConsumerId,
-                providerBindingId = result.ProviderBindingId,
-                provider = "svix",
-                capabilityPolicyVersion = result.CapabilityPolicyVersion,
-                correlationId,
-                category = "webhook_provider_portal",
-                result = outcome,
-                failureCategory
-            }),
-            AffectedColumns = JsonSerializer.Serialize(new[] { "PortalSessionIssuance" }),
-            ActorId = currentUserService.UserId,
-            Timestamp = DateTime.UtcNow
-        });
+        await auditWriter.AppendAsync(
+            new WebhookAuditWriteRequest(
+                consumer.TenantId,
+                result.Succeeded
+                    ? WebhookAuditAction.PortalAccessIssued
+                    : WebhookAuditAction.PortalAccessRejected,
+                WebhookAuditTargetKind.Consumer,
+                request.ConsumerId,
+                failureCategory ?? "portal_access_requested",
+                result.Succeeded ? WebhookAuditOutcome.Succeeded : WebhookAuditOutcome.Failed,
+                SafeAfterJson: JsonSerializer.Serialize(new
+                {
+                    consumerId = request.ConsumerId,
+                    providerBindingId = result.ProviderBindingId,
+                    provider = "svix",
+                    capabilityPolicyVersion = result.CapabilityPolicyVersion,
+                    result = outcome,
+                    failureCategory
+                }),
+                ConfigurationVersion: result.CapabilityPolicyVersion,
+                EffectiveScopeKind: consumer.Ownership.AuditScopeKind,
+                EffectiveScopeId: consumer.OwnerId),
+            CancellationToken.None);
     }
 
     private static List<string> Validate(OpenSvixAppPortalCommand request)
     {
         var errors = new List<string>();
-
-        if (request.TenantId == Guid.Empty)
-        {
-            errors.Add("TenantId is required.");
-        }
 
         if (string.IsNullOrWhiteSpace(request.SessionId))
         {

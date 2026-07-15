@@ -1,5 +1,5 @@
 // ABOUTME: Authorized command for rotating an outgoing webhook endpoint signing secret reference.
-// ABOUTME: Preserves dynamic tenant and endpoint metadata for webhook rotate-secret authorization checks.
+// ABOUTME: Uses persisted endpoint ownership for webhook rotate-secret authorization checks.
 
 using Explore.Application.Authorization;
 using Explore.Application.Responses;
@@ -8,10 +8,9 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.RotateSecret)]
-public sealed class RotateWebhookEndpointSecretCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed class RotateWebhookEndpointSecretCommand
+    : IRequest<BaseCommandResponse<Guid>>, ISecureRequest, IWebhookPersistedOwnerRequest
 {
-    public Guid TenantId { get; init; }
-
     public Guid EndpointId { get; init; }
 
     public required string NewSecretRef { get; init; }
@@ -30,7 +29,11 @@ public sealed class RotateWebhookEndpointSecretCommand : IRequest<BaseCommandRes
 
     IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
     {
-        ["tenantId"] = TenantId.ToString("D"),
         ["endpointId"] = EndpointId.ToString("D")
     };
+
+    WebhookOwnedResourceKind IWebhookPersistedOwnerRequest.OwnedResourceKind =>
+        WebhookOwnedResourceKind.Endpoint;
+
+    Guid IWebhookPersistedOwnerRequest.OwnedResourceId => EndpointId;
 }

@@ -51,6 +51,16 @@ public sealed class BusinessMetrics : IDisposable
     private readonly Counter<long> _webhookEndpointDisabled;
     private readonly Counter<long> _webhookManualRetries;
     private readonly Counter<long> _webhookProviderPublishFailures;
+    private readonly Counter<long> _webhookRetentionCleanupRuns;
+    private readonly Counter<long> _webhookRetentionCleanupItems;
+    private readonly Histogram<double> _webhookClaimLag;
+    private readonly Counter<long> _webhookProcessingOutcomes;
+    private readonly Counter<long> _webhookRetriesScheduled;
+    private readonly Counter<long> _webhookDeadLetters;
+    private readonly Counter<long> _webhookManualReconciliations;
+    private readonly Counter<long> _webhookEndpointAutoPauses;
+    private readonly Counter<long> _webhookProviderHealthChecks;
+    private readonly Histogram<double> _webhookPublicationUnknownAge;
     private readonly Counter<long> _customPropertyPurgeDecisions;
     private readonly Counter<long> _idempotencyCleanupRuns;
     private readonly Counter<long> _idempotencyCleanupRows;
@@ -241,6 +251,56 @@ public sealed class BusinessMetrics : IDisposable
             "explore.webhooks.provider_publish_failure",
             unit: "{failure}",
             description: "Total outgoing webhook provider publish failures by provider and bounded failure category");
+
+        _webhookRetentionCleanupRuns = meter.CreateCounter<long>(
+            "explore.webhooks.retention.cleanup_runs",
+            unit: "{run}",
+            description: "Total webhook retention cleanup passes by mode and bounded outcome");
+
+        _webhookRetentionCleanupItems = meter.CreateCounter<long>(
+            "explore.webhooks.retention.cleanup_items",
+            unit: "{item}",
+            description: "Total webhook retention items selected or changed by mode and bounded data kind");
+
+        _webhookClaimLag = meter.CreateHistogram<double>(
+            "explore.webhooks.claim_lag",
+            unit: "s",
+            description: "Webhook work-item claim lag in seconds by provider and bounded operation");
+
+        _webhookProcessingOutcomes = meter.CreateCounter<long>(
+            "explore.webhooks.processing_outcomes",
+            unit: "{item}",
+            description: "Webhook processing outcomes by provider, operation, and bounded outcome");
+
+        _webhookRetriesScheduled = meter.CreateCounter<long>(
+            "explore.webhooks.retries_scheduled",
+            unit: "{retry}",
+            description: "Webhook automatic retries scheduled by provider and operation");
+
+        _webhookDeadLetters = meter.CreateCounter<long>(
+            "explore.webhooks.dead_letters",
+            unit: "{item}",
+            description: "Webhook work items moved to terminal dead-letter state by provider and operation");
+
+        _webhookManualReconciliations = meter.CreateCounter<long>(
+            "explore.webhooks.manual_reconciliations",
+            unit: "{item}",
+            description: "Webhook publications requiring manual reconciliation by provider");
+
+        _webhookEndpointAutoPauses = meter.CreateCounter<long>(
+            "explore.webhooks.endpoint_auto_pauses",
+            unit: "{endpoint}",
+            description: "Webhook endpoint transitions into automatic pause by provider");
+
+        _webhookProviderHealthChecks = meter.CreateCounter<long>(
+            "explore.webhooks.provider_health_checks",
+            unit: "{check}",
+            description: "Webhook provider readiness outcomes by provider and bounded outcome");
+
+        _webhookPublicationUnknownAge = meter.CreateHistogram<double>(
+            "explore.webhooks.publication_unknown_age",
+            unit: "s",
+            description: "Age in seconds of provider publications observed in an uncertain state");
 
         _customPropertyPurgeDecisions = meter.CreateCounter<long>(
             "explore.custom_properties.purge_decisions",
@@ -649,6 +709,117 @@ public sealed class BusinessMetrics : IDisposable
             new KeyValuePair<string, object?>("failure_category", NormalizeWebhookFailureCategory(failureCategory)));
     }
 
+    public void RecordWebhookRetentionCleanupRun(string? mode, string? outcome)
+    {
+        _webhookRetentionCleanupRuns.Add(1,
+            new KeyValuePair<string, object?>("mode", NormalizeWebhookCleanupMode(mode)),
+            new KeyValuePair<string, object?>("outcome", NormalizeWebhookOutcome(outcome)));
+    }
+
+    public void RecordWebhookRetentionCleanupItems(long itemCount, string? mode, string? dataKind)
+    {
+        if (itemCount <= 0)
+        {
+            return;
+        }
+
+        _webhookRetentionCleanupItems.Add(itemCount,
+            new KeyValuePair<string, object?>("mode", NormalizeWebhookCleanupMode(mode)),
+            new KeyValuePair<string, object?>("data_kind", NormalizeWebhookCleanupDataKind(dataKind)));
+    }
+
+    public void RecordWebhookClaimLag(
+        WebhookTelemetryProvider provider,
+        WebhookTelemetryOperation operation,
+        TimeSpan claimLag)
+    {
+        _webhookClaimLag.Record(
+            Math.Max(0, claimLag.TotalSeconds),
+            new KeyValuePair<string, object?>("provider", WebhookTelemetryDimensionCodes.Provider(provider)),
+            new KeyValuePair<string, object?>("operation", WebhookTelemetryDimensionCodes.Operation(operation)));
+    }
+
+    public void RecordWebhookProcessingOutcome(
+        WebhookTelemetryProvider provider,
+        WebhookTelemetryOperation operation,
+        WebhookTelemetryOutcome outcome,
+        long count = 1)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        _webhookProcessingOutcomes.Add(
+            count,
+            new KeyValuePair<string, object?>("provider", WebhookTelemetryDimensionCodes.Provider(provider)),
+            new KeyValuePair<string, object?>("operation", WebhookTelemetryDimensionCodes.Operation(operation)),
+            new KeyValuePair<string, object?>("outcome", WebhookTelemetryDimensionCodes.Outcome(outcome)));
+    }
+
+    public void RecordWebhookRetryScheduled(
+        WebhookTelemetryProvider provider,
+        WebhookTelemetryOperation operation,
+        long count = 1)
+    {
+        RecordWebhookCount(_webhookRetriesScheduled, provider, operation, count);
+    }
+
+    public void RecordWebhookDeadLetter(
+        WebhookTelemetryProvider provider,
+        WebhookTelemetryOperation operation,
+        long count = 1)
+    {
+        RecordWebhookCount(_webhookDeadLetters, provider, operation, count);
+    }
+
+    public void RecordWebhookManualReconciliation(
+        WebhookTelemetryProvider provider,
+        long count = 1)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        _webhookManualReconciliations.Add(
+            count,
+            new KeyValuePair<string, object?>("provider", WebhookTelemetryDimensionCodes.Provider(provider)));
+    }
+
+    public void RecordWebhookEndpointAutoPause(
+        WebhookTelemetryProvider provider,
+        long count = 1)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        _webhookEndpointAutoPauses.Add(
+            count,
+            new KeyValuePair<string, object?>("provider", WebhookTelemetryDimensionCodes.Provider(provider)));
+    }
+
+    public void RecordWebhookProviderHealthCheck(
+        WebhookTelemetryProvider provider,
+        WebhookTelemetryOutcome outcome)
+    {
+        _webhookProviderHealthChecks.Add(
+            1,
+            new KeyValuePair<string, object?>("provider", WebhookTelemetryDimensionCodes.Provider(provider)),
+            new KeyValuePair<string, object?>("outcome", WebhookTelemetryDimensionCodes.Outcome(outcome)));
+    }
+
+    public void RecordWebhookPublicationUnknownAge(
+        WebhookTelemetryProvider provider,
+        TimeSpan unknownAge)
+    {
+        _webhookPublicationUnknownAge.Record(
+            Math.Max(0, unknownAge.TotalSeconds),
+            new KeyValuePair<string, object?>("provider", WebhookTelemetryDimensionCodes.Provider(provider)));
+    }
+
     public void RecordCustomPropertyPurgeDecision(string? tenantId, string scope, string outcome, string blockerCategory)
     {
         _customPropertyPurgeDecisions.Add(1,
@@ -1030,6 +1201,7 @@ public sealed class BusinessMetrics : IDisposable
             "retry_scheduled" or "retry" => "retry_scheduled",
             "abandoned" => "abandoned",
             "failed" or "failure" => "failed",
+            "partial_failure" => "partial_failure",
             "skipped" => "skipped",
             "missing" => "missing",
             "already_claimed" => "already_claimed",
@@ -1077,6 +1249,49 @@ public sealed class BusinessMetrics : IDisposable
             "svix_auth_token_unresolved" => "svix_auth_token_unresolved",
             _ => "unknown"
         };
+    }
+
+    private static string NormalizeWebhookCleanupMode(string? mode)
+    {
+        return NormalizeTag(mode) switch
+        {
+            "cleanup" => "cleanup",
+            "dry_run" or "dryrun" => "dry_run",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeWebhookCleanupDataKind(string? dataKind)
+    {
+        return NormalizeTag(dataKind) switch
+        {
+            "outbound_payload" => "outbound_payload",
+            "inbound_payload" => "inbound_payload",
+            "delivery_attempt" => "delivery_attempt",
+            "incoming_attempt" => "incoming_attempt",
+            "incoming_redrive" => "incoming_redrive",
+            "provider_attempt" => "provider_attempt",
+            "provider_publication" => "provider_publication",
+            "administrative_audit" => "administrative_audit",
+            _ => "unknown"
+        };
+    }
+
+    private static void RecordWebhookCount(
+        Counter<long> counter,
+        WebhookTelemetryProvider provider,
+        WebhookTelemetryOperation operation,
+        long count)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        counter.Add(
+            count,
+            new KeyValuePair<string, object?>("provider", WebhookTelemetryDimensionCodes.Provider(provider)),
+            new KeyValuePair<string, object?>("operation", WebhookTelemetryDimensionCodes.Operation(operation)));
     }
 
     private static string NormalizeStorageProvider(string? provider)

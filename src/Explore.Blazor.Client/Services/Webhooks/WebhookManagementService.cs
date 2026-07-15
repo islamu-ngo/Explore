@@ -14,15 +14,35 @@ public sealed class WebhookManagementService(
     private const int SnapshotLimit = 200;
     private const int ActivityLimit = 100;
 
-    public async Task<WebhookManagementSnapshot> GetSnapshotAsync(CancellationToken cancellationToken = default)
+    public async Task<WebhookManagementSnapshot> GetSnapshotAsync(
+        WebhookOwnerSelection owner,
+        CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(owner);
+
         try
         {
             var eventTypesTask = apiClient.GetWebhookEventTypesAsync(cancellationToken: cancellationToken);
-            var consumersTask = apiClient.GetWebhookConsumersAsync(limit: SnapshotLimit, cancellationToken: cancellationToken);
-            var endpointsTask = apiClient.GetWebhookEndpointsAsync(limit: SnapshotLimit, cancellationToken: cancellationToken);
-            var messagesTask = apiClient.GetWebhookMessagesAsync(limit: ActivityLimit, cancellationToken: cancellationToken);
-            var attemptsTask = apiClient.GetWebhookDeliveryAttemptsAsync(limit: ActivityLimit, cancellationToken: cancellationToken);
+            var consumersTask = apiClient.GetWebhookConsumersAsync(
+                ownerKindId: owner.OwnerKindId,
+                ownerId: owner.OwnerId,
+                limit: SnapshotLimit,
+                cancellationToken: cancellationToken);
+            var endpointsTask = apiClient.GetWebhookEndpointsAsync(
+                ownerKindId: owner.OwnerKindId,
+                ownerId: owner.OwnerId,
+                limit: SnapshotLimit,
+                cancellationToken: cancellationToken);
+            var messagesTask = apiClient.GetWebhookMessagesAsync(
+                ownerKindId: owner.OwnerKindId,
+                ownerId: owner.OwnerId,
+                limit: ActivityLimit,
+                cancellationToken: cancellationToken);
+            var attemptsTask = apiClient.GetWebhookDeliveryAttemptsAsync(
+                ownerKindId: owner.OwnerKindId,
+                ownerId: owner.OwnerId,
+                limit: ActivityLimit,
+                cancellationToken: cancellationToken);
 
             await Task.WhenAll(eventTypesTask, consumersTask, endpointsTask, messagesTask, attemptsTask);
 
@@ -42,7 +62,14 @@ public sealed class WebhookManagementService(
                 Messages = ToList(messageCollection._embedded?.Items),
                 DeliveryAttempts = ToList(attemptCollection._embedded?.Items),
                 CanCreateConsumer = WebhookHal.HasLink(consumerCollection._links, WebhookClientLinkRelations.Create),
-                CanCreateEndpoint = WebhookHal.HasLink(endpointCollection._links, WebhookClientLinkRelations.Create)
+                CanCreateEndpoint = WebhookHal.HasLink(endpointCollection._links, WebhookClientLinkRelations.Create),
+                CanViewProviderPublications = WebhookHal.HasLink(
+                    messageCollection._links,
+                    WebhookClientLinkRelations.ProviderPublications),
+                CanUseBulkReplay = WebhookHal.HasLink(
+                    messageCollection._links,
+                    WebhookClientLinkRelations.BulkReplayPreview)
+                    && WebhookHal.HasLink(messageCollection._links, WebhookClientLinkRelations.BulkReplays)
             };
         }
         catch (ApiException ex)
@@ -58,14 +85,19 @@ public sealed class WebhookManagementService(
     }
 
     public async Task<IReadOnlyList<HalResourceOfWebhookDeliveryAttemptDto>> GetDeliveryAttemptsAsync(
+        WebhookOwnerSelection owner,
         Guid? messageId = null,
         Guid? endpointId = null,
         int limit = ActivityLimit,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(owner);
+
         try
         {
             var attempts = await apiClient.GetWebhookDeliveryAttemptsAsync(
+                ownerKindId: owner.OwnerKindId,
+                ownerId: owner.OwnerId,
                 messageId: messageId,
                 endpointId: endpointId,
                 limit: limit,

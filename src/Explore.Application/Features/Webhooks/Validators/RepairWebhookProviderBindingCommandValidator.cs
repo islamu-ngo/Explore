@@ -14,10 +14,6 @@ public sealed class RepairWebhookProviderBindingCommandValidator
 
     public RepairWebhookProviderBindingCommandValidator()
     {
-        RuleFor(command => command.TenantId)
-            .NotEmpty()
-            .WithMessage("TenantId is required.");
-
         RuleFor(command => command.ConsumerId)
             .NotEmpty()
             .WithMessage("ConsumerId is required.");

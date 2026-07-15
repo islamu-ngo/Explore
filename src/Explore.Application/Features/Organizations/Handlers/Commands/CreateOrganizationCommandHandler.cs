@@ -24,8 +24,8 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
     private readonly IActorRepository _actorRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
-    private readonly IUserContext _userContext;
     private readonly IAdminContext _adminContext;
+    private readonly IAdminCacheInvalidator _adminCacheInvalidator;
     private readonly IMapper _mapper;
     private readonly ITenantContext _tenantContext;
     private readonly HybridCache _cache;
@@ -36,8 +36,8 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         IOrganizationMemberRepository organizationMemberRepository,
         IActorRepository actorRepository,
         IStorageObjectRepository storageObjectRepository,
-        IUserContext userContext,
         IAdminContext adminContext,
+        IAdminCacheInvalidator adminCacheInvalidator,
         IMapper mapper,
         ITenantContext tenantContext,
         HybridCache cache,
@@ -47,8 +47,8 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         _organizationMemberRepository = organizationMemberRepository;
         _actorRepository = actorRepository;
         _storageObjectRepository = storageObjectRepository;
-        _userContext = userContext;
         _adminContext = adminContext;
+        _adminCacheInvalidator = adminCacheInvalidator;
         _mapper = mapper;
         _tenantContext = tenantContext;
         _cache = cache;
@@ -69,8 +69,7 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
             return response;
         }
 
-        // Get the current authenticated user
-        var currentUserId = _userContext.GetRequiredUserId();
+        var currentUserId = request.CreatorUserId;
 
         var organization = _mapper.Map<Organization>(request.OrganizationDto);
         var tenantId = _tenantContext.TenantId;
@@ -141,6 +140,7 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         };
 
         await _organizationMemberRepository.Create(organizationMember);
+        _adminCacheInvalidator.InvalidateUser(currentUserId);
 
         response.Success = true;
         response.Message = "Organization created successfully. You are now the creator and admin of this organization.";

@@ -7,7 +7,7 @@ using Explore.Domain.Enums;
 namespace Explore.Application.DTOs.Management;
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed class ManagementTenantProvisioningRequest
+public sealed class ManagementTenantProvisioningRequestDto
 {
     public const int CurrentSchemaVersion = 1;
 

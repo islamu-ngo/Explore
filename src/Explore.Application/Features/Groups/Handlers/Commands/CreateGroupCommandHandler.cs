@@ -22,7 +22,7 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
     private readonly IGroupMemberRepository _groupMemberRepository;
     private readonly IActorRepository _actorRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
-    private readonly IUserContext _userContext;
+    private readonly IAdminCacheInvalidator _adminCacheInvalidator;
     private readonly IMapper _mapper;
     private readonly ITenantContext _tenantContext;
     private readonly HybridCache _cache;
@@ -33,7 +33,7 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
         IGroupMemberRepository groupMemberRepository,
         IActorRepository actorRepository,
         IStorageObjectRepository storageObjectRepository,
-        IUserContext userContext,
+        IAdminCacheInvalidator adminCacheInvalidator,
         IMapper mapper,
         ITenantContext tenantContext,
         HybridCache cache,
@@ -43,7 +43,7 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
         _groupMemberRepository = groupMemberRepository;
         _actorRepository = actorRepository;
         _storageObjectRepository = storageObjectRepository;
-        _userContext = userContext;
+        _adminCacheInvalidator = adminCacheInvalidator;
         _mapper = mapper;
         _tenantContext = tenantContext;
         _cache = cache;
@@ -64,7 +64,7 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
             return response;
         }
 
-        return await _groupRepository.ExecuteWithHierarchyMutationLock(
+        var result = await _groupRepository.ExecuteWithHierarchyMutationLock(
             _tenantContext.TenantId,
             async lockedCancellationToken =>
             {
@@ -77,7 +77,7 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
                     return response;
                 }
 
-                var currentUserId = _userContext.GetRequiredUserId();
+                var currentUserId = request.CreatorUserId;
 
                 var group = _mapper.Map<Group>(request.GroupDto);
 
@@ -145,6 +145,13 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
                 return response;
             },
             cancellationToken);
+
+        if (result.Success)
+        {
+            _adminCacheInvalidator.InvalidateUser(request.CreatorUserId);
+        }
+
+        return result;
     }
 
     private string GenerateHandle(string name)

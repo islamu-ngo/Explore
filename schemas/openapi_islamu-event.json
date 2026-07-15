@@ -37696,17 +37696,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/TriggerManagedRegistrationResult"
+                  "$ref": "#/components/schemas/TriggerManagedRegistrationResultDto"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/TriggerManagedRegistrationResult"
+                  "$ref": "#/components/schemas/TriggerManagedRegistrationResultDto"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/TriggerManagedRegistrationResult"
+                  "$ref": "#/components/schemas/TriggerManagedRegistrationResultDto"
                 }
               }
             }
@@ -37716,17 +37716,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/TriggerManagedRegistrationResult"
+                  "$ref": "#/components/schemas/TriggerManagedRegistrationResultDto"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/TriggerManagedRegistrationResult"
+                  "$ref": "#/components/schemas/TriggerManagedRegistrationResultDto"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/TriggerManagedRegistrationResult"
+                  "$ref": "#/components/schemas/TriggerManagedRegistrationResultDto"
                 }
               }
             }
@@ -37984,17 +37984,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ManagementUpgradePreflightRequest"
+                "$ref": "#/components/schemas/ManagementUpgradePreflightRequestDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ManagementUpgradePreflightRequest"
+                "$ref": "#/components/schemas/ManagementUpgradePreflightRequestDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ManagementUpgradePreflightRequest"
+                "$ref": "#/components/schemas/ManagementUpgradePreflightRequestDto"
               }
             }
           },
@@ -38118,17 +38118,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ManagementUpgradePostflightRequest"
+                "$ref": "#/components/schemas/ManagementUpgradePostflightRequestDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ManagementUpgradePostflightRequest"
+                "$ref": "#/components/schemas/ManagementUpgradePostflightRequestDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ManagementUpgradePostflightRequest"
+                "$ref": "#/components/schemas/ManagementUpgradePostflightRequestDto"
               }
             }
           },
@@ -38252,17 +38252,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ManagementTenantProvisioningRequest"
+                "$ref": "#/components/schemas/ManagementTenantProvisioningRequestDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ManagementTenantProvisioningRequest"
+                "$ref": "#/components/schemas/ManagementTenantProvisioningRequestDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ManagementTenantProvisioningRequest"
+                "$ref": "#/components/schemas/ManagementTenantProvisioningRequestDto"
               }
             }
           },
@@ -38427,17 +38427,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ManagementTenantProvisioningRequest"
+                "$ref": "#/components/schemas/ManagementTenantProvisioningRequestDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ManagementTenantProvisioningRequest"
+                "$ref": "#/components/schemas/ManagementTenantProvisioningRequestDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/ManagementTenantProvisioningRequest"
+                "$ref": "#/components/schemas/ManagementTenantProvisioningRequestDto"
               }
             }
           },
@@ -38889,17 +38889,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/RotateManagedControlPlaneCredentialRequest"
+                "$ref": "#/components/schemas/RotateManagedControlPlaneCredentialRequestDto"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/RotateManagedControlPlaneCredentialRequest"
+                "$ref": "#/components/schemas/RotateManagedControlPlaneCredentialRequestDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/RotateManagedControlPlaneCredentialRequest"
+                "$ref": "#/components/schemas/RotateManagedControlPlaneCredentialRequestDto"
               }
             }
           },
@@ -53765,7 +53765,7 @@
           "User"
         ],
         "summary": "Get current user's admin authority",
-        "description": "Returns instance, tenant, and organization admin status for the authenticated user. Consumed by BFF claims transformation.",
+        "description": "Returns instance, tenant, organization, and group admin status for the authenticated user. Consumed by BFF and route authorization.",
         "operationId": "GetCurrentUserAdminAuthority",
         "parameters": [
           {
@@ -54727,14 +54727,450 @@
         "x-output-cache-policy": "DetailData"
       }
     },
-    "/api/webhooks/endpoints/{endpointId}/resume": {
+    "/api/webhooks/bulk-replays/preview": {
+      "get": {
+        "tags": [
+          "WebhookBulkReplays"
+        ],
+        "summary": "Preview webhook bulk replay",
+        "description": "Returns bounded eligible and excluded counts without changing delivery state.",
+        "operationId": "PreviewWebhookBulkReplay",
+        "parameters": [
+          {
+            "name": "fromUtc",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "toUtc",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "consumerId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "endpointId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "eventType",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "maxItems",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 100
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookBulkReplayPreviewDto"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Public",
+        "x-rate-limit-policy": "Authenticated"
+      }
+    },
+    "/api/webhooks/bulk-replays": {
+      "get": {
+        "tags": [
+          "WebhookBulkReplays"
+        ],
+        "summary": "Get webhook bulk replays",
+        "description": "Returns recent tenant-scoped durable replay operations and state-authorized HAL actions.",
+        "operationId": "GetWebhookBulkReplays",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 100
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfWebhookBulkReplayOperationDto"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Public",
+        "x-rate-limit-policy": "Authenticated"
+      },
+      "post": {
+        "tags": [
+          "WebhookBulkReplays"
+        ],
+        "summary": "Schedule webhook bulk replay",
+        "description": "Queues an idempotent bounded replay after re-running the requested eligibility preview.",
+        "operationId": "ScheduleWebhookBulkReplay",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleWebhookBulkReplayRequestDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleWebhookBulkReplayRequestDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleWebhookBulkReplayRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/webhooks/bulk-replays/{operationId}": {
+      "get": {
+        "tags": [
+          "WebhookBulkReplays"
+        ],
+        "summary": "Get webhook bulk replay",
+        "description": "Returns one tenant-scoped durable replay operation with normalized lifecycle evidence.",
+        "operationId": "GetWebhookBulkReplayById",
+        "parameters": [
+          {
+            "name": "operationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfWebhookBulkReplayOperationDto"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Public",
+        "x-rate-limit-policy": "Authenticated"
+      }
+    },
+    "/api/webhooks/bulk-replays/{operationId}/cancel": {
+      "post": {
+        "tags": [
+          "WebhookBulkReplays"
+        ],
+        "summary": "Cancel webhook bulk replay",
+        "description": "Cancels a queued replay using the caller's observed optimistic concurrency version.",
+        "operationId": "CancelWebhookBulkReplay",
+        "parameters": [
+          {
+            "name": "operationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelWebhookBulkReplayRequestDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelWebhookBulkReplayRequestDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelWebhookBulkReplayRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/webhooks/endpoints/{endpointId}/pause": {
       "post": {
         "tags": [
           "WebhookEndpointOperations"
         ],
-        "summary": "Resume webhook endpoint",
-        "description": "Resumes a tenant-scoped Local webhook endpoint after its sustained-failure circuit auto-paused delivery.",
-        "operationId": "ResumeWebhookEndpoint",
+        "summary": "Pause webhook endpoint",
+        "description": "Manually pauses an active tenant-scoped Local webhook endpoint.",
+        "operationId": "PauseWebhookEndpoint",
         "parameters": [
           {
             "name": "endpointId",
@@ -54760,6 +55196,26 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PauseWebhookEndpointRequestDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PauseWebhookEndpointRequestDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PauseWebhookEndpointRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -54800,6 +55256,502 @@
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/webhooks/endpoints/{endpointId}/resume": {
+      "post": {
+        "tags": [
+          "WebhookEndpointOperations"
+        ],
+        "summary": "Resume webhook endpoint",
+        "description": "Resumes a tenant-scoped Local webhook endpoint after its sustained-failure circuit auto-paused delivery.",
+        "operationId": "ResumeWebhookEndpoint",
+        "parameters": [
+          {
+            "name": "endpointId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumeWebhookEndpointRequestDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumeWebhookEndpointRequestDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumeWebhookEndpointRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/webhooks/provider-publications": {
+      "get": {
+        "tags": [
+          "WebhookProviderPublications"
+        ],
+        "summary": "Get provider publications",
+        "description": "Returns bounded tenant-scoped provider publication evidence with state-authorized HAL actions.",
+        "operationId": "GetWebhookProviderPublications",
+        "parameters": [
+          {
+            "name": "messageId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "consumerId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "statusId",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 100
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfWebhookProviderPublicationDto"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Public",
+        "x-rate-limit-policy": "Authenticated"
+      }
+    },
+    "/api/webhooks/provider-publications/{publicationId}": {
+      "get": {
+        "tags": [
+          "WebhookProviderPublications"
+        ],
+        "summary": "Get provider publication",
+        "description": "Returns one tenant-scoped provider publication and its append-only safe attempt evidence.",
+        "operationId": "GetWebhookProviderPublicationById",
+        "parameters": [
+          {
+            "name": "publicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfWebhookProviderPublicationDto"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Public",
+        "x-rate-limit-policy": "Authenticated"
+      }
+    },
+    "/api/webhooks/provider-publications/{publicationId}/reconcile": {
+      "post": {
+        "tags": [
+          "WebhookProviderPublications"
+        ],
+        "summary": "Reconcile provider publication",
+        "description": "Resolves manual publication uncertainty using an exact external provider message identifier.",
+        "operationId": "ReconcileWebhookProviderPublication",
+        "parameters": [
+          {
+            "name": "publicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconcileWebhookProviderPublicationRequestDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconcileWebhookProviderPublicationRequestDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconcileWebhookProviderPublicationRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/webhooks/provider-publications/{publicationId}/abandon": {
+      "post": {
+        "tags": [
+          "WebhookProviderPublications"
+        ],
+        "summary": "Abandon provider publication",
+        "description": "Explicitly abandons manual-reconciliation or dead-lettered provider work.",
+        "operationId": "AbandonWebhookProviderPublication",
+        "parameters": [
+          {
+            "name": "publicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AbandonWebhookProviderPublicationRequestDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AbandonWebhookProviderPublicationRequestDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AbandonWebhookProviderPublicationRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { }
@@ -54882,9 +55834,29 @@
           "Webhooks"
         ],
         "summary": "Get webhook consumers",
-        "description": "Returns tenant-scoped outgoing webhook consumers with HAL management affordances.",
+        "description": "Returns outgoing webhook consumers for one typed owner with HAL management affordances.",
         "operationId": "GetWebhookConsumers",
         "parameters": [
+          {
+            "name": "ownerKindId",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "ownerId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           {
             "name": "limit",
             "in": "query",
@@ -54948,7 +55920,7 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated",
+        "x-endpoint-class": "Public",
         "x-rate-limit-policy": "Authenticated",
         "x-output-cache-policy": "ListData"
       },
@@ -55057,7 +56029,7 @@
           "Webhooks"
         ],
         "summary": "Get webhook consumer",
-        "description": "Returns one tenant-scoped outgoing webhook consumer with HAL management affordances.",
+        "description": "Returns one owner-authorized outgoing webhook consumer with HAL management affordances.",
         "operationId": "GetWebhookConsumerById",
         "parameters": [
           {
@@ -55130,7 +56102,7 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated",
+        "x-endpoint-class": "Public",
         "x-rate-limit-policy": "Authenticated"
       }
     },
@@ -55391,9 +56363,29 @@
           "Webhooks"
         ],
         "summary": "Get webhook endpoints",
-        "description": "Returns tenant-scoped outgoing webhook endpoints with HAL management affordances.",
+        "description": "Returns outgoing webhook endpoints for one typed owner with HAL management affordances.",
         "operationId": "GetWebhookEndpoints",
         "parameters": [
+          {
+            "name": "ownerKindId",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "ownerId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           {
             "name": "consumerId",
             "in": "query",
@@ -55465,7 +56457,7 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated",
+        "x-endpoint-class": "Public",
         "x-rate-limit-policy": "Authenticated",
         "x-output-cache-policy": "ListData"
       },
@@ -55474,7 +56466,7 @@
           "Webhooks"
         ],
         "summary": "Create webhook endpoint",
-        "description": "Creates a tenant-scoped outgoing webhook endpoint and event type subscriptions.",
+        "description": "Creates an outgoing webhook endpoint that inherits its persisted consumer owner.",
         "operationId": "CreateWebhookEndpoint",
         "parameters": [
           {
@@ -55585,7 +56577,7 @@
           "Webhooks"
         ],
         "summary": "Get webhook endpoint",
-        "description": "Returns one tenant-scoped outgoing webhook endpoint with subscription metadata.",
+        "description": "Returns one owner-authorized outgoing webhook endpoint with subscription metadata.",
         "operationId": "GetWebhookEndpointById",
         "parameters": [
           {
@@ -55658,7 +56650,7 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated",
+        "x-endpoint-class": "Public",
         "x-rate-limit-policy": "Authenticated"
       },
       "put": {
@@ -56213,6 +57205,26 @@
         "operationId": "GetWebhookMessages",
         "parameters": [
           {
+            "name": "ownerKindId",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "ownerId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "schema": {
@@ -56275,7 +57287,7 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated",
+        "x-endpoint-class": "Public",
         "x-rate-limit-policy": "Authenticated"
       }
     },
@@ -56358,7 +57370,112 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated",
+        "x-endpoint-class": "Public",
+        "x-rate-limit-policy": "Authenticated"
+      }
+    },
+    "/api/webhooks/messages/{messageId}/payload": {
+      "get": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Get webhook message payload",
+        "description": "Returns separately authorized exact outgoing webhook payload bytes as base64 while retained.",
+        "operationId": "GetWebhookMessagePayload",
+        "parameters": [
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookMessagePayloadDto"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "410": {
+            "description": "Gone",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Public",
         "x-rate-limit-policy": "Authenticated"
       }
     },
@@ -56371,6 +57488,26 @@
         "description": "Returns tenant-scoped LocalProvider delivery attempt audit rows with optional message and endpoint filters.",
         "operationId": "GetWebhookDeliveryAttempts",
         "parameters": [
+          {
+            "name": "ownerKindId",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "ownerId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           {
             "name": "messageId",
             "in": "query",
@@ -56450,7 +57587,7 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated",
+        "x-endpoint-class": "Public",
         "x-rate-limit-policy": "Authenticated"
       }
     },
@@ -56533,7 +57670,7 @@
             }
           }
         },
-        "x-endpoint-class": "Authenticated",
+        "x-endpoint-class": "Public",
         "x-rate-limit-policy": "Authenticated"
       }
     },
@@ -56770,6 +57907,22 @@
   },
   "components": {
     "schemas": {
+      "AbandonWebhookProviderPublicationRequestDto": {
+        "type": "object",
+        "properties": {
+          "expectedConcurrencyVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "reasonCode": {
+            "type": "string"
+          }
+        }
+      },
       "ActorDto": {
         "type": "object",
         "properties": {
@@ -57683,6 +58836,13 @@
             }
           },
           "adminOrganizationIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "adminGroupIds": {
             "type": "array",
             "items": {
               "type": "string",
@@ -59823,6 +60983,25 @@
           "expectedConcurrencyStamp": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "CancelWebhookBulkReplayRequestDto": {
+        "required": [
+          "reasonCode"
+        ],
+        "type": "object",
+        "properties": {
+          "expectedConcurrencyVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "reasonCode": {
+            "type": "string"
           }
         }
       },
@@ -64571,14 +65750,7 @@
       "CreateWebhookConsumerRequestDto": {
         "type": "object",
         "properties": {
-          "ownerActorId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "ownerUserId": {
+          "ownerId": {
             "type": [
               "null",
               "string"
@@ -71978,8 +73150,14 @@
             "type": "string",
             "format": "date-time"
           },
-          "currentUserRole": {
-            "type": "integer"
+          "currentUserRoleId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "actorProfilePictureId": {
             "type": [
@@ -72558,6 +73736,17 @@
           }
         }
       },
+      "HalCollectionEmbeddedOfWebhookBulkReplayOperationDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfWebhookBulkReplayOperationDto"
+            }
+          }
+        }
+      },
       "HalCollectionEmbeddedOfWebhookConsumerDto": {
         "type": "object",
         "properties": {
@@ -72598,6 +73787,17 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/HalResourceOfWebhookMessageDto"
+            }
+          }
+        }
+      },
+      "HalCollectionEmbeddedOfWebhookProviderPublicationDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfWebhookProviderPublicationDto"
             }
           }
         }
@@ -74474,6 +75674,58 @@
           }
         }
       },
+      "HalCollectionResourceOfWebhookBulkReplayOperationDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfWebhookBulkReplayOperationDto"
+          }
+        }
+      },
       "HalCollectionResourceOfWebhookConsumerDto": {
         "type": "object",
         "properties": {
@@ -74679,6 +75931,58 @@
           },
           "_embedded": {
             "$ref": "#/components/schemas/HalCollectionEmbeddedOfWebhookMessageDto"
+          }
+        }
+      },
+      "HalCollectionResourceOfWebhookProviderPublicationDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfWebhookProviderPublicationDto"
           }
         }
       },
@@ -80926,8 +82230,14 @@
             "type": "string",
             "format": "date-time"
           },
-          "currentUserRole": {
-            "type": "integer"
+          "currentUserRoleId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "actorProfilePictureId": {
             "type": [
@@ -83302,8 +84612,14 @@
             "type": "string",
             "format": "date-time"
           },
-          "currentUserRole": {
-            "type": "integer"
+          "currentUserRoleId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "actorProfilePictureId": {
             "type": [
@@ -85007,6 +86323,147 @@
           }
         }
       },
+      "HalResourceOfWebhookBulkReplayOperationDto": {
+        "required": [
+          "statusCode",
+          "statusName",
+          "filter",
+          "reasonCode"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "operationKey": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "statusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "statusCode": {
+            "type": "string"
+          },
+          "statusName": {
+            "type": "string"
+          },
+          "filter": {
+            "$ref": "#/components/schemas/WebhookBulkReplayFilterDto"
+          },
+          "reasonCode": {
+            "type": "string"
+          },
+          "cancellationReasonCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "estimatedEligibleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "estimatedSelectedCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "estimatedExcludedCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "scheduledCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "failureCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "concurrencyVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "queuedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "cancelledAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "failedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
       "HalResourceOfWebhookConsumerDto": {
         "required": [
           "consumerKindCode",
@@ -85026,10 +86483,27 @@
             "format": "uuid"
           },
           "tenantId": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
           },
-          "ownerActorId": {
+          "instanceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "groupId": {
             "type": [
               "null",
               "string"
@@ -85041,6 +86515,10 @@
               "null",
               "string"
             ],
+            "format": "uuid"
+          },
+          "ownerId": {
+            "type": "string",
             "format": "uuid"
           },
           "consumerKindId": {
@@ -85194,6 +86672,18 @@
             "type": "string",
             "format": "uuid"
           },
+          "ownerKindId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "messageId": {
             "type": "string",
             "format": "uuid"
@@ -85322,6 +86812,8 @@
       },
       "HalResourceOfWebhookEndpointDto": {
         "required": [
+          "ownerKindCode",
+          "ownerKindName",
           "providerModeCode",
           "providerModeName",
           "destinationHost",
@@ -85335,8 +86827,36 @@
             "format": "uuid"
           },
           "tenantId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "instanceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "ownerId": {
             "type": "string",
             "format": "uuid"
+          },
+          "ownerKindId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "ownerKindCode": {
+            "type": "string"
+          },
+          "ownerKindName": {
+            "type": "string"
           },
           "consumerId": {
             "type": "string",
@@ -85566,6 +87086,18 @@
             "type": "string",
             "format": "uuid"
           },
+          "ownerKindId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "eventType": {
             "type": "string"
           },
@@ -85616,6 +87148,279 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfWebhookProviderPublicationDto": {
+        "required": [
+          "providerKindCode",
+          "providerKindName",
+          "modeSnapshotCode",
+          "modeSnapshotName",
+          "statusCode",
+          "statusName",
+          "providerVersion",
+          "providerEventId",
+          "requestHash",
+          "providerEnvironment",
+          "providerConfigurationVersion",
+          "retentionPolicyVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "webhookMessageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "webhookConsumerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "webhookDeliveryPlanSnapshotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "providerKindId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "providerKindCode": {
+            "type": "string"
+          },
+          "providerKindName": {
+            "type": "string"
+          },
+          "modeSnapshotId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "modeSnapshotCode": {
+            "type": "string"
+          },
+          "modeSnapshotName": {
+            "type": "string"
+          },
+          "statusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "statusCode": {
+            "type": "string"
+          },
+          "statusName": {
+            "type": "string"
+          },
+          "providerVersion": {
+            "type": "string"
+          },
+          "providerEventId": {
+            "type": "string"
+          },
+          "requestHash": {
+            "type": "string"
+          },
+          "providerEnvironment": {
+            "type": "string"
+          },
+          "providerApplicationId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "externalProviderMessageId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "automaticPublicationAttemptCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "automaticReconciliationAttemptCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "lastAutomaticReconciliationAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "nextActionAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "failureCategory": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "safeDetail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "publicationFence": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "concurrencyVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "eventContractVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "providerConfigurationVersion": {
+            "type": "string"
+          },
+          "retentionPolicyVersion": {
+            "type": "string"
+          },
+          "payloadRetentionUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publicationRetentionUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "idempotencyValidUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "preparedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publishingStartedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "providerQueuedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "publicationUnknownAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "deadLetteredAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "manualReconciliationAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "abandonedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "processingLeaseExpiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "attempts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WebhookProviderPublicationAttemptDto"
+            }
           },
           "_links": {
             "type": "object",
@@ -87989,7 +89794,7 @@
         },
         "additionalProperties": false
       },
-      "ManagementTenantProvisioningRequest": {
+      "ManagementTenantProvisioningRequestDto": {
         "required": [
           "externalRequestId",
           "externalCustomerReference",
@@ -88194,7 +89999,7 @@
           }
         }
       },
-      "ManagementUpgradePostflightRequest": {
+      "ManagementUpgradePostflightRequestDto": {
         "required": [
           "expectedEventVersion",
           "expectedManagementApiVersion"
@@ -88280,7 +90085,7 @@
           }
         }
       },
-      "ManagementUpgradePreflightRequest": {
+      "ManagementUpgradePreflightRequestDto": {
         "required": [
           "targetEventVersion",
           "targetManagementApiVersion"
@@ -90437,15 +92242,14 @@
             "type": "string",
             "format": "date-time"
           },
-          "currentUserRole": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/RoleEnum"
-              }
-            ]
+          "currentUserRoleId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "actorProfilePictureId": {
             "type": [
@@ -91200,6 +93004,22 @@
           },
           "hasNextPage": {
             "type": "boolean"
+          }
+        }
+      },
+      "PauseWebhookEndpointRequestDto": {
+        "type": "object",
+        "properties": {
+          "expectedDeliveryStateVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "reasonCode": {
+            "type": "string"
           }
         }
       },
@@ -92152,6 +93972,25 @@
           }
         }
       },
+      "ReconcileWebhookProviderPublicationRequestDto": {
+        "type": "object",
+        "properties": {
+          "expectedConcurrencyVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "externalProviderMessageId": {
+            "type": "string"
+          },
+          "reasonCode": {
+            "type": "string"
+          }
+        }
+      },
       "RedriveIncomingWebhookRequestDto": {
         "type": "object",
         "properties": {
@@ -92597,6 +94436,22 @@
           }
         }
       },
+      "ResumeWebhookEndpointRequestDto": {
+        "type": "object",
+        "properties": {
+          "expectedDeliveryStateVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "reasonCode": {
+            "type": "string"
+          }
+        }
+      },
       "RetiredDefinitionDto": {
         "required": [
           "namespace",
@@ -92776,7 +94631,7 @@
           }
         }
       },
-      "RotateManagedControlPlaneCredentialRequest": {
+      "RotateManagedControlPlaneCredentialRequestDto": {
         "required": [
           "keyId",
           "secretHash",
@@ -92914,6 +94769,25 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "ScheduleWebhookBulkReplayRequestDto": {
+        "required": [
+          "filter",
+          "reasonCode"
+        ],
+        "type": "object",
+        "properties": {
+          "operationKey": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "filter": {
+            "$ref": "#/components/schemas/WebhookBulkReplayFilterDto"
+          },
+          "reasonCode": {
+            "type": "string"
           }
         }
       },
@@ -95781,7 +97655,7 @@
           }
         }
       },
-      "TriggerManagedRegistrationResult": {
+      "TriggerManagedRegistrationResultDto": {
         "required": [
           "success",
           "state",
@@ -100648,6 +102522,293 @@
           }
         }
       },
+      "WebhookBulkReplayFilterDto": {
+        "type": "object",
+        "properties": {
+          "fromUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "toUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "webhookConsumerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "webhookEndpointId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "eventType": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "maxItems": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "WebhookBulkReplayOperationDto": {
+        "required": [
+          "statusCode",
+          "statusName",
+          "filter",
+          "reasonCode"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "operationKey": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "statusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "statusCode": {
+            "type": "string"
+          },
+          "statusName": {
+            "type": "string"
+          },
+          "filter": {
+            "$ref": "#/components/schemas/WebhookBulkReplayFilterDto"
+          },
+          "reasonCode": {
+            "type": "string"
+          },
+          "cancellationReasonCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "estimatedEligibleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "estimatedSelectedCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "estimatedExcludedCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "scheduledCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "failureCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "concurrencyVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "queuedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "cancelledAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "failedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "WebhookBulkReplayPreviewDto": {
+        "required": [
+          "filter"
+        ],
+        "type": "object",
+        "properties": {
+          "filter": {
+            "$ref": "#/components/schemas/WebhookBulkReplayFilterDto"
+          },
+          "eligibleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "estimatedSelectedCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "excludedCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "excludedHeldCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "excludedPayloadUnavailableCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "excludedEndpointUnavailableCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "excludedIneligibleLocalStateCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "excludedProviderConflictCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "excludedProviderUnknownCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "excludedProviderManualReconciliationCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "excludedProviderIneligibleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maximumItemsPerOperation": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maximumReservedItemsPerTenant": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "previewedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "WebhookConsumerDto": {
         "required": [
           "consumerKindCode",
@@ -100667,10 +102828,27 @@
             "format": "uuid"
           },
           "tenantId": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
           },
-          "ownerActorId": {
+          "instanceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "groupId": {
             "type": [
               "null",
               "string"
@@ -100682,6 +102860,10 @@
               "null",
               "string"
             ],
+            "format": "uuid"
+          },
+          "ownerId": {
+            "type": "string",
             "format": "uuid"
           },
           "consumerKindId": {
@@ -100821,6 +103003,18 @@
             "type": "string",
             "format": "uuid"
           },
+          "ownerKindId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "messageId": {
             "type": "string",
             "format": "uuid"
@@ -100935,6 +103129,8 @@
       },
       "WebhookEndpointDto": {
         "required": [
+          "ownerKindCode",
+          "ownerKindName",
           "providerModeCode",
           "providerModeName",
           "destinationHost",
@@ -100948,8 +103144,36 @@
             "format": "uuid"
           },
           "tenantId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "instanceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "ownerId": {
             "type": "string",
             "format": "uuid"
+          },
+          "ownerKindId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "ownerKindCode": {
+            "type": "string"
+          },
+          "ownerKindName": {
+            "type": "string"
           },
           "consumerId": {
             "type": "string",
@@ -101253,6 +103477,18 @@
             "type": "string",
             "format": "uuid"
           },
+          "ownerKindId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "eventType": {
             "type": "string"
           },
@@ -101306,6 +103542,49 @@
           }
         }
       },
+      "WebhookMessagePayloadDto": {
+        "required": [
+          "contentType",
+          "contentEncoding",
+          "payloadBase64",
+          "payloadHash"
+        ],
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "contentEncoding": {
+            "type": "string"
+          },
+          "payloadBase64": {
+            "type": "string"
+          },
+          "payloadHash": {
+            "type": "string"
+          },
+          "payloadByteLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "payloadRetentionUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "retrievedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "WebhookProviderPortalAccessDto": {
         "required": [
           "url",
@@ -101325,6 +103604,334 @@
           "expiresAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "WebhookProviderPublicationAttemptDto": {
+        "required": [
+          "outcomeCode",
+          "outcomeName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "attemptNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "publicationFence": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "outcomeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "outcomeCode": {
+            "type": "string"
+          },
+          "outcomeName": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "externalProviderMessageId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "failureCategory": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "safeDetail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "WebhookProviderPublicationDto": {
+        "required": [
+          "providerKindCode",
+          "providerKindName",
+          "modeSnapshotCode",
+          "modeSnapshotName",
+          "statusCode",
+          "statusName",
+          "providerVersion",
+          "providerEventId",
+          "requestHash",
+          "providerEnvironment",
+          "providerConfigurationVersion",
+          "retentionPolicyVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "webhookMessageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "webhookConsumerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "webhookDeliveryPlanSnapshotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "providerKindId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "providerKindCode": {
+            "type": "string"
+          },
+          "providerKindName": {
+            "type": "string"
+          },
+          "modeSnapshotId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "modeSnapshotCode": {
+            "type": "string"
+          },
+          "modeSnapshotName": {
+            "type": "string"
+          },
+          "statusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "statusCode": {
+            "type": "string"
+          },
+          "statusName": {
+            "type": "string"
+          },
+          "providerVersion": {
+            "type": "string"
+          },
+          "providerEventId": {
+            "type": "string"
+          },
+          "requestHash": {
+            "type": "string"
+          },
+          "providerEnvironment": {
+            "type": "string"
+          },
+          "providerApplicationId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "externalProviderMessageId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "automaticPublicationAttemptCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "automaticReconciliationAttemptCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "lastAutomaticReconciliationAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "nextActionAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "failureCategory": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "safeDetail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "publicationFence": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "concurrencyVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "eventContractVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "providerConfigurationVersion": {
+            "type": "string"
+          },
+          "retentionPolicyVersion": {
+            "type": "string"
+          },
+          "payloadRetentionUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publicationRetentionUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "idempotencyValidUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "preparedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publishingStartedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "providerQueuedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "publicationUnknownAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "deadLetteredAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "manualReconciliationAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "abandonedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "processingLeaseExpiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "attempts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WebhookProviderPublicationAttemptDto"
+            }
           }
         }
       },
@@ -101707,7 +104314,13 @@
       "name": "VisibilityType"
     },
     {
+      "name": "WebhookBulkReplays"
+    },
+    {
       "name": "WebhookEndpointOperations"
+    },
+    {
+      "name": "WebhookProviderPublications"
     },
     {
       "name": "Webhooks"

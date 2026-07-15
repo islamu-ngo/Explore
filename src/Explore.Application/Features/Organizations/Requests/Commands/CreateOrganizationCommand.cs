@@ -15,7 +15,7 @@ public class CreateOrganizationCommand : IRequest<BaseCommandResponse<Guid>>, IS
     public const string PreCreateAuthorizationPhase = AuthorizationPhases.PreCreate;
 
     public required CreateOrganizationDto OrganizationDto { get; set; }
-    public string? UserId { get; set; }
+    public required Guid CreatorUserId { get; init; }
 
     string? ISecureRequest.ResourceId => PreCreateResourceId;
 

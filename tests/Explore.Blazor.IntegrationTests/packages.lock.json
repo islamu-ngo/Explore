@@ -902,7 +902,6 @@
           "Microsoft.AspNetCore.DataProtection.StackExchangeRedis": "[10.0.7, )",
           "Microsoft.Extensions.Caching.StackExchangeRedis": "[10.0.8, )",
           "Microsoft.Extensions.Http.Resilience": "[10.1.0, )",
-          "Microsoft.OpenApi": "[2.1.0, )",
           "Microsoft.VisualStudio.Azure.Containers.Tools.Targets": "[1.23.0, )",
           "Serilog.AspNetCore": "[10.0.0, )",
           "Serilog.Enrichers.Environment": "[3.0.1, )",
@@ -1237,12 +1236,6 @@
           "Microsoft.Extensions.Logging.Abstractions": "8.0.0",
           "Microsoft.IdentityModel.Logging": "8.14.0"
         }
-      },
-      "Microsoft.OpenApi": {
-        "type": "CentralTransitive",
-        "requested": "[2.1.0, )",
-        "resolved": "2.1.0",
-        "contentHash": "8eVvfjERqtZ+bwuX7HiKzbidCQSxBe86z6RSy7b9WJ35kMDtxUE6+sMXDMWXWOhrlIwid3MEpVvLSlI8vki7bQ=="
       },
       "Microsoft.VisualStudio.Azure.Containers.Tools.Targets": {
         "type": "CentralTransitive",

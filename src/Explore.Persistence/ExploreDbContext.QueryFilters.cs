@@ -134,15 +134,22 @@ public partial class ExploreDbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
         modelBuilder.Entity<WebhookConsumer>()
-            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+            .HasQueryFilter(QueryFilterNames.Tenant,
+                e => IsTenantFilterBypassed || (e.TenantId != null && e.TenantId == TenantFilterTenantId));
 
         modelBuilder.Entity<WebhookConsumerProviderBinding>()
-            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+            .HasQueryFilter(QueryFilterNames.Tenant,
+                e => IsTenantFilterBypassed || (e.TenantId != null && e.TenantId == TenantFilterTenantId));
 
         modelBuilder.Entity<WebhookEndpoint>()
-            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+            .HasQueryFilter(QueryFilterNames.Tenant,
+                e => IsTenantFilterBypassed || (e.TenantId != null && e.TenantId == TenantFilterTenantId));
 
         modelBuilder.Entity<WebhookEndpointSubscription>()
+            .HasQueryFilter(QueryFilterNames.Tenant,
+                e => IsTenantFilterBypassed || (e.TenantId != null && e.TenantId == TenantFilterTenantId));
+
+        modelBuilder.Entity<WebhookRetentionHold>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
         modelBuilder.Entity<WebhookMessage>()
@@ -152,6 +159,9 @@ public partial class ExploreDbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
         modelBuilder.Entity<WebhookLocalTargetSnapshot>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<WebhookBulkReplayOperation>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
         modelBuilder.Entity<WebhookDeliveryAttempt>()
@@ -424,6 +434,9 @@ public partial class ExploreDbContext
         // ===== Audit & Notifications =====
         modelBuilder.Entity<AuditLog>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<WebhookAuditEvent>()
+            .HasQueryFilter(QueryFilterNames.Tenant,
+                e => IsTenantFilterBypassed || (e.TenantId != null && e.TenantId == TenantFilterTenantId));
         modelBuilder.Entity<Notification>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);

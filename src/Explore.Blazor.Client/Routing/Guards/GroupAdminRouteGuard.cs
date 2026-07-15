@@ -1,11 +1,9 @@
-// ABOUTME: Route guard that restricts group admin routes to group-scoped administrators for the specific group.
-// ABOUTME: Verifies membership from GroupMember records and allows only GroupCreator and GroupAdmin roles.
+// ABOUTME: Route guard that restricts group settings to current persisted administrators.
+// ABOUTME: Resolves targeted group authority through the tenant-scoped BFF API and fails closed.
 
-using System.Security.Claims;
 using System.Text.RegularExpressions;
 using Blazouter.Interfaces;
 using Blazouter.Models;
-using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 
@@ -13,10 +11,8 @@ namespace Explore.Blazor.Client.Routing.Guards;
 
 public sealed partial class GroupAdminRouteGuard(
     AuthenticationStateProvider authStateProvider,
-    IGroupService groupService) : IRouteGuard
+    IUserService userService) : IRouteGuard
 {
-    private const string InternalUserIdClaimType = "internal_user_id";
-
     public async Task<bool> CanActivateAsync(RouteMatch match)
     {
         var authState = await authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
@@ -32,22 +28,8 @@ public sealed partial class GroupAdminRouteGuard(
             return false;
         }
 
-        var userId = ExtractUserId(user);
-        if (!userId.HasValue)
-        {
-            return false;
-        }
-
-        try
-        {
-            var members = await groupService.GetGroupMembersAsync(groupId.Value).ConfigureAwait(false);
-            var membership = members.FirstOrDefault(m => m.UserId == userId.Value);
-            return RoleHelper.CanManageGroup(membership?.RoleId);
-        }
-        catch
-        {
-            return false;
-        }
+        var authority = await userService.GetAdminAuthorityAsync().ConfigureAwait(false);
+        return authority?.AdminGroupIds?.Contains(groupId.Value) == true;
     }
 
     public async Task<string?> GetRedirectPathAsync(RouteMatch match)
@@ -63,16 +45,6 @@ public sealed partial class GroupAdminRouteGuard(
             : match.MatchedPath;
 
         return $"/login?returnUrl={Uri.EscapeDataString(returnUrl)}";
-    }
-
-    private static Guid? ExtractUserId(ClaimsPrincipal user)
-    {
-        var sub = user.FindFirst(InternalUserIdClaimType)?.Value
-            ?? user.FindFirst("sub")?.Value
-            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? user.FindFirst("sid")?.Value;
-
-        return Guid.TryParse(sub, out var userId) ? userId : null;
     }
 
     private static Guid? ExtractGroupIdFromPath(string? path)

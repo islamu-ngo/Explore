@@ -1,8 +1,7 @@
-// ABOUTME: Unit tests for GroupAdminRouteGuard that restricts group settings routes to group admins.
-// ABOUTME: Verifies role-based checks against GroupMember records for the targeted group route.
+// ABOUTME: Unit tests for the group settings guard's persisted authority checks.
+// ABOUTME: Verifies targeted group access through the tenant-scoped BFF authority API.
 
 using Blazouter.Models;
-using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Routing.Guards;
 using Explore.Blazor.Client.Tests.Common.Authentication;
 
@@ -23,9 +22,7 @@ public class GroupAdminRouteGuardTests
         var authState = new AuthenticationState(principal);
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
-        var groupService = Substitute.For<IGroupService>();
-
-        var guard = new GroupAdminRouteGuard(authStateProvider, groupService);
+        var guard = CreateGuard(authStateProvider);
 
         // Act
         var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = $"/admin/group/{TestGroupId}/settings" });
@@ -45,9 +42,7 @@ public class GroupAdminRouteGuardTests
         var authState = new AuthenticationState(principal);
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
-        var groupService = Substitute.For<IGroupService>();
-
-        var guard = new GroupAdminRouteGuard(authStateProvider, groupService);
+        var guard = CreateGuard(authStateProvider, TestGroupId);
 
         // Act
         var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/group/not-a-guid/settings" });
@@ -57,31 +52,18 @@ public class GroupAdminRouteGuardTests
     }
 
     [Test]
-    public async Task CanActivateAsync_GroupCreatorMembership_ReturnsTrue()
+    public async Task CanActivateAsync_MatchingPersistedGroupAuthority_ReturnsTrue()
     {
         // Arrange
-        var userId = AuthenticationTestConstants.AdminUserId;
         var principal = new AuthenticationTestBuilder()
-            .WithUser(userId, "Creator")
+            .WithUser(AuthenticationTestConstants.AdminUserId, "Group Admin")
             .BuildPrincipal();
 
         var authState = new AuthenticationState(principal);
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
-        var groupService = Substitute.For<IGroupService>();
-        groupService.GetGroupMembersAsync(TestGroupId).Returns(new List<GroupMemberDto>
-        {
-            new()
-            {
-                Id = Guid.NewGuid(),
-                GroupId = TestGroupId,
-                UserId = userId,
-                RoleId = RoleHelper.GroupCreator
-            }
-        });
-
-        var guard = new GroupAdminRouteGuard(authStateProvider, groupService);
+        var guard = CreateGuard(authStateProvider, TestGroupId);
 
         // Act
         var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = $"/admin/group/{TestGroupId}/settings" });
@@ -91,70 +73,60 @@ public class GroupAdminRouteGuardTests
     }
 
     [Test]
-    public async Task CanActivateAsync_GroupAdminMembership_ReturnsTrue()
+    public async Task CanActivateAsync_DifferentPersistedGroupAuthority_ReturnsFalse()
     {
         // Arrange
-        var userId = AuthenticationTestConstants.AdminUserId;
+        var otherGroupId = Guid.CreateVersion7();
         var principal = new AuthenticationTestBuilder()
-            .WithUser(userId, "Admin")
+            .WithUser(AuthenticationTestConstants.AdminUserId, "Other Group Admin")
             .BuildPrincipal();
 
         var authState = new AuthenticationState(principal);
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
-        var groupService = Substitute.For<IGroupService>();
-        groupService.GetGroupMembersAsync(TestGroupId).Returns(new List<GroupMemberDto>
-        {
-            new()
-            {
-                Id = Guid.NewGuid(),
-                GroupId = TestGroupId,
-                UserId = userId,
-                RoleId = RoleHelper.GroupAdmin
-            }
-        });
-
-        var guard = new GroupAdminRouteGuard(authStateProvider, groupService);
-
-        // Act
-        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = $"/admin/group/{TestGroupId}/settings" });
-
-        // Assert
-        await Assert.That(result).IsTrue();
-    }
-
-    [Test]
-    public async Task CanActivateAsync_NonAdminMembership_ReturnsFalse()
-    {
-        // Arrange
-        var userId = AuthenticationTestConstants.DefaultUserId;
-        var principal = new AuthenticationTestBuilder()
-            .WithUser(userId, "Member")
-            .BuildPrincipal();
-
-        var authState = new AuthenticationState(principal);
-        var authStateProvider = Substitute.For<AuthenticationStateProvider>();
-        authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
-
-        var groupService = Substitute.For<IGroupService>();
-        groupService.GetGroupMembersAsync(TestGroupId).Returns(new List<GroupMemberDto>
-        {
-            new()
-            {
-                Id = Guid.NewGuid(),
-                GroupId = TestGroupId,
-                UserId = userId,
-                RoleId = RoleHelper.GroupMember
-            }
-        });
-
-        var guard = new GroupAdminRouteGuard(authStateProvider, groupService);
+        var guard = CreateGuard(authStateProvider, otherGroupId);
 
         // Act
         var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = $"/admin/group/{TestGroupId}/settings" });
 
         // Assert
         await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task CanActivateAsync_MissingPersistedAuthority_ReturnsFalse()
+    {
+        // Arrange
+        var principal = new AuthenticationTestBuilder()
+            .WithUser(AuthenticationTestConstants.DefaultUserId, "Member")
+            .BuildPrincipal();
+
+        var authState = new AuthenticationState(principal);
+        var authStateProvider = Substitute.For<AuthenticationStateProvider>();
+        authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
+
+        var userService = Substitute.For<IUserService>();
+        userService.GetAdminAuthorityAsync().Returns((AdminAuthorityDto?)null);
+        var guard = new GroupAdminRouteGuard(authStateProvider, userService);
+
+        // Act
+        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = $"/admin/group/{TestGroupId}/settings" });
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    private static GroupAdminRouteGuard CreateGuard(
+        AuthenticationStateProvider authStateProvider,
+        params Guid[] adminGroupIds)
+    {
+        var userService = Substitute.For<IUserService>();
+        userService.GetAdminAuthorityAsync().Returns(new AdminAuthorityDto
+        {
+            AdminGroupIds = adminGroupIds
+        });
+
+        return new GroupAdminRouteGuard(authStateProvider, userService);
     }
 }

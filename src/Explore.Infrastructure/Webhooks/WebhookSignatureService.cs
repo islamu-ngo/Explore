@@ -56,7 +56,11 @@ public sealed class WebhookSignatureService : IWebhookSignatureService
             return WebhookVerificationResult.Failure("missing_header");
         }
 
-        if (!long.TryParse(timestampHeader, out var unixTimestamp))
+        if (!long.TryParse(
+                timestampHeader,
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out var unixTimestamp))
         {
             return WebhookVerificationResult.Failure("invalid_timestamp");
         }

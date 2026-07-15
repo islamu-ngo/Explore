@@ -171,46 +171,62 @@ public partial class FallbackAuthorizationService
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
     {
-        if (await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken))
-            return true;
-
-        if (!AllowsOrganizationWebhooks(resourceAttributes))
+        if (!TryResolveWebhookOwnerKind(resourceAttributes, out var ownerKind))
         {
-            LogDecision("deny", "organization_webhooks_disabled", resourceKind, resourceId, action);
+            return await EvaluateTenantScopedAccessAsync(
+                resourceKind,
+                resourceId,
+                action,
+                resourceAttributes,
+                cancellationToken);
+        }
+
+        if (ownerKind == WebhookConsumerKind.Instance)
+        {
+            LogDecision("deny", "instance_owner_requires_instance_admin", resourceKind, resourceId, action);
             return false;
         }
 
-        if (!IsOrganizationWebhookAction(action))
+        if (ownerKind == WebhookConsumerKind.Tenant)
         {
-            LogDecision("deny", "organization_webhook_action_not_allowed", resourceKind, resourceId, action);
+            return await EvaluateTenantScopedAccessAsync(
+                resourceKind,
+                resourceId,
+                action,
+                resourceAttributes,
+                cancellationToken);
+        }
+
+        if (!IsDelegatedWebhookAction(action))
+        {
+            LogDecision("deny", "delegated_webhook_action_not_allowed", resourceKind, resourceId, action);
             return false;
         }
 
-        var orgId = ResolveOrganizationId(resourceAttributes, resourceId);
-        if (orgId.HasValue && await _adminContext.IsOrganizationAdminAsync(orgId.Value, cancellationToken))
+        var allowed = ownerKind switch
         {
-            LogDecision("allow", "organization_admin=true", resourceKind, resourceId, action);
-            return true;
-        }
-
-        LogDecision("deny", "no_webhook_admin_authority", resourceKind, resourceId, action);
-        return false;
-    }
-
-    private static bool AllowsOrganizationWebhooks(IDictionary<string, object>? resourceAttributes)
-    {
-        if (resourceAttributes?.TryGetValue("allowOrganizationWebhooks", out var value) != true)
-            return false;
-
-        return value switch
-        {
-            bool enabled => enabled,
-            string text => bool.TryParse(text, out var enabled) && enabled,
+            WebhookConsumerKind.Organization =>
+                TryResolveGuidAttribute(resourceAttributes, "organizationId", out var organizationId) &&
+                await _adminContext.IsOrganizationAdminAsync(organizationId, cancellationToken),
+            WebhookConsumerKind.Group =>
+                TryResolveGuidAttribute(resourceAttributes, "groupId", out var groupId) &&
+                await _adminContext.IsGroupAdminAsync(groupId, cancellationToken),
+            WebhookConsumerKind.User =>
+                TryResolveGuidAttribute(resourceAttributes, "userId", out var ownerUserId) &&
+                ownerUserId == (_adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken)),
             _ => false
         };
+
+        LogDecision(
+            allowed ? "allow" : "deny",
+            allowed ? $"webhook_{ownerKind.ToString().ToLowerInvariant()}_owner" : "unrelated_webhook_owner",
+            resourceKind,
+            resourceId,
+            action);
+        return allowed;
     }
 
-    private static bool IsOrganizationWebhookAction(string action)
+    private static bool IsDelegatedWebhookAction(string action)
         => action is AuthorizationActions.Webhooks.View
             or AuthorizationActions.Webhooks.Create
             or AuthorizationActions.Webhooks.Update
@@ -218,9 +234,36 @@ public partial class FallbackAuthorizationService
             or AuthorizationActions.Webhooks.RotateSecret
             or AuthorizationActions.Webhooks.Test
             or AuthorizationActions.Webhooks.Retry
+            or AuthorizationActions.Webhooks.Pause
             or AuthorizationActions.Webhooks.Resume
             or AuthorizationActions.Webhooks.ViewDelivery
             or AuthorizationActions.Webhooks.OpenProviderPortal;
+
+    private static bool TryResolveWebhookOwnerKind(
+        IDictionary<string, object>? resourceAttributes,
+        out WebhookConsumerKind ownerKind)
+    {
+        ownerKind = default;
+        if (resourceAttributes?.TryGetValue("ownerKindId", out var rawKind) != true)
+        {
+            return false;
+        }
+
+        var ownerKindId = rawKind switch
+        {
+            int value => value,
+            long value when value is >= int.MinValue and <= int.MaxValue => (int)value,
+            string value when int.TryParse(value, out var parsed) => parsed,
+            _ => 0
+        };
+        if (!Enum.IsDefined(typeof(WebhookConsumerKind), ownerKindId))
+        {
+            return false;
+        }
+
+        ownerKind = (WebhookConsumerKind)ownerKindId;
+        return true;
+    }
 
     private async Task<bool> EvaluateCustomPropertyProjectionAccessAsync(
         string resourceId,

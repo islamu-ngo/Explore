@@ -10,4 +10,5 @@ namespace Explore.Application.Features.Groups.Requests.Commands;
 public class CreateGroupCommand : IRequest<BaseCommandResponse<Guid>>
 {
     public required CreateGroupDto GroupDto { get; set; }
+    public required Guid CreatorUserId { get; init; }
 }

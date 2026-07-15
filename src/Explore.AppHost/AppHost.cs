@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using DotNetEnv;
+using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.Webhooks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +20,11 @@ if (File.Exists(dotenvPath))
     Env.NoClobber().Load(dotenvPath);
 var builder = DistributedApplication.CreateBuilder(args);
 var runMode = AspireRunModeExtensions.Parse(builder.Configuration["ISLAMU_ASPIRE_MODE"]);
+var webhookProvider = ConfiguredValue(
+    builder.Configuration,
+    "WEBHOOKS_PROVIDER",
+    WebhookOptions.ProviderLocal);
+var includeSvix = UsesSvixProvider(webhookProvider);
 var appHostConfigRoot = Path.Combine(repositoryRoot, "src", "Explore.AppHost", "Config");
 var cerbosPolicyPackagePath = Path.Combine(repositoryRoot, "cerbos", "policies");
 var cerbosConfigPath = Path.Combine(repositoryRoot, "cerbos", "config", ".cerbos.yaml");
@@ -71,6 +77,7 @@ if (runMode is AspireRunMode.FullLocal or AspireRunMode.DefaultLocal)
     localPlatformResources = AddLocalPlatform(
         builder,
         includeHeavyExtras: runMode == AspireRunMode.FullLocal,
+        includeSvix,
         cerbosConfigPath,
         cerbosPolicyPackagePath,
         cerbosSchemaPath,
@@ -86,21 +93,22 @@ if (runMode is AspireRunMode.FullLocal or AspireRunMode.DefaultLocal)
         cache);
 }
 
-IResourceBuilder<ProjectResource>? migrations = null;
+var migrations = WithProfileSecretMode(
+        builder.AddProject<Projects.Event_MigrationService>(
+            "event-migrationservice",
+            ExcludeProjectLaunchProfile),
+        runMode,
+        builder.Configuration);
+
 if (database is not null)
 {
-    migrations = WithProfileSecretMode(
-            builder.AddProject<Projects.Event_MigrationService>(
-                "event-migrationservice",
-                ExcludeProjectLaunchProfile),
-            runMode,
-            builder.Configuration)
+    migrations = migrations
         .WithReference(database, connectionName: "EventMigrationService")
         .WithReference(database, connectionName: "DefaultConnection")
         .WaitFor(database);
-
-    migrations = ConfigureLocalMailpitSmtp(migrations, mailpit, builder.Configuration);
 }
+
+migrations = ConfigureLocalMailpitSmtp(migrations, mailpit, builder.Configuration);
 
 var exploreAPI = WithProfileSecretMode(
         builder.AddProject<Projects.Explore_API>(
@@ -136,12 +144,9 @@ if (!string.IsNullOrWhiteSpace(vapidPrivateKey))
     exploreAPI = exploreAPI.WithEnvironment("VAPID_PRIVATE_KEY", vapidPrivateKeyParameter);
 }
 
-if (migrations is not null)
-{
-    exploreAPI = exploreAPI
-        .WithReference(migrations)
-        .WaitForCompletion(migrations);
-}
+exploreAPI = exploreAPI
+    .WithReference(migrations)
+    .WaitForCompletion(migrations);
 
 if (database is not null)
 {
@@ -194,12 +199,9 @@ var exploreBlazor = WithProfileSecretMode(
     .WithEnvironment("Bff__AdminHosts__0", ConfiguredValue(builder.Configuration, "CONTROL_PLANE_PUBLIC_ORIGIN", "http://admin.localhost:7002"))
     .WithEnvironment("Storage__Local__RootPath", localStorageRootPath);
 
-if (migrations is not null)
-{
-    exploreBlazor = exploreBlazor
-        .WithReference(migrations)
-        .WaitForCompletion(migrations);
-}
+exploreBlazor = exploreBlazor
+    .WithReference(migrations)
+    .WaitForCompletion(migrations);
 
 if (database is not null)
 {
@@ -226,6 +228,7 @@ await builder.Build().RunAsync();
 static LocalPlatformResources AddLocalPlatform(
     IDistributedApplicationBuilder builder,
     bool includeHeavyExtras,
+    bool includeSvix,
     string cerbosConfigPath,
     string cerbosPolicyPackagePath,
     string cerbosSchemaPath,
@@ -357,37 +360,42 @@ static LocalPlatformResources AddLocalPlatform(
             $"mc alias set local http://minio:9000 {configuration["STORAGE_S3_ACCESS_KEY_ID"] ?? "minioadmin"} {configuration["STORAGE_S3_SECRET_ACCESS_KEY"] ?? "minioadmin"} && (mc mb -p local/{configuration["STORAGE_S3_BUCKET_NAME"] ?? "explore"} || mc ls local/{configuration["STORAGE_S3_BUCKET_NAME"] ?? "explore"} >/dev/null)")
         .WaitFor(minio);
 
-    var svixDb = builder.AddContainer("svix-postgres", "postgres", "13.4")
-        .WithEnvironment("POSTGRES_PASSWORD", configuration["SVIX_DB_PASSWORD"] ?? "postgres")
-        .WithEnvironment("POSTGRES_USER", configuration["SVIX_DB_USER"] ?? "postgres")
-        .WithEnvironment("POSTGRES_DB", configuration["SVIX_DB_NAME"] ?? "postgres")
-        .WithVolume("islamu-event-svix-postgres-data", "/var/lib/postgresql/data");
-
-    var svix = builder.AddContainer(
-            "svix",
-            "svix/svix-server",
-            configuration["SVIX_TAG"] ?? $"v{SvixConformanceProfileRegistry.SelfHostedProviderVersion}")
-        .WithEnvironment("WAIT_FOR", "true")
-        .WithEnvironment(
-            "SVIX_DB_DSN",
-            $"postgresql://{configuration["SVIX_DB_USER"] ?? "postgres"}:{configuration["SVIX_DB_PASSWORD"] ?? "postgres"}@svix-postgres:5432/{configuration["SVIX_DB_NAME"] ?? "postgres"}")
-        .WithEnvironment("SVIX_QUEUE_TYPE", configuration["SVIX_QUEUE_TYPE"] ?? "redis")
-        .WithEnvironment("SVIX_CACHE_TYPE", configuration["SVIX_CACHE_TYPE"] ?? "redis")
-        .WithEnvironment("SVIX_JWT_SECRET", configuration["SVIX_JWT_SECRET"] ?? "local-dev-svix-jwt-secret-change-me")
-        .WithHttpEndpoint(targetPort: 8071, port: 8071, name: "http")
-        .WaitFor(svixDb);
-
-    if (cache is not null)
+    IResourceBuilder<ContainerResource>? svixDb = null;
+    IResourceBuilder<ContainerResource>? svix = null;
+    if (includeSvix)
     {
-        svix = svix
+        svixDb = builder.AddContainer("svix-postgres", "postgres", "13.4")
+            .WithEnvironment("POSTGRES_PASSWORD", configuration["SVIX_DB_PASSWORD"] ?? "postgres")
+            .WithEnvironment("POSTGRES_USER", configuration["SVIX_DB_USER"] ?? "postgres")
+            .WithEnvironment("POSTGRES_DB", configuration["SVIX_DB_NAME"] ?? "postgres")
+            .WithVolume("islamu-event-svix-postgres-data", "/var/lib/postgresql/data");
+
+        svix = builder.AddContainer(
+                "svix",
+                "svix/svix-server",
+                configuration["SVIX_TAG"] ?? $"v{SvixConformanceProfileRegistry.SelfHostedProviderVersion}")
+            .WithEnvironment("WAIT_FOR", "true")
             .WithEnvironment(
-                "SVIX_REDIS_DSN",
-                ReferenceExpression.Create($"redis://:{cache.Resource.PasswordParameter!}@cache:6380"))
-            .WaitFor(cache);
-    }
-    else
-    {
-        svix = svix.WithEnvironment("SVIX_REDIS_DSN", "redis://cache:6379");
+                "SVIX_DB_DSN",
+                $"postgresql://{configuration["SVIX_DB_USER"] ?? "postgres"}:{configuration["SVIX_DB_PASSWORD"] ?? "postgres"}@svix-postgres:5432/{configuration["SVIX_DB_NAME"] ?? "postgres"}")
+            .WithEnvironment("SVIX_QUEUE_TYPE", configuration["SVIX_QUEUE_TYPE"] ?? "redis")
+            .WithEnvironment("SVIX_CACHE_TYPE", configuration["SVIX_CACHE_TYPE"] ?? "redis")
+            .WithEnvironment("SVIX_JWT_SECRET", configuration["SVIX_JWT_SECRET"] ?? "local-dev-svix-jwt-secret-change-me")
+            .WithHttpEndpoint(targetPort: 8071, port: 8071, name: "http")
+            .WaitFor(svixDb);
+
+        if (cache is not null)
+        {
+            svix = svix
+                .WithEnvironment(
+                    "SVIX_REDIS_DSN",
+                    ReferenceExpression.Create($"redis://:{cache.Resource.PasswordParameter!}@cache:6380"))
+                .WaitFor(cache);
+        }
+        else
+        {
+            svix = svix.WithEnvironment("SVIX_REDIS_DSN", "redis://cache:6379");
+        }
     }
 
     IResourceBuilder<ContainerResource>? weblateDb = null;
@@ -524,9 +532,13 @@ static LocalPlatformResources AddLocalPlatform(
             .WithVolume("islamu-event-pgadmin-data", "/var/lib/pgadmin")
             .WithHttpEndpoint(targetPort: 80, port: 5050, name: "http")
             .WaitFor(cerbosDb)
-            .WaitFor(svixDb)
             .WaitFor(weblateDb)
             .WaitFor(coopDb);
+
+        if (svixDb is not null)
+        {
+            pgAdmin = pgAdmin.WaitFor(svixDb);
+        }
 
         if (appDatabase is not null)
         {
@@ -672,7 +684,10 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
     var cerbosGrpcEndpoint = HttpEndpointFromHostAndPort(resources.Cerbos, "grpc");
     var cerbosHttpEndpoint = EndpointUrl(resources.Cerbos, "http");
     var minioApiEndpoint = EndpointUrl(resources.Minio, "api");
-    var svixEndpoint = EndpointUrl(resources.Svix, "http");
+    var webhookProvider = ConfiguredValue(
+        configuration,
+        "WEBHOOKS_PROVIDER",
+        WebhookOptions.ProviderLocal);
 
     api = api
         .WithEnvironment("KEYCLOAK_REALM", keycloakRealm)
@@ -718,15 +733,20 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
         .WithEnvironment("Reporting__Coop__AllowLocalProviderEndpoints", configuration["REPORTING_COOP_ALLOW_LOCAL_PROVIDER_ENDPOINTS"] ?? "true")
         .WithEnvironment("Reporting__Coop__WebhookSecret", configuration["REPORTING_COOP_WEBHOOK_SECRET"] ?? "local-dev-coop-webhook-secret")
         .WithEnvironment("Webhooks__Enabled", configuration["WEBHOOKS_ENABLED"] ?? "true")
-        .WithEnvironment("Webhooks__Provider", configuration["WEBHOOKS_PROVIDER"] ?? "Svix")
-        .WithEnvironment("Webhooks__Svix__BaseUrl", svixEndpoint)
-        .WithEnvironment("Webhooks__Svix__Environment", SvixConformanceProfileRegistry.SelfHostedEnvironment)
-        .WithEnvironment("Webhooks__Svix__ProviderVersion", SvixConformanceProfileRegistry.SelfHostedProviderVersion)
-        .WithEnvironment("Webhooks__Svix__CapabilityPolicyVersion", SvixConformanceProfileRegistry.SelfHostedCapabilityPolicyVersion)
-        .WithEnvironment("Webhooks__Svix__AuthTokenSecretRef", "webhooks.svix.auth_token")
-        .WithEnvironment("Webhooks__Svix__OperationalWebhookSecretRef", "webhooks.svix.operational_webhook_secret")
-        .WithEnvironment("WEBHOOKS_SVIX_AUTH_TOKEN", configuration["WEBHOOKS_SVIX_AUTH_TOKEN"] ?? string.Empty)
-        .WithEnvironment("WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET", configuration["WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET"] ?? string.Empty);
+        .WithEnvironment("Webhooks__Provider", webhookProvider);
+
+    if (resources.Svix is not null)
+    {
+        api = api
+            .WithEnvironment("Webhooks__Svix__BaseUrl", EndpointUrl(resources.Svix, "http"))
+            .WithEnvironment("Webhooks__Svix__Environment", SvixConformanceProfileRegistry.SelfHostedEnvironment)
+            .WithEnvironment("Webhooks__Svix__ProviderVersion", SvixConformanceProfileRegistry.SelfHostedProviderVersion)
+            .WithEnvironment("Webhooks__Svix__CapabilityPolicyVersion", SvixConformanceProfileRegistry.SelfHostedCapabilityPolicyVersion)
+            .WithEnvironment("Webhooks__Svix__AuthTokenSecretRef", "webhooks.svix.auth_token")
+            .WithEnvironment("Webhooks__Svix__OperationalWebhookSecretRef", "webhooks.svix.operational_webhook_secret")
+            .WithEnvironment("WEBHOOKS_SVIX_AUTH_TOKEN", configuration["WEBHOOKS_SVIX_AUTH_TOKEN"] ?? string.Empty)
+            .WithEnvironment("WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET", configuration["WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET"] ?? string.Empty);
+    }
 
     api = resources.Coop is not null
         ? api
@@ -744,9 +764,13 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
 
     api = api
         .WaitFor(resources.Cerbos)
-        .WaitFor(resources.Svix)
         .WaitForCompletion(resources.KeycloakInit)
         .WaitForCompletion(resources.MinioBootstrap);
+
+    if (resources.Svix is not null)
+    {
+        api = api.WaitFor(resources.Svix);
+    }
 
     return api;
 }
@@ -905,6 +929,10 @@ static (string Image, string Tag) ResolveImageAndTag(string image, string defaul
 static string ConfiguredValue(IConfiguration configuration, string key, string fallback) =>
     string.IsNullOrWhiteSpace(configuration[key]) ? fallback : configuration[key]!;
 
+static bool UsesSvixProvider(string provider) =>
+    string.Equals(provider, WebhookOptions.ProviderSvix, StringComparison.OrdinalIgnoreCase) ||
+    string.Equals(provider, WebhookOptions.ProviderComposite, StringComparison.OrdinalIgnoreCase);
+
 internal enum AspireRunMode
 {
     FullLocal,
@@ -969,7 +997,7 @@ internal sealed record LocalPlatformResources(
     IResourceBuilder<ContainerResource> Cerbos,
     IResourceBuilder<ContainerResource> Minio,
     IResourceBuilder<ContainerResource> MinioBootstrap,
-    IResourceBuilder<ContainerResource> Svix,
+    IResourceBuilder<ContainerResource>? Svix,
     IResourceBuilder<ContainerResource>? WeblateDb,
     IResourceBuilder<ContainerResource>? Weblate,
     IResourceBuilder<ContainerResource>? Coop,

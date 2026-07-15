@@ -12,26 +12,26 @@ public interface IWebhookConsumerProviderBindingRepository
         CancellationToken cancellationToken);
 
     Task<WebhookConsumerProviderBinding?> GetByConsumerAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid webhookConsumerId,
         WebhookProviderKind providerKind,
         string providerEnvironment,
         CancellationToken cancellationToken);
 
     Task<WebhookConsumerProviderBinding?> GetByTenantAndIdForUpdateAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid bindingId,
         CancellationToken cancellationToken);
 
     Task<WebhookConsumerProviderBinding?> GetVerifiedByConsumerAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid webhookConsumerId,
         WebhookProviderKind providerKind,
         string providerEnvironment,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<WebhookConsumerProviderBinding>> GetVerifiedByConsumersAsync(
-        Guid tenantId,
+        Guid? tenantId,
         IReadOnlyCollection<Guid> webhookConsumerIds,
         WebhookProviderKind providerKind,
         string providerEnvironment,

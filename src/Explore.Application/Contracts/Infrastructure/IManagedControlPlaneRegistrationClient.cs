@@ -7,8 +7,8 @@ namespace Explore.Application.Contracts.Infrastructure;
 
 public interface IManagedControlPlaneRegistrationClient
 {
-    Task<CompleteManagedInstanceRegistrationResponse> CompleteRegistrationAsync(
+    Task<CompleteManagedInstanceRegistrationResponseDto> CompleteRegistrationAsync(
         Uri controlPlaneUrl,
-        CompleteManagedInstanceRegistrationRequest request,
+        CompleteManagedInstanceRegistrationRequestDto request,
         CancellationToken cancellationToken);
 }

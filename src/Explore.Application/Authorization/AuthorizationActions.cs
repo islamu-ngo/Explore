@@ -403,8 +403,13 @@ public static class AuthorizationActions
         public const string Test = "webhook:test";
         public const string Retry = "webhook:retry";
         public const string RedriveIncoming = "webhook:redrive-incoming";
+        public const string Pause = "webhook:pause";
         public const string Resume = "webhook:resume";
+        public const string ReconcilePublication = "webhook:reconcile-publication";
+        public const string AbandonPublication = "webhook:abandon-publication";
         public const string ViewDelivery = "webhook:view-delivery";
+        public const string ViewPayload = "webhook:view-payload";
+        public const string BulkReplay = "webhook:bulk-replay";
         public const string ManageProvider = "webhook:manage-provider";
         public const string OpenProviderPortal = "webhook:open-provider-portal";
         public const string ProcessIncoming = "webhook:process-incoming";

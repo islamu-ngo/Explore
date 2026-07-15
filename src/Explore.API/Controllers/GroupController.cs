@@ -247,7 +247,18 @@ public class GroupController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateGroupDto group, CancellationToken cancellationToken = default)
     {
-        var response = await _mediator.Send(new CreateGroupCommand { GroupDto = group }, cancellationToken);
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+        if (!userId.HasValue)
+        {
+            return this.ToAuthenticationRequiredProblem(
+                detail: "The authenticated principal could not be resolved to an application user.");
+        }
+
+        var response = await _mediator.Send(new CreateGroupCommand
+        {
+            GroupDto = group,
+            CreatorUserId = userId.Value
+        }, cancellationToken);
 
         if (!response.Success)
         {

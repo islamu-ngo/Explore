@@ -17,5 +17,5 @@ public enum WebhookConsumerKind
     Organization = 2,
     Group = 3,
     User = 4,
-    SystemIntegration = 5
+    Instance = 5
 }

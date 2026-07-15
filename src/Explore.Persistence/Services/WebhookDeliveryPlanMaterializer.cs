@@ -22,34 +22,21 @@ public sealed class WebhookDeliveryPlanMaterializer(
     {
         ArgumentNullException.ThrowIfNull(materialization);
         ValidateGraph(materialization);
+        var hasAmbientTransaction = dbContext.Database.CurrentTransaction is not null;
 
         try
         {
+            if (hasAmbientTransaction)
+            {
+                return await PersistAsync(materialization, cancellationToken);
+            }
+
             return await unitOfWork.ExecuteInTransactionAsync(
-                async innerCancellationToken =>
-                {
-                    var existing = await LoadExistingAsync(
-                        materialization.Message,
-                        innerCancellationToken);
-                    if (existing is not null)
-                    {
-                        return existing;
-                    }
-
-                    dbContext.WebhookMessages.Add(materialization.Message);
-                    dbContext.WebhookDeliveryPlanSnapshots.Add(materialization.DeliveryPlan);
-                    dbContext.WebhookLocalTargetSnapshots.AddRange(materialization.LocalTargets);
-                    dbContext.WebhookProviderPublications.AddRange(materialization.ProviderPublications);
-                    await dbContext.SaveChangesAsync(innerCancellationToken);
-
-                    return new WebhookDeliveryMaterializationResult(
-                        materialization.Message,
-                        materialization.DeliveryPlan,
-                        Created: true);
-                },
+                token => PersistAsync(materialization, token),
                 cancellationToken);
         }
         catch (DbUpdateException exception) when (
+            !hasAmbientTransaction &&
             exception.InnerException is PostgresException { SqlState: UniqueViolationSqlState })
         {
             dbContext.ChangeTracker.Clear();
@@ -61,6 +48,28 @@ public sealed class WebhookDeliveryPlanMaterializer(
 
             throw;
         }
+    }
+
+    private async Task<WebhookDeliveryMaterializationResult> PersistAsync(
+        WebhookDeliveryMaterialization materialization,
+        CancellationToken cancellationToken)
+    {
+        var existing = await LoadExistingAsync(materialization.Message, cancellationToken);
+        if (existing is not null)
+        {
+            return existing;
+        }
+
+        dbContext.WebhookMessages.Add(materialization.Message);
+        dbContext.WebhookDeliveryPlanSnapshots.Add(materialization.DeliveryPlan);
+        dbContext.WebhookLocalTargetSnapshots.AddRange(materialization.LocalTargets);
+        dbContext.WebhookProviderPublications.AddRange(materialization.ProviderPublications);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return new WebhookDeliveryMaterializationResult(
+            materialization.Message,
+            materialization.DeliveryPlan,
+            Created: true);
     }
 
     private async Task<WebhookDeliveryMaterializationResult?> LoadExistingAsync(

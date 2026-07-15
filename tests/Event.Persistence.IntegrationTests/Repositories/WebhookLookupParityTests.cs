@@ -16,14 +16,26 @@ public sealed class WebhookLookupParityTests
 {
     private static readonly LookupCase[] LookupCases =
     [
-        new(typeof(WebhookConsumerKindLookup), typeof(WebhookConsumerKind), "webhook_consumer_kinds", [new(typeof(WebhookConsumer), "ConsumerKindId")]),
+        new(
+            typeof(WebhookConsumerKindLookup),
+            typeof(WebhookConsumerKind),
+            "webhook_consumer_kinds",
+            [new(typeof(WebhookConsumer), "ConsumerKindId")],
+            RuntimeSeedOnlyIds: [(int)WebhookConsumerKind.Instance]),
         new(typeof(WebhookConsumerStatusLookup), typeof(WebhookConsumerStatus), "webhook_consumer_statuses", [new(typeof(WebhookConsumer), "StatusId")]),
         new(typeof(WebhookProviderModeLookup), typeof(WebhookProviderMode), "webhook_provider_modes", [new(typeof(WebhookConsumer), "ProviderModeId"), new(typeof(WebhookDeliveryPlanSnapshot), "ProviderModeId"), new(typeof(WebhookProviderPublication), "ModeSnapshotId")]),
         new(typeof(WebhookProviderKindLookup), typeof(WebhookProviderKind), "webhook_provider_kinds", [new(typeof(WebhookConsumerProviderBinding), "ProviderKindId"), new(typeof(WebhookProviderPublication), "ProviderKindId")]),
         new(typeof(WebhookProviderCapabilityLookup), typeof(WebhookProviderCapability), "webhook_provider_capabilities", [], IncludeZero: false, IndividualFlagsOnly: true, RequiresLiteralMigrationRows: false),
         new(typeof(WebhookEndpointStatusLookup), typeof(WebhookEndpointStatus), "webhook_endpoint_statuses", [new(typeof(WebhookEndpoint), "StatusId")]),
         new(typeof(WebhookLocalDeliveryStatusLookup), typeof(WebhookLocalDeliveryStatus), "webhook_local_delivery_statuses", [new(typeof(WebhookLocalTargetSnapshot), "DeliveryStatusId")]),
+        new(typeof(WebhookBulkReplayStatusLookup), typeof(WebhookBulkReplayStatus), "webhook_bulk_replay_statuses", [new(typeof(WebhookBulkReplayOperation), "StatusId")], RequiresLiteralMigrationRows: false),
         new(typeof(WebhookPendingWorkDecisionLookup), typeof(WebhookPendingWorkDecision), "webhook_pending_work_decisions", [], RequiresLiteralMigrationRows: false),
+        new(typeof(WebhookRetentionSubjectKindLookup), typeof(WebhookRetentionSubjectKind), "webhook_retention_subject_kinds", [new(typeof(WebhookRetentionHold), "SubjectKindId")], RequiresLiteralMigrationRows: false),
+        new(typeof(WebhookAuditActionLookup), typeof(WebhookAuditAction), "webhook_audit_actions", [new(typeof(WebhookAuditEvent), "ActionId")], RequiresLiteralMigrationRows: false),
+        new(typeof(WebhookAuditOutcomeLookup), typeof(WebhookAuditOutcome), "webhook_audit_outcomes", [new(typeof(WebhookAuditEvent), "OutcomeId")], RequiresLiteralMigrationRows: false),
+        new(typeof(WebhookAuditPrincipalKindLookup), typeof(WebhookAuditPrincipalKind), "webhook_audit_principal_kinds", [new(typeof(WebhookAuditEvent), "PrincipalKindId")], RequiresLiteralMigrationRows: false),
+        new(typeof(WebhookAuditScopeKindLookup), typeof(WebhookAuditScopeKind), "webhook_audit_scope_kinds", [new(typeof(WebhookAuditEvent), "EffectiveScopeKindId")], RequiresLiteralMigrationRows: false),
+        new(typeof(WebhookAuditTargetKindLookup), typeof(WebhookAuditTargetKind), "webhook_audit_target_kinds", [new(typeof(WebhookAuditEvent), "TargetKindId")], RequiresLiteralMigrationRows: false),
         new(typeof(WebhookDeliveryAttemptOutcomeLookup), typeof(WebhookDeliveryAttemptOutcome), "webhook_delivery_attempt_outcomes", [new(typeof(WebhookDeliveryAttempt), "OutcomeId")]),
         new(typeof(WebhookProviderBindingVerificationStateLookup), typeof(WebhookProviderBindingVerificationState), "webhook_provider_binding_verification_states", [new(typeof(WebhookConsumerProviderBinding), "VerificationStateId")]),
         new(typeof(IncomingWebhookMessageStatusLookup), typeof(IncomingWebhookMessageStatus), "incoming_webhook_message_statuses", [new(typeof(IncomingWebhookMessage), "StatusId")]),
@@ -99,7 +111,8 @@ public sealed class WebhookLookupParityTests
                 var seedPattern = $"Id = (int){lookupCase.EnumType.Name}.{name}, MasterCode = \"{code}\"";
                 await Assert.That(seeder).Contains(seedPattern);
                 await Assert.That(migrationSource).Contains($"table: \"{lookupCase.TableName}\"");
-                if (lookupCase.RequiresLiteralMigrationRows)
+                if (lookupCase.RequiresLiteralMigrationRows &&
+                    !(lookupCase.RuntimeSeedOnlyIds?.Contains(id) ?? false))
                 {
                     await Assert.That(migrationSource).Contains($"{id}, \"{code}\"");
                 }
@@ -132,6 +145,7 @@ public sealed class WebhookLookupParityTests
         await AssertLookupTripleAsync(typeof(WebhookEndpointDto), "Status");
         await AssertLookupTripleAsync(typeof(WebhookEndpointDto), "ProviderMode");
         await AssertLookupTripleAsync(typeof(WebhookDeliveryAttemptDto), "Outcome");
+        await AssertLookupTripleAsync(typeof(WebhookBulkReplayOperationDto), "Status");
     }
 
     private static async Task AssertLookupTripleAsync(Type dtoType, string prefix)
@@ -189,7 +203,8 @@ public sealed class WebhookLookupParityTests
         bool IsRequired = true,
         bool IncludeZero = true,
         bool IndividualFlagsOnly = false,
-        bool RequiresLiteralMigrationRows = true);
+        bool RequiresLiteralMigrationRows = true,
+        IReadOnlyList<int>? RuntimeSeedOnlyIds = null);
 
     private sealed record LookupOwner(Type OwnerType, string ForeignKeyProperty);
 }

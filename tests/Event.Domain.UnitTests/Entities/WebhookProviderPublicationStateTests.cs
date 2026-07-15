@@ -335,6 +335,35 @@ public sealed class WebhookProviderPublicationStateTests
     }
 
     [Test]
+    public async Task Abandon_FromDeadLettered_SettlesWithAppendOnlyEvidence()
+    {
+        var publication = CreatePublication();
+        var leaseToken = Guid.CreateVersion7();
+        publication.ClaimForPublishing(
+            "publisher",
+            leaseToken,
+            PreparedAt.AddMinutes(3),
+            PreparedAt.AddMinutes(1),
+            maxAutomaticPublicationAttempts: 1);
+        publication.DeadLetter(
+            leaseToken,
+            publication.PublicationFence,
+            "retry_budget_exhausted",
+            null,
+            PreparedAt.AddMinutes(2));
+
+        publication.Abandon(
+            "operator_abandoned",
+            "operator confirmed that no provider message exists",
+            PreparedAt.AddMinutes(3));
+
+        await Assert.That(publication.Status).IsEqualTo(WebhookProviderPublicationStatus.Abandoned);
+        await Assert.That(publication.Attempts.Last().Outcome)
+            .IsEqualTo(WebhookProviderPublicationAttemptOutcome.Abandoned);
+        await Assert.That(publication.ConcurrencyVersion).IsEqualTo(4);
+    }
+
+    [Test]
     public async Task ImmutablePlanAndProviderIdentity_HaveNoPublicMutationSurfaceOrProviderTargetSnapshot()
     {
         string[] immutableProperties =

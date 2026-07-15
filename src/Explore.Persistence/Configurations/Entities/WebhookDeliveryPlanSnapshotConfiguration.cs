@@ -19,6 +19,14 @@ public sealed class WebhookDeliveryPlanSnapshotConfiguration
         builder.Property(plan => plan.EventContractVersion).HasMaxLength(WebhookDeliveryPlanSnapshot.MaxVersionLength).IsRequired();
         builder.Property(plan => plan.RetentionPolicy).HasMaxLength(WebhookDeliveryPlanSnapshot.MaxRetentionPolicyLength).IsRequired();
         builder.Property(plan => plan.RetentionPolicyVersion).HasMaxLength(WebhookDeliveryPlanSnapshot.MaxVersionLength).IsRequired();
+        builder.Property(plan => plan.AttemptRetentionUntilUtc)
+            .HasDefaultValueSql("statement_timestamp() + INTERVAL '30 days'");
+        builder.Property(plan => plan.DeadLetterEvidenceRetentionUntilUtc)
+            .HasDefaultValueSql("statement_timestamp() + INTERVAL '90 days'");
+        builder.Property(plan => plan.PublicationRetentionUntilUtc)
+            .HasDefaultValueSql("statement_timestamp() + INTERVAL '90 days'");
+        builder.Property(plan => plan.OperationalLogRetentionUntilUtc)
+            .HasDefaultValueSql("statement_timestamp() + INTERVAL '30 days'");
         builder.Ignore(plan => plan.ProviderMode);
 
         builder.HasAlternateKey(plan => new { plan.TenantId, plan.Id })
@@ -37,8 +45,7 @@ public sealed class WebhookDeliveryPlanSnapshotConfiguration
 
         builder.HasOne(plan => plan.WebhookConsumer)
             .WithMany()
-            .HasPrincipalKey(consumer => new { consumer.TenantId, consumer.Id })
-            .HasForeignKey(plan => new { plan.TenantId, plan.WebhookConsumerId })
+            .HasForeignKey(plan => plan.WebhookConsumerId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(plan => plan.ProviderModeLookup)
@@ -53,5 +60,11 @@ public sealed class WebhookDeliveryPlanSnapshotConfiguration
             .HasDatabaseName("ix_webhook_delivery_plan_snapshots_tenant_consumer_materialized");
         builder.HasIndex(plan => new { plan.TenantId, plan.PayloadRetentionUntilUtc })
             .HasDatabaseName("ix_webhook_delivery_plan_snapshots_tenant_retention");
+        builder.HasIndex(plan => new { plan.TenantId, plan.AttemptRetentionUntilUtc })
+            .HasDatabaseName("ix_webhook_delivery_plan_snapshots_tenant_attempt_retention");
+        builder.HasIndex(plan => new { plan.TenantId, plan.DeadLetterEvidenceRetentionUntilUtc })
+            .HasDatabaseName("ix_webhook_delivery_plan_snapshots_tenant_dead_letter_retention");
+        builder.HasIndex(plan => new { plan.TenantId, plan.PublicationRetentionUntilUtc })
+            .HasDatabaseName("ix_webhook_delivery_plan_snapshots_tenant_publication_retention");
     }
 }

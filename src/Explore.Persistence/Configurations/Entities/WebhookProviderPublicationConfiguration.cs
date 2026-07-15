@@ -62,8 +62,7 @@ public sealed class WebhookProviderPublicationConfiguration
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(publication => publication.ProviderBinding)
             .WithMany()
-            .HasPrincipalKey(binding => new { binding.TenantId, binding.Id })
-            .HasForeignKey(publication => new { publication.TenantId, publication.ProviderBindingId })
+            .HasForeignKey(publication => publication.ProviderBindingId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(publication => publication.ProviderKindLookup)
             .WithMany()

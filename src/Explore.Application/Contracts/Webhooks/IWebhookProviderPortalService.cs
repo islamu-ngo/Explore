@@ -11,7 +11,6 @@ public interface IWebhookProviderPortalService
 }
 
 public sealed record WebhookProviderPortalAccessInput(
-    Guid TenantId,
     Guid ConsumerId,
     string SessionId,
     TimeSpan? ExpiresIn);

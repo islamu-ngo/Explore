@@ -1,14 +1,17 @@
-// ABOUTME: Handles tenant-scoped webhook delivery attempt list reads for operations screens.
-// ABOUTME: Applies message/endpoint filters and conservative bounds before repository access.
+// ABOUTME: Handles typed owner-scoped webhook delivery attempt reads for operations screens.
+// ABOUTME: Resolves ownership before bounded message and endpoint filtering.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.DTOs.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Queries;
 using MediatR;
 
 namespace Explore.Application.Features.Webhooks.Handlers.Queries;
 
-public sealed class GetWebhookDeliveryAttemptsQueryHandler(IWebhookDeliveryAttemptRepository attemptRepository)
+public sealed class GetWebhookDeliveryAttemptsQueryHandler(
+    IWebhookDeliveryAttemptRepository attemptRepository,
+    IWebhookOwnershipScopeResolver ownershipScopeResolver)
     : IRequestHandler<GetWebhookDeliveryAttemptsQuery, IReadOnlyList<WebhookDeliveryAttemptDto>>
 {
     private const int DefaultLimit = 100;
@@ -18,7 +21,11 @@ public sealed class GetWebhookDeliveryAttemptsQueryHandler(IWebhookDeliveryAttem
         GetWebhookDeliveryAttemptsQuery request,
         CancellationToken cancellationToken)
     {
-        if (request.TenantId == Guid.Empty)
+        var ownershipResolution = await ownershipScopeResolver.ResolveAsync(
+            request.OwnerKindId,
+            request.OwnerId,
+            cancellationToken);
+        if (ownershipResolution.Scope is not { } ownership)
         {
             return [];
         }
@@ -33,8 +40,8 @@ public sealed class GetWebhookDeliveryAttemptsQueryHandler(IWebhookDeliveryAttem
             ? requestedEndpointId
             : (Guid?)null;
 
-        var attempts = await attemptRepository.ListByTenantAsync(
-            request.TenantId,
+        var attempts = await attemptRepository.ListByOwnerAsync(
+            ownership,
             messageId,
             endpointId,
             limit,

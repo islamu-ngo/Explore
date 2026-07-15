@@ -117,15 +117,15 @@ public class OrganizationController : ExploreControllerBase
         [FromQuery] PaginationQueryRequest query,
         CancellationToken cancellationToken = default)
     {
-        var userId = CurrentUserId?.ToString();
-        if (string.IsNullOrEmpty(userId))
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+        if (!userId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
         }
 
         var result = await _mediator.Send(new GetMyOrganizationsRequest
         {
-            UserId = userId,
+            UserId = userId.Value.ToString("D"),
             PageNumber = query.PageNumber,
             PageSize = query.PageSize
         }, cancellationToken);
@@ -256,8 +256,8 @@ public class OrganizationController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateOrganizationDto organization, CancellationToken cancellationToken = default)
     {
-        var userId = CurrentUserId?.ToString();
-        if (string.IsNullOrEmpty(userId))
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+        if (!userId.HasValue)
         {
             return this.ToAuthenticationRequiredProblem(detail: "The authenticated principal could not be resolved to an application user.");
         }
@@ -265,7 +265,7 @@ public class OrganizationController : ExploreControllerBase
         var command = new CreateOrganizationCommand
         {
             OrganizationDto = organization,
-            UserId = userId
+            CreatorUserId = userId.Value
         };
 
         var response = await _mediator.Send(command, cancellationToken);

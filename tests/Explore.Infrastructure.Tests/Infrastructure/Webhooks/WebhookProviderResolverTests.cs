@@ -86,7 +86,7 @@ public sealed class WebhookProviderResolverTests
             PayloadRetentionDays = 21,
             CreatedAt = DateTime.UtcNow.AddDays(-1)
         };
-        consumerRepository.GetByTenantAndIdAsync(tenantId, consumerId, Arg.Any<CancellationToken>())
+        consumerRepository.GetByIdForOwnerOperationAsync(consumerId, false, Arg.Any<CancellationToken>())
             .Returns(consumer);
         eventTypeRepository.GetByNameAsync(eventType.Name, Arg.Any<CancellationToken>())
             .Returns(eventType);
@@ -107,6 +107,7 @@ public sealed class WebhookProviderResolverTests
             eventTypeRepository,
             secretBindingRepository,
             capabilityResolver,
+            CreateRetentionPolicyResolver(),
             new StaticOptionsMonitor<WebhookOptions>(new WebhookOptions
             {
                 Provider = WebhookOptions.ProviderLocal
@@ -124,13 +125,165 @@ public sealed class WebhookProviderResolverTests
         await Assert.That(resolution.Succeeded).IsTrue();
         await Assert.That(resolution.ConfigurationVersion).IsEqualTo("consumer-v4:event-local-v1");
         await Assert.That(resolution.EventContractVersion).IsEqualTo(3);
-        await Assert.That(resolution.RetentionPolicyVersion).IsEqualTo("event-contract-v3-days-21");
+        await Assert.That(resolution.RetentionPolicyVersion)
+            .IsEqualTo("webhook-retention-v1:i14:o21:a30:d90:p90:l30:u365:r14");
         await Assert.That(resolution.PayloadRetentionUntil).IsEqualTo(context.OccurredAt.AddDays(21));
         await Assert.That(resolution.LocalTargets.Count).IsEqualTo(1);
         await Assert.That(resolution.LocalTargets.Single().EndpointConfigurationVersion).IsEqualTo(9);
         await Assert.That(resolution.LocalTargets.Single().CredentialValidFromUtc)
             .IsEqualTo(new DateTimeOffset(endpoint.SecretActivatedAt));
         await Assert.That(resolution.ProviderTargets).IsEmpty();
+    }
+
+    [Test]
+    public async Task DeliveryPlanResolver_WhenInstanceConsumerIsTargeted_PreservesSourceTenantAndUsesInstanceConfiguration()
+    {
+        var sourceTenantId = Guid.CreateVersion7();
+        var instanceId = Guid.CreateVersion7();
+        var consumerId = Guid.CreateVersion7();
+        var consumerRepository = Substitute.For<IWebhookConsumerRepository>();
+        var endpointRepository = Substitute.For<IWebhookEndpointRepository>();
+        var eventTypeRepository = Substitute.For<IWebhookEventTypeRepository>();
+        var consumer = new WebhookConsumer
+        {
+            Id = consumerId,
+            InstanceId = instanceId,
+            ConsumerKind = WebhookConsumerKind.Instance,
+            Name = "Instance integration",
+            Status = WebhookConsumerStatus.Active,
+            ProviderMode = WebhookProviderMode.Local,
+            ConfigurationVersion = 3,
+            CreatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+        var endpoint = new WebhookEndpoint
+        {
+            Id = Guid.CreateVersion7(),
+            InstanceId = instanceId,
+            ConsumerId = consumerId,
+            Url = "https://instance.example.test/webhooks",
+            Status = WebhookEndpointStatus.Active,
+            SecretRef = "webhook:instance:primary",
+            SecretVersion = 2,
+            SecretActivatedAt = DateTime.UtcNow.AddHours(-1),
+            ConfigurationVersion = 4,
+            MaxAttempts = 8,
+            TimeoutSeconds = 15,
+            CreatedAt = DateTime.UtcNow.AddHours(-1)
+        };
+        var eventType = new WebhookEventType
+        {
+            Id = Guid.CreateVersion7(),
+            Name = WebhookEventNames.EventPublished,
+            GroupName = "events",
+            Description = "Event published",
+            SchemaJson = "{}",
+            SchemaVersion = 1,
+            IsEnabled = true,
+            PayloadRetentionDays = 14,
+            CreatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+        consumerRepository.GetByIdForOwnerOperationAsync(consumerId, false, Arg.Any<CancellationToken>())
+            .Returns(consumer);
+        eventTypeRepository.GetByNameAsync(eventType.Name, Arg.Any<CancellationToken>())
+            .Returns(eventType);
+        endpointRepository.GetActiveSubscribedEndpointsByConsumerAsync(
+                null,
+                consumerId,
+                eventType.Name,
+                Arg.Any<CancellationToken>())
+            .Returns([endpoint]);
+        var capabilityResolver = new WebhookProviderCapabilityResolver(
+            new StaticOptionsMonitor<WebhookOptions>(new WebhookOptions
+            {
+                Provider = WebhookOptions.ProviderLocal
+            }));
+        var resolver = new GovernedWebhookDeliveryPlanResolver(
+            consumerRepository,
+            endpointRepository,
+            eventTypeRepository,
+            Substitute.For<ISecretBindingRepository>(),
+            capabilityResolver,
+            CreateRetentionPolicyResolver(),
+            new StaticOptionsMonitor<WebhookOptions>(new WebhookOptions
+            {
+                Provider = WebhookOptions.ProviderLocal
+            }),
+            TimeProvider.System);
+        var context = CreateContext() with
+        {
+            TenantId = sourceTenantId,
+            ConsumerId = consumerId,
+            EventType = eventType.Name
+        };
+
+        var resolution = await resolver.ResolveAsync(context, CancellationToken.None);
+
+        await Assert.That(resolution.Succeeded).IsTrue();
+        await Assert.That(resolution.WebhookConsumerId).IsEqualTo(consumerId);
+        await Assert.That(resolution.LocalTargets.Single().Endpoint.InstanceId).IsEqualTo(instanceId);
+        await Assert.That(resolution.LocalTargets.Single().Endpoint.TenantId).IsNull();
+        await endpointRepository.Received(1).GetActiveSubscribedEndpointsByConsumerAsync(
+            null,
+            consumerId,
+            eventType.Name,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Arguments(WebhookConsumerKind.Tenant)]
+    [Arguments(WebhookConsumerKind.Organization)]
+    [Arguments(WebhookConsumerKind.Group)]
+    [Arguments(WebhookConsumerKind.User)]
+    public async Task DeliveryPlanResolver_WhenNonInstanceConsumerBelongsToAnotherTenant_FailsBeforeTargetResolution(
+        WebhookConsumerKind ownerKind)
+    {
+        var sourceTenantId = Guid.CreateVersion7();
+        var ownerTenantId = Guid.CreateVersion7();
+        var consumerId = Guid.CreateVersion7();
+        var ownerId = Guid.CreateVersion7();
+        var consumerRepository = Substitute.For<IWebhookConsumerRepository>();
+        var endpointRepository = Substitute.For<IWebhookEndpointRepository>();
+        var eventTypeRepository = Substitute.For<IWebhookEventTypeRepository>();
+        var consumer = new WebhookConsumer
+        {
+            Id = consumerId,
+            TenantId = ownerTenantId,
+            OrganizationId = ownerKind == WebhookConsumerKind.Organization ? ownerId : null,
+            GroupId = ownerKind == WebhookConsumerKind.Group ? ownerId : null,
+            OwnerUserId = ownerKind == WebhookConsumerKind.User ? ownerId : null,
+            ConsumerKind = ownerKind,
+            Name = "Foreign tenant integration",
+            Status = WebhookConsumerStatus.Active,
+            ProviderMode = WebhookProviderMode.Local,
+            ConfigurationVersion = 1,
+            CreatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+        consumerRepository.GetByIdForOwnerOperationAsync(consumerId, false, Arg.Any<CancellationToken>())
+            .Returns(consumer);
+        var options = new WebhookOptions { Provider = WebhookOptions.ProviderLocal };
+        var resolver = new GovernedWebhookDeliveryPlanResolver(
+            consumerRepository,
+            endpointRepository,
+            eventTypeRepository,
+            Substitute.For<ISecretBindingRepository>(),
+            new WebhookProviderCapabilityResolver(new StaticOptionsMonitor<WebhookOptions>(options)),
+            CreateRetentionPolicyResolver(),
+            new StaticOptionsMonitor<WebhookOptions>(options),
+            TimeProvider.System);
+
+        var resolution = await resolver.ResolveAsync(
+            CreateContext() with
+            {
+                TenantId = sourceTenantId,
+                ConsumerId = consumerId
+            },
+            CancellationToken.None);
+
+        await Assert.That(resolution.Succeeded).IsFalse();
+        await Assert.That(resolution.FailureCategory).IsEqualTo("webhook_consumer_source_tenant_mismatch");
+        await eventTypeRepository.DidNotReceiveWithAnyArgs().GetByNameAsync(default!, default);
+        await endpointRepository.DidNotReceiveWithAnyArgs()
+            .GetActiveSubscribedEndpointsByConsumerAsync(default, default, default!, default);
     }
 
     [Test]
@@ -192,7 +345,7 @@ public sealed class WebhookProviderResolverTests
             "WEBHOOKS_SVIX_AUTH_TOKEN");
         tokenBinding.Id = Guid.CreateVersion7();
         tokenBinding.CreatedAt = now.UtcDateTime.AddHours(-1);
-        consumerRepository.GetByTenantAndIdAsync(tenantId, consumerId, Arg.Any<CancellationToken>())
+        consumerRepository.GetByIdForOwnerOperationAsync(consumerId, false, Arg.Any<CancellationToken>())
             .Returns(consumer);
         eventTypeRepository.GetByNameAsync(eventType.Name, Arg.Any<CancellationToken>())
             .Returns(eventType);
@@ -208,6 +361,7 @@ public sealed class WebhookProviderResolverTests
             eventTypeRepository,
             secretBindingRepository,
             capabilityResolver,
+            CreateRetentionPolicyResolver(),
             new StaticOptionsMonitor<WebhookOptions>(options),
             new FixedTimeProvider(now));
         var context = CreateContext() with
@@ -309,7 +463,7 @@ public sealed class WebhookProviderResolverTests
             "WEBHOOKS_SVIX_AUTH_TOKEN");
         tokenBinding.Id = Guid.CreateVersion7();
         tokenBinding.CreatedAt = now.UtcDateTime.AddHours(-1);
-        consumerRepository.GetByTenantAndIdAsync(tenantId, consumerId, Arg.Any<CancellationToken>())
+        consumerRepository.GetByIdForOwnerOperationAsync(consumerId, false, Arg.Any<CancellationToken>())
             .Returns(consumer);
         eventTypeRepository.GetByNameAsync(eventType.Name, Arg.Any<CancellationToken>())
             .Returns(eventType);
@@ -331,6 +485,7 @@ public sealed class WebhookProviderResolverTests
             eventTypeRepository,
             secretBindingRepository,
             capabilityResolver,
+            CreateRetentionPolicyResolver(),
             new StaticOptionsMonitor<WebhookOptions>(options),
             new FixedTimeProvider(now));
         var context = CreateContext() with
@@ -433,7 +588,10 @@ public sealed class WebhookProviderResolverTests
                 "standard",
                 "retention-v1",
                 context.OccurredAt.AddDays(14),
-                context.OccurredAt.AddDays(14).UtcDateTime));
+                context.OccurredAt.AddDays(30),
+                context.OccurredAt.AddDays(90),
+                context.OccurredAt.AddDays(90).UtcDateTime,
+                context.OccurredAt.AddDays(30)));
         materializer.MaterializeAsync(
                 Arg.Do<WebhookDeliveryMaterialization>(value => captured = value),
                 Arg.Any<CancellationToken>())
@@ -500,6 +658,9 @@ public sealed class WebhookProviderResolverTests
                 CapabilityPolicyVersion = SvixConformanceProfileRegistry.SelfHostedCapabilityPolicyVersion
             }
         };
+
+    private static WebhookRetentionPolicyResolver CreateRetentionPolicyResolver() =>
+        new(new StaticOptionsMonitor<WebhookRetentionSettings>(new WebhookRetentionSettings()));
 
     private sealed class StaticOptionsMonitor<T>(T currentValue) : IOptionsMonitor<T>
     {

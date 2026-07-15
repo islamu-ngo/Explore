@@ -299,10 +299,13 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IWebhookEndpointRepository, WebhookEndpointRepository>();
         services.AddScoped<IWebhookMessageRepository, WebhookMessageRepository>();
         services.AddScoped<IWebhookDeliveryAttemptRepository, WebhookDeliveryAttemptRepository>();
+        services.AddScoped<IWebhookLocalTargetRepository, WebhookLocalTargetRepository>();
+        services.AddScoped<IWebhookBulkReplayRepository, WebhookBulkReplayRepository>();
         services.AddScoped<IWebhookProviderPublicationRepository, WebhookProviderPublicationRepository>();
         services.AddScoped<IWebhookDeliveryPlanMaterializer, WebhookDeliveryPlanMaterializer>();
         services.AddScoped<IIncomingWebhookMessageRepository, IncomingWebhookMessageRepository>();
         services.AddScoped<IIncomingWebhookEffectReceiptRepository, IncomingWebhookEffectReceiptRepository>();
+        services.AddScoped<IWebhookRetentionCleanupRepository, WebhookRetentionCleanupRepository>();
 
         // Authorization (RBAC) Repositories
         services.AddScoped<IRoleRepository, RoleRepository>();
@@ -313,6 +316,7 @@ public static class PersistenceServicesRegistration
         // Configuration Audit Repositories
         services.AddScoped<IConfigurationChangeLogRepository, ConfigurationChangeLogRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+        services.AddScoped<IWebhookAuditEventRepository, WebhookAuditEventRepository>();
         services.AddScoped<ISupportAccessSessionRepository, SupportAccessSessionRepository>();
         services.AddScoped<ISupportAccessAuditEventRepository, SupportAccessAuditEventRepository>();
 

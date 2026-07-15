@@ -33,8 +33,11 @@ internal static class WebhookConsumerDtoMapper
         {
             Id = consumer.Id,
             TenantId = consumer.TenantId,
-            OwnerActorId = consumer.OwnerActorId,
+            InstanceId = consumer.InstanceId,
+            OrganizationId = consumer.OrganizationId,
+            GroupId = consumer.GroupId,
             OwnerUserId = consumer.OwnerUserId,
+            OwnerId = consumer.OwnerId,
             ConsumerKindId = consumerKind.Id,
             ConsumerKindCode = consumerKind.Code,
             ConsumerKindName = consumerKind.Name,

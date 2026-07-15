@@ -1,13 +1,11 @@
-// ABOUTME: API request DTO for creating a tenant-scoped outgoing webhook consumer.
-// ABOUTME: Uses integer enum ids so handlers validate domain values explicitly.
+// ABOUTME: API request DTO for creating an outgoing webhook consumer under one typed owner.
+// ABOUTME: Uses the normalized owner-kind lookup id plus an optional owner id resolved by Application.
 
 namespace Explore.Application.DTOs.Webhooks;
 
 public sealed class CreateWebhookConsumerRequestDto
 {
-    public Guid? OwnerActorId { get; set; }
-
-    public Guid? OwnerUserId { get; set; }
+    public Guid? OwnerId { get; set; }
 
     public int ConsumerKindId { get; set; }
 

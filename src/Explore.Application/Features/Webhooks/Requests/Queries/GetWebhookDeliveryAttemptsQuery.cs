@@ -1,5 +1,5 @@
-// ABOUTME: Authorized query for LocalProvider webhook delivery attempt audit rows.
-// ABOUTME: Supports tenant, message, and endpoint filters for operations screens.
+// ABOUTME: Authorized query for typed owner-scoped Local webhook delivery attempt audit rows.
+// ABOUTME: Supports bounded message and endpoint filters inside canonical configuration ownership.
 
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Webhooks;
@@ -8,9 +8,12 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Queries;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.ViewDelivery)]
-public sealed class GetWebhookDeliveryAttemptsQuery : IRequest<IReadOnlyList<WebhookDeliveryAttemptDto>>, ISecureRequest
+public sealed class GetWebhookDeliveryAttemptsQuery
+    : IRequest<IReadOnlyList<WebhookDeliveryAttemptDto>>, ISecureRequest, IWebhookOwnerScopedRequest
 {
-    public Guid TenantId { get; init; }
+    public int OwnerKindId { get; init; }
+
+    public Guid? OwnerId { get; init; }
 
     public Guid? MessageId { get; init; }
 
@@ -18,11 +21,12 @@ public sealed class GetWebhookDeliveryAttemptsQuery : IRequest<IReadOnlyList<Web
 
     public int Limit { get; init; } = 100;
 
-    string? ISecureRequest.ResourceId => TenantId.ToString("D");
+    string? ISecureRequest.ResourceId => OwnerId?.ToString("D");
 
     IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
     {
-        ["tenantId"] = TenantId.ToString("D"),
+        ["ownerKindId"] = OwnerKindId,
+        ["ownerId"] = OwnerId?.ToString("D") ?? string.Empty,
         ["messageId"] = MessageId?.ToString("D") ?? string.Empty,
         ["endpointId"] = EndpointId?.ToString("D") ?? string.Empty
     };

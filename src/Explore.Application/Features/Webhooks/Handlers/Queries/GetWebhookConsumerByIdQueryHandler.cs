@@ -1,5 +1,5 @@
-// ABOUTME: Handles tenant-scoped webhook consumer detail reads for management APIs.
-// ABOUTME: Returns a nullable DTO so API owns the RFC 7807 not-found response.
+// ABOUTME: Handles persisted-owner webhook consumer detail reads for management APIs.
+// ABOUTME: Uses the owner-operation boundary after authorization and maps entities in Application.
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
@@ -20,14 +20,14 @@ public sealed class GetWebhookConsumerByIdQueryHandler(
         GetWebhookConsumerByIdQuery request,
         CancellationToken cancellationToken)
     {
-        if (request.TenantId == Guid.Empty || request.ConsumerId == Guid.Empty)
+        if (request.ConsumerId == Guid.Empty)
         {
             return null;
         }
 
-        var consumer = await consumerRepository.GetByTenantAndIdAsync(
-            request.TenantId,
+        var consumer = await consumerRepository.GetByIdForOwnerOperationAsync(
             request.ConsumerId,
+            forUpdate: false,
             cancellationToken);
 
         if (consumer is null)
@@ -41,7 +41,7 @@ public sealed class GetWebhookConsumerByIdQueryHandler(
             !string.IsNullOrWhiteSpace(resolution.ProviderEnvironment))
         {
             binding = await bindingRepository.GetVerifiedByConsumerAsync(
-                request.TenantId,
+                consumer.TenantId,
                 request.ConsumerId,
                 WebhookProviderKind.Svix,
                 resolution.ProviderEnvironment,

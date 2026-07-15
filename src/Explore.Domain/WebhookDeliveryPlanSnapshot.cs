@@ -31,6 +31,10 @@ public sealed class WebhookDeliveryPlanSnapshot : ITenantEntity, IAuditableEntit
     public string RetentionPolicy { get; private set; } = string.Empty;
     public string RetentionPolicyVersion { get; private set; } = string.Empty;
     public DateTimeOffset PayloadRetentionUntilUtc { get; private set; }
+    public DateTimeOffset AttemptRetentionUntilUtc { get; private set; }
+    public DateTimeOffset DeadLetterEvidenceRetentionUntilUtc { get; private set; }
+    public DateTimeOffset PublicationRetentionUntilUtc { get; private set; }
+    public DateTimeOffset OperationalLogRetentionUntilUtc { get; private set; }
     public DateTimeOffset MaterializedAtUtc { get; private set; }
 
     public DateTime CreatedAt { get; set; }
@@ -48,6 +52,10 @@ public sealed class WebhookDeliveryPlanSnapshot : ITenantEntity, IAuditableEntit
         string retentionPolicy,
         string retentionPolicyVersion,
         DateTimeOffset payloadRetentionUntilUtc,
+        DateTimeOffset attemptRetentionUntilUtc,
+        DateTimeOffset deadLetterEvidenceRetentionUntilUtc,
+        DateTimeOffset publicationRetentionUntilUtc,
+        DateTimeOffset operationalLogRetentionUntilUtc,
         DateTimeOffset materializedAtUtc)
     {
         RequireGuid(tenantId, nameof(tenantId));
@@ -61,11 +69,23 @@ public sealed class WebhookDeliveryPlanSnapshot : ITenantEntity, IAuditableEntit
 
         RequireTimestamp(materializedAtUtc, nameof(materializedAtUtc));
         RequireTimestamp(payloadRetentionUntilUtc, nameof(payloadRetentionUntilUtc));
+        RequireTimestamp(attemptRetentionUntilUtc, nameof(attemptRetentionUntilUtc));
+        RequireTimestamp(deadLetterEvidenceRetentionUntilUtc, nameof(deadLetterEvidenceRetentionUntilUtc));
+        RequireTimestamp(publicationRetentionUntilUtc, nameof(publicationRetentionUntilUtc));
+        RequireTimestamp(operationalLogRetentionUntilUtc, nameof(operationalLogRetentionUntilUtc));
         if (payloadRetentionUntilUtc < materializedAtUtc)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(payloadRetentionUntilUtc),
                 "Payload retention cannot end before the delivery plan is materialized.");
+        }
+
+        if (attemptRetentionUntilUtc <= materializedAtUtc ||
+            deadLetterEvidenceRetentionUntilUtc < attemptRetentionUntilUtc ||
+            publicationRetentionUntilUtc <= materializedAtUtc ||
+            operationalLogRetentionUntilUtc <= materializedAtUtc)
+        {
+            throw new ArgumentException("Delivery-plan evidence retention horizons are inconsistent.");
         }
 
         return new WebhookDeliveryPlanSnapshot
@@ -92,6 +112,10 @@ public sealed class WebhookDeliveryPlanSnapshot : ITenantEntity, IAuditableEntit
                 MaxVersionLength,
                 nameof(retentionPolicyVersion)),
             PayloadRetentionUntilUtc = payloadRetentionUntilUtc,
+            AttemptRetentionUntilUtc = attemptRetentionUntilUtc,
+            DeadLetterEvidenceRetentionUntilUtc = deadLetterEvidenceRetentionUntilUtc,
+            PublicationRetentionUntilUtc = publicationRetentionUntilUtc,
+            OperationalLogRetentionUntilUtc = operationalLogRetentionUntilUtc,
             MaterializedAtUtc = materializedAtUtc,
             CreatedAt = materializedAtUtc.UtcDateTime
         };

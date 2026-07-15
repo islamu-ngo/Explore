@@ -42,6 +42,18 @@ public class IncomingWebhookMessageConfiguration : IEntityTypeConfiguration<Inco
         builder.Property(e => e.PayloadProvenanceId).IsRequired();
         builder.Property(e => e.ContentType).HasMaxLength(IncomingWebhookMessage.MaxContentTypeLength).IsRequired();
         builder.Property(e => e.ContentEncoding).HasMaxLength(IncomingWebhookMessage.MaxContentEncodingLength).IsRequired();
+        builder.Property(e => e.RetentionPolicyVersion)
+            .HasMaxLength(WebhookDeliveryPlanSnapshot.MaxVersionLength)
+            .HasDefaultValue("legacy-retention-v1")
+            .IsRequired();
+        builder.Property(e => e.ProcessingAttemptRetentionUntil)
+            .HasDefaultValueSql("statement_timestamp() + INTERVAL '30 days'");
+        builder.Property(e => e.DeadLetterEvidenceRetentionUntil)
+            .HasDefaultValueSql("statement_timestamp() + INTERVAL '90 days'");
+        builder.Property(e => e.ReplayWindowUntil)
+            .HasDefaultValueSql("statement_timestamp() + INTERVAL '14 days'");
+        builder.Property(e => e.OperationalLogRetentionUntil)
+            .HasDefaultValueSql("statement_timestamp() + INTERVAL '30 days'");
         builder.Property(e => e.StatusId).IsRequired();
         builder.Ignore(e => e.Status);
         builder.Property(e => e.ProcessingGeneration).IsRequired();
@@ -63,8 +75,7 @@ public class IncomingWebhookMessageConfiguration : IEntityTypeConfiguration<Inco
 
         builder.HasOne(e => e.WebhookConsumerProviderBinding)
             .WithMany()
-            .HasPrincipalKey(e => new { e.TenantId, e.Id })
-            .HasForeignKey(e => new { e.TenantId, e.WebhookConsumerProviderBindingId })
+            .HasForeignKey(e => e.WebhookConsumerProviderBindingId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.StatusLookup)
@@ -119,5 +130,15 @@ public class IncomingWebhookMessageConfiguration : IEntityTypeConfiguration<Inco
 
         builder.HasIndex(e => new { e.TenantId, e.StatusId, e.ReceivedAt })
             .HasDatabaseName("ix_incoming_webhook_messages_tenant_status_received");
+
+        builder.HasIndex(e => new { e.TenantId, e.PayloadRetentionUntil, e.ReplayWindowUntil })
+            .HasDatabaseName("ix_incoming_webhook_messages_tenant_payload_retention")
+            .HasFilter("payload_bytes IS NOT NULL");
+
+        builder.HasIndex(e => new { e.TenantId, e.ProcessingAttemptRetentionUntil })
+            .HasDatabaseName("ix_incoming_webhook_messages_tenant_attempt_retention");
+
+        builder.HasIndex(e => new { e.TenantId, e.DeadLetterEvidenceRetentionUntil })
+            .HasDatabaseName("ix_incoming_webhook_messages_tenant_dead_letter_retention");
     }
 }

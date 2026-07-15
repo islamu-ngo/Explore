@@ -7,8 +7,6 @@ using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Domain;
-using Explore.Infrastructure.Configuration;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
 namespace Explore.API.Services;
@@ -16,7 +14,8 @@ namespace Explore.API.Services;
 public sealed class IncomingWebhookIntakeService(
     IIncomingWebhookVerifierRegistry verifierRegistry,
     IIncomingWebhookMessageRepository incomingWebhookMessageRepository,
-    IOptions<WebhookOptions> webhookOptions,
+    IWebhookRetentionPolicyResolver retentionPolicyResolver,
+    TimeProvider timeProvider,
     ILogger<IncomingWebhookIntakeService> logger) : IIncomingWebhookIntakeService
 {
     private const int BufferThresholdBytes = 30 * 1024;
@@ -156,7 +155,11 @@ public sealed class IncomingWebhookIntakeService(
         var normalizedProviderMessageId = resolvedProviderMessageId;
         var normalizedIdempotencyKey = resolvedIdempotencyKey;
 
-        var now = DateTime.UtcNow;
+        var nowOffset = timeProvider.GetUtcNow();
+        var now = nowOffset.UtcDateTime;
+        var retention = retentionPolicyResolver.Resolve(
+            readResult.ReceivedAt,
+            nowOffset);
         var message = IncomingWebhookMessage.CreateVerified(
             tenantId.Value,
             normalizedProvider,
@@ -170,7 +173,12 @@ public sealed class IncomingWebhookIntakeService(
             SerializeSafeHeaders(readResult.Headers),
             readResult.ReceivedAt.UtcDateTime,
             now,
-            now.AddDays(webhookOptions.Value.DefaultPayloadRetentionDays),
+            retention.InboundPayloadRetentionUntil.UtcDateTime,
+            retention.PolicyVersion,
+            retention.ProcessingAttemptRetentionUntil.UtcDateTime,
+            retention.DeadLetterEvidenceRetentionUntil.UtcDateTime,
+            retention.ReplayWindowUntil.UtcDateTime,
+            retention.OperationalLogRetentionUntil.UtcDateTime,
             readResult.Verification.WebhookConsumerProviderBindingId);
 
         var created = await incomingWebhookMessageRepository.TryCreateAsync(message, cancellationToken);
@@ -256,14 +264,21 @@ public sealed class IncomingWebhookIntakeService(
         Dictionary<string, string> captured = new(StringComparer.OrdinalIgnoreCase);
         foreach (var header in headers)
         {
-            captured[header.Key] = JoinHeaderValues(header.Value);
+            captured[header.Key] = JoinHeaderValues(header.Key, header.Value);
         }
 
         return captured;
     }
 
-    private static string JoinHeaderValues(StringValues values) =>
-        string.Join(",", values.Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value!.Trim()));
+    private static string JoinHeaderValues(string headerName, StringValues values)
+    {
+        var separator = string.Equals(headerName, "svix-signature", StringComparison.OrdinalIgnoreCase)
+            ? " "
+            : ",";
+        return string.Join(
+            separator,
+            values.Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value!.Trim()));
+    }
 
     private static string ComputePayloadHash(byte[] bodyBytes)
     {

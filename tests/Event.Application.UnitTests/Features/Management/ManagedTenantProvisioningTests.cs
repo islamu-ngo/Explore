@@ -12,8 +12,8 @@ using Explore.Application.Exceptions;
 using Explore.Application.Features.ControlPlane.Plans;
 using Explore.Application.Features.ManagedProviderProvisioning;
 using Explore.Application.Features.Management;
-using Explore.Application.Features.Management.Handlers;
-using Explore.Application.Features.Management.Requests;
+using Explore.Application.Features.Management.Handlers.Commands;
+using Explore.Application.Features.Management.Requests.Commands;
 using Explore.Application.Management;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -179,7 +179,7 @@ public sealed class ManagedTenantProvisioningTests
                 options),
             preflight);
 
-        ManagementTenantProvisioningRequest request = CreateRequest(modules: [], quotas: []);
+        ManagementTenantProvisioningRequestDto request = CreateRequest(modules: [], quotas: []);
         var result = await handler.Handle(
             new ScheduleManagedTenantProvisioningCommand(managedInstanceId, request),
             CancellationToken.None);
@@ -307,8 +307,8 @@ public sealed class ManagedTenantProvisioningTests
         Guid oldOutboxMessageId = Guid.CreateVersion7();
         var operationRepository = Substitute.For<IManagedTenantProvisioningOperationRepository>();
         var outboxRepository = Substitute.For<IOutboxRepository>();
-        ManagementTenantProvisioningRequest request = CreateRequest(modules: [], quotas: []);
-        ManagementTenantProvisioningRequest normalized =
+        ManagementTenantProvisioningRequestDto request = CreateRequest(modules: [], quotas: []);
+        ManagementTenantProvisioningRequestDto normalized =
             ManagedTenantProvisioningRequestCodec.Normalize(request);
         var operation = new ManagedTenantProvisioningOperation
         {
@@ -385,8 +385,8 @@ public sealed class ManagedTenantProvisioningTests
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var externalBindingRepository = Substitute.For<IExternalBindingRepository>();
         var tenantRepository = Substitute.For<ITenantRepository>();
-        ManagementTenantProvisioningRequest request = CreateRequest(modules: [], quotas: []);
-        ManagementTenantProvisioningRequest normalized =
+        ManagementTenantProvisioningRequestDto request = CreateRequest(modules: [], quotas: []);
+        ManagementTenantProvisioningRequestDto normalized =
             ManagedTenantProvisioningRequestCodec.Normalize(request);
         var operation = new ManagedTenantProvisioningOperation
         {
@@ -514,8 +514,8 @@ public sealed class ManagedTenantProvisioningTests
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var externalBindingRepository = Substitute.For<IExternalBindingRepository>();
         var tenantRepository = Substitute.For<ITenantRepository>();
-        ManagementTenantProvisioningRequest request = CreateRequest(modules: [], quotas: []);
-        ManagementTenantProvisioningRequest normalized =
+        ManagementTenantProvisioningRequestDto request = CreateRequest(modules: [], quotas: []);
+        ManagementTenantProvisioningRequestDto normalized =
             ManagedTenantProvisioningRequestCodec.Normalize(request);
         var operation = new ManagedTenantProvisioningOperation
         {
@@ -587,8 +587,8 @@ public sealed class ManagedTenantProvisioningTests
     [Test]
     public async Task CanonicalHash_WhenCollectionsHaveDifferentOrder_IsIdentical()
     {
-        ManagementTenantProvisioningRequest first = CreateRequest();
-        ManagementTenantProvisioningRequest second = CreateRequest(
+        ManagementTenantProvisioningRequestDto first = CreateRequest();
+        ManagementTenantProvisioningRequestDto second = CreateRequest(
             modules: ["module-a", "module-b"],
             quotas: [new("storage.bytes", 100), new("ai.daily_tenant_messages", 10)]);
 
@@ -603,7 +603,7 @@ public sealed class ManagedTenantProvisioningTests
     [Test]
     public async Task CanonicalHash_WhenNestedJsonOrderAndDomainSpellingDiffer_IsIdentical()
     {
-        ManagementTenantProvisioningRequest first = CreateRequest(
+        ManagementTenantProvisioningRequestDto first = CreateRequest(
             initialSettings:
             [
                 new ManagementTenantInitialSettingDto(
@@ -611,7 +611,7 @@ public sealed class ManagedTenantProvisioningTests
                     "{\"outer\":{\"b\":2,\"a\":1},\"items\":[{\"z\":3,\"y\":2}]}")
             ],
             domain: new ManagementTenantDomainIntentDto { CustomDomain = " EXAMPLE.COM. " });
-        ManagementTenantProvisioningRequest second = CreateRequest(
+        ManagementTenantProvisioningRequestDto second = CreateRequest(
             initialSettings:
             [
                 new ManagementTenantInitialSettingDto(
@@ -620,9 +620,9 @@ public sealed class ManagedTenantProvisioningTests
             ],
             domain: new ManagementTenantDomainIntentDto { CustomDomain = "example.com" });
 
-        ManagementTenantProvisioningRequest firstNormalized =
+        ManagementTenantProvisioningRequestDto firstNormalized =
             ManagedTenantProvisioningRequestCodec.Normalize(first);
-        ManagementTenantProvisioningRequest secondNormalized =
+        ManagementTenantProvisioningRequestDto secondNormalized =
             ManagedTenantProvisioningRequestCodec.Normalize(second);
 
         await Assert.That(firstNormalized.Domain!.CustomDomain).IsEqualTo("example.com");
@@ -784,7 +784,7 @@ public sealed class ManagedTenantProvisioningTests
         var provisioner = Substitute.For<IManagedProviderClientProvisioner>();
         provisioner.EnsureAsync(
                 Arg.Any<ManagedProviderClientProvisioningDto>(),
-                Arg.Any<ManagementTenantProvisioningRequest>(),
+                Arg.Any<ManagementTenantProvisioningRequestDto>(),
                 operationId,
                 outboxMessageId,
                 Arg.Any<CancellationToken>())
@@ -806,7 +806,7 @@ public sealed class ManagedTenantProvisioningTests
         await Assert.That(operation.FailureCode).IsEqualTo("tenant_provisioning_requires_multi_tenant");
         await provisioner.Received(1).EnsureAsync(
             Arg.Any<ManagedProviderClientProvisioningDto>(),
-            Arg.Any<ManagementTenantProvisioningRequest>(),
+            Arg.Any<ManagementTenantProvisioningRequestDto>(),
             operationId,
             outboxMessageId,
             Arg.Any<CancellationToken>());
@@ -821,8 +821,8 @@ public sealed class ManagedTenantProvisioningTests
 
         await Assert.That(result.IsValid).IsFalse();
         string[] properties = result.Errors.Select(error => error.PropertyName).ToArray();
-        await Assert.That(properties).Contains(nameof(ManagementTenantProvisioningRequest.ApprovedModules));
-        await Assert.That(properties).Contains(nameof(ManagementTenantProvisioningRequest.InitialSettings));
+        await Assert.That(properties).Contains(nameof(ManagementTenantProvisioningRequestDto.ApprovedModules));
+        await Assert.That(properties).Contains(nameof(ManagementTenantProvisioningRequestDto.InitialSettings));
         await Assert.That(properties).Contains("Plan.Quotas");
     }
 
@@ -831,12 +831,12 @@ public sealed class ManagedTenantProvisioningTests
     {
         var validator = new ManagementTenantProvisioningRequestValidator();
         JsonObject requestJson = JsonSerializer.SerializeToNode(CreateRequest())!.AsObject();
-        requestJson[nameof(ManagementTenantProvisioningRequest.ApprovedModules)] = new JsonArray { null };
-        requestJson[nameof(ManagementTenantProvisioningRequest.InitialSettings)] = new JsonArray { null };
-        requestJson[nameof(ManagementTenantProvisioningRequest.Plan)]!
+        requestJson[nameof(ManagementTenantProvisioningRequestDto.ApprovedModules)] = new JsonArray { null };
+        requestJson[nameof(ManagementTenantProvisioningRequestDto.InitialSettings)] = new JsonArray { null };
+        requestJson[nameof(ManagementTenantProvisioningRequestDto.Plan)]!
             .AsObject()[nameof(ManagementTenantPlanDto.Quotas)] = new JsonArray { null };
-        ManagementTenantProvisioningRequest request =
-            requestJson.Deserialize<ManagementTenantProvisioningRequest>()
+        ManagementTenantProvisioningRequestDto request =
+            requestJson.Deserialize<ManagementTenantProvisioningRequestDto>()
             ?? throw new InvalidOperationException("Managed tenant provisioning request did not deserialize.");
 
         var result = await validator.ValidateAsync(request);
@@ -857,8 +857,8 @@ public sealed class ManagedTenantProvisioningTests
 
         await Assert.That(result.IsValid).IsFalse();
         string[] properties = result.Errors.Select(error => error.PropertyName).ToArray();
-        await Assert.That(properties).Contains(nameof(ManagementTenantProvisioningRequest.Administrator));
-        await Assert.That(properties).Contains(nameof(ManagementTenantProvisioningRequest.Plan));
+        await Assert.That(properties).Contains(nameof(ManagementTenantProvisioningRequestDto.Administrator));
+        await Assert.That(properties).Contains(nameof(ManagementTenantProvisioningRequestDto.Plan));
     }
 
     [Test]
@@ -993,7 +993,7 @@ public sealed class ManagedTenantProvisioningTests
         var provisioner = Substitute.For<IManagedProviderClientProvisioner>();
         provisioner.EnsureAsync(
                 Arg.Any<ManagedProviderClientProvisioningDto>(),
-                Arg.Any<ManagementTenantProvisioningRequest>(),
+                Arg.Any<ManagementTenantProvisioningRequestDto>(),
                 operationId,
                 oldOutboxMessageId,
                 Arg.Any<CancellationToken>())
@@ -1040,7 +1040,7 @@ public sealed class ManagedTenantProvisioningTests
         var provisioner = Substitute.For<IManagedProviderClientProvisioner>();
         provisioner.EnsureAsync(
                 Arg.Any<ManagedProviderClientProvisioningDto>(),
-                Arg.Any<ManagementTenantProvisioningRequest>(),
+                Arg.Any<ManagementTenantProvisioningRequestDto>(),
                 operationId,
                 outboxMessageId,
                 Arg.Any<CancellationToken>())
@@ -1067,7 +1067,7 @@ public sealed class ManagedTenantProvisioningTests
             Arg.Any<CancellationToken>());
     }
 
-    private static ManagementTenantProvisioningRequest CreateRequest(
+    private static ManagementTenantProvisioningRequestDto CreateRequest(
         IReadOnlyList<string>? modules = null,
         IReadOnlyList<ManagementTenantQuotaDto>? quotas = null,
         bool explicitNullCollections = false,

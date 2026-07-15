@@ -4,8 +4,8 @@
 using System.Text.Json;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Events.Handlers.Commands;
-using Explore.Application.Features.Management.Handlers;
-using Explore.Application.Features.Management.Requests;
+using Explore.Application.Features.Management.Handlers.Commands;
+using Explore.Application.Features.Management.Requests.Commands;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Services;
 using Explore.Domain;

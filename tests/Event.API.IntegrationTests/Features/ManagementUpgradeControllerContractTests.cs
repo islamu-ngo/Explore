@@ -26,14 +26,14 @@ public sealed class ManagementUpgradeControllerContractTests
             nameof(ManagementController.EvaluateUpgradePreflight),
             "upgrade/preflight",
             RouteNames.EvaluateManagementUpgradePreflight,
-            typeof(ManagementUpgradePreflightRequest),
+            typeof(ManagementUpgradePreflightRequestDto),
             typeof(ManagementUpgradePreflightDto));
 
         await AssertAction(
             nameof(ManagementController.VerifyUpgradePostflight),
             "upgrade/postflight",
             RouteNames.VerifyManagementUpgradePostflight,
-            typeof(ManagementUpgradePostflightRequest),
+            typeof(ManagementUpgradePostflightRequestDto),
             typeof(ManagementUpgradePostflightDto));
     }
 
@@ -68,7 +68,7 @@ public sealed class ManagementUpgradeControllerContractTests
             .IsFalse();
 
         ParameterInfo request = schedule.GetParameters()
-            .Single(parameter => parameter.ParameterType == typeof(ManagementTenantProvisioningRequest));
+            .Single(parameter => parameter.ParameterType == typeof(ManagementTenantProvisioningRequestDto));
         await Assert.That(request.GetCustomAttribute<FromBodyAttribute>()).IsNotNull();
         await Assert.That(schedule.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName)
             .IsEqualTo(RateLimitingExtensions.WritePolicy);
@@ -114,7 +114,7 @@ public sealed class ManagementUpgradeControllerContractTests
             .IsEqualTo(RequestTimeoutExtensions.ControlPlanePolicy);
 
         ParameterInfo request = action.GetParameters()
-            .Single(parameter => parameter.ParameterType == typeof(ManagementTenantProvisioningRequest));
+            .Single(parameter => parameter.ParameterType == typeof(ManagementTenantProvisioningRequestDto));
         await Assert.That(request.GetCustomAttribute<FromBodyAttribute>()).IsNotNull();
 
         AssertResponse(action, StatusCodes.Status200OK, typeof(ManagementTenantProvisioningPreflightDto));

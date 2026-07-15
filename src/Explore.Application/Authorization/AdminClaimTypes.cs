@@ -1,5 +1,5 @@
-// ABOUTME: Constants for admin authority claim types used in IClaimsTransformation.
-// These claims enrich the server principal for BFF/API decisions and must not be serialized as browser authority.
+// ABOUTME: Constants for persisted administrative authority claims used by server-side transformations.
+// ABOUTME: Covers instance, tenant, organization, and group scopes without making claims a UI authority source.
 
 namespace Explore.Application.Authorization;
 
@@ -26,4 +26,10 @@ public static class AdminClaimTypes
     /// Value is the organization ID (Guid). Multiple claims may exist (one per organization).
     /// </summary>
     public const string OrganizationAdmin = "explore:admin:organization";
+
+    /// <summary>
+    /// Claim type for group-level admin authority (Creator or Admin role).
+    /// Value is the group ID (Guid). Multiple claims may exist (one per group).
+    /// </summary>
+    public const string GroupAdmin = "explore:admin:group";
 }

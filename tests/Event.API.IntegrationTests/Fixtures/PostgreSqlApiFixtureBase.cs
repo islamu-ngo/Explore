@@ -14,7 +14,7 @@ namespace Event.Api.IntegrationTests.Fixtures;
 
 /// <summary>
 /// Abstract base for PostgreSQL-backed test fixtures. Manages container lifecycle,
-/// runs migrations and lookup seeding once, and provides per-test Respawn reset.
+/// runs migrations and lookup seeding, and provides per-test Respawn reset.
 /// Subclasses supply host-profile-specific configuration overrides.
 /// </summary>
 public abstract class PostgreSqlApiFixtureBase : IAsyncInitializer, IAsyncDisposable
@@ -87,6 +87,9 @@ public abstract class PostgreSqlApiFixtureBase : IAsyncInitializer, IAsyncDispos
         var factory = Factory ?? throw new InvalidOperationException("PostgreSQL API test host was not recreated.");
 
         await using var scope = factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        await LookupTableSeeder.SeedAsync(dbContext);
+
         var outputCacheStore = scope.ServiceProvider.GetRequiredService<IOutputCacheStore>();
 
         // Defensive cleanup for output-cache entries that also exist inside the recreated host.

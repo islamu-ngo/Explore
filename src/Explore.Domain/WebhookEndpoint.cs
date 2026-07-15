@@ -1,16 +1,25 @@
-// ABOUTME: Tenant-scoped outgoing webhook endpoint with provider ids, secret refs, and delivery controls.
-// ABOUTME: LocalProvider treats this row as authoritative while SvixProvider can mirror provider endpoint ids.
+// ABOUTME: Owner-scoped outgoing webhook endpoint with provider ids, secret refs, and delivery controls.
+// ABOUTME: Inherits typed ownership from its consumer while preserving instance-or-tenant query scope.
 
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class WebhookEndpoint : ITenantEntity, IAuditableEntity
+public class WebhookEndpoint : IAuditableEntity
 {
+    private Guid _configurationScopeId;
+
     public Guid Id { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid? TenantId { get; set; }
     public Tenant? Tenant { get; set; }
+    public Guid? InstanceId { get; set; }
+    public InstanceBootstrapState? Instance { get; set; }
+    public Guid ConfigurationScopeId
+    {
+        get => TenantId ?? InstanceId ?? _configurationScopeId;
+        private set => _configurationScopeId = value;
+    }
 
     public Guid ConsumerId { get; set; }
     public WebhookConsumer? Consumer { get; set; }
@@ -161,7 +170,7 @@ public class WebhookEndpoint : ITenantEntity, IAuditableEntity
 
     public bool Resume(DateTime resumedAt, Guid actorUserId)
     {
-        if (Status != WebhookEndpointStatus.AutoPaused)
+        if (Status is not (WebhookEndpointStatus.AutoPaused or WebhookEndpointStatus.Disabled))
         {
             return false;
         }
@@ -174,6 +183,26 @@ public class WebhookEndpoint : ITenantEntity, IAuditableEntity
         LastResumedAt = resumedAt;
         LastResumedBy = actorUserId;
         UpdatedAt = resumedAt;
+        UpdatedBy = actorUserId;
+        DeliveryStateVersion++;
+        return true;
+    }
+
+    public bool Pause(DateTime pausedAt, Guid actorUserId)
+    {
+        EnsureUtc(pausedAt, nameof(pausedAt));
+        if (actorUserId == Guid.Empty)
+        {
+            throw new ArgumentException("Actor user id is required.", nameof(actorUserId));
+        }
+
+        if (Status != WebhookEndpointStatus.Active)
+        {
+            return false;
+        }
+
+        Status = WebhookEndpointStatus.Disabled;
+        UpdatedAt = pausedAt;
         UpdatedBy = actorUserId;
         DeliveryStateVersion++;
         return true;

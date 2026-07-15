@@ -7,6 +7,7 @@
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Components.Forms
 @using Explore.Blazor.Client.Constants
+@using Explore.Blazor.Client.Contracts.Services.Webhooks
 
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject IUserService UserService
@@ -197,9 +198,9 @@
                         {
                             <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantSupportAccessEvidenceSection TenantId="TenantConstants.DefaultTenantId" />
                         }
-                        else if (_currentSection == "webhooks" && IsSingleTenantMode)
+                        else if (_currentSection == "webhooks")
                         {
-                            <Explore.Blazor.Client.Components.Webhooks.WebhookManagementPanel />
+                            <Explore.Blazor.Client.Components.Webhooks.WebhookManagementPanel Owner="@WebhookOwnerSelection.Instance" />
                         }
                         else if (_currentSection == "tenants" && !IsSingleTenantMode)
                         {
@@ -648,6 +649,7 @@
             new("support-access",   Icons.Material.Filled.SupportAgent,    "Support Access", Group: "Operations"),
             new("support-access-evidence", Icons.Material.Filled.ReceiptLong, "Support Evidence", Group: "Operations"),
             new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
+            new("webhooks",         Icons.Material.Filled.Webhook,         "Webhooks",         Group: "Developer"),
         ];
     }
 

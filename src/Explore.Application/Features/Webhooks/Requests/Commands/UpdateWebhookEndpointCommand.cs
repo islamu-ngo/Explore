@@ -1,5 +1,5 @@
 // ABOUTME: Authorized command for updating an outgoing webhook endpoint and subscription set.
-// ABOUTME: Uses tenant and endpoint identifiers as dynamic authorization metadata for webhook administration.
+// ABOUTME: Uses persisted endpoint ownership as authoritative authorization metadata.
 
 using Explore.Application.Authorization;
 using Explore.Application.Responses;
@@ -8,10 +8,9 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.Update)]
-public sealed class UpdateWebhookEndpointCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed class UpdateWebhookEndpointCommand
+    : IRequest<BaseCommandResponse<Guid>>, ISecureRequest, IWebhookPersistedOwnerRequest
 {
-    public Guid TenantId { get; init; }
-
     public Guid EndpointId { get; init; }
 
     public required string Url { get; init; }
@@ -38,7 +37,11 @@ public sealed class UpdateWebhookEndpointCommand : IRequest<BaseCommandResponse<
 
     IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
     {
-        ["tenantId"] = TenantId.ToString("D"),
         ["endpointId"] = EndpointId.ToString("D")
     };
+
+    WebhookOwnedResourceKind IWebhookPersistedOwnerRequest.OwnedResourceKind =>
+        WebhookOwnedResourceKind.Endpoint;
+
+    Guid IWebhookPersistedOwnerRequest.OwnedResourceId => EndpointId;
 }

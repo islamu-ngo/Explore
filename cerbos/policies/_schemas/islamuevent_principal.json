@@ -25,6 +25,11 @@
       "description": "Map of organizationId to role string (e.g. 'admin') for organization membership checks.",
       "additionalProperties": { "type": "string" }
     },
+    "groupMemberships": {
+      "type": "object",
+      "description": "Map of groupId to role string for group administration checks.",
+      "additionalProperties": { "type": "string" }
+    },
     "eventAssignments": {
       "type": "object",
       "description": "Map of eventId to effective assignment data. Only active, non-expired assignments for the request tenant are hydrated by CerbosPrincipalBuilder.EnrichWithEventAssignmentsAsync.",

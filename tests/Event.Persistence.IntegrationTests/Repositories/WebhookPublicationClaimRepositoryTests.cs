@@ -6,8 +6,10 @@ using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence;
 using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using TUnit.Core;
 
 namespace Event.Persistence.IntegrationTests.Repositories;
@@ -57,6 +59,26 @@ public sealed class WebhookPublicationClaimRepositoryTests(PostgreSqlContainerFi
         await Assert.That(await verificationContext.WebhookProviderPublicationAttempts
                 .CountAsync(attempt => attempt.TenantId == scenario.TenantId))
             .IsEqualTo(3);
+    }
+
+    [Test]
+    public async Task ClaimDue_WithRetryingExecutionStrategy_ClaimsPublicationAsRetriableUnit()
+    {
+        var scenario = await SeedAsync(publicationCount: 1);
+        await using var context = CreateRetryingDbContext();
+
+        var claims = await new WebhookProviderPublicationRepository(context).ClaimDueAsync(
+            new WebhookProviderPublicationClaimRequest(
+                BatchSize: 1,
+                LeaseOwner: "publication-retrying-worker",
+                ClaimedAt: PreparedAt.AddMinutes(1),
+                LeaseDuration: TimeSpan.FromMinutes(2),
+                MaxAutomaticAttempts: 3),
+            CancellationToken.None);
+
+        await Assert.That(claims.Count).IsEqualTo(1);
+        await Assert.That(claims[0].Publication.Id).IsEqualTo(scenario.Publications.Single().Id);
+        await Assert.That(claims[0].PublicationFence).IsEqualTo(1);
     }
 
     [Test]
@@ -193,6 +215,36 @@ public sealed class WebhookPublicationClaimRepositoryTests(PostgreSqlContainerFi
             .IsEqualTo(1);
     }
 
+    [Test]
+    public async Task ListByTenant_FiltersMessageAndStatusWithoutCrossTenantLeakage()
+    {
+        var scenario = await SeedAsync(publicationCount: 2, makeUnknown: true);
+        var selected = scenario.Publications[0];
+        await using var context = fixture.CreateDbContext();
+        var repository = new WebhookProviderPublicationRepository(context);
+
+        var result = await repository.ListByTenantAsync(
+            scenario.TenantId,
+            selected.WebhookMessageId,
+            null,
+            (int)WebhookProviderPublicationStatus.PublicationUnknown,
+            10,
+            CancellationToken.None);
+        var otherTenantResult = await repository.ListByTenantAsync(
+            scenario.OtherTenantId,
+            selected.WebhookMessageId,
+            null,
+            (int)WebhookProviderPublicationStatus.PublicationUnknown,
+            10,
+            CancellationToken.None);
+
+        await Assert.That(result).HasSingleItem();
+        await Assert.That(result[0].Id).IsEqualTo(selected.Id);
+        await Assert.That(result[0].WebhookDeliveryPlanSnapshot).IsNotNull();
+        await Assert.That(result[0].Attempts.Count).IsEqualTo(2);
+        await Assert.That(otherTenantResult).IsEmpty();
+    }
+
     private async Task<SeededScenario> SeedAsync(int publicationCount, bool makeUnknown = false)
     {
         await fixture.ResetAsync();
@@ -306,6 +358,10 @@ public sealed class WebhookPublicationClaimRepositoryTests(PostgreSqlContainerFi
             "default",
             "retention-v1",
             new DateTimeOffset(PreparedAt.AddDays(7)),
+            new DateTimeOffset(PreparedAt.AddDays(30)),
+            new DateTimeOffset(PreparedAt.AddDays(90)),
+            new DateTimeOffset(PreparedAt.AddDays(90)),
+            new DateTimeOffset(PreparedAt.AddDays(30)),
             new DateTimeOffset(PreparedAt));
 
     private static WebhookConsumerProviderBinding CreateBinding(Guid tenantId, Guid consumerId)
@@ -346,6 +402,19 @@ public sealed class WebhookPublicationClaimRepositoryTests(PostgreSqlContainerFi
         TenantStatus = null!,
         CreatedAt = PreparedAt
     };
+
+    private ExploreDbContext CreateRetryingDbContext()
+    {
+        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseNpgsql(fixture.ConnectionString, npgsql => npgsql.EnableRetryOnFailure())
+            .UseSnakeCaseNamingConvention()
+            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
+            .Options;
+
+        var context = new ExploreDbContext(options);
+        context.EnableTenantFilterBypass("Retry-enabled provider publication claim integration test.");
+        return context;
+    }
 
     private sealed record SeededScenario(
         Guid TenantId,

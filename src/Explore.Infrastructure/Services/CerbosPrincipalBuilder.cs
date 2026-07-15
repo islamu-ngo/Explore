@@ -69,10 +69,13 @@ public class CerbosPrincipalBuilder
         var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(userId, cancellationToken);
         var adminTenantIds = await _adminContext.GetAdminTenantIdsAsync(userId, cancellationToken);
         var adminOrgIds = await _adminContext.GetAdminOrganizationIdsAsync(userId, cancellationToken);
+        var adminGroupIds = await _adminContext.GetAdminGroupIdsAsync(userId, cancellationToken);
 
         var tenantMemberships = adminTenantIds
             .ToDictionary(id => id.ToString(), _ => AttributeValue.StringValue("admin"));
         var orgMemberships = adminOrgIds
+            .ToDictionary(id => id.ToString(), _ => AttributeValue.StringValue("admin"));
+        var groupMemberships = adminGroupIds
             .ToDictionary(id => id.ToString(), _ => AttributeValue.StringValue("admin"));
 
         return Principal
@@ -80,7 +83,8 @@ public class CerbosPrincipalBuilder
             .WithAttribute("userId", AttributeValue.StringValue(userId.ToString()))
             .WithAttribute("isInstanceAdmin", AttributeValue.BoolValue(isInstanceAdmin))
             .WithAttribute("tenantMemberships", AttributeValue.MapValue(tenantMemberships))
-            .WithAttribute("orgMemberships", AttributeValue.MapValue(orgMemberships));
+            .WithAttribute("orgMemberships", AttributeValue.MapValue(orgMemberships))
+            .WithAttribute("groupMemberships", AttributeValue.MapValue(groupMemberships));
     }
 
     /// <summary>
@@ -96,7 +100,7 @@ public class CerbosPrincipalBuilder
     {
         ArgumentNullException.ThrowIfNull(machineContext);
 
-        var (isInstanceAdmin, tenantMemberships, orgMemberships) =
+        var (isInstanceAdmin, tenantMemberships, orgMemberships, groupMemberships) =
             await ResolveMachineAuthorityAsync(machineContext, cancellationToken);
 
         var scopeAttrs = machineContext.Scopes
@@ -108,6 +112,7 @@ public class CerbosPrincipalBuilder
             .WithAttribute("isInstanceAdmin", AttributeValue.BoolValue(isInstanceAdmin))
             .WithAttribute("tenantMemberships", AttributeValue.MapValue(tenantMemberships))
             .WithAttribute("orgMemberships", AttributeValue.MapValue(orgMemberships))
+            .WithAttribute("groupMemberships", AttributeValue.MapValue(groupMemberships))
             .WithAttribute("is_machine", AttributeValue.BoolValue(true))
             .WithAttribute("api_key_id", AttributeValue.StringValue(machineContext.KeyId))
             .WithAttribute("owner_type", AttributeValue.StringValue(machineContext.OwnerType.ToString().ToLowerInvariant()))
@@ -120,45 +125,52 @@ public class CerbosPrincipalBuilder
         return principal;
     }
 
-    private async Task<(bool IsInstanceAdmin, Dictionary<string, AttributeValue> TenantMemberships, Dictionary<string, AttributeValue> OrgMemberships)>
+    private async Task<(
+        bool IsInstanceAdmin,
+        Dictionary<string, AttributeValue> TenantMemberships,
+        Dictionary<string, AttributeValue> OrgMemberships,
+        Dictionary<string, AttributeValue> GroupMemberships)>
         ResolveMachineAuthorityAsync(ApiKeyPrincipalContext context, CancellationToken cancellationToken)
     {
         switch (context.OwnerType)
         {
             case ExternalApiKeyOwnerType.InstanceAdmin:
-                return (true, new Dictionary<string, AttributeValue>(), new Dictionary<string, AttributeValue>());
+                return (true, [], [], []);
 
             case ExternalApiKeyOwnerType.Tenant:
                 var tenantMap = new Dictionary<string, AttributeValue>();
                 if (context.TenantId is { } tenantTarget)
                     tenantMap[tenantTarget.ToString()] = AttributeValue.StringValue("admin");
-                return (false, tenantMap, new Dictionary<string, AttributeValue>());
+                return (false, tenantMap, [], []);
 
             case ExternalApiKeyOwnerType.Organization:
                 var orgMap = new Dictionary<string, AttributeValue>
                 {
                     [context.OwnerId.ToString()] = AttributeValue.StringValue("admin"),
                 };
-                return (false, new Dictionary<string, AttributeValue>(), orgMap);
+                return (false, [], orgMap, []);
 
             case ExternalApiKeyOwnerType.Group:
-                // Cerbos policies do not currently express group-admin roles directly;
-                // scope gating in FallbackAuthorizationService and MachineScopeMapping covers
-                // group resource authority. We still emit the attributes above so a future
-                // group-admin policy can key off group ownership via owner_type/owner_id.
-                return (false, new Dictionary<string, AttributeValue>(), new Dictionary<string, AttributeValue>());
+                var groupMap = new Dictionary<string, AttributeValue>
+                {
+                    [context.OwnerId.ToString()] = AttributeValue.StringValue("admin")
+                };
+                return (false, [], [], groupMap);
 
             case ExternalApiKeyOwnerType.User:
                 // Machine principal owned by a user borrows the owner's actual authority profile.
                 var ownerIsInstanceAdmin = await _adminContext.IsInstanceAdminAsync(context.OwnerId, cancellationToken);
                 var ownerTenantIds = await _adminContext.GetAdminTenantIdsAsync(context.OwnerId, cancellationToken);
                 var ownerOrgIds = await _adminContext.GetAdminOrganizationIdsAsync(context.OwnerId, cancellationToken);
+                var ownerGroupIds = await _adminContext.GetAdminGroupIdsAsync(context.OwnerId, cancellationToken);
 
                 var userTenantMap = ownerTenantIds
                     .ToDictionary(id => id.ToString(), _ => AttributeValue.StringValue("admin"));
                 var userOrgMap = ownerOrgIds
                     .ToDictionary(id => id.ToString(), _ => AttributeValue.StringValue("admin"));
-                return (ownerIsInstanceAdmin, userTenantMap, userOrgMap);
+                var userGroupMap = ownerGroupIds
+                    .ToDictionary(id => id.ToString(), _ => AttributeValue.StringValue("admin"));
+                return (ownerIsInstanceAdmin, userTenantMap, userOrgMap, userGroupMap);
 
             default:
                 throw new ArgumentOutOfRangeException(

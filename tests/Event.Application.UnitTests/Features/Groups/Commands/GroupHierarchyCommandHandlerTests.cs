@@ -27,6 +27,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
     private readonly IGroupMemberRepository _groupMemberRepository;
     private readonly IActorRepository _actorRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly IAdminCacheInvalidator _adminCacheInvalidator;
     private readonly IUserContext _userContext;
     private readonly IMapper _mapper;
     private readonly ITenantContext _tenantContext;
@@ -39,6 +40,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         _groupMemberRepository = Substitute.For<IGroupMemberRepository>();
         _actorRepository = Substitute.For<IActorRepository>();
         _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
+        _adminCacheInvalidator = Substitute.For<IAdminCacheInvalidator>();
         _userContext = Substitute.For<IUserContext>();
         _mapper = Substitute.For<IMapper>();
         _tenantContext = Substitute.For<ITenantContext>();
@@ -72,6 +74,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         var handler = CreateCreateHandler();
         var command = new CreateGroupCommand
         {
+            CreatorUserId = Guid.NewGuid(),
             GroupDto = new CreateGroupDto
             {
                 FullName = "Nested Group",
@@ -88,6 +91,45 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Errors).Contains("Parent organization does not exist in the current tenant.");
         await _groupRepository.DidNotReceive().Create(Arg.Any<Group>());
+        _adminCacheInvalidator.DidNotReceiveWithAnyArgs().InvalidateUser(default);
+    }
+
+    [Test]
+    public async Task Create_WithValidRequest_InvalidatesCreatorAuthorityAfterMutation()
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var group = new Group
+        {
+            Id = groupId,
+            FullName = "Managed Group",
+            ApprovalStatus = null!,
+            Tenant = null!
+        };
+        var command = new CreateGroupCommand
+        {
+            CreatorUserId = userId,
+            GroupDto = new CreateGroupDto { FullName = group.FullName }
+        };
+        _tenantContext.TenantId.Returns(tenantId);
+        _mapper.Map<Group>(command.GroupDto).Returns(group);
+        _groupRepository.Create(group).Returns(group);
+        _actorRepository.Create(Arg.Any<Actor>()).Returns(new Actor
+        {
+            Id = Guid.NewGuid(),
+            ActorType = null!,
+            Tenant = null!,
+            Pii = new ActorPii { DisplayName = group.FullName }
+        });
+        _groupMemberRepository.Create(Arg.Any<GroupMember>()).Returns(call => call.Arg<GroupMember>());
+        var handler = CreateCreateHandler();
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id).IsEqualTo(groupId);
+        _adminCacheInvalidator.Received(1).InvalidateUser(userId);
     }
 
     [Test]
@@ -96,6 +138,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
         var handler = CreateCreateHandler();
         var command = new CreateGroupCommand
         {
+            CreatorUserId = Guid.NewGuid(),
             GroupDto = new CreateGroupDto
             {
                 FullName = "Invalid Group",
@@ -414,7 +457,7 @@ public class GroupHierarchyCommandHandlerTests : IDisposable
             _groupMemberRepository,
             _actorRepository,
             _storageObjectRepository,
-            _userContext,
+            _adminCacheInvalidator,
             _mapper,
             _tenantContext,
             _cache,

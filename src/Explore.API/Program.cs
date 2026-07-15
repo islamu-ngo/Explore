@@ -26,6 +26,8 @@ using Explore.Persistence;
 using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
 using Explore.Secrets.Extensions;
+using Explore.ServiceDefaults.HealthChecks;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
@@ -283,6 +285,8 @@ if (!isOpenApiGeneration)
     {
         builder.Services.AddHostedService<IdempotencyCleanupProcessor>();
         builder.Services.AddHostedService<AiRetentionCleanupProcessor>();
+        builder.Services.AddHostedService<WebhookRetentionCleanupProcessor>();
+        builder.Services.AddHostedService<WebhookBulkReplayProcessor>();
         builder.Services.AddHostedService<StorageReconciliationProcessor>();
     }
 
@@ -421,11 +425,11 @@ builder.Services.AddHealthChecks()
     .AddCheck<LocalWebhookDeliveryHealthCheck>(
         "webhook-local-delivery",
         failureStatus: HealthStatus.Unhealthy,
-        tags: ["ready", "webhooks", "local", "infrastructure"])
+        tags: ["ready", "webhooks", "local", "infrastructure", "webhook-local-readiness"])
     .AddCheck<SvixWebhookProviderHealthCheck>(
         "webhook-svix-provider",
         failureStatus: HealthStatus.Unhealthy,
-        tags: ["ready", "webhooks", "svix", "infrastructure"])
+        tags: ["ready", "webhooks", "svix", "infrastructure", "webhook-svix-readiness"])
     .AddCheck<ListmonkIntegrationHealthCheck>(
         "listmonk-integration",
         failureStatus: HealthStatus.Degraded,
@@ -681,8 +685,26 @@ if (effectiveMcpAdapterSettings.Enabled && !isOpenApiGeneration)
 
 // Map health check endpoints for Coolify/container orchestration
 app.MapDefaultEndpoints();
+app.MapHealthChecks(
+    "/health/webhooks/local",
+    CreateWebhookReadinessOptions("webhook-local-readiness"));
+app.MapHealthChecks(
+    "/health/webhooks/svix",
+    CreateWebhookReadinessOptions("webhook-svix-readiness"));
 
 app.Run();
+
+static HealthCheckOptions CreateWebhookReadinessOptions(string tag) => new()
+{
+    Predicate = registration => registration.Tags.Contains(tag),
+    ResponseWriter = HealthCheckResponseWriter.WriteAsync,
+    ResultStatusCodes =
+    {
+        [HealthStatus.Healthy] = Status200OK,
+        [HealthStatus.Degraded] = Status200OK,
+        [HealthStatus.Unhealthy] = Status503ServiceUnavailable
+    }
+};
 
 // Static volatile field for thread-safe shutdown signaling across health check threads
 partial class Program

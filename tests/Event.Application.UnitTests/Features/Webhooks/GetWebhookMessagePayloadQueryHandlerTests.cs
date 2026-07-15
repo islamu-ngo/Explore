@@ -22,7 +22,7 @@ public sealed class GetWebhookMessagePayloadQueryHandlerTests
         byte[] payloadBytes = [0x7B, 0x22, 0x76, 0x22, 0x3A, 0xC3, 0xA9, 0x7D, 0x0A];
         var message = CreateMessage(payloadBytes, RetrievedAt.AddHours(1));
         var repository = Substitute.For<IWebhookMessageRepository>();
-        repository.GetByTenantAndIdAsync(message.TenantId, message.Id, Arg.Any<CancellationToken>())
+        repository.GetByIdForOwnerOperationAsync(message.Id, Arg.Any<CancellationToken>())
             .Returns(message);
         var auditWriter = Substitute.For<IWebhookAuditEventWriter>();
         var auditCompleted = false;
@@ -36,7 +36,6 @@ public sealed class GetWebhookMessagePayloadQueryHandlerTests
 
         var result = await handler.Handle(new GetWebhookMessagePayloadQuery
         {
-            TenantId = message.TenantId,
             MessageId = message.Id
         }, CancellationToken.None);
 
@@ -61,9 +60,8 @@ public sealed class GetWebhookMessagePayloadQueryHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenMessageIsOutsideTenant_ReturnsNotFoundAndAuditsRequestedTenantOnly()
+    public async Task Handle_WhenPersistedOwnerLookupDoesNotFindMessage_ReturnsNotFoundWithoutAudit()
     {
-        var requestedTenantId = Guid.CreateVersion7();
         var messageId = Guid.CreateVersion7();
         var repository = Substitute.For<IWebhookMessageRepository>();
         var auditWriter = Substitute.For<IWebhookAuditEventWriter>();
@@ -71,23 +69,16 @@ public sealed class GetWebhookMessagePayloadQueryHandlerTests
 
         var result = await handler.Handle(new GetWebhookMessagePayloadQuery
         {
-            TenantId = requestedTenantId,
             MessageId = messageId
         }, CancellationToken.None);
 
         await Assert.That(result.Status).IsEqualTo(WebhookMessagePayloadReadStatus.NotFound);
         await Assert.That(result.Payload).IsNull();
-        await repository.Received(1).GetByTenantAndIdAsync(
-            requestedTenantId,
+        await repository.Received(1).GetByIdForOwnerOperationAsync(
             messageId,
             Arg.Any<CancellationToken>());
-        await auditWriter.Received(1).AppendAsync(
-            Arg.Is<WebhookAuditWriteRequest>(audit =>
-                audit.TenantId == requestedTenantId &&
-                audit.TargetId == messageId &&
-                audit.ReasonCode == "payload.not-found" &&
-                audit.Outcome == WebhookAuditOutcome.Rejected &&
-                audit.SafeAfterJson == null),
+        await auditWriter.DidNotReceive().AppendAsync(
+            Arg.Any<WebhookAuditWriteRequest>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -97,14 +88,13 @@ public sealed class GetWebhookMessagePayloadQueryHandlerTests
         byte[] payloadBytes = [0x7B, 0x7D];
         var message = CreateMessage(payloadBytes, RetrievedAt.AddTicks(-1));
         var repository = Substitute.For<IWebhookMessageRepository>();
-        repository.GetByTenantAndIdAsync(message.TenantId, message.Id, Arg.Any<CancellationToken>())
+        repository.GetByIdForOwnerOperationAsync(message.Id, Arg.Any<CancellationToken>())
             .Returns(message);
         var auditWriter = Substitute.For<IWebhookAuditEventWriter>();
         var handler = CreateHandler(repository, auditWriter);
 
         var result = await handler.Handle(new GetWebhookMessagePayloadQuery
         {
-            TenantId = message.TenantId,
             MessageId = message.Id
         }, CancellationToken.None);
 
@@ -124,7 +114,7 @@ public sealed class GetWebhookMessagePayloadQueryHandlerTests
     {
         var message = CreateMessage([0x7B, 0x7D], RetrievedAt.AddHours(1));
         var repository = Substitute.For<IWebhookMessageRepository>();
-        repository.GetByTenantAndIdAsync(message.TenantId, message.Id, Arg.Any<CancellationToken>())
+        repository.GetByIdForOwnerOperationAsync(message.Id, Arg.Any<CancellationToken>())
             .Returns(message);
         var auditWriter = Substitute.For<IWebhookAuditEventWriter>();
         auditWriter.AppendAsync(Arg.Any<WebhookAuditWriteRequest>(), Arg.Any<CancellationToken>())
@@ -134,7 +124,6 @@ public sealed class GetWebhookMessagePayloadQueryHandlerTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => handler.Handle(
             new GetWebhookMessagePayloadQuery
             {
-                TenantId = message.TenantId,
                 MessageId = message.Id
             },
             CancellationToken.None));
@@ -150,8 +139,7 @@ public sealed class GetWebhookMessagePayloadQueryHandlerTests
         var result = await handler.Handle(new GetWebhookMessagePayloadQuery(), CancellationToken.None);
 
         await Assert.That(result.Status).IsEqualTo(WebhookMessagePayloadReadStatus.NotFound);
-        await repository.DidNotReceive().GetByTenantAndIdAsync(
-            Arg.Any<Guid>(),
+        await repository.DidNotReceive().GetByIdForOwnerOperationAsync(
             Arg.Any<Guid>(),
             Arg.Any<CancellationToken>());
         await auditWriter.DidNotReceive().AppendAsync(

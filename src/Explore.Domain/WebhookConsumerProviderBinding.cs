@@ -1,5 +1,5 @@
 // ABOUTME: Immutable instance-to-consumer application binding for one outgoing webhook provider.
-// ABOUTME: Requires verified tenant ownership and governed typed capabilities before granting provider authority.
+// ABOUTME: Supports instance- or tenant-scoped consumers and governed typed capabilities before provider authority.
 
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text;
@@ -7,13 +7,19 @@ using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEntity
+public sealed class WebhookConsumerProviderBinding : IAuditableEntity
 {
     private const int MaxIdentityLength = 500;
+    private Guid _configurationScopeId;
 
     public Guid Id { get; private set; }
-    public Guid TenantId { get; set; }
-    public Tenant Tenant { get; private set; } = null!;
+    public Guid? TenantId { get; set; }
+    public Tenant? Tenant { get; private set; }
+    public Guid ConfigurationScopeId
+    {
+        get => TenantId ?? (InstanceId != Guid.Empty ? InstanceId : _configurationScopeId);
+        private set => _configurationScopeId = value;
+    }
     public Guid WebhookConsumerId { get; private set; }
     public WebhookConsumer WebhookConsumer { get; private set; } = null!;
     public Guid InstanceId { get; private set; }
@@ -58,7 +64,7 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
     public WebhookProviderCapability EffectiveGovernedCapabilities =>
         Capabilities & GovernanceAllowedCapabilities;
 
-    public bool IsVerifiedFor(Guid tenantId, Guid webhookConsumerId) =>
+    public bool IsVerifiedFor(Guid? tenantId, Guid webhookConsumerId) =>
         IsEnabled &&
         VerificationState == WebhookProviderBindingVerificationState.Verified &&
         TenantId == tenantId &&
@@ -71,7 +77,7 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
             CreateApplicationUid(InstanceId, WebhookConsumerId),
             StringComparison.Ordinal);
 
-    public bool CanIssueAppPortalFor(Guid tenantId, Guid webhookConsumerId) =>
+    public bool CanIssueAppPortalFor(Guid? tenantId, Guid webhookConsumerId) =>
         IsVerifiedFor(tenantId, webhookConsumerId) &&
         SupportsGoverned(WebhookProviderCapability.AppPortal);
 
@@ -83,7 +89,7 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
     }
 
     public static WebhookConsumerProviderBinding CreatePending(
-        Guid tenantId,
+        Guid? tenantId,
         Guid webhookConsumerId,
         Guid instanceId,
         string providerEnvironment,
@@ -102,7 +108,7 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
     }
 
     public static WebhookConsumerProviderBinding CreateLegacyUnverified(
-        Guid tenantId,
+        Guid? tenantId,
         Guid webhookConsumerId,
         Guid instanceId,
         string providerEnvironment,
@@ -123,7 +129,7 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
     }
 
     public static WebhookConsumerProviderBinding CreateLegacyUnresolved(
-        Guid tenantId,
+        Guid? tenantId,
         Guid webhookConsumerId,
         Guid instanceId,
         string providerEnvironment,
@@ -141,7 +147,7 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
     }
 
     public void VerifyOwnership(
-        Guid verifiedTenantId,
+        Guid? verifiedTenantId,
         Guid verifiedWebhookConsumerId,
         string externalApplicationId,
         DateTimeOffset verifiedAtUtc)
@@ -173,7 +179,7 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
 
     public void RepairAndVerifyOwnership(
         Guid instanceId,
-        Guid verifiedTenantId,
+        Guid? verifiedTenantId,
         Guid verifiedWebhookConsumerId,
         string externalApplicationId,
         WebhookProviderCapabilityProfile capabilityProfile,
@@ -314,7 +320,7 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
     }
 
     private static WebhookConsumerProviderBinding Create(
-        Guid tenantId,
+        Guid? tenantId,
         Guid webhookConsumerId,
         Guid instanceId,
         string providerEnvironment,
@@ -323,7 +329,6 @@ public sealed class WebhookConsumerProviderBinding : ITenantEntity, IAuditableEn
         WebhookProviderBindingVerificationState verificationState,
         string? externalApplicationId)
     {
-        EnsureRequired(tenantId, nameof(tenantId));
         EnsureRequired(webhookConsumerId, nameof(webhookConsumerId));
         EnsureRequired(instanceId, nameof(instanceId));
         ArgumentNullException.ThrowIfNull(capabilityProfile);

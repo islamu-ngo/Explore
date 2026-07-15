@@ -14,10 +14,18 @@ internal static class WebhookEndpointDtoMapper
         var providerMode = NormalizedLookupMetadata.WebhookProviderMode(
             endpoint.Consumer?.ProviderModeId ?? (int)WebhookProviderMode.Local);
         var status = NormalizedLookupMetadata.WebhookEndpointStatus(endpoint.StatusId);
+        var ownership = endpoint.Consumer?.Ownership
+            ?? throw new InvalidOperationException("Webhook endpoint mapping requires its consumer ownership.");
+        var ownerKind = NormalizedLookupMetadata.WebhookConsumerKind((int)ownership.Kind);
         return new()
         {
             Id = endpoint.Id,
             TenantId = endpoint.TenantId,
+            InstanceId = endpoint.InstanceId,
+            OwnerId = ownership.OwnerId,
+            OwnerKindId = ownerKind.Id,
+            OwnerKindCode = ownerKind.Code,
+            OwnerKindName = ownerKind.Name,
             ConsumerId = endpoint.ConsumerId,
             ConsumerName = endpoint.Consumer?.Name,
             ProviderModeId = providerMode.Id,

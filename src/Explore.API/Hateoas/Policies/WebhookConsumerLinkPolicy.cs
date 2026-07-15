@@ -30,8 +30,7 @@ public sealed class WebhookConsumerDetailLinkPolicy : ILinkPolicy<WebhookConsume
                 "PUT",
                 "Change provider mode",
                 RequiresAuth: true)
-                .RequirePermission(
-                    AuthorizationActions.Webhooks.Update,
+                .RequirePermission(AuthorizationActions.Webhooks.Update,
                     ResourceDescriptors.WebhookConsumer,
                     dto);
         }
@@ -57,8 +56,7 @@ public sealed class WebhookConsumerDetailLinkPolicy : ILinkPolicy<WebhookConsume
             "POST",
             "Repair provider binding",
             RequiresAuth: true)
-        .RequirePermission(
-            AuthorizationActions.Webhooks.ManageProvider,
+        .RequirePermission(AuthorizationActions.Webhooks.ManageProvider,
             ResourceDescriptors.WebhookConsumer,
             dto);
 }
@@ -71,6 +69,18 @@ public sealed class WebhookConsumerCollectionLinkPolicy(ILinkPolicy<WebhookConsu
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
     {
+        yield break;
+    }
+
+    public IEnumerable<LinkDefinition> GetCollectionLinks(
+        ClaimsPrincipal? user,
+        ICollectionAuthorizationContext? authorizationContext)
+    {
+        if (authorizationContext is null)
+        {
+            yield break;
+        }
+
         yield return new LinkDefinition(
             LinkRelations.Create,
             RouteNames.CreateWebhookConsumer,
@@ -78,6 +88,9 @@ public sealed class WebhookConsumerCollectionLinkPolicy(ILinkPolicy<WebhookConsu
             "POST",
             "Create webhook consumer",
             RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Webhooks.Create, ResourceKinds.Webhook);
+            .RequirePermission(AuthorizationActions.Webhooks.Create,
+                ResourceKinds.Webhook,
+                authorizationContext.AuthorizationResourceId,
+                authorizationContext.AuthorizationResourceAttributes);
     }
 }

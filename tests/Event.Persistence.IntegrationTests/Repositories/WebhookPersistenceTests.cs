@@ -10,6 +10,7 @@ using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using TUnit.Core;
 
 namespace Event.Persistence.IntegrationTests.Repositories;
@@ -91,6 +92,80 @@ public sealed class WebhookPersistenceTests(PostgreSqlContainerFixture fixture)
     }
 
     [Test]
+    public async Task EndpointRepository_PauseAndResume_AreConditionalTenantScopedTransitions()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var tenant = CreateTenant("webhook-endpoint-operations");
+        var consumer = CreateConsumer(tenant.Id, "Local Operations", WebhookProviderMode.Local);
+        var endpoint = CreateEndpoint(tenant.Id, consumer.Id, "operations", WebhookEndpointStatus.Active);
+        context.Tenants.Add(tenant);
+        context.WebhookConsumers.Add(consumer);
+        context.WebhookEndpoints.Add(endpoint);
+        await context.SaveChangesAsync();
+        var repository = new WebhookEndpointRepository(context);
+        var actorUserId = Guid.CreateVersion7();
+        var pausedAt = DateTime.UtcNow;
+
+        var paused = await repository.TryPauseAsync(
+            tenant.Id,
+            endpoint.Id,
+            0,
+            pausedAt,
+            actorUserId,
+            CancellationToken.None);
+        var duplicatePause = await repository.TryPauseAsync(
+            tenant.Id,
+            endpoint.Id,
+            0,
+            pausedAt.AddSeconds(1),
+            actorUserId,
+            CancellationToken.None);
+        var wrongTenantResume = await repository.TryResumeAsync(
+            Guid.CreateVersion7(),
+            endpoint.Id,
+            1,
+            pausedAt.AddSeconds(2),
+            actorUserId,
+            CancellationToken.None);
+        var staleResume = await repository.TryResumeAsync(
+            tenant.Id,
+            endpoint.Id,
+            0,
+            pausedAt.AddSeconds(2),
+            actorUserId,
+            CancellationToken.None);
+        var resumed = await repository.TryResumeAsync(
+            tenant.Id,
+            endpoint.Id,
+            1,
+            pausedAt.AddSeconds(3),
+            actorUserId,
+            CancellationToken.None);
+        var staleAbaPause = await repository.TryPauseAsync(
+            tenant.Id,
+            endpoint.Id,
+            0,
+            pausedAt.AddSeconds(4),
+            actorUserId,
+            CancellationToken.None);
+
+        var stored = await context.WebhookEndpoints
+            .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+            .AsNoTracking()
+            .SingleAsync(item => item.TenantId == tenant.Id && item.Id == endpoint.Id);
+        await Assert.That(paused).IsTrue();
+        await Assert.That(duplicatePause).IsFalse();
+        await Assert.That(wrongTenantResume).IsFalse();
+        await Assert.That(staleResume).IsFalse();
+        await Assert.That(resumed).IsTrue();
+        await Assert.That(staleAbaPause).IsFalse();
+        await Assert.That(stored.Status).IsEqualTo(WebhookEndpointStatus.Active);
+        await Assert.That(stored.DeliveryStateVersion).IsEqualTo(2);
+        await Assert.That(stored.LastResumedBy).IsEqualTo(actorUserId);
+    }
+
+    [Test]
     public async Task IncomingWebhookRepository_TryCreate_IsIdempotentPerTenantProviderMessage()
     {
         await fixture.ResetAsync();
@@ -113,6 +188,33 @@ public sealed class WebhookPersistenceTests(PostgreSqlContainerFixture fixture)
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
             .CountAsync(e => e.Provider == "coop" && e.ProviderMessageId == "msg-123");
         await Assert.That(persistedCount).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task IncomingWebhookRepository_ClaimDue_WithRetryingExecutionStrategy_ClaimsAsRetriableUnit()
+    {
+        await fixture.ResetAsync();
+        await using (var setupContext = fixture.CreateDbContext())
+        {
+            var tenant = CreateTenant("incoming-webhook-retrying-claim");
+            setupContext.Tenants.Add(tenant);
+            setupContext.IncomingWebhookMessages.Add(
+                CreateIncomingMessage(tenant.Id, "coop", "retrying-claim", "retrying-claim-idem"));
+            await setupContext.SaveChangesAsync();
+        }
+
+        var claimedAt = DateTime.UtcNow.AddMinutes(1);
+        await using var context = CreateRetryingDbContext();
+        var claims = await new IncomingWebhookMessageRepository(context).ClaimDueAsync(
+            new IncomingWebhookClaimRequest(
+                "incoming-worker-retrying",
+                1,
+                claimedAt,
+                TimeSpan.FromMinutes(1)),
+            CancellationToken.None);
+
+        await Assert.That(claims.Count).IsEqualTo(1);
+        await Assert.That(claims[0].ProcessingFence).IsEqualTo(1);
     }
 
     [Test]
@@ -417,7 +519,12 @@ public sealed class WebhookPersistenceTests(PostgreSqlContainerFixture fixture)
             "{\"svix-id\":\"" + providerMessageId + "\"}",
             now,
             now,
-            now.AddDays(14));
+            now.AddDays(14),
+            "webhook-retention-test-v1",
+            now.AddDays(30),
+            now.AddDays(90),
+            now.AddDays(14),
+            now.AddDays(30));
     }
 
     private static WebhookMessage CreateMessage(
@@ -465,6 +572,19 @@ public sealed class WebhookPersistenceTests(PostgreSqlContainerFixture fixture)
             DurationMs = 123,
             NextRetryAt = DateTime.UtcNow.AddMinutes(10)
         };
+    }
+
+    private ExploreDbContext CreateRetryingDbContext()
+    {
+        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseNpgsql(fixture.ConnectionString, npgsql => npgsql.EnableRetryOnFailure())
+            .UseSnakeCaseNamingConvention()
+            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
+            .Options;
+
+        var context = new ExploreDbContext(options);
+        context.EnableTenantFilterBypass("Retry-enabled webhook claim integration test.");
+        return context;
     }
 
     private sealed record StaticTenantContext(Guid TenantId) : ITenantContext;

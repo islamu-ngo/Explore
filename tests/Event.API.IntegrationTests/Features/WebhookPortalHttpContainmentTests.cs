@@ -8,7 +8,7 @@ using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
-using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Infrastructure.Configuration;
@@ -50,15 +50,18 @@ public sealed class WebhookPortalHttpContainmentTests
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-            var audit = await dbContext.AuditLogs
+            var audit = await dbContext.WebhookAuditEvents
                 .IgnoreQueryFilters()
-                .SingleAsync(log =>
-                    log.EntityType == nameof(WebhookConsumer) &&
-                    log.EntityId == ConsumerId.ToString("D"));
-            await Assert.That(audit.NewValues).Contains(binding!.Id.ToString("D"), StringComparison.OrdinalIgnoreCase);
-            await Assert.That(audit.NewValues).Contains("correlationId", StringComparison.Ordinal);
-            await Assert.That(audit.NewValues).DoesNotContain(PortalUrl, StringComparison.Ordinal);
-            await Assert.That(audit.NewValues).DoesNotContain(PortalToken, StringComparison.Ordinal);
+                .SingleAsync(auditEvent =>
+                    auditEvent.TargetKindId == (int)WebhookAuditTargetKind.Consumer &&
+                    auditEvent.TargetId == ConsumerId &&
+                    auditEvent.ActionId == (int)WebhookAuditAction.PortalAccessIssued);
+            await Assert.That(audit.Outcome).IsEqualTo(WebhookAuditOutcome.Succeeded);
+            await Assert.That(audit.ReasonCode).IsEqualTo("portal_access_requested");
+            await Assert.That(audit.CorrelationId).IsNotNull();
+            await Assert.That(audit.SafeAfterJson).Contains(binding!.Id.ToString("D"), StringComparison.OrdinalIgnoreCase);
+            await Assert.That(audit.SafeAfterJson).DoesNotContain(PortalUrl, StringComparison.Ordinal);
+            await Assert.That(audit.SafeAfterJson).DoesNotContain(PortalToken, StringComparison.Ordinal);
         }
 
         using var halResponse = await SendConsumerRequestAsync(client);
@@ -122,21 +125,27 @@ public sealed class WebhookPortalHttpContainmentTests
         await AssertSafeProblemAsync(response, body);
         await using var scope = factory.Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-        var audit = await dbContext.AuditLogs
+        var audit = await dbContext.WebhookAuditEvents
             .IgnoreQueryFilters()
-            .SingleAsync(log => log.EntityId == ConsumerId.ToString("D"));
-        await Assert.That(audit.NewValues).Contains("provider_failure", StringComparison.Ordinal);
-        await Assert.That(audit.NewValues).DoesNotContain("provider transport failed", StringComparison.Ordinal);
+            .SingleAsync(auditEvent =>
+                auditEvent.TargetId == ConsumerId &&
+                auditEvent.ActionId == (int)WebhookAuditAction.PortalAccessRejected);
+        await Assert.That(audit.Outcome).IsEqualTo(WebhookAuditOutcome.Failed);
+        await Assert.That(audit.ReasonCode).IsEqualTo("svix_app_portal_failed");
+        await Assert.That(audit.SafeAfterJson).Contains("provider_failure", StringComparison.Ordinal);
+        await Assert.That(audit.SafeAfterJson).DoesNotContain("provider transport failed", StringComparison.Ordinal);
     }
 
     [Test]
     public async Task AuditFailure_ReturnsNoPortalData()
     {
         var svixClient = Substitute.For<ISvixWebhookClient>();
-        var auditRepository = Substitute.For<IAuditLogRepository>();
-        auditRepository.Create(Arg.Any<AuditLog>())
-            .Returns(Task.FromException<AuditLog>(new InvalidOperationException("audit unavailable")));
-        await using var factory = CreateFactory(svixClient, auditRepository);
+        var auditWriter = Substitute.For<IWebhookAuditEventWriter>();
+        auditWriter.AppendAsync(
+                Arg.Any<WebhookAuditWriteRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<WebhookAuditEvent>(new InvalidOperationException("audit unavailable")));
+        await using var factory = CreateFactory(svixClient, auditWriter);
         using var client = factory.CreateClient();
         var binding = await SeedConsumerAsync(factory, includeBinding: true);
         ConfigureVerifiedProvider(svixClient, binding!);
@@ -150,7 +159,7 @@ public sealed class WebhookPortalHttpContainmentTests
 
     private static PortalFactory CreateFactory(
         ISvixWebhookClient svixClient,
-        IAuditLogRepository? auditRepository = null)
+        IWebhookAuditEventWriter? auditWriter = null)
     {
         var authorizationProvider = Substitute.For<IAuthorizationProvider>();
         authorizationProvider.IsAllowedAsync(
@@ -166,7 +175,7 @@ public sealed class WebhookPortalHttpContainmentTests
             .Returns(call => Task.FromResult<IReadOnlyList<bool>>(
                 call.ArgAt<IReadOnlyList<AuthorizationCheck>>(0).Select(_ => true).ToArray()));
 
-        var factory = new PortalFactory(svixClient, auditRepository)
+        var factory = new PortalFactory(svixClient, auditWriter)
         {
             AuthorizationProviderOverride = authorizationProvider
         };
@@ -236,7 +245,10 @@ public sealed class WebhookPortalHttpContainmentTests
                 new Dictionary<string, string>
                 {
                     ["islamu.tenant_id"] = TenantId.ToString("D"),
-                    ["islamu.consumer_id"] = ConsumerId.ToString("D")
+                    ["islamu.consumer_id"] = ConsumerId.ToString("D"),
+                    ["islamu.owner_id"] = TenantId.ToString("D"),
+                    ["islamu.owner_kind_id"] = ((int)WebhookConsumerKind.Tenant)
+                        .ToString(System.Globalization.CultureInfo.InvariantCulture)
                 }));
         svixClient.CreateAppPortalAccessAsync(
                 Arg.Any<SvixAppPortalAccessRequest>(),
@@ -285,7 +297,7 @@ public sealed class WebhookPortalHttpContainmentTests
 
     private sealed class PortalFactory(
         ISvixWebhookClient svixClient,
-        IAuditLogRepository? auditRepository) : AuthenticatedWebApplicationFactory
+        IWebhookAuditEventWriter? auditWriter) : AuthenticatedWebApplicationFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -295,10 +307,10 @@ public sealed class WebhookPortalHttpContainmentTests
                 services.RemoveAll<ISvixWebhookClient>();
                 services.AddSingleton(svixClient);
 
-                if (auditRepository is not null)
+                if (auditWriter is not null)
                 {
-                    services.RemoveAll<IAuditLogRepository>();
-                    services.AddScoped(_ => auditRepository);
+                    services.RemoveAll<IWebhookAuditEventWriter>();
+                    services.AddScoped(_ => auditWriter);
                 }
             });
         }

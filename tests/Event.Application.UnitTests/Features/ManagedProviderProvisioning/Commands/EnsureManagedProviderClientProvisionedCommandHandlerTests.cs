@@ -621,7 +621,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             mutationLock,
             _unitOfWork,
             Substitute.For<ILogger<EnsureManagedProviderClientProvisionedCommandHandler>>());
-        var managementRequest = new ManagementTenantProvisioningRequest
+        var managementRequest = new ManagementTenantProvisioningRequestDto
         {
             ExternalRequestId = "request-1",
             ExternalCustomerReference = "customer-123",
@@ -651,7 +651,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
         var provisioningDto = CreateValidDto(
             providerKey: "islamu-event-control-plane",
             externalSystem: "control-plane");
-        ManagementTenantProvisioningRequest normalizedRequest =
+        ManagementTenantProvisioningRequestDto normalizedRequest =
             ManagedTenantProvisioningRequestCodec.Normalize(managementRequest);
         Guid managedInstanceId = Guid.CreateVersion7();
         operationRepository.GetByIdAsNoTrackingAsync(operationId, Arg.Any<CancellationToken>())

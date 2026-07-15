@@ -117,7 +117,11 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
             httpContext);
 
         // Add collection-level links (create, search, etc.) — separate batch for collection actions
-        var collectionActionLinks = await GenerateLinks(_collectionLinkPolicy.GetCollectionLinks(user), user, httpContext);
+        var authorizationContext = additionalRouteValues as ICollectionAuthorizationContext;
+        var collectionActionLinks = await GenerateLinks(
+            _collectionLinkPolicy.GetCollectionLinks(user, authorizationContext),
+            user,
+            httpContext);
         foreach (var pair in collectionActionLinks)
         {
             links[pair.Key] = pair.Value;
@@ -174,7 +178,11 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
         }
 
         // Collection-level links
-        var collectionActionLinks = await GenerateLinks(_collectionLinkPolicy.GetCollectionLinks(user), user, httpContext);
+        var authorizationContext = additionalRouteValues as ICollectionAuthorizationContext;
+        var collectionActionLinks = await GenerateLinks(
+            _collectionLinkPolicy.GetCollectionLinks(user, authorizationContext),
+            user,
+            httpContext);
         foreach (var pair in collectionActionLinks)
         {
             links[pair.Key] = pair.Value;

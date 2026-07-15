@@ -33,6 +33,32 @@ public sealed class WebhookProviderDispatchIdentityTests
         await Assert.That(captured.RequestHash).IsEqualTo(fixture.Publication.RequestHash);
         await Assert.That(captured.ProviderApplicationId).IsEqualTo(fixture.Publication.ProviderApplicationId);
         await Assert.That(captured.PayloadBytes).IsEquivalentTo(fixture.Message.GetPayloadBytes()!);
+        await Assert.That(captured.PayloadRetentionDays).IsEqualTo(14);
+        await Assert.That(fixture.Publication.PublicationRetentionUntil)
+            .IsGreaterThan(fixture.Publication.PayloadRetentionUntil);
+        await Assert.That(fixture.Message.GetPayloadBytes()).IsNotNull();
+    }
+
+    [Test]
+    public async Task DispatchAsync_WhenLocalPayloadHorizonExceedsSvixMaximum_ClampsProviderOnly()
+    {
+        var fixture = new Fixture(payloadRetentionDays: 120);
+        SvixProviderPublicationCreateRequest? captured = null;
+        fixture.Client.CreatePublicationMessageAsync(
+                Arg.Do<SvixProviderPublicationCreateRequest>(request => captured = request),
+                Arg.Any<CancellationToken>())
+            .Returns(new SvixMessageCreateResult("msg_provider_retention"));
+
+        var result = await fixture.Dispatcher.DispatchAsync(fixture.Claim, CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(WebhookProviderPublicationDispatchOutcome.ProviderQueued);
+        await Assert.That(captured).IsNotNull();
+        await Assert.That(captured!.PayloadRetentionDays).IsEqualTo(90);
+        await Assert.That(fixture.Publication.PayloadRetentionUntil)
+            .IsEqualTo(fixture.Publication.PreparedAt.AddDays(120));
+        await Assert.That(fixture.Message.PayloadRetentionUntil)
+            .IsEqualTo(fixture.Message.MaterializedAt.AddDays(120));
+        await Assert.That(fixture.Message.GetPayloadBytes()).IsNotNull();
     }
 
     [Test]
@@ -141,16 +167,18 @@ public sealed class WebhookProviderDispatchIdentityTests
 
         public Fixture(
             TimeSpan? leaseDuration = null,
-            bool messageHashMatches = true)
+            bool messageHashMatches = true,
+            int payloadRetentionDays = 14)
         {
             _leaseDuration = leaseDuration ?? TimeSpan.FromMinutes(5);
             Time = new MutableTimeProvider(new DateTimeOffset(PreparedAt.AddMinutes(1)));
             MessageRepository = Substitute.For<IWebhookMessageRepository>();
             PublicationRepository = Substitute.For<IWebhookProviderPublicationRepository>();
             Client = Substitute.For<ISvixWebhookClient>();
-            Message = CreateMessage();
+            Message = CreateMessage(payloadRetentionDays);
             Publication = CreatePublication(
-                messageHashMatches ? Message.PayloadHash : new string('a', 64).Insert(0, "sha256:"));
+                messageHashMatches ? Message.PayloadHash : new string('a', 64).Insert(0, "sha256:"),
+                payloadRetentionDays);
             Claim = ClaimForPublishing();
 
             MessageRepository.GetByTenantAndIdAsync(TenantId, MessageId, Arg.Any<CancellationToken>())
@@ -204,6 +232,7 @@ public sealed class WebhookProviderDispatchIdentityTests
         private WebhookProviderPublicationClaim ClaimForPublishing()
         {
             var claimedAt = Time.GetUtcNow().UtcDateTime;
+            var dueAt = Publication.NextActionAt ?? Publication.PreparedAt;
             var leaseToken = Guid.CreateVersion7();
             var leaseExpiresAt = claimedAt.Add(_leaseDuration);
             Publication.ClaimForPublishing(
@@ -217,10 +246,11 @@ public sealed class WebhookProviderDispatchIdentityTests
                 leaseToken,
                 Publication.PublicationFence,
                 claimedAt,
-                leaseExpiresAt);
+                leaseExpiresAt,
+                dueAt);
         }
 
-        private static WebhookMessage CreateMessage() =>
+        private static WebhookMessage CreateMessage(int payloadRetentionDays) =>
             WebhookMessage.Create(
                 MessageId,
                 TenantId,
@@ -233,10 +263,12 @@ public sealed class WebhookProviderDispatchIdentityTests
                 "application/json",
                 "utf-8",
                 PreparedAt.AddMinutes(-1),
-                PreparedAt.AddDays(14),
+                PreparedAt.AddDays(payloadRetentionDays),
                 PreparedAt);
 
-        private static WebhookProviderPublication CreatePublication(string requestHash) =>
+        private static WebhookProviderPublication CreatePublication(
+            string requestHash,
+            int payloadRetentionDays) =>
             WebhookProviderPublication.Create(
                 TenantId,
                 MessageId,
@@ -256,8 +288,8 @@ public sealed class WebhookProviderDispatchIdentityTests
                 "configuration-v7",
                 1,
                 "retention-v2",
-                PreparedAt.AddDays(14),
-                PreparedAt.AddDays(30),
+                PreparedAt.AddDays(payloadRetentionDays),
+                PreparedAt.AddDays(Math.Max(payloadRetentionDays, 30)),
                 PreparedAt.AddHours(12),
                 PreparedAt);
     }

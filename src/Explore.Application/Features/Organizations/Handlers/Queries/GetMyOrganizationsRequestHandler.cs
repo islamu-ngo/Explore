@@ -56,7 +56,7 @@ public class GetMyOrganizationsRequestHandler : IRequestHandler<GetMyOrganizatio
             var dto = _mapper.Map<OrganizationListDto>(org);
             if (membershipDict.TryGetValue(org.Id, out var roleId))
             {
-                dto.CurrentUserRole = (RoleEnum)roleId;
+                dto.CurrentUserRoleId = roleId;
             }
             // Resolve presigned URL for profile picture
             dto.ActorProfilePictureUri = await ResolveImageUrl(dto.ActorProfilePictureUri);

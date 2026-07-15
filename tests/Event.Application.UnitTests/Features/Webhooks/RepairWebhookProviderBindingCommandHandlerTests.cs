@@ -35,19 +35,20 @@ public sealed class RepairWebhookProviderBindingCommandHandlerTests
         await Assert.That(created.IsVerifiedFor(fixture.TenantId, fixture.Consumer.Id)).IsTrue();
         await fixture.Authority.Received(1).VerifyOwnershipAsync(
             Arg.Is<WebhookProviderBindingOwnershipRequest>(proof =>
-                proof.TenantId == fixture.TenantId &&
+                proof.Ownership.TenantId == fixture.TenantId &&
                 proof.WebhookConsumerId == fixture.Consumer.Id &&
                 proof.ApplicationUid == WebhookConsumerProviderBinding.CreateApplicationUid(
                     fixture.Bootstrap.Id,
                     fixture.Consumer.Id) &&
                 proof.ExternalApplicationId == request.ExternalApplicationId),
             Arg.Any<CancellationToken>());
-        await fixture.AuditRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
-            audit.Action == "WebhookProviderBindingRepaired" &&
-            audit.ActorId == fixture.ActorUserId &&
-            audit.NewValues != null &&
-            audit.NewValues.Contains(request.ReasonCode, StringComparison.Ordinal) &&
-            !audit.NewValues.Contains(request.ExternalApplicationId, StringComparison.Ordinal)));
+        await fixture.AuditWriter.Received(1).AppendAsync(
+            Arg.Is<WebhookAuditWriteRequest>(audit =>
+                audit.Action == WebhookAuditAction.ProviderBindingRepairSucceeded &&
+                audit.ReasonCode == request.ReasonCode &&
+                audit.SafeAfterJson != null &&
+                !audit.SafeAfterJson.Contains(request.ExternalApplicationId, StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -103,19 +104,22 @@ public sealed class RepairWebhookProviderBindingCommandHandlerTests
             Arg.Any<WebhookConsumerProviderBinding>(),
             Arg.Any<CancellationToken>());
         await fixture.BindingRepository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
-        await fixture.AuditRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
-            audit.Action == "WebhookProviderBindingRepairRejected" &&
-            audit.NewValues != null &&
-            !audit.NewValues.Contains(request.ExternalApplicationId, StringComparison.Ordinal)));
+        await fixture.AuditWriter.Received(1).AppendAsync(
+            Arg.Is<WebhookAuditWriteRequest>(audit =>
+                audit.Action == WebhookAuditAction.ProviderBindingRepairRejected &&
+                audit.Outcome == WebhookAuditOutcome.Rejected &&
+                audit.SafeAfterJson != null &&
+                !audit.SafeAfterJson.Contains(request.ExternalApplicationId, StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task WrongTenantConsumer_FailsBeforeProfileResolutionOrProviderCall()
     {
         var fixture = new Fixture();
-        fixture.ConsumerRepository.GetByTenantAndIdAsync(
-                fixture.TenantId,
+        fixture.ConsumerRepository.GetByIdForOwnerOperationAsync(
                 fixture.Consumer.Id,
+                false,
                 Arg.Any<CancellationToken>())
             .Returns((WebhookConsumer?)null);
 
@@ -129,19 +133,19 @@ public sealed class RepairWebhookProviderBindingCommandHandlerTests
         await fixture.Authority.DidNotReceive().VerifyOwnershipAsync(
             Arg.Any<WebhookProviderBindingOwnershipRequest>(),
             Arg.Any<CancellationToken>());
-        await fixture.AuditRepository.DidNotReceive().Create(Arg.Any<AuditLog>());
+        await fixture.AuditWriter.DidNotReceive().AppendAsync(
+            Arg.Any<WebhookAuditWriteRequest>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task CommandAuthorization_UsesManageProviderAndConsumerResourceIdentity()
     {
-        var tenantId = Guid.CreateVersion7();
         var consumerId = Guid.CreateVersion7();
         var attribute = typeof(RepairWebhookProviderBindingCommand)
             .GetCustomAttribute<AuthorizeResourceAttribute>();
         ISecureRequest request = new RepairWebhookProviderBindingCommand
         {
-            TenantId = tenantId,
             ConsumerId = consumerId,
             ExternalApplicationId = "app_authorized",
             ReasonCode = "provider.application-recreated"
@@ -151,7 +155,7 @@ public sealed class RepairWebhookProviderBindingCommandHandlerTests
         await Assert.That(attribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
         await Assert.That(attribute.Action).IsEqualTo(AuthorizationActions.Webhooks.ManageProvider);
         await Assert.That(request.ResourceId).IsEqualTo(consumerId.ToString("D"));
-        await Assert.That(request.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString("D"));
+        await Assert.That(request.ResourceAttributes!["consumerId"]).IsEqualTo(consumerId.ToString("D"));
     }
 
     private sealed class Fixture
@@ -190,9 +194,9 @@ public sealed class RepairWebhookProviderBindingCommandHandlerTests
                 WebhookProviderCapability.AppPortal);
 
             ConsumerRepository = Substitute.For<IWebhookConsumerRepository>();
-            ConsumerRepository.GetByTenantAndIdAsync(
-                    TenantId,
+            ConsumerRepository.GetByIdForOwnerOperationAsync(
                     Consumer.Id,
+                    false,
                     Arg.Any<CancellationToken>())
                 .Returns(Consumer);
             BindingRepository = Substitute.For<IWebhookConsumerProviderBindingRepository>();
@@ -213,9 +217,7 @@ public sealed class RepairWebhookProviderBindingCommandHandlerTests
                     Arg.Any<WebhookProviderBindingOwnershipRequest>(),
                     Arg.Any<CancellationToken>())
                 .Returns(WebhookProviderBindingOwnershipResult.Success());
-            AuditRepository = Substitute.For<IAuditLogRepository>();
-            AuditRepository.Create(Arg.Any<AuditLog>())
-                .Returns(call => Task.FromResult(call.Arg<AuditLog>()));
+            AuditWriter = Substitute.For<IWebhookAuditEventWriter>();
             var currentUser = Substitute.For<ICurrentUserService>();
             currentUser.UserId.Returns(ActorUserId);
 
@@ -224,7 +226,7 @@ public sealed class RepairWebhookProviderBindingCommandHandlerTests
                 BindingRepository,
                 BootstrapRepository,
                 Authority,
-                AuditRepository,
+                AuditWriter,
                 new InlineUnitOfWork(),
                 currentUser,
                 Substitute.For<IMachinePrincipalAccessor>(),
@@ -240,13 +242,12 @@ public sealed class RepairWebhookProviderBindingCommandHandlerTests
         public IWebhookConsumerProviderBindingRepository BindingRepository { get; }
         public IInstanceBootstrapStateRepository BootstrapRepository { get; }
         public IWebhookProviderBindingAuthorityService Authority { get; }
-        public IAuditLogRepository AuditRepository { get; }
+        public IWebhookAuditEventWriter AuditWriter { get; }
         public RepairWebhookProviderBindingCommandHandler Handler { get; }
         public WebhookConsumerProviderBinding? CreatedBinding { get; private set; }
 
         public RepairWebhookProviderBindingCommand CreateRequest(string externalApplicationId) => new()
         {
-            TenantId = TenantId,
             ConsumerId = Consumer.Id,
             ExternalApplicationId = externalApplicationId,
             ReasonCode = "provider.application-recreated"

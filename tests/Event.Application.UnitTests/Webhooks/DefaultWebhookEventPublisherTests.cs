@@ -85,6 +85,75 @@ public sealed class DefaultWebhookEventPublisherTests
     }
 
     [Test]
+    public async Task PublishAsync_ForInstanceProviderTarget_KeepsSourceTenantAndConsumerApplicationIdentitySeparate()
+    {
+        var fixture = new Fixture();
+        var instanceId = Guid.CreateVersion7();
+        var profile = WebhookProviderCapabilityProfile.Create(
+            WebhookProviderKind.Svix,
+            "1.96.1",
+            WebhookProviderCapability.EndpointManagement,
+            "selfhost-v1.96.1-v1",
+            MaterializedAt.AddMinutes(-2));
+        var binding = WebhookConsumerProviderBinding.CreatePending(
+            null,
+            ConsumerId,
+            instanceId,
+            "self-hosted",
+            profile,
+            WebhookProviderCapability.EndpointManagement);
+        binding.VerifyOwnership(null, ConsumerId, "app_instance_consumer", MaterializedAt.AddMinutes(-1));
+        fixture.PlanResolver.ResolveAsync(
+                Arg.Any<WebhookEventBuildContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(WebhookDeliveryPlanResolution.Success(
+                ConsumerId,
+                WebhookProviderMode.Svix,
+                "consumer-v3:selfhost-v1.96.1-v1",
+                1,
+                "standard",
+                "retention-v2",
+                OccurredAt.AddDays(14),
+                OccurredAt.AddDays(30),
+                OccurredAt.AddDays(90),
+                OccurredAt.AddDays(90).UtcDateTime,
+                OccurredAt.AddDays(30),
+                providerTargets:
+                [
+                    new WebhookProviderTargetResolution(
+                        binding,
+                        "webhook:svix:auth-token",
+                        "credential-v4",
+                        MaterializedAt.AddHours(1).UtcDateTime)
+                ]));
+        WebhookDeliveryMaterialization? captured = null;
+        fixture.Materializer.MaterializeAsync(
+                Arg.Do<WebhookDeliveryMaterialization>(value => captured = value),
+                Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var value = call.Arg<WebhookDeliveryMaterialization>();
+                return new WebhookDeliveryMaterializationResult(
+                    value.Message,
+                    value.DeliveryPlan,
+                    Created: true);
+            });
+
+        var result = await fixture.Publisher.PublishAsync(CreateContext(), CancellationToken.None);
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(captured).IsNotNull();
+        var publication = captured!.ProviderPublications.Single();
+        await Assert.That(captured.Message.TenantId).IsEqualTo(TenantId);
+        await Assert.That(captured.DeliveryPlan.TenantId).IsEqualTo(TenantId);
+        await Assert.That(publication.TenantId).IsEqualTo(TenantId);
+        await Assert.That(binding.TenantId).IsNull();
+        await Assert.That(publication.ApplicationUid).IsEqualTo(
+            WebhookConsumerProviderBinding.CreateApplicationUid(instanceId, ConsumerId));
+        await Assert.That(publication.ProviderApplicationId).IsEqualTo("app_instance_consumer");
+    }
+
+    [Test]
     public async Task PublishAsync_WhenMaterializerReturnsExistingSemanticMessage_ReturnsIdempotentSuccess()
     {
         var fixture = new Fixture(created: false);
@@ -147,7 +216,10 @@ public sealed class DefaultWebhookEventPublisherTests
                 "standard",
                 "retention-v2",
                 OccurredAt.AddDays(14),
+                null,
+                null,
                 OccurredAt.AddDays(14).UtcDateTime,
+                null,
                 [],
                 [],
                 null,
@@ -276,7 +348,10 @@ public sealed class DefaultWebhookEventPublisherTests
                 "standard",
                 "retention-v2",
                 OccurredAt.AddDays(14),
-                OccurredAt.AddDays(14).UtcDateTime);
+                OccurredAt.AddDays(30),
+                OccurredAt.AddDays(90),
+                OccurredAt.AddDays(90).UtcDateTime,
+                OccurredAt.AddDays(30));
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider

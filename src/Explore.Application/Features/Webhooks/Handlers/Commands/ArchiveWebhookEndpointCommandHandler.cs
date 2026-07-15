@@ -1,6 +1,7 @@
-// ABOUTME: Handles endpoint archive requests with tenant-scoped not-found behavior.
+// ABOUTME: Handles endpoint archive requests with persisted-owner not-found behavior.
 // ABOUTME: Archives instead of deleting rows so delivery history and provider links remain auditable.
 
+using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Commands;
@@ -12,21 +13,23 @@ namespace Explore.Application.Features.Webhooks.Handlers.Commands;
 
 public sealed class ArchiveWebhookEndpointCommandHandler(
     IWebhookEndpointRepository endpointRepository,
-    IWebhookProviderCapabilityResolver capabilityResolver)
+    IWebhookProviderCapabilityResolver capabilityResolver,
+    IWebhookAuditEventWriter auditWriter,
+    IUnitOfWork unitOfWork)
     : IRequestHandler<ArchiveWebhookEndpointCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
         ArchiveWebhookEndpointCommand request,
         CancellationToken cancellationToken)
     {
-        if (request.TenantId == Guid.Empty || request.EndpointId == Guid.Empty)
+        if (request.EndpointId == Guid.Empty)
         {
-            return Failure("webhook_endpoint_validation_failed", ["Tenant id and endpoint id are required."]);
+            return Failure("webhook_endpoint_validation_failed", ["Endpoint id is required."]);
         }
 
-        var endpoint = await endpointRepository.GetByTenantAndIdAsync(
-            request.TenantId,
+        var endpoint = await endpointRepository.GetByIdForOwnerOperationAsync(
             request.EndpointId,
+            forUpdate: false,
             cancellationToken);
         if (endpoint is null)
         {
@@ -52,11 +55,36 @@ public sealed class ArchiveWebhookEndpointCommandHandler(
 
         if (endpoint.Status != WebhookEndpointStatus.Archived)
         {
-            await endpointRepository.ArchiveAsync(
-                request.TenantId,
-                request.EndpointId,
-                DateTime.UtcNow,
-                cancellationToken);
+            await unitOfWork.ExecuteInTransactionAsync(async token =>
+            {
+                await endpointRepository.ArchiveAsync(
+                    endpoint.TenantId,
+                    request.EndpointId,
+                    DateTime.UtcNow,
+                    token);
+                await auditWriter.AppendAsync(
+                    new WebhookAuditWriteRequest(
+                        endpoint.TenantId,
+                        WebhookAuditAction.EndpointArchived,
+                        WebhookAuditTargetKind.Endpoint,
+                        endpoint.Id,
+                        "endpoint_archived",
+                        WebhookAuditOutcome.Succeeded,
+                        SafeBeforeJson: JsonSerializer.Serialize(new
+                        {
+                            status = endpoint.Status.ToString(),
+                            endpoint.DeliveryStateVersion
+                        }),
+                        SafeAfterJson: JsonSerializer.Serialize(new
+                        {
+                            status = WebhookEndpointStatus.Archived.ToString(),
+                            deliveryStateVersion = endpoint.DeliveryStateVersion + 1
+                        }),
+                        ConfigurationVersion: $"endpoint-v{endpoint.ConfigurationVersion}:delivery-v{endpoint.DeliveryStateVersion + 1}",
+                        EffectiveScopeKind: endpoint.Consumer.Ownership.AuditScopeKind,
+                        EffectiveScopeId: endpoint.Consumer.OwnerId),
+                    token);
+            }, cancellationToken);
         }
 
         return new BaseCommandResponse<Guid>

@@ -1,6 +1,7 @@
 // ABOUTME: Handles webhook consumer creation with Application-owned validation and mapping.
 // ABOUTME: Persists canonical consumer rows without exposing provider internals to controllers.
 
+using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Commands;
@@ -12,7 +13,10 @@ namespace Explore.Application.Features.Webhooks.Handlers.Commands;
 
 public sealed class CreateWebhookConsumerCommandHandler(
     IWebhookConsumerRepository consumerRepository,
-    IWebhookProviderCapabilityResolver capabilityResolver)
+    IWebhookOwnershipScopeResolver ownershipScopeResolver,
+    IWebhookProviderCapabilityResolver capabilityResolver,
+    IWebhookAuditEventWriter auditWriter,
+    IUnitOfWork unitOfWork)
     : IRequestHandler<CreateWebhookConsumerCommand, BaseCommandResponse<Guid>>
 {
     private const int MaxNameLength = 200;
@@ -39,9 +43,21 @@ public sealed class CreateWebhookConsumerCommandHandler(
                 [capabilityResolution.UnavailableReasonCode ?? "Webhook provider capability authority is unavailable."]);
         }
 
+        var ownershipResolution = await ownershipScopeResolver.ResolveAsync(
+            request.ConsumerKindId,
+            request.OwnerId,
+            cancellationToken);
+        if (ownershipResolution.Scope is not { } ownership)
+        {
+            return Failure(
+                "Webhook owner resolution failed.",
+                ownershipResolution.FailureCode ?? "webhook_owner_resolution_failed",
+                [ownershipResolution.Error ?? "Webhook owner could not be resolved."]);
+        }
+
         var name = request.Name.Trim();
-        var existing = await consumerRepository.GetByTenantAndNameAsync(
-            request.TenantId,
+        var existing = await consumerRepository.GetByOwnerAndNameAsync(
+            ownership,
             name,
             cancellationToken);
 
@@ -50,56 +66,56 @@ public sealed class CreateWebhookConsumerCommandHandler(
             return Failure(
                 "Webhook consumer name is already in use.",
                 "webhook_consumer_name_conflict",
-                ["A webhook consumer with this name already exists for the current tenant."]);
+                ["A webhook consumer with this name already exists for the selected owner."]);
         }
 
-        var consumer = new WebhookConsumer
-        {
-            Id = Guid.CreateVersion7(),
-            TenantId = request.TenantId,
-            OwnerActorId = request.OwnerActorId,
-            OwnerUserId = request.OwnerUserId,
-            ConsumerKind = (WebhookConsumerKind)request.ConsumerKindId,
-            Name = name,
-            Status = WebhookConsumerStatus.Active,
-            ProviderMode = (WebhookProviderMode)request.ProviderModeId,
-            ExternalProviderAppId = null,
-            ConfigurationVersion = 1,
-            CreatedAt = DateTime.UtcNow
-        };
+        var consumer = WebhookConsumer.Create(
+            ownership,
+            name,
+            (WebhookProviderMode)request.ProviderModeId,
+            DateTime.UtcNow);
 
-        var created = await consumerRepository.CreateAsync(consumer, cancellationToken);
-
-        return new BaseCommandResponse<Guid>
+        return await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
-            Success = true,
-            Message = "Webhook consumer created.",
-            Id = created.Id
-        };
+            var created = await consumerRepository.CreateAsync(consumer, token);
+            await auditWriter.AppendAsync(
+                new WebhookAuditWriteRequest(
+                    created.TenantId,
+                    WebhookAuditAction.ConsumerCreated,
+                    WebhookAuditTargetKind.Consumer,
+                    created.Id,
+                    "consumer_created",
+                    WebhookAuditOutcome.Succeeded,
+                    SafeAfterJson: JsonSerializer.Serialize(new
+                    {
+                        consumerKind = created.ConsumerKind.ToString(),
+                        status = created.Status.ToString(),
+                        providerMode = created.ProviderMode.ToString(),
+                        created.ConfigurationVersion,
+                        ownerKind = created.ConsumerKind.ToString(),
+                        ownerId = created.OwnerId
+                    }),
+                    ConfigurationVersion: $"consumer-v{created.ConfigurationVersion}",
+                    EffectiveScopeKind: ownership.AuditScopeKind,
+                    EffectiveScopeId: ownership.OwnerId),
+                token);
+
+            return new BaseCommandResponse<Guid>
+            {
+                Success = true,
+                Message = "Webhook consumer created.",
+                Id = created.Id
+            };
+        }, cancellationToken);
     }
 
     private static List<string> Validate(CreateWebhookConsumerCommand request)
     {
         var errors = new List<string>();
 
-        if (request.TenantId == Guid.Empty)
+        if (request.OwnerId == Guid.Empty)
         {
-            errors.Add("TenantId is required.");
-        }
-
-        if (request.OwnerActorId == Guid.Empty)
-        {
-            errors.Add("OwnerActorId must not be empty when provided.");
-        }
-
-        if (request.OwnerUserId == Guid.Empty)
-        {
-            errors.Add("OwnerUserId must not be empty when provided.");
-        }
-
-        if (request.OwnerActorId.HasValue && request.OwnerUserId.HasValue)
-        {
-            errors.Add("Only one owner reference may be set.");
+            errors.Add("OwnerId must not be empty when provided.");
         }
 
         if (string.IsNullOrWhiteSpace(request.Name))

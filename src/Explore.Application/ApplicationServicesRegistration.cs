@@ -1,6 +1,7 @@
 // ABOUTME: Application layer service registration for DI container.
 // ABOUTME: Registers MediatR, AutoMapper, pipeline behaviors, and application services.
 using System.Reflection;
+using AutoMapper.Internal;
 using Explore.Application.Analytics;
 using Explore.Application.Authorization;
 using Explore.Application.Behaviors;
@@ -21,6 +22,7 @@ using Explore.Application.Features.Management;
 using Explore.Application.Notifications;
 using Explore.Application.Services;
 using Explore.Application.Services.Lifecycle;
+using Explore.Application.Services.Webhooks;
 using Explore.Application.Settings;
 using Explore.Application.Webhooks;
 using Explore.Domain.Services.Scheduling;
@@ -49,6 +51,9 @@ public static class ApplicationServicesRegistration
                 cfg.LicenseKey = licenseKey;
             }
 #endif
+            // Bound every map traversal in the FOSS line to mitigate CVE-2026-32933.
+            // The same ceiling is defense in depth for commercial vendor-patched builds.
+            cfg.Internal().ForAllMaps((_, mapping) => mapping.MaxDepth(64));
             cfg.AddMaps(Assembly.GetExecutingAssembly());
         });
 
@@ -87,6 +92,8 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IInstanceStorageSettingService, InstanceStorageSettingService>();
         services.AddScoped<IInstanceSmtpSettingService, InstanceSmtpSettingService>();
         services.AddScoped<IInstanceBootstrapAuditLogger, InstanceBootstrapAuditLogger>();
+        services.AddScoped<IWebhookAuditEventWriter, WebhookAuditEventWriter>();
+        services.AddScoped<IWebhookOwnershipScopeResolver, WebhookOwnershipScopeResolver>();
         services.AddScoped<IAuthProviderConfigurationService, AuthProviderConfigurationService>();
         services.AddScoped<IKeycloakIdentityContractContributor, EventKeycloakIdentityContractContributor>();
         services.AddScoped<IAccountAuthorityLifecycleEmailService, DefaultAccountAuthorityLifecycleEmailService>();

@@ -1148,6 +1148,12 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
             builder.ConfigureTestServices(services =>
             {
+                services.RemoveAll<Microsoft.AspNetCore.Authentication.IClaimsTransformation>();
+                services.AddSingleton<Microsoft.AspNetCore.Authentication.IClaimsTransformation>(
+                    new TestInternalUserClaimsTransformation(
+                        _adminContext.UserId
+                        ?? throw new InvalidOperationException("The matrix persona requires a deterministic user ID.")));
+
                 services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
                 {
                     options.RequireHttpsMetadata = false;

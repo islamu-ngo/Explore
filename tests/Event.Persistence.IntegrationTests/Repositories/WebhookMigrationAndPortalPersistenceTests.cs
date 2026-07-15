@@ -182,10 +182,10 @@ public sealed class WebhookMigrationAndPortalPersistenceTests(PostgreSqlContaine
 
             context.ChangeTracker.Clear();
             await migrator.MigrateAsync("20260714080458_RetireLegacyWebhookProviderLinks");
-            var restored = await context.WebhookConsumerProviderBindings.SingleAsync();
+            var restored = await ReadHistoricalBindingEvidenceAsync(context);
 
             await Assert.That(restored.InstanceId).IsEqualTo(legacyInstanceId);
-            await Assert.That(restored.VerificationState)
+            await Assert.That((WebhookProviderBindingVerificationState)restored.VerificationStateId)
                 .IsEqualTo(WebhookProviderBindingVerificationState.Verified);
             await Assert.That(restored.IsEnabled).IsTrue();
             await Assert.That(await context.AuditLogs.CountAsync(audit =>
@@ -497,6 +497,37 @@ public sealed class WebhookMigrationAndPortalPersistenceTests(PostgreSqlContaine
         return result is null or DBNull ? null : (string)result;
     }
 
+    private static async Task<HistoricalBindingEvidence> ReadHistoricalBindingEvidenceAsync(
+        ExploreDbContext context)
+    {
+        var connection = (NpgsqlConnection)context.Database.GetDbConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+        {
+            await connection.OpenAsync();
+        }
+
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "SELECT instance_id, verification_state_id, is_enabled " +
+            "FROM webhook_consumer_provider_bindings";
+        await using var reader = await command.ExecuteReaderAsync();
+        if (!await reader.ReadAsync())
+        {
+            throw new InvalidOperationException("The historical provider binding was not restored.");
+        }
+
+        var evidence = new HistoricalBindingEvidence(
+            reader.GetGuid(0),
+            reader.GetInt32(1),
+            reader.GetBoolean(2));
+        if (await reader.ReadAsync())
+        {
+            throw new InvalidOperationException("Expected exactly one historical provider binding.");
+        }
+
+        return evidence;
+    }
+
     private static async Task<string?> ReadLegacyTableNameAsync(string connectionString)
     {
         await using var connection = new NpgsqlConnection(connectionString);
@@ -552,6 +583,11 @@ public sealed class WebhookMigrationAndPortalPersistenceTests(PostgreSqlContaine
 
         return maxWaitingLocks;
     }
+
+    private sealed record HistoricalBindingEvidence(
+        Guid InstanceId,
+        int VerificationStateId,
+        bool IsEnabled);
 
     private static async Task RunPostgresToolAsync(
         string executable,

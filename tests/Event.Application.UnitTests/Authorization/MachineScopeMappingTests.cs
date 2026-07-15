@@ -188,6 +188,7 @@ public class MachineScopeMappingTests
         await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.ManageTenant)).IsTrue();
         await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.Park)).IsTrue();
         await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.Replay)).IsTrue();
+        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.Webhook, AuthorizationActions.Webhooks.BulkReplay)).IsTrue();
     }
 
     [Test]
@@ -199,6 +200,7 @@ public class MachineScopeMappingTests
         await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.ManageTenant)).IsFalse();
         await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.Park)).IsFalse();
         await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.Replay)).IsFalse();
+        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.Webhook, AuthorizationActions.Webhooks.BulkReplay)).IsFalse();
     }
 
     [Test]

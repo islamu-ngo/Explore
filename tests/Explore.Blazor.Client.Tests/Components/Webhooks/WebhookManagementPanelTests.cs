@@ -1,8 +1,8 @@
 // ABOUTME: bUnit coverage for the webhook management panel's HAL-gated UI actions.
 // ABOUTME: Verifies Phase 7 webhook controls stay accessible and service-backed without client role checks.
 
-using Explore.Blazor.Client.Components.Webhooks;
 using Explore.Blazor.Client.Components.Common;
+using Explore.Blazor.Client.Components.Webhooks;
 using Explore.Blazor.Client.Contracts.Services.Webhooks;
 using MudBlazor;
 
@@ -12,12 +12,19 @@ public sealed class WebhookManagementPanelTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
     private readonly IWebhookManagementService _webhookService;
+    private readonly IWebhookOperationsService _webhookOperations;
 
     public WebhookManagementPanelTests()
     {
         _ctx = new BlazorTestContext();
         _webhookService = Substitute.For<IWebhookManagementService>();
+        _webhookOperations = Substitute.For<IWebhookOperationsService>();
         _ctx.Services.AddSingleton(_webhookService);
+        _ctx.Services.AddSingleton(_webhookOperations);
+        _webhookOperations.GetProviderPublicationsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new WebhookProviderPublicationSnapshot()));
+        _webhookOperations.GetBulkReplaysAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new WebhookBulkReplaySnapshot()));
     }
 
     public void Dispose() => _ctx.Dispose();
@@ -26,7 +33,7 @@ public sealed class WebhookManagementPanelTests : IDisposable
     public async Task WebhookManagementPanel_WhenHalLinksExist_RendersAccessibleActionAffordances()
     {
         var snapshot = CreateSnapshot(includeActionLinks: true);
-        _webhookService.GetSnapshotAsync(Arg.Any<CancellationToken>())
+        _webhookService.GetSnapshotAsync(Arg.Any<WebhookOwnerSelection>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(snapshot));
 
         var cut = RenderPanel();
@@ -54,7 +61,7 @@ public sealed class WebhookManagementPanelTests : IDisposable
     public async Task WebhookManagementPanel_WhenHalLinksAreAbsent_HidesMutationAffordances()
     {
         var snapshot = CreateSnapshot(includeActionLinks: false);
-        _webhookService.GetSnapshotAsync(Arg.Any<CancellationToken>())
+        _webhookService.GetSnapshotAsync(Arg.Any<WebhookOwnerSelection>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(snapshot));
 
         var cut = RenderPanel();
@@ -72,14 +79,101 @@ public sealed class WebhookManagementPanelTests : IDisposable
         await Assert.That(cut.Markup).DoesNotContain("aria-label=\"Rotate signing secret\"", StringComparison.OrdinalIgnoreCase);
         await Assert.That(cut.Markup).DoesNotContain("aria-label=\"Send test webhook\"", StringComparison.OrdinalIgnoreCase);
         await Assert.That(cut.Markup).DoesNotContain("aria-label=\"Archive endpoint\"", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).DoesNotContain("aria-label=\"View delivery attempts\"", StringComparison.OrdinalIgnoreCase);
         await Assert.That(cut.Markup).DoesNotContain("aria-label=\"Retry delivery\"", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).DoesNotContain("aria-label=\"Pause webhook endpoint\"", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).DoesNotContain("aria-label=\"Resume webhook endpoint\"", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).DoesNotContain("aria-label=\"View webhook payload\"", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).Contains("Delivery control is managed by the configured provider mode.", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Test]
+    public async Task WebhookManagementPanel_LocalHalActions_LoadPayloadAndPauseWithObservedVersion()
+    {
+        var snapshot = CreateSnapshot(includeActionLinks: true);
+        var endpoint = snapshot.Endpoints.Single();
+        var message = snapshot.Messages.Single();
+        endpoint.ProviderModeCode = "LOCAL";
+        endpoint.ProviderModeName = "Local";
+        endpoint.DeliveryStateVersion = 4;
+        GeneratedHalLinkTestHelper.SetLinks(
+            endpoint,
+            ("pause", $"/api/webhooks/endpoints/{endpoint.Id}/pause", "POST"));
+        GeneratedHalLinkTestHelper.SetLinks(
+            message,
+            ("payload", $"/api/webhooks/messages/{message.Id}/payload", "GET"));
+
+        _webhookService.GetSnapshotAsync(Arg.Any<WebhookOwnerSelection>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(snapshot));
+        _webhookOperations.GetMessagePayloadAsync(message.Id!.Value, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new WebhookPayloadResult(
+                true,
+                "Payload loaded.",
+                new WebhookMessagePayloadDto
+                {
+                    MessageId = message.Id,
+                    ContentType = "application/json",
+                    ContentEncoding = "utf-8",
+                    PayloadBase64 = Convert.ToBase64String("{\"event\":\"published\"}"u8),
+                    PayloadHash = message.PayloadHash,
+                    PayloadByteLength = 21,
+                    PayloadRetentionUntil = DateTimeOffset.UtcNow.AddDays(1),
+                    RetrievedAt = DateTimeOffset.UtcNow
+                })));
+        _webhookOperations.PauseEndpointAsync(
+                endpoint.Id!.Value,
+                Arg.Any<PauseWebhookEndpointRequestDto>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(WebhookActionResult.Succeeded("Endpoint paused.", endpoint.Id)));
+
+        var dialogProvider = _ctx.Render<MudDialogProvider>();
+        var cut = RenderPanel();
+        cut.WaitForAssertion(() =>
+        {
+            cut.Find("button[aria-label='Pause webhook endpoint']");
+            cut.Find("button[aria-label='View webhook payload']");
+        });
+
+        cut.Find("button[aria-label='View webhook payload']").Click();
+        dialogProvider.WaitForAssertion(() =>
+        {
+            if (!dialogProvider.Markup.Contains("published", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Decoded payload was not rendered.");
+            }
+        });
+        await _webhookOperations.Received(1).GetMessagePayloadAsync(message.Id.Value, Arg.Any<CancellationToken>());
+
+        dialogProvider.FindAll("button").Single(button => button.TextContent.Trim() == "Close").Click();
+        dialogProvider.WaitForAssertion(() =>
+        {
+            if (dialogProvider.Markup.Contains("Webhook Payload", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Payload dialog has not closed.");
+            }
+        });
+        cut.Find("button[aria-label='Pause webhook endpoint']").Click();
+        IRenderedComponent<AppTextField<string>>? reasonField = null;
+        dialogProvider.WaitForAssertion(() =>
+            reasonField = dialogProvider.FindComponents<AppTextField<string>>()
+                .Single(field => HasAdditionalAttribute(field, "data-testid", "webhook-endpoint-control-reason")));
+        await cut.InvokeAsync(() => reasonField!.Instance.ValueChanged.InvokeAsync("operator_maintenance"));
+        dialogProvider.FindAll("button").Single(button => button.TextContent.Trim() == "Pause").Click();
+
+        await _webhookOperations.Received(1).PauseEndpointAsync(
+            endpoint.Id.Value,
+            Arg.Is<PauseWebhookEndpointRequestDto>(request =>
+                request != null &&
+                request.ExpectedDeliveryStateVersion == 4 &&
+                request.ReasonCode == "operator_maintenance"),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task WebhookManagementPanel_WhenCapabilityAuthorityIsUnavailable_ShowsSafeExplanation()
     {
         var snapshot = CreateSnapshot(includeActionLinks: false, capabilityAuthorityAvailable: false);
-        _webhookService.GetSnapshotAsync(Arg.Any<CancellationToken>())
+        _webhookService.GetSnapshotAsync(Arg.Any<WebhookOwnerSelection>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(snapshot));
 
         var cut = RenderPanel();
@@ -106,13 +200,18 @@ public sealed class WebhookManagementPanelTests : IDisposable
         var messageId = snapshot.Messages.Single().Id!.Value;
         var attemptId = snapshot.DeliveryAttempts.Single().Id!.Value;
 
-        _webhookService.GetSnapshotAsync(Arg.Any<CancellationToken>())
+        _webhookService.GetSnapshotAsync(Arg.Any<WebhookOwnerSelection>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(snapshot));
         _webhookService.TestEndpointAsync(endpointId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(WebhookActionResult.Succeeded("Test webhook queued.")));
         _webhookService.RetryDeliveryAttemptAsync(attemptId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(WebhookActionResult.Succeeded("Retry scheduled.")));
-        _webhookService.GetDeliveryAttemptsAsync(messageId, null, 100, Arg.Any<CancellationToken>())
+        _webhookService.GetDeliveryAttemptsAsync(
+                Arg.Any<WebhookOwnerSelection>(),
+                messageId,
+                null,
+                100,
+                Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(snapshot.DeliveryAttempts));
         _webhookService.OpenProviderPortalAsync(consumerId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new WebhookPortalResult(true, "Portal ready.", "https://svix.example.test/app-portal")));
@@ -134,7 +233,12 @@ public sealed class WebhookManagementPanelTests : IDisposable
 
         cut.WaitForAssertion(() =>
             _webhookService.Received(1).TestEndpointAsync(endpointId, Arg.Any<CancellationToken>()));
-        await _webhookService.Received(1).GetDeliveryAttemptsAsync(messageId, null, 100, Arg.Any<CancellationToken>());
+        await _webhookService.Received(1).GetDeliveryAttemptsAsync(
+            WebhookOwnerSelection.Instance,
+            messageId,
+            null,
+            100,
+            Arg.Any<CancellationToken>());
         await _webhookService.Received(1).RetryDeliveryAttemptAsync(attemptId, Arg.Any<CancellationToken>());
         await _webhookService.Received(1).OpenProviderPortalAsync(consumerId, Arg.Any<CancellationToken>());
     }
@@ -146,7 +250,7 @@ public sealed class WebhookManagementPanelTests : IDisposable
         var endpoint = snapshot.Endpoints.Single();
         var endpointId = endpoint.Id!.Value;
 
-        _webhookService.GetSnapshotAsync(Arg.Any<CancellationToken>())
+        _webhookService.GetSnapshotAsync(Arg.Any<WebhookOwnerSelection>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(snapshot));
         _webhookService.UpdateEndpointAsync(
                 endpointId,
@@ -208,7 +312,7 @@ public sealed class WebhookManagementPanelTests : IDisposable
         var endpoint = snapshot.Endpoints.Single();
         var endpointId = endpoint.Id!.Value;
 
-        _webhookService.GetSnapshotAsync(Arg.Any<CancellationToken>())
+        _webhookService.GetSnapshotAsync(Arg.Any<WebhookOwnerSelection>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(snapshot));
         _webhookService.RotateEndpointSecretAsync(
                 endpointId,
@@ -257,12 +361,122 @@ public sealed class WebhookManagementPanelTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    private IRenderedComponent<WebhookManagementPanel> RenderPanel() =>
-        _ctx.RenderMudComponent<WebhookManagementPanel>();
+    [Test]
+    public async Task WebhookManagementPanel_CreateConsumer_UsesFixedOrganizationOwnerWithoutKindSelector()
+    {
+        var organizationId = Guid.CreateVersion7();
+        var owner = WebhookOwnerSelection.ForOrganization(organizationId);
+        _webhookService.GetSnapshotAsync(owner, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(CreateSnapshot(includeActionLinks: true)));
+        _webhookService.CreateConsumerAsync(
+                Arg.Any<CreateWebhookConsumerRequestDto>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(WebhookActionResult.Succeeded("Consumer created.")));
+
+        var dialogProvider = _ctx.Render<MudDialogProvider>();
+        var cut = RenderPanel(owner);
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.FindAll("button").Any(button => button.TextContent.Trim() == "Create Consumer"))
+            {
+                throw new InvalidOperationException("The create-consumer affordance was not rendered.");
+            }
+        });
+
+        cut.FindAll("button").Single(button => button.TextContent.Trim() == "Create Consumer").Click();
+        IRenderedComponent<AppTextField<string>>? nameField = null;
+        dialogProvider.WaitForAssertion(() =>
+        {
+            nameField = dialogProvider.FindComponents<AppTextField<string>>()
+                .Single(field => HasAdditionalAttribute(field, "Label", "Name"));
+            if (!dialogProvider.Markup.Contains("Owner scope", StringComparison.Ordinal)
+                || !dialogProvider.Markup.Contains("Organization", StringComparison.Ordinal)
+                || dialogProvider.Markup.Contains("System integration", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("The fixed organization scope was not rendered safely.");
+            }
+        });
+
+        await cut.InvokeAsync(() => nameField!.Instance.ValueChanged.InvokeAsync("Organization events"));
+        dialogProvider.FindAll("button").Single(button => button.TextContent.Trim() == "Create").Click();
+
+        await _webhookService.Received(1).CreateConsumerAsync(
+            Arg.Is<CreateWebhookConsumerRequestDto>(request =>
+                request.ConsumerKindId == (int)WebhookOwnerKind.Organization
+                && request.OwnerId == organizationId
+                && request.Name == "Organization events"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task WebhookManagementPanel_WithoutCollectionHalCapabilities_HidesSensitiveTabs()
+    {
+        _webhookService.GetSnapshotAsync(WebhookOwnerSelection.User, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(CreateSnapshot(includeActionLinks: false)));
+
+        var denied = RenderPanel(WebhookOwnerSelection.User);
+        denied.WaitForAssertion(() => denied.Find("[aria-label='Webhook status summary']"));
+        await Assert.That(denied.FindComponents<WebhookProviderPublicationsPanel>().Count).IsEqualTo(0);
+        await Assert.That(denied.FindComponents<WebhookBulkReplayPanel>().Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task WebhookManagementPanel_WithCollectionHalCapabilities_RendersSensitiveTabs()
+    {
+        _webhookService.GetSnapshotAsync(WebhookOwnerSelection.Tenant, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(CreateSnapshot(
+                includeActionLinks: false,
+                canViewProviderPublications: true,
+                canUseBulkReplay: true)));
+
+        var allowed = RenderPanel(WebhookOwnerSelection.Tenant);
+        allowed.WaitForAssertion(() =>
+        {
+            if (allowed.FindComponents<WebhookProviderPublicationsPanel>().Count != 1
+                || allowed.FindComponents<WebhookBulkReplayPanel>().Count != 1)
+            {
+                throw new InvalidOperationException("HAL-authorized sensitive tabs were not rendered.");
+            }
+        });
+        await Assert.That(allowed.FindComponents<WebhookProviderPublicationsPanel>().Count).IsEqualTo(1);
+        await Assert.That(allowed.FindComponents<WebhookBulkReplayPanel>().Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task WebhookManagementPanel_ResponsiveMarkupPreservesAccessibleMobileAndDesktopViews()
+    {
+        _webhookService.GetSnapshotAsync(WebhookOwnerSelection.Instance, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(CreateSnapshot(includeActionLinks: true)));
+        var cut = RenderPanel();
+
+        cut.WaitForAssertion(() => cut.Find("[aria-label='Instance webhook management']"));
+        await Assert.That(cut.Find("[aria-label='Instance webhook management']").GetAttribute("aria-busy"))
+            .IsEqualTo("false");
+        await Assert.That(cut.FindAll("section.webhook-management__mobile-card[aria-label]").Count)
+            .IsEqualTo(2);
+        await Assert.That(cut.FindAll("button[aria-label='View delivery attempts']").Count)
+            .IsEqualTo(2);
+
+        var markup = await ReadClientSourceAsync("Components/Webhooks/WebhookManagementPanel.razor");
+        var styles = await ReadClientSourceAsync("Components/Webhooks/WebhookManagementPanel.razor.css");
+        await Assert.That(markup).Contains("Breakpoint=\"Breakpoint.Xl\"");
+        await Assert.That(styles).Contains("@media (max-width: 37.497em)");
+        await Assert.That(styles).Contains(".webhook-management__desktop-table");
+        await Assert.That(styles).Contains("display: none");
+        await Assert.That(styles).Contains(".webhook-management__mobile-list");
+        await Assert.That(styles).Contains("display: grid");
+    }
+
+    private IRenderedComponent<WebhookManagementPanel> RenderPanel(
+        WebhookOwnerSelection? owner = null) =>
+        _ctx.RenderMudComponent<WebhookManagementPanel>(parameters => parameters
+            .Add(component => component.Owner, owner ?? WebhookOwnerSelection.Instance));
 
     private static WebhookManagementSnapshot CreateSnapshot(
         bool includeActionLinks,
-        bool capabilityAuthorityAvailable = true)
+        bool capabilityAuthorityAvailable = true,
+        bool canViewProviderPublications = false,
+        bool canUseBulkReplay = false)
     {
         var tenantId = Guid.CreateVersion7();
         var consumerId = Guid.CreateVersion7();
@@ -277,7 +491,7 @@ public sealed class WebhookManagementPanelTests : IDisposable
             TenantId = tenantId,
             Name = "Operations bridge",
             ConsumerKindId = 5,
-            ConsumerKindName = "System integration",
+            ConsumerKindName = "Instance",
             ProviderModeId = 3,
             ProviderModeName = "Svix",
             ProviderCapabilityAuthorityAvailable = capabilityAuthorityAvailable,
@@ -297,13 +511,16 @@ public sealed class WebhookManagementPanelTests : IDisposable
             ConsumerId = consumerId,
             ConsumerName = consumer.Name,
             ProviderModeId = 3,
+            ProviderModeCode = "SVIX",
             ProviderModeName = "Svix",
             DestinationHost = "integrator.example.test",
             Description = "Integration endpoint",
             StatusId = 1,
+            StatusCode = "ACTIVE",
             StatusName = "Active",
             SecretVersion = 2,
             ConfigurationVersion = 7,
+            DeliveryStateVersion = 2,
             MaxAttempts = 8,
             TimeoutSeconds = 15,
             RateLimitPerMinute = 60,
@@ -368,6 +585,9 @@ public sealed class WebhookManagementPanelTests : IDisposable
                 ("test", $"/api/webhooks/endpoints/{endpointId}/test", "POST"),
                 ("delete", $"/api/webhooks/endpoints/{endpointId}", "DELETE"));
             GeneratedHalLinkTestHelper.SetLinks(
+                message,
+                ("delivery-attempts", $"/api/webhooks/delivery-attempts?messageId={messageId}", "GET"));
+            GeneratedHalLinkTestHelper.SetLinks(
                 attempt,
                 ("retry", $"/api/webhooks/delivery-attempts/{attemptId}/retry", "POST"));
         }
@@ -395,7 +615,9 @@ public sealed class WebhookManagementPanelTests : IDisposable
             Messages = [message],
             DeliveryAttempts = [attempt],
             CanCreateConsumer = true,
-            CanCreateEndpoint = true
+            CanCreateEndpoint = true,
+            CanViewProviderPublications = canViewProviderPublications,
+            CanUseBulkReplay = canUseBulkReplay
         };
     }
 
@@ -442,4 +664,26 @@ public sealed class WebhookManagementPanelTests : IDisposable
         component.Instance is AppTextField<string> field
         && field.AdditionalAttributes?.TryGetValue(name, out var value) == true
         && string.Equals(value?.ToString(), expectedValue, StringComparison.Ordinal);
+
+    private static async Task<string> ReadClientSourceAsync(string relativePath)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            var candidate = Path.Combine(
+                directory.FullName,
+                "src",
+                "Explore.Blazor.Client",
+                relativePath);
+            if (File.Exists(candidate))
+            {
+                return await File.ReadAllTextAsync(candidate);
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new InvalidOperationException(
+            $"Could not locate src/Explore.Blazor.Client/{relativePath} from test base directory.");
+    }
 }

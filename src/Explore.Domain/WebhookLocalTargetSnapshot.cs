@@ -10,6 +10,7 @@ public sealed class WebhookLocalTargetSnapshot : ITenantEntity, IAuditableEntity
 {
     public const int MaxDestinationUrlLength = 2_048;
     public const int MaxCredentialReferenceLength = 500;
+    public const int MaxLeaseOwnerLength = 200;
 
     public Guid Id { get; private set; }
     public Guid TenantId { get; set; }
@@ -67,11 +68,14 @@ public sealed class WebhookLocalTargetSnapshot : ITenantEntity, IAuditableEntity
                 "A local target requires a Local or Composite delivery plan.");
         }
 
-        if (webhookEndpoint.TenantId != deliveryPlanSnapshot.TenantId ||
+        var endpointCanReceiveSourceTenant =
+            webhookEndpoint.TenantId == deliveryPlanSnapshot.TenantId ||
+            webhookEndpoint.TenantId is null && webhookEndpoint.InstanceId.HasValue;
+        if (!endpointCanReceiveSourceTenant ||
             webhookEndpoint.ConsumerId != deliveryPlanSnapshot.WebhookConsumerId)
         {
             throw new InvalidOperationException(
-                "The endpoint must belong to the delivery plan tenant and consumer.");
+                "The endpoint must belong to the delivery plan consumer and support its source tenant.");
         }
 
         if (webhookEndpoint.Status != WebhookEndpointStatus.Active)
@@ -147,6 +151,118 @@ public sealed class WebhookLocalTargetSnapshot : ITenantEntity, IAuditableEntity
         };
     }
 
+    public void ClaimForDelivery(
+        string leaseOwner,
+        Guid leaseToken,
+        DateTimeOffset leaseExpiresAtUtc,
+        DateTimeOffset claimedAtUtc)
+    {
+        if (DeliveryStatus is not (WebhookLocalDeliveryStatus.Pending or WebhookLocalDeliveryStatus.RetryDue))
+        {
+            throw new InvalidOperationException($"Local target in state '{DeliveryStatus}' cannot be delivered.");
+        }
+
+        if (NextActionAtUtc > claimedAtUtc)
+        {
+            throw new InvalidOperationException("Local target is not due.");
+        }
+
+        if (leaseToken == Guid.Empty)
+        {
+            throw new ArgumentException("Lease token is required.", nameof(leaseToken));
+        }
+
+        if (leaseExpiresAtUtc <= claimedAtUtc)
+        {
+            throw new ArgumentOutOfRangeException(nameof(leaseExpiresAtUtc));
+        }
+
+        ProcessingLeaseOwner = WebhookDeliveryPlanSnapshot.NormalizeRequired(
+            leaseOwner,
+            MaxLeaseOwnerLength,
+            nameof(leaseOwner));
+        ProcessingLeaseToken = leaseToken;
+        ProcessingLeaseExpiresAtUtc = leaseExpiresAtUtc;
+        DeliveryFence = checked(DeliveryFence + 1);
+        DeliveryStatus = WebhookLocalDeliveryStatus.Delivering;
+        AdvanceConcurrencyVersion(claimedAtUtc);
+    }
+
+    public void MarkSucceeded(Guid leaseToken, long deliveryFence, DateTimeOffset completedAtUtc)
+    {
+        EnsureActiveLease(leaseToken, deliveryFence, completedAtUtc);
+        DeliveryStatus = WebhookLocalDeliveryStatus.Succeeded;
+        NextActionAtUtc = completedAtUtc;
+        ClearLease();
+        AdvanceConcurrencyVersion(completedAtUtc);
+    }
+
+    public void ScheduleRetry(
+        Guid leaseToken,
+        long deliveryFence,
+        DateTimeOffset nextActionAtUtc,
+        DateTimeOffset failedAtUtc)
+    {
+        EnsureActiveLease(leaseToken, deliveryFence, failedAtUtc);
+        if (nextActionAtUtc <= failedAtUtc)
+        {
+            throw new ArgumentOutOfRangeException(nameof(nextActionAtUtc));
+        }
+
+        DeliveryStatus = WebhookLocalDeliveryStatus.RetryDue;
+        NextActionAtUtc = nextActionAtUtc;
+        ClearLease();
+        AdvanceConcurrencyVersion(failedAtUtc);
+    }
+
+    public void DeadLetter(Guid leaseToken, long deliveryFence, DateTimeOffset deadLetteredAtUtc)
+    {
+        EnsureActiveLease(leaseToken, deliveryFence, deadLetteredAtUtc);
+        DeliveryStatus = WebhookLocalDeliveryStatus.DeadLettered;
+        NextActionAtUtc = deadLetteredAtUtc;
+        ClearLease();
+        AdvanceConcurrencyVersion(deadLetteredAtUtc);
+    }
+
+    public void Abandon(Guid leaseToken, long deliveryFence, DateTimeOffset abandonedAtUtc)
+    {
+        EnsureActiveLease(leaseToken, deliveryFence, abandonedAtUtc);
+        DeliveryStatus = WebhookLocalDeliveryStatus.Abandoned;
+        NextActionAtUtc = abandonedAtUtc;
+        ClearLease();
+        AdvanceConcurrencyVersion(abandonedAtUtc);
+    }
+
+    public void RecoverExpiredClaim(DateTimeOffset recoveredAtUtc)
+    {
+        if (DeliveryStatus != WebhookLocalDeliveryStatus.Delivering ||
+            ProcessingLeaseExpiresAtUtc is null ||
+            ProcessingLeaseExpiresAtUtc > recoveredAtUtc)
+        {
+            throw new InvalidOperationException("Only an expired Local delivery claim can be recovered.");
+        }
+
+        DeliveryStatus = DeliveryFence >= MaxAttempts
+            ? WebhookLocalDeliveryStatus.DeadLettered
+            : WebhookLocalDeliveryStatus.RetryDue;
+        NextActionAtUtc = recoveredAtUtc;
+        ClearLease();
+        AdvanceConcurrencyVersion(recoveredAtUtc);
+    }
+
+    public void ScheduleManualRetry(DateTimeOffset retryAtUtc)
+    {
+        if (DeliveryStatus is not (WebhookLocalDeliveryStatus.DeadLettered or WebhookLocalDeliveryStatus.Abandoned))
+        {
+            throw new InvalidOperationException("Only terminal Local targets can be retried manually.");
+        }
+
+        DeliveryStatus = WebhookLocalDeliveryStatus.RetryDue;
+        NextActionAtUtc = retryAtUtc;
+        ClearLease();
+        AdvanceConcurrencyVersion(retryAtUtc);
+    }
+
     public void MigratePendingConfiguration(
         WebhookEndpoint webhookEndpoint,
         DateTimeOffset migratedAtUtc)
@@ -162,10 +278,13 @@ public sealed class WebhookLocalTargetSnapshot : ITenantEntity, IAuditableEntity
                 "Only unclaimed pending Local work can migrate to a new endpoint configuration.");
         }
 
-        if (webhookEndpoint.Id != WebhookEndpointId || webhookEndpoint.TenantId != TenantId)
+        var endpointCanReceiveSourceTenant =
+            webhookEndpoint.TenantId == TenantId ||
+            webhookEndpoint.TenantId is null && webhookEndpoint.InstanceId.HasValue;
+        if (webhookEndpoint.Id != WebhookEndpointId || !endpointCanReceiveSourceTenant)
         {
             throw new InvalidOperationException(
-                "The endpoint configuration must match the pending target tenant and endpoint.");
+                "The endpoint configuration must match the pending target endpoint and source tenant.");
         }
 
         if (webhookEndpoint.ConfigurationVersion <= EndpointConfigurationVersion)
@@ -220,5 +339,33 @@ public sealed class WebhookLocalTargetSnapshot : ITenantEntity, IAuditableEntity
         }
 
         return normalized;
+    }
+
+    private void EnsureActiveLease(
+        Guid leaseToken,
+        long deliveryFence,
+        DateTimeOffset observedAtUtc)
+    {
+        if (DeliveryStatus != WebhookLocalDeliveryStatus.Delivering ||
+            ProcessingLeaseToken != leaseToken ||
+            DeliveryFence != deliveryFence ||
+            ProcessingLeaseExpiresAtUtc is null ||
+            ProcessingLeaseExpiresAtUtc <= observedAtUtc)
+        {
+            throw new InvalidOperationException("The Local delivery claim is stale or no longer active.");
+        }
+    }
+
+    private void ClearLease()
+    {
+        ProcessingLeaseOwner = null;
+        ProcessingLeaseToken = null;
+        ProcessingLeaseExpiresAtUtc = null;
+    }
+
+    private void AdvanceConcurrencyVersion(DateTimeOffset changedAtUtc)
+    {
+        ConcurrencyVersion = checked(ConcurrencyVersion + 1);
+        UpdatedAt = changedAtUtc.UtcDateTime;
     }
 }

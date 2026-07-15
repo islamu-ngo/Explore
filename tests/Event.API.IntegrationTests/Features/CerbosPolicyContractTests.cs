@@ -783,11 +783,28 @@ public class CerbosPolicyContractTests : IDisposable
             resourceKind: "islamuevent_webhook",
             resourceId: "incoming-message-1",
             resourceAttrs: new { tenantId = "tenant-1" },
-            actions: ["webhook:process-incoming", "webhook:redrive-incoming", "webhook:manage-provider"]);
+            actions:
+            [
+                "webhook:process-incoming",
+                "webhook:redrive-incoming",
+                "webhook:pause",
+                "webhook:resume",
+                "webhook:reconcile-publication",
+                "webhook:abandon-publication",
+                "webhook:manage-provider",
+                "webhook:view-payload",
+                "webhook:bulk-replay"
+            ]);
 
         dedicatedWorker.Should().ContainKey("webhook:process-incoming").WhoseValue.Should().Be("EFFECT_ALLOW");
         dedicatedWorker.Should().ContainKey("webhook:redrive-incoming").WhoseValue.Should().Be("EFFECT_DENY");
+        dedicatedWorker.Should().ContainKey("webhook:pause").WhoseValue.Should().Be("EFFECT_DENY");
+        dedicatedWorker.Should().ContainKey("webhook:resume").WhoseValue.Should().Be("EFFECT_DENY");
+        dedicatedWorker.Should().ContainKey("webhook:reconcile-publication").WhoseValue.Should().Be("EFFECT_DENY");
+        dedicatedWorker.Should().ContainKey("webhook:abandon-publication").WhoseValue.Should().Be("EFFECT_DENY");
         dedicatedWorker.Should().ContainKey("webhook:manage-provider").WhoseValue.Should().Be("EFFECT_DENY");
+        dedicatedWorker.Should().ContainKey("webhook:view-payload").WhoseValue.Should().Be("EFFECT_DENY");
+        dedicatedWorker.Should().ContainKey("webhook:bulk-replay").WhoseValue.Should().Be("EFFECT_DENY");
 
         var tenantAdminMachine = await _cerbos.CheckResourceAsync(
             principalId: "tenant-admin-machine",
@@ -803,11 +820,28 @@ public class CerbosPolicyContractTests : IDisposable
             resourceKind: "islamuevent_webhook",
             resourceId: "incoming-message-1",
             resourceAttrs: new { tenantId = "tenant-1" },
-            actions: ["webhook:process-incoming", "webhook:redrive-incoming", "webhook:manage-provider"]);
+            actions:
+            [
+                "webhook:process-incoming",
+                "webhook:redrive-incoming",
+                "webhook:pause",
+                "webhook:resume",
+                "webhook:reconcile-publication",
+                "webhook:abandon-publication",
+                "webhook:manage-provider",
+                "webhook:view-payload",
+                "webhook:bulk-replay"
+            ]);
 
         tenantAdminMachine.Should().ContainKey("webhook:process-incoming").WhoseValue.Should().Be("EFFECT_DENY");
         tenantAdminMachine.Should().ContainKey("webhook:redrive-incoming").WhoseValue.Should().Be("EFFECT_ALLOW");
+        tenantAdminMachine.Should().ContainKey("webhook:pause").WhoseValue.Should().Be("EFFECT_ALLOW");
+        tenantAdminMachine.Should().ContainKey("webhook:resume").WhoseValue.Should().Be("EFFECT_ALLOW");
+        tenantAdminMachine.Should().ContainKey("webhook:reconcile-publication").WhoseValue.Should().Be("EFFECT_ALLOW");
+        tenantAdminMachine.Should().ContainKey("webhook:abandon-publication").WhoseValue.Should().Be("EFFECT_ALLOW");
         tenantAdminMachine.Should().ContainKey("webhook:manage-provider").WhoseValue.Should().Be("EFFECT_ALLOW");
+        tenantAdminMachine.Should().ContainKey("webhook:view-payload").WhoseValue.Should().Be("EFFECT_ALLOW");
+        tenantAdminMachine.Should().ContainKey("webhook:bulk-replay").WhoseValue.Should().Be("EFFECT_ALLOW");
     }
 
     [Test]
@@ -913,7 +947,6 @@ public class CerbosPolicyContractTests : IDisposable
         yield return "islamuevent_actor";
         yield return "islamuevent_group";
         yield return "islamuevent_group_member";
-        yield return "islamuevent_instance_setting";
         yield return "islamuevent_event_session";
         yield return "islamuevent_event_day";
         yield return "islamuevent_event_agenda_item";

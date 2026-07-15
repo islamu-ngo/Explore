@@ -1,5 +1,5 @@
 @* ABOUTME: Page wrapper for the Tenant Admin Settings sidebar layout. *@
-@* ABOUTME: Resolves deployment mode before rendering tenant settings or redirecting single-tenant admins. *@
+@* ABOUTME: Uses public onboarding status to render multi-tenant settings or redirect single-tenant admins. *@
 
 @page "/admin/tenant/settings"
 @using MudBlazor
@@ -41,8 +41,17 @@ else if (!_redirecting)
     {
         try
         {
-            var deploymentMode = await InstanceOnboardingService.GetDeploymentModeAsync();
-            if (deploymentMode.Mode is null or DeploymentMode.SingleTenant)
+            var instanceStatus = await InstanceOnboardingService.GetStatusAsync();
+            if (instanceStatus is null)
+            {
+                _errorMessage = "Unable to determine deployment mode. Please refresh or contact support.";
+                return;
+            }
+
+            if (!string.Equals(
+                    instanceStatus.SelectedDeploymentMode,
+                    nameof(DeploymentMode.MultiTenant),
+                    StringComparison.OrdinalIgnoreCase))
             {
                 _redirecting = true;
                 Navigation.NavigateTo("/admin/instance/settings", replace: true);

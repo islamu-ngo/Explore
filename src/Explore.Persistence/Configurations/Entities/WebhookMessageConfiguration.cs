@@ -47,8 +47,7 @@ public class WebhookMessageConfiguration : IEntityTypeConfiguration<WebhookMessa
 
         builder.HasOne(e => e.Consumer)
             .WithMany()
-            .HasForeignKey(e => new { e.TenantId, e.ConsumerId })
-            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .HasForeignKey(e => e.ConsumerId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.PayloadProvenanceLookup)

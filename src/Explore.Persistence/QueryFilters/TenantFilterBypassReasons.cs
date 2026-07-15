@@ -62,6 +62,9 @@ public static class TenantFilterBypassReasons
     public const string WebhookTenantOperation =
         "Webhook tenant operation bypasses ambient context only after applying an explicit tenant predicate.";
 
+    public const string WebhookOwnerOperation =
+        "Webhook owner operation bypasses ambient tenant filtering only with an exact typed owner and resource predicate.";
+
     public const string IncomingWebhookProviderAuthorityResolution =
         "Incoming webhook verification resolves one globally unique normalized provider application identity before tenant binding.";
 

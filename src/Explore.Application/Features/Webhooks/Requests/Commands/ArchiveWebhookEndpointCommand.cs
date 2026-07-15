@@ -8,17 +8,20 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.Delete)]
-public sealed class ArchiveWebhookEndpointCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed class ArchiveWebhookEndpointCommand
+    : IRequest<BaseCommandResponse<Guid>>, ISecureRequest, IWebhookPersistedOwnerRequest
 {
-    public Guid TenantId { get; init; }
-
     public Guid EndpointId { get; init; }
 
     string? ISecureRequest.ResourceId => EndpointId.ToString("D");
 
     IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
     {
-        ["tenantId"] = TenantId.ToString("D"),
         ["endpointId"] = EndpointId.ToString("D")
     };
+
+    WebhookOwnedResourceKind IWebhookPersistedOwnerRequest.OwnedResourceKind =>
+        WebhookOwnedResourceKind.Endpoint;
+
+    Guid IWebhookPersistedOwnerRequest.OwnedResourceId => EndpointId;
 }

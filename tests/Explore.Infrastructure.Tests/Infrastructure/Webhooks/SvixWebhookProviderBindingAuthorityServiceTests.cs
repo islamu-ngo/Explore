@@ -68,11 +68,19 @@ public sealed class SvixWebhookProviderBindingAuthorityServiceTests
                 new Dictionary<string, string>
                 {
                     ["islamu.tenant_id"] = tenantId.ToString("D"),
-                    ["islamu.consumer_id"] = consumerId.ToString("D")
+                    ["islamu.consumer_id"] = consumerId.ToString("D"),
+                    ["islamu.owner_id"] = tenantId.ToString("D"),
+                    ["islamu.owner_kind_id"] = ((int)WebhookConsumerKind.Tenant).ToString()
                 }));
         var service = CreateService(SupportedOptions(), client);
         var request = new WebhookProviderBindingOwnershipRequest(
-            tenantId,
+            WebhookOwnershipScope.Create(
+                WebhookConsumerKind.Tenant,
+                tenantId,
+                null,
+                null,
+                null,
+                null),
             consumerId,
             applicationUid,
             "app_verified",

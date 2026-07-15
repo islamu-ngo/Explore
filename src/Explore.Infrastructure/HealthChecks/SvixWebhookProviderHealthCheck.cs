@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Secrets;
 using Explore.Application.Lookups;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.Webhooks;
@@ -14,7 +15,9 @@ namespace Explore.Infrastructure.HealthChecks;
 
 public sealed class SvixWebhookProviderHealthCheck(
     IOptionsMonitor<WebhookOptions> options,
-    IServiceScopeFactory scopeFactory) : IHealthCheck
+    IOptions<WebhookProviderPublicationProcessorSettings> processorSettings,
+    IServiceScopeFactory scopeFactory,
+    BusinessMetrics metrics) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
@@ -35,15 +38,27 @@ public sealed class SvixWebhookProviderHealthCheck(
             ["capabilityPolicyVersion"] = currentOptions.Svix.CapabilityPolicyVersion,
             ["appPortalEnabled"] = currentOptions.Svix.AppPortalEnabled,
             ["syncEventTypesOnStartup"] = currentOptions.Svix.SyncEventTypesOnStartup,
+            ["processorEnabled"] = processorSettings.Value.Enabled,
             ["authTokenBindingConfigured"] = !string.IsNullOrWhiteSpace(currentOptions.Svix.AuthTokenSecretRef),
             ["operationalWebhookBindingConfigured"] = !string.IsNullOrWhiteSpace(currentOptions.Svix.OperationalWebhookSecretRef)
         };
 
         if (!svixSelected)
         {
-            return HealthCheckResult.Healthy(
-                "Svix webhook provider is not the selected outgoing provider.",
-                data);
+            return Report(
+                HealthCheckResult.Healthy(
+                    "Svix webhook provider is not the selected outgoing provider.",
+                    data),
+                WebhookTelemetryOutcome.NotSelected);
+        }
+
+        if (!processorSettings.Value.Enabled)
+        {
+            return Report(
+                HealthCheckResult.Unhealthy(
+                    "Svix webhook provider publication processor is disabled.",
+                    data: data),
+                WebhookTelemetryOutcome.Disabled);
         }
 
         if (!SvixConformanceProfileRegistry.TryResolve(
@@ -53,16 +68,20 @@ public sealed class SvixWebhookProviderHealthCheck(
                 !string.IsNullOrWhiteSpace(currentOptions.Svix.BaseUrl),
                 out var profile))
         {
-            return HealthCheckResult.Unhealthy(
-                "The selected Svix deployment profile is absent from the conformance matrix.",
-                data: data);
+            return Report(
+                HealthCheckResult.Unhealthy(
+                    "The selected Svix deployment profile is absent from the conformance matrix.",
+                    data: data),
+                WebhookTelemetryOutcome.Unhealthy);
         }
 
         if (profile is null)
         {
-            return HealthCheckResult.Unhealthy(
-                "The selected Svix deployment profile could not be resolved.",
-                data: data);
+            return Report(
+                HealthCheckResult.Unhealthy(
+                    "The selected Svix deployment profile could not be resolved.",
+                    data: data),
+                WebhookTelemetryOutcome.Unhealthy);
         }
 
         data["deploymentKind"] = profile.DeploymentKind.ToString();
@@ -73,61 +92,108 @@ public sealed class SvixWebhookProviderHealthCheck(
         data["providerCapabilityCodes"] = ResolveCapabilityCodes(profile.Capabilities);
         if (!profile.IsVerified)
         {
-            return HealthCheckResult.Unhealthy(
-                "The selected Svix deployment profile has no executed conformance evidence.",
-                data: data);
+            return Report(
+                HealthCheckResult.Unhealthy(
+                    "The selected Svix deployment profile has no executed conformance evidence.",
+                    data: data),
+                WebhookTelemetryOutcome.Unhealthy);
         }
 
         if (currentOptions.Svix.AppPortalEnabled &&
             !Supports(profile.Capabilities, WebhookProviderCapability.AppPortal))
         {
-            return HealthCheckResult.Unhealthy(
-                "The selected Svix profile does not prove the enabled App Portal capability.",
-                data: data);
+            return Report(
+                HealthCheckResult.Unhealthy(
+                    "The selected Svix profile does not prove the enabled App Portal capability.",
+                    data: data),
+                WebhookTelemetryOutcome.Unhealthy);
         }
 
         if (currentOptions.Svix.SyncEventTypesOnStartup &&
             !Supports(profile.Capabilities, WebhookProviderCapability.EventCatalog))
         {
-            return HealthCheckResult.Unhealthy(
-                "The selected Svix profile does not prove the enabled event catalog capability.",
-                data: data);
+            return Report(
+                HealthCheckResult.Unhealthy(
+                    "The selected Svix profile does not prove the enabled event catalog capability.",
+                    data: data),
+                WebhookTelemetryOutcome.Unhealthy);
         }
 
         var authTokenSettingKey = currentOptions.Svix.AuthTokenSecretRef?.Trim();
         if (string.IsNullOrWhiteSpace(authTokenSettingKey))
         {
-            return HealthCheckResult.Unhealthy(
-                "Svix webhook auth token binding is not configured.",
-                data: data);
+            return Report(
+                HealthCheckResult.Unhealthy(
+                    "Svix webhook auth token binding is not configured.",
+                    data: data),
+                WebhookTelemetryOutcome.Unhealthy);
         }
 
         await using var scope = scopeFactory.CreateAsyncScope();
         var secretResolver = scope.ServiceProvider.GetRequiredService<ISecretResolver>();
-        var authToken = await secretResolver.ResolveAsync(authTokenSettingKey, tenantId: null, cancellationToken);
+        ResolvedSecret? authToken;
+        try
+        {
+            authToken = await secretResolver.ResolveAsync(authTokenSettingKey, tenantId: null, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return Report(
+                HealthCheckResult.Unhealthy(
+                    "Svix webhook auth token resolution failed.",
+                    data: data),
+                WebhookTelemetryOutcome.Unhealthy);
+        }
         var authTokenResolved = authToken is not null && !string.IsNullOrWhiteSpace(authToken.Value);
         data["authTokenResolved"] = authTokenResolved;
         if (!authTokenResolved)
         {
-            return HealthCheckResult.Unhealthy(
-                "Svix webhook auth token could not be resolved.",
-                data: data);
+            return Report(
+                HealthCheckResult.Unhealthy(
+                    "Svix webhook auth token could not be resolved.",
+                    data: data),
+                WebhookTelemetryOutcome.Unhealthy);
         }
 
         var operationalWebhookSettingKey = currentOptions.Svix.OperationalWebhookSecretRef?.Trim();
         if (!string.IsNullOrWhiteSpace(operationalWebhookSettingKey))
         {
-            var operationalSecret = await secretResolver.ResolveAsync(
-                operationalWebhookSettingKey,
-                tenantId: null,
-                cancellationToken);
-            data["operationalWebhookSecretResolved"] = operationalSecret is not null
-                && !string.IsNullOrWhiteSpace(operationalSecret.Value);
+            try
+            {
+                var operationalSecret = await secretResolver.ResolveAsync(
+                    operationalWebhookSettingKey,
+                    tenantId: null,
+                    cancellationToken);
+                data["operationalWebhookSecretResolved"] = operationalSecret is not null
+                    && !string.IsNullOrWhiteSpace(operationalSecret.Value);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                data["operationalWebhookSecretResolved"] = false;
+            }
         }
 
-        return HealthCheckResult.Healthy(
-            "Svix webhook provider configuration is ready.",
-            data);
+        return Report(
+            HealthCheckResult.Healthy(
+                "Svix webhook provider configuration is ready.",
+                data),
+            WebhookTelemetryOutcome.Healthy);
+    }
+
+    private HealthCheckResult Report(
+        HealthCheckResult result,
+        WebhookTelemetryOutcome outcome)
+    {
+        metrics.RecordWebhookProviderHealthCheck(WebhookTelemetryProvider.Svix, outcome);
+        return result;
     }
 
     private static string[] ResolveCapabilityCodes(WebhookProviderCapability capabilities) =>

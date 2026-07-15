@@ -6,12 +6,16 @@ using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
+using Explore.Application.Authorization;
+using Explore.Application.Contracts.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.DTOs.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Commands;
 using Explore.Application.Features.Webhooks.Requests.Queries;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
+using Explore.Domain;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Timeouts;
@@ -30,6 +34,7 @@ namespace Explore.API.Controllers;
 public sealed class WebhooksController(
     IMediator mediator,
     ITenantContext tenantContext,
+    IWebhookOwnershipScopeResolver webhookOwnershipScopeResolver,
     IResourceAssembler<WebhookConsumerDto, WebhookConsumerDto> webhookConsumerAssembler,
     IResourceAssembler<WebhookEndpointDto, WebhookEndpointDto> webhookEndpointAssembler,
     IResourceAssembler<WebhookMessageDto, WebhookMessageDto> webhookMessageAssembler,
@@ -80,6 +85,11 @@ public sealed class WebhooksController(
         "Webhook message was not found.",
         "webhook_message_not_found");
 
+    private static readonly ApiNotFoundProblemDescriptor MessagePayloadNotFoundProblem = new(
+        "Webhook payload not found",
+        "Webhook payload was not found.",
+        "webhook_message_payload_not_found");
+
     private static readonly ApiNotFoundProblemDescriptor DeliveryAttemptNotFoundProblem = new(
         "Webhook delivery attempt not found",
         "Webhook delivery attempt was not found.",
@@ -105,21 +115,26 @@ public sealed class WebhooksController(
     }
 
     [HttpGet("consumers", Name = RouteNames.GetWebhookConsumers)]
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [EndpointSummary("Get webhook consumers")]
-    [EndpointDescription("Returns tenant-scoped outgoing webhook consumers with HAL management affordances.")]
+    [EndpointDescription("Returns outgoing webhook consumers for one typed owner with HAL management affordances.")]
     [OutputCache(PolicyName = "ListData")]
     [ProducesResponseType(typeof(HalCollectionResource<WebhookConsumerDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     public async Task<ActionResult<HalCollectionResource<WebhookConsumerDto>>> GetConsumers(
+        [FromQuery] int ownerKindId,
+        [FromQuery] Guid? ownerId = null,
         [FromQuery] int limit = 100,
         CancellationToken cancellationToken = default)
     {
         var consumers = await mediator.Send(
             new GetWebhookConsumersQuery
             {
-                TenantId = tenantContext.TenantId,
+                OwnerKindId = ownerKindId,
+                OwnerId = ownerId,
                 Limit = limit
             },
             cancellationToken);
@@ -127,15 +142,17 @@ public sealed class WebhooksController(
         var resource = await webhookConsumerAssembler.ToCollectionResource(
             consumers,
             RouteNames.GetWebhookConsumers,
-            new { limit },
+            await CreateCollectionRouteValuesAsync(ownerKindId, ownerId, limit, cancellationToken),
             HttpContext);
 
         return Ok(resource);
     }
 
     [HttpGet("consumers/{consumerId:guid}", Name = RouteNames.GetWebhookConsumerById)]
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [EndpointSummary("Get webhook consumer")]
-    [EndpointDescription("Returns one tenant-scoped outgoing webhook consumer with HAL management affordances.")]
+    [EndpointDescription("Returns one owner-authorized outgoing webhook consumer with HAL management affordances.")]
     [ProducesResponseType(typeof(HalResource<WebhookConsumerDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -148,7 +165,6 @@ public sealed class WebhooksController(
         var consumer = await mediator.Send(
             new GetWebhookConsumerByIdQuery
             {
-                TenantId = tenantContext.TenantId,
                 ConsumerId = consumerId
             },
             cancellationToken);
@@ -180,9 +196,7 @@ public sealed class WebhooksController(
         var response = await mediator.Send(
             new CreateWebhookConsumerCommand
             {
-                TenantId = tenantContext.TenantId,
-                OwnerActorId = request.OwnerActorId,
-                OwnerUserId = request.OwnerUserId,
+                OwnerId = request.OwnerId,
                 ConsumerKindId = request.ConsumerKindId,
                 Name = request.Name,
                 ProviderModeId = request.ProviderModeId
@@ -220,7 +234,6 @@ public sealed class WebhooksController(
         var response = await mediator.Send(
             new UpdateWebhookConsumerProviderModeCommand
             {
-                TenantId = tenantContext.TenantId,
                 ConsumerId = consumerId,
                 ProviderModeId = request.ProviderModeId,
                 ExpectedConfigurationVersion = request.ExpectedConfigurationVersion,
@@ -254,7 +267,6 @@ public sealed class WebhooksController(
         var response = await mediator.Send(
             new RepairWebhookProviderBindingCommand
             {
-                TenantId = tenantContext.TenantId,
                 ConsumerId = consumerId,
                 ExternalApplicationId = request.ExternalApplicationId,
                 ReasonCode = request.ReasonCode
@@ -267,14 +279,18 @@ public sealed class WebhooksController(
     }
 
     [HttpGet("endpoints", Name = RouteNames.GetWebhookEndpoints)]
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [EndpointSummary("Get webhook endpoints")]
-    [EndpointDescription("Returns tenant-scoped outgoing webhook endpoints with HAL management affordances.")]
+    [EndpointDescription("Returns outgoing webhook endpoints for one typed owner with HAL management affordances.")]
     [OutputCache(PolicyName = "ListData")]
     [ProducesResponseType(typeof(HalCollectionResource<WebhookEndpointDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     public async Task<ActionResult<HalCollectionResource<WebhookEndpointDto>>> GetEndpoints(
+        [FromQuery] int ownerKindId,
+        [FromQuery] Guid? ownerId = null,
         [FromQuery] Guid? consumerId = null,
         [FromQuery] int limit = 100,
         CancellationToken cancellationToken = default)
@@ -283,7 +299,8 @@ public sealed class WebhooksController(
         var endpoints = await mediator.Send(
             new GetWebhookEndpointsQuery
             {
-                TenantId = tenantContext.TenantId,
+                OwnerKindId = ownerKindId,
+                OwnerId = ownerId,
                 ConsumerId = normalizedConsumerId,
                 Limit = limit
             },
@@ -292,15 +309,22 @@ public sealed class WebhooksController(
         var resource = await webhookEndpointAssembler.ToCollectionResource(
             endpoints,
             RouteNames.GetWebhookEndpoints,
-            new { consumerId = normalizedConsumerId, limit },
+            await CreateCollectionRouteValuesAsync(
+                ownerKindId,
+                ownerId,
+                limit,
+                cancellationToken,
+                consumerId: normalizedConsumerId),
             HttpContext);
 
         return Ok(resource);
     }
 
     [HttpGet("endpoints/{endpointId:guid}", Name = RouteNames.GetWebhookEndpointById)]
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [EndpointSummary("Get webhook endpoint")]
-    [EndpointDescription("Returns one tenant-scoped outgoing webhook endpoint with subscription metadata.")]
+    [EndpointDescription("Returns one owner-authorized outgoing webhook endpoint with subscription metadata.")]
     [ProducesResponseType(typeof(HalResource<WebhookEndpointDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -313,7 +337,6 @@ public sealed class WebhooksController(
         var endpoint = await mediator.Send(
             new GetWebhookEndpointByIdQuery
             {
-                TenantId = tenantContext.TenantId,
                 EndpointId = endpointId
             },
             cancellationToken);
@@ -329,7 +352,7 @@ public sealed class WebhooksController(
 
     [HttpPost("endpoints", Name = RouteNames.CreateWebhookEndpoint)]
     [EndpointSummary("Create webhook endpoint")]
-    [EndpointDescription("Creates a tenant-scoped outgoing webhook endpoint and event type subscriptions.")]
+    [EndpointDescription("Creates an outgoing webhook endpoint that inherits its persisted consumer owner.")]
     [Consumes(HateoasConstants.JsonMediaType)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
@@ -346,7 +369,6 @@ public sealed class WebhooksController(
         var response = await mediator.Send(
             new CreateWebhookEndpointCommand
             {
-                TenantId = tenantContext.TenantId,
                 ConsumerId = request.ConsumerId,
                 Url = request.Url,
                 Description = request.Description,
@@ -389,7 +411,6 @@ public sealed class WebhooksController(
         var response = await mediator.Send(
             new UpdateWebhookEndpointCommand
             {
-                TenantId = tenantContext.TenantId,
                 EndpointId = endpointId,
                 Url = request.Url,
                 Description = request.Description,
@@ -429,7 +450,6 @@ public sealed class WebhooksController(
         var response = await mediator.Send(
             new ArchiveWebhookEndpointCommand
             {
-                TenantId = tenantContext.TenantId,
                 EndpointId = endpointId
             },
             cancellationToken);
@@ -461,7 +481,6 @@ public sealed class WebhooksController(
         var response = await mediator.Send(
             new RotateWebhookEndpointSecretCommand
             {
-                TenantId = tenantContext.TenantId,
                 EndpointId = endpointId,
                 NewSecretRef = request.NewSecretRef,
                 PreviousSecretValidForSeconds = request.PreviousSecretValidForSeconds,
@@ -497,8 +516,8 @@ public sealed class WebhooksController(
         var response = await mediator.Send(
             new TestWebhookEndpointCommand
             {
-                TenantId = tenantContext.TenantId,
-                EndpointId = endpointId
+                EndpointId = endpointId,
+                SourceTenantId = tenantContext.TenantId
             },
             cancellationToken);
 
@@ -532,7 +551,6 @@ public sealed class WebhooksController(
         var result = await mediator.Send(
             new OpenSvixAppPortalCommand
             {
-                TenantId = tenantContext.TenantId,
                 ConsumerId = request.ConsumerId,
                 SessionId = ResolvePortalSessionId(),
                 ExpiresInSeconds = request.ExpiresInSeconds
@@ -548,6 +566,8 @@ public sealed class WebhooksController(
     }
 
     [HttpGet("messages", Name = RouteNames.GetWebhookMessages)]
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [EndpointSummary("Get webhook messages")]
     [EndpointDescription("Returns tenant-scoped outgoing webhook messages with safe delivery-history metadata.")]
     [ProducesResponseType(typeof(HalCollectionResource<WebhookMessageDto>), StatusCodes.Status200OK)]
@@ -555,13 +575,16 @@ public sealed class WebhooksController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     public async Task<ActionResult<HalCollectionResource<WebhookMessageDto>>> GetMessages(
+        [FromQuery] int ownerKindId,
+        [FromQuery] Guid? ownerId = null,
         [FromQuery] int limit = 100,
         CancellationToken cancellationToken = default)
     {
         var messages = await mediator.Send(
             new GetWebhookMessagesQuery
             {
-                TenantId = tenantContext.TenantId,
+                OwnerKindId = ownerKindId,
+                OwnerId = ownerId,
                 Limit = limit
             },
             cancellationToken);
@@ -569,13 +592,15 @@ public sealed class WebhooksController(
         var resource = await webhookMessageAssembler.ToCollectionResource(
             messages,
             RouteNames.GetWebhookMessages,
-            new { limit },
+            await CreateCollectionRouteValuesAsync(ownerKindId, ownerId, limit, cancellationToken),
             HttpContext);
 
         return Ok(resource);
     }
 
     [HttpGet("messages/{messageId:guid}", Name = RouteNames.GetWebhookMessageById)]
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [EndpointSummary("Get webhook message")]
     [EndpointDescription("Returns one tenant-scoped outgoing webhook message without raw payload JSON.")]
     [ProducesResponseType(typeof(HalResource<WebhookMessageDto>), StatusCodes.Status200OK)]
@@ -590,7 +615,6 @@ public sealed class WebhooksController(
         var message = await mediator.Send(
             new GetWebhookMessageByIdQuery
             {
-                TenantId = tenantContext.TenantId,
                 MessageId = messageId
             },
             cancellationToken);
@@ -604,7 +628,44 @@ public sealed class WebhooksController(
         return Ok(resource);
     }
 
+    [HttpGet("messages/{messageId:guid}/payload", Name = RouteNames.GetWebhookMessagePayload)]
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [EndpointSummary("Get webhook message payload")]
+    [EndpointDescription("Returns separately authorized exact outgoing webhook payload bytes as base64 while retained.")]
+    [ProducesResponseType(typeof(WebhookMessagePayloadDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
+    [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
+    [ResponseCache(Duration = 0, NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<ActionResult<WebhookMessagePayloadDto>> GetMessagePayload(
+        Guid messageId,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await mediator.Send(
+            new GetWebhookMessagePayloadQuery
+            {
+                MessageId = messageId
+            },
+            cancellationToken);
+
+        return result.Status switch
+        {
+            WebhookMessagePayloadReadStatus.Available when result.Payload is not null => Ok(result.Payload),
+            WebhookMessagePayloadReadStatus.Gone => this.ToGoneProblem(
+                "Webhook payload no longer retained",
+                "The webhook payload is no longer available because its retention period ended.",
+                "webhook_message_payload_gone"),
+            _ => this.ToNotFoundProblem(MessagePayloadNotFoundProblem)
+        };
+    }
+
     [HttpGet("delivery-attempts", Name = RouteNames.GetWebhookDeliveryAttempts)]
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [EndpointSummary("Get webhook delivery attempts")]
     [EndpointDescription("Returns tenant-scoped LocalProvider delivery attempt audit rows with optional message and endpoint filters.")]
     [ProducesResponseType(typeof(HalCollectionResource<WebhookDeliveryAttemptDto>), StatusCodes.Status200OK)]
@@ -612,6 +673,8 @@ public sealed class WebhooksController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     public async Task<ActionResult<HalCollectionResource<WebhookDeliveryAttemptDto>>> GetDeliveryAttempts(
+        [FromQuery] int ownerKindId,
+        [FromQuery] Guid? ownerId = null,
         [FromQuery] Guid? messageId = null,
         [FromQuery] Guid? endpointId = null,
         [FromQuery] int limit = 100,
@@ -626,7 +689,8 @@ public sealed class WebhooksController(
         var attempts = await mediator.Send(
             new GetWebhookDeliveryAttemptsQuery
             {
-                TenantId = tenantContext.TenantId,
+                OwnerKindId = ownerKindId,
+                OwnerId = ownerId,
                 MessageId = normalizedMessageId,
                 EndpointId = normalizedEndpointId,
                 Limit = limit
@@ -636,13 +700,21 @@ public sealed class WebhooksController(
         var resource = await webhookDeliveryAttemptAssembler.ToCollectionResource(
             attempts,
             RouteNames.GetWebhookDeliveryAttempts,
-            new { messageId = normalizedMessageId, endpointId = normalizedEndpointId, limit },
+            await CreateCollectionRouteValuesAsync(
+                ownerKindId,
+                ownerId,
+                limit,
+                cancellationToken,
+                messageId: normalizedMessageId,
+                endpointId: normalizedEndpointId),
             HttpContext);
 
         return Ok(resource);
     }
 
     [HttpGet("delivery-attempts/{attemptId:guid}", Name = RouteNames.GetWebhookDeliveryAttemptById)]
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [EndpointSummary("Get webhook delivery attempt")]
     [EndpointDescription("Returns one tenant-scoped LocalProvider delivery attempt audit row.")]
     [ProducesResponseType(typeof(HalResource<WebhookDeliveryAttemptDto>), StatusCodes.Status200OK)]
@@ -657,7 +729,6 @@ public sealed class WebhooksController(
         var attempt = await mediator.Send(
             new GetWebhookDeliveryAttemptByIdQuery
             {
-                TenantId = tenantContext.TenantId,
                 AttemptId = attemptId
             },
             cancellationToken);
@@ -689,7 +760,6 @@ public sealed class WebhooksController(
         var response = await mediator.Send(
             new RetryWebhookDeliveryAttemptCommand
             {
-                TenantId = tenantContext.TenantId,
                 AttemptId = attemptId
             },
             cancellationToken);
@@ -835,6 +905,30 @@ public sealed class WebhooksController(
         };
     }
 
+    private async Task<WebhookCollectionRouteValues> CreateCollectionRouteValuesAsync(
+        int ownerKindId,
+        Guid? ownerId,
+        int limit,
+        CancellationToken cancellationToken,
+        Guid? consumerId = null,
+        Guid? messageId = null,
+        Guid? endpointId = null)
+    {
+        var resolution = await webhookOwnershipScopeResolver.ResolveAsync(
+            ownerKindId,
+            ownerId,
+            cancellationToken);
+        var ownership = resolution.Scope ?? throw new InvalidOperationException(
+            "Webhook collection ownership was not resolved after request authorization.");
+
+        return new WebhookCollectionRouteValues(
+            ownership,
+            limit,
+            consumerId,
+            messageId,
+            endpointId);
+    }
+
     private string ResolvePortalSessionId()
     {
         return ResolveProviderSubject()
@@ -899,5 +993,33 @@ public sealed class WebhooksController(
                     detail,
                     code))
         };
+    }
+
+    private sealed class WebhookCollectionRouteValues(
+        WebhookOwnershipScope ownership,
+        int limit,
+        Guid? consumerId,
+        Guid? messageId,
+        Guid? endpointId) : ICollectionAuthorizationContext
+    {
+        private readonly IReadOnlyDictionary<string, object> _authorizationResourceAttributes =
+            ResourceDescriptors.GetWebhookOwnerAttributes(ownership);
+
+        public int OwnerKindId => (int)ownership.Kind;
+
+        public Guid OwnerId => ownership.OwnerId;
+
+        public int Limit => limit;
+
+        public Guid? ConsumerId => consumerId;
+
+        public Guid? MessageId => messageId;
+
+        public Guid? EndpointId => endpointId;
+
+        string ICollectionAuthorizationContext.AuthorizationResourceId => ownership.OwnerId.ToString();
+
+        IReadOnlyDictionary<string, object> ICollectionAuthorizationContext.AuthorizationResourceAttributes =>
+            _authorizationResourceAttributes;
     }
 }

@@ -1,5 +1,5 @@
-// ABOUTME: Handles tenant-scoped webhook consumer list reads for management APIs.
-// ABOUTME: Applies conservative bounds before repository access and maps entities in Application.
+// ABOUTME: Handles typed owner-scoped webhook consumer list reads for management APIs.
+// ABOUTME: Resolves canonical ownership before bounded repository access and entity mapping.
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
@@ -13,7 +13,8 @@ namespace Explore.Application.Features.Webhooks.Handlers.Queries;
 public sealed class GetWebhookConsumersQueryHandler(
     IWebhookConsumerRepository consumerRepository,
     IWebhookConsumerProviderBindingRepository bindingRepository,
-    IWebhookProviderCapabilityResolver capabilityResolver)
+    IWebhookProviderCapabilityResolver capabilityResolver,
+    IWebhookOwnershipScopeResolver ownershipScopeResolver)
     : IRequestHandler<GetWebhookConsumersQuery, IReadOnlyList<WebhookConsumerDto>>
 {
     private const int DefaultLimit = 100;
@@ -23,7 +24,11 @@ public sealed class GetWebhookConsumersQueryHandler(
         GetWebhookConsumersQuery request,
         CancellationToken cancellationToken)
     {
-        if (request.TenantId == Guid.Empty)
+        var ownershipResolution = await ownershipScopeResolver.ResolveAsync(
+            request.OwnerKindId,
+            request.OwnerId,
+            cancellationToken);
+        if (ownershipResolution.Scope is not { } ownership)
         {
             return [];
         }
@@ -32,8 +37,8 @@ public sealed class GetWebhookConsumersQueryHandler(
             ? DefaultLimit
             : Math.Min(request.Limit, MaxLimit);
 
-        var consumers = await consumerRepository.ListByTenantAsync(
-            request.TenantId,
+        var consumers = await consumerRepository.ListByOwnerAsync(
+            ownership,
             limit,
             cancellationToken);
 
@@ -50,7 +55,7 @@ public sealed class GetWebhookConsumersQueryHandler(
         IReadOnlyList<WebhookConsumerProviderBinding> bindings = providerConsumerIds.Length > 0 &&
             !string.IsNullOrWhiteSpace(providerEnvironment)
                 ? await bindingRepository.GetVerifiedByConsumersAsync(
-                    request.TenantId,
+                    ownership.TenantId,
                     providerConsumerIds,
                     WebhookProviderKind.Svix,
                     providerEnvironment,

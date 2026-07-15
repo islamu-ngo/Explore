@@ -6,7 +6,9 @@ namespace Explore.Infrastructure.Tests.Settings;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Settings;
+using Explore.Application.Settings.Groups;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Settings;
 using Explore.Infrastructure.Services;
 using Microsoft.Extensions.Caching.Memory;
@@ -171,6 +173,67 @@ public class HierarchicalSettingsResolverTests : IDisposable
         var context = new SettingContext(TenantId: tenantId);
         var result = await _resolver.ResolveAsync<bool>("ai_assistant.enabled", context);
         await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task ResolveGroupAsync_WebhookInstanceLockStopsTenantConcurrencyOverride()
+    {
+        var tenantId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        SetupSystemSettings(new SystemSetting
+        {
+            SettingKey = GovernanceSettingKeys.WebhookDelivery.MaxConcurrentDeliveriesPerTenant,
+            Value = "3",
+            ValueType = SettingValueType.Integer,
+            IsLocked = true
+        });
+        SetupTenantSettings(tenantId, new TenantSetting
+        {
+            TenantId = tenantId,
+            Tenant = null!,
+            SettingKey = GovernanceSettingKeys.WebhookDelivery.MaxConcurrentDeliveriesPerTenant,
+            Value = "99"
+        });
+
+        var group = await _resolver.ResolveGroupAsync<WebhookDeliverySettingGroup>(
+            new SettingContext(TenantId: tenantId));
+        var metadata = await _resolver.ResolveWithMetadataAsync(
+            GovernanceSettingKeys.WebhookDelivery.MaxConcurrentDeliveriesPerTenant,
+            new SettingContext(TenantId: tenantId));
+
+        await Assert.That(group.MaxConcurrentDeliveriesPerTenant).IsEqualTo(3);
+        await Assert.That(metadata).IsNotNull();
+        await Assert.That(metadata!.Source).IsEqualTo(SettingSource.SystemLocked);
+        await Assert.That(metadata.IsLocked).IsTrue();
+    }
+
+    [Test]
+    public async Task ResolveGroupAsync_WebhookInstanceOnlyGlobalLimitIgnoresStaleTenantRow()
+    {
+        var tenantId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        SetupSystemSettings(new SystemSetting
+        {
+            SettingKey = GovernanceSettingKeys.WebhookDelivery.MaxConcurrentDeliveries,
+            Value = "12",
+            ValueType = SettingValueType.Integer,
+            IsLocked = false
+        });
+        SetupTenantSettings(tenantId, new TenantSetting
+        {
+            TenantId = tenantId,
+            Tenant = null!,
+            SettingKey = GovernanceSettingKeys.WebhookDelivery.MaxConcurrentDeliveries,
+            Value = "200"
+        });
+
+        var group = await _resolver.ResolveGroupAsync<WebhookDeliverySettingGroup>(
+            new SettingContext(TenantId: tenantId));
+        var metadata = await _resolver.ResolveWithMetadataAsync(
+            GovernanceSettingKeys.WebhookDelivery.MaxConcurrentDeliveries,
+            new SettingContext(TenantId: tenantId));
+
+        await Assert.That(group.MaxConcurrentDeliveries).IsEqualTo(12);
+        await Assert.That(metadata).IsNotNull();
+        await Assert.That(metadata!.Source).IsEqualTo(SettingSource.SystemDefault);
     }
 
     // --- Batch resolution ---
@@ -623,9 +686,10 @@ public class HierarchicalSettingsResolverTests : IDisposable
     [Test]
     public async Task ResolveAsync_ReturnsOrgOverride_WhenNotLocked()
     {
+        const string settingKey = "custom.organization_brand";
         SetupSystemSettings(new SystemSetting
         {
-            SettingKey = "branding.display_name",
+            SettingKey = settingKey,
             Value = "\"Platform\"",
             ValueType = SettingValueType.String,
             IsLocked = false
@@ -636,7 +700,7 @@ public class HierarchicalSettingsResolverTests : IDisposable
         {
             TenantId = tenantId,
             Tenant = null!,
-            SettingKey = "branding.display_name",
+            SettingKey = settingKey,
             Value = "\"Tenant Brand\""
         });
         SetupOrgSettings(orgId, new OrganizationSetting
@@ -644,12 +708,12 @@ public class HierarchicalSettingsResolverTests : IDisposable
             OrganizationId = orgId,
             Organization = null!,
             Tenant = null!,
-            SettingKey = "branding.display_name",
+            SettingKey = settingKey,
             Value = "\"Org Brand\""
         });
 
         var context = new SettingContext(TenantId: tenantId, OrganizationId: orgId);
-        var result = await _resolver.ResolveWithMetadataAsync("branding.display_name", context);
+        var result = await _resolver.ResolveWithMetadataAsync(settingKey, context);
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Source).IsEqualTo(SettingSource.OrganizationOverride);
         await Assert.That(result.Value).IsEqualTo("\"Org Brand\"");
@@ -660,9 +724,10 @@ public class HierarchicalSettingsResolverTests : IDisposable
     [Test]
     public async Task ResolveAsync_ReturnsGroupOverride_WhenNotLocked()
     {
+        const string settingKey = "custom.group_brand";
         SetupSystemSettings(new SystemSetting
         {
-            SettingKey = "branding.display_name",
+            SettingKey = settingKey,
             Value = "\"Platform\"",
             ValueType = SettingValueType.String,
             IsLocked = false
@@ -674,12 +739,12 @@ public class HierarchicalSettingsResolverTests : IDisposable
             GroupId = groupId,
             Group = null!,
             Tenant = null!,
-            SettingKey = "branding.display_name",
+            SettingKey = settingKey,
             Value = "\"Group Brand\""
         });
 
         var context = new SettingContext(TenantId: tenantId, GroupId: groupId);
-        var result = await _resolver.ResolveWithMetadataAsync("branding.display_name", context);
+        var result = await _resolver.ResolveWithMetadataAsync(settingKey, context);
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Source).IsEqualTo(SettingSource.GroupOverride);
     }

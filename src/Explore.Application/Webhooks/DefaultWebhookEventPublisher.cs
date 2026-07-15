@@ -91,7 +91,10 @@ public sealed class DefaultWebhookEventPublisher(
             resolution.RetentionPolicy is null ||
             resolution.RetentionPolicyVersion is null ||
             resolution.PayloadRetentionUntil is not { } payloadRetentionUntil ||
+            resolution.AttemptRetentionUntil is not { } attemptRetentionUntil ||
+            resolution.DeadLetterEvidenceRetentionUntil is not { } deadLetterEvidenceRetentionUntil ||
             resolution.PublicationRetentionUntil is not { } publicationRetentionUntil ||
+            resolution.OperationalLogRetentionUntil is not { } operationalLogRetentionUntil ||
             payload.Envelope is not { } envelope ||
             payload.PayloadBytes is null ||
             payload.PayloadHash is null ||
@@ -139,6 +142,10 @@ public sealed class DefaultWebhookEventPublisher(
             resolution.RetentionPolicy,
             resolution.RetentionPolicyVersion,
             payloadRetentionUntil,
+            attemptRetentionUntil,
+            deadLetterEvidenceRetentionUntil,
+            new DateTimeOffset(publicationRetentionUntil),
+            operationalLogRetentionUntil,
             new DateTimeOffset(materializedAt));
         var localTargets = resolution.LocalTargets
             .Select(target => WebhookLocalTargetSnapshot.Create(
@@ -177,7 +184,7 @@ public sealed class DefaultWebhookEventPublisher(
         DateTime materializedAt)
     {
         var binding = target.Binding;
-        if (!binding.IsVerifiedFor(message.TenantId, deliveryPlan.WebhookConsumerId) ||
+        if (!binding.IsVerifiedFor(binding.TenantId, deliveryPlan.WebhookConsumerId) ||
             string.IsNullOrWhiteSpace(binding.ExternalApplicationId))
         {
             throw new InvalidOperationException("Provider publication requires a verified consumer binding.");

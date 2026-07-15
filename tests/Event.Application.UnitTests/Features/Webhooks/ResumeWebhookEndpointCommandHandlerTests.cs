@@ -21,7 +21,7 @@ public sealed class ResumeWebhookEndpointCommandHandlerTests
         var endpoint = CreateEndpoint(WebhookEndpointStatus.AutoPaused);
         var actorUserId = Guid.CreateVersion7();
         var repository = Substitute.For<IWebhookEndpointRepository>();
-        repository.GetByTenantAndIdAsync(endpoint.TenantId, endpoint.Id, Arg.Any<CancellationToken>())
+        repository.GetByIdForOwnerOperationAsync(endpoint.Id, false, Arg.Any<CancellationToken>())
             .Returns(endpoint);
         repository.TryResumeAsync(
                 endpoint.TenantId,
@@ -40,7 +40,6 @@ public sealed class ResumeWebhookEndpointCommandHandlerTests
 
         var result = await handler.Handle(new ResumeWebhookEndpointCommand
         {
-            TenantId = endpoint.TenantId,
             EndpointId = endpoint.Id,
             ActorUserId = actorUserId,
             ExpectedDeliveryStateVersion = endpoint.DeliveryStateVersion,
@@ -69,7 +68,7 @@ public sealed class ResumeWebhookEndpointCommandHandlerTests
     {
         var endpoint = CreateEndpoint(WebhookEndpointStatus.Active);
         var repository = Substitute.For<IWebhookEndpointRepository>();
-        repository.GetByTenantAndIdAsync(endpoint.TenantId, endpoint.Id, Arg.Any<CancellationToken>())
+        repository.GetByIdForOwnerOperationAsync(endpoint.Id, false, Arg.Any<CancellationToken>())
             .Returns(endpoint);
         var handler = new ResumeWebhookEndpointCommandHandler(
             repository,
@@ -79,7 +78,6 @@ public sealed class ResumeWebhookEndpointCommandHandlerTests
 
         var result = await handler.Handle(new ResumeWebhookEndpointCommand
         {
-            TenantId = endpoint.TenantId,
             EndpointId = endpoint.Id,
             ActorUserId = Guid.CreateVersion7(),
             ExpectedDeliveryStateVersion = endpoint.DeliveryStateVersion,
@@ -102,7 +100,7 @@ public sealed class ResumeWebhookEndpointCommandHandlerTests
     {
         var endpoint = CreateEndpoint(WebhookEndpointStatus.AutoPaused);
         var repository = Substitute.For<IWebhookEndpointRepository>();
-        repository.GetByTenantAndIdAsync(endpoint.TenantId, endpoint.Id, Arg.Any<CancellationToken>())
+        repository.GetByIdForOwnerOperationAsync(endpoint.Id, false, Arg.Any<CancellationToken>())
             .Returns(endpoint);
         repository.TryResumeAsync(
                 endpoint.TenantId,
@@ -120,7 +118,6 @@ public sealed class ResumeWebhookEndpointCommandHandlerTests
 
         var result = await handler.Handle(new ResumeWebhookEndpointCommand
         {
-            TenantId = endpoint.TenantId,
             EndpointId = endpoint.Id,
             ActorUserId = Guid.CreateVersion7(),
             ExpectedDeliveryStateVersion = endpoint.DeliveryStateVersion,

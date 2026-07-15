@@ -1,5 +1,7 @@
-// ABOUTME: Application contract for draining LocalProvider webhook delivery attempts.
-// ABOUTME: Exposes batch, single-attempt, and recovery boundaries for hosted workers and operational retries.
+// ABOUTME: Application contract for draining canonical Local-provider webhook targets.
+// ABOUTME: Exposes batch, recovery, and evidence-based manual-retry boundaries.
+
+using Explore.Domain;
 
 namespace Explore.Application.Contracts.Services;
 
@@ -9,14 +11,11 @@ public interface IWebhookDeliveryDrainService
 
     Task<WebhookDeliveryRecoveryResult> RecoverStaleProcessingAsync(CancellationToken cancellationToken);
 
-    Task<WebhookDeliverySingleDrainResult> ProcessSingleAsync(
-        Guid tenantId,
-        Guid attemptId,
-        CancellationToken cancellationToken);
-
     Task<WebhookDeliverySingleDrainResult> ScheduleManualRetryAsync(
         Guid tenantId,
         Guid attemptId,
+        WebhookAuditPrincipalKind principalKind,
+        string principalReference,
         CancellationToken cancellationToken);
 }
 
@@ -31,7 +30,7 @@ public sealed record WebhookDeliveryDrainResult(
 
 public sealed record WebhookDeliveryRecoveryResult(
     int RecoveredCount,
-    DateTime ProcessingStartedBefore);
+    DateTimeOffset RecoveryCutoffUtc);
 
 public sealed record WebhookDeliverySingleDrainResult(
     WebhookDeliveryDrainOutcome Outcome,

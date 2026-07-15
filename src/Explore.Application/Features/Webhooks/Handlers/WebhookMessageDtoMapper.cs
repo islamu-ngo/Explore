@@ -13,6 +13,8 @@ internal static class WebhookMessageDtoMapper
         {
             Id = message.Id,
             TenantId = message.TenantId,
+            OwnerKindId = message.Consumer?.ConsumerKindId ?? (int)WebhookConsumerKind.Tenant,
+            OwnerId = message.Consumer?.OwnerId ?? message.TenantId,
             EventType = message.EventType,
             EventId = message.EventId,
             AggregateKind = message.AggregateKind,

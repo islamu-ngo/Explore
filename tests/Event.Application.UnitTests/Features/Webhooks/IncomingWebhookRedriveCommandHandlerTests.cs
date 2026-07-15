@@ -6,6 +6,7 @@ using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Handlers.Commands;
 using Explore.Application.Features.Webhooks.Requests.Commands;
 using Explore.Domain;
@@ -30,16 +31,14 @@ public sealed class IncomingWebhookRedriveCommandHandlerTests
                 Arg.Any<CancellationToken>())
             .Returns(message);
         repository.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
-        var auditRepository = Substitute.For<IAuditLogRepository>();
-        auditRepository.Create(Arg.Any<AuditLog>())
-            .Returns(call => Task.FromResult(call.Arg<AuditLog>()));
+        var auditWriter = Substitute.For<IWebhookAuditEventWriter>();
         var currentUser = Substitute.For<ICurrentUserService>();
         currentUser.UserId.Returns(actorUserId);
         currentUser.IsAuthenticated.Returns(true);
         var machinePrincipal = Substitute.For<IMachinePrincipalAccessor>();
         var handler = CreateHandler(
             repository,
-            auditRepository,
+            auditWriter,
             currentUser,
             machinePrincipal,
             now.AddMinutes(1));
@@ -64,12 +63,14 @@ public sealed class IncomingWebhookRedriveCommandHandlerTests
         await Assert.That(record.TargetProcessingGeneration).IsEqualTo(2);
         repository.Received(1).TrackAppendedEvidence(message);
         await repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
-        await auditRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
-            audit.TenantId == message.TenantId &&
-            audit.EntityId == message.Id.ToString("D") &&
-            audit.ActorId == actorUserId &&
-            audit.NewValues != null &&
-            !audit.NewValues.Contains(reason, StringComparison.Ordinal)));
+        await auditWriter.Received(1).AppendAsync(
+            Arg.Is<WebhookAuditWriteRequest>(audit =>
+                audit.TenantId == message.TenantId &&
+                audit.TargetId == message.Id &&
+                audit.Action == WebhookAuditAction.IncomingRedriveScheduled &&
+                audit.SafeAfterJson != null &&
+                !audit.SafeAfterJson.Contains(reason, StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -83,12 +84,12 @@ public sealed class IncomingWebhookRedriveCommandHandlerTests
                 message.Id,
                 Arg.Any<CancellationToken>())
             .Returns(message);
-        var auditRepository = Substitute.For<IAuditLogRepository>();
+        var auditWriter = Substitute.For<IWebhookAuditEventWriter>();
         var currentUser = Substitute.For<ICurrentUserService>();
         currentUser.UserId.Returns(Guid.CreateVersion7());
         var handler = CreateHandler(
             repository,
-            auditRepository,
+            auditWriter,
             currentUser,
             Substitute.For<IMachinePrincipalAccessor>(),
             now.AddMinutes(1));
@@ -106,7 +107,47 @@ public sealed class IncomingWebhookRedriveCommandHandlerTests
         await Assert.That(message.Status).IsEqualTo(IncomingWebhookMessageStatus.DeadLettered);
         await Assert.That(message.ProcessingGeneration).IsEqualTo(1);
         await repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
-        await auditRepository.DidNotReceive().Create(Arg.Any<AuditLog>());
+        await auditWriter.DidNotReceive().AppendAsync(
+            Arg.Any<WebhookAuditWriteRequest>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ExpiredReplayWindow_DoesNotMutateOrWriteAudit()
+    {
+        var receivedAt = new DateTime(2026, 7, 13, 21, 30, 0, DateTimeKind.Utc);
+        var message = CreateDeadLetteredMessage(receivedAt);
+        var repository = Substitute.For<IIncomingWebhookMessageRepository>();
+        repository.GetByTenantAndIdForUpdateAsync(
+                message.TenantId,
+                message.Id,
+                Arg.Any<CancellationToken>())
+            .Returns(message);
+        var auditWriter = Substitute.For<IWebhookAuditEventWriter>();
+        var currentUser = Substitute.For<ICurrentUserService>();
+        currentUser.UserId.Returns(Guid.CreateVersion7());
+        var handler = CreateHandler(
+            repository,
+            auditWriter,
+            currentUser,
+            Substitute.For<IMachinePrincipalAccessor>(),
+            receivedAt.AddDays(14));
+
+        var response = await handler.Handle(new RedriveIncomingWebhookCommand
+        {
+            TenantId = message.TenantId,
+            IncomingWebhookMessageId = message.Id,
+            ExpectedProcessingGeneration = 1,
+            Reason = "expired-replay-window"
+        }, CancellationToken.None);
+
+        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.FailureCode).IsEqualTo("incoming_webhook_redrive_payload_unavailable");
+        await Assert.That(message.Status).IsEqualTo(IncomingWebhookMessageStatus.DeadLettered);
+        await repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        await auditWriter.DidNotReceive().AppendAsync(
+            Arg.Any<WebhookAuditWriteRequest>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -115,11 +156,11 @@ public sealed class IncomingWebhookRedriveCommandHandlerTests
         var now = new DateTime(2026, 7, 13, 21, 30, 0, DateTimeKind.Utc);
         var message = CreateDeadLetteredMessage(now);
         var repository = Substitute.For<IIncomingWebhookMessageRepository>();
-        var auditRepository = Substitute.For<IAuditLogRepository>();
+        var auditWriter = Substitute.For<IWebhookAuditEventWriter>();
         var currentUser = Substitute.For<ICurrentUserService>();
         var handler = CreateHandler(
             repository,
-            auditRepository,
+            auditWriter,
             currentUser,
             Substitute.For<IMachinePrincipalAccessor>(),
             now.AddMinutes(1));
@@ -139,7 +180,9 @@ public sealed class IncomingWebhookRedriveCommandHandlerTests
             Arg.Any<Guid>(),
             Arg.Any<Guid>(),
             Arg.Any<CancellationToken>());
-        await auditRepository.DidNotReceive().Create(Arg.Any<AuditLog>());
+        await auditWriter.DidNotReceive().AppendAsync(
+            Arg.Any<WebhookAuditWriteRequest>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -174,13 +217,13 @@ public sealed class IncomingWebhookRedriveCommandHandlerTests
 
     private static RedriveIncomingWebhookCommandHandler CreateHandler(
         IIncomingWebhookMessageRepository repository,
-        IAuditLogRepository auditRepository,
+        IWebhookAuditEventWriter auditWriter,
         ICurrentUserService currentUserService,
         IMachinePrincipalAccessor machinePrincipalAccessor,
         DateTime utcNow) =>
         new(
             repository,
-            auditRepository,
+            auditWriter,
             new InlineUnitOfWork(),
             currentUserService,
             machinePrincipalAccessor,
@@ -204,7 +247,12 @@ public sealed class IncomingWebhookRedriveCommandHandlerTests
             null,
             now,
             now,
-            now.AddDays(14));
+            now.AddDays(14),
+            "webhook-retention-test-v1",
+            now.AddDays(30),
+            now.AddDays(90),
+            now.AddDays(14),
+            now.AddDays(30));
         var leaseToken = Guid.CreateVersion7();
         message.Claim("redrive-test-worker", leaseToken, now.AddMinutes(5), now.AddSeconds(1));
         message.DeadLetter(

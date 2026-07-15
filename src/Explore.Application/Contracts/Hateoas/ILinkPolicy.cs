@@ -1,3 +1,6 @@
+// ABOUTME: Contracts for defining resource and collection HAL link candidates.
+// ABOUTME: Supports optional canonical authorization context for owner-scoped empty collections.
+
 namespace Explore.Application.Contracts.Hateoas;
 
 using System.Security.Claims;
@@ -41,4 +44,25 @@ public interface ICollectionLinkPolicy<in TDto> where TDto : class
     /// <param name="user">The current user's claims principal (null if anonymous).</param>
     /// <returns>Collection of link definitions for the collection.</returns>
     IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user);
+
+    /// <summary>
+    /// Gets collection link definitions using canonical server-resolved authorization metadata.
+    /// </summary>
+    /// <param name="user">The current user's claims principal (null if anonymous).</param>
+    /// <param name="authorizationContext">Canonical resource metadata for the requested collection owner.</param>
+    /// <returns>Collection of link definitions for the collection.</returns>
+    IEnumerable<LinkDefinition> GetCollectionLinks(
+        ClaimsPrincipal? user,
+        ICollectionAuthorizationContext? authorizationContext) =>
+        GetCollectionLinks(user);
+}
+
+/// <summary>
+/// Exposes canonical resource metadata to collection link policies without coupling it to route values.
+/// </summary>
+public interface ICollectionAuthorizationContext
+{
+    string AuthorizationResourceId { get; }
+
+    IReadOnlyDictionary<string, object> AuthorizationResourceAttributes { get; }
 }

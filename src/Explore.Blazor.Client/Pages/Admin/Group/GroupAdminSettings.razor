@@ -1,18 +1,23 @@
-@* ABOUTME: Page wrapper for the Group Admin Settings sidebar layout. *@
-@* ABOUTME: Routes to /admin/group/:id/settings and requires group admin membership. *@
+@* ABOUTME: Page wrapper for group settings with Blazouter route-parameter resolution. *@
+@* ABOUTME: Renders the typed group administration layout for the matched group UUID. *@
 
 @page "/admin/group/{GroupId:guid}/settings"
+@using Blazouter.Services
 @using Explore.Blazor.Client.Pages.Admin.Group.Components
 @using Microsoft.AspNetCore.Authorization
 
 @attribute [Authorize]
 @rendermode InteractiveServer
+@inject RouterStateService RouterState
 
 <PageTitle>Group Settings</PageTitle>
 
 <GroupAdminSettingsLayout GroupId="GroupId" />
 
 @code {
-    [Parameter]
-    public Guid GroupId { get; set; }
+    private Guid GroupId => Guid.TryParse(
+        RouterState.GetParam(nameof(GroupId)),
+        out var groupId)
+            ? groupId
+            : Guid.Empty;
 }

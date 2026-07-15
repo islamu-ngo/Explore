@@ -71,8 +71,10 @@ public sealed class SvixWebhookProviderBindingAuthorityService(
                     request.ExternalApplicationId,
                     StringComparison.Ordinal) &&
                 string.Equals(application.AppUid, request.ApplicationUid, StringComparison.Ordinal) &&
-                HasMetadata(application.Metadata, "islamu.tenant_id", request.TenantId) &&
-                HasMetadata(application.Metadata, "islamu.consumer_id", request.WebhookConsumerId);
+                SvixWebhookOwnershipMetadata.Matches(
+                    application.Metadata,
+                    request.Ownership,
+                    request.WebhookConsumerId);
 
             return matches
                 ? WebhookProviderBindingOwnershipResult.Success()
@@ -128,10 +130,4 @@ public sealed class SvixWebhookProviderBindingAuthorityService(
             profile.CapabilityProfile.ResolutionVersion,
             StringComparison.Ordinal);
 
-    private static bool HasMetadata(
-        IReadOnlyDictionary<string, string> metadata,
-        string key,
-        Guid expectedValue) =>
-        metadata.TryGetValue(key, out var value) &&
-        string.Equals(value, expectedValue.ToString("D"), StringComparison.OrdinalIgnoreCase);
 }

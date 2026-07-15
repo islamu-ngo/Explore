@@ -42,6 +42,11 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
     public string ContentEncoding { get; private set; } = string.Empty;
     public DateTime PayloadRetentionUntil { get; private set; }
     public DateTime? PayloadClearedAt { get; private set; }
+    public string RetentionPolicyVersion { get; private set; } = string.Empty;
+    public DateTime ProcessingAttemptRetentionUntil { get; private set; }
+    public DateTime DeadLetterEvidenceRetentionUntil { get; private set; }
+    public DateTime ReplayWindowUntil { get; private set; }
+    public DateTime OperationalLogRetentionUntil { get; private set; }
     public int StatusId { get; private set; }
     public IncomingWebhookMessageStatusLookup StatusLookup { get; private set; } = null!;
     [NotMapped]
@@ -108,6 +113,11 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
         DateTime receivedAt,
         DateTime verifiedAt,
         DateTime payloadRetentionUntil,
+        string retentionPolicyVersion,
+        DateTime processingAttemptRetentionUntil,
+        DateTime deadLetterEvidenceRetentionUntil,
+        DateTime replayWindowUntil,
+        DateTime operationalLogRetentionUntil,
         Guid? webhookConsumerProviderBindingId = null)
     {
         RequireGuid(tenantId, nameof(tenantId));
@@ -118,7 +128,11 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
 
         if (receivedAt.Kind != DateTimeKind.Utc ||
             verifiedAt.Kind != DateTimeKind.Utc ||
-            payloadRetentionUntil.Kind != DateTimeKind.Utc)
+            payloadRetentionUntil.Kind != DateTimeKind.Utc ||
+            processingAttemptRetentionUntil.Kind != DateTimeKind.Utc ||
+            deadLetterEvidenceRetentionUntil.Kind != DateTimeKind.Utc ||
+            replayWindowUntil.Kind != DateTimeKind.Utc ||
+            operationalLogRetentionUntil.Kind != DateTimeKind.Utc)
         {
             throw new ArgumentException("Webhook timestamps must use UTC kind.");
         }
@@ -126,6 +140,15 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
         if (verifiedAt < receivedAt || payloadRetentionUntil <= verifiedAt)
         {
             throw new ArgumentOutOfRangeException(nameof(payloadRetentionUntil));
+        }
+
+        if (processingAttemptRetentionUntil <= verifiedAt ||
+            deadLetterEvidenceRetentionUntil < processingAttemptRetentionUntil ||
+            replayWindowUntil <= verifiedAt ||
+            payloadRetentionUntil < replayWindowUntil ||
+            operationalLogRetentionUntil <= verifiedAt)
+        {
+            throw new ArgumentException("Incoming webhook evidence retention horizons are inconsistent.");
         }
 
         return new IncomingWebhookMessage
@@ -145,6 +168,14 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
             ContentType = NormalizeRequired(contentType, MaxContentTypeLength, nameof(contentType)).ToLowerInvariant(),
             ContentEncoding = NormalizeRequired(contentEncoding, MaxContentEncodingLength, nameof(contentEncoding)).ToLowerInvariant(),
             PayloadRetentionUntil = payloadRetentionUntil,
+            RetentionPolicyVersion = NormalizeRequired(
+                retentionPolicyVersion,
+                WebhookDeliveryPlanSnapshot.MaxVersionLength,
+                nameof(retentionPolicyVersion)),
+            ProcessingAttemptRetentionUntil = processingAttemptRetentionUntil,
+            DeadLetterEvidenceRetentionUntil = deadLetterEvidenceRetentionUntil,
+            ReplayWindowUntil = replayWindowUntil,
+            OperationalLogRetentionUntil = operationalLogRetentionUntil,
             Status = IncomingWebhookMessageStatus.Verified,
             ProcessingGeneration = 1,
             ReceivedAt = receivedAt,

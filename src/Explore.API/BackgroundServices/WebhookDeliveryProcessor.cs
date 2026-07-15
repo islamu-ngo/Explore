@@ -43,9 +43,11 @@ public sealed class WebhookDeliveryProcessor(
             {
                 break;
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                logger.LogError(ex, "Error in webhook delivery processor loop");
+                logger.LogError(
+                    "Webhook delivery processor cycle failed. FailureType={FailureType}",
+                    exception.GetType().Name);
             }
 
             try

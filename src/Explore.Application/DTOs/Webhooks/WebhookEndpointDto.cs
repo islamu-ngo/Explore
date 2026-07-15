@@ -1,5 +1,5 @@
-// ABOUTME: API DTO for tenant-scoped outgoing webhook endpoints.
-// ABOUTME: Returns delivery controls and subscriptions while intentionally omitting secret refs and raw secrets.
+// ABOUTME: API DTO for typed owner-scoped outgoing webhook endpoints.
+// ABOUTME: Returns inherited owner identity, delivery controls, and subscriptions while omitting all secret material.
 
 namespace Explore.Application.DTOs.Webhooks;
 
@@ -7,7 +7,17 @@ public sealed class WebhookEndpointDto
 {
     public Guid Id { get; init; }
 
-    public Guid TenantId { get; init; }
+    public Guid? TenantId { get; init; }
+
+    public Guid? InstanceId { get; init; }
+
+    public Guid OwnerId { get; init; }
+
+    public int OwnerKindId { get; init; }
+
+    public required string OwnerKindCode { get; init; }
+
+    public required string OwnerKindName { get; init; }
 
     public Guid ConsumerId { get; init; }
 

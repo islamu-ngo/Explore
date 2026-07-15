@@ -12,6 +12,18 @@ namespace Event.Persistence.IntegrationTests.Repositories;
 
 public sealed partial class WebhookTenantModelInvariantTests
 {
+    private static readonly Type[] ConfigurationScopedWebhookPrincipalTypes =
+    [
+        typeof(WebhookConsumer),
+        typeof(WebhookEndpoint)
+    ];
+
+    private static readonly Type[] ConfigurationScopedWebhookDependentTypes =
+    [
+        typeof(WebhookConsumerProviderBinding),
+        typeof(WebhookEndpointSubscription)
+    ];
+
     private static readonly Type[] TenantOwnedWebhookTypes =
     [
         typeof(WebhookConsumer),
@@ -39,9 +51,13 @@ public sealed partial class WebhookTenantModelInvariantTests
         foreach (var clrType in TenantOwnedWebhookTypes)
         {
             var entity = context.Model.FindEntityType(clrType)!;
-            if (!entity.GetKeys().Any(key =>
+            var scopePropertyName = ConfigurationScopedWebhookPrincipalTypes.Contains(clrType)
+                ? "ConfigurationScopeId"
+                : "TenantId";
+            if (!ConfigurationScopedWebhookDependentTypes.Contains(clrType) &&
+                !entity.GetKeys().Any(key =>
                     !key.IsPrimaryKey() &&
-                    key.Properties.Select(property => property.Name).SequenceEqual(["TenantId", "Id"])))
+                    key.Properties.Select(property => property.Name).SequenceEqual([scopePropertyName, "Id"])))
             {
                 missingAlternateKeys.Add(clrType.Name);
             }
@@ -74,10 +90,13 @@ public sealed partial class WebhookTenantModelInvariantTests
             foreach (var foreignKey in tenantRelationships)
             {
                 var foreignKeyProperties = foreignKey.Properties.Select(property => property.Name).ToArray();
+                var principalKeyProperties = foreignKey.PrincipalKey.Properties
+                    .Select(property => property.Name)
+                    .ToArray();
                 var relationship = $"{clrType.Name}->{foreignKey.PrincipalEntityType.ClrType.Name}";
                 if (foreignKeyProperties[0] != "TenantId" ||
-                    !foreignKey.PrincipalKey.Properties.Select(property => property.Name)
-                        .SequenceEqual(["TenantId", "Id"]))
+                    principalKeyProperties[0] != "TenantId" ||
+                    foreignKeyProperties.Length != principalKeyProperties.Length)
                 {
                     nonCompositeRelationships.Add(relationship);
                 }

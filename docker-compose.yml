@@ -143,7 +143,7 @@ x-reporting-env: &reporting-env
 
 x-webhooks-env: &webhooks-env
   Webhooks__Enabled: ${WEBHOOKS_ENABLED:-true}
-  Webhooks__Provider: ${WEBHOOKS_PROVIDER:-Svix}
+  Webhooks__Provider: ${WEBHOOKS_PROVIDER:-Local}
   Webhooks__Svix__BaseUrl: ${WEBHOOKS_SVIX_BASE_URL:-http://svix:8071}
   Webhooks__Svix__Environment: ${WEBHOOKS_SVIX_ENVIRONMENT:-self-hosted}
   Webhooks__Svix__ProviderVersion: ${WEBHOOKS_SVIX_PROVIDER_VERSION:-1.96.1}

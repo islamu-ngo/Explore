@@ -107,7 +107,13 @@ public class InstanceOnboardingController : ExploreControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Complete([FromBody] CompleteInstanceOnboardingRequest settings, CancellationToken cancellationToken = default)
     {
+        var providerSubject = ResolveProviderSubject();
         var currentUserId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+        if (!currentUserId.HasValue && !string.IsNullOrWhiteSpace(providerSubject))
+        {
+            currentUserId = Guid.CreateVersion7();
+        }
+
         if (!currentUserId.HasValue)
         {
             _logger.LogWarning(
@@ -126,7 +132,7 @@ public class InstanceOnboardingController : ExploreControllerBase
             return this.ToValidationProblem(CompleteValidationProblem, PreflightBlockedMessage);
         }
 
-        var providerSubject = ResolveProviderSubject() ?? currentUserId.Value.ToString();
+        providerSubject ??= currentUserId.Value.ToString("D");
         var authProvider = ResolveAuthProvider();
         var email = User.FindFirst("email")?.Value
             ?? User.FindFirst(ClaimTypes.Email)?.Value;

@@ -4,7 +4,7 @@
 using Explore.API.BackgroundServices;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.Features.Management.Handlers;
+using Explore.Application.Features.Management.Handlers.Commands;
 using Explore.Domain;
 using Explore.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;

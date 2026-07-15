@@ -1,8 +1,9 @@
-// ABOUTME: EF Core configuration for tenant-scoped webhook provider bindings.
-// ABOUTME: Enforces normalized identities, composite tenant ownership, and fenced concurrency.
+// ABOUTME: EF Core configuration for instance- or tenant-scoped webhook provider bindings.
+// ABOUTME: Enforces normalized application identity, verified scope consistency, and fenced concurrency.
 
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Explore.Persistence.Configurations.Entities;
@@ -26,10 +27,25 @@ public sealed class WebhookConsumerProviderBindingConfiguration
             table.HasCheckConstraint(
                 "ck_webhook_consumer_provider_bindings_governance_capabilities_known",
                 "governance_allowed_capabilities >= 0 AND governance_allowed_capabilities <= 4095");
+            table.HasCheckConstraint(
+                "ck_webhook_consumer_provider_bindings_verified_scope",
+                "verification_state_id <> 3 OR " +
+                "(verified_tenant_id IS NOT DISTINCT FROM tenant_id AND " +
+                "verified_webhook_consumer_id = webhook_consumer_id)");
+            table.HasCheckConstraint(
+                "ck_webhook_consumer_provider_bindings_configuration_scope",
+                "configuration_scope_id = COALESCE(tenant_id, instance_id)");
         });
 
         builder.HasKey(binding => binding.Id);
         builder.Property(binding => binding.Id).HasDefaultValueSql("uuidv7()");
+        var configurationScope = builder.Property(binding => binding.ConfigurationScopeId);
+        configurationScope
+            .HasComputedColumnSql("COALESCE(tenant_id, instance_id)", stored: true)
+            .ValueGeneratedOnAdd()
+            .IsRequired()
+            .UsePropertyAccessMode(PropertyAccessMode.Property);
+        configurationScope.Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
         builder.Property(binding => binding.ProviderKindId).IsRequired();
         builder.Property(binding => binding.ProviderVersion).HasMaxLength(100).IsRequired();
         builder.Property(binding => binding.ProviderEnvironment).HasMaxLength(500).IsRequired();
@@ -48,9 +64,6 @@ public sealed class WebhookConsumerProviderBindingConfiguration
         builder.Ignore(binding => binding.VerificationState);
         builder.Ignore(binding => binding.EffectiveGovernedCapabilities);
 
-        builder.HasAlternateKey(binding => new { binding.TenantId, binding.Id })
-            .HasName("ak_webhook_consumer_provider_bindings_tenant_id_id");
-
         builder.HasOne(binding => binding.Tenant)
             .WithMany()
             .HasForeignKey(binding => binding.TenantId)
@@ -58,8 +71,16 @@ public sealed class WebhookConsumerProviderBindingConfiguration
 
         builder.HasOne(binding => binding.WebhookConsumer)
             .WithMany(consumer => consumer.ProviderBindings)
-            .HasPrincipalKey(consumer => new { consumer.TenantId, consumer.Id })
-            .HasForeignKey(binding => new { binding.TenantId, binding.WebhookConsumerId })
+            .HasForeignKey(binding => new
+            {
+                binding.ConfigurationScopeId,
+                binding.WebhookConsumerId
+            })
+            .HasPrincipalKey(consumer => new
+            {
+                consumer.ConfigurationScopeId,
+                consumer.Id
+            })
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(binding => binding.VerificationStateLookup)
@@ -74,22 +95,20 @@ public sealed class WebhookConsumerProviderBindingConfiguration
 
         builder.HasIndex(binding => new
         {
-            binding.TenantId,
             binding.WebhookConsumerId,
             binding.ProviderKindId,
             binding.NormalizedEnvironment
         })
-            .HasDatabaseName("ux_webhook_provider_bindings_tenant_consumer_provider_environment")
+            .HasDatabaseName("ux_webhook_provider_bindings_consumer_provider_environment")
             .IsUnique();
 
         builder.HasIndex(binding => new
         {
-            binding.TenantId,
             binding.ProviderKindId,
             binding.NormalizedEnvironment,
             binding.NormalizedExternalApplicationId
         })
-            .HasDatabaseName("ux_webhook_provider_bindings_tenant_provider_environment_external_app")
+            .HasDatabaseName("ux_webhook_provider_bindings_provider_environment_external_app")
             .IsUnique()
             .HasFilter("normalized_external_application_id IS NOT NULL");
 
@@ -106,12 +125,11 @@ public sealed class WebhookConsumerProviderBindingConfiguration
 
         builder.HasIndex(binding => new
         {
-            binding.TenantId,
             binding.ProviderKindId,
             binding.NormalizedEnvironment,
             binding.NormalizedApplicationUid
         })
-            .HasDatabaseName("ux_webhook_provider_bindings_tenant_provider_environment_application_uid")
+            .HasDatabaseName("ux_webhook_provider_bindings_provider_environment_application_uid")
             .IsUnique();
     }
 }

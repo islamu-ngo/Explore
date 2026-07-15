@@ -16,7 +16,7 @@ public sealed class SvixPortalEligibilityService(
     ILogger<SvixPortalEligibilityService> logger) : IWebhookProviderPortalEligibilityService
 {
     public async Task<IReadOnlySet<Guid>> GetEligibleConsumerIdsAsync(
-        Guid tenantId,
+        Guid? tenantId,
         IReadOnlyCollection<Guid> consumerIds,
         CancellationToken cancellationToken)
     {
@@ -53,12 +53,11 @@ public sealed class SvixPortalEligibilityService(
         {
             throw;
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
             logger.LogWarning(
-                ex,
-                "Provider portal eligibility lookup failed for tenant {TenantId}; omitting portal affordances.",
-                tenantId);
+                "Provider portal eligibility lookup failed; omitting portal affordances. FailureType={FailureType}",
+                exception.GetType().Name);
             return new HashSet<Guid>();
         }
     }

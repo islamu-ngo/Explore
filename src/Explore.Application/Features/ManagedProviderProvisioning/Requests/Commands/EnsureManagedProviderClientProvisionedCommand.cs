@@ -11,7 +11,7 @@ namespace Explore.Application.Features.ManagedProviderProvisioning.Requests.Comm
 public class EnsureManagedProviderClientProvisionedCommand : IRequest<BaseCommandResponse<ManagedProviderClientProvisioningResultDto>>
 {
     public ManagedProviderClientProvisioningDto ProvisioningDto { get; init; } = null!;
-    public ManagementTenantProvisioningRequest? ManagementRequest { get; init; }
+    public ManagementTenantProvisioningRequestDto? ManagementRequest { get; init; }
     public Guid? OperationId { get; init; }
     public Guid? ExpectedOutboxMessageId { get; init; }
 }

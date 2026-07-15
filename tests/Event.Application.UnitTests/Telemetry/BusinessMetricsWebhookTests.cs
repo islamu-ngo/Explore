@@ -100,6 +100,108 @@ public sealed class BusinessMetricsWebhookTests
         await Assert.That(measurement.Tags.Keys).DoesNotContain("error");
     }
 
+    [Test]
+    public async Task RecordWebhookClaimLagUsesOnlyBoundedProviderAndOperationTags()
+    {
+        using var metricsCapture = new MetricsCapture();
+        var metrics = CreateMetrics();
+
+        metrics.RecordWebhookClaimLag(
+            WebhookTelemetryProvider.Local,
+            WebhookTelemetryOperation.Delivery,
+            TimeSpan.FromSeconds(12.5));
+
+        var measurement = await metricsCapture.SingleAsync("explore.webhooks.claim_lag");
+
+        await Assert.That(measurement.Value).IsEqualTo(12.5);
+        await Assert.That(measurement.Tags.Keys).IsEquivalentTo(["provider", "operation"]);
+        await Assert.That(measurement.Tags["provider"]?.ToString()).IsEqualTo("local");
+        await Assert.That(measurement.Tags["operation"]?.ToString()).IsEqualTo("delivery");
+    }
+
+    [Test]
+    public async Task RecordWebhookProcessingOutcomeUsesClosedTelemetryVocabulary()
+    {
+        using var metricsCapture = new MetricsCapture();
+        var metrics = CreateMetrics();
+
+        metrics.RecordWebhookProcessingOutcome(
+            WebhookTelemetryProvider.Svix,
+            WebhookTelemetryOperation.Reconciliation,
+            WebhookTelemetryOutcome.ManualReconciliation);
+
+        var measurement = await metricsCapture.SingleAsync("explore.webhooks.processing_outcomes");
+
+        await Assert.That(measurement.Tags.Keys).IsEquivalentTo(["provider", "operation", "outcome"]);
+        await Assert.That(measurement.Tags["provider"]?.ToString()).IsEqualTo("svix");
+        await Assert.That(measurement.Tags["operation"]?.ToString()).IsEqualTo("reconciliation");
+        await Assert.That(measurement.Tags["outcome"]?.ToString()).IsEqualTo("manual_reconciliation");
+    }
+
+    [Test]
+    public async Task SpecializedOperationalMetricsExposeOnlyBoundedDimensions()
+    {
+        using var metricsCapture = new MetricsCapture();
+        var metrics = CreateMetrics();
+
+        metrics.RecordWebhookRetryScheduled(
+            WebhookTelemetryProvider.Svix,
+            WebhookTelemetryOperation.Publication);
+        metrics.RecordWebhookDeadLetter(
+            WebhookTelemetryProvider.Local,
+            WebhookTelemetryOperation.Delivery);
+        metrics.RecordWebhookManualReconciliation(WebhookTelemetryProvider.Svix);
+        metrics.RecordWebhookEndpointAutoPause(WebhookTelemetryProvider.Local);
+        metrics.RecordWebhookProviderHealthCheck(
+            WebhookTelemetryProvider.Svix,
+            WebhookTelemetryOutcome.Unhealthy);
+        metrics.RecordWebhookPublicationUnknownAge(
+            WebhookTelemetryProvider.Svix,
+            TimeSpan.FromMinutes(3));
+
+        var retry = await metricsCapture.SingleAsync("explore.webhooks.retries_scheduled");
+        var deadLetter = await metricsCapture.SingleAsync("explore.webhooks.dead_letters");
+        var reconciliation = await metricsCapture.SingleAsync("explore.webhooks.manual_reconciliations");
+        var autoPause = await metricsCapture.SingleAsync("explore.webhooks.endpoint_auto_pauses");
+        var providerHealth = await metricsCapture.SingleAsync("explore.webhooks.provider_health_checks");
+        var unknownAge = await metricsCapture.SingleAsync("explore.webhooks.publication_unknown_age");
+
+        await Assert.That(retry.Tags.Keys).IsEquivalentTo(["provider", "operation"]);
+        await Assert.That(deadLetter.Tags.Keys).IsEquivalentTo(["provider", "operation"]);
+        await Assert.That(reconciliation.Tags.Keys).IsEquivalentTo(["provider"]);
+        await Assert.That(autoPause.Tags.Keys).IsEquivalentTo(["provider"]);
+        await Assert.That(providerHealth.Tags.Keys).IsEquivalentTo(["provider", "outcome"]);
+        await Assert.That(providerHealth.Tags["outcome"]?.ToString()).IsEqualTo("unhealthy");
+        await Assert.That(unknownAge.Tags.Keys).IsEquivalentTo(["provider"]);
+        await Assert.That(unknownAge.Value).IsEqualTo(180);
+    }
+
+    [Test]
+    public async Task RetentionMetricsCollapseUnsafeDimensionsUnderLoad()
+    {
+        using var metricsCapture = new MetricsCapture();
+        var metrics = CreateMetrics();
+
+        for (var index = 0; index < 1_000; index++)
+        {
+            metrics.RecordWebhookRetentionCleanupItems(
+                1,
+                $"operator-mode-{index}",
+                $"https://private.example/{index}");
+        }
+
+        var measurements = metricsCapture.All("explore.webhooks.retention.cleanup_items");
+        var tagSeries = measurements
+            .Select(measurement => string.Join(
+                '|',
+                measurement.Tags.OrderBy(tag => tag.Key).Select(tag => $"{tag.Key}={tag.Value}")))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        await Assert.That(measurements).Count().IsEqualTo(1_000);
+        await Assert.That(tagSeries).IsEquivalentTo(["data_kind=unknown|mode=unknown"]);
+    }
+
     private static BusinessMetrics CreateMetrics()
     {
         var meterFactory = Substitute.For<IMeterFactory>();
@@ -125,6 +227,16 @@ public sealed class BusinessMetricsWebhookTests
             };
 
             _listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, _) =>
+            {
+                lock (_measurementsLock)
+                {
+                    _measurements.Add(new Measurement(
+                        instrument.Name,
+                        measurement,
+                        tags.ToArray().ToDictionary(tag => tag.Key, tag => tag.Value)));
+                }
+            });
+            _listener.SetMeasurementEventCallback<double>((instrument, measurement, tags, _) =>
             {
                 lock (_measurementsLock)
                 {
@@ -168,11 +280,21 @@ public sealed class BusinessMetricsWebhookTests
             }
         }
 
+        public IReadOnlyList<Measurement> All(string instrumentName)
+        {
+            lock (_measurementsLock)
+            {
+                return _measurements
+                    .Where(measurement => measurement.InstrumentName == instrumentName)
+                    .ToArray();
+            }
+        }
+
         public void Dispose()
         {
             _listener.Dispose();
         }
     }
 
-    private sealed record Measurement(string InstrumentName, long Value, IReadOnlyDictionary<string, object?> Tags);
+    private sealed record Measurement(string InstrumentName, double Value, IReadOnlyDictionary<string, object?> Tags);
 }

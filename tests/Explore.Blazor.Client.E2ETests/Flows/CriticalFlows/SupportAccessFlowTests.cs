@@ -122,7 +122,9 @@ public sealed class SupportAccessFlowTests(
 
     private async Task<Guid> SyncBrowserUserAsync(IPage page, SupportAccessScenarioSeed.Result seed)
     {
-        var response = await page.Context.APIRequest.PostAsync(TenantUrl(seed, "/api/user/sync"));
+        var response = await BffCookieAuthHelper.PostWithAntiforgeryAsync(
+            page,
+            TenantUrl(seed, "/api/user/sync"));
         var content = await response.TextAsync();
         if (response.Status != (int)HttpStatusCode.OK)
         {
@@ -145,7 +147,8 @@ public sealed class SupportAccessFlowTests(
         SupportAccessScenarioSeed.Result seed,
         Guid userId)
     {
-        var response = await page.Context.APIRequest.PostAsync(
+        var response = await BffCookieAuthHelper.PostWithAntiforgeryAsync(
+            page,
             TenantUrl(seed, $"/api/_internal/admin-cache/users/{userId:D}/invalidate"));
         var content = await response.TextAsync();
         if (response.Status != (int)HttpStatusCode.NoContent)
@@ -159,7 +162,8 @@ public sealed class SupportAccessFlowTests(
         IPage page,
         SupportAccessScenarioSeed.Result seed)
     {
-        var response = await page.Context.APIRequest.PostAsync(
+        var response = await BffCookieAuthHelper.PostWithAntiforgeryAsync(
+            page,
             TenantUrl(seed, "/api/_internal/admin-cache/current-user/snapshot"));
         var content = await response.TextAsync();
         if (response.Status != (int)HttpStatusCode.OK)

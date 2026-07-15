@@ -73,7 +73,7 @@ public class SecurityIntegrationTests : IAsyncDisposable
     {
         // Arrange — use admin token for a write endpoint
         var token = await _infra.TokenClient.GetAdminTokenAsync();
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/organization")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/category")
         {
             Content = JsonContent.Create(new
             {
@@ -103,7 +103,7 @@ public class SecurityIntegrationTests : IAsyncDisposable
     public async Task PostProtectedEndpoint_WithoutToken_ShouldReturnUnauthorized()
     {
         // Arrange — no Authorization header
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/organization")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/category")
         {
             Content = JsonContent.Create(new
             {
@@ -273,7 +273,7 @@ public class SecurityIntegrationTests : IAsyncDisposable
     {
         var token = await _infra.TokenClient.GetUserTokenAsync();
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/organization")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/category")
         {
             Content = JsonContent.Create(new
             {

@@ -2,6 +2,7 @@
 @* ABOUTME: Provides Google-style sidebar navigation for organization profile, members, and verification. *@
 
 @using MudBlazor
+@using Explore.Blazor.Client.Contracts.Services.Webhooks
 @using Explore.Blazor.Client.Services
 
 @inject IOrganizationService OrganizationService
@@ -49,6 +50,10 @@
                                          Text="API Keys"
                                          Class="@GetNavItemClass("api-keys")"
                                          OnClick="@(() => SelectSection("api-keys"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.Webhook"
+                                         Text="Webhooks"
+                                         Class="@GetNavItemClass("webhooks")"
+                                         OnClick="@(() => SelectSection("webhooks"))" />
                         </MudList>
                     </MudPaper>
                 </MudItem>
@@ -76,6 +81,10 @@
                         else if (_currentSection == "api-keys")
                         {
                             <Explore.Blazor.Client.Pages.Admin.Components.ApiKeysSection OwnerType="2" OrganizationId="OrganizationId" Title="Organization API Keys" Description="Create and manage API keys for this organization." />
+                        }
+                        else if (_currentSection == "webhooks")
+                        {
+                            <Explore.Blazor.Client.Components.Webhooks.WebhookManagementPanel Owner="@WebhookOwnerSelection.ForOrganization(OrganizationId)" />
                         }
                     </MudPaper>
                 </MudItem>

@@ -1,5 +1,5 @@
-// ABOUTME: bUnit tests for TenantAdminSettings redirect behaviour based on deployment mode.
-// ABOUTME: Verifies single-tenant redirects, multi-tenant no-redirect, and error fallback rendering.
+// ABOUTME: bUnit tests for TenantAdminSettings redirects based on public onboarding deployment status.
+// ABOUTME: Verifies single-tenant redirects, multi-tenant rendering, and unavailable-status errors.
 
 using Explore.Blazor.Client.Pages.Events;
 
@@ -39,8 +39,8 @@ public class TenantAdminSettingsRedirectTests : IDisposable
     [Test]
     public async Task TenantAdminSettings_SingleTenantMode_RedirectsToInstanceSettings()
     {
-        _onboardingService.GetDeploymentModeAsync()
-            .Returns(new DeploymentModeDto { Mode = DeploymentMode.SingleTenant });
+        _onboardingService.GetStatusAsync()
+            .Returns(new InstanceOnboardingStatusDto { SelectedDeploymentMode = nameof(DeploymentMode.SingleTenant) });
 
         var componentType = typeof(EventList).Assembly
             .GetTypes()
@@ -62,8 +62,8 @@ public class TenantAdminSettingsRedirectTests : IDisposable
     [Test]
     public async Task TenantAdminSettings_MultiTenantMode_DoesNotRedirect()
     {
-        _onboardingService.GetDeploymentModeAsync()
-            .Returns(new DeploymentModeDto { Mode = DeploymentMode.MultiTenant });
+        _onboardingService.GetStatusAsync()
+            .Returns(new InstanceOnboardingStatusDto { SelectedDeploymentMode = nameof(DeploymentMode.MultiTenant) });
 
         var componentType = typeof(EventList).Assembly
             .GetTypes()
@@ -76,10 +76,10 @@ public class TenantAdminSettingsRedirectTests : IDisposable
     }
 
     [Test]
-    public async Task TenantAdminSettings_WhenModeResolutionThrows_ShowsErrorAndDoesNotRedirect()
+    public async Task TenantAdminSettings_WhenStatusIsUnavailable_ShowsErrorAndDoesNotRedirect()
     {
-        _onboardingService.GetDeploymentModeAsync()
-            .ThrowsAsync(new HttpRequestException("Service unavailable"));
+        _onboardingService.GetStatusAsync()
+            .Returns((InstanceOnboardingStatusDto?)null);
 
         var componentType = typeof(EventList).Assembly
             .GetTypes()

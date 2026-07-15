@@ -43,6 +43,25 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
     }
 
     [Test]
+    public async Task MaterializeAsync_WithinExistingUnitOfWork_JoinsAmbientTransaction()
+    {
+        var scenario = await SeedAuthorityAsync();
+        await using var context = fixture.CreateDbContext();
+        var unitOfWork = new EfCoreUnitOfWork(context);
+        var materializer = new WebhookDeliveryPlanMaterializer(context, unitOfWork);
+
+        var result = await unitOfWork.ExecuteInTransactionAsync(
+            token => materializer.MaterializeAsync(CreateMaterialization(scenario), token),
+            CancellationToken.None);
+
+        await Assert.That(result.Created).IsTrue();
+        await Assert.That(await context.WebhookMessages.CountAsync()).IsEqualTo(1);
+        await Assert.That(await context.WebhookDeliveryPlanSnapshots.CountAsync()).IsEqualTo(1);
+        await Assert.That(await context.WebhookLocalTargetSnapshots.CountAsync()).IsEqualTo(1);
+        await Assert.That(await context.WebhookProviderPublications.CountAsync()).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task MaterializeAsync_WhenAnyTargetViolatesUniqueness_RollsBackEveryRow()
     {
         var scenario = await SeedAuthorityAsync();
@@ -336,6 +355,10 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
             "default",
             "retention-v1",
             new DateTimeOffset(message.PayloadRetentionUntil),
+            new DateTimeOffset(MaterializedAt.AddDays(30)),
+            new DateTimeOffset(MaterializedAt.AddDays(90)),
+            new DateTimeOffset(MaterializedAt.AddDays(90)),
+            new DateTimeOffset(MaterializedAt.AddDays(30)),
             new DateTimeOffset(MaterializedAt));
         var localTarget = WebhookLocalTargetSnapshot.Create(
             plan,

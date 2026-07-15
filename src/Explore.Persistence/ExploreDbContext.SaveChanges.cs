@@ -8,13 +8,38 @@ namespace Explore.Persistence;
 
 public partial class ExploreDbContext
 {
-    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override int SaveChanges() => SaveChanges(acceptAllChangesOnSuccess: true);
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        PrepareTrackedEntities();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
+        SaveChangesAsync(acceptAllChangesOnSuccess: true, cancellationToken);
+
+    public override async Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess,
+        CancellationToken cancellationToken = default)
+    {
+        PrepareTrackedEntities();
+        return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void PrepareTrackedEntities()
     {
         var userId = GetCurrentUserId();
         var now = DateTime.UtcNow;
 
         foreach (var entry in ChangeTracker.Entries())
         {
+            if (entry.Entity is Explore.Domain.WebhookAuditEvent
+                && entry.State is EntityState.Modified or EntityState.Deleted)
+            {
+                throw new InvalidOperationException("Webhook audit events are append-only and cannot be modified or deleted.");
+            }
+
             if (entry.Entity is Explore.Domain.Event eventEntity &&
                 entry.State == EntityState.Added &&
                 string.IsNullOrWhiteSpace(eventEntity.PublicCode))
@@ -67,7 +92,6 @@ public partial class ExploreDbContext
             }
         }
 
-        return await base.SaveChangesAsync(cancellationToken);
     }
 
     private Guid? GetCurrentUserId()

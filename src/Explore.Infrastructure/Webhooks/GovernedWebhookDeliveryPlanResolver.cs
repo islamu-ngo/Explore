@@ -17,6 +17,7 @@ public sealed class GovernedWebhookDeliveryPlanResolver(
     IWebhookEventTypeRepository eventTypeRepository,
     ISecretBindingRepository secretBindingRepository,
     IWebhookProviderCapabilityResolver capabilityResolver,
+    IWebhookRetentionPolicyResolver retentionPolicyResolver,
     IOptionsMonitor<WebhookOptions> options,
     TimeProvider timeProvider) : IWebhookDeliveryPlanResolver
 {
@@ -30,15 +31,31 @@ public sealed class GovernedWebhookDeliveryPlanResolver(
             return Unavailable("webhook_delivery_authority_invalid");
         }
 
-        var consumer = await consumerRepository.GetByTenantAndIdAsync(
-            context.TenantId,
+        var consumer = await consumerRepository.GetByIdForOwnerOperationAsync(
             consumerId,
+            forUpdate: false,
             cancellationToken);
         if (consumer is null ||
             consumer.Status != WebhookConsumerStatus.Active ||
             consumer.ConfigurationVersion < 1)
         {
             return Unavailable("webhook_consumer_unavailable");
+        }
+
+        WebhookOwnershipScope ownership;
+        try
+        {
+            ownership = consumer.Ownership;
+        }
+        catch (InvalidOperationException)
+        {
+            return Unavailable("webhook_consumer_ownership_invalid");
+        }
+
+        if (ownership.Kind != WebhookConsumerKind.Instance &&
+            ownership.TenantId != context.TenantId)
+        {
+            return Unavailable("webhook_consumer_source_tenant_mismatch");
         }
 
         var capabilityResolution = capabilityResolver.Resolve(consumer.ProviderMode);
@@ -81,17 +98,22 @@ public sealed class GovernedWebhookDeliveryPlanResolver(
         }
 
         var now = timeProvider.GetUtcNow();
-        var payloadRetentionUntil = context.OccurredAt.AddDays(eventType.PayloadRetentionDays);
-        var retentionVersion = $"event-contract-v{eventType.SchemaVersion}-days-{eventType.PayloadRetentionDays}";
+        var retention = retentionPolicyResolver.Resolve(
+            context.OccurredAt,
+            now,
+            eventType.PayloadRetentionDays);
         return WebhookDeliveryPlanResolution.Success(
             consumer.Id,
             consumer.ProviderMode,
             $"consumer-v{consumer.ConfigurationVersion}:{capabilityResolution.ResolutionVersion}",
             eventType.SchemaVersion,
             $"retain-{eventType.PayloadRetentionDays}-days",
-            retentionVersion,
-            payloadRetentionUntil,
-            now.UtcDateTime.AddDays(eventType.PayloadRetentionDays),
+            retention.PolicyVersion,
+            retention.OutboundPayloadRetentionUntil,
+            retention.ProcessingAttemptRetentionUntil,
+            retention.DeadLetterEvidenceRetentionUntil,
+            retention.ProviderPublicationRetentionUntil.UtcDateTime,
+            retention.OperationalLogRetentionUntil,
             localTargets,
             providerTargets);
     }

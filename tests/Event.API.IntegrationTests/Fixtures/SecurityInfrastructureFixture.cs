@@ -1,5 +1,5 @@
-// ABOUTME: Composite fixture combining Keycloak and Cerbos containers for security integration tests.
-// ABOUTME: Implements IAsyncLifetime to start both containers once per test assembly and tear down after.
+// ABOUTME: Composite fixture combining privately owned Keycloak and Cerbos test containers.
+// ABOUTME: Prevents TUnit nested-initializer discovery from starting duplicate security infrastructure.
 
 using TUnit.Core.Interfaces;
 
@@ -12,25 +12,25 @@ namespace Event.Api.IntegrationTests.Fixtures;
 /// </summary>
 public sealed class SecurityInfrastructureFixture : IAsyncInitializer, IAsyncDisposable
 {
-    public KeycloakContainerFixture Keycloak { get; } = new();
-    public CerbosContainerFixture Cerbos { get; } = new();
+    private readonly KeycloakContainerFixture _keycloak = new();
+    private readonly CerbosContainerFixture _cerbos = new();
 
     /// <summary>
     /// Token client delegating to the Keycloak container.
     /// </summary>
-    public KeycloakTokenClient TokenClient => Keycloak.TokenClient;
+    public KeycloakTokenClient TokenClient => _keycloak.TokenClient;
 
     /// <summary>
     /// The OIDC authority URL from the Keycloak container.
     /// </summary>
-    public string KeycloakAuthority => Keycloak.Authority;
+    public string KeycloakAuthority => _keycloak.Authority;
 
-    public string KeycloakBaseUrl => Keycloak.BaseUrl;
+    public string KeycloakBaseUrl => _keycloak.BaseUrl;
 
     /// <summary>
     /// The OIDC metadata address from the Keycloak container.
     /// </summary>
-    public string KeycloakMetadataAddress => Keycloak.MetadataAddress;
+    public string KeycloakMetadataAddress => _keycloak.MetadataAddress;
 
     public KeycloakTokenClient CreateTokenClient(string clientSecret)
         => new(KeycloakBaseUrl, KeycloakContainerFixture.RealmName, KeycloakContainerFixture.TestClientId, clientSecret);
@@ -38,25 +38,25 @@ public sealed class SecurityInfrastructureFixture : IAsyncInitializer, IAsyncDis
     /// <summary>
     /// The Cerbos gRPC endpoint for SDK clients.
     /// </summary>
-    public string CerbosGrpcEndpoint => Cerbos.GrpcEndpoint;
+    public string CerbosGrpcEndpoint => _cerbos.GrpcEndpoint;
 
     /// <summary>
     /// The Cerbos HTTP endpoint for REST API and health checks.
     /// </summary>
-    public string CerbosHttpEndpoint => Cerbos.HttpEndpoint;
+    public string CerbosHttpEndpoint => _cerbos.HttpEndpoint;
 
     public async Task InitializeAsync()
     {
         // Start both containers in parallel for faster fixture setup.
-        var keycloakTask = Keycloak.InitializeAsync();
-        var cerbosTask = Cerbos.InitializeAsync();
+        var keycloakTask = _keycloak.InitializeAsync();
+        var cerbosTask = _cerbos.InitializeAsync();
 
         await Task.WhenAll(keycloakTask, cerbosTask);
     }
 
     public async ValueTask DisposeAsync()
     {
-        await Keycloak.DisposeAsync();
-        await Cerbos.DisposeAsync();
+        await _keycloak.DisposeAsync();
+        await _cerbos.DisposeAsync();
     }
 }

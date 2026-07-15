@@ -1,4 +1,4 @@
-// ABOUTME: Handles tenant-scoped webhook message detail reads for management APIs.
+// ABOUTME: Handles persisted-owner webhook message detail reads for management APIs.
 // ABOUTME: Returns safe metadata DTOs without raw payload JSON.
 
 using Explore.Application.Contracts.Persistence;
@@ -15,13 +15,12 @@ public sealed class GetWebhookMessageByIdQueryHandler(IWebhookMessageRepository 
         GetWebhookMessageByIdQuery request,
         CancellationToken cancellationToken)
     {
-        if (request.TenantId == Guid.Empty || request.MessageId == Guid.Empty)
+        if (request.MessageId == Guid.Empty)
         {
             return null;
         }
 
-        var message = await messageRepository.GetByTenantAndIdAsync(
-            request.TenantId,
+        var message = await messageRepository.GetByIdForOwnerOperationAsync(
             request.MessageId,
             cancellationToken);
 

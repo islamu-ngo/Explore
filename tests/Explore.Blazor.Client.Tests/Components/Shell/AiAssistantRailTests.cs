@@ -376,7 +376,7 @@ public sealed class AiAssistantRailTests : IDisposable
         var cut = _ctx.RenderMudComponent<AiAssistantRail>();
         await cut.Find("[data-testid='ai-rail-prompt']").InputAsync(new ChangeEventArgs { Value = "@iftar" });
         cut.WaitForElement("[data-testid='ai-rail-reference-result']");
-        await cut.Find("[data-testid='ai-rail-reference-result']").ClickAsync(new MouseEventArgs());
+        await cut.InvokeAsync(() => cut.Find("[data-testid='ai-rail-reference-result']").Click());
         await cut.Find("[data-testid='ai-rail-send']").ClickAsync(new MouseEventArgs());
 
         await _clientService.Received(1).SendMessageAsync(

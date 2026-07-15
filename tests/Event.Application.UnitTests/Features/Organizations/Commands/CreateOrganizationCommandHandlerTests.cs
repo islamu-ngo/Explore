@@ -29,8 +29,8 @@ public class CreateOrganizationCommandHandlerTests
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
     private readonly IActorRepository _actorRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
-    private readonly IUserContext _userContext;
     private readonly IAdminContext _adminContext;
+    private readonly IAdminCacheInvalidator _adminCacheInvalidator;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
     private readonly HybridCache _cache;
@@ -42,8 +42,8 @@ public class CreateOrganizationCommandHandlerTests
         _organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
         _actorRepository = Substitute.For<IActorRepository>();
         _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
-        _userContext = Substitute.For<IUserContext>();
         _adminContext = Substitute.For<IAdminContext>();
+        _adminCacheInvalidator = Substitute.For<IAdminCacheInvalidator>();
         _mapper = Substitute.For<IMapper>();
         _tenantContext = Substitute.For<ITenantContext>();
         _cache = Substitute.For<HybridCache>();
@@ -57,8 +57,8 @@ public class CreateOrganizationCommandHandlerTests
             _organizationMemberRepository,
             _actorRepository,
             _storageObjectRepository,
-            _userContext,
             _adminContext,
+            _adminCacheInvalidator,
             _mapper,
             _tenantContext,
             _cache,
@@ -111,6 +111,7 @@ public class CreateOrganizationCommandHandlerTests
         var tenantId = Guid.NewGuid();
         var command = new CreateOrganizationCommand
         {
+            CreatorUserId = userId,
             OrganizationDto = new CreateOrganizationDto
             {
                 FullName = "Test Organization",
@@ -123,8 +124,6 @@ public class CreateOrganizationCommandHandlerTests
         };
 
         _tenantContext.TenantId.Returns(tenantId);
-        _userContext.GetRequiredUserId().Returns(userId);
-
         // Mock Organization creation
         var organization = new Organization
         {
@@ -154,6 +153,7 @@ public class CreateOrganizationCommandHandlerTests
         await _organizationRepository.Received(1).Create(Arg.Any<Organization>());
         await _actorRepository.Received(1).Create(Arg.Any<Actor>());
         await _organizationMemberRepository.Received(1).Create(Arg.Any<OrganizationMember>());
+        _adminCacheInvalidator.Received(1).InvalidateUser(userId);
     }
 
     [Test]
@@ -166,6 +166,7 @@ public class CreateOrganizationCommandHandlerTests
         var tenantId = Guid.NewGuid();
         var command = new CreateOrganizationCommand
         {
+            CreatorUserId = userId,
             OrganizationDto = new CreateOrganizationDto
             {
                 FullName = "Test Organization",
@@ -178,7 +179,6 @@ public class CreateOrganizationCommandHandlerTests
         };
 
         _tenantContext.TenantId.Returns(tenantId);
-        _userContext.GetRequiredUserId().Returns(userId);
         _adminContext.IsTenantAdminAsync(tenantId, Arg.Any<CancellationToken>()).Returns(false);
 
         var organization = new Organization
@@ -219,6 +219,7 @@ public class CreateOrganizationCommandHandlerTests
         var tenantId = Guid.NewGuid();
         var command = new CreateOrganizationCommand
         {
+            CreatorUserId = userId,
             OrganizationDto = new CreateOrganizationDto
             {
                 FullName = "Tenant Admin Organization",
@@ -231,7 +232,6 @@ public class CreateOrganizationCommandHandlerTests
         };
 
         _tenantContext.TenantId.Returns(tenantId);
-        _userContext.GetRequiredUserId().Returns(userId);
         _adminContext.IsTenantAdminAsync(tenantId, Arg.Any<CancellationToken>()).Returns(true);
 
         var organization = new Organization
@@ -272,6 +272,7 @@ public class CreateOrganizationCommandHandlerTests
         var tenantId = Guid.NewGuid();
         var command = new CreateOrganizationCommand
         {
+            CreatorUserId = userId,
             OrganizationDto = new CreateOrganizationDto
             {
                 FullName = "Test Organization",
@@ -284,8 +285,6 @@ public class CreateOrganizationCommandHandlerTests
         };
 
         _tenantContext.TenantId.Returns(tenantId);
-        _userContext.GetRequiredUserId().Returns(userId);
-
         var organization = new Organization
         {
             Id = organizationId,
@@ -320,6 +319,7 @@ public class CreateOrganizationCommandHandlerTests
         var tenantId = Guid.NewGuid();
         var command = new CreateOrganizationCommand
         {
+            CreatorUserId = userId,
             OrganizationDto = new CreateOrganizationDto
             {
                 FullName = "Test Organization",
@@ -332,8 +332,6 @@ public class CreateOrganizationCommandHandlerTests
         };
 
         _tenantContext.TenantId.Returns(tenantId);
-        _userContext.GetRequiredUserId().Returns(userId);
-
         var organization = new Organization
         {
             Id = organizationId,

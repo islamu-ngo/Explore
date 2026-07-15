@@ -42,13 +42,16 @@ public sealed class SvixAppPortalServiceTests
         {
             Id = ConsumerId,
             TenantId = TenantId,
-            ConsumerKind = WebhookConsumerKind.Organization,
+            ConsumerKind = WebhookConsumerKind.Tenant,
             Name = "Community site",
             Status = WebhookConsumerStatus.Active,
             ProviderMode = WebhookProviderMode.Svix,
             CreatedAt = DateTime.UtcNow
         };
-        fixture.ConsumerRepository.GetByTenantAndIdAsync(TenantId, ConsumerId, Arg.Any<CancellationToken>())
+        fixture.ConsumerRepository.GetByIdForOwnerOperationAsync(
+                ConsumerId,
+                false,
+                Arg.Any<CancellationToken>())
             .Returns(consumer);
         fixture.BindingRepository.GetVerifiedByConsumerAsync(
                 TenantId,
@@ -64,7 +67,9 @@ public sealed class SvixAppPortalServiceTests
                 new Dictionary<string, string>
                 {
                     ["islamu.tenant_id"] = TenantId.ToString("D"),
-                    ["islamu.consumer_id"] = ConsumerId.ToString("D")
+                    ["islamu.consumer_id"] = ConsumerId.ToString("D"),
+                    ["islamu.owner_id"] = TenantId.ToString("D"),
+                    ["islamu.owner_kind_id"] = ((int)WebhookConsumerKind.Tenant).ToString()
                 }));
         fixture.SvixClient.CreateAppPortalAccessAsync(
                 Arg.Do<SvixAppPortalAccessRequest>(request => portalRequest = request),
@@ -73,7 +78,6 @@ public sealed class SvixAppPortalServiceTests
 
         var result = await fixture.Service.CreateAccessAsync(
             new WebhookProviderPortalAccessInput(
-                TenantId,
                 ConsumerId,
                 "session-1",
                 TimeSpan.FromHours(2)),
@@ -104,7 +108,7 @@ public sealed class SvixAppPortalServiceTests
         });
 
         var result = await fixture.Service.CreateAccessAsync(
-            new WebhookProviderPortalAccessInput(TenantId, ConsumerId, "session-1", null),
+            new WebhookProviderPortalAccessInput(ConsumerId, "session-1", null),
             CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();
@@ -119,11 +123,14 @@ public sealed class SvixAppPortalServiceTests
     public async Task CreateAccessAsync_WhenConsumerMissing_ReturnsNotFoundWithoutCreatingPortalAccess()
     {
         var fixture = new Fixture();
-        fixture.ConsumerRepository.GetByTenantAndIdAsync(TenantId, ConsumerId, Arg.Any<CancellationToken>())
+        fixture.ConsumerRepository.GetByIdForOwnerOperationAsync(
+                ConsumerId,
+                false,
+                Arg.Any<CancellationToken>())
             .Returns((WebhookConsumer?)null);
 
         var result = await fixture.Service.CreateAccessAsync(
-            new WebhookProviderPortalAccessInput(TenantId, ConsumerId, "session-1", null),
+            new WebhookProviderPortalAccessInput(ConsumerId, "session-1", null),
             CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();

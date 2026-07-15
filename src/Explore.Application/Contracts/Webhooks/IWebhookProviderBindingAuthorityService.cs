@@ -25,7 +25,7 @@ public sealed record WebhookProviderBindingProfileResult(
 }
 
 public sealed record WebhookProviderBindingOwnershipRequest(
-    Guid TenantId,
+    WebhookOwnershipScope Ownership,
     Guid WebhookConsumerId,
     string ApplicationUid,
     string ExternalApplicationId,

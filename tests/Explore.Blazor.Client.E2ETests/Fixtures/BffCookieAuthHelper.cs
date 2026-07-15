@@ -79,6 +79,37 @@ public static class BffCookieAuthHelper
         await Assert.That(isAuthenticated.GetBoolean()).IsTrue();
     }
 
+    public static async Task<IAPIResponse> PostWithAntiforgeryAsync(IPage page, string url)
+    {
+        var requestUri = new Uri(url, UriKind.Absolute);
+        var origin = requestUri.GetLeftPart(UriPartial.Authority);
+        var cookies = await page.Context.CookiesAsync([origin]);
+        var antiforgeryToken = cookies.FirstOrDefault(cookie =>
+            string.Equals(cookie.Name, "XSRF-TOKEN", StringComparison.Ordinal))?.Value;
+
+        if (string.IsNullOrWhiteSpace(antiforgeryToken))
+        {
+            await page.Context.APIRequest.GetAsync($"{origin}/auth/status");
+            cookies = await page.Context.CookiesAsync([origin]);
+            antiforgeryToken = cookies.FirstOrDefault(cookie =>
+                string.Equals(cookie.Name, "XSRF-TOKEN", StringComparison.Ordinal))?.Value;
+        }
+
+        if (string.IsNullOrWhiteSpace(antiforgeryToken))
+        {
+            throw new InvalidOperationException(
+                $"The BFF did not issue an XSRF-TOKEN cookie for {origin}.");
+        }
+
+        return await page.Context.APIRequest.PostAsync(url, new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string>
+            {
+                ["X-CSRF-TOKEN"] = antiforgeryToken
+            }
+        });
+    }
+
     private static async Task WaitForAuthenticatedStatusAsync(IPage page, string blazorBaseUrl)
     {
         var deadline = DateTimeOffset.UtcNow.Add(LoginNavigationTimeout);

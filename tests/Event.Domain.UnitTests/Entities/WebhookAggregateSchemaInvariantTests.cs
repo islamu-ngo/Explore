@@ -104,6 +104,10 @@ public sealed class WebhookAggregateSchemaInvariantTests
             "default",
             "retention-v1",
             now.AddDays(1),
+            now.AddDays(30),
+            now.AddDays(90),
+            now.AddDays(90),
+            now.AddDays(30),
             now);
 
         await Assert.That(plan.Id.Version).IsEqualTo(7);
@@ -118,6 +122,10 @@ public sealed class WebhookAggregateSchemaInvariantTests
                 "default",
                 "retention-v1",
                 now.AddDays(1),
+                now.AddDays(30),
+                now.AddDays(90),
+                now.AddDays(90),
+                now.AddDays(30),
                 now)));
     }
 
@@ -138,6 +146,10 @@ public sealed class WebhookAggregateSchemaInvariantTests
             "standard",
             "retention-v1",
             now.AddDays(14),
+            now.AddDays(30),
+            now.AddDays(90),
+            now.AddDays(90),
+            now.AddDays(30),
             now);
         var endpoint = new WebhookEndpoint
         {

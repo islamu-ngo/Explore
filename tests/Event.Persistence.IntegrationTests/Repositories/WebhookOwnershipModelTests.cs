@@ -1,5 +1,5 @@
 // ABOUTME: EF Core model tests for typed webhook ownership and instance/tenant scope isolation.
-// ABOUTME: Verifies nullable scope keys, relational owner FKs, check constraints, and filtered indexes.
+// ABOUTME: Verifies typed owner FKs, computed configuration scopes, composite containment, and checks.
 
 using Explore.Domain;
 using Explore.Persistence;
@@ -21,8 +21,14 @@ public sealed class WebhookOwnershipModelTests
 
         await Assert.That(consumer.FindProperty(nameof(WebhookConsumer.TenantId))!.IsNullable).IsTrue();
         await Assert.That(consumer.FindProperty(nameof(WebhookConsumer.InstanceId))!.IsNullable).IsTrue();
+        await Assert.That(consumer.FindProperty(nameof(WebhookConsumer.ConfigurationScopeId))!.IsNullable)
+            .IsFalse();
+        await AssertComputedConfigurationScopeAsync(
+            consumer.FindProperty(nameof(WebhookConsumer.ConfigurationScopeId))!);
         await Assert.That(consumer.GetCheckConstraints().Select(constraint => constraint.Name))
             .Contains("ck_webhook_consumers_typed_owner");
+        await Assert.That(consumer.GetCheckConstraints().Select(constraint => constraint.Name))
+            .Contains("ck_webhook_consumers_configuration_scope");
 
         var principals = consumer.GetForeignKeys()
             .Select(foreignKey => foreignKey.PrincipalEntityType.ClrType)
@@ -34,21 +40,77 @@ public sealed class WebhookOwnershipModelTests
     }
 
     [Test]
-    public async Task EndpointAndSubscriptionModels_SupportInstanceOrTenantConfigurationScope()
+    public async Task ChildModels_EnforceTheSameConfigurationScopeAsTheirParents()
     {
         await using var context = CreateModelContext();
         var model = context.GetService<IDesignTimeModel>().Model;
         var endpoint = model.FindEntityType(typeof(WebhookEndpoint))!;
         var subscription = model.FindEntityType(typeof(WebhookEndpointSubscription))!;
+        var binding = model.FindEntityType(typeof(WebhookConsumerProviderBinding))!;
 
         await Assert.That(endpoint.FindProperty(nameof(WebhookEndpoint.TenantId))!.IsNullable).IsTrue();
         await Assert.That(endpoint.FindProperty(nameof(WebhookEndpoint.InstanceId))!.IsNullable).IsTrue();
         await Assert.That(subscription.FindProperty(nameof(WebhookEndpointSubscription.TenantId))!.IsNullable).IsTrue();
         await Assert.That(subscription.FindProperty(nameof(WebhookEndpointSubscription.InstanceId))!.IsNullable).IsTrue();
+        await Assert.That(endpoint.FindProperty(nameof(WebhookEndpoint.ConfigurationScopeId))!.IsNullable)
+            .IsFalse();
+        await Assert.That(subscription.FindProperty(nameof(WebhookEndpointSubscription.ConfigurationScopeId))!.IsNullable)
+            .IsFalse();
+        await Assert.That(binding.FindProperty(nameof(WebhookConsumerProviderBinding.ConfigurationScopeId))!.IsNullable)
+            .IsFalse();
+        await AssertComputedConfigurationScopeAsync(
+            endpoint.FindProperty(nameof(WebhookEndpoint.ConfigurationScopeId))!);
+        await AssertComputedConfigurationScopeAsync(
+            subscription.FindProperty(nameof(WebhookEndpointSubscription.ConfigurationScopeId))!);
+        await AssertComputedConfigurationScopeAsync(
+            binding.FindProperty(nameof(WebhookConsumerProviderBinding.ConfigurationScopeId))!);
         await Assert.That(endpoint.GetCheckConstraints().Select(constraint => constraint.Name))
             .Contains("ck_webhook_endpoints_configuration_scope");
         await Assert.That(subscription.GetCheckConstraints().Select(constraint => constraint.Name))
             .Contains("ck_webhook_endpoint_subscriptions_configuration_scope");
+        await Assert.That(endpoint.GetCheckConstraints().Select(constraint => constraint.Name))
+            .Contains("ck_webhook_endpoints_configuration_scope_key");
+        await Assert.That(subscription.GetCheckConstraints().Select(constraint => constraint.Name))
+            .Contains("ck_webhook_endpoint_subscriptions_configuration_scope_key");
+        await Assert.That(binding.GetCheckConstraints().Select(constraint => constraint.Name))
+            .Contains("ck_webhook_consumer_provider_bindings_configuration_scope");
+        await Assert.That(binding.GetCheckConstraints()
+            .Single(constraint => constraint.Name == "ck_webhook_consumer_provider_bindings_verified_scope")
+            .Sql).Contains("verification_state_id <> 3");
+
+        await AssertCompositeScopeForeignKeyAsync<WebhookEndpoint, WebhookConsumer>(
+            endpoint,
+            nameof(WebhookEndpoint.ConfigurationScopeId),
+            nameof(WebhookEndpoint.ConsumerId));
+        await AssertCompositeScopeForeignKeyAsync<WebhookEndpointSubscription, WebhookEndpoint>(
+            subscription,
+            nameof(WebhookEndpointSubscription.ConfigurationScopeId),
+            nameof(WebhookEndpointSubscription.EndpointId));
+        await AssertCompositeScopeForeignKeyAsync<WebhookConsumerProviderBinding, WebhookConsumer>(
+            binding,
+            nameof(WebhookConsumerProviderBinding.ConfigurationScopeId),
+            nameof(WebhookConsumerProviderBinding.WebhookConsumerId));
+    }
+
+    private static async Task AssertCompositeScopeForeignKeyAsync<TDependent, TPrincipal>(
+        IEntityType dependent,
+        string scopePropertyName,
+        string resourcePropertyName)
+    {
+        var foreignKey = dependent.GetForeignKeys().Single(candidate =>
+            candidate.PrincipalEntityType.ClrType == typeof(TPrincipal) &&
+            candidate.Properties.Select(property => property.Name)
+                .SequenceEqual([scopePropertyName, resourcePropertyName]));
+
+        await Assert.That(foreignKey.Properties.Count).IsEqualTo(2);
+    }
+
+    private static async Task AssertComputedConfigurationScopeAsync(IProperty property)
+    {
+        await Assert.That(property.GetComputedColumnSql())
+            .IsEqualTo("COALESCE(tenant_id, instance_id)");
+        await Assert.That(property.ValueGenerated).IsEqualTo(ValueGenerated.OnAdd);
+        await Assert.That(property.GetBeforeSaveBehavior()).IsEqualTo(PropertySaveBehavior.Ignore);
     }
 
     private static ExploreDbContext CreateModelContext()

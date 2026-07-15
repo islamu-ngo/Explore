@@ -14,6 +14,8 @@ public sealed class WebhookProviderPublicationDispatcher(
     IOptions<WebhookProviderPublicationProcessorSettings> settings,
     TimeProvider timeProvider)
 {
+    private const int SvixMaximumPayloadRetentionDays = 90;
+
     private readonly WebhookProviderPublicationProcessorSettings _settings = settings.Value;
 
     public async Task<WebhookProviderPublicationDispatchResult> DispatchAsync(
@@ -142,7 +144,7 @@ public sealed class WebhookProviderPublicationDispatcher(
             message.EventType,
             publication.ProviderEventId,
             payloadBytes,
-            Math.Clamp(retentionDays, 1, 365),
+            Math.Clamp(retentionDays, 1, SvixMaximumPayloadRetentionDays),
             publication.IdempotencyKey,
             publication.RequestHash);
     }

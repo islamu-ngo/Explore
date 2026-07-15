@@ -31,7 +31,7 @@ public sealed record ManagementVersionDto(string EventVersion, string Management
 
 public sealed record ManagementHealthDto(string Status, DateTime ObservedAt);
 
-public sealed class ManagementUpgradePreflightRequest
+public sealed class ManagementUpgradePreflightRequestDto
 {
     [Required]
     [StringLength(100, MinimumLength = 1)]
@@ -42,7 +42,7 @@ public sealed class ManagementUpgradePreflightRequest
     public required string TargetManagementApiVersion { get; init; }
 }
 
-public sealed class ManagementUpgradePostflightRequest
+public sealed class ManagementUpgradePostflightRequestDto
 {
     [Required]
     [StringLength(100, MinimumLength = 1)]
@@ -89,7 +89,7 @@ public sealed record ManagedCredentialDto(
     IReadOnlyList<string> Scopes,
     DateTime ExpiresAt);
 
-public sealed record CompleteManagedInstanceRegistrationRequest(
+public sealed record CompleteManagedInstanceRegistrationRequestDto(
     Guid RegistrationAttemptId,
     Guid ManagedInstanceId,
     Guid EventInstanceId,
@@ -101,20 +101,20 @@ public sealed record CompleteManagedInstanceRegistrationRequest(
     ManagedCredentialDto EventToControlPlaneCredential,
     ManagedCredentialDto ControlPlaneToEventCredential);
 
-public sealed record CompleteManagedInstanceRegistrationResponse(
+public sealed record CompleteManagedInstanceRegistrationResponseDto(
     Guid ManagedInstanceId,
     Guid RegistrationAttemptId,
     string RegistrationState,
     string ManagementEndpoint,
     bool Replay);
 
-public sealed record TriggerManagedRegistrationResult(
+public sealed record TriggerManagedRegistrationResultDto(
     bool Success,
     string State,
     string? FailureCode,
     Guid? RegistrationAttemptId);
 
-public sealed record RotateManagedControlPlaneCredentialRequest(
+public sealed record RotateManagedControlPlaneCredentialRequestDto(
     string KeyId,
     string SecretHash,
     DateTime ExpiresAt);

@@ -91,6 +91,27 @@ public class IncomingWebhookMessageRepository : IIncomingWebhookMessageRepositor
                 nameof(request),
                 $"Lease owner cannot exceed {IncomingWebhookMessage.MaxLeaseOwnerLength} characters.");
         }
+
+        var strategy = _dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            try
+            {
+                return await ClaimDueInTransactionAsync(request, leaseOwner, cancellationToken);
+            }
+            catch
+            {
+                _dbContext.ChangeTracker.Clear();
+                throw;
+            }
+        });
+    }
+
+    private async Task<IReadOnlyList<IncomingWebhookClaim>> ClaimDueInTransactionAsync(
+        IncomingWebhookClaimRequest request,
+        string leaseOwner,
+        CancellationToken cancellationToken)
+    {
         var leaseExpiresAt = request.ClaimedAt.Add(request.LeaseDuration);
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
         if (_dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")

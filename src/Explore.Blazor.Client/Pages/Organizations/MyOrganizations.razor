@@ -87,13 +87,13 @@
 
                                 <MudCardContent Class="flex-grow-1">
                                     <div class="mb-2">
-                                        @if (org.CurrentUserRole.HasValue)
+                                        @if (org.CurrentUserRoleId.HasValue)
                                         {
                                             <MudChip T="string"
                                                      Size="Size.Small"
-                                                     Color="@GetRoleColor(org.CurrentUserRole.Value)"
+                                                     Color="@GetRoleColor(org.CurrentUserRoleId.Value)"
                                                      Variant="Variant.Outlined">
-                                                @GetRoleName(org.CurrentUserRole.Value)
+                                                @GetRoleName(org.CurrentUserRoleId.Value)
                                             </MudChip>
                                         }
                                     </div>

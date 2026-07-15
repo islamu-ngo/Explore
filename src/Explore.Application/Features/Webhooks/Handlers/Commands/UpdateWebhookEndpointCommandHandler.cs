@@ -20,7 +20,7 @@ public sealed class UpdateWebhookEndpointCommandHandler(
     IWebhookEventTypeRepository eventTypeRepository,
     IWebhookProviderPublicationRepository providerPublicationRepository,
     IWebhookProviderCapabilityResolver capabilityResolver,
-    IAuditLogRepository auditLogRepository,
+    IWebhookAuditEventWriter auditWriter,
     IUnitOfWork unitOfWork,
     ICurrentUserService currentUserService,
     IMachinePrincipalAccessor machinePrincipalAccessor,
@@ -37,7 +37,7 @@ public sealed class UpdateWebhookEndpointCommandHandler(
             return Failure("webhook_endpoint_validation_failed", validationErrors);
         }
 
-        if (!TryResolveActor(out var actorReference, out var actorUserId))
+        if (!TryResolveActor(out _, out _))
         {
             return Failure(
                 "webhook_endpoint_configuration_actor_required",
@@ -46,9 +46,9 @@ public sealed class UpdateWebhookEndpointCommandHandler(
 
         return await unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
         {
-            var endpoint = await endpointRepository.GetByTenantAndIdForUpdateAsync(
-                request.TenantId,
+            var endpoint = await endpointRepository.GetByIdForOwnerOperationAsync(
                 request.EndpointId,
+                forUpdate: true,
                 transactionCancellationToken);
             if (endpoint is null || endpoint.Status == WebhookEndpointStatus.Archived)
             {
@@ -62,9 +62,9 @@ public sealed class UpdateWebhookEndpointCommandHandler(
                     ["Webhook endpoint configuration changed. Reload it before applying another update."]);
             }
 
-            var consumer = endpoint.Consumer ?? await consumerRepository.GetByTenantAndIdAsync(
-                request.TenantId,
+            var consumer = endpoint.Consumer ?? await consumerRepository.GetByIdForOwnerOperationAsync(
                 endpoint.ConsumerId,
+                forUpdate: false,
                 transactionCancellationToken);
             if (consumer is null || consumer.Status != WebhookConsumerStatus.Active)
             {
@@ -79,8 +79,7 @@ public sealed class UpdateWebhookEndpointCommandHandler(
                 return Failure("webhook_endpoint_management_unavailable", [capabilityFailure]);
             }
 
-            var existingEndpoint = await endpointRepository.GetByTenantConsumerAndUrlAsync(
-                request.TenantId,
+            var existingEndpoint = await endpointRepository.GetByConsumerAndUrlForOwnerOperationAsync(
                 endpoint.ConsumerId,
                 normalizedUrl,
                 transactionCancellationToken);
@@ -98,7 +97,7 @@ public sealed class UpdateWebhookEndpointCommandHandler(
             }
 
             var uncertainPublicationCount = await providerPublicationRepository.CountUncertainByConsumerAsync(
-                request.TenantId,
+                consumer.TenantId,
                 consumer.Id,
                 transactionCancellationToken);
             if (uncertainPublicationCount > 0 && !request.AcknowledgeUncertainProviderPublications)
@@ -109,7 +108,7 @@ public sealed class UpdateWebhookEndpointCommandHandler(
             }
 
             var eligibleTargets = await endpointRepository.GetEligiblePendingTargetsForUpdateAsync(
-                request.TenantId,
+                endpoint.TenantId,
                 endpoint.Id,
                 transactionCancellationToken);
             var previousVersion = endpoint.ConfigurationVersion;
@@ -139,7 +138,8 @@ public sealed class UpdateWebhookEndpointCommandHandler(
                 .Select(eventType => new WebhookEndpointSubscription
                 {
                     Id = Guid.CreateVersion7(),
-                    TenantId = request.TenantId,
+                    TenantId = endpoint.TenantId,
+                    InstanceId = endpoint.InstanceId,
                     EndpointId = endpoint.Id,
                     EventTypeId = eventType.Id,
                     IsEnabled = true,
@@ -151,45 +151,58 @@ public sealed class UpdateWebhookEndpointCommandHandler(
                 endpoint,
                 subscriptions,
                 transactionCancellationToken);
-            await auditLogRepository.Create(new AuditLog
+            var pendingWorkDecisionCode = NormalizedLookupMetadata
+                .WebhookPendingWorkDecision(request.PendingWorkDecisionId).Code;
+            await auditWriter.AppendAsync(
+                new WebhookAuditWriteRequest(
+                    endpoint.TenantId,
+                    WebhookAuditAction.EndpointUpdated,
+                    WebhookAuditTargetKind.Endpoint,
+                    endpoint.Id,
+                    $"pending_work_{pendingWorkDecisionCode.ToLowerInvariant()}",
+                    WebhookAuditOutcome.Succeeded,
+                    SafeBeforeJson: JsonSerializer.Serialize(new
+                    {
+                        configurationVersion = previousVersion,
+                        destinationHost = previousHost
+                    }),
+                    SafeAfterJson: JsonSerializer.Serialize(new
+                    {
+                        configurationVersion = endpoint.ConfigurationVersion,
+                        destinationHost = GetDestinationHost(endpoint.Url),
+                        pendingWorkDecision = pendingWorkDecisionCode,
+                        eligiblePendingTargetCount = eligibleTargets.Count,
+                        migratedTargetCount,
+                        uncertainProviderPublicationCount = uncertainPublicationCount,
+                        uncertainProviderPublicationsAcknowledged = request.AcknowledgeUncertainProviderPublications,
+                        outcome = "applied"
+                    }),
+                    ConfigurationVersion: $"endpoint-v{endpoint.ConfigurationVersion}",
+                    EffectiveScopeKind: consumer.Ownership.AuditScopeKind,
+                    EffectiveScopeId: consumer.OwnerId),
+                transactionCancellationToken);
+
+            if (migratedTargetCount > 0)
             {
-                Id = Guid.CreateVersion7(),
-                TenantId = request.TenantId,
-                Tenant = null!,
-                EntityType = nameof(WebhookEndpoint),
-                EntityId = endpoint.Id.ToString("D"),
-                Action = "WebhookEndpointConfigurationChanged",
-                OldValues = JsonSerializer.Serialize(new
-                {
-                    configurationVersion = previousVersion,
-                    destinationHost = previousHost
-                }),
-                NewValues = JsonSerializer.Serialize(new
-                {
-                    configurationVersion = endpoint.ConfigurationVersion,
-                    destinationHost = GetDestinationHost(endpoint.Url),
-                    pendingWorkDecision = NormalizedLookupMetadata
-                        .WebhookPendingWorkDecision(request.PendingWorkDecisionId).Code,
-                    eligiblePendingTargetCount = eligibleTargets.Count,
-                    migratedTargetCount,
-                    uncertainProviderPublicationCount = uncertainPublicationCount,
-                    uncertainProviderPublicationsAcknowledged = request.AcknowledgeUncertainProviderPublications,
-                    reason = request.PendingWorkReason.Trim(),
-                    actorReference,
-                    outcome = "applied"
-                }),
-                AffectedColumns = JsonSerializer.Serialize(new[]
-                {
-                    nameof(WebhookEndpoint.Url),
-                    nameof(WebhookEndpoint.Description),
-                    nameof(WebhookEndpoint.MaxAttempts),
-                    nameof(WebhookEndpoint.TimeoutSeconds),
-                    nameof(WebhookEndpoint.RateLimitPerMinute),
-                    nameof(WebhookEndpoint.ConfigurationVersion)
-                }),
-                ActorId = actorUserId,
-                Timestamp = now
-            });
+                await auditWriter.AppendAsync(
+                    new WebhookAuditWriteRequest(
+                        endpoint.TenantId,
+                        WebhookAuditAction.PendingWorkMigrated,
+                        WebhookAuditTargetKind.Endpoint,
+                        endpoint.Id,
+                        "eligible_local_targets_migrated",
+                        WebhookAuditOutcome.Succeeded,
+                        SafeAfterJson: JsonSerializer.Serialize(new
+                        {
+                            pendingWorkDecision = pendingWorkDecisionCode,
+                            migratedTargetCount,
+                            endpointConfigurationVersion = endpoint.ConfigurationVersion
+                        }),
+                        ConfigurationVersion: $"endpoint-v{endpoint.ConfigurationVersion}",
+                        EffectiveScopeKind: consumer.Ownership.AuditScopeKind,
+                        EffectiveScopeId: consumer.OwnerId),
+                    transactionCancellationToken);
+            }
 
             var warning = uncertainPublicationCount > 0
                 ? $" {uncertainPublicationCount} uncertain provider publication(s) remain on their original snapshots."
@@ -214,11 +227,6 @@ public sealed class UpdateWebhookEndpointCommandHandler(
             .Where(id => id != Guid.Empty)
             .Distinct()
             .ToArray();
-
-        if (request.TenantId == Guid.Empty)
-        {
-            errors.Add("Tenant id is required.");
-        }
 
         if (request.EndpointId == Guid.Empty)
         {

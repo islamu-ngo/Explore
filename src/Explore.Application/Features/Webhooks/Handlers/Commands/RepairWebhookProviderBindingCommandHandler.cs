@@ -21,16 +21,13 @@ public sealed class RepairWebhookProviderBindingCommandHandler(
     IWebhookConsumerProviderBindingRepository bindingRepository,
     IInstanceBootstrapStateRepository bootstrapStateRepository,
     IWebhookProviderBindingAuthorityService authorityService,
-    IAuditLogRepository auditLogRepository,
+    IWebhookAuditEventWriter auditWriter,
     IUnitOfWork unitOfWork,
     ICurrentUserService currentUserService,
     IMachinePrincipalAccessor machinePrincipalAccessor,
     TimeProvider timeProvider)
     : IRequestHandler<RepairWebhookProviderBindingCommand, BaseCommandResponse<Guid>>
 {
-    private const string AuditAction = "WebhookProviderBindingRepaired";
-    private const string RejectedAuditAction = "WebhookProviderBindingRepairRejected";
-
     public async Task<BaseCommandResponse<Guid>> Handle(
         RepairWebhookProviderBindingCommand request,
         CancellationToken cancellationToken)
@@ -46,7 +43,7 @@ public sealed class RepairWebhookProviderBindingCommandHandler(
                 validation.Errors.Select(error => error.ErrorMessage));
         }
 
-        if (!TryResolveActor(out var actorReference, out var actorUserId))
+        if (!HasAuthenticatedActor())
         {
             return Failure(
                 request.ConsumerId,
@@ -54,9 +51,9 @@ public sealed class RepairWebhookProviderBindingCommandHandler(
                 "An authenticated operator identity is required.");
         }
 
-        var consumer = await consumerRepository.GetByTenantAndIdAsync(
-            request.TenantId,
+        var consumer = await consumerRepository.GetByIdForOwnerOperationAsync(
             request.ConsumerId,
+            forUpdate: false,
             cancellationToken);
         if (consumer is null)
         {
@@ -94,7 +91,7 @@ public sealed class RepairWebhookProviderBindingCommandHandler(
         }
 
         var existing = await bindingRepository.GetByConsumerAsync(
-            request.TenantId,
+            consumer.TenantId,
             request.ConsumerId,
             profile.ProviderKind,
             profile.ProviderEnvironment,
@@ -114,7 +111,7 @@ public sealed class RepairWebhookProviderBindingCommandHandler(
             consumer.Id);
         var ownership = await authorityService.VerifyOwnershipAsync(
             new WebhookProviderBindingOwnershipRequest(
-                request.TenantId,
+                consumer.Ownership,
                 consumer.Id,
                 expectedApplicationUid,
                 externalApplicationId,
@@ -130,17 +127,15 @@ public sealed class RepairWebhookProviderBindingCommandHandler(
                 request,
                 consumer,
                 existing,
-                actorReference,
-                actorUserId,
                 expectedApplicationUid,
                 externalApplicationId,
                 ownership.FailureCategory ?? "webhook_provider_binding_mismatched",
-                occurredAt,
+                profile.CapabilityProfile.ResolutionVersion,
                 cancellationToken);
             return Failure(
                 existing?.Id ?? consumer.Id,
                 ownership.FailureCategory ?? "webhook_provider_binding_mismatched",
-                "The provider application does not prove ownership by this tenant and consumer.");
+                "The provider application does not prove typed ownership by this consumer.");
         }
 
         var expectedBindingId = existing?.Id;
@@ -152,7 +147,7 @@ public sealed class RepairWebhookProviderBindingCommandHandler(
             if (expectedBindingId is { } bindingId)
             {
                 var tracked = await bindingRepository.GetByTenantAndIdForUpdateAsync(
-                    request.TenantId,
+                    consumer.TenantId,
                     bindingId,
                     token);
                 if (tracked is null ||
@@ -171,7 +166,7 @@ public sealed class RepairWebhookProviderBindingCommandHandler(
             else
             {
                 var racedBinding = await bindingRepository.GetByConsumerAsync(
-                    request.TenantId,
+                    consumer.TenantId,
                     consumer.Id,
                     profile.ProviderKind,
                     profile.ProviderEnvironment,
@@ -185,7 +180,7 @@ public sealed class RepairWebhookProviderBindingCommandHandler(
                 }
 
                 binding = WebhookConsumerProviderBinding.CreatePending(
-                    request.TenantId,
+                    consumer.TenantId,
                     consumer.Id,
                     bootstrap.Id,
                     profile.ProviderEnvironment,
@@ -197,7 +192,7 @@ public sealed class RepairWebhookProviderBindingCommandHandler(
             var previousApplicationIdHash = HashIdentity(binding.ExternalApplicationId);
             binding.RepairAndVerifyOwnership(
                 bootstrap.Id,
-                request.TenantId,
+                consumer.TenantId,
                 consumer.Id,
                 externalApplicationId,
                 profile.CapabilityProfile,
@@ -213,14 +208,34 @@ public sealed class RepairWebhookProviderBindingCommandHandler(
                 await bindingRepository.SaveChangesAsync(token);
             }
 
-            await auditLogRepository.Create(CreateSuccessAudit(
-                request,
-                binding,
-                actorReference,
-                actorUserId,
-                previousState,
-                previousApplicationIdHash,
-                occurredAt));
+            await auditWriter.AppendAsync(
+                new WebhookAuditWriteRequest(
+                    binding.TenantId,
+                    WebhookAuditAction.ProviderBindingRepairSucceeded,
+                    WebhookAuditTargetKind.ProviderBinding,
+                    binding.Id,
+                    request.ReasonCode,
+                    WebhookAuditOutcome.Succeeded,
+                    SafeBeforeJson: JsonSerializer.Serialize(new
+                    {
+                        verificationState = previousState.ToString(),
+                        externalApplicationIdHash = previousApplicationIdHash
+                    }),
+                    SafeAfterJson: JsonSerializer.Serialize(new
+                    {
+                        consumerId = binding.WebhookConsumerId,
+                        binding.ApplicationUid,
+                        externalApplicationIdHash = HashIdentity(binding.ExternalApplicationId),
+                        verificationState = binding.VerificationState.ToString(),
+                        binding.ProviderVersion,
+                        binding.CapabilityResolutionVersion,
+                        binding.ConcurrencyVersion,
+                        binding.VerificationFence
+                    }),
+                    ConfigurationVersion: $"binding-v{binding.ConcurrencyVersion}:fence-{binding.VerificationFence}",
+                    EffectiveScopeKind: consumer.Ownership.AuditScopeKind,
+                    EffectiveScopeId: consumer.OwnerId),
+                token);
 
             return Success(binding.Id, "Webhook provider binding verified.");
         }, cancellationToken);
@@ -230,110 +245,49 @@ public sealed class RepairWebhookProviderBindingCommandHandler(
         RepairWebhookProviderBindingCommand request,
         WebhookConsumer consumer,
         WebhookConsumerProviderBinding? binding,
-        string actorReference,
-        Guid? actorUserId,
         string expectedApplicationUid,
         string externalApplicationId,
         string failureCategory,
-        DateTime occurredAt,
+        string capabilityResolutionVersion,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        await auditLogRepository.Create(new AuditLog
-        {
-            Id = Guid.CreateVersion7(),
-            TenantId = request.TenantId,
-            Tenant = null!,
-            EntityType = nameof(WebhookConsumerProviderBinding),
-            EntityId = (binding?.Id ?? consumer.Id).ToString("D"),
-            Action = RejectedAuditAction,
-            OldValues = null,
-            NewValues = JsonSerializer.Serialize(new
-            {
-                consumerId = consumer.Id,
-                providerBindingId = binding?.Id,
-                expectedApplicationUid,
-                requestedApplicationIdHash = HashIdentity(externalApplicationId),
-                actorReference,
-                reasonCode = request.ReasonCode.Trim(),
-                outcome = "rejected",
-                failureCategory
-            }),
-            AffectedColumns = JsonSerializer.Serialize(Array.Empty<string>()),
-            ActorId = actorUserId,
-            Timestamp = occurredAt
-        });
+        await auditWriter.AppendAsync(
+            new WebhookAuditWriteRequest(
+                consumer.TenantId,
+                WebhookAuditAction.ProviderBindingRepairRejected,
+                binding is null
+                    ? WebhookAuditTargetKind.Consumer
+                    : WebhookAuditTargetKind.ProviderBinding,
+                binding?.Id ?? consumer.Id,
+                request.ReasonCode,
+                WebhookAuditOutcome.Rejected,
+                SafeAfterJson: JsonSerializer.Serialize(new
+                {
+                    consumerId = consumer.Id,
+                    providerBindingId = binding?.Id,
+                    expectedApplicationUid,
+                    requestedApplicationIdHash = HashIdentity(externalApplicationId),
+                    failureCategory
+                }),
+                ConfigurationVersion: capabilityResolutionVersion,
+                EffectiveScopeKind: consumer.Ownership.AuditScopeKind,
+                EffectiveScopeId: consumer.OwnerId),
+            cancellationToken);
     }
 
-    private static AuditLog CreateSuccessAudit(
-        RepairWebhookProviderBindingCommand request,
-        WebhookConsumerProviderBinding binding,
-        string actorReference,
-        Guid? actorUserId,
-        WebhookProviderBindingVerificationState previousState,
-        string? previousApplicationIdHash,
-        DateTime occurredAt) =>
-        new()
-        {
-            Id = Guid.CreateVersion7(),
-            TenantId = binding.TenantId,
-            Tenant = null!,
-            EntityType = nameof(WebhookConsumerProviderBinding),
-            EntityId = binding.Id.ToString("D"),
-            Action = AuditAction,
-            OldValues = JsonSerializer.Serialize(new
-            {
-                verificationState = previousState.ToString(),
-                externalApplicationIdHash = previousApplicationIdHash
-            }),
-            NewValues = JsonSerializer.Serialize(new
-            {
-                consumerId = binding.WebhookConsumerId,
-                binding.ApplicationUid,
-                externalApplicationIdHash = HashIdentity(binding.ExternalApplicationId),
-                verificationState = binding.VerificationState.ToString(),
-                binding.ProviderVersion,
-                binding.CapabilityResolutionVersion,
-                binding.ConcurrencyVersion,
-                binding.VerificationFence,
-                actorReference,
-                reasonCode = request.ReasonCode.Trim(),
-                outcome = "verified"
-            }),
-            AffectedColumns = JsonSerializer.Serialize(new[]
-            {
-                nameof(WebhookConsumerProviderBinding.InstanceId),
-                nameof(WebhookConsumerProviderBinding.ApplicationUid),
-                nameof(WebhookConsumerProviderBinding.ExternalApplicationId),
-                nameof(WebhookConsumerProviderBinding.VerificationStateId),
-                nameof(WebhookConsumerProviderBinding.VerifiedTenantId),
-                nameof(WebhookConsumerProviderBinding.VerifiedWebhookConsumerId),
-                nameof(WebhookConsumerProviderBinding.IsEnabled),
-                nameof(WebhookConsumerProviderBinding.ConcurrencyVersion),
-                nameof(WebhookConsumerProviderBinding.VerificationFence)
-            }),
-            ActorId = actorUserId,
-            Timestamp = occurredAt
-        };
-
-    private bool TryResolveActor(out string actorReference, out Guid? actorUserId)
+    private bool HasAuthenticatedActor()
     {
-        if (currentUserService.UserId is { } userId)
+        if (currentUserService.UserId is not null)
         {
-            actorReference = $"user:{userId:D}";
-            actorUserId = userId;
             return true;
         }
 
-        if (machinePrincipalAccessor.Current is { } machine)
+        if (machinePrincipalAccessor.Current is not null)
         {
-            actorReference = $"machine:{machine.OwnerType}:{machine.OwnerId:D}";
-            actorUserId = null;
             return true;
         }
 
-        actorReference = string.Empty;
-        actorUserId = null;
         return false;
     }
 

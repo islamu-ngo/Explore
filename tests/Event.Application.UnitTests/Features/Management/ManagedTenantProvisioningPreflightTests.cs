@@ -8,8 +8,8 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Management;
 using Explore.Application.Features.ControlPlane.Plans;
 using Explore.Application.Features.Management;
-using Explore.Application.Features.Management.Handlers;
-using Explore.Application.Features.Management.Requests;
+using Explore.Application.Features.Management.Handlers.Queries;
+using Explore.Application.Features.Management.Requests.Queries;
 using Explore.Application.Management;
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -113,10 +113,10 @@ public sealed class ManagedTenantProvisioningPreflightTests
     {
         var fixture = new PreflightFixture();
         JsonObject request = JsonSerializer.SerializeToNode(fixture.Request)!.AsObject();
-        request[nameof(ManagementTenantProvisioningRequest.Administrator)]!
+        request[nameof(ManagementTenantProvisioningRequestDto.Administrator)]!
             .AsObject()["unexpected"] = true;
 
-        await Assert.That(() => request.Deserialize<ManagementTenantProvisioningRequest>())
+        await Assert.That(() => request.Deserialize<ManagementTenantProvisioningRequestDto>())
             .Throws<JsonException>();
     }
 
@@ -207,7 +207,7 @@ public sealed class ManagedTenantProvisioningPreflightTests
         public Guid ManagedInstanceId { get; }
         public Guid EventInstanceId { get; }
         public Guid PlanVersionId { get; }
-        public ManagementTenantProvisioningRequest Request { get; private set; }
+        public ManagementTenantProvisioningRequestDto Request { get; private set; }
         public GetManagedTenantProvisioningPreflightQueryHandler Handler { get; }
         public IManagedControlPlaneRegistrationRepository RegistrationRepository { get; }
         public ITenantRepository TenantRepository { get; }
@@ -329,7 +329,7 @@ public sealed class ManagedTenantProvisioningPreflightTests
             CreatedAt = DateTime.UtcNow
         };
 
-        private static ManagementTenantProvisioningRequest CreateRequest(Guid planVersionId) => new()
+        private static ManagementTenantProvisioningRequestDto CreateRequest(Guid planVersionId) => new()
         {
             ExternalRequestId = "request-1",
             ExternalCustomerReference = "customer-1",

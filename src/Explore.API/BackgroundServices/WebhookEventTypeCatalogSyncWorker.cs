@@ -27,9 +27,11 @@ public sealed class WebhookEventTypeCatalogSyncWorker(
         {
             logger.LogDebug("Webhook event type catalog sync stopped before completion");
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            logger.LogWarning(ex, "Webhook event type catalog sync failed");
+            logger.LogWarning(
+                "Webhook event type catalog sync failed. FailureType={FailureType}",
+                exception.GetType().Name);
         }
     }
 }

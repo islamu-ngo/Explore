@@ -14,10 +14,13 @@ internal static class WebhookDeliveryAttemptDtoMapper
         var endpointStatus = NormalizedLookupMetadata.WebhookEndpointStatus(
             attempt.Endpoint?.StatusId ?? (int)WebhookEndpointStatus.Archived);
         var outcome = NormalizedLookupMetadata.WebhookDeliveryAttemptOutcome(attempt.OutcomeId);
+        var consumer = attempt.Endpoint?.Consumer;
         return new()
         {
             Id = attempt.Id,
             TenantId = attempt.TenantId,
+            OwnerKindId = consumer?.ConsumerKindId ?? (int)WebhookConsumerKind.Tenant,
+            OwnerId = consumer?.OwnerId ?? attempt.TenantId,
             MessageId = attempt.MessageId,
             MessageEventType = attempt.Message?.EventType,
             EndpointId = attempt.EndpointId,

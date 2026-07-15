@@ -47,7 +47,12 @@ public sealed class WebhookExactPayloadPersistenceTests
             null,
             now,
             now,
-            now.AddDays(14));
+            now.AddDays(14),
+            "webhook-retention-test-v1",
+            now.AddDays(30),
+            now.AddDays(90),
+            now.AddDays(14),
+            now.AddDays(30));
 
         await Assert.That(outbound.GetPayloadBytes()).IsEquivalentTo(exactBytes);
         await Assert.That(inbound.PayloadBytes.ToArray()).IsEquivalentTo(exactBytes);

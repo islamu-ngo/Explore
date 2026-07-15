@@ -1,5 +1,5 @@
-// ABOUTME: Handles tenant-scoped webhook endpoint detail queries.
-// ABOUTME: Returns null for missing rows and maps found endpoints into secret-safe DTOs.
+// ABOUTME: Handles persisted-owner webhook endpoint detail queries.
+// ABOUTME: Uses the owner-operation boundary and maps found endpoints into secret-safe DTOs.
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Webhooks;
@@ -16,14 +16,14 @@ public sealed class GetWebhookEndpointByIdQueryHandler(
         GetWebhookEndpointByIdQuery request,
         CancellationToken cancellationToken)
     {
-        if (request.TenantId == Guid.Empty || request.EndpointId == Guid.Empty)
+        if (request.EndpointId == Guid.Empty)
         {
             return null;
         }
 
-        var endpoint = await endpointRepository.GetByTenantAndIdAsync(
-            request.TenantId,
+        var endpoint = await endpointRepository.GetByIdForOwnerOperationAsync(
             request.EndpointId,
+            forUpdate: false,
             cancellationToken);
 
         return endpoint is null

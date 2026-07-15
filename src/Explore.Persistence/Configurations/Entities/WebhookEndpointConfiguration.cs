@@ -1,8 +1,9 @@
-// ABOUTME: EF Core configuration for webhook endpoints managed by LocalProvider or mirrored from Svix.
-// ABOUTME: Enforces tenant-safe consumer ownership and indexes provider endpoint lookup state.
+// ABOUTME: EF Core configuration for owner-scoped webhook endpoints managed locally or mirrored from Svix.
+// ABOUTME: Enforces one instance-or-tenant query scope and a typed consumer relationship.
 
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Explore.Persistence.Configurations.Entities;
@@ -16,10 +17,23 @@ public class WebhookEndpointConfiguration : IEntityTypeConfiguration<WebhookEndp
             table.HasCheckConstraint(
                 "ck_webhook_endpoints_configuration_version",
                 "configuration_version > 0");
+            table.HasCheckConstraint(
+                "ck_webhook_endpoints_configuration_scope",
+                "(tenant_id IS NOT NULL AND instance_id IS NULL) OR (tenant_id IS NULL AND instance_id IS NOT NULL)");
+            table.HasCheckConstraint(
+                "ck_webhook_endpoints_configuration_scope_key",
+                "configuration_scope_id = COALESCE(tenant_id, instance_id)");
         });
 
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(e => e.Url).HasMaxLength(2048).IsRequired();
+        var configurationScope = builder.Property(e => e.ConfigurationScopeId);
+        configurationScope
+            .HasComputedColumnSql("COALESCE(tenant_id, instance_id)", stored: true)
+            .ValueGeneratedOnAdd()
+            .IsRequired()
+            .UsePropertyAccessMode(PropertyAccessMode.Property);
+        configurationScope.Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
         builder.Property(e => e.Description).HasMaxLength(1000);
         builder.Property(e => e.StatusId).IsRequired();
         builder.Ignore(e => e.Status);
@@ -35,19 +49,24 @@ public class WebhookEndpointConfiguration : IEntityTypeConfiguration<WebhookEndp
         builder.Property(e => e.AutoPauseReason).HasMaxLength(100);
         builder.Property(e => e.DeliveryStateVersion).HasDefaultValue(0).IsConcurrencyToken();
 
-        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
-            .HasName("ak_webhook_endpoints_tenant_id_id");
-
         builder.HasOne(e => e.Tenant)
             .WithMany()
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(e => e.Instance)
+            .WithMany()
+            .HasForeignKey(e => e.InstanceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasOne(e => e.Consumer)
             .WithMany()
-            .HasForeignKey(e => new { e.TenantId, e.ConsumerId })
-            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .HasForeignKey(e => new { e.ConfigurationScopeId, e.ConsumerId })
+            .HasPrincipalKey(e => new { e.ConfigurationScopeId, e.Id })
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasAlternateKey(e => new { e.ConfigurationScopeId, e.Id })
+            .HasName("ak_webhook_endpoints_configuration_scope_id");
 
         builder.HasOne(e => e.StatusLookup)
             .WithMany()
@@ -57,12 +76,21 @@ public class WebhookEndpointConfiguration : IEntityTypeConfiguration<WebhookEndp
         builder.HasIndex(e => new { e.TenantId, e.ConsumerId, e.StatusId })
             .HasDatabaseName("ix_webhook_endpoints_tenant_consumer_status");
 
+        builder.HasIndex(e => new { e.InstanceId, e.ConsumerId, e.StatusId })
+            .HasDatabaseName("ix_webhook_endpoints_instance_consumer_status")
+            .HasFilter("instance_id IS NOT NULL");
+
         builder.HasIndex(e => new { e.TenantId, e.StatusId, e.Id })
             .HasDatabaseName("ix_webhook_endpoints_status_tenant_id");
 
         builder.HasIndex(e => new { e.TenantId, e.ProviderEndpointId })
             .HasDatabaseName("ux_webhook_endpoints_tenant_provider_endpoint")
             .IsUnique()
-            .HasFilter("provider_endpoint_id IS NOT NULL");
+            .HasFilter("tenant_id IS NOT NULL AND provider_endpoint_id IS NOT NULL");
+
+        builder.HasIndex(e => new { e.InstanceId, e.ProviderEndpointId })
+            .HasDatabaseName("ux_webhook_endpoints_instance_provider_endpoint")
+            .IsUnique()
+            .HasFilter("instance_id IS NOT NULL AND provider_endpoint_id IS NOT NULL");
     }
 }

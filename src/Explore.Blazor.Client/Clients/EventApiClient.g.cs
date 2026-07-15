@@ -3862,7 +3862,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<TriggerManagedRegistrationResult> TriggerManagementRegistrationAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<TriggerManagedRegistrationResultDto> TriggerManagementRegistrationAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -3900,7 +3900,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ManagementUpgradePreflightDto> EvaluateManagementUpgradePreflightAsync(ManagementUpgradePreflightRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<ManagementUpgradePreflightDto> EvaluateManagementUpgradePreflightAsync(ManagementUpgradePreflightRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -3911,7 +3911,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ManagementUpgradePostflightDto> VerifyManagementUpgradePostflightAsync(ManagementUpgradePostflightRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<ManagementUpgradePostflightDto> VerifyManagementUpgradePostflightAsync(ManagementUpgradePostflightRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -3922,7 +3922,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ManagementTenantProvisioningPreflightDto> EvaluateManagedTenantProvisioningPreflightAsync(ManagementTenantProvisioningRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<ManagementTenantProvisioningPreflightDto> EvaluateManagedTenantProvisioningPreflightAsync(ManagementTenantProvisioningRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -3933,7 +3933,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>Accepted</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ManagementTenantProvisioningOperationDto> ScheduleManagedTenantProvisioningAsync(ManagementTenantProvisioningRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<ManagementTenantProvisioningOperationDto> ScheduleManagedTenantProvisioningAsync(ManagementTenantProvisioningRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -3966,7 +3966,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>No Content</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task RotateManagedControlPlaneCredentialAsync(RotateManagedControlPlaneCredentialRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task RotateManagedControlPlaneCredentialAsync(RotateManagedControlPlaneCredentialRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -5626,7 +5626,7 @@ namespace Explore.Blazor.Client.Clients
         /// Get current user's admin authority
         /// </summary>
         /// <remarks>
-        /// Returns instance, tenant, and organization admin status for the authenticated user. Consumed by BFF claims transformation.
+        /// Returns instance, tenant, organization, and group admin status for the authenticated user. Consumed by BFF and route authorization.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -5749,6 +5749,72 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Preview webhook bulk replay
+        /// </summary>
+        /// <remarks>
+        /// Returns bounded eligible and excluded counts without changing delivery state.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<WebhookBulkReplayPreviewDto> PreviewWebhookBulkReplayAsync(System.DateTimeOffset? fromUtc = null, System.DateTimeOffset? toUtc = null, System.Guid? consumerId = null, System.Guid? endpointId = null, string? eventType = null, int? maxItems = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get webhook bulk replays
+        /// </summary>
+        /// <remarks>
+        /// Returns recent tenant-scoped durable replay operations and state-authorized HAL actions.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalCollectionResourceOfWebhookBulkReplayOperationDto> GetWebhookBulkReplaysAsync(int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Schedule webhook bulk replay
+        /// </summary>
+        /// <remarks>
+        /// Queues an idempotent bounded replay after re-running the requested eligibility preview.
+        /// </remarks>
+        /// <returns>Accepted</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ScheduleWebhookBulkReplayAsync(ScheduleWebhookBulkReplayRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get webhook bulk replay
+        /// </summary>
+        /// <remarks>
+        /// Returns one tenant-scoped durable replay operation with normalized lifecycle evidence.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfWebhookBulkReplayOperationDto> GetWebhookBulkReplayByIdAsync(System.Guid operationId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Cancel webhook bulk replay
+        /// </summary>
+        /// <remarks>
+        /// Cancels a queued replay using the caller's observed optimistic concurrency version.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> CancelWebhookBulkReplayAsync(System.Guid operationId, CancelWebhookBulkReplayRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Pause webhook endpoint
+        /// </summary>
+        /// <remarks>
+        /// Manually pauses an active tenant-scoped Local webhook endpoint.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> PauseWebhookEndpointAsync(System.Guid endpointId, PauseWebhookEndpointRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Resume webhook endpoint
         /// </summary>
         /// <remarks>
@@ -5756,7 +5822,51 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ResumeWebhookEndpointAsync(System.Guid endpointId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ResumeWebhookEndpointAsync(System.Guid endpointId, ResumeWebhookEndpointRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get provider publications
+        /// </summary>
+        /// <remarks>
+        /// Returns bounded tenant-scoped provider publication evidence with state-authorized HAL actions.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalCollectionResourceOfWebhookProviderPublicationDto> GetWebhookProviderPublicationsAsync(System.Guid? messageId = null, System.Guid? consumerId = null, int? statusId = null, int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get provider publication
+        /// </summary>
+        /// <remarks>
+        /// Returns one tenant-scoped provider publication and its append-only safe attempt evidence.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfWebhookProviderPublicationDto> GetWebhookProviderPublicationByIdAsync(System.Guid publicationId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Reconcile provider publication
+        /// </summary>
+        /// <remarks>
+        /// Resolves manual publication uncertainty using an exact external provider message identifier.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ReconcileWebhookProviderPublicationAsync(System.Guid publicationId, ReconcileWebhookProviderPublicationRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Abandon provider publication
+        /// </summary>
+        /// <remarks>
+        /// Explicitly abandons manual-reconciliation or dead-lettered provider work.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> AbandonWebhookProviderPublicationAsync(System.Guid publicationId, AbandonWebhookProviderPublicationRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -5774,11 +5884,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get webhook consumers
         /// </summary>
         /// <remarks>
-        /// Returns tenant-scoped outgoing webhook consumers with HAL management affordances.
+        /// Returns outgoing webhook consumers for one typed owner with HAL management affordances.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalCollectionResourceOfWebhookConsumerDto> GetWebhookConsumersAsync(int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalCollectionResourceOfWebhookConsumerDto> GetWebhookConsumersAsync(int? ownerKindId = null, System.Guid? ownerId = null, int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -5796,11 +5906,22 @@ namespace Explore.Blazor.Client.Clients
         /// Get webhook consumer
         /// </summary>
         /// <remarks>
-        /// Returns one tenant-scoped outgoing webhook consumer with HAL management affordances.
+        /// Returns one owner-authorized outgoing webhook consumer with HAL management affordances.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<HalResourceOfWebhookConsumerDto> GetWebhookConsumerByIdAsync(System.Guid consumerId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Change webhook consumer provider mode
+        /// </summary>
+        /// <remarks>
+        /// Changes the provider mode for new deliveries while preserving already materialized work on its immutable delivery snapshots.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateWebhookConsumerProviderModeAsync(System.Guid consumerId, UpdateWebhookConsumerProviderModeRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -5818,18 +5939,18 @@ namespace Explore.Blazor.Client.Clients
         /// Get webhook endpoints
         /// </summary>
         /// <remarks>
-        /// Returns tenant-scoped outgoing webhook endpoints with HAL management affordances.
+        /// Returns outgoing webhook endpoints for one typed owner with HAL management affordances.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalCollectionResourceOfWebhookEndpointDto> GetWebhookEndpointsAsync(System.Guid? consumerId = null, int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalCollectionResourceOfWebhookEndpointDto> GetWebhookEndpointsAsync(int? ownerKindId = null, System.Guid? ownerId = null, System.Guid? consumerId = null, int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Create webhook endpoint
         /// </summary>
         /// <remarks>
-        /// Creates a tenant-scoped outgoing webhook endpoint and event type subscriptions.
+        /// Creates an outgoing webhook endpoint that inherits its persisted consumer owner.
         /// </remarks>
         /// <returns>Created</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -5840,7 +5961,7 @@ namespace Explore.Blazor.Client.Clients
         /// Get webhook endpoint
         /// </summary>
         /// <remarks>
-        /// Returns one tenant-scoped outgoing webhook endpoint with subscription metadata.
+        /// Returns one owner-authorized outgoing webhook endpoint with subscription metadata.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -5910,7 +6031,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalCollectionResourceOfWebhookMessageDto> GetWebhookMessagesAsync(int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalCollectionResourceOfWebhookMessageDto> GetWebhookMessagesAsync(int? ownerKindId = null, System.Guid? ownerId = null, int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -5925,6 +6046,17 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Get webhook message payload
+        /// </summary>
+        /// <remarks>
+        /// Returns separately authorized exact outgoing webhook payload bytes as base64 while retained.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<WebhookMessagePayloadDto> GetWebhookMessagePayloadAsync(System.Guid messageId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get webhook delivery attempts
         /// </summary>
         /// <remarks>
@@ -5932,7 +6064,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalCollectionResourceOfWebhookDeliveryAttemptDto> GetWebhookDeliveryAttemptsAsync(System.Guid? messageId = null, System.Guid? endpointId = null, int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalCollectionResourceOfWebhookDeliveryAttemptDto> GetWebhookDeliveryAttemptsAsync(int? ownerKindId = null, System.Guid? ownerId = null, System.Guid? messageId = null, System.Guid? endpointId = null, int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -48656,7 +48788,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<TriggerManagedRegistrationResult> TriggerManagementRegistrationAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<TriggerManagedRegistrationResultDto> TriggerManagementRegistrationAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -48707,7 +48839,7 @@ namespace Explore.Blazor.Client.Clients
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<TriggerManagedRegistrationResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<TriggerManagedRegistrationResultDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -48717,7 +48849,7 @@ namespace Explore.Blazor.Client.Clients
                         else
                         if (status_ == 202)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<TriggerManagedRegistrationResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<TriggerManagedRegistrationResultDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -49035,7 +49167,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ManagementUpgradePreflightDto> EvaluateManagementUpgradePreflightAsync(ManagementUpgradePreflightRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<ManagementUpgradePreflightDto> EvaluateManagementUpgradePreflightAsync(ManagementUpgradePreflightRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (body == null)
                 throw new System.ArgumentNullException("body");
@@ -49158,7 +49290,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ManagementUpgradePostflightDto> VerifyManagementUpgradePostflightAsync(ManagementUpgradePostflightRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<ManagementUpgradePostflightDto> VerifyManagementUpgradePostflightAsync(ManagementUpgradePostflightRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (body == null)
                 throw new System.ArgumentNullException("body");
@@ -49281,7 +49413,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ManagementTenantProvisioningPreflightDto> EvaluateManagedTenantProvisioningPreflightAsync(ManagementTenantProvisioningRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<ManagementTenantProvisioningPreflightDto> EvaluateManagedTenantProvisioningPreflightAsync(ManagementTenantProvisioningRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (body == null)
                 throw new System.ArgumentNullException("body");
@@ -49424,7 +49556,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>Accepted</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ManagementTenantProvisioningOperationDto> ScheduleManagedTenantProvisioningAsync(ManagementTenantProvisioningRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<ManagementTenantProvisioningOperationDto> ScheduleManagedTenantProvisioningAsync(ManagementTenantProvisioningRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (body == null)
                 throw new System.ArgumentNullException("body");
@@ -49829,7 +49961,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>No Content</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task RotateManagedControlPlaneCredentialAsync(RotateManagedControlPlaneCredentialRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task RotateManagedControlPlaneCredentialAsync(RotateManagedControlPlaneCredentialRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (body == null)
                 throw new System.ArgumentNullException("body");
@@ -67388,7 +67520,7 @@ namespace Explore.Blazor.Client.Clients
         /// Get current user's admin authority
         /// </summary>
         /// <remarks>
-        /// Returns instance, tenant, and organization admin status for the authenticated user. Consumed by BFF claims transformation.
+        /// Returns instance, tenant, organization, and group admin status for the authenticated user. Consumed by BFF and route authorization.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -68579,17 +68711,247 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Resume webhook endpoint
+        /// Preview webhook bulk replay
         /// </summary>
         /// <remarks>
-        /// Resumes a tenant-scoped Local webhook endpoint after its sustained-failure circuit auto-paused delivery.
+        /// Returns bounded eligible and excluded counts without changing delivery state.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ResumeWebhookEndpointAsync(System.Guid endpointId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<WebhookBulkReplayPreviewDto> PreviewWebhookBulkReplayAsync(System.DateTimeOffset? fromUtc = null, System.DateTimeOffset? toUtc = null, System.Guid? consumerId = null, System.Guid? endpointId = null, string? eventType = null, int? maxItems = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
-            if (endpointId == null)
-                throw new System.ArgumentNullException("endpointId");
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/webhooks/bulk-replays/preview"
+                    urlBuilder_.Append("api/webhooks/bulk-replays/preview");
+                    urlBuilder_.Append('?');
+                    if (fromUtc != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("fromUtc")).Append('=').Append(System.Uri.EscapeDataString(fromUtc.Value.ToString("s", System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (toUtc != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("toUtc")).Append('=').Append(System.Uri.EscapeDataString(toUtc.Value.ToString("s", System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (consumerId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("consumerId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(consumerId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (endpointId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("endpointId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(endpointId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (eventType != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("eventType")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(eventType, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (maxItems != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("maxItems")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(maxItems, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<WebhookBulkReplayPreviewDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get webhook bulk replays
+        /// </summary>
+        /// <remarks>
+        /// Returns recent tenant-scoped durable replay operations and state-authorized HAL actions.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfWebhookBulkReplayOperationDto> GetWebhookBulkReplaysAsync(int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/webhooks/bulk-replays"
+                    urlBuilder_.Append("api/webhooks/bulk-replays");
+                    urlBuilder_.Append('?');
+                    if (limit != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("limit")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(limit, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalCollectionResourceOfWebhookBulkReplayOperationDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Schedule webhook bulk replay
+        /// </summary>
+        /// <remarks>
+        /// Queues an idempotent bounded replay after re-running the requested eligibility preview.
+        /// </remarks>
+        /// <returns>Accepted</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ScheduleWebhookBulkReplayAsync(ScheduleWebhookBulkReplayRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (body == null)
+                throw new System.ArgumentNullException("body");
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -68600,7 +68962,512 @@ namespace Explore.Blazor.Client.Clients
 
                     if (x_Api_Version != null)
                         request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
-                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/webhooks/bulk-replays"
+                    urlBuilder_.Append("api/webhooks/bulk-replays");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 202)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get webhook bulk replay
+        /// </summary>
+        /// <remarks>
+        /// Returns one tenant-scoped durable replay operation with normalized lifecycle evidence.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfWebhookBulkReplayOperationDto> GetWebhookBulkReplayByIdAsync(System.Guid operationId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (operationId == null)
+                throw new System.ArgumentNullException("operationId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/webhooks/bulk-replays/{operationId}"
+                    urlBuilder_.Append("api/webhooks/bulk-replays/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(operationId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfWebhookBulkReplayOperationDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Cancel webhook bulk replay
+        /// </summary>
+        /// <remarks>
+        /// Cancels a queued replay using the caller's observed optimistic concurrency version.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> CancelWebhookBulkReplayAsync(System.Guid operationId, CancelWebhookBulkReplayRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (operationId == null)
+                throw new System.ArgumentNullException("operationId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/webhooks/bulk-replays/{operationId}/cancel"
+                    urlBuilder_.Append("api/webhooks/bulk-replays/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(operationId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/cancel");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Pause webhook endpoint
+        /// </summary>
+        /// <remarks>
+        /// Manually pauses an active tenant-scoped Local webhook endpoint.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> PauseWebhookEndpointAsync(System.Guid endpointId, PauseWebhookEndpointRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (endpointId == null)
+                throw new System.ArgumentNullException("endpointId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/webhooks/endpoints/{endpointId}/pause"
+                    urlBuilder_.Append("api/webhooks/endpoints/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(endpointId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/pause");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Resume webhook endpoint
+        /// </summary>
+        /// <remarks>
+        /// Resumes a tenant-scoped Local webhook endpoint after its sustained-failure circuit auto-paused delivery.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ResumeWebhookEndpointAsync(System.Guid endpointId, ResumeWebhookEndpointRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (endpointId == null)
+                throw new System.ArgumentNullException("endpointId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
@@ -68678,6 +69545,484 @@ namespace Explore.Blazor.Client.Clients
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get provider publications
+        /// </summary>
+        /// <remarks>
+        /// Returns bounded tenant-scoped provider publication evidence with state-authorized HAL actions.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfWebhookProviderPublicationDto> GetWebhookProviderPublicationsAsync(System.Guid? messageId = null, System.Guid? consumerId = null, int? statusId = null, int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/webhooks/provider-publications"
+                    urlBuilder_.Append("api/webhooks/provider-publications");
+                    urlBuilder_.Append('?');
+                    if (messageId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("messageId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(messageId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (consumerId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("consumerId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(consumerId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (statusId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("statusId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(statusId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (limit != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("limit")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(limit, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalCollectionResourceOfWebhookProviderPublicationDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get provider publication
+        /// </summary>
+        /// <remarks>
+        /// Returns one tenant-scoped provider publication and its append-only safe attempt evidence.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfWebhookProviderPublicationDto> GetWebhookProviderPublicationByIdAsync(System.Guid publicationId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (publicationId == null)
+                throw new System.ArgumentNullException("publicationId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/webhooks/provider-publications/{publicationId}"
+                    urlBuilder_.Append("api/webhooks/provider-publications/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(publicationId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfWebhookProviderPublicationDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Reconcile provider publication
+        /// </summary>
+        /// <remarks>
+        /// Resolves manual publication uncertainty using an exact external provider message identifier.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> ReconcileWebhookProviderPublicationAsync(System.Guid publicationId, ReconcileWebhookProviderPublicationRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (publicationId == null)
+                throw new System.ArgumentNullException("publicationId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/webhooks/provider-publications/{publicationId}/reconcile"
+                    urlBuilder_.Append("api/webhooks/provider-publications/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(publicationId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/reconcile");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Abandon provider publication
+        /// </summary>
+        /// <remarks>
+        /// Explicitly abandons manual-reconciliation or dead-lettered provider work.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> AbandonWebhookProviderPublicationAsync(System.Guid publicationId, AbandonWebhookProviderPublicationRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (publicationId == null)
+                throw new System.ArgumentNullException("publicationId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/webhooks/provider-publications/{publicationId}/abandon"
+                    urlBuilder_.Append("api/webhooks/provider-publications/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(publicationId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/abandon");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
                         if (status_ == 404)
@@ -68810,11 +70155,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get webhook consumers
         /// </summary>
         /// <remarks>
-        /// Returns tenant-scoped outgoing webhook consumers with HAL management affordances.
+        /// Returns outgoing webhook consumers for one typed owner with HAL management affordances.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfWebhookConsumerDto> GetWebhookConsumersAsync(int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfWebhookConsumerDto> GetWebhookConsumersAsync(int? ownerKindId = null, System.Guid? ownerId = null, int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -68833,6 +70178,14 @@ namespace Explore.Blazor.Client.Clients
                     // Operation Path: "api/webhooks/consumers"
                     urlBuilder_.Append("api/webhooks/consumers");
                     urlBuilder_.Append('?');
+                    if (ownerKindId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("ownerKindId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(ownerKindId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (ownerId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("ownerId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(ownerId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
                     if (limit != null)
                     {
                         urlBuilder_.Append(System.Uri.EscapeDataString("limit")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(limit, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
@@ -69053,7 +70406,7 @@ namespace Explore.Blazor.Client.Clients
         /// Get webhook consumer
         /// </summary>
         /// <remarks>
-        /// Returns one tenant-scoped outgoing webhook consumer with HAL management affordances.
+        /// Returns one owner-authorized outgoing webhook consumer with HAL management affordances.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -69147,6 +70500,154 @@ namespace Explore.Blazor.Client.Clients
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Change webhook consumer provider mode
+        /// </summary>
+        /// <remarks>
+        /// Changes the provider mode for new deliveries while preserving already materialized work on its immutable delivery snapshots.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateWebhookConsumerProviderModeAsync(System.Guid consumerId, UpdateWebhookConsumerProviderModeRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (consumerId == null)
+                throw new System.ArgumentNullException("consumerId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/webhooks/consumers/{consumerId}/provider-mode"
+                    urlBuilder_.Append("api/webhooks/consumers/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(consumerId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/provider-mode");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
                         {
@@ -69331,11 +70832,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get webhook endpoints
         /// </summary>
         /// <remarks>
-        /// Returns tenant-scoped outgoing webhook endpoints with HAL management affordances.
+        /// Returns outgoing webhook endpoints for one typed owner with HAL management affordances.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfWebhookEndpointDto> GetWebhookEndpointsAsync(System.Guid? consumerId = null, int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfWebhookEndpointDto> GetWebhookEndpointsAsync(int? ownerKindId = null, System.Guid? ownerId = null, System.Guid? consumerId = null, int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -69354,6 +70855,14 @@ namespace Explore.Blazor.Client.Clients
                     // Operation Path: "api/webhooks/endpoints"
                     urlBuilder_.Append("api/webhooks/endpoints");
                     urlBuilder_.Append('?');
+                    if (ownerKindId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("ownerKindId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(ownerKindId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (ownerId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("ownerId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(ownerId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
                     if (consumerId != null)
                     {
                         urlBuilder_.Append(System.Uri.EscapeDataString("consumerId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(consumerId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
@@ -69445,7 +70954,7 @@ namespace Explore.Blazor.Client.Clients
         /// Create webhook endpoint
         /// </summary>
         /// <remarks>
-        /// Creates a tenant-scoped outgoing webhook endpoint and event type subscriptions.
+        /// Creates an outgoing webhook endpoint that inherits its persisted consumer owner.
         /// </remarks>
         /// <returns>Created</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -69588,7 +71097,7 @@ namespace Explore.Blazor.Client.Clients
         /// Get webhook endpoint
         /// </summary>
         /// <remarks>
-        /// Returns one tenant-scoped outgoing webhook endpoint with subscription metadata.
+        /// Returns one owner-authorized outgoing webhook endpoint with subscription metadata.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
@@ -70417,7 +71926,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfWebhookMessageDto> GetWebhookMessagesAsync(int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfWebhookMessageDto> GetWebhookMessagesAsync(int? ownerKindId = null, System.Guid? ownerId = null, int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -70436,6 +71945,14 @@ namespace Explore.Blazor.Client.Clients
                     // Operation Path: "api/webhooks/messages"
                     urlBuilder_.Append("api/webhooks/messages");
                     urlBuilder_.Append('?');
+                    if (ownerKindId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("ownerKindId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(ownerKindId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (ownerId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("ownerId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(ownerId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
                     if (limit != null)
                     {
                         urlBuilder_.Append(System.Uri.EscapeDataString("limit")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(limit, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
@@ -70640,6 +72157,147 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Get webhook message payload
+        /// </summary>
+        /// <remarks>
+        /// Returns separately authorized exact outgoing webhook payload bytes as base64 while retained.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<WebhookMessagePayloadDto> GetWebhookMessagePayloadAsync(System.Guid messageId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (messageId == null)
+                throw new System.ArgumentNullException("messageId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/webhooks/messages/{messageId}/payload"
+                    urlBuilder_.Append("api/webhooks/messages/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(messageId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/payload");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<WebhookMessagePayloadDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 410)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Gone", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get webhook delivery attempts
         /// </summary>
         /// <remarks>
@@ -70647,7 +72305,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfWebhookDeliveryAttemptDto> GetWebhookDeliveryAttemptsAsync(System.Guid? messageId = null, System.Guid? endpointId = null, int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfWebhookDeliveryAttemptDto> GetWebhookDeliveryAttemptsAsync(int? ownerKindId = null, System.Guid? ownerId = null, System.Guid? messageId = null, System.Guid? endpointId = null, int? limit = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -70666,6 +72324,14 @@ namespace Explore.Blazor.Client.Clients
                     // Operation Path: "api/webhooks/delivery-attempts"
                     urlBuilder_.Append("api/webhooks/delivery-attempts");
                     urlBuilder_.Append('?');
+                    if (ownerKindId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("ownerKindId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(ownerKindId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (ownerId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("ownerId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(ownerId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
                     if (messageId != null)
                     {
                         urlBuilder_.Append(System.Uri.EscapeDataString("messageId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(messageId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
@@ -71293,6 +72959,28 @@ namespace Explore.Blazor.Client.Clients
             var result = System.Convert.ToString(value, cultureInfo);
             return result == null ? "" : result;
         }
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class AbandonWebhookProviderPublicationRequestDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("expectedConcurrencyVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? ExpectedConcurrencyVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reasonCode")]
+        public string? ReasonCode { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -71980,6 +73668,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("adminOrganizationIds")]
         public System.Collections.Generic.ICollection<System.Guid>? AdminOrganizationIds { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("adminGroupIds")]
+        public System.Collections.Generic.ICollection<System.Guid>? AdminGroupIds { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("hasAnyAuthority")]
         public bool? HasAnyAuthority { get; set; } = default!;
@@ -73638,6 +75329,29 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("expectedConcurrencyStamp")]
         public System.Guid? ExpectedConcurrencyStamp { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class CancelWebhookBulkReplayRequestDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("expectedConcurrencyVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? ExpectedConcurrencyVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reasonCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ReasonCode { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -77508,11 +79222,8 @@ namespace Explore.Blazor.Client.Clients
     public partial class CreateWebhookConsumerRequestDto
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("ownerActorId")]
-        public System.Guid? OwnerActorId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("ownerUserId")]
-        public System.Guid? OwnerUserId { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("ownerId")]
+        public System.Guid? OwnerId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("consumerKindId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -83034,8 +84745,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
         public System.DateTimeOffset? CreatedAt { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("currentUserRole")]
-        public int? CurrentUserRole { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("currentUserRoleId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? CurrentUserRoleId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("actorProfilePictureId")]
         public System.Guid? ActorProfilePictureId { get; set; } = default!;
@@ -83831,6 +85543,24 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalCollectionEmbeddedOfWebhookBulkReplayOperationDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("items")]
+        public System.Collections.Generic.ICollection<HalResourceOfWebhookBulkReplayOperationDto>? Items { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class HalCollectionEmbeddedOfWebhookConsumerDto
     {
 
@@ -83890,6 +85620,24 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("items")]
         public System.Collections.Generic.ICollection<HalResourceOfWebhookMessageDto>? Items { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalCollectionEmbeddedOfWebhookProviderPublicationDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("items")]
+        public System.Collections.Generic.ICollection<HalResourceOfWebhookProviderPublicationDto>? Items { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -85451,6 +87199,49 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalCollectionResourceOfWebhookBulkReplayOperationDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PageNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PageSize { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TotalCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TotalPages { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
+        public bool? HasPrevious { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
+        public bool? HasNext { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public HalCollectionEmbeddedOfWebhookBulkReplayOperationDto? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class HalCollectionResourceOfWebhookConsumerDto
     {
 
@@ -85610,6 +87401,49 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
         public HalCollectionEmbeddedOfWebhookMessageDto? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalCollectionResourceOfWebhookProviderPublicationDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PageNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PageSize { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TotalCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TotalPages { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasPrevious")]
+        public bool? HasPrevious { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasNext")]
+        public bool? HasNext { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public HalCollectionEmbeddedOfWebhookProviderPublicationDto? _embedded { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -89389,8 +91223,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
         public System.DateTimeOffset? CreatedAt { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("currentUserRole")]
-        public int? CurrentUserRole { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("currentUserRoleId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? CurrentUserRoleId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("actorProfilePictureId")]
         public System.Guid? ActorProfilePictureId { get; set; } = default!;
@@ -90540,8 +92375,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
         public System.DateTimeOffset? CreatedAt { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("currentUserRole")]
-        public int? CurrentUserRole { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("currentUserRoleId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? CurrentUserRoleId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("actorProfilePictureId")]
         public System.Guid? ActorProfilePictureId { get; set; } = default!;
@@ -91808,6 +93644,103 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfWebhookBulkReplayOperationDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("operationKey")]
+        public System.Guid? OperationKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? StatusId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string StatusCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string StatusName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("filter")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public WebhookBulkReplayFilterDto Filter { get; set; } = new WebhookBulkReplayFilterDto();
+
+        [System.Text.Json.Serialization.JsonPropertyName("reasonCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ReasonCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("cancellationReasonCode")]
+        public string? CancellationReasonCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("estimatedEligibleCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? EstimatedEligibleCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("estimatedSelectedCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? EstimatedSelectedCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("estimatedExcludedCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? EstimatedExcludedCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("scheduledCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ScheduledCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("failureCode")]
+        public string? FailureCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("concurrencyVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? ConcurrencyVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("queuedAt")]
+        public System.DateTimeOffset? QueuedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("startedAt")]
+        public System.DateTimeOffset? StartedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedAt")]
+        public System.DateTimeOffset? CompletedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("cancelledAt")]
+        public System.DateTimeOffset? CancelledAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("failedAt")]
+        public System.DateTimeOffset? FailedAt { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class HalResourceOfWebhookConsumerDto
     {
 
@@ -91817,11 +93750,20 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("ownerActorId")]
-        public System.Guid? OwnerActorId { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("instanceId")]
+        public System.Guid? InstanceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("organizationId")]
+        public System.Guid? OrganizationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("groupId")]
+        public System.Guid? GroupId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("ownerUserId")]
         public System.Guid? OwnerUserId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerId")]
+        public System.Guid? OwnerId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("consumerKindId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -91919,6 +93861,13 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerKindId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? OwnerKindId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerId")]
+        public System.Guid? OwnerId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("messageId")]
         public System.Guid? MessageId { get; set; } = default!;
@@ -92018,6 +93967,24 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("instanceId")]
+        public System.Guid? InstanceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerId")]
+        public System.Guid? OwnerId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerKindId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? OwnerKindId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerKindCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string OwnerKindCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerKindName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string OwnerKindName { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("consumerId")]
         public System.Guid? ConsumerId { get; set; } = default!;
@@ -92147,6 +94114,13 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("ownerKindId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? OwnerKindId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerId")]
+        public System.Guid? OwnerId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("eventType")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string EventType { get; set; } = default!;
@@ -92183,6 +94157,188 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("updatedAt")]
         public System.DateTimeOffset? UpdatedAt { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfWebhookProviderPublicationDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("webhookMessageId")]
+        public System.Guid? WebhookMessageId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("webhookConsumerId")]
+        public System.Guid? WebhookConsumerId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("webhookDeliveryPlanSnapshotId")]
+        public System.Guid? WebhookDeliveryPlanSnapshotId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerKindId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ProviderKindId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerKindCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ProviderKindCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerKindName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ProviderKindName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("modeSnapshotId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ModeSnapshotId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("modeSnapshotCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ModeSnapshotCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("modeSnapshotName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ModeSnapshotName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? StatusId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string StatusCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string StatusName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerVersion")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ProviderVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerEventId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ProviderEventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("requestHash")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string RequestHash { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerEnvironment")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ProviderEnvironment { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerApplicationId")]
+        public string? ProviderApplicationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("externalProviderMessageId")]
+        public string? ExternalProviderMessageId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("automaticPublicationAttemptCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? AutomaticPublicationAttemptCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("automaticReconciliationAttemptCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? AutomaticReconciliationAttemptCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lastAutomaticReconciliationAt")]
+        public System.DateTimeOffset? LastAutomaticReconciliationAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("nextActionAt")]
+        public System.DateTimeOffset? NextActionAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("failureCategory")]
+        public string? FailureCategory { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("safeDetail")]
+        public string? SafeDetail { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicationFence")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? PublicationFence { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("concurrencyVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? ConcurrencyVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventContractVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? EventContractVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerConfigurationVersion")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ProviderConfigurationVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("retentionPolicyVersion")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string RetentionPolicyVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("payloadRetentionUntil")]
+        public System.DateTimeOffset? PayloadRetentionUntil { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicationRetentionUntil")]
+        public System.DateTimeOffset? PublicationRetentionUntil { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("idempotencyValidUntil")]
+        public System.DateTimeOffset? IdempotencyValidUntil { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("preparedAt")]
+        public System.DateTimeOffset? PreparedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publishingStartedAt")]
+        public System.DateTimeOffset? PublishingStartedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerQueuedAt")]
+        public System.DateTimeOffset? ProviderQueuedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicationUnknownAt")]
+        public System.DateTimeOffset? PublicationUnknownAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("deadLetteredAt")]
+        public System.DateTimeOffset? DeadLetteredAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("manualReconciliationAt")]
+        public System.DateTimeOffset? ManualReconciliationAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("abandonedAt")]
+        public System.DateTimeOffset? AbandonedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("processingLeaseExpiresAt")]
+        public System.DateTimeOffset? ProcessingLeaseExpiresAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
+        public System.DateTimeOffset? CreatedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("updatedAt")]
+        public System.DateTimeOffset? UpdatedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("attempts")]
+        public System.Collections.Generic.ICollection<WebhookProviderPublicationAttemptDto>? Attempts { get; set; } = default!;
 
         /// <summary>
         /// HAL hypermedia links
@@ -94322,7 +96478,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class ManagementTenantProvisioningRequest
+    public partial class ManagementTenantProvisioningRequestDto
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("schemaVersion")]
@@ -94487,7 +96643,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class ManagementUpgradePostflightRequest
+    public partial class ManagementUpgradePostflightRequestDto
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("expectedEventVersion")]
@@ -94573,7 +96729,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class ManagementUpgradePreflightRequest
+    public partial class ManagementUpgradePreflightRequestDto
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("targetEventVersion")]
@@ -95841,9 +97997,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
         public System.DateTimeOffset? CreatedAt { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("currentUserRole")]
-        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<RoleEnum>))]
-        public RoleEnum? CurrentUserRole { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("currentUserRoleId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? CurrentUserRoleId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("actorProfilePictureId")]
         public System.Guid? ActorProfilePictureId { get; set; } = default!;
@@ -96455,6 +98611,28 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("hasNextPage")]
         public bool? HasNextPage { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PauseWebhookEndpointRequestDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("expectedDeliveryStateVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? ExpectedDeliveryStateVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reasonCode")]
+        public string? ReasonCode { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -97585,6 +99763,31 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ReconcileWebhookProviderPublicationRequestDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("expectedConcurrencyVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? ExpectedConcurrencyVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("externalProviderMessageId")]
+        public string? ExternalProviderMessageId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reasonCode")]
+        public string? ReasonCode { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RedriveIncomingWebhookRequestDto
     {
 
@@ -98093,6 +100296,28 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ResumeWebhookEndpointRequestDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("expectedDeliveryStateVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? ExpectedDeliveryStateVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reasonCode")]
+        public string? ReasonCode { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RetiredDefinitionDto
     {
 
@@ -98327,7 +100552,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class RotateManagedControlPlaneCredentialRequest
+    public partial class RotateManagedControlPlaneCredentialRequestDto
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("keyId")]
@@ -98462,6 +100687,32 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string? Description { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ScheduleWebhookBulkReplayRequestDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operationKey")]
+        public System.Guid? OperationKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("filter")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public WebhookBulkReplayFilterDto Filter { get; set; } = new WebhookBulkReplayFilterDto();
+
+        [System.Text.Json.Serialization.JsonPropertyName("reasonCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ReasonCode { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -101217,7 +103468,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class TriggerManagedRegistrationResult
+    public partial class TriggerManagedRegistrationResultDto
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("success")]
@@ -105686,6 +107937,40 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateWebhookConsumerProviderModeRequestDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ProviderModeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expectedConfigurationVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ExpectedConfigurationVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pendingWorkDecisionId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PendingWorkDecisionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("pendingWorkReason")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PendingWorkReason { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("acknowledgeUncertainProviderPublications")]
+        public bool? AcknowledgeUncertainProviderPublications { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UpdateWebhookEndpointRequestDto
     {
 
@@ -106264,6 +108549,199 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookBulkReplayFilterDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("fromUtc")]
+        public System.DateTimeOffset? FromUtc { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("toUtc")]
+        public System.DateTimeOffset? ToUtc { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("webhookConsumerId")]
+        public System.Guid? WebhookConsumerId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("webhookEndpointId")]
+        public System.Guid? WebhookEndpointId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventType")]
+        public string? EventType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxItems")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MaxItems { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookBulkReplayOperationDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("operationKey")]
+        public System.Guid? OperationKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? StatusId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string StatusCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string StatusName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("filter")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public WebhookBulkReplayFilterDto Filter { get; set; } = new WebhookBulkReplayFilterDto();
+
+        [System.Text.Json.Serialization.JsonPropertyName("reasonCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ReasonCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("cancellationReasonCode")]
+        public string? CancellationReasonCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("estimatedEligibleCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? EstimatedEligibleCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("estimatedSelectedCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? EstimatedSelectedCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("estimatedExcludedCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? EstimatedExcludedCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("scheduledCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ScheduledCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("failureCode")]
+        public string? FailureCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("concurrencyVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? ConcurrencyVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("queuedAt")]
+        public System.DateTimeOffset? QueuedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("startedAt")]
+        public System.DateTimeOffset? StartedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedAt")]
+        public System.DateTimeOffset? CompletedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("cancelledAt")]
+        public System.DateTimeOffset? CancelledAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("failedAt")]
+        public System.DateTimeOffset? FailedAt { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookBulkReplayPreviewDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("filter")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public WebhookBulkReplayFilterDto Filter { get; set; } = new WebhookBulkReplayFilterDto();
+
+        [System.Text.Json.Serialization.JsonPropertyName("eligibleCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? EligibleCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("estimatedSelectedCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? EstimatedSelectedCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("excludedCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ExcludedCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("excludedHeldCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ExcludedHeldCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("excludedPayloadUnavailableCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ExcludedPayloadUnavailableCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("excludedEndpointUnavailableCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ExcludedEndpointUnavailableCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("excludedIneligibleLocalStateCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ExcludedIneligibleLocalStateCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("excludedProviderConflictCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ExcludedProviderConflictCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("excludedProviderUnknownCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ExcludedProviderUnknownCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("excludedProviderManualReconciliationCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ExcludedProviderManualReconciliationCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("excludedProviderIneligibleCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ExcludedProviderIneligibleCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maximumItemsPerOperation")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MaximumItemsPerOperation { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maximumReservedItemsPerTenant")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MaximumReservedItemsPerTenant { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("previewedAt")]
+        public System.DateTimeOffset? PreviewedAt { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class WebhookConsumerDto
     {
 
@@ -106273,11 +108751,20 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("ownerActorId")]
-        public System.Guid? OwnerActorId { get; set; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("instanceId")]
+        public System.Guid? InstanceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("organizationId")]
+        public System.Guid? OrganizationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("groupId")]
+        public System.Guid? GroupId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("ownerUserId")]
         public System.Guid? OwnerUserId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerId")]
+        public System.Guid? OwnerId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("consumerKindId")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -106363,6 +108850,13 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerKindId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? OwnerKindId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerId")]
+        public System.Guid? OwnerId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("messageId")]
         public System.Guid? MessageId { get; set; } = default!;
@@ -106450,6 +108944,24 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("instanceId")]
+        public System.Guid? InstanceId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerId")]
+        public System.Guid? OwnerId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerKindId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? OwnerKindId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerKindCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string OwnerKindCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerKindName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string OwnerKindName { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("consumerId")]
         public System.Guid? ConsumerId { get; set; } = default!;
@@ -106656,6 +109168,13 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
         public System.Guid? TenantId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("ownerKindId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? OwnerKindId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerId")]
+        public System.Guid? OwnerId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("eventType")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string EventType { get; set; } = default!;
@@ -106705,6 +109224,50 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookMessagePayloadDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("messageId")]
+        public System.Guid? MessageId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("contentType")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ContentType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("contentEncoding")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ContentEncoding { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("payloadBase64")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PayloadBase64 { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("payloadHash")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PayloadHash { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("payloadByteLength")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? PayloadByteLength { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("payloadRetentionUntil")]
+        public System.DateTimeOffset? PayloadRetentionUntil { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("retrievedAt")]
+        public System.DateTimeOffset? RetrievedAt { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class WebhookProviderPortalAccessDto
     {
 
@@ -106718,6 +109281,229 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("expiresAt")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.DateTimeOffset ExpiresAt { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookProviderPublicationAttemptDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("attemptNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? AttemptNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicationFence")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? PublicationFence { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("outcomeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? OutcomeId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("outcomeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string OutcomeCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("outcomeName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string OutcomeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("startedAt")]
+        public System.DateTimeOffset? StartedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("recordedAt")]
+        public System.DateTimeOffset? RecordedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("externalProviderMessageId")]
+        public string? ExternalProviderMessageId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("failureCategory")]
+        public string? FailureCategory { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("safeDetail")]
+        public string? SafeDetail { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookProviderPublicationDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("webhookMessageId")]
+        public System.Guid? WebhookMessageId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("webhookConsumerId")]
+        public System.Guid? WebhookConsumerId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("webhookDeliveryPlanSnapshotId")]
+        public System.Guid? WebhookDeliveryPlanSnapshotId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerKindId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ProviderKindId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerKindCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ProviderKindCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerKindName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ProviderKindName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("modeSnapshotId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ModeSnapshotId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("modeSnapshotCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ModeSnapshotCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("modeSnapshotName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ModeSnapshotName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? StatusId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string StatusCode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string StatusName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerVersion")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ProviderVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerEventId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ProviderEventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("requestHash")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string RequestHash { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerEnvironment")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ProviderEnvironment { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerApplicationId")]
+        public string? ProviderApplicationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("externalProviderMessageId")]
+        public string? ExternalProviderMessageId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("automaticPublicationAttemptCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? AutomaticPublicationAttemptCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("automaticReconciliationAttemptCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? AutomaticReconciliationAttemptCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lastAutomaticReconciliationAt")]
+        public System.DateTimeOffset? LastAutomaticReconciliationAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("nextActionAt")]
+        public System.DateTimeOffset? NextActionAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("failureCategory")]
+        public string? FailureCategory { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("safeDetail")]
+        public string? SafeDetail { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicationFence")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? PublicationFence { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("concurrencyVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? ConcurrencyVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventContractVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? EventContractVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerConfigurationVersion")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ProviderConfigurationVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("retentionPolicyVersion")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string RetentionPolicyVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("payloadRetentionUntil")]
+        public System.DateTimeOffset? PayloadRetentionUntil { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicationRetentionUntil")]
+        public System.DateTimeOffset? PublicationRetentionUntil { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("idempotencyValidUntil")]
+        public System.DateTimeOffset? IdempotencyValidUntil { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("preparedAt")]
+        public System.DateTimeOffset? PreparedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publishingStartedAt")]
+        public System.DateTimeOffset? PublishingStartedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerQueuedAt")]
+        public System.DateTimeOffset? ProviderQueuedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicationUnknownAt")]
+        public System.DateTimeOffset? PublicationUnknownAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("deadLetteredAt")]
+        public System.DateTimeOffset? DeadLetteredAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("manualReconciliationAt")]
+        public System.DateTimeOffset? ManualReconciliationAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("abandonedAt")]
+        public System.DateTimeOffset? AbandonedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("processingLeaseExpiresAt")]
+        public System.DateTimeOffset? ProcessingLeaseExpiresAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
+        public System.DateTimeOffset? CreatedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("updatedAt")]
+        public System.DateTimeOffset? UpdatedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("attempts")]
+        public System.Collections.Generic.ICollection<WebhookProviderPublicationAttemptDto>? Attempts { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 

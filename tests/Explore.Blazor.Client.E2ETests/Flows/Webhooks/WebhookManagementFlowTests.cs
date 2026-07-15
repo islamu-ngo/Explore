@@ -24,6 +24,7 @@ public sealed class WebhookManagementFlowTests(
     public async Task InstanceAdminWebhooks_ManagesLocalProviderAndCapturesResponsiveScreenshots()
     {
         var adminTokens = await appHost.GetTestAdminTokensAsync();
+        var userAccessToken = await appHost.GetTestUserAccessTokenAsync();
         var adminProviderSubjects = ResolveJwtProviderSubjects(adminTokens.IdToken)
             .Concat(ResolveJwtProviderSubjects(adminTokens.AccessToken))
             .Distinct(StringComparer.Ordinal)
@@ -51,13 +52,25 @@ public sealed class WebhookManagementFlowTests(
             await AssertAdminAuthorityAsync(page, seed, adminProviderSubjects, syncedBrowserUserId, currentUserSnapshot);
             await OpenWebhookSettingsAsync(page);
 
-            await AssertInitialWebhookSurfaceAsync(page, seed.DryRunEndpointUrl);
+            await AssertOwnerPanelAsync(page, "Instance", "Operations local bridge", expectSensitiveTabs: false);
+            await AssertInitialWebhookSurfaceAsync(page, seed.IdleEndpointUrl);
             await CreateLocalEndpointAsync(page);
             await RotateExistingEndpointSecretAsync(page, seed.ExistingEndpointUrl);
+            await ResumeExistingEndpointAsync(page, seed.ExistingEndpointUrl);
             await RetrySeededFailedAttemptAsync(page, adminApi, seed.FailedAttemptId);
-            await TestExistingEndpointAsync(page, "https://hooks.example.test/islamu-created");
-            await AssertDryRunEndpointHasNoDeliveryAttemptsAsync(adminApi, seed.DryRunEndpointId);
-            await CaptureResponsiveScreenshotsAsync(page);
+            await TestExistingEndpointAsync(page, "https://created-hooks.example.test/islamu-created");
+            await AssertIdleEndpointHasNoDeliveryAttemptsAsync(adminApi, seed.IdleEndpointId);
+            await CaptureResponsiveScreenshotsAsync(page, "instance-allowed", "Instance");
+
+            await WebhookManagementScenarioSeed.EnableMultiTenantRoutingAsync(adminApi);
+            var typedOwnership = await WebhookManagementScenarioSeed.SeedTypedOwnershipAsync(
+                adminApi,
+                tenantSlug => appHost.CreateApiClient(adminTokens.AccessToken, tenantSlug),
+                tenantSlug => appHost.CreateApiClient(userAccessToken, tenantSlug),
+                ResolveJwtProviderSubject(userAccessToken));
+            await RunTypedOwnershipBrowserEvidenceAsync(
+                seed,
+                typedOwnership);
         }
         finally
         {
@@ -67,9 +80,12 @@ public sealed class WebhookManagementFlowTests(
         }
     }
 
-    private async Task<Guid> SyncBrowserUserAsync(IPage page)
+    private async Task<Guid> SyncBrowserUserAsync(IPage page, string? bffBaseUrl = null)
     {
-        var response = await page.Context.APIRequest.PostAsync($"{appHost.BlazorBaseUrl}/api/user/sync");
+        bffBaseUrl ??= appHost.BlazorBaseUrl;
+        var response = await BffCookieAuthHelper.PostWithAntiforgeryAsync(
+            page,
+            $"{bffBaseUrl}/api/user/sync");
         var content = await response.TextAsync();
         if (response.Status != (int)HttpStatusCode.OK)
         {
@@ -89,7 +105,8 @@ public sealed class WebhookManagementFlowTests(
 
     private async Task InvalidateApiAdminCacheAsync(IPage page, Guid userId)
     {
-        var response = await page.Context.APIRequest.PostAsync(
+        var response = await BffCookieAuthHelper.PostWithAntiforgeryAsync(
+            page,
             $"{appHost.BlazorBaseUrl}/api/_internal/admin-cache/users/{userId:D}/invalidate");
         var content = await response.TextAsync();
         if (response.Status != (int)HttpStatusCode.NoContent)
@@ -101,7 +118,8 @@ public sealed class WebhookManagementFlowTests(
 
     private async Task<ApiCurrentUserSnapshot> SnapshotApiCurrentUserAsync(IPage page)
     {
-        var response = await page.Context.APIRequest.PostAsync(
+        var response = await BffCookieAuthHelper.PostWithAntiforgeryAsync(
+            page,
             $"{appHost.BlazorBaseUrl}/api/_internal/admin-cache/current-user/snapshot");
         var content = await response.TextAsync();
         if (response.Status != (int)HttpStatusCode.OK)
@@ -128,6 +146,245 @@ public sealed class WebhookManagementFlowTests(
         }).WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
 
         await WaitForWebhookPanelAsync(page);
+    }
+
+    private async Task RunTypedOwnershipBrowserEvidenceAsync(
+        WebhookManagementScenarioSeed.Result instanceSeed,
+        WebhookManagementScenarioSeed.TypedOwnershipResult seed)
+    {
+        var page = await playwright.CreatePageAsync(nameof(RunTypedOwnershipBrowserEvidenceAsync));
+        try
+        {
+            var tenantBaseUrl = $"{appHost.BlazorBaseUrl}/t/{seed.TenantSlug}";
+            await BffCookieAuthHelper.LoginAsTestUserAsync(
+                page,
+                appHost,
+                $"/t/{seed.TenantSlug}/auth/status");
+            var browserUserId = await SyncBrowserUserAsync(page, tenantBaseUrl);
+            await Assert.That(browserUserId).IsEqualTo(seed.UserId);
+
+            await AssertTypedOwnerAuthorityAsync(page, seed, tenantBaseUrl);
+            await AssertTypedOwnerApiBoundariesAsync(page, instanceSeed, seed, tenantBaseUrl);
+
+            await OpenTenantWebhookSettingsAsync(page, tenantBaseUrl);
+            await AssertOwnerPanelAsync(page, "Tenant", seed.TenantConsumerName, expectSensitiveTabs: true);
+            await CaptureResponsiveScreenshotsAsync(page, "tenant-allowed", "Tenant");
+
+            await OpenOrganizationWebhookSettingsAsync(page, tenantBaseUrl, seed.OrganizationId);
+            await AssertOwnerPanelAsync(
+                page,
+                "Organization",
+                seed.OrganizationConsumerName,
+                expectSensitiveTabs: false);
+            await CaptureResponsiveScreenshotsAsync(page, "organization-allowed", "Organization");
+
+            await OpenGroupWebhookSettingsAsync(page, tenantBaseUrl, seed.GroupId);
+            await AssertOwnerPanelAsync(page, "Group", seed.GroupConsumerName, expectSensitiveTabs: false);
+            await CaptureResponsiveScreenshotsAsync(page, "group-allowed", "Group");
+
+            await OpenUserWebhookSettingsAsync(page, tenantBaseUrl);
+            await AssertOwnerPanelAsync(page, "User", seed.UserConsumerName, expectSensitiveTabs: false);
+            await CaptureResponsiveScreenshotsAsync(page, "user-allowed", "User");
+
+            await BffCookieAuthHelper.AssertBrowserStorageDoesNotContainTokensAsync(page, appHost.BlazorBaseUrl);
+        }
+        finally
+        {
+            await playwright.ClosePageAsync(page, nameof(RunTypedOwnershipBrowserEvidenceAsync));
+        }
+    }
+
+    private async Task AssertTypedOwnerAuthorityAsync(
+        IPage page,
+        WebhookManagementScenarioSeed.TypedOwnershipResult seed,
+        string tenantBaseUrl)
+    {
+        var response = await page.Context.APIRequest.GetAsync($"{tenantBaseUrl}/api/user/admin-authority");
+        var content = await response.TextAsync();
+        if (response.Status != (int)HttpStatusCode.OK)
+        {
+            throw new InvalidOperationException(
+                $"Expected scoped admin-authority to return OK. Status={response.Status}. Body={content}");
+        }
+
+        using var payload = JsonDocument.Parse(content);
+        var root = payload.RootElement;
+        var isTenantAdmin = ContainsGuid(root, "adminTenantIds", seed.TenantId);
+        var isOrganizationAdmin = ContainsGuid(root, "adminOrganizationIds", seed.OrganizationId);
+        var isInstanceAdmin = root.TryGetProperty("isInstanceAdmin", out var instanceAdmin)
+            && instanceAdmin.ValueKind == JsonValueKind.True;
+
+        await Assert.That(isTenantAdmin).IsTrue();
+        await Assert.That(isOrganizationAdmin).IsTrue();
+        await Assert.That(isInstanceAdmin).IsFalse();
+    }
+
+    private async Task AssertTypedOwnerApiBoundariesAsync(
+        IPage page,
+        WebhookManagementScenarioSeed.Result instanceSeed,
+        WebhookManagementScenarioSeed.TypedOwnershipResult seed,
+        string tenantBaseUrl)
+    {
+        await AssertOwnerRequestStatusAsync(
+            page,
+            tenantBaseUrl,
+            WebhookManagementScenarioSeed.TenantOwnerKindId,
+            ownerId: null,
+            HttpStatusCode.OK);
+        await AssertOwnerRequestStatusAsync(
+            page,
+            tenantBaseUrl,
+            WebhookManagementScenarioSeed.OrganizationOwnerKindId,
+            seed.OrganizationId,
+            HttpStatusCode.OK);
+        await AssertOwnerRequestStatusAsync(
+            page,
+            tenantBaseUrl,
+            WebhookManagementScenarioSeed.GroupOwnerKindId,
+            seed.GroupId,
+            HttpStatusCode.OK);
+        await AssertOwnerRequestStatusAsync(
+            page,
+            tenantBaseUrl,
+            WebhookManagementScenarioSeed.UserOwnerKindId,
+            ownerId: null,
+            HttpStatusCode.OK);
+
+        await AssertOwnerRequestStatusAsync(
+            page,
+            tenantBaseUrl,
+            WebhookManagementScenarioSeed.InstanceOwnerKindId,
+            ownerId: null,
+            HttpStatusCode.Forbidden);
+        await AssertOwnerRequestStatusAsync(
+            page,
+            tenantBaseUrl,
+            WebhookManagementScenarioSeed.OrganizationOwnerKindId,
+            seed.UnrelatedOrganizationId,
+            HttpStatusCode.Forbidden);
+        await AssertOwnerRequestStatusAsync(
+            page,
+            tenantBaseUrl,
+            WebhookManagementScenarioSeed.GroupOwnerKindId,
+            seed.UnrelatedGroupId,
+            HttpStatusCode.Forbidden);
+        await AssertOwnerRequestStatusAsync(
+            page,
+            tenantBaseUrl,
+            WebhookManagementScenarioSeed.UserOwnerKindId,
+            instanceSeed.AdminUserId,
+            HttpStatusCode.Forbidden);
+    }
+
+    private async Task AssertOwnerRequestStatusAsync(
+        IPage page,
+        string tenantBaseUrl,
+        int ownerKindId,
+        Guid? ownerId,
+        HttpStatusCode expectedStatus)
+    {
+        var ownerIdQuery = ownerId.HasValue ? $"&ownerId={ownerId.Value:D}" : string.Empty;
+        var response = await page.Context.APIRequest.GetAsync(
+            $"{tenantBaseUrl}/api/webhooks/consumers?ownerKindId={ownerKindId}{ownerIdQuery}&limit=20");
+        var content = await response.TextAsync();
+        if (response.Status != (int)expectedStatus)
+        {
+            throw new InvalidOperationException(
+                "Unexpected typed webhook owner response. " +
+                $"OwnerKindId={ownerKindId}. OwnerId={ownerId}. " +
+                $"Expected={(int)expectedStatus}. Actual={response.Status}. Body={content}");
+        }
+    }
+
+    private async Task OpenTenantWebhookSettingsAsync(IPage page, string tenantBaseUrl)
+    {
+        await OpenSettingsPageAsync(page, tenantBaseUrl, "/admin/tenant/settings", "Tenant Administration");
+        await SelectWebhookSettingsSectionAsync(page);
+        await WaitForWebhookPanelAsync(page, "Tenant");
+        await Assertions.Expect(page.GetByRole(
+                AriaRole.Button,
+                new PageGetByRoleOptions { NameString = "Save Tenant Settings" }))
+            .ToHaveCountAsync(0);
+    }
+
+    private async Task OpenOrganizationWebhookSettingsAsync(
+        IPage page,
+        string tenantBaseUrl,
+        Guid organizationId)
+    {
+        await OpenSettingsPageAsync(page, tenantBaseUrl, $"/admin/organization/{organizationId:D}/settings");
+        await SelectWebhookSettingsSectionAsync(page);
+        await WaitForWebhookPanelAsync(page, "Organization");
+    }
+
+    private async Task OpenGroupWebhookSettingsAsync(IPage page, string tenantBaseUrl, Guid groupId)
+    {
+        await OpenSettingsPageAsync(page, tenantBaseUrl, $"/admin/group/{groupId:D}/settings");
+        await SelectWebhookSettingsSectionAsync(page);
+        await WaitForWebhookPanelAsync(page, "Group");
+    }
+
+    private async Task OpenUserWebhookSettingsAsync(IPage page, string tenantBaseUrl)
+    {
+        await OpenSettingsPageAsync(page, tenantBaseUrl, "/settings?section=webhooks", "Account Settings");
+        await WaitForWebhookPanelAsync(page, "User");
+    }
+
+    private static async Task OpenSettingsPageAsync(
+        IPage page,
+        string tenantBaseUrl,
+        string relativePath,
+        string? heading = null)
+    {
+        await page.SetViewportSizeAsync(1280, 900);
+        await page.GotoAsync($"{tenantBaseUrl}{relativePath}", new PageGotoOptions
+        {
+            Timeout = BrowserTimeoutMilliseconds,
+            WaitUntil = WaitUntilState.DOMContentLoaded
+        });
+
+        await page.Locator("[data-blazor-interactive='true']")
+            .WaitForAsync(new LocatorWaitForOptions
+            {
+                State = WaitForSelectorState.Attached,
+                Timeout = BrowserTimeoutMilliseconds
+            });
+
+        if (!string.IsNullOrWhiteSpace(heading))
+        {
+            await page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { NameString = heading })
+                .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+        }
+    }
+
+    private static async Task SelectWebhookSettingsSectionAsync(IPage page)
+    {
+        await page.GetByText("Webhooks", new PageGetByTextOptions { Exact = true })
+            .First
+            .ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
+    }
+
+    private static async Task AssertOwnerPanelAsync(
+        IPage page,
+        string ownerDisplayName,
+        string consumerName,
+        bool expectSensitiveTabs)
+    {
+        await WaitForWebhookPanelAsync(page, ownerDisplayName);
+        await page.GetByText(consumerName, new PageGetByTextOptions { Exact = true })
+            .First
+            .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+
+        var providerTabCount = await page.GetByRole(
+            AriaRole.Tab,
+            new PageGetByRoleOptions { NameString = "Provider", Exact = true }).CountAsync();
+        var replayTabCount = await page.GetByRole(
+            AriaRole.Tab,
+            new PageGetByRoleOptions { NameString = "Replay", Exact = true }).CountAsync();
+        var expectedCount = expectSensitiveTabs ? 1 : 0;
+
+        await Assert.That(providerTabCount).IsEqualTo(expectedCount);
+        await Assert.That(replayTabCount).IsEqualTo(expectedCount);
     }
 
     private async Task AssertAdminAuthorityAsync(
@@ -182,24 +439,28 @@ public sealed class WebhookManagementFlowTests(
         }
     }
 
-    private static async Task AssertInitialWebhookSurfaceAsync(IPage page, string dryRunEndpointUrl)
+    private static async Task AssertInitialWebhookSurfaceAsync(IPage page, string idleEndpointUrl)
     {
         await page.GetByRole(AriaRole.Cell, new PageGetByRoleOptions { NameString = "Operations local bridge" })
             .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
         await page.GetByRole(AriaRole.Cell, new PageGetByRoleOptions { NameString = "DryRun verification bridge" })
             .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
 
+        var dryRunConsumerRow = page.GetByRole(AriaRole.Row)
+            .Filter(new LocatorFilterOptions { HasTextString = "DryRun verification bridge" });
+        await Assert.That(await dryRunConsumerRow.InnerTextAsync()).Contains("DryRun");
+
         var pageText = await page.Locator("body").InnerTextAsync();
         await Assert.That(pageText).DoesNotContain("secrets/webhooks/e2e-local-v1");
 
         await page.GetByRole(AriaRole.Tab, new PageGetByRoleOptions { NameString = "Endpoints" })
             .ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
-        var dryRunEndpointRow = EndpointRow(page, dryRunEndpointUrl);
-        await dryRunEndpointRow.WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
-        await Assert.That(await dryRunEndpointRow.InnerTextAsync()).Contains("DryRun");
-        await Assert.That(await dryRunEndpointRow.GetByRole(
+        var idleEndpointRow = EndpointRow(page, idleEndpointUrl);
+        await idleEndpointRow.WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+        await Assert.That(await idleEndpointRow.InnerTextAsync()).Contains("Local");
+        await Assert.That(await idleEndpointRow.GetByRole(
             AriaRole.Button,
-            new LocatorGetByRoleOptions { NameString = "Send test webhook" }).CountAsync()).IsEqualTo(0);
+            new LocatorGetByRoleOptions { NameString = "Send test webhook" }).CountAsync()).IsEqualTo(1);
     }
 
     private static async Task CreateLocalEndpointAsync(IPage page)
@@ -208,7 +469,7 @@ public sealed class WebhookManagementFlowTests(
             .ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
 
         await page.GetByLabel("Endpoint URL")
-            .FillAsync("https://hooks.example.test/islamu-created", new LocatorFillOptions { Timeout = BrowserTimeoutMilliseconds });
+            .FillAsync("https://created-hooks.example.test/islamu-created", new LocatorFillOptions { Timeout = BrowserTimeoutMilliseconds });
         await page.GetByLabel("Signing secret reference")
             .FillAsync("secrets/webhooks/e2e-created-v1", new LocatorFillOptions { Timeout = BrowserTimeoutMilliseconds });
         await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameString = "Save" })
@@ -216,7 +477,7 @@ public sealed class WebhookManagementFlowTests(
 
         await page.GetByText("Webhook endpoint created.", new PageGetByTextOptions { Exact = true })
             .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
-        await page.GetByText("https://hooks.example.test/islamu-created", new PageGetByTextOptions { Exact = true })
+        await page.GetByText("created-hooks.example.test", new PageGetByTextOptions { Exact = true })
             .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
 
         var pageText = await page.Locator("body").InnerTextAsync();
@@ -231,10 +492,16 @@ public sealed class WebhookManagementFlowTests(
 
         await page.GetByLabel("New secret reference")
             .FillAsync("secrets/webhooks/e2e-local-v2", new LocatorFillOptions { Timeout = BrowserTimeoutMilliseconds });
+        await page.GetByTestId("webhook-rotate-preserve-pending")
+            .ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
+        await page.GetByTestId("webhook-rotate-pending-reason")
+            .FillAsync(
+                "Preserve frozen delivery credentials during the E2E rotation.",
+                new LocatorFillOptions { Timeout = BrowserTimeoutMilliseconds });
         await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameString = "Rotate", Exact = true })
             .ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
 
-        await page.GetByText("Webhook endpoint secret rotated.", new PageGetByTextOptions { Exact = true })
+        await page.GetByText("Webhook endpoint signing credential rotated;", new PageGetByTextOptions { Exact = false })
             .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
 
         var pageText = await page.Locator("body").InnerTextAsync();
@@ -262,6 +529,23 @@ public sealed class WebhookManagementFlowTests(
             .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
     }
 
+    private static async Task ResumeExistingEndpointAsync(IPage page, string endpointUrl)
+    {
+        await page.GetByRole(AriaRole.Tab, new PageGetByRoleOptions { NameString = "Endpoints" })
+            .ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
+
+        await EndpointRow(page, endpointUrl)
+            .GetByRole(AriaRole.Button, new LocatorGetByRoleOptions { NameString = "Resume webhook endpoint" })
+            .ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
+        await page.GetByTestId("webhook-endpoint-control-reason")
+            .FillAsync("e2e_operator_recovery", new LocatorFillOptions { Timeout = BrowserTimeoutMilliseconds });
+        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameString = "Resume", Exact = true })
+            .ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
+
+        await page.GetByText("Webhook endpoint resumed.", new PageGetByTextOptions { Exact = true })
+            .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+    }
+
     private static async Task RetrySeededFailedAttemptAsync(
         IPage page,
         IEventApiClient api,
@@ -276,6 +560,25 @@ public sealed class WebhookManagementFlowTests(
         var failedEndpointId = failedAttempt.EndpointId
             ?? throw new InvalidOperationException("Failed webhook attempt did not expose its endpoint id.");
 
+        var ownerAttempts = await api.GetWebhookDeliveryAttemptsAsync(
+            ownerKindId: WebhookManagementScenarioSeed.InstanceOwnerKindId,
+            limit: 100);
+        var ownerAttempt = ownerAttempts._embedded?.Items?
+            .SingleOrDefault(candidate => candidate.Id == failedAttemptId)
+            ?? throw new InvalidOperationException(
+                $"Instance delivery collection omitted seeded attempt {failedAttemptId:D}. " +
+                $"Detail outcome={failedAttempt.OutcomeCode}; endpointStatus={failedAttempt.EndpointStatusCode}.");
+        if (ownerAttempt._links?.ContainsKey("retry") != true)
+        {
+            var linkRelations = ownerAttempt._links is { Count: > 0 }
+                ? string.Join(",", ownerAttempt._links.Keys.Order(StringComparer.Ordinal))
+                : "none";
+            throw new InvalidOperationException(
+                $"Seeded attempt {failedAttemptId:D} has no HAL retry relation. " +
+                $"Outcome={ownerAttempt.OutcomeCode}; endpointStatus={ownerAttempt.EndpointStatusCode}; " +
+                $"failureCategory={ownerAttempt.FailureCategory}; links={linkRelations}.");
+        }
+
         var retryButton = page.GetByTestId($"webhook-retry-attempt-{failedAttemptId:D}").First;
         await retryButton.ScrollIntoViewIfNeededAsync(new LocatorScrollIntoViewIfNeededOptions
         {
@@ -283,22 +586,27 @@ public sealed class WebhookManagementFlowTests(
         });
         await retryButton.WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
 
-        var retry = await api.RetryWebhookDeliveryAttemptAsync(failedAttemptId);
-        var retryAttemptId = EventApiScenario.SuccessfulId(retry, "retrying the failed webhook delivery");
-        await WaitForManualRetryAttemptAsync(api, retryAttemptId, failedMessageId, failedEndpointId);
+        await retryButton.ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
+        await page.GetByText("Webhook delivery retry scheduled.", new PageGetByTextOptions { Exact = true })
+            .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+        await WaitForManualRetryAttemptAsync(api, failedAttemptId, failedMessageId, failedEndpointId);
     }
 
     private static async Task WaitForManualRetryAttemptAsync(
         IEventApiClient api,
-        Guid retryAttemptId,
+        Guid failedAttemptId,
         Guid failedMessageId,
         Guid failedEndpointId)
     {
         var deadline = DateTimeOffset.UtcNow.AddMilliseconds(BrowserTimeoutMilliseconds);
         while (DateTimeOffset.UtcNow < deadline)
         {
-            var retryAttempt = await api.GetWebhookDeliveryAttemptByIdAsync(retryAttemptId);
-            if (retryAttempt.MessageId == failedMessageId && retryAttempt.EndpointId == failedEndpointId)
+            var attempts = await api.GetWebhookDeliveryAttemptsAsync(
+                ownerKindId: WebhookManagementScenarioSeed.InstanceOwnerKindId,
+                messageId: failedMessageId,
+                endpointId: failedEndpointId,
+                limit: 100);
+            if (attempts._embedded?.Items?.Any(candidate => candidate.Id != failedAttemptId) == true)
             {
                 return;
             }
@@ -309,27 +617,39 @@ public sealed class WebhookManagementFlowTests(
         Assert.Fail("Expected manual retry to create a persisted webhook delivery attempt.");
     }
 
-    private static async Task AssertDryRunEndpointHasNoDeliveryAttemptsAsync(
+    private static async Task AssertIdleEndpointHasNoDeliveryAttemptsAsync(
         IEventApiClient api,
-        Guid dryRunEndpointId)
+        Guid idleEndpointId)
     {
-        var attempts = await api.GetWebhookDeliveryAttemptsAsync(endpointId: dryRunEndpointId, limit: 100);
+        var attempts = await api.GetWebhookDeliveryAttemptsAsync(
+            ownerKindId: WebhookManagementScenarioSeed.InstanceOwnerKindId,
+            endpointId: idleEndpointId,
+            limit: 100);
         var attemptCount = attempts._embedded?.Items?.Count ?? 0;
         await Assert.That(attemptCount).IsEqualTo(0);
     }
 
-    private static async Task CaptureResponsiveScreenshotsAsync(IPage page)
+    private static async Task CaptureResponsiveScreenshotsAsync(
+        IPage page,
+        string artifactPrefix,
+        string ownerDisplayName)
     {
-        await CaptureViewportAsync(page, "desktop", 1280, 900);
-        await CaptureViewportAsync(page, "tablet", 768, 1024);
-        await CaptureViewportAsync(page, "mobile", 375, 900);
+        await CaptureViewportAsync(page, artifactPrefix, ownerDisplayName, "desktop", 1280, 900);
+        await CaptureViewportAsync(page, artifactPrefix, ownerDisplayName, "tablet", 768, 1024);
+        await CaptureViewportAsync(page, artifactPrefix, ownerDisplayName, "mobile", 375, 900);
     }
 
-    private static async Task CaptureViewportAsync(IPage page, string name, int width, int height)
+    private static async Task CaptureViewportAsync(
+        IPage page,
+        string artifactPrefix,
+        string ownerDisplayName,
+        string viewportName,
+        int width,
+        int height)
     {
         await page.SetViewportSizeAsync(width, height);
         await PrepareForVisualCaptureAsync(page);
-        await WaitForWebhookPanelAsync(page);
+        await WaitForWebhookPanelAsync(page, ownerDisplayName);
 
         var hasHorizontalOverflow = await page.EvaluateAsync<bool>(
             "() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1");
@@ -344,7 +664,9 @@ public sealed class WebhookManagementFlowTests(
 
         await page.ScreenshotAsync(new PageScreenshotOptions
         {
-            Path = Path.Combine(screenshotDirectory, $"webhook-management-{name}-{width}x{height}.png"),
+            Path = Path.Combine(
+                screenshotDirectory,
+                $"webhook-management-{artifactPrefix}-{viewportName}-{width}x{height}.png"),
             FullPage = true,
             Animations = ScreenshotAnimations.Disabled
         });
@@ -354,7 +676,7 @@ public sealed class WebhookManagementFlowTests(
     {
         await page.WaitForTimeoutAsync(300);
         await CloseShellSidebarIfOpenAsync(page);
-        await DismissSnackbarsAsync(page);
+        await HideSnackbarsAsync(page);
         await page.WaitForTimeoutAsync(300);
     }
 
@@ -382,28 +704,19 @@ public sealed class WebhookManagementFlowTests(
         await page.WaitForTimeoutAsync(150);
     }
 
-    private static async Task DismissSnackbarsAsync(IPage page)
+    private static async Task HideSnackbarsAsync(IPage page)
     {
-        await page.EvaluateAsync(
-            "() => document.querySelectorAll('.mud-snackbar button').forEach(button => button.click())");
-
-        try
+        await page.AddStyleTagAsync(new PageAddStyleTagOptions
         {
-            await page.Locator(".mud-snackbar").First.WaitForAsync(new LocatorWaitForOptions
-            {
-                State = WaitForSelectorState.Hidden,
-                Timeout = 5_000
-            });
-        }
-        catch (PlaywrightException)
-        {
-            await page.WaitForTimeoutAsync(250);
-        }
+            Content = ".mud-snackbar-provider, .mud-snackbar { display: none !important; }"
+        });
     }
 
-    private static async Task WaitForWebhookPanelAsync(IPage page)
+    private static async Task WaitForWebhookPanelAsync(IPage page, string ownerDisplayName = "Instance")
     {
-        await page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { NameString = "Webhooks" })
+        await page.GetByRole(
+                AriaRole.Region,
+                new PageGetByRoleOptions { NameString = $"{ownerDisplayName} webhook management" })
             .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
         await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameString = "Create Endpoint" })
             .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
@@ -411,7 +724,7 @@ public sealed class WebhookManagementFlowTests(
 
     private static ILocator EndpointRow(IPage page, string endpointUrl) =>
         page.GetByRole(AriaRole.Row)
-            .Filter(new LocatorFilterOptions { HasTextString = endpointUrl })
+            .Filter(new LocatorFilterOptions { HasTextString = new Uri(endpointUrl, UriKind.Absolute).Host })
             .First;
 
     private static IReadOnlyCollection<string> ResolveJwtProviderSubjects(string token)
@@ -424,6 +737,10 @@ public sealed class WebhookManagementFlowTests(
             .Distinct(StringComparer.Ordinal)
             .ToArray();
     }
+
+    private static string ResolveJwtProviderSubject(string token) =>
+        ResolveJwtProviderSubjects(token).FirstOrDefault()
+        ?? throw new InvalidOperationException("JWT did not contain a supported provider-subject claim.");
 
     private static Guid? ResolveJwtCurrentUserId(string token)
     {
@@ -488,6 +805,16 @@ public sealed class WebhookManagementFlowTests(
 
         value = stringValue;
         return true;
+    }
+
+    private static bool ContainsGuid(JsonElement root, string propertyName, Guid expected)
+    {
+        return root.TryGetProperty(propertyName, out var values)
+            && values.ValueKind == JsonValueKind.Array
+            && values.EnumerateArray().Any(value =>
+                value.ValueKind == JsonValueKind.String
+                && Guid.TryParse(value.GetString(), out var parsed)
+                && parsed == expected);
     }
 
     private sealed record ApiCurrentUserSnapshot(

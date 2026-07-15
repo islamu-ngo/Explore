@@ -97,9 +97,10 @@ public abstract class ExploreControllerBase : ControllerBase
 
     protected async Task<Guid?> ResolveCurrentUserIdAsync(IMediator mediator, CancellationToken cancellationToken = default)
     {
-        if (CurrentUserId.HasValue)
+        var internalUserIdClaim = User.FindFirst("internal_user_id")?.Value;
+        if (Guid.TryParse(internalUserIdClaim, out var internalUserId))
         {
-            return CurrentUserId.Value;
+            return internalUserId;
         }
 
         var providerSubject = ResolveProviderSubject();

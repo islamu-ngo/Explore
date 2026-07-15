@@ -1,5 +1,5 @@
-// ABOUTME: Authorized command for creating tenant-scoped outgoing webhook consumers.
-// ABOUTME: Carries normalized request fields and tenant attributes for resource authorization.
+// ABOUTME: Authorized command for creating outgoing webhook consumers under one typed owner scope.
+// ABOUTME: Carries only owner selection and configuration input; the pipeline resolves canonical ownership.
 
 using Explore.Application.Authorization;
 using Explore.Application.Responses;
@@ -8,13 +8,10 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.Create)]
-public sealed class CreateWebhookConsumerCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+public sealed class CreateWebhookConsumerCommand
+    : IRequest<BaseCommandResponse<Guid>>, ISecureRequest, IWebhookOwnerScopedRequest
 {
-    public Guid TenantId { get; init; }
-
-    public Guid? OwnerActorId { get; init; }
-
-    public Guid? OwnerUserId { get; init; }
+    public Guid? OwnerId { get; init; }
 
     public int ConsumerKindId { get; init; }
 
@@ -22,10 +19,9 @@ public sealed class CreateWebhookConsumerCommand : IRequest<BaseCommandResponse<
 
     public int ProviderModeId { get; init; }
 
-    string? ISecureRequest.ResourceId => TenantId.ToString("D");
+    int IWebhookOwnerScopedRequest.OwnerKindId => ConsumerKindId;
 
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
-    {
-        ["tenantId"] = TenantId.ToString("D")
-    };
+    string? ISecureRequest.ResourceId => OwnerId?.ToString("D");
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => null;
 }

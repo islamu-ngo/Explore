@@ -22,6 +22,32 @@ public sealed class WebhookMessageRepository(ExploreDbContext dbContext) : IWebh
         return message;
     }
 
+    public Task<WebhookMessage?> GetByIdForOwnerOperationAsync(
+        Guid messageId,
+        CancellationToken cancellationToken) =>
+        dbContext.WebhookMessages
+            .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookOwnerOperation)
+            .AsNoTracking()
+            .Include(message => message.Consumer)
+            .FirstOrDefaultAsync(message => message.Id == messageId, cancellationToken);
+
+    public async Task<IReadOnlyList<WebhookMessage>> ListByOwnerAsync(
+        WebhookOwnershipScope ownership,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        return await ApplyOwnerPredicate(
+                dbContext.WebhookMessages
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookOwnerOperation),
+                ownership)
+            .AsNoTracking()
+            .Include(message => message.Consumer)
+            .OrderByDescending(message => message.CreatedAt)
+            .ThenByDescending(message => message.Id)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<WebhookMessage?> GetByTenantAndIdAsync(
         Guid tenantId,
         Guid messageId,
@@ -69,4 +95,34 @@ public sealed class WebhookMessageRepository(ExploreDbContext dbContext) : IWebh
         await dbContext.SaveChangesAsync(cancellationToken);
         return messages.Count;
     }
+
+    private static IQueryable<WebhookMessage> ApplyOwnerPredicate(
+        IQueryable<WebhookMessage> query,
+        WebhookOwnershipScope ownership) => ownership.Kind switch
+        {
+            WebhookConsumerKind.Instance => query.Where(message =>
+                message.Consumer != null &&
+                message.Consumer.ConsumerKindId == (int)WebhookConsumerKind.Instance &&
+                message.Consumer.InstanceId == ownership.InstanceId),
+            WebhookConsumerKind.Tenant => query.Where(message =>
+                message.Consumer != null &&
+                message.Consumer.ConsumerKindId == (int)WebhookConsumerKind.Tenant &&
+                message.Consumer.TenantId == ownership.TenantId),
+            WebhookConsumerKind.Organization => query.Where(message =>
+                message.Consumer != null &&
+                message.Consumer.ConsumerKindId == (int)WebhookConsumerKind.Organization &&
+                message.Consumer.TenantId == ownership.TenantId &&
+                message.Consumer.OrganizationId == ownership.OrganizationId),
+            WebhookConsumerKind.Group => query.Where(message =>
+                message.Consumer != null &&
+                message.Consumer.ConsumerKindId == (int)WebhookConsumerKind.Group &&
+                message.Consumer.TenantId == ownership.TenantId &&
+                message.Consumer.GroupId == ownership.GroupId),
+            WebhookConsumerKind.User => query.Where(message =>
+                message.Consumer != null &&
+                message.Consumer.ConsumerKindId == (int)WebhookConsumerKind.User &&
+                message.Consumer.TenantId == ownership.TenantId &&
+                message.Consumer.OwnerUserId == ownership.UserId),
+            _ => query.Where(_ => false)
+        };
 }

@@ -5,6 +5,7 @@
 @using Blazouter.Interfaces
 @using Explore.Blazor.Client.Pages.Admin.Instance.ControlPlane
 @using Explore.Blazor.Client.Routing.ControlPlane
+@using Explore.Blazor.Client.Routing
 @using Explore.Blazor.Client.Layout
 @using Explore.Blazor.Client.Pages
 @using Explore.Blazor.Client.Pages.Auth
@@ -29,7 +30,9 @@
 @using Explore.Blazor.Client.Providers
 @using Explore.Blazor.Client.Routing.Guards
 @using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager NavigationManager
 
+<Explore.Blazor.Client.Components.InteractiveReadinessMarker />
 <TenantContextProvider>
     <LanguageProvider>
         <Blazouter.Components.Router Routes="@_routes" DefaultLayout="typeof(MainLayout)">
@@ -141,5 +144,7 @@
             new RouteConfig { Path = "/admin/organization/:OrganizationId/settings", Component = typeof(OrganizationAdminSettings), Transition = RouteTransition.Fade, Guards = RequireOrgAdmin() },
             new RouteConfig { Path = "/admin/group/:GroupId/settings", Component = typeof(GroupAdminSettings), Transition = RouteTransition.Fade, Guards = RequireGroupAdmin() },
     };
+
+        RouteConfigurationPathBase.Apply(_routes, NavigationManager.BaseUri);
     }
 }

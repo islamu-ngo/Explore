@@ -19,7 +19,7 @@ public sealed class UpdateWebhookConsumerProviderModeCommandHandler(
     IWebhookEndpointRepository endpointRepository,
     IWebhookProviderPublicationRepository providerPublicationRepository,
     IWebhookProviderCapabilityResolver capabilityResolver,
-    IAuditLogRepository auditLogRepository,
+    IWebhookAuditEventWriter auditWriter,
     IUnitOfWork unitOfWork,
     ICurrentUserService currentUserService,
     IMachinePrincipalAccessor machinePrincipalAccessor,
@@ -36,7 +36,7 @@ public sealed class UpdateWebhookConsumerProviderModeCommandHandler(
             return Failure("webhook_consumer_provider_mode_validation_failed", validationErrors);
         }
 
-        if (!TryResolveActor(out var actorReference, out var actorUserId))
+        if (!TryResolveActor(out _, out var actorUserId))
         {
             return Failure(
                 "webhook_consumer_provider_mode_actor_required",
@@ -54,9 +54,9 @@ public sealed class UpdateWebhookConsumerProviderModeCommandHandler(
 
         return await unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
         {
-            var consumer = await consumerRepository.GetByTenantAndIdForUpdateAsync(
-                request.TenantId,
+            var consumer = await consumerRepository.GetByIdForOwnerOperationAsync(
                 request.ConsumerId,
+                forUpdate: true,
                 transactionCancellationToken);
             if (consumer is null || consumer.Status == WebhookConsumerStatus.Archived)
             {
@@ -96,7 +96,7 @@ public sealed class UpdateWebhookConsumerProviderModeCommandHandler(
             }
 
             var uncertainPublicationCount = await providerPublicationRepository.CountUncertainByConsumerAsync(
-                request.TenantId,
+                consumer.TenantId,
                 consumer.Id,
                 transactionCancellationToken);
             if (uncertainPublicationCount > 0 && !request.AcknowledgeUncertainProviderPublications)
@@ -113,40 +113,34 @@ public sealed class UpdateWebhookConsumerProviderModeCommandHandler(
             consumer.UpdatedBy = actorUserId;
 
             var persisted = await consumerRepository.UpdateAsync(consumer, transactionCancellationToken);
-            await auditLogRepository.Create(new AuditLog
-            {
-                Id = Guid.CreateVersion7(),
-                TenantId = request.TenantId,
-                Tenant = null!,
-                EntityType = nameof(WebhookConsumer),
-                EntityId = consumer.Id.ToString("D"),
-                Action = "WebhookConsumerProviderModeChanged",
-                OldValues = JsonSerializer.Serialize(new
-                {
-                    configurationVersion = previousVersion,
-                    providerMode = NormalizedLookupMetadata.WebhookProviderMode((int)previousMode).Code
-                }),
-                NewValues = JsonSerializer.Serialize(new
-                {
-                    configurationVersion = consumer.ConfigurationVersion,
-                    providerMode = NormalizedLookupMetadata.WebhookProviderMode((int)targetMode).Code,
-                    pendingWorkDecision = NormalizedLookupMetadata
-                        .WebhookPendingWorkDecision(request.PendingWorkDecisionId).Code,
-                    migratedWorkCount = 0,
-                    uncertainProviderPublicationCount = uncertainPublicationCount,
-                    uncertainProviderPublicationsAcknowledged = request.AcknowledgeUncertainProviderPublications,
-                    reason = request.PendingWorkReason.Trim(),
-                    actorReference,
-                    outcome = "applied"
-                }),
-                AffectedColumns = JsonSerializer.Serialize(new[]
-                {
-                    nameof(WebhookConsumer.ProviderModeId),
-                    nameof(WebhookConsumer.ConfigurationVersion)
-                }),
-                ActorId = actorUserId,
-                Timestamp = now
-            });
+            await auditWriter.AppendAsync(
+                new WebhookAuditWriteRequest(
+                    consumer.TenantId,
+                    WebhookAuditAction.ConsumerProviderModeChanged,
+                    WebhookAuditTargetKind.Consumer,
+                    consumer.Id,
+                    "provider_mode_change",
+                    WebhookAuditOutcome.Succeeded,
+                    SafeBeforeJson: JsonSerializer.Serialize(new
+                    {
+                        configurationVersion = previousVersion,
+                        providerMode = NormalizedLookupMetadata.WebhookProviderMode((int)previousMode).Code
+                    }),
+                    SafeAfterJson: JsonSerializer.Serialize(new
+                    {
+                        configurationVersion = consumer.ConfigurationVersion,
+                        providerMode = NormalizedLookupMetadata.WebhookProviderMode((int)targetMode).Code,
+                        pendingWorkDecision = NormalizedLookupMetadata
+                            .WebhookPendingWorkDecision(request.PendingWorkDecisionId).Code,
+                        migratedWorkCount = 0,
+                        uncertainProviderPublicationCount = uncertainPublicationCount,
+                        uncertainProviderPublicationsAcknowledged = request.AcknowledgeUncertainProviderPublications,
+                        outcome = "applied"
+                    }),
+                    ConfigurationVersion: $"consumer-v{consumer.ConfigurationVersion}",
+                    EffectiveScopeKind: consumer.Ownership.AuditScopeKind,
+                    EffectiveScopeId: consumer.OwnerId),
+                transactionCancellationToken);
 
             var warning = uncertainPublicationCount > 0
                 ? $" {uncertainPublicationCount} uncertain provider publication(s) remain on their original snapshots."
@@ -199,11 +193,6 @@ public sealed class UpdateWebhookConsumerProviderModeCommandHandler(
     private static List<string> Validate(UpdateWebhookConsumerProviderModeCommand request)
     {
         var errors = new List<string>();
-        if (request.TenantId == Guid.Empty)
-        {
-            errors.Add("Tenant id is required.");
-        }
-
         if (request.ConsumerId == Guid.Empty)
         {
             errors.Add("Consumer id is required.");

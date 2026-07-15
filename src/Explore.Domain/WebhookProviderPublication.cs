@@ -607,7 +607,8 @@ public sealed class WebhookProviderPublication : ITenantEntity, IAuditableEntity
 
     public void Abandon(string failureCategory, string? safeDetail, DateTime abandonedAt)
     {
-        if (Status is WebhookProviderPublicationStatus.ProviderQueued or WebhookProviderPublicationStatus.Abandoned)
+        if (Status is not (WebhookProviderPublicationStatus.ManualReconciliation or
+            WebhookProviderPublicationStatus.DeadLettered))
         {
             throw new InvalidOperationException($"Publication in state '{Status}' cannot be abandoned.");
         }

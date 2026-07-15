@@ -9,6 +9,10 @@ public sealed class WebhookDeliveryAttemptDto
 
     public Guid TenantId { get; init; }
 
+    public int OwnerKindId { get; init; }
+
+    public Guid OwnerId { get; init; }
+
     public Guid MessageId { get; init; }
 
     public string? MessageEventType { get; init; }

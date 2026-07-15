@@ -5,6 +5,7 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Threading.Channels;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Services;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Persistence;
@@ -91,6 +92,9 @@ public class SecurityWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureTestServices(services =>
         {
+            services.RemoveAll<IDeploymentModeProvider>();
+            services.AddSingleton<IDeploymentModeProvider>(new FixedDeploymentModeProvider(DeploymentMode));
+
             // DO NOT override authentication — we want real JWT Bearer validation
             // pointing to the Keycloak container's OIDC metadata endpoint.
             // The app's AddJwtBearer reads Authority/MetadataAddress from config,
@@ -134,7 +138,7 @@ public class SecurityWebApplicationFactory : WebApplicationFactory<Program>
             if (AuthorizationProviderOverride is not null)
             {
                 services.RemoveAll<IAuthorizationProvider>();
-                services.AddScoped(_ => AuthorizationProviderOverride);
+                services.AddSingleton(AuthorizationProviderOverride);
             }
         });
     }
@@ -157,5 +161,19 @@ public class SecurityWebApplicationFactory : WebApplicationFactory<Program>
         {
             // Providers may already be disposed when the test host is shutting down.
         }
+    }
+
+    private sealed class FixedDeploymentModeProvider(DeploymentMode mode) : IDeploymentModeProvider
+    {
+        public Task<DeploymentMode> GetCurrentModeAsync(CancellationToken ct = default) =>
+            Task.FromResult(mode);
+
+        public Task<DeploymentMode> GetConfiguredOnboardingModeAsync(CancellationToken ct = default) =>
+            Task.FromResult(mode);
+
+        public Task<bool> IsSingleTenantAsync(CancellationToken ct = default) =>
+            Task.FromResult(mode == DeploymentMode.SingleTenant);
+
+        public Task InvalidateCacheAsync() => Task.CompletedTask;
     }
 }

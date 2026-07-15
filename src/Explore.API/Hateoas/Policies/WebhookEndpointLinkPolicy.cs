@@ -21,7 +21,7 @@ public sealed class WebhookEndpointDetailLinkPolicy : ILinkPolicy<WebhookEndpoin
             "Webhook endpoint")
             .RequirePermission(AuthorizationActions.Webhooks.View, ResourceDescriptors.WebhookEndpoint, dto);
 
-        if (!string.Equals(dto.StatusName, "Archived", StringComparison.Ordinal))
+        if (!string.Equals(dto.StatusCode, "ARCHIVED", StringComparison.Ordinal))
         {
             yield return new LinkDefinition(
                 LinkRelations.Update,
@@ -39,8 +39,8 @@ public sealed class WebhookEndpointDetailLinkPolicy : ILinkPolicy<WebhookEndpoin
                 "Rotate webhook endpoint secret")
                 .RequirePermission(AuthorizationActions.Webhooks.RotateSecret, ResourceDescriptors.WebhookEndpoint, dto);
 
-            if (string.Equals(dto.StatusName, "Active", StringComparison.Ordinal) &&
-                CanScheduleLocalTest(dto.ProviderModeName))
+            if (string.Equals(dto.StatusCode, "ACTIVE", StringComparison.Ordinal) &&
+                SupportsLocalDelivery(dto.ProviderModeCode))
             {
                 yield return new LinkDefinition(
                     LinkRelations.Test,
@@ -51,8 +51,21 @@ public sealed class WebhookEndpointDetailLinkPolicy : ILinkPolicy<WebhookEndpoin
                     .RequirePermission(AuthorizationActions.Webhooks.Test, ResourceDescriptors.WebhookEndpoint, dto);
             }
 
-            if (string.Equals(dto.StatusName, "AutoPaused", StringComparison.Ordinal)
-                && CanScheduleLocalTest(dto.ProviderModeName))
+            if (string.Equals(dto.StatusCode, "ACTIVE", StringComparison.Ordinal) &&
+                SupportsLocalDelivery(dto.ProviderModeCode))
+            {
+                yield return new LinkDefinition(
+                    LinkRelations.Pause,
+                    RouteNames.PauseWebhookEndpoint,
+                    new { endpointId = dto.Id },
+                    "POST",
+                    "Pause webhook endpoint")
+                    .RequirePermission(AuthorizationActions.Webhooks.Pause, ResourceDescriptors.WebhookEndpoint, dto);
+            }
+
+            if ((string.Equals(dto.StatusCode, "AUTO_PAUSED", StringComparison.Ordinal) ||
+                    string.Equals(dto.StatusCode, "DISABLED", StringComparison.Ordinal)) &&
+                SupportsLocalDelivery(dto.ProviderModeCode))
             {
                 yield return new LinkDefinition(
                     LinkRelations.Resume,
@@ -73,9 +86,9 @@ public sealed class WebhookEndpointDetailLinkPolicy : ILinkPolicy<WebhookEndpoin
         }
     }
 
-    private static bool CanScheduleLocalTest(string providerModeName) =>
-        string.Equals(providerModeName, "Local", StringComparison.Ordinal) ||
-        string.Equals(providerModeName, "Composite", StringComparison.Ordinal);
+    private static bool SupportsLocalDelivery(string providerModeCode) =>
+        string.Equals(providerModeCode, "LOCAL", StringComparison.Ordinal) ||
+        string.Equals(providerModeCode, "COMPOSITE", StringComparison.Ordinal);
 }
 
 public sealed class WebhookEndpointCollectionLinkPolicy : ICollectionLinkPolicy<WebhookEndpointDto>
@@ -87,6 +100,18 @@ public sealed class WebhookEndpointCollectionLinkPolicy : ICollectionLinkPolicy<
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
     {
+        yield break;
+    }
+
+    public IEnumerable<LinkDefinition> GetCollectionLinks(
+        ClaimsPrincipal? user,
+        ICollectionAuthorizationContext? authorizationContext)
+    {
+        if (authorizationContext is null)
+        {
+            yield break;
+        }
+
         yield return new LinkDefinition(
             LinkRelations.Create,
             RouteNames.CreateWebhookEndpoint,
@@ -94,6 +119,9 @@ public sealed class WebhookEndpointCollectionLinkPolicy : ICollectionLinkPolicy<
             "POST",
             "Create webhook endpoint",
             RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Webhooks.Create, ResourceKinds.Webhook);
+            .RequirePermission(AuthorizationActions.Webhooks.Create,
+                ResourceKinds.Webhook,
+                authorizationContext.AuthorizationResourceId,
+                authorizationContext.AuthorizationResourceAttributes);
     }
 }

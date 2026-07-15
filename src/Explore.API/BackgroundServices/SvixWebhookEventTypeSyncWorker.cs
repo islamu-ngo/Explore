@@ -39,7 +39,9 @@ public sealed class SvixWebhookEventTypeSyncWorker(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Svix webhook event type sync failed");
+            logger.LogWarning(
+                "Svix webhook event type sync failed. FailureType={FailureType}",
+                ex.GetType().Name);
         }
     }
 }

@@ -1,7 +1,8 @@
-// ABOUTME: Handles tenant-scoped webhook endpoint list queries.
-// ABOUTME: Caps list size and maps endpoint entities into secret-safe DTOs.
+// ABOUTME: Handles typed owner-scoped webhook endpoint list queries.
+// ABOUTME: Resolves canonical ownership before bounded secret-safe entity mapping.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.DTOs.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Queries;
 using MediatR;
@@ -9,7 +10,8 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Handlers.Queries;
 
 public sealed class GetWebhookEndpointsQueryHandler(
-    IWebhookEndpointRepository endpointRepository)
+    IWebhookEndpointRepository endpointRepository,
+    IWebhookOwnershipScopeResolver ownershipScopeResolver)
     : IRequestHandler<GetWebhookEndpointsQuery, IReadOnlyList<WebhookEndpointDto>>
 {
     private const int DefaultLimit = 100;
@@ -19,7 +21,11 @@ public sealed class GetWebhookEndpointsQueryHandler(
         GetWebhookEndpointsQuery request,
         CancellationToken cancellationToken)
     {
-        if (request.TenantId == Guid.Empty)
+        var ownershipResolution = await ownershipScopeResolver.ResolveAsync(
+            request.OwnerKindId,
+            request.OwnerId,
+            cancellationToken);
+        if (ownershipResolution.Scope is not { } ownership)
         {
             return [];
         }
@@ -28,8 +34,8 @@ public sealed class GetWebhookEndpointsQueryHandler(
             ? DefaultLimit
             : Math.Min(request.Limit, MaxLimit);
 
-        var endpoints = await endpointRepository.ListByTenantAsync(
-            request.TenantId,
+        var endpoints = await endpointRepository.ListByOwnerAsync(
+            ownership,
             request.ConsumerId,
             limit,
             cancellationToken);

@@ -145,15 +145,28 @@ public static class InfrastructureServicesRegistration
         services.AddOptions<WebhookProviderPublicationProcessorSettings>()
             .Bind(configuration.GetSection(WebhookProviderPublicationProcessorSettings.SectionName))
             .ValidateOnStart();
+        services.AddOptions<WebhookRetentionSettings>()
+            .Bind(configuration.GetSection(WebhookRetentionSettings.SectionName))
+            .ValidateOnStart();
+        services.AddOptions<WebhookBulkReplaySettings>()
+            .Bind(configuration.GetSection(WebhookBulkReplaySettings.SectionName))
+            .ValidateOnStart();
         services.AddSingleton<IValidateOptions<WebhookOptions>, WebhookOptionsValidator>();
         services.AddSingleton<IValidateOptions<WebhookDeliveryProcessorSettings>, WebhookDeliveryProcessorSettingsValidator>();
         services.AddSingleton<
             IValidateOptions<WebhookProviderPublicationProcessorSettings>,
             WebhookProviderPublicationProcessorSettingsValidator>();
+        services.AddSingleton<IValidateOptions<WebhookRetentionSettings>, WebhookRetentionSettingsValidator>();
+        services.AddSingleton<IValidateOptions<WebhookBulkReplaySettings>, WebhookBulkReplaySettingsValidator>();
+        services.AddSingleton<IWebhookRetentionPolicyResolver, WebhookRetentionPolicyResolver>();
+        services.AddSingleton<IWebhookRetentionCleanupService, WebhookRetentionCleanupService>();
+        services.AddSingleton<IWebhookBulkReplayPolicyResolver, WebhookBulkReplayPolicyResolver>();
+        services.AddSingleton<IWebhookBulkReplayService, WebhookBulkReplayService>();
         services.AddSingleton<IWebhookSignatureService, WebhookSignatureService>();
         services.AddSingleton<WebhookRetryScheduler>();
         services.AddSingleton<WebhookEndpointSafetyPolicy>();
         services.AddSingleton<WebhookEndpointSecretResolver>();
+        services.AddScoped<IWebhookDeliveryGovernanceResolver, WebhookDeliveryGovernanceResolver>();
         services.AddSingleton<IWebhookDeliveryDrainService, WebhookDeliveryDrainService>();
         services.AddHttpClient(WebhookDeliveryDrainService.HttpClientName, client =>
         {

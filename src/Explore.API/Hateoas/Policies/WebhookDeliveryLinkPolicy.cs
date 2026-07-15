@@ -6,10 +6,11 @@ using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Webhooks;
 using Explore.Application.Hateoas;
+using Explore.Domain;
 
 namespace Explore.API.Hateoas.Policies;
 
-public sealed class WebhookMessageDetailLinkPolicy : ILinkPolicy<WebhookMessageDto>
+public sealed class WebhookMessageDetailLinkPolicy(TimeProvider timeProvider) : ILinkPolicy<WebhookMessageDto>
 {
     public IEnumerable<LinkDefinition> GetLinks(WebhookMessageDto dto, ClaimsPrincipal? user)
     {
@@ -28,18 +29,83 @@ public sealed class WebhookMessageDetailLinkPolicy : ILinkPolicy<WebhookMessageD
             "GET",
             "Webhook delivery attempts")
             .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery, ResourceDescriptors.WebhookMessage, dto);
+
+        yield return new LinkDefinition(
+            LinkRelations.ProviderPublications,
+            RouteNames.GetWebhookProviderPublications,
+            new { messageId = dto.Id },
+            "GET",
+            "Provider publications")
+            .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery, ResourceDescriptors.WebhookMessage, dto);
+
+        if (dto.PayloadClearedAt is null && dto.PayloadRetentionUntil > timeProvider.GetUtcNow().UtcDateTime)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.Payload,
+                RouteNames.GetWebhookMessagePayload,
+                new { messageId = dto.Id },
+                "GET",
+                "Webhook payload")
+                .RequirePermission(AuthorizationActions.Webhooks.ViewPayload, ResourceDescriptors.WebhookMessage, dto);
+        }
     }
 }
 
-public sealed class WebhookMessageCollectionLinkPolicy : ICollectionLinkPolicy<WebhookMessageDto>
+public sealed class WebhookMessageCollectionLinkPolicy(TimeProvider timeProvider)
+    : ICollectionLinkPolicy<WebhookMessageDto>
 {
-    private readonly WebhookMessageDetailLinkPolicy _detailPolicy = new();
+    public IEnumerable<LinkDefinition> GetItemLinks(WebhookMessageDto dto, ClaimsPrincipal? user)
+    {
+        yield return new LinkDefinition(
+            LinkRelations.Self,
+            RouteNames.GetWebhookMessageById,
+            new { messageId = dto.Id },
+            "GET",
+            "Webhook message")
+            .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery, ResourceDescriptors.WebhookMessage, dto);
 
-    public IEnumerable<LinkDefinition> GetItemLinks(WebhookMessageDto dto, ClaimsPrincipal? user) =>
-        _detailPolicy.GetLinks(dto, user);
+        yield return new LinkDefinition(
+            LinkRelations.DeliveryAttempts,
+            RouteNames.GetWebhookDeliveryAttempts,
+            new { messageId = dto.Id },
+            "GET",
+            "Webhook delivery attempts")
+            .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery, ResourceDescriptors.WebhookMessage, dto);
+
+        yield return new LinkDefinition(
+            LinkRelations.ProviderPublications,
+            RouteNames.GetWebhookProviderPublications,
+            new { messageId = dto.Id },
+            "GET",
+            "Provider publications")
+            .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery, ResourceDescriptors.WebhookMessage, dto);
+
+        if (dto.PayloadClearedAt is null && dto.PayloadRetentionUntil > timeProvider.GetUtcNow().UtcDateTime)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.Payload,
+                RouteNames.GetWebhookMessagePayload,
+                new { messageId = dto.Id },
+                "GET",
+                "Webhook payload")
+                .RequirePermission(AuthorizationActions.Webhooks.ViewPayload, ResourceDescriptors.WebhookMessage, dto);
+        }
+    }
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
     {
+        yield break;
+    }
+
+    public IEnumerable<LinkDefinition> GetCollectionLinks(
+        ClaimsPrincipal? user,
+        ICollectionAuthorizationContext? authorizationContext)
+    {
+        if (authorizationContext is null)
+        {
+            yield break;
+        }
+
         yield return new LinkDefinition(
             LinkRelations.Self,
             RouteNames.GetWebhookMessages,
@@ -47,8 +113,57 @@ public sealed class WebhookMessageCollectionLinkPolicy : ICollectionLinkPolicy<W
             "GET",
             "Webhook messages",
             RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery, ResourceKinds.Webhook);
+            .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery,
+                ResourceKinds.Webhook,
+                authorizationContext.AuthorizationResourceId,
+                authorizationContext.AuthorizationResourceAttributes);
+
+        if (!HasTenantOwner(authorizationContext.AuthorizationResourceAttributes))
+        {
+            yield break;
+        }
+
+        yield return new LinkDefinition(
+            LinkRelations.ProviderPublications,
+            RouteNames.GetWebhookProviderPublications,
+            null,
+            "GET",
+            "Provider publications",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery,
+                ResourceKinds.Webhook,
+                authorizationContext.AuthorizationResourceId,
+                authorizationContext.AuthorizationResourceAttributes);
+
+        yield return new LinkDefinition(
+            LinkRelations.BulkReplayPreview,
+            RouteNames.PreviewWebhookBulkReplay,
+            null,
+            "GET",
+            "Preview webhook bulk replay",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Webhooks.BulkReplay,
+                ResourceKinds.Webhook,
+                authorizationContext.AuthorizationResourceId,
+                authorizationContext.AuthorizationResourceAttributes);
+
+        yield return new LinkDefinition(
+            LinkRelations.BulkReplays,
+            RouteNames.GetWebhookBulkReplays,
+            null,
+            "GET",
+            "Webhook bulk replays",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Webhooks.BulkReplay,
+                ResourceKinds.Webhook,
+                authorizationContext.AuthorizationResourceId,
+                authorizationContext.AuthorizationResourceAttributes);
     }
+
+    private static bool HasTenantOwner(IReadOnlyDictionary<string, object> attributes) =>
+        attributes.TryGetValue("ownerKindId", out var ownerKindId)
+        && ownerKindId is int value
+        && value == (int)WebhookConsumerKind.Tenant;
 }
 
 public sealed class WebhookDeliveryAttemptDetailLinkPolicy : ILinkPolicy<WebhookDeliveryAttemptDto>
@@ -95,6 +210,18 @@ public sealed class WebhookDeliveryAttemptCollectionLinkPolicy : ICollectionLink
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
     {
+        yield break;
+    }
+
+    public IEnumerable<LinkDefinition> GetCollectionLinks(
+        ClaimsPrincipal? user,
+        ICollectionAuthorizationContext? authorizationContext)
+    {
+        if (authorizationContext is null)
+        {
+            yield break;
+        }
+
         yield return new LinkDefinition(
             LinkRelations.Self,
             RouteNames.GetWebhookDeliveryAttempts,
@@ -102,6 +229,9 @@ public sealed class WebhookDeliveryAttemptCollectionLinkPolicy : ICollectionLink
             "GET",
             "Webhook delivery attempts",
             RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery, ResourceKinds.Webhook);
+            .RequirePermission(AuthorizationActions.Webhooks.ViewDelivery,
+                ResourceKinds.Webhook,
+                authorizationContext.AuthorizationResourceId,
+                authorizationContext.AuthorizationResourceAttributes);
     }
 }

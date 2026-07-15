@@ -1,15 +1,24 @@
-// ABOUTME: Tenant-scoped join row linking a webhook endpoint to an enabled canonical event type.
-// ABOUTME: Supports LocalProvider endpoint filtering and mirrors Svix event type subscriptions where needed.
+// ABOUTME: Owner-scoped join row linking a webhook endpoint to an enabled canonical event type.
+// ABOUTME: Preserves instance-or-tenant query scope while ownership is inherited from the endpoint consumer.
 
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class WebhookEndpointSubscription : ITenantEntity, IAuditableEntity
+public class WebhookEndpointSubscription : IAuditableEntity
 {
+    private Guid _configurationScopeId;
+
     public Guid Id { get; set; }
-    public Guid TenantId { get; set; }
+    public Guid? TenantId { get; set; }
     public Tenant? Tenant { get; set; }
+    public Guid? InstanceId { get; set; }
+    public InstanceBootstrapState? Instance { get; set; }
+    public Guid ConfigurationScopeId
+    {
+        get => TenantId ?? InstanceId ?? _configurationScopeId;
+        private set => _configurationScopeId = value;
+    }
 
     public Guid EndpointId { get; set; }
     public WebhookEndpoint? Endpoint { get; set; }

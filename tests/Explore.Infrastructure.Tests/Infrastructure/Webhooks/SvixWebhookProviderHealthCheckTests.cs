@@ -1,7 +1,9 @@
 // ABOUTME: Unit tests for the Svix webhook provider readiness health check.
 // ABOUTME: Verifies provider selection and secret-resolution reporting without leaking sensitive values.
 
+using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Secrets;
+using Explore.Application.Telemetry;
 using Explore.Domain.Enums;
 using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.HealthChecks;
@@ -52,6 +54,27 @@ public sealed class SvixWebhookProviderHealthCheckTests
         await Assert.That(result.Data.Keys).DoesNotContain("baseUrl");
         await Assert.That(result.Data.Keys).DoesNotContain("authToken");
         await Assert.That(result.Data.Keys).DoesNotContain("secretRef");
+    }
+
+    [Test]
+    public async Task CheckHealthAsync_WhenSvixProcessorIsDisabled_ReturnsUnhealthyBeforeSecretResolution()
+    {
+        var secretResolver = Substitute.For<ISecretResolver>();
+        var healthCheck = CreateHealthCheck(
+            secretResolver,
+            new WebhookOptions
+            {
+                Enabled = true,
+                Provider = WebhookOptions.ProviderSvix,
+                Svix = SupportedSelfHostedOptions()
+            },
+            processorEnabled: false);
+
+        var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Unhealthy);
+        await Assert.That(result.Data["processorEnabled"]).IsEqualTo(false);
+        await secretResolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default, default);
     }
 
     [Test]
@@ -165,7 +188,8 @@ public sealed class SvixWebhookProviderHealthCheckTests
 
     private static SvixWebhookProviderHealthCheck CreateHealthCheck(
         ISecretResolver secretResolver,
-        WebhookOptions options)
+        WebhookOptions options,
+        bool processorEnabled = true)
     {
         var services = new ServiceCollection();
         services.AddScoped(_ => secretResolver);
@@ -173,7 +197,19 @@ public sealed class SvixWebhookProviderHealthCheckTests
 
         return new SvixWebhookProviderHealthCheck(
             new StaticOptionsMonitor<WebhookOptions>(options),
-            serviceProvider.GetRequiredService<IServiceScopeFactory>());
+            Options.Create(new WebhookProviderPublicationProcessorSettings
+            {
+                Enabled = processorEnabled
+            }),
+            serviceProvider.GetRequiredService<IServiceScopeFactory>(),
+            CreateMetrics());
+    }
+
+    private static BusinessMetrics CreateMetrics()
+    {
+        var meterFactory = Substitute.For<IMeterFactory>();
+        meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
+        return new BusinessMetrics(meterFactory);
     }
 
     private static ResolvedSecret Resolved(string settingKey, string value) =>

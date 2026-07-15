@@ -7,13 +7,30 @@ namespace Explore.Application.Contracts.Persistence;
 
 public sealed record WebhookEndpointFailureState(
     int ConsecutiveFailureCount,
-    bool IsAutoPaused);
+    bool IsAutoPaused,
+    bool TransitionedToAutoPaused = false);
 
 public interface IWebhookEndpointRepository
 {
     Task<WebhookEndpoint> CreateWithSubscriptionsAsync(
         WebhookEndpoint endpoint,
         IReadOnlyCollection<WebhookEndpointSubscription> subscriptions,
+        CancellationToken cancellationToken);
+
+    Task<WebhookEndpoint?> GetByIdForOwnerOperationAsync(
+        Guid endpointId,
+        bool forUpdate,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<WebhookEndpoint>> ListByOwnerAsync(
+        WebhookOwnershipScope ownership,
+        Guid? consumerId,
+        int limit,
+        CancellationToken cancellationToken);
+
+    Task<WebhookEndpoint?> GetByConsumerAndUrlForOwnerOperationAsync(
+        Guid consumerId,
+        string url,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<WebhookEndpoint>> ListByTenantAsync(
@@ -48,7 +65,7 @@ public interface IWebhookEndpointRepository
         CancellationToken cancellationToken);
 
     Task ArchiveAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid endpointId,
         DateTime archivedAt,
         CancellationToken cancellationToken);
@@ -60,25 +77,27 @@ public interface IWebhookEndpointRepository
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<WebhookEndpoint>> GetActiveSubscribedEndpointsByConsumerAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid consumerId,
         string eventTypeName,
         CancellationToken cancellationToken);
 
     Task<bool> HasActiveSubscribedEndpointByConsumerAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid consumerId,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<WebhookLocalTargetSnapshot>> GetEligiblePendingTargetsForUpdateAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid endpointId,
         CancellationToken cancellationToken);
 
-    Task DisableAsync(
-        Guid tenantId,
+    Task<bool> TryPauseAsync(
+        Guid? tenantId,
         Guid endpointId,
-        DateTime disabledAt,
+        long expectedDeliveryStateVersion,
+        DateTime pausedAt,
+        Guid actorUserId,
         CancellationToken cancellationToken);
 
     Task MarkSuccessAsync(
@@ -96,8 +115,9 @@ public interface IWebhookEndpointRepository
         CancellationToken cancellationToken);
 
     Task<bool> TryResumeAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid endpointId,
+        long expectedDeliveryStateVersion,
         DateTime resumedAt,
         Guid actorUserId,
         CancellationToken cancellationToken);

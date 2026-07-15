@@ -1,0 +1,19 @@
+@* ABOUTME: Exposes a non-visual signal when the Blazor component tree becomes interactive.
+   ABOUTME: Distinguishes hydrated UI from prerendered HTML for browser automation and diagnostics. *@
+
+<span hidden data-blazor-interactive="@(_isInteractive ? "true" : "false")"></span>
+
+@code {
+    private bool _isInteractive;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        _isInteractive = true;
+        StateHasChanged();
+    }
+}

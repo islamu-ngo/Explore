@@ -1,5 +1,5 @@
-// ABOUTME: Authorized command for creating Svix App Portal access for one verified tenant consumer.
-// ABOUTME: Supplies resource attributes without accepting caller-selected portal capabilities.
+// ABOUTME: Authorized command for creating Svix App Portal access for one verified typed-owner consumer.
+// ABOUTME: Resolves persisted ownership without accepting caller-selected portal capabilities.
 
 using Explore.Application.Authorization;
 using Explore.Application.Responses;
@@ -8,10 +8,9 @@ using MediatR;
 namespace Explore.Application.Features.Webhooks.Requests.Commands;
 
 [AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.OpenProviderPortal)]
-public sealed class OpenSvixAppPortalCommand : IRequest<WebhookProviderPortalAccessCommandResponse>, ISecureRequest
+public sealed class OpenSvixAppPortalCommand
+    : IRequest<WebhookProviderPortalAccessCommandResponse>, ISecureRequest, IWebhookPersistedOwnerRequest
 {
-    public Guid TenantId { get; init; }
-
     public Guid ConsumerId { get; init; }
 
     public string SessionId { get; init; } = string.Empty;
@@ -26,7 +25,6 @@ public sealed class OpenSvixAppPortalCommand : IRequest<WebhookProviderPortalAcc
         {
             var attributes = new Dictionary<string, object>
             {
-                ["tenantId"] = TenantId.ToString("D"),
                 ["provider"] = "svix"
             };
 
@@ -35,4 +33,9 @@ public sealed class OpenSvixAppPortalCommand : IRequest<WebhookProviderPortalAcc
             return attributes;
         }
     }
+
+    WebhookOwnedResourceKind IWebhookPersistedOwnerRequest.OwnedResourceKind =>
+        WebhookOwnedResourceKind.Consumer;
+
+    Guid IWebhookPersistedOwnerRequest.OwnedResourceId => ConsumerId;
 }

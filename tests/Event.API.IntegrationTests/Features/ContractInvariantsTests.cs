@@ -487,12 +487,13 @@ public class ContractInvariantsTests
         await Assert.That(SchemaAllowsNull(eventProperties.GetProperty("description")))
             .IsTrue()
             .Because("Additional nullable scalar properties must include null in the schema so generated clients preserve optionality.");
-        await Assert.That(SchemaAllowsNull(organizationProperties.GetProperty("currentUserRole")))
+        var currentUserRoleId = organizationProperties.GetProperty("currentUserRoleId");
+        await Assert.That(SchemaAllowsNull(currentUserRoleId))
             .IsTrue()
-            .Because("Nullable enum references must include null in the schema while still referencing the enum component.");
-        await Assert.That(GetOneOfReference(organizationProperties.GetProperty("currentUserRole")))
-            .IsEqualTo("#/components/schemas/RoleEnum")
-            .Because("Nullable enum references must retain the RoleEnum component reference instead of inlining or losing the enum schema.");
+            .Because("Nullable normalized lookup identifiers must include null so generated clients preserve optionality.");
+        await Assert.That(currentUserRoleId.GetProperty("format").GetString())
+            .IsEqualTo("int32")
+            .Because("Normalized lookup identifiers use the platform's int lookup-key convention.");
     }
 
     private async Task<JsonDocument> GetOpenApiDocumentAsync()
@@ -609,18 +610,6 @@ public class ContractInvariantsTests
         return schema.TryGetProperty("oneOf", out var oneOf)
             && oneOf.ValueKind == JsonValueKind.Array
             && oneOf.EnumerateArray().Any(SchemaAllowsNull);
-    }
-
-    private static string? GetOneOfReference(JsonElement schema)
-    {
-        if (!schema.TryGetProperty("oneOf", out var oneOf) || oneOf.ValueKind != JsonValueKind.Array)
-        {
-            return null;
-        }
-
-        return oneOf.EnumerateArray()
-            .Select(GetReference)
-            .FirstOrDefault(reference => !string.IsNullOrWhiteSpace(reference));
     }
 
     private readonly record struct OperationRef(string Path, string Method, string? OperationId, JsonElement Operation);

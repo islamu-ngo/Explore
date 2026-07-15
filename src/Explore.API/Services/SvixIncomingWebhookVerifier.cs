@@ -69,7 +69,9 @@ public sealed class SvixIncomingWebhookVerifier(
             externalApplicationId,
             applicationUid,
             cancellationToken);
-        if (binding is null || !binding.IsVerifiedFor(binding.TenantId, binding.WebhookConsumerId))
+        if (binding is null ||
+            binding.TenantId is not { } tenantId ||
+            !binding.IsVerifiedFor(tenantId, binding.WebhookConsumerId))
         {
             return IncomingWebhookVerificationResult.Rejected(
                 "svix_webhook_binding_not_verified",
@@ -82,7 +84,7 @@ public sealed class SvixIncomingWebhookVerifier(
             : null;
 
         return IncomingWebhookVerificationResult.VerifiedProviderBinding(
-            binding.TenantId,
+            tenantId,
             binding.Id,
             providerMessageId,
             eventType,

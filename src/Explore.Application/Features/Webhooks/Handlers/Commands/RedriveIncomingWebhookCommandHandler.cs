@@ -5,6 +5,7 @@ using System.Text.Json;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Commands;
 using Explore.Application.Features.Webhooks.Validators;
 using Explore.Application.Responses;
@@ -15,15 +16,13 @@ namespace Explore.Application.Features.Webhooks.Handlers.Commands;
 
 public sealed class RedriveIncomingWebhookCommandHandler(
     IIncomingWebhookMessageRepository messageRepository,
-    IAuditLogRepository auditLogRepository,
+    IWebhookAuditEventWriter auditWriter,
     IUnitOfWork unitOfWork,
     ICurrentUserService currentUserService,
     IMachinePrincipalAccessor machinePrincipalAccessor,
     TimeProvider timeProvider)
     : IRequestHandler<RedriveIncomingWebhookCommand, BaseCommandResponse<Guid>>
 {
-    private const string AuditAction = "IncomingWebhookRedriven";
-
     public async Task<BaseCommandResponse<Guid>> Handle(
         RedriveIncomingWebhookCommand request,
         CancellationToken cancellationToken)
@@ -39,7 +38,7 @@ public sealed class RedriveIncomingWebhookCommandHandler(
                 validation.Errors.Select(error => error.ErrorMessage));
         }
 
-        if (!TryResolveActor(out var actorReference, out var actorUserId))
+        if (!TryResolveActor(out var actorReference, out _))
         {
             return Failure(
                 request.IncomingWebhookMessageId,
@@ -86,6 +85,14 @@ public sealed class RedriveIncomingWebhookCommandHandler(
                     "Only dead-lettered incoming webhooks can be redriven.");
             }
 
+            if (message.ReplayWindowUntil <= requestedAt || message.PayloadBytes.IsEmpty)
+            {
+                return Failure(
+                    message.Id,
+                    "incoming_webhook_redrive_payload_unavailable",
+                    "The incoming webhook payload is no longer retained for redrive.");
+            }
+
             var sourceGeneration = message.ProcessingGeneration;
             var record = message.Redrive(
                 request.ExpectedProcessingGeneration,
@@ -96,35 +103,28 @@ public sealed class RedriveIncomingWebhookCommandHandler(
             await messageRepository.SaveChangesAsync(token);
 
             token.ThrowIfCancellationRequested();
-            await auditLogRepository.Create(new AuditLog
-            {
-                Id = Guid.CreateVersion7(),
-                TenantId = message.TenantId,
-                Tenant = null!,
-                EntityType = nameof(IncomingWebhookMessage),
-                EntityId = message.Id.ToString("D"),
-                Action = AuditAction,
-                OldValues = JsonSerializer.Serialize(new
-                {
-                    Status = IncomingWebhookMessageStatus.DeadLettered.ToString(),
-                    ProcessingGeneration = sourceGeneration
-                }),
-                NewValues = JsonSerializer.Serialize(new
-                {
-                    Status = message.Status.ToString(),
-                    message.ProcessingGeneration,
-                    RedriveRecordId = record.Id,
-                    Result = record.Result.ToString()
-                }),
-                AffectedColumns = JsonSerializer.Serialize(new[]
-                {
-                    nameof(IncomingWebhookMessage.StatusId),
-                    nameof(IncomingWebhookMessage.ProcessingGeneration),
-                    nameof(IncomingWebhookMessage.NextAttemptAt)
-                }),
-                ActorId = actorUserId,
-                Timestamp = requestedAt
-            });
+            await auditWriter.AppendAsync(
+                new WebhookAuditWriteRequest(
+                    message.TenantId,
+                    WebhookAuditAction.IncomingRedriveScheduled,
+                    WebhookAuditTargetKind.IncomingMessage,
+                    message.Id,
+                    "operator_redrive",
+                    WebhookAuditOutcome.Succeeded,
+                    SafeBeforeJson: JsonSerializer.Serialize(new
+                    {
+                        status = IncomingWebhookMessageStatus.DeadLettered.ToString(),
+                        processingGeneration = sourceGeneration
+                    }),
+                    SafeAfterJson: JsonSerializer.Serialize(new
+                    {
+                        status = message.Status.ToString(),
+                        message.ProcessingGeneration,
+                        redriveRecordId = record.Id,
+                        result = record.Result.ToString()
+                    }),
+                    ConfigurationVersion: $"processing-generation-v{message.ProcessingGeneration}"),
+                token);
 
             return Success(message.Id, "Incoming webhook redrive scheduled.");
         }, cancellationToken);

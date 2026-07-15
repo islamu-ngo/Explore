@@ -21,7 +21,7 @@ public sealed class WebhookConsumerProviderBindingRepository(ExploreDbContext db
     }
 
     public async Task<WebhookConsumerProviderBinding?> GetByConsumerAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid webhookConsumerId,
         WebhookProviderKind providerKind,
         string providerEnvironment,
@@ -41,7 +41,7 @@ public sealed class WebhookConsumerProviderBindingRepository(ExploreDbContext db
     }
 
     public Task<WebhookConsumerProviderBinding?> GetByTenantAndIdForUpdateAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid bindingId,
         CancellationToken cancellationToken) =>
         MutableBindingQuery()
@@ -51,7 +51,7 @@ public sealed class WebhookConsumerProviderBindingRepository(ExploreDbContext db
                 cancellationToken);
 
     public async Task<WebhookConsumerProviderBinding?> GetVerifiedByConsumerAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid webhookConsumerId,
         WebhookProviderKind providerKind,
         string providerEnvironment,
@@ -138,7 +138,7 @@ public sealed class WebhookConsumerProviderBindingRepository(ExploreDbContext db
     }
 
     public async Task<IReadOnlyList<WebhookConsumerProviderBinding>> GetVerifiedByConsumersAsync(
-        Guid tenantId,
+        Guid? tenantId,
         IReadOnlyCollection<Guid> webhookConsumerIds,
         WebhookProviderKind providerKind,
         string providerEnvironment,

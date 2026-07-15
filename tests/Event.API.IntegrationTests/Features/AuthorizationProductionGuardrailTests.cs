@@ -102,13 +102,15 @@ public class AuthorizationProductionGuardrailTests
 
     /// <summary>
     /// Factory that mimics production as closely as possible (no Testing env overrides).
-    /// Uses Development to avoid HTTPS redirect issues in test.
+    /// Uses a non-Development, non-Testing environment so user secrets and test-only
+    /// application branches cannot affect the production registration proof.
     /// </summary>
     private sealed class ProductionLikeWebApplicationFactory : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            builder.UseEnvironment("Development");
+            builder.UseEnvironment("ProductionGuardrail");
+            ConfigureEarlyHostSettings(builder);
 
             builder.ConfigureAppConfiguration((_, config) =>
             {
@@ -126,6 +128,10 @@ public class AuthorizationProductionGuardrailTests
                     ["Cerbos:PlaintextMode"] = "true",
                     ["EmailDispatchProcessor:Enabled"] = "false",
                     ["Scheduler:TickerQ:Enabled"] = "false",
+                    ["WebhookDeliveryProcessor:Enabled"] = "false",
+                    ["IncomingWebhookProcessing:Enabled"] = "false",
+                    ["HttpsRedirection:Enabled"] = "false",
+                    ["Testing:SkipJwtAuthorityWarmup"] = "true",
                 };
 
                 config.AddInMemoryCollection(testConfig);
@@ -166,7 +172,8 @@ public class AuthorizationProductionGuardrailTests
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            builder.UseEnvironment("Development");
+            builder.UseEnvironment("ProductionGuardrail");
+            ConfigureEarlyHostSettings(builder);
 
             builder.ConfigureAppConfiguration((_, config) =>
             {
@@ -184,6 +191,10 @@ public class AuthorizationProductionGuardrailTests
                     ["Cerbos:PlaintextMode"] = "true",
                     ["EmailDispatchProcessor:Enabled"] = "false",
                     ["Scheduler:TickerQ:Enabled"] = "false",
+                    ["WebhookDeliveryProcessor:Enabled"] = "false",
+                    ["IncomingWebhookProcessing:Enabled"] = "false",
+                    ["HttpsRedirection:Enabled"] = "false",
+                    ["Testing:SkipJwtAuthorityWarmup"] = "true",
                 };
 
                 config.AddInMemoryCollection(testConfig);
@@ -214,5 +225,16 @@ public class AuthorizationProductionGuardrailTests
                 });
             });
         }
+    }
+
+    private static void ConfigureEarlyHostSettings(IWebHostBuilder builder)
+    {
+        builder.UseSetting("ConnectionStrings:DefaultConnection", "Host=localhost;Database=guardrail;Username=postgres;Password=postgres");
+        builder.UseSetting("EmailDispatchProcessor:Enabled", "false");
+        builder.UseSetting("Scheduler:TickerQ:Enabled", "false");
+        builder.UseSetting("WebhookDeliveryProcessor:Enabled", "false");
+        builder.UseSetting("IncomingWebhookProcessing:Enabled", "false");
+        builder.UseSetting("HttpsRedirection:Enabled", "false");
+        builder.UseSetting("Testing:SkipJwtAuthorityWarmup", "true");
     }
 }

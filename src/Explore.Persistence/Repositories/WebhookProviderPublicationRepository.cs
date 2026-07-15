@@ -55,10 +55,56 @@ public sealed class WebhookProviderPublicationRepository : IWebhookProviderPubli
         CancellationToken cancellationToken) =>
         _dbContext.WebhookProviderPublications
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+            .Include(publication => publication.WebhookDeliveryPlanSnapshot)
             .Include(publication => publication.Attempts)
             .FirstOrDefaultAsync(
                 publication => publication.TenantId == tenantId && publication.Id == publicationId,
                 cancellationToken);
+
+    public async Task<IReadOnlyList<WebhookProviderPublication>> ListByTenantAsync(
+        Guid tenantId,
+        Guid? webhookMessageId,
+        Guid? webhookConsumerId,
+        int? statusId,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        if (tenantId == Guid.Empty || limit is < 1 or > MaximumBatchSize)
+        {
+            return [];
+        }
+
+        var query = _dbContext.WebhookProviderPublications
+            .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(publication => publication.WebhookDeliveryPlanSnapshot)
+            .Include(publication => publication.Attempts)
+            .Where(publication => publication.TenantId == tenantId);
+
+        if (webhookMessageId is { } messageId)
+        {
+            query = query.Where(publication => publication.WebhookMessageId == messageId);
+        }
+
+        if (webhookConsumerId is { } consumerId)
+        {
+            query = query.Where(publication =>
+                publication.WebhookDeliveryPlanSnapshot != null &&
+                publication.WebhookDeliveryPlanSnapshot.WebhookConsumerId == consumerId);
+        }
+
+        if (statusId is { } requestedStatusId)
+        {
+            query = query.Where(publication => publication.StatusId == requestedStatusId);
+        }
+
+        return await query
+            .OrderByDescending(publication => publication.PreparedAt)
+            .ThenBy(publication => publication.Id)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+    }
 
     public Task<IReadOnlyList<WebhookProviderPublicationClaim>> ClaimDueAsync(
         WebhookProviderPublicationClaimRequest request,
@@ -103,7 +149,7 @@ public sealed class WebhookProviderPublicationRepository : IWebhookProviderPubli
     }
 
     public Task<int> CountUncertainByConsumerAsync(
-        Guid tenantId,
+        Guid? tenantId,
         Guid webhookConsumerId,
         CancellationToken cancellationToken) =>
         _dbContext.WebhookProviderPublications
@@ -111,7 +157,7 @@ public sealed class WebhookProviderPublicationRepository : IWebhookProviderPubli
             .AsNoTracking()
             .CountAsync(
                 publication =>
-                    publication.TenantId == tenantId &&
+                (!tenantId.HasValue || publication.TenantId == tenantId.Value) &&
                     publication.WebhookDeliveryPlanSnapshot != null &&
                     publication.WebhookDeliveryPlanSnapshot.WebhookConsumerId == webhookConsumerId &&
                     (publication.StatusId == (int)WebhookProviderPublicationStatus.PublicationUnknown ||
@@ -166,6 +212,12 @@ public sealed class WebhookProviderPublicationRepository : IWebhookProviderPubli
         {
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            throw new WebhookProviderPublicationConcurrencyException(
+                "The provider publication was changed by another operation.",
+                exception);
+        }
         catch (DbUpdateException exception) when (
             exception.InnerException is PostgresException
             {
@@ -201,6 +253,34 @@ public sealed class WebhookProviderPublicationRepository : IWebhookProviderPubli
 
         var leaseOwner = NormalizeLeaseOwner(request.LeaseOwner);
         var leaseExpiresAt = request.ClaimedAt.Add(request.LeaseDuration);
+
+        var strategy = _dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            try
+            {
+                return await ClaimInTransactionAsync(
+                    request,
+                    leaseOwner,
+                    leaseExpiresAt,
+                    reconciliation,
+                    cancellationToken);
+            }
+            catch
+            {
+                _dbContext.ChangeTracker.Clear();
+                throw;
+            }
+        });
+    }
+
+    private async Task<IReadOnlyList<WebhookProviderPublicationClaim>> ClaimInTransactionAsync(
+        WebhookProviderPublicationClaimRequest request,
+        string leaseOwner,
+        DateTime leaseExpiresAt,
+        bool reconciliation,
+        CancellationToken cancellationToken)
+    {
 
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
         if (_dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
@@ -239,6 +319,7 @@ public sealed class WebhookProviderPublicationRepository : IWebhookProviderPubli
         var claims = new List<WebhookProviderPublicationClaim>(publications.Count);
         foreach (var publication in publications)
         {
+            var dueAt = publication.NextActionAt ?? publication.PreparedAt;
             var persistedAttemptIds = publication.Attempts
                 .Select(attempt => attempt.Id)
                 .ToHashSet();
@@ -268,7 +349,8 @@ public sealed class WebhookProviderPublicationRepository : IWebhookProviderPubli
                 leaseToken,
                 publication.PublicationFence,
                 request.ClaimedAt,
-                leaseExpiresAt));
+                leaseExpiresAt,
+                dueAt));
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);

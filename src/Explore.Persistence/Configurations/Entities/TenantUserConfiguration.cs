@@ -35,9 +35,8 @@ public class TenantUserConfiguration : IEntityTypeConfiguration<TenantUser>
             .HasForeignKey(e => e.ActorId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasIndex(e => new { e.TenantId, e.UserId })
-            .IsUnique()
-            .HasDatabaseName("ix_tenantusers_tenant_user");
+        builder.HasAlternateKey(e => new { e.TenantId, e.UserId })
+            .HasName("ak_tenant_users_tenant_id_user_id");
 
         builder.HasAlternateKey(e => new { e.TenantId, e.Id })
             .HasName("ak_tenant_users_tenant_id_id");

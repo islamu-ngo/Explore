@@ -81,6 +81,10 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.Webhooks.WebhookEndpointDto),
         typeof(Explore.Application.DTOs.Webhooks.WebhookMessageDto),
         typeof(Explore.Application.DTOs.Webhooks.WebhookDeliveryAttemptDto),
+        typeof(Explore.Application.DTOs.Webhooks.WebhookProviderPublicationDto),
+        typeof(Explore.Application.DTOs.Webhooks.WebhookProviderPublicationAttemptDto),
+        typeof(Explore.Application.DTOs.Webhooks.WebhookBulkReplayOperationDto),
+        typeof(Explore.Application.DTOs.Webhooks.WebhookBulkReplayFilterDto),
 
         // EventSessionSpeaker DTOs
         typeof(Explore.Application.DTOs.EventSessionSpeaker.EventSessionSpeakerDto),
@@ -211,6 +215,8 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfWebhookEndpointDto"] = typeof(Explore.Application.DTOs.Webhooks.WebhookEndpointDto),
         ["HalResourceOfWebhookMessageDto"] = typeof(Explore.Application.DTOs.Webhooks.WebhookMessageDto),
         ["HalResourceOfWebhookDeliveryAttemptDto"] = typeof(Explore.Application.DTOs.Webhooks.WebhookDeliveryAttemptDto),
+        ["HalResourceOfWebhookProviderPublicationDto"] = typeof(Explore.Application.DTOs.Webhooks.WebhookProviderPublicationDto),
+        ["HalResourceOfWebhookBulkReplayOperationDto"] = typeof(Explore.Application.DTOs.Webhooks.WebhookBulkReplayOperationDto),
         ["HalResourceOfTemplateDiffDto"] = typeof(Explore.Application.DTOs.EventTemplateSync.TemplateDiffDto),
         ["HalResourceOfEmailDispatchStatusDto"] = typeof(Explore.Application.DTOs.EmailDispatch.EmailDispatchStatusDto),
         ["HalResourceOfSupportAccessSessionDto"] = typeof(Explore.Application.DTOs.SupportAccess.SupportAccessSessionDto),
@@ -281,6 +287,8 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfWebhookEndpointDto"] = "HalResourceOfWebhookEndpointDto",
         ["HalCollectionEmbeddedOfWebhookMessageDto"] = "HalResourceOfWebhookMessageDto",
         ["HalCollectionEmbeddedOfWebhookDeliveryAttemptDto"] = "HalResourceOfWebhookDeliveryAttemptDto",
+        ["HalCollectionEmbeddedOfWebhookProviderPublicationDto"] = "HalResourceOfWebhookProviderPublicationDto",
+        ["HalCollectionEmbeddedOfWebhookBulkReplayOperationDto"] = "HalResourceOfWebhookBulkReplayOperationDto",
         ["HalCollectionEmbeddedOfAiConversationSummaryDto"] = "HalResourceOfAiConversationSummaryDto",
         ["HalCollectionEmbeddedOfAiReferenceSearchResultDto"] = "HalResourceOfAiReferenceSearchResultDto",
         ["HalCollectionEmbeddedOfStorageObjectListDto"] = "HalResourceOfStorageObjectListDto",

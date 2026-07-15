@@ -12,12 +12,12 @@
     align-items: flex-start;
 }
 
-.webhook-management__header-actions {
+.webhook-management ::deep .webhook-management__header-actions {
     flex-wrap: wrap;
     justify-content: flex-end;
 }
 
-.webhook-management__loading {
+.webhook-management ::deep .webhook-management__loading {
     padding-block: var(--isl-space-16);
     padding-inline: 0;
 }
@@ -53,34 +53,77 @@
     line-height: var(--isl-typography-body2-line-height);
 }
 
-.webhook-management__tabs {
+.webhook-management ::deep .webhook-management__tabs {
     border-block-start: var(--webhook-border);
 }
 
-.webhook-management__tab-panel {
+.webhook-management ::deep .webhook-management__tab-panel {
     padding-block-start: var(--isl-space-4);
 }
 
-.webhook-management__table {
+.webhook-management ::deep .webhook-management__table {
     border: var(--webhook-border);
     border-radius: var(--isl-radius-sm);
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .webhook-management__mobile-list {
     display: none;
 }
 
-.webhook-management__actions-cell {
-    width: 9rem;
-    white-space: nowrap;
+.webhook-management ::deep .webhook-management__actions-cell {
+    width: auto;
+    white-space: normal;
+}
+
+.webhook-management__action-content {
+    display: grid;
+    gap: var(--isl-space-1);
+    min-width: 0;
+}
+
+.webhook-management__cell-content {
+    display: grid;
+    gap: var(--isl-space-1);
+    min-width: 0;
+    justify-items: start;
 }
 
 .webhook-management__action-group {
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-end;
+    justify-content: flex-start;
     gap: var(--isl-space-1);
+}
+
+.webhook-management ::deep .webhook-management__action-availability {
+    display: block;
+    max-inline-size: 16rem;
+    margin-block-start: var(--isl-space-1);
+    text-align: start;
+}
+
+.webhook-management__payload-metadata {
+    display: grid;
+    gap: var(--isl-space-1);
+    overflow-wrap: anywhere;
+}
+
+.webhook-management__payload {
+    max-block-size: 60dvh;
+    margin: 0;
+    padding: var(--isl-space-3);
+    overflow: auto;
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-md);
+    background: var(--isl-color-background);
+    color: var(--isl-color-text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: var(--isl-typography-caption-size);
+    line-height: var(--isl-typography-body2-line-height);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 .webhook-management__provider-summary {
@@ -90,13 +133,13 @@
     min-width: 0;
 }
 
-.webhook-management__capability-summary {
+.webhook-management ::deep .webhook-management__capability-summary {
     max-width: 18rem;
     overflow-wrap: anywhere;
 }
 
-.webhook-management__url,
-.webhook-management__mono {
+.webhook-management ::deep .webhook-management__url,
+.webhook-management ::deep .webhook-management__mono {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     overflow-wrap: anywhere;
 }
@@ -114,7 +157,7 @@
     min-width: 0;
 }
 
-.webhook-management__catalog-heading {
+.webhook-management ::deep .webhook-management__catalog-heading {
     margin-block-end: var(--isl-space-2);
     text-transform: uppercase;
 }
@@ -138,17 +181,17 @@
     border-block-end: 0;
 }
 
-.webhook-management__event-name {
+.webhook-management ::deep .webhook-management__event-name {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     overflow-wrap: anywhere;
 }
 
-.webhook-management__section-title {
+.webhook-management ::deep .webhook-management__section-title {
     margin-block-end: var(--isl-space-2);
     font-weight: 700;
 }
 
-.webhook-management__section-title-row {
+.webhook-management ::deep .webhook-management__section-title-row {
     margin-block-end: var(--isl-space-2);
 }
 
@@ -186,7 +229,7 @@
         flex-direction: column;
     }
 
-    .webhook-management__header-actions {
+    .webhook-management ::deep .webhook-management__header-actions {
         width: 100%;
         justify-content: flex-start;
     }
@@ -204,7 +247,7 @@
         grid-template-columns: 1fr;
     }
 
-    .webhook-management__actions-cell {
+    .webhook-management ::deep .webhook-management__actions-cell {
         width: auto;
         white-space: normal;
     }
@@ -213,25 +256,21 @@
         display: none;
     }
 
-    .webhook-management__tabs ::deep .mud-tabs-scroll-button {
-        display: none;
-    }
-
-    .webhook-management__tabs ::deep .mud-tabs-tabbar-content,
-    .webhook-management__tabs ::deep .mud-tabs-tabbar-wrapper,
-    .webhook-management__tabs ::deep .mud-tabs-tabbar-inner {
+    .webhook-management ::deep .webhook-management__tabs .mud-tabs-tabbar-content,
+    .webhook-management ::deep .webhook-management__tabs .mud-tabs-tabbar-wrapper,
+    .webhook-management ::deep .webhook-management__tabs .mud-tabs-tabbar-inner {
         max-width: 100%;
         min-width: 0;
     }
 
-    .webhook-management__tabs ::deep .mud-tab {
+    .webhook-management ::deep .webhook-management__tabs .mud-tab {
         flex: 1 1 25%;
         min-width: 0;
         padding-inline: var(--isl-space-1);
         font-size: var(--isl-typography-caption-size);
     }
 
-    .webhook-management__tabs ::deep .mud-tab .mud-icon-root {
+    .webhook-management ::deep .webhook-management__tabs .mud-tab .mud-icon-root {
         font-size: 1.125rem;
     }
 
@@ -276,14 +315,14 @@
         overflow-wrap: anywhere;
     }
 
-    .webhook-management__table {
+    .webhook-management ::deep .webhook-management__table {
         overflow: visible;
     }
 
-    .webhook-management__table ::deep .mud-table-container,
-    .webhook-management__table ::deep .mud-table-root,
-    .webhook-management__table ::deep .mud-table-body,
-    .webhook-management__table ::deep .mud-table-row {
+    .webhook-management ::deep .webhook-management__table .mud-table-container,
+    .webhook-management ::deep .webhook-management__table .mud-table-root,
+    .webhook-management ::deep .webhook-management__table .mud-table-body,
+    .webhook-management ::deep .webhook-management__table .mud-table-row {
         width: 100% !important;
         max-width: 100%;
         overflow: visible;
@@ -293,7 +332,12 @@
         justify-content: flex-start;
     }
 
-    .webhook-management__table ::deep .mud-table-cell {
+    .webhook-management ::deep .webhook-management__action-availability {
+        max-inline-size: none;
+        text-align: start;
+    }
+
+    .webhook-management ::deep .webhook-management__table .mud-table-cell {
         display: grid !important;
         grid-template-columns: minmax(5.5rem, 38%) minmax(0, 1fr);
         gap: var(--isl-space-2);
@@ -303,7 +347,7 @@
         overflow-wrap: anywhere;
     }
 
-    .webhook-management__table ::deep .mud-table-cell::before {
+    .webhook-management ::deep .webhook-management__table .mud-table-cell::before {
         position: static !important;
         width: auto !important;
         padding-inline-end: 0;
@@ -311,12 +355,12 @@
         white-space: normal;
     }
 
-    .webhook-management__table ::deep .mud-table-cell > * {
+    .webhook-management ::deep .webhook-management__table .mud-table-cell > * {
         min-width: 0;
         justify-self: start;
     }
 
-    .webhook-management__tabs ::deep .mud-tab {
+    .webhook-management ::deep .webhook-management__tabs .mud-tab {
         min-width: 0;
         padding-inline: var(--isl-space-2);
     }

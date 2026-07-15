@@ -54,6 +54,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IControlPlaneTenantConfigurationService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
         services.AddScoped<IExternalApiKeyService, ExternalApiKeyService>();
         services.AddScoped<IWebhookManagementService, WebhookManagementService>();
+        services.AddScoped<IWebhookOperationsService, WebhookOperationsService>();
         services.AddScoped<IListmonkIntegrationSettingsService, ListmonkIntegrationSettingsService>();
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IOrganizationService, OrganizationService>();

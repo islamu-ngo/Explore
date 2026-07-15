@@ -35,7 +35,7 @@ namespace Event.Api.IntegrationTests.Features;
 ///
 /// <para>Tests cover:</para>
 /// <list type="bullet">
-/// <item>Every instance-setting sub-endpoint denies regular users</item>
+/// <item>Protected instance-setting sub-endpoints deny regular users</item>
 /// <item>Every tenant admin endpoint denies unauthenticated access</item>
 /// <item>Every public endpoint still works without auth</item>
 /// <item>Write operations on lookup tables are gated by tenant admin</item>
@@ -168,9 +168,9 @@ public class CoverageGovernanceTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Governance_InstanceSettings_ResolverConfig_DeniesRegularUser()
+    public async Task Governance_InstanceSettings_ResolverConfig_AllowsRegularUser()
     {
-        await AssertRegularUserDenied(HttpMethod.Get, "/api/instance/settings/resolver-config");
+        await AssertRegularUserOk(HttpMethod.Get, "/api/instance/settings/resolver-config");
     }
 
     #endregion

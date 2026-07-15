@@ -38,6 +38,19 @@ public sealed class WebhookEndpointSecretResolver
             previousValidUntil);
     }
 
+    public WebhookSecretMaterial? Resolve(string credentialReference, int credentialVersion)
+    {
+        if (credentialVersion < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(credentialVersion));
+        }
+
+        var currentSecret = ResolveSecret(credentialReference);
+        return string.IsNullOrWhiteSpace(currentSecret)
+            ? null
+            : new WebhookSecretMaterial(currentSecret, credentialVersion, null, null);
+    }
+
     private string? ResolveSecret(string? secretRef)
     {
         if (string.IsNullOrWhiteSpace(secretRef))

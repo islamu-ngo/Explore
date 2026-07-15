@@ -1,6 +1,9 @@
 // ABOUTME: Validates centralized Blazouter route registrations used by the client app.
 // ABOUTME: Prevents regressions where valid pages exist but are missing from Routes.razor RouteConfig.
 
+using Blazouter.Models;
+using Explore.Blazor.Client.Routing;
+
 namespace Explore.Blazor.Client.Tests.Routing;
 
 public class RoutesConfigurationTests
@@ -150,6 +153,63 @@ public class RoutesConfigurationTests
         await Assert.That(routesContent).Contains("Path = ControlPlaneRoutes.Domains, Component = typeof(ControlPlaneDomainsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
         await Assert.That(routesContent).Contains("Path = ControlPlaneRoutes.Operations, Component = typeof(ControlPlaneOperationsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
         await Assert.That(routesContent).Contains("Path = \"/admin/instance/settings\", Component = typeof(InstanceAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAdmin()");
+    }
+
+    [Test]
+    public async Task RoutePathBase_WithTenantDocumentBase_PrefixesConfiguredRoutes()
+    {
+        var routes = new List<RouteConfig>
+        {
+            new() { Path = "/", Component = typeof(Routes) },
+            new() { Path = "/admin/tenant/settings", Component = typeof(Routes) }
+        };
+
+        RouteConfigurationPathBase.Apply(routes, "https://event.test/t/acme/");
+
+        await Assert.That(routes[0].Path).IsEqualTo("/t/acme");
+        await Assert.That(routes[1].Path).IsEqualTo("/t/acme/admin/tenant/settings");
+    }
+
+    [Test]
+    public async Task RoutePathBase_WithRootDocumentBase_PreservesConfiguredRoutes()
+    {
+        var routes = new List<RouteConfig>
+        {
+            new() { Path = "/admin/instance/settings", Component = typeof(Routes) }
+        };
+
+        RouteConfigurationPathBase.Apply(routes, "https://event.test/");
+
+        await Assert.That(routes[0].Path).IsEqualTo("/admin/instance/settings");
+    }
+
+    [Test]
+    public async Task RoutePathBase_WhenAppliedTwice_DoesNotDuplicatePrefix()
+    {
+        var routes = new List<RouteConfig>
+        {
+            new() { Path = "/settings", Component = typeof(Routes) }
+        };
+
+        RouteConfigurationPathBase.Apply(routes, "https://event.test/t/acme/");
+        RouteConfigurationPathBase.Apply(routes, "https://event.test/t/acme/");
+
+        await Assert.That(routes[0].Path).IsEqualTo("/t/acme/settings");
+    }
+
+    [Test]
+    public async Task TypedOwnerSettingsRoutes_ShouldReadBlazouterRouteParameters()
+    {
+        var routesContent = await File.ReadAllTextAsync(FindRoutesFilePath());
+        var organizationPage = await File.ReadAllTextAsync(
+            FindClientFilePath("Pages", "Admin", "Organization", "OrganizationAdminSettings.razor"));
+        var groupPage = await File.ReadAllTextAsync(
+            FindClientFilePath("Pages", "Admin", "Group", "GroupAdminSettings.razor"));
+
+        await Assert.That(routesContent).Contains("/admin/organization/:OrganizationId/settings");
+        await Assert.That(routesContent).Contains("/admin/group/:GroupId/settings");
+        await Assert.That(organizationPage).Contains("RouterState.GetParam(nameof(OrganizationId))");
+        await Assert.That(groupPage).Contains("RouterState.GetParam(nameof(GroupId))");
     }
 
     private static string FindRoutesFilePath()

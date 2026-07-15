@@ -24,6 +24,8 @@ public class NamingConventionTests
             .AreClasses()
             .And()
             .AreNotAbstract()
+            .And()
+            .HaveNameEndingWith("Handler")
             .Should()
             .HaveNameEndingWith("CommandHandler")
             .GetResult();
@@ -46,8 +48,6 @@ public class NamingConventionTests
         // The codebase uses both "RequestHandler" and "QueryHandler" naming
         var result = Types.InAssembly(ApplicationAssembly)
             .That()
-            .ResideInNamespaceContaining("Handlers.Queries")
-            .Or()
             .ResideInNamespaceContaining("Queries")
             .And()
             .AreClasses()

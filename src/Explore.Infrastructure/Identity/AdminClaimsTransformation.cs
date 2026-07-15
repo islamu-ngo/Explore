@@ -1,5 +1,5 @@
-// ABOUTME: Enriches authenticated ClaimsPrincipal with DB-resolved admin authority claims.
-// Keeps DB-backed admin authority available to server-side BFF/API authorization decisions.
+// ABOUTME: Enriches authenticated principals with database-resolved administrative authority claims.
+// ABOUTME: Projects instance, tenant, organization, and group scopes for trusted server-side decisions.
 
 using System.Security.Claims;
 using Explore.Application.Authorization;
@@ -59,7 +59,8 @@ public sealed class AdminClaimsTransformation : IClaimsTransformation
 
         if (principal.HasClaim(c => c.Type == AdminClaimTypes.InstanceAdmin
                                     || c.Type == AdminClaimTypes.TenantAdmin
-                                    || c.Type == AdminClaimTypes.OrganizationAdmin))
+                                    || c.Type == AdminClaimTypes.OrganizationAdmin
+                                    || c.Type == AdminClaimTypes.GroupAdmin))
         {
             return principal;
         }
@@ -89,13 +90,19 @@ public sealed class AdminClaimsTransformation : IClaimsTransformation
                 identity.AddClaim(new Claim(AdminClaimTypes.OrganizationAdmin, orgId.ToString()));
             }
 
+            var groupIds = await _adminContext.GetAdminGroupIdsAsync(userId.Value);
+            foreach (var groupId in groupIds)
+            {
+                identity.AddClaim(new Claim(AdminClaimTypes.GroupAdmin, groupId.ToString()));
+            }
+
             if (identity.Claims.Any())
             {
                 principal.AddIdentity(identity);
                 _logger.LogDebug(
                     "AdminClaimsTransformation: Added {ClaimCount} admin claims for user {UserId} " +
-                    "(instance={IsInstance}, tenants={TenantCount}, orgs={OrgCount})",
-                    identity.Claims.Count(), userId.Value, isInstanceAdmin, tenantIds.Count, orgIds.Count);
+                    "(instance={IsInstance}, tenants={TenantCount}, orgs={OrgCount}, groups={GroupCount})",
+                    identity.Claims.Count(), userId.Value, isInstanceAdmin, tenantIds.Count, orgIds.Count, groupIds.Count);
             }
         }
         catch (Exception ex)

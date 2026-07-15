@@ -95,6 +95,8 @@ public class CqrsPatternTests
             .That()
             .ResideInNamespaceContaining("Handlers")
             .And()
+            .HaveNameEndingWith("Handler")
+            .And()
             .AreClasses()
             .And()
             .AreNotAbstract()

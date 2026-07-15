@@ -1,14 +1,17 @@
-// ABOUTME: Handles tenant-scoped webhook message audit list reads for management APIs.
-// ABOUTME: Applies conservative bounds before repository access and maps entities in Application.
+// ABOUTME: Handles typed owner-scoped webhook message audit reads for management APIs.
+// ABOUTME: Resolves canonical ownership before bounded repository access and safe entity mapping.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Webhooks;
 using Explore.Application.DTOs.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Queries;
 using MediatR;
 
 namespace Explore.Application.Features.Webhooks.Handlers.Queries;
 
-public sealed class GetWebhookMessagesQueryHandler(IWebhookMessageRepository messageRepository)
+public sealed class GetWebhookMessagesQueryHandler(
+    IWebhookMessageRepository messageRepository,
+    IWebhookOwnershipScopeResolver ownershipScopeResolver)
     : IRequestHandler<GetWebhookMessagesQuery, IReadOnlyList<WebhookMessageDto>>
 {
     private const int DefaultLimit = 100;
@@ -18,7 +21,11 @@ public sealed class GetWebhookMessagesQueryHandler(IWebhookMessageRepository mes
         GetWebhookMessagesQuery request,
         CancellationToken cancellationToken)
     {
-        if (request.TenantId == Guid.Empty)
+        var ownershipResolution = await ownershipScopeResolver.ResolveAsync(
+            request.OwnerKindId,
+            request.OwnerId,
+            cancellationToken);
+        if (ownershipResolution.Scope is not { } ownership)
         {
             return [];
         }
@@ -27,8 +34,8 @@ public sealed class GetWebhookMessagesQueryHandler(IWebhookMessageRepository mes
             ? DefaultLimit
             : Math.Min(request.Limit, MaxLimit);
 
-        var messages = await messageRepository.ListByTenantAsync(
-            request.TenantId,
+        var messages = await messageRepository.ListByOwnerAsync(
+            ownership,
             limit,
             cancellationToken);
 

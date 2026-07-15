@@ -3,6 +3,8 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 
 # API Changelog
 
+- Breaking organization/group membership projection normalization: `OrganizationListDto.currentUserRole` and `GroupListDto.currentUserRole` are replaced by numeric `currentUserRoleId` lookup fields. The former enum property serialized as a string at runtime while generated HAL collection clients expected an integer, causing authenticated tenant shells to fail deserialization. Clients must regenerate and use the stable `roles.id` value through `currentUserRoleId`; there is no compatibility window before v1.0. Contract evidence is regenerated through the API/OpenAPI/NSwag workflow and covered by organization/group projection plus browser E2E tests.
+
 ## Breaking Change Evidence
 
 Intentional breaking API changes must add an entry to this file in the same PR that changes `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, or `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.

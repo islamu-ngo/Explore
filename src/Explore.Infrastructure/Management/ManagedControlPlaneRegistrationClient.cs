@@ -18,9 +18,9 @@ internal sealed class ManagedControlPlaneRegistrationClient(HttpClient httpClien
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false) }
     };
 
-    public async Task<CompleteManagedInstanceRegistrationResponse> CompleteRegistrationAsync(
+    public async Task<CompleteManagedInstanceRegistrationResponseDto> CompleteRegistrationAsync(
         Uri controlPlaneUrl,
-        CompleteManagedInstanceRegistrationRequest request,
+        CompleteManagedInstanceRegistrationRequestDto request,
         CancellationToken cancellationToken)
     {
         var endpoint = new Uri(
@@ -33,7 +33,7 @@ internal sealed class ManagedControlPlaneRegistrationClient(HttpClient httpClien
             cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        return await response.Content.ReadFromJsonAsync<CompleteManagedInstanceRegistrationResponse>(
+        return await response.Content.ReadFromJsonAsync<CompleteManagedInstanceRegistrationResponseDto>(
                    SerializerOptions,
                    cancellationToken)
                ?? throw new InvalidOperationException("The Control Plane returned an empty registration response.");

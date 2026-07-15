@@ -26,7 +26,7 @@ public sealed class WebhookLocalTargetSnapshotConfiguration
         builder.Property(target => target.DestinationUrl).HasMaxLength(WebhookLocalTargetSnapshot.MaxDestinationUrlLength).IsRequired();
         builder.Property(target => target.CredentialReference).HasMaxLength(WebhookLocalTargetSnapshot.MaxCredentialReferenceLength).IsRequired();
         builder.Property(target => target.DeliveryStatusId).IsRequired();
-        builder.Property(target => target.ProcessingLeaseOwner).HasMaxLength(200);
+        builder.Property(target => target.ProcessingLeaseOwner).HasMaxLength(WebhookLocalTargetSnapshot.MaxLeaseOwnerLength);
         builder.Property(target => target.DeliveryFence).IsRequired();
         builder.Property(target => target.ConcurrencyVersion).IsRequired().IsConcurrencyToken();
         builder.Ignore(target => target.DeliveryStatus);
@@ -50,8 +50,7 @@ public sealed class WebhookLocalTargetSnapshotConfiguration
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(target => target.WebhookEndpoint)
             .WithMany()
-            .HasPrincipalKey(endpoint => new { endpoint.TenantId, endpoint.Id })
-            .HasForeignKey(target => new { target.TenantId, target.WebhookEndpointId })
+            .HasForeignKey(target => target.WebhookEndpointId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(target => target.DeliveryStatusLookup)
             .WithMany()

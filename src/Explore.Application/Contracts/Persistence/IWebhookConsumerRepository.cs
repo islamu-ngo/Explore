@@ -1,5 +1,5 @@
-// ABOUTME: Repository contract for tenant-scoped webhook consumers and provider app mappings.
-// ABOUTME: Returns domain entities only so handlers own mapping, authorization, and HAL shaping.
+// ABOUTME: Repository contract for typed owner-scoped webhook consumers and provider app mappings.
+// ABOUTME: Returns domain entities only and requires exact ownership scopes for management queries.
 
 using Explore.Domain;
 
@@ -8,6 +8,27 @@ namespace Explore.Application.Contracts.Persistence;
 public interface IWebhookConsumerRepository
 {
     Task<WebhookConsumer> CreateAsync(WebhookConsumer consumer, CancellationToken cancellationToken);
+
+    Task<WebhookConsumer?> GetByIdForOwnerOperationAsync(
+        Guid consumerId,
+        bool forUpdate,
+        CancellationToken cancellationToken);
+
+    Task<WebhookConsumer?> GetByOwnerAndIdAsync(
+        WebhookOwnershipScope ownership,
+        Guid consumerId,
+        bool forUpdate,
+        CancellationToken cancellationToken);
+
+    Task<WebhookConsumer?> GetByOwnerAndNameAsync(
+        WebhookOwnershipScope ownership,
+        string name,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<WebhookConsumer>> ListByOwnerAsync(
+        WebhookOwnershipScope ownership,
+        int limit,
+        CancellationToken cancellationToken);
 
     Task<WebhookConsumer?> GetByTenantAndIdAsync(
         Guid tenantId,

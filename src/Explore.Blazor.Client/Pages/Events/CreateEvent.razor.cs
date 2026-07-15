@@ -527,7 +527,7 @@ public partial class CreateEvent : IDisposable
             }
 
             var org = _myOrganizations?.FirstOrDefault(o => o.Id == value.Value);
-            if (_creationContext is null && org?.CurrentUserRole != null && !RoleHelper.CanManage(org.CurrentUserRole))
+            if (_creationContext is null && org?.CurrentUserRoleId != null && !RoleHelper.CanManage(org.CurrentUserRoleId))
             {
                 _organizationRoleError = "You don't have the authority to publish events for this organization. Only Creator, Co-Owner, or Admin roles can publish.";
             }
@@ -556,7 +556,7 @@ public partial class CreateEvent : IDisposable
             }
 
             var group = _myGroups?.FirstOrDefault(g => g.Id == value.Value);
-            if (_creationContext is null && group?.CurrentUserRole != null && !CanPublishAsGroup(group.CurrentUserRole))
+            if (_creationContext is null && group?.CurrentUserRoleId != null && !CanPublishAsGroup(group.CurrentUserRoleId))
             {
                 _groupRoleError = "You don't have the authority to publish events for this group. Only Creator or Admin roles can publish.";
             }
@@ -1119,7 +1119,7 @@ public partial class CreateEvent : IDisposable
         if (_creationContext is null)
         {
             var org = _myOrganizations?.FirstOrDefault(o => o.Id == organizationId);
-            return org?.CurrentUserRole is null || RoleHelper.CanManage(org.CurrentUserRole);
+            return org?.CurrentUserRoleId is null || RoleHelper.CanManage(org.CurrentUserRoleId);
         }
 
         return GetPublisherOption("organization", organizationId)?.CanPublish == true;
@@ -1135,7 +1135,7 @@ public partial class CreateEvent : IDisposable
         if (_creationContext is null)
         {
             var group = _myGroups?.FirstOrDefault(g => g.Id == groupId);
-            return group?.CurrentUserRole is null || CanPublishAsGroup(group.CurrentUserRole);
+            return group?.CurrentUserRoleId is null || CanPublishAsGroup(group.CurrentUserRoleId);
         }
 
         return GetPublisherOption("group", groupId)?.CanPublish == true;
