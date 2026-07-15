@@ -8,8 +8,8 @@ Last Updated: 2026-07-15 Europe/Brussels
 ## Status
 
 - Planning: **Approved**
-- Implementation: **In progress — Phase 7 typed ownership**
-- Current task: **7.4 complete delivery and UI scope propagation**
+- Implementation: **Phase 7 complete — final verification in progress**
+- Current task: **Full API rerun, remaining canonical projects, and migration-drift gate**
 - Current blocker: **None**
 - Rule: complete tasks in order unless this document explicitly marks them parallel
 - Migration guard: generate or remove EF Core migrations only with `dotnet ef`; never hand-edit a generated migration, designer, or model snapshot
@@ -79,6 +79,41 @@ Last Updated: 2026-07-15 Europe/Brussels
   `.env` files. The remaining provider tuple is self-hosted `svix/svix-server:v1.96.1` only,
   Redis is explicit for queue and cache, and both application credential values remain empty
   as requested. `docker compose config --quiet` passes with this self-hosted-only configuration.
+- Phase 7 delivery/UI propagation now preserves the source tenant separately from instance-owned
+  consumer configuration, derives provider application identity from immutable instance plus
+  consumer identity, and rejects tenant-owned consumer/source mismatches before event or endpoint
+  resolution. Focused Infrastructure and Application publisher tests pass. The generated OpenAPI,
+  contract inventory, and NSwag client are refreshed from source. Blazor exposes the same management
+  panel in Instance, Tenant, Organization, Group, and User settings, forwards the exact normalized
+  owner tuple through every collection read, fixes consumer creation to its host owner, and renders
+  tenant-only provider/replay tabs only when collection HAL relations authorize them. Focused API,
+  Blazor service/component, and five-owner Application handler suites pass; browser ownership E2E
+  remains in progress.
+- Phase 7 database containment is now complete in the CLI-generated
+  `20260715172404_AddTypedWebhookOwnership` migration. A required normalized
+  `configuration_scope_id` is derived in the domain and stored by PostgreSQL as a generated
+  `COALESCE(tenant_id, instance_id)` column, so clean installs and upgrades with existing tenant
+  webhook rows receive the same deterministic scope without a mutable application backfill. It
+  participates in composite
+  consumer/endpoint/subscription/provider-binding foreign keys. Direct PostgreSQL writes prove
+  cross-tenant Organization, Group, and User owners, cross-scope endpoints/subscriptions, and
+  tenant-consumer substitution into instance endpoint/binding rows are rejected. Normal atomic
+  endpoint/subscription persistence and provider-binding verification/concurrency regressions pass;
+  the verified binding constraint now uses normalized Verified lookup ID 3 and checks both scope
+  and consumer identity. The migration was removed and regenerated only through `dotnet ef`; no
+  migration, designer, or snapshot artifact was hand-edited. Focused model, lookup, tenant-user,
+  tenant-bypass, binding Up/Down, and legacy backup/restore migration rehearsals pass with the
+  generated-column mapping; the complete PostgreSQL persistence suite passes 355/355.
+- Phase 7 API finalization has corrected the normalized OpenAPI role-ID invariant, the typed-owner
+  Svix portal metadata fixture, and controller tests that must model the production
+  `internal_user_id` identity boundary. A TUnit security-fixture defect was also isolated:
+  public nested Keycloak/Cerbos initializer properties were initialized recursively by TUnit and
+  then initialized again by the composite, racing two Keycloak key sets. The composite now privately
+  owns exactly one Keycloak and one Cerbos lifecycle. The focused real-JWT lane passes 14/14 and its
+  TRX proves only Ryuk plus one container of each type were created. Context7 was invoked for the
+  TUnit lifecycle contract but reported its monthly quota exhausted; the repository-pinned TUnit
+  XML documentation independently confirms recursive nested-initializer discovery. The complete
+  API suite is now being rerun before any final-gate checkbox is marked.
 - PostgreSQL 18 clean, committed-baseline, 10,000-row legacy, and backup/restore
   rehearsals converge to one semantic schema; all representative legacy rows classify
   deterministically and the restored data checksum is identical.
@@ -1002,13 +1037,21 @@ without exposing sensitive data or relying on undocumented provider behavior.
 
 ### 7.4 Complete delivery and UI scope propagation
 
-- [ ] Preserve source tenant identity when an explicitly targeted instance consumer receives a tenant event.
-- [ ] Reject cross-tenant Organization, Group, User, endpoint, subscription, and binding substitution.
-- [ ] Keep provider application identity isolated per consumer and immutable instance identity.
-- [ ] Regenerate OpenAPI and the NSwag client from source.
-- [ ] Add owner-scoped webhook panels for instance, tenant, organization, group, and user settings.
-- [ ] Gate every Blazor action by HAL relation presence and add responsive/accessibility tests.
-- [ ] Run browser E2E for allowed and denied ownership paths.
+- [x] Preserve source tenant identity when an explicitly targeted instance consumer receives a tenant event.
+- [x] Reject cross-tenant Organization, Group, User, endpoint, subscription, and binding substitution.
+- [x] Keep provider application identity isolated per consumer and immutable instance identity.
+- [x] Regenerate OpenAPI and the NSwag client from source.
+- [x] Add owner-scoped webhook panels for instance, tenant, organization, group, and user settings.
+- [x] Gate every Blazor action by HAL relation presence and add responsive/accessibility tests.
+- [x] Run browser E2E for allowed and denied ownership paths.
+  - **Completed 2026-07-15:** the Playwright/Aspire scenario provisions a real
+    multi-tenant customer administrator through the production managed-provider workflow,
+    creates Instance-, Tenant-, Organization-, Group-, and User-owned consumers through
+    generated API contracts, and exercises all five settings panels. It verifies tenant-only
+    sensitive tabs; asserts `403` for instance, unrelated-organization, unrelated-group, and
+    unrelated-user selection; and captures visually reviewed desktop, tablet, and mobile
+    evidence for every owner. Browser navigation now waits on an `OnAfterRender` readiness
+    marker so prerendered HTML cannot accept inert clicks before the Blazor circuit hydrates.
 
 **Phase 7 exit:** every webhook configuration has one database-enforced typed owner;
 instance, tenant, organization, group, and user administrators see and operate only
