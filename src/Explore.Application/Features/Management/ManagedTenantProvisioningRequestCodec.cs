@@ -17,12 +17,12 @@ public static class ManagedTenantProvisioningRequestCodec
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
     };
 
-    public static ManagementTenantProvisioningRequest Normalize(ManagementTenantProvisioningRequest request)
+    public static ManagementTenantProvisioningRequestDto Normalize(ManagementTenantProvisioningRequestDto request)
     {
         ManagementTenantExternalIdentityDto? externalIdentity = request.Administrator.ExternalIdentity;
         ManagementTenantAdministratorInvitationDto? invitation = request.Administrator.Invitation;
 
-        return new ManagementTenantProvisioningRequest
+        return new ManagementTenantProvisioningRequestDto
         {
             SchemaVersion = request.SchemaVersion,
             ExternalRequestId = request.ExternalRequestId.Trim(),
@@ -98,14 +98,14 @@ public static class ManagedTenantProvisioningRequestCodec
         };
     }
 
-    public static string Serialize(ManagementTenantProvisioningRequest request) =>
+    public static string Serialize(ManagementTenantProvisioningRequestDto request) =>
         JsonSerializer.Serialize(request, SerializerOptions);
 
-    public static ManagementTenantProvisioningRequest Deserialize(string requestJson) =>
-        JsonSerializer.Deserialize<ManagementTenantProvisioningRequest>(requestJson, SerializerOptions)
+    public static ManagementTenantProvisioningRequestDto Deserialize(string requestJson) =>
+        JsonSerializer.Deserialize<ManagementTenantProvisioningRequestDto>(requestJson, SerializerOptions)
         ?? throw new JsonException("Managed tenant provisioning request snapshot is empty.");
 
-    public static string ComputeHash(ManagementTenantProvisioningRequest request) =>
+    public static string ComputeHash(ManagementTenantProvisioningRequestDto request) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(Serialize(request))));
 
     public static ManagementTenantProvisioningOperationDto ToDto(ManagedTenantProvisioningOperation operation) =>

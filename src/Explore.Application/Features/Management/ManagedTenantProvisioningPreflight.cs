@@ -47,7 +47,7 @@ public sealed class ManagedTenantProvisioningPreflight(
     ];
 
     public async Task<ManagedTenantProvisioningPreflightResult> EvaluateAsync(
-        ManagementTenantProvisioningRequest request,
+        ManagementTenantProvisioningRequestDto request,
         bool requireProvisionablePlan,
         CancellationToken cancellationToken)
     {
@@ -154,7 +154,7 @@ public sealed class ManagedTenantProvisioningPreflight(
     }
 
     private async Task<ManagedTenantProvisioningPreflightResult?> ValidateDomainIntentAsync(
-        ManagementTenantProvisioningRequest request,
+        ManagementTenantProvisioningRequestDto request,
         CancellationToken cancellationToken)
     {
         if (request.Domain is null)
@@ -205,7 +205,7 @@ public sealed class ManagedTenantProvisioningPreflight(
     }
 
     private async Task<ManagedTenantProvisioningSettingsResult> ResolveSettingsAsync(
-        ManagementTenantProvisioningRequest request,
+        ManagementTenantProvisioningRequestDto request,
         TenantPlanVersion planVersion,
         CancellationToken cancellationToken)
     {
@@ -365,7 +365,7 @@ public sealed class ManagedTenantProvisioningPreflight(
                 .SequenceEqual(configuredValues);
     }
 
-    private static BrandingSettings MapBranding(ManagementTenantProvisioningRequest request) => new()
+    private static BrandingSettings MapBranding(ManagementTenantProvisioningRequestDto request) => new()
     {
         DisplayName = request.Branding?.DisplayName ?? request.TenantName,
         LogoUrl = request.Branding?.LogoUrl,

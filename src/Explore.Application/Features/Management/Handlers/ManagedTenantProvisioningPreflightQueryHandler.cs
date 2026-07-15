@@ -5,7 +5,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Management;
 using Explore.Application.DTOs.Management.Validators;
-using Explore.Application.Features.Management.Requests;
+using Explore.Application.Features.Management.Requests.Queries;
 using Explore.Application.Management;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -13,7 +13,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Options;
 
-namespace Explore.Application.Features.Management.Handlers;
+namespace Explore.Application.Features.Management.Handlers.Queries;
 
 public sealed class GetManagedTenantProvisioningPreflightQueryHandler(
     IOptions<ManagedControlPlaneOptions> options,
@@ -31,7 +31,7 @@ public sealed class GetManagedTenantProvisioningPreflightQueryHandler(
         var validator = new ManagementTenantProvisioningRequestValidator();
         await validator.ValidateAndThrowAsync(query.Request, cancellationToken);
 
-        ManagementTenantProvisioningRequest request =
+        ManagementTenantProvisioningRequestDto request =
             ManagedTenantProvisioningRequestCodec.Normalize(query.Request);
         string requestHash = ManagedTenantProvisioningRequestCodec.ComputeHash(request);
 
@@ -142,7 +142,7 @@ public sealed class GetManagedTenantProvisioningPreflightQueryHandler(
 
     private static ManagementTenantProvisioningPreflightDto Blocked(
         Guid managedInstanceId,
-        ManagementTenantProvisioningRequest request,
+        ManagementTenantProvisioningRequestDto request,
         string requestHash,
         DeploymentMode deploymentMode,
         string registrationState,
@@ -165,7 +165,7 @@ public sealed class GetManagedTenantProvisioningPreflightQueryHandler(
         string registrationState,
         DeploymentMode deploymentMode,
         string requestHash,
-        ManagementTenantProvisioningRequest request,
+        ManagementTenantProvisioningRequestDto request,
         IReadOnlyList<ManagementTenantProvisioningBlockerDto> blockers,
         ManagementTenantProvisioningCapacityDto? capacity,
         ManagedTenantProvisioningResolvedBootstrap? resolved)
@@ -192,7 +192,7 @@ public sealed class GetManagedTenantProvisioningPreflightQueryHandler(
             };
 
         return new ManagementTenantProvisioningPreflightDto(
-            ManagementTenantProvisioningRequest.CurrentSchemaVersion,
+            ManagementTenantProvisioningRequestDto.CurrentSchemaVersion,
             ManagedControlPlaneContract.ManagementApiVersion,
             ManagementVersionResolver.EventVersion,
             managedInstanceId,

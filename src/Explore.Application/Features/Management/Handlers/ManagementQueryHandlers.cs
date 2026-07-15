@@ -1,19 +1,18 @@
 // ABOUTME: Projects Event-owned deployment mode, version, registration, and capability metadata for managed mode.
 // ABOUTME: Returns only bounded instance lifecycle data and keeps standalone mode absent by default.
 
-using System.Reflection;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Management;
-using Explore.Application.Features.Management.Requests;
+using Explore.Application.Features.Management.Requests.Queries;
 using Explore.Application.Management;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Options;
 
-namespace Explore.Application.Features.Management.Handlers;
+namespace Explore.Application.Features.Management.Handlers.Queries;
 
 public sealed class GetManagementCapabilitiesQueryHandler(
     IOptions<ManagedControlPlaneOptions> options,
@@ -549,18 +548,5 @@ internal static class ManagementUpgradeAssessment
 
             return string.Compare(left, right, StringComparison.Ordinal);
         }
-    }
-}
-
-internal static class ManagementVersionResolver
-{
-    public static string EventVersion { get; } = ResolveEventVersion();
-
-    private static string ResolveEventVersion()
-    {
-        var assembly = typeof(ManagementVersionResolver).Assembly;
-        return assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-            ?? assembly.GetName().Version?.ToString()
-            ?? "unknown";
     }
 }
