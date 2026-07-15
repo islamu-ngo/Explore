@@ -83,9 +83,10 @@ Sensitive values are redacted before output. Do not add checks that print raw co
 | Launch profile | Mode | Started by Aspire |
 |---|---|---|
 | `https` | `FullLocal` | Compatibility alias for the contributor full-local topology. |
-| `local-full` | `FullLocal` | PostgreSQL `postgres` with app database `islamu_event_db`, Redis `cache`, RabbitMQ `messaging`, Mailpit, CockroachDB `crdb`, Phase Two Keycloak `keycloak`, Cerbos database/PDP, MinIO, Svix, Coop, Osprey, PgAdmin, Prometheus, Grafana, `Event.MigrationService`, `Explore.API`, and `Explore.Blazor`. |
+| `local-default` | `DefaultLocal` | Default lightweight local platform: PostgreSQL, Redis cache, RabbitMQ, Mailpit, Keycloak, Cerbos, MinIO, migrations, API, and Blazor. Svix is added only for explicit `Svix`/`Composite` webhook provider selection. |
+| `local-full` | `FullLocal` | The default-local resources plus Coop, Osprey, PgAdmin, Prometheus, Grafana, and other heavy extras. Svix is added only for explicit `Svix`/`Composite` webhook provider selection. |
 | `local-core` | `LocalDataExternalPlatform` | PostgreSQL `postgres` with app database `islamu_event_db`, Redis `cache`, Mailpit, `Event.MigrationService`, `Explore.API`, and `Explore.Blazor`. Auth, policy, storage, webhooks, and moderation providers come from Infisical/config. |
-| `local-lite` | `ExternalInfra` | Mailpit, `Explore.API`, and `Explore.Blazor`. All other infrastructure comes from Infisical/config. |
+| `local-lite` | `ExternalInfra` | Mailpit, `Event.MigrationService`, `Explore.API`, and `Explore.Blazor`. All infrastructure comes from Infisical/config. |
 
 Contributor default:
 
@@ -99,7 +100,7 @@ Install the Aspire CLI first if `aspire` is missing:
 curl -sSL https://aspire.dev/install.sh | bash
 ```
 
-`AspireRunModeExtensions.Parse` defaults a missing `ISLAMU_ASPIRE_MODE` to `FullLocal`, so the contributor path does not require a launch-profile name. `aspire run` is interactive and exits when you press `Ctrl+C`.
+`AspireRunModeExtensions.Parse` defaults a missing `ISLAMU_ASPIRE_MODE` to `DefaultLocal`, so the contributor path does not require a launch-profile name. `aspire run` is interactive and exits when you press `Ctrl+C`.
 
 Foreground isolated run for repeatable local launch proof:
 
@@ -157,14 +158,14 @@ Startup dependencies are explicit:
 
 1. Local data profiles create PostgreSQL and Redis first.
 2. `local-full` creates platform infrastructure, including CockroachDB before Phase Two Keycloak and Cerbos PostgreSQL before Cerbos.
-3. `Event.MigrationService` receives the local database through Aspire `WithReference(database, "EventMigrationService")` and `WithReference(database, "DefaultConnection")`, then waits for PostgreSQL.
+3. `Event.MigrationService` runs in every profile. Local data profiles provide PostgreSQL through Aspire `WithReference(database, "EventMigrationService")` and `WithReference(database, "DefaultConnection")`; `local-lite` resolves the external database from Infisical/config.
 4. `Explore.API` waits for migration completion, local data/cache, and `local-full` platform resources when those resources exist.
 5. `Explore.Blazor` waits for API readiness and receives API service discovery through Aspire.
 6. Dedicated admin hosts use the same `Explore.Blazor` process and generated API client boundary.
 
 The Blazor BFF resolves the API through Aspire service discovery (`services__explore-api__https__0` / `services__explore-api__http__0`) or `ExploreApi:BaseUrl`. Compose uses `API_ENDPOINT`, defaulting to the internal `islamu-event-api:8080` service. Do not hardcode the Compose/API host port into AppHost documentation.
 
-Aspire local development uses the local filesystem storage provider by default unless a profile supplies S3-compatible settings. AppHost sets `Storage:Local:RootPath` to `storage-data/aspire-local` under the repository root and keeps `StorageReconciliation:DryRun=true`; `local-full` also supplies MinIO-compatible `S3Settings` for workflows that exercise S3 behavior, and bootstraps the `explore` bucket before the API starts. Local Svix pins `svix/svix-server:v1.96.1`, uses the Aspire Redis plaintext container endpoint with the generated Redis password, and configures Redis for both `SVIX_QUEUE_TYPE` and `SVIX_CACHE_TYPE`; the shared cache is required to preserve idempotency across replicas. .NET projects continue to consume Redis through normal Aspire references. AppHost injects the proven `self-hosted`/`1.96.1`/`svix-self-hosted-1.96.1-v1` conformance tuple, sets a deterministic development `SVIX_JWT_SECRET`, supplies a matching `WEBHOOKS_SVIX_AUTH_TOKEN` to the API, and Development seeding binds that value to `webhooks.svix.auth_token`; rotate all local defaults outside disposable development. Local Coop uses an isolated PostgreSQL container plus development-only `DATABASE_*`, `SESSION_SECRET`, `OTEL_SERVICE_NAME`, placeholder Scylla client settings, and no-op warehouse/analytics settings so the review-queue provider can boot without external ClickHouse or production secrets.
+Aspire local development uses the local filesystem storage provider by default unless a profile supplies S3-compatible settings. AppHost sets `Storage:Local:RootPath` to `storage-data/aspire-local` under the repository root and keeps `StorageReconciliation:DryRun=true`; local platform profiles also supply MinIO-compatible `S3Settings` for workflows that exercise S3 behavior, and bootstrap the `explore` bucket before the API starts. With the default `WEBHOOKS_PROVIDER=Local`, AppHost does not register `svix` or `svix-postgres`, does not inject Svix configuration, and does not add a Svix startup dependency. Explicit `Svix` or `Composite` selection adds pinned `svix/svix-server:v1.96.1`, configures Redis for both `SVIX_QUEUE_TYPE` and `SVIX_CACHE_TYPE`, injects the proven `self-hosted`/`1.96.1`/`svix-self-hosted-1.96.1-v1` tuple, and waits for Svix. Its application token and operational callback secret remain sourced only from the intentionally blank `.env`/`.env.example` fields until an operator enables self-hosted Svix. Local Coop uses an isolated PostgreSQL container plus development-only `DATABASE_*`, `SESSION_SECRET`, `OTEL_SERVICE_NAME`, placeholder Scylla client settings, and no-op warehouse/analytics settings so the review-queue provider can boot without external ClickHouse or production secrets.
 
 Cerbos local infrastructure uses the repository `cerbos/` folder as its source of truth. Aspire and Docker Compose mount `cerbos/config/.cerbos.yaml` into the Cerbos container, mount `cerbos/policies/` read-only for derived roles, policies, and `_schemas`, and initialize the local Cerbos PostgreSQL store from `cerbos/init/cerbos-schema.sql`. The local Cerbos PostgreSQL container uses the Postgres 18 parent data mount (`/var/lib/postgresql`) rather than the legacy direct `data` mount. Do not copy policy files into container images for local development; update the repo-owned `cerbos/` tree and restart or sync the local Cerbos service.
 
@@ -173,6 +174,7 @@ Osprey starts in `local-full` from `ghcr.io/roostorg/osprey/osprey-coordinator:l
 Webhook operations:
 
 - `Local` works without Svix and is the default self-hosted outgoing provider.
+- Local delivery claims durable PostgreSQL work directly and introduces no webhook-specific Redis, Kafka, CDC, or reverse-proxy dependency. Other platform features may still use resources shown in the selected Aspire profile.
 - `Svix` and `Composite` require `webhooks.svix.auth_token` to resolve server-side. In local-full this is seeded from `WEBHOOKS_SVIX_AUTH_TOKEN`.
 - `webhook-local-delivery` readiness reports LocalProvider queue backlog and stale sending leases.
 - `webhook-svix-provider` readiness rejects unknown or zero-evidence provider tuples before resolving secrets and reports only the safe deployment kind, versioned conformance evidence/count, exact-lookup availability, provider selection, and secret-resolution booleans. It never exposes tokens, secret refs, or provider URLs.
@@ -484,13 +486,20 @@ Current counters include:
 - `explore.event_reports.workflow_actions` (`tenant_id`, `action`, `outcome`, `failure_category`) — moderation report triage/assign/decide/execute outcomes; labels intentionally exclude report IDs, case IDs, decision IDs, moderator IDs, reporter evidence, safe notes, and raw errors.
 - `explore.event_reports.provider_syncs` (`tenant_id`, `provider`, `outcome`, `failure_category`) — report provider sync outcomes for local/Osprey/Coop/composite paths; labels intentionally exclude provider URLs, credentials, external case/signal IDs, payload bodies, reporter evidence, and raw provider errors.
 - `explore.event_reports.provider_callbacks` (`tenant_id`, `provider`, `outcome`, `failure_category`) — provider callback outcomes; labels intentionally exclude callback bodies, signatures, provider decision IDs, provider message IDs, report IDs, event IDs, case IDs, reporter evidence, and raw parse/auth errors. Anonymous public-ingestion callbacks such as Svix operational webhooks use the default tenant tag even when a verified payload contains a tenant identifier.
-- `explore.webhooks.messages_created` (`tenant_id`, `event_type`, `provider`, `outcome`) — canonical outgoing webhook message creation outcomes; labels intentionally exclude payloads, aggregate titles/slugs/URLs, endpoint URLs, and secrets.
-- `explore.webhooks.delivery_attempts` (`tenant_id`, `event_type`, `outcome`, `failure_category`) — LocalProvider delivery attempt outcomes; labels intentionally exclude endpoint URLs, request payloads, response bodies, headers, and raw transport errors.
-- `explore.webhooks.delivery_success` (`tenant_id`, `event_type`) — LocalProvider successful delivery count.
-- `explore.webhooks.delivery_failure` (`tenant_id`, `event_type`, `outcome`, `failure_category`) — LocalProvider failed delivery count with bounded failure categories only.
-- `explore.webhooks.endpoint_disabled` (`tenant_id`, `failure_category`) — endpoint auto-disable count; labels intentionally exclude endpoint URLs and secrets.
-- `explore.webhooks.manual_retries` (`tenant_id`, `event_type`, `outcome`, `failure_category`) — manual retry scheduling outcomes; labels intentionally exclude message IDs, endpoint IDs, and payloads.
-- `explore.webhooks.provider_publish_failure` (`tenant_id`, `event_type`, `provider`, `failure_category`) — outgoing provider handoff failures before provider-owned fanout; labels intentionally exclude message IDs, provider message IDs, endpoint URLs, payloads, secrets, and raw provider errors.
+- `explore.webhooks.messages_created` (`event_type`, `provider`, `outcome`) — canonical outgoing webhook message creation outcomes; labels intentionally exclude tenant/resource IDs, payloads, aggregate titles/slugs/URLs, endpoint URLs, and secrets.
+- `explore.webhooks.delivery_attempts` (`event_type`, `outcome`, `failure_category`) — LocalProvider delivery attempt outcomes; labels intentionally exclude tenant/resource IDs, endpoint URLs, request payloads, response bodies, headers, and raw transport errors.
+- `explore.webhooks.delivery_success` (`event_type`) — LocalProvider successful delivery count without tenant/resource identity.
+- `explore.webhooks.delivery_failure` (`event_type`, `outcome`, `failure_category`) — LocalProvider failed delivery count with bounded failure categories only.
+- `explore.webhooks.endpoint_disabled` (`failure_category`) — legacy endpoint auto-pause transition count; labels intentionally exclude tenant/resource IDs, endpoint URLs, and secrets.
+- `explore.webhooks.manual_retries` (`event_type`, `outcome`, `failure_category`) — manual retry scheduling outcomes; labels intentionally exclude tenant, message, endpoint, and payload identity.
+- `explore.webhooks.provider_publish_failure` (`event_type`, `provider`, `failure_category`) — outgoing provider handoff failures before provider-owned fanout; labels intentionally exclude tenant/resource IDs, provider message IDs, endpoint URLs, payloads, secrets, and raw provider errors.
+- `explore.webhooks.claim_lag` (`provider`, `operation`) — claim-lag histogram for Local delivery and self-hosted Svix publication/reconciliation.
+- `explore.webhooks.processing_outcomes` (`provider`, `operation`, `outcome`) — durable claim and settlement outcomes from the closed enum-backed telemetry vocabulary.
+- `explore.webhooks.retries_scheduled` (`provider`, `operation`) and `explore.webhooks.dead_letters` (`provider`, `operation`) — automatic retry and terminal dead-letter transitions.
+- `explore.webhooks.publication_unknown_age` (`provider`) and `explore.webhooks.manual_reconciliations` (`provider`) — uncertain publication age observations and operator-owned reconciliation transitions.
+- `explore.webhooks.endpoint_auto_pauses` (`provider`) — counts only the transition into automatic pause, not later failures while already paused.
+- `explore.webhooks.provider_health_checks` (`provider`, `outcome`) — independent Local/Svix readiness observations.
+- `explore.webhooks.retention.cleanup_runs` (`mode`, `outcome`) and `explore.webhooks.retention.cleanup_items` (`mode`, `data_kind`) — cleanup pass and bounded evidence-category counts; unknown input collapses to `unknown`.
 - `explore.ai.provider.health_checks` (`provider`, `status`, `reason`) — AI provider readiness outcomes; labels intentionally exclude endpoint URLs, API keys, model IDs, prompts, responses, provider request IDs, tenant/user IDs, and raw errors.
 - `explore.ai.provider.requests` (`provider`, `outcome`, `failure_category`) — AI provider call outcomes; labels intentionally exclude tenant/user prompt content, selected reference content, raw tool payloads, model IDs, endpoint URLs, API keys, provider request IDs, and raw provider errors.
 - `explore.ai.provider.request_duration` (`provider`, `outcome`, `failure_category`) — AI provider request duration histogram in seconds; labels intentionally use the same bounded dimensions as provider request counters.

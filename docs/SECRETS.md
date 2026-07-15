@@ -61,7 +61,7 @@ Add the bootstrap credentials for your maintainer developer environment inside t
 > The contributor default Aspire profile is `local-full`. It starts local infrastructure and sets `SecretProvider:Provider=None` for child projects, so contributors should not need Infisical credentials.
 > Maintainer profiles intentionally differ:
 > - `local-core` starts local PostgreSQL/Redis but loads auth, policy, storage, webhook, and provider settings from Infisical/config.
-> - `local-lite` starts only API and Blazor, with all infrastructure loaded from Infisical/config.
+> - `local-lite` starts the migration worker, API, and Blazor, with all infrastructure loaded from Infisical/config.
 > If Infisical is not used in a maintainer profile, supply equivalent settings through environment variables or appsettings before running the AppHost.
 
 ### Docker Compose Environment Files

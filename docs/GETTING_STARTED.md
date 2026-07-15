@@ -76,7 +76,7 @@ If using external infrastructure with `local-core` or `local-lite`, configure yo
 |---|---|---|
 | `local-full` | Contributor default, smoke checks, first clone | Aspire starts PostgreSQL, Redis, RabbitMQ, Mailpit, CockroachDB, Phase Two Keycloak, Cerbos, MinIO, Svix, Coop, Osprey, Prometheus, and Grafana locally. |
 | `local-core` | Maintainers debugging data/cache issues | Aspire starts PostgreSQL, Redis, Mailpit, and migrations locally; Keycloak, Cerbos, storage, webhooks, and moderation providers come from Infisical/config. |
-| `local-lite` | Maintainers on the fast daily loop | Aspire starts Mailpit, API, and Blazor; all other infrastructure comes from Infisical/config. |
+| `local-lite` | Maintainers on the fast daily loop | Aspire starts Mailpit, migrations, API, and Blazor; all infrastructure comes from Infisical/config. |
 
 `local-full` uses persistent containers and named volumes so repeated runs do not recreate the database, Keycloak, Mailpit messages, MinIO, RabbitMQ, or observability data from scratch. Keycloak keeps stable local ports for OIDC browser cookies and callbacks.
 

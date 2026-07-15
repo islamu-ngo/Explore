@@ -270,13 +270,26 @@ Optional S3-compatible storage still uses `S3Settings:*` as the runtime fallback
 | `Webhooks:Local:ConnectTimeoutSeconds` | `3` | LocalProvider connect timeout. |
 | `Webhooks:Local:BlockPrivateNetworks` | `true` | Blocks loopback, private, link-local, metadata, localhost, and internal DNS destinations by default. |
 | `Webhooks:Local:AllowedPrivateCidrs` | empty | Operator allow-list for deliberate private-network delivery. Keep empty for public/SaaS deployments. |
-| `Webhooks:Svix:BaseUrl` | unset | Optional absolute HTTP(S) self-hosted Svix base URL. Local-full Aspire injects the current Svix endpoint into the API; Compose uses `http://svix:8071`. |
+| `Webhooks:Svix:BaseUrl` | unset | Optional absolute HTTP(S) self-hosted Svix base URL. Aspire injects the current endpoint only when `Svix` or `Composite` is selected; Compose uses `http://svix:8071` with the opt-in `webhooks` profile. |
 | `Webhooks:Svix:AuthTokenSecretRef` | `webhooks.svix.auth_token` | Server-side secret binding for the Svix API token. |
 | `Webhooks:Svix:OperationalWebhookSecretRef` | `webhooks.svix.operational_webhook_secret` | Secret binding for incoming Svix operational callback verification. |
 | `Webhooks:Svix:AppPortalEnabled` | `true` | Enables backend-only App Portal access URL generation. |
 | `Webhooks:Svix:SyncEventTypesOnStartup` | `true` | Syncs the canonical event catalog to Svix when provider mode is `Svix` or `Composite`. |
 
-Local development can source Svix secrets from `WEBHOOKS_SVIX_AUTH_TOKEN` and `WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET`; Development seeding creates missing instance secret bindings for those variables when values are configured. Rotate the checked-in local defaults outside disposable development. See [WEBHOOKS.md](WEBHOOKS.md) for provider behavior and runbooks.
+`WebhookBulkReplay:*` controls the tenant-safe Local replay management worker. It does not enable a
+Svix cloud service or provider-native replay:
+
+| Key | Default | Description |
+|---|---:|---|
+| `WebhookBulkReplay:Enabled` | `true` | Enables queued operation processing. Preview and management reads remain available when disabled. |
+| `WebhookBulkReplay:InitialDelaySeconds` | `10` | Bounded startup delay, from 0 through 3600 seconds. |
+| `WebhookBulkReplay:PollingIntervalSeconds` | `5` | Polling cadence, from 1 through 3600 seconds. |
+| `WebhookBulkReplay:OperationsPerPass` | `10` | Maximum operations processed per pass, from 1 through 100. |
+| `WebhookBulkReplay:MaximumItemsPerOperation` | `100` | Runtime ceiling per operation; must be from 1 through the hard 1000-item ceiling. |
+| `WebhookBulkReplay:MaximumReservedItemsPerTenant` | `500` | Queued/executing requested-item capacity per tenant; must be at least the per-operation ceiling. |
+| `WebhookBulkReplay:MaximumFilterWindowDays` | `30` | Maximum explicit preview/schedule window, from 1 through 365 days. |
+
+Local development can source Svix secrets from `WEBHOOKS_SVIX_AUTH_TOKEN` and `WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET`; both remain intentionally empty while Local is selected. Development seeding creates missing instance secret bindings only when values are configured. See [WEBHOOKS.md](WEBHOOKS.md) for provider behavior and runbooks.
 
 ### Reporting Static Configuration
 

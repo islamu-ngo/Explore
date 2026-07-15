@@ -3,12 +3,12 @@
 
 # Webhook Delivery Redesign Context
 
-Last Updated: 2026-07-14 Europe/Brussels
+Last Updated: 2026-07-15 Europe/Brussels
 
 ## Current Status
 
 - Planning status: **Approved**
-- Implementation status: **Partial unverified source drift; execution resumed with governance and rebaseline gates**
+- Implementation status: **Phase 7 typed webhook ownership in progress**
 - CTO disposition: architecture accepted; previous implementation contract rejected
   until the stop-ship gaps were incorporated
 - Contribution intent/schema/benchmark gate: **complete with static proof**
@@ -17,14 +17,11 @@ Last Updated: 2026-07-14 Europe/Brussels
 
 ## NEXT
 
-1. Recover the immutable `WebhookMessage` and Local claim/failure compile contracts
-   without restoring removed compatibility members.
-2. Freeze a canonical green Release build and focused webhook baseline.
-3. Implement the persisted provider-binding foundation before any successful App
-   Portal session or portal HAL affordance.
-4. Apply the decided effect-receipt and provider-publication schemas in Phase 0B.
-5. Start Phase 1 with the expanded failure-injection tests, then implement the
-   transactional inbox and explicit tenant execution boundary to make them pass.
+1. Add failing owner-kind, tenant-containment, instance-scope, and authorization parity tests.
+2. Replace ambiguous consumer ownership combinations with one normalized typed invariant.
+3. Generate the ownership migration exclusively through `dotnet ef`.
+4. Propagate authoritative ownership through CQRS, HAL, Cerbos, and Blazor management flows.
+5. Re-run the complete webhook release gate and record Phase 7 evidence.
 
 Do not start with UI polish, Svix feature expansion, lower ownership scopes, or
 new infrastructure.

@@ -1,4 +1,4 @@
-<!-- ABOUTME: Records the Phase 0B through Phase 2 webhook migration, timing, lock, and restore rehearsals. -->
+<!-- ABOUTME: Records the Phase 0B through Phase 3 webhook migration, timing, lock, and restore rehearsals. -->
 <!-- ABOUTME: Binds release decisions to reproducible PostgreSQL 18 commands and semantic/data checks. -->
 
 # Webhook Migration Rehearsal Evidence
@@ -9,9 +9,9 @@ Verified: 2026-07-14 Europe/Brussels
 
 - PostgreSQL image: `postgres:18-alpine`
 - Starting migration: `20260712144721_AddManagedTenantProvisioningOperationOutboxPointer`
-- Final migration: `20260714095353_NormalizeWebhookProviderCapabilities`
+- Final migration: `20260714115533_EnforceWebhookConfigurationSnapshots`
 - Last full volume/backup/restore rehearsal final migration:
-  `20260714090035_NormalizeWebhookProviderBindingInstanceIdentity`
+  `20260714115533_EnforceWebhookConfigurationSnapshots`
 - Deployment artifact: EF Core idempotent SQL generated with `dotnet ef migrations script --idempotent`
 - Representative volume: 10,000 legacy incoming webhook rows, including 100 null legacy
   JSON payloads and 1,000 rows whose legacy `verified_at` was null
@@ -34,7 +34,7 @@ Verified: 2026-07-14 Europe/Brussels
 | Restore | Clean-database restore completed in 3.876 seconds |
 | Data checksum | Before/after count `10000`; MD5 `e0c37d4774413141bd9df31c4f503fdb` |
 | Last full volume/restore migration history | 44 applied migrations through binding identity normalization; final migration identical before/after restore |
-| Current source migration chain | 50 generated migrations; capability normalization is final and EF reports no pending model changes |
+| Current source migration chain | 51 generated migrations; configuration-snapshot enforcement is final and EF reports no pending model changes |
 | Restored idempotent reapply | Passed as a no-op in 0.366 seconds |
 | Binding identity normalization Up/Down | Passed in 5.696 seconds; canonical completed-bootstrap identity applied, stale ownership invalidated, and exact prior state restored from migration audit evidence |
 | 10,002-row provider-link end-to-end rehearsal | Passed in 2 minutes 34.211 seconds, including isolated database creation, current upgrade through identity normalization, lock monitoring, backup, restore, and verification |
@@ -46,6 +46,8 @@ Verified: 2026-07-14 Europe/Brussels
 | Full persistence regression | 329/329 passed against PostgreSQL 18 |
 | Capability normalization | EF CLI generated the lookup table, unique code index, and bounded `0..4095` provider/governance bitmask constraints; lookup/DTO parity passes and `dotnet ef migrations has-pending-model-changes` reports no drift |
 | Capability-aware historical boundaries | Passed: isolated databases migrate to the current chain, seed current lookups, use generated Down migrations to the pre-capability boundary, then replay the binding-identity or 10,002-row provider-link Up/backup/restore verification |
+| Configuration-snapshot enforcement | EF CLI generated positive consumer/endpoint configuration versions, dedicated UTC endpoint secret activation, and the normalized pending-work-decision lookup; consumer and endpoint versions are optimistic-concurrency tokens in the generated designer/snapshot |
+| Latest Phase 3 volume replay | Passed against `20260714115533_EnforceWebhookConfigurationSnapshots`: 10,002 snapshots/publications/attempts, zero sampled waiting locks, identical restored checksum, and no retired provider-link table after upgrade or restore |
 
 The first physical signature comparison differed only in column ordinal positions because
 `pg_restore` recreates columns in dump order. The semantic signature intentionally compares
@@ -69,6 +71,15 @@ the twelve known single-bit values represented by `0..4095`. Runtime seeding rem
 and owns the twelve lookup rows; provider proof remains versioned application authority rather
 than mutable model seed data. Migration creation, removal of the empty predecessor, snapshot
 updates, and model-drift verification were performed exclusively through `dotnet ef`.
+
+The final configuration-snapshot migration is additive. It adds positive configuration-version
+columns to consumers and endpoints, a dedicated UTC signing-secret activation timestamp, and the
+normalized `webhook_pending_work_decisions` lookup with a unique code index. EF concurrency-token
+metadata does not require extra PostgreSQL DDL, but is present in the CLI-generated designer and
+model snapshot. The migration was removed and regenerated through `dotnet ef` after that metadata
+was finalized; no migration, designer, or snapshot file was hand-edited. Real PostgreSQL tests
+prove simultaneous writers cannot overwrite either endpoint configuration or consumer provider
+mode, and the 10,002-row historical-boundary/backup/restore rehearsal passes through this migration.
 
 The first full persistence run after capability normalization passed 327/329. Both failures were
 historical-boundary setup failures: the current runtime seeder correctly queried

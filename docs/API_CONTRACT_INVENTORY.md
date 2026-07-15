@@ -11,15 +11,15 @@
 
 ## Summary
 
-- Total paths: **434**
-- Total operations: **588**
+- Total paths: **445**
+- Total operations: **600**
 - Operations missing `operationId`: **0**
 - Operation IDs with placeholder fallback pattern (ends in digit or `\dAsync`): **0**
 - URL-segment-versioned paths (`^/api/v\d`, banned by governance): **0**
 - Operations missing `x-endpoint-class` extension: **0**
-- Classification breakdown: `Admin`=56, `Authenticated`=408, `Public`=124
+- Classification breakdown: `Admin`=56, `Authenticated`=406, `Public`=138
 - Tenant-mode extension breakdown: `multi-tenant-required`=22
-- Rate-limit policy extension breakdown: `AiAssistant`=5, `AnalyticsRelay`=1, `Authenticated`=26, `ControlPlane`=31, `Global`=1, `PublicIngestion`=1, `SetupSecret`=10, `Write`=43
+- Rate-limit policy extension breakdown: `AiAssistant`=5, `AnalyticsRelay`=1, `Authenticated`=32, `ControlPlane`=31, `Global`=1, `PublicIngestion`=1, `SetupSecret`=10, `Write`=49
 - Output-cache policy extension breakdown: `DetailData`=51, `ListData`=38, `LookupData`=26, `PublicExperienceShell`=1, `SitemapData`=1, `SystemConfig`=1, `TenantNav`=1
 
 ## Operations
@@ -592,28 +592,40 @@
 | 564 | `/api/userexternallogin/{id}` | `DELETE` | `DeleteUserExternalLogin` | Delete User External Login | UserExternalLogin | `DeleteUserExternalLogin` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
 | 565 | `/api/visibilitytype` | `GET` | `GetVisibilityTypes` | Get all Visibility Types | VisibilityType | `GetVisibilityTypes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
 | 566 | `/api/visibilitytype/{id}` | `GET` | `GetVisibilityTypeById` | Get Visibility Type by ID | VisibilityType | `GetVisibilityTypeById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
-| 567 | `/api/webhooks/consumers` | `GET` | `GetWebhookConsumers` | Get webhook consumers | Webhooks | `GetWebhookConsumers` | `Authenticated` | no | _(none)_ | `Authenticated` | `ListData` |
-| 568 | `/api/webhooks/consumers` | `POST` | `CreateWebhookConsumer` | Create webhook consumer | Webhooks | `CreateWebhookConsumer` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 569 | `/api/webhooks/consumers/{consumerId}` | `GET` | `GetWebhookConsumerById` | Get webhook consumer | Webhooks | `GetWebhookConsumerById` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 570 | `/api/webhooks/consumers/{consumerId}/provider-binding/repair` | `POST` | `RepairWebhookProviderBinding` | Repair webhook provider binding | Webhooks | `RepairWebhookProviderBinding` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 571 | `/api/webhooks/delivery-attempts` | `GET` | `GetWebhookDeliveryAttempts` | Get webhook delivery attempts | Webhooks | `GetWebhookDeliveryAttempts` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 572 | `/api/webhooks/delivery-attempts/{attemptId}` | `GET` | `GetWebhookDeliveryAttemptById` | Get webhook delivery attempt | Webhooks | `GetWebhookDeliveryAttemptById` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 573 | `/api/webhooks/delivery-attempts/{attemptId}/retry` | `POST` | `RetryWebhookDeliveryAttempt` | Retry webhook delivery attempt | Webhooks | `RetryWebhookDeliveryAttempt` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 574 | `/api/webhooks/endpoints` | `GET` | `GetWebhookEndpoints` | Get webhook endpoints | Webhooks | `GetWebhookEndpoints` | `Authenticated` | no | _(none)_ | `Authenticated` | `ListData` |
-| 575 | `/api/webhooks/endpoints` | `POST` | `CreateWebhookEndpoint` | Create webhook endpoint | Webhooks | `CreateWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 576 | `/api/webhooks/endpoints/{endpointId}` | `GET` | `GetWebhookEndpointById` | Get webhook endpoint | Webhooks | `GetWebhookEndpointById` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 577 | `/api/webhooks/endpoints/{endpointId}` | `PUT` | `UpdateWebhookEndpoint` | Update webhook endpoint | Webhooks | `UpdateWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 578 | `/api/webhooks/endpoints/{endpointId}` | `DELETE` | `DeleteWebhookEndpoint` | Delete webhook endpoint | Webhooks | `DeleteWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 579 | `/api/webhooks/endpoints/{endpointId}/resume` | `POST` | `ResumeWebhookEndpoint` | Resume webhook endpoint | WebhookEndpointOperations | `ResumeWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 580 | `/api/webhooks/endpoints/{endpointId}/rotate-secret` | `POST` | `RotateWebhookEndpointSecret` | Rotate webhook endpoint secret | Webhooks | `RotateWebhookEndpointSecret` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 581 | `/api/webhooks/endpoints/{endpointId}/test` | `POST` | `TestWebhookEndpoint` | Test webhook endpoint | Webhooks | `TestWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 582 | `/api/webhooks/event-types` | `GET` | `GetWebhookEventTypes` | Get webhook event types | Webhooks | `GetWebhookEventTypes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
-| 583 | `/api/webhooks/incoming/{incomingWebhookMessageId}/redrive` | `POST` | `RedriveIncomingWebhook` | Redrive incoming webhook | Webhooks | `RedriveIncomingWebhook` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 584 | `/api/webhooks/messages` | `GET` | `GetWebhookMessages` | Get webhook messages | Webhooks | `GetWebhookMessages` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 585 | `/api/webhooks/messages/{messageId}` | `GET` | `GetWebhookMessageById` | Get webhook message | Webhooks | `GetWebhookMessageById` | `Authenticated` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 586 | `/api/webhooks/svix/app-portal` | `POST` | `OpenSvixAppPortal` | Open Svix App Portal | Webhooks | `OpenSvixAppPortal` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 587 | `/sitemap.xml` | `GET` | `GetSitemap` | Get XML sitemap | Sitemap | `GetSitemap` | `Public` | no | _(none)_ | _(none)_ | `SitemapData` |
-| 588 | `/vapid-public-key` | `GET` | `GetVapidPublicKey` | Get VAPID public key | Notification | `GetVapidPublicKey` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 567 | `/api/webhooks/bulk-replays` | `GET` | `GetWebhookBulkReplays` | Get webhook bulk replays | WebhookBulkReplays | `GetWebhookBulkReplays` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 568 | `/api/webhooks/bulk-replays` | `POST` | `ScheduleWebhookBulkReplay` | Schedule webhook bulk replay | WebhookBulkReplays | `ScheduleWebhookBulkReplay` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 569 | `/api/webhooks/bulk-replays/preview` | `GET` | `PreviewWebhookBulkReplay` | Preview webhook bulk replay | WebhookBulkReplays | `PreviewWebhookBulkReplay` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 570 | `/api/webhooks/bulk-replays/{operationId}` | `GET` | `GetWebhookBulkReplayById` | Get webhook bulk replay | WebhookBulkReplays | `GetWebhookBulkReplayById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 571 | `/api/webhooks/bulk-replays/{operationId}/cancel` | `POST` | `CancelWebhookBulkReplay` | Cancel webhook bulk replay | WebhookBulkReplays | `CancelWebhookBulkReplay` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 572 | `/api/webhooks/consumers` | `GET` | `GetWebhookConsumers` | Get webhook consumers | Webhooks | `GetWebhookConsumers` | `Public` | no | _(none)_ | `Authenticated` | `ListData` |
+| 573 | `/api/webhooks/consumers` | `POST` | `CreateWebhookConsumer` | Create webhook consumer | Webhooks | `CreateWebhookConsumer` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 574 | `/api/webhooks/consumers/{consumerId}` | `GET` | `GetWebhookConsumerById` | Get webhook consumer | Webhooks | `GetWebhookConsumerById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 575 | `/api/webhooks/consumers/{consumerId}/provider-binding/repair` | `POST` | `RepairWebhookProviderBinding` | Repair webhook provider binding | Webhooks | `RepairWebhookProviderBinding` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 576 | `/api/webhooks/consumers/{consumerId}/provider-mode` | `PUT` | `UpdateWebhookConsumerProviderMode` | Change webhook consumer provider mode | Webhooks | `UpdateWebhookConsumerProviderMode` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 577 | `/api/webhooks/delivery-attempts` | `GET` | `GetWebhookDeliveryAttempts` | Get webhook delivery attempts | Webhooks | `GetWebhookDeliveryAttempts` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 578 | `/api/webhooks/delivery-attempts/{attemptId}` | `GET` | `GetWebhookDeliveryAttemptById` | Get webhook delivery attempt | Webhooks | `GetWebhookDeliveryAttemptById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 579 | `/api/webhooks/delivery-attempts/{attemptId}/retry` | `POST` | `RetryWebhookDeliveryAttempt` | Retry webhook delivery attempt | Webhooks | `RetryWebhookDeliveryAttempt` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 580 | `/api/webhooks/endpoints` | `GET` | `GetWebhookEndpoints` | Get webhook endpoints | Webhooks | `GetWebhookEndpoints` | `Public` | no | _(none)_ | `Authenticated` | `ListData` |
+| 581 | `/api/webhooks/endpoints` | `POST` | `CreateWebhookEndpoint` | Create webhook endpoint | Webhooks | `CreateWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 582 | `/api/webhooks/endpoints/{endpointId}` | `GET` | `GetWebhookEndpointById` | Get webhook endpoint | Webhooks | `GetWebhookEndpointById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 583 | `/api/webhooks/endpoints/{endpointId}` | `PUT` | `UpdateWebhookEndpoint` | Update webhook endpoint | Webhooks | `UpdateWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 584 | `/api/webhooks/endpoints/{endpointId}` | `DELETE` | `DeleteWebhookEndpoint` | Delete webhook endpoint | Webhooks | `DeleteWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 585 | `/api/webhooks/endpoints/{endpointId}/pause` | `POST` | `PauseWebhookEndpoint` | Pause webhook endpoint | WebhookEndpointOperations | `PauseWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 586 | `/api/webhooks/endpoints/{endpointId}/resume` | `POST` | `ResumeWebhookEndpoint` | Resume webhook endpoint | WebhookEndpointOperations | `ResumeWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 587 | `/api/webhooks/endpoints/{endpointId}/rotate-secret` | `POST` | `RotateWebhookEndpointSecret` | Rotate webhook endpoint secret | Webhooks | `RotateWebhookEndpointSecret` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 588 | `/api/webhooks/endpoints/{endpointId}/test` | `POST` | `TestWebhookEndpoint` | Test webhook endpoint | Webhooks | `TestWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 589 | `/api/webhooks/event-types` | `GET` | `GetWebhookEventTypes` | Get webhook event types | Webhooks | `GetWebhookEventTypes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
+| 590 | `/api/webhooks/incoming/{incomingWebhookMessageId}/redrive` | `POST` | `RedriveIncomingWebhook` | Redrive incoming webhook | Webhooks | `RedriveIncomingWebhook` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 591 | `/api/webhooks/messages` | `GET` | `GetWebhookMessages` | Get webhook messages | Webhooks | `GetWebhookMessages` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 592 | `/api/webhooks/messages/{messageId}` | `GET` | `GetWebhookMessageById` | Get webhook message | Webhooks | `GetWebhookMessageById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 593 | `/api/webhooks/messages/{messageId}/payload` | `GET` | `GetWebhookMessagePayload` | Get webhook message payload | Webhooks | `GetWebhookMessagePayload` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 594 | `/api/webhooks/provider-publications` | `GET` | `GetWebhookProviderPublications` | Get provider publications | WebhookProviderPublications | `GetWebhookProviderPublications` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 595 | `/api/webhooks/provider-publications/{publicationId}` | `GET` | `GetWebhookProviderPublicationById` | Get provider publication | WebhookProviderPublications | `GetWebhookProviderPublicationById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 596 | `/api/webhooks/provider-publications/{publicationId}/abandon` | `POST` | `AbandonWebhookProviderPublication` | Abandon provider publication | WebhookProviderPublications | `AbandonWebhookProviderPublication` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 597 | `/api/webhooks/provider-publications/{publicationId}/reconcile` | `POST` | `ReconcileWebhookProviderPublication` | Reconcile provider publication | WebhookProviderPublications | `ReconcileWebhookProviderPublication` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 598 | `/api/webhooks/svix/app-portal` | `POST` | `OpenSvixAppPortal` | Open Svix App Portal | Webhooks | `OpenSvixAppPortal` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 599 | `/sitemap.xml` | `GET` | `GetSitemap` | Get XML sitemap | Sitemap | `GetSitemap` | `Public` | no | _(none)_ | _(none)_ | `SitemapData` |
+| 600 | `/vapid-public-key` | `GET` | `GetVapidPublicKey` | Get VAPID public key | Notification | `GetVapidPublicKey` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
 
 ## Columns
 

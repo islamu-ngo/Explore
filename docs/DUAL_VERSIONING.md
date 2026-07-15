@@ -31,9 +31,15 @@ This strategy ensures that **self-hosters and contributors can build and run the
 > This version is **security-frozen** and will not receive patches under the MIT license.
 > The vulnerability is patched in commercial versions **15.1.1** and **16.1.1**.
 
-Self-hosters have three options:
+The default FOSS build applies a global depth ceiling of 64 to every registered map in
+`ApplicationServicesRegistration`. That bounds recursive traversal at the application
+composition root, directly mitigating the advisory's uncontrolled-recursion path. The
+repository suppresses only this exact NuGet advisory after applying that runtime control;
+all other package advisories remain visible and actionable.
 
-1. **Accept the advisory** — If your deployment is not exposed to untrusted mapping inputs, the risk may be acceptable for your threat model.
+Self-hosters still have three strategic options:
+
+1. **Use the built-in mitigation** — Keep the global depth ceiling and validate that legitimate DTO graphs do not require more than 64 mapping levels.
 2. **Supply your own commercial license** — Purchase a Lucky Penny license and build with `UseCommercialLuckyPennyLibraries=true` to get the patched version.
 3. **Migrate away from AutoMapper** — Replace AutoMapper with a source-generated alternative such as [Mapperly](https://mapperly.riok.app/) (see [§12. Long-Term Migration](#12-long-term-migration)).
 

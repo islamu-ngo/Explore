@@ -85,6 +85,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [EMAIL_NOTIFICATIONS.md](EMAIL_NOTIFICATIONS.md) - SMTP email delivery and its boundary from in-app notifications.
 - [NOTIFICATIONS.md](NOTIFICATIONS.md) - in-app notification lifecycle, inbox UI, and API boundaries.
 - [WEBHOOKS.md](WEBHOOKS.md) - outgoing webhook providers, LocalProvider/SvixProvider setup, signatures, health, and rollout.
+- [WEBHOOK_OPERATIONS_RUNBOOK.md](WEBHOOK_OPERATIONS_RUNBOOK.md) - webhook readiness, bounded metrics, SLOs, alerts, and Local/self-hosted Svix incident recovery.
 - [INTEGRATIONS.md](INTEGRATIONS.md) - incoming provider callbacks, Coop/Osprey/Svix operational verification, and idempotency.
 - [SEO.md](SEO.md) - sitemap, robots, render-policy, and public-discovery SEO behavior.
 - [SECURITY.md](SECURITY.md) - auth/authz model and trust boundaries.

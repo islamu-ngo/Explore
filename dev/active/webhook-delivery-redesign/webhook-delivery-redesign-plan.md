@@ -55,7 +55,7 @@ unique constraints, transactional receipts, and idempotent consumers.
 - A new message broker, cache, CDC pipeline, or mandatory proxy tier.
 - Provider feature parity where Svix has a native capability Local does not.
 - Caller-selected portal capabilities or trusted legacy provider identifiers.
-- Organization, Group, User, or ERP ownership in the mandatory delivery phases.
+- ERP ownership in the mandatory delivery phases.
 - CloudEvents, Ed25519, arbitrary provider plugins, or speculative abstractions.
 - Compatibility shims for contracts removed by this redesign.
 
@@ -87,16 +87,24 @@ unique constraints, transactional receipts, and idempotent consumers.
 
 ## Ownership Boundary
 
-Mandatory phases retain tenant-only ownership. `WebhookConsumer`, endpoint,
-message, publication, attempt, receipt, audit, and retention records carry
-`TenantId` and are query-filtered tenant data.
+Phase 7 makes webhook configuration ownership explicit for Instance, Tenant,
+Organization, Group, and User scopes. Every consumer has one normalized owner
+kind and one matching typed owner reference. Organization, Group, and User
+owners must resolve inside the consumer tenant; instance-owned consumers have no
+tenant and resolve to the completed immutable instance identity. Database check
+constraints reject missing, mixed, or contradictory owner references.
 
-Future typed ownership is conditional work. If Organization, Group, or User
-ownership is approved later, it must use an explicit owner kind and owner ID,
-authorization resource descriptors, tenant-constrained resolution, migration,
-and Local/Cerbos parity tests. ERP integrations remain a separate admission-
-gated project because they introduce connector credentials, schemas, scheduling,
-and data-governance concerns beyond webhook transport.
+Tenant query filters hide instance-owned configuration by default. Privileged
+instance operations must disable only the named tenant filter and apply an
+explicit instance/consumer predicate. Event messages and delivery evidence keep
+their source `TenantId`; an explicitly targeted instance consumer may receive
+events from any tenant without changing the source tenant or weakening tenant
+isolation. Authorization resource descriptors carry the canonical owner kind and
+owner ID, and Local/Cerbos decisions must remain equivalent for every scope.
+
+ERP integrations remain a separate admission-gated project because they
+introduce connector credentials, schemas, scheduling, and data-governance
+concerns beyond webhook transport.
 
 ## Core Domain Model
 
@@ -492,9 +500,18 @@ path churn with reliability and migration work.
 - Define SLOs and alerts for lag, retry, dead-letter, unknown publication, and pause.
 - Write Local-only and Svix-enabled incident/recovery runbooks.
 
+### Phase 7: Typed Webhook Ownership
+
+- Normalize Instance, Tenant, Organization, Group, and User consumer ownership.
+- Enforce owner-kind/reference consistency, tenant containment, and instance identity in the domain and PostgreSQL schema.
+- Propagate configuration scope through endpoints, subscriptions, provider bindings, audit, and explicitly targeted delivery plans.
+- Resolve authoritative owner attributes before resource authorization; never trust caller-supplied ownership.
+- Add Local/Cerbos parity and HAL-gated management for every owner scope.
+- Expose scope-specific Blazor management surfaces through generated API contracts.
+- Prove tenant users cannot discover or mutate instance or unrelated owner resources.
+
 ### Conditional Later Work
 
-- Typed Organization/Group/User ownership.
 - ERP connector project.
 - CloudEvents envelope.
 - Ed25519 signatures.
