@@ -1,0 +1,26 @@
+// ABOUTME: Authorized optimistic command that cancels a queued webhook bulk replay before execution.
+// ABOUTME: Requires the caller's observed operation version and a normalized audit reason.
+
+using Explore.Application.Authorization;
+using Explore.Application.Responses;
+using MediatR;
+
+namespace Explore.Application.Features.Webhooks.Requests.Commands;
+
+[AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.BulkReplay)]
+public sealed class CancelWebhookBulkReplayCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+{
+    public Guid TenantId { get; init; }
+    public Guid ActorUserId { get; init; }
+    public Guid OperationId { get; init; }
+    public long ExpectedConcurrencyVersion { get; init; }
+    public required string ReasonCode { get; init; }
+
+    string? ISecureRequest.ResourceId => OperationId.ToString("D");
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["tenantId"] = TenantId.ToString("D"),
+        ["bulkReplayOperationId"] = OperationId.ToString("D")
+    };
+}

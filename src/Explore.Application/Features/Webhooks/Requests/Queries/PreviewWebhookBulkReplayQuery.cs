@@ -1,0 +1,27 @@
+// ABOUTME: Authorized query for bounded tenant-scoped webhook bulk replay eligibility counts.
+// ABOUTME: Carries explicit UTC, consumer, endpoint, event-type, and selection-limit filters.
+
+using Explore.Application.Authorization;
+using Explore.Application.Responses;
+using MediatR;
+
+namespace Explore.Application.Features.Webhooks.Requests.Queries;
+
+[AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.BulkReplay)]
+public sealed class PreviewWebhookBulkReplayQuery : IRequest<WebhookBulkReplayPreviewResult>, ISecureRequest
+{
+    public Guid TenantId { get; init; }
+    public DateTime FromUtc { get; init; }
+    public DateTime ToUtc { get; init; }
+    public Guid? WebhookConsumerId { get; init; }
+    public Guid? WebhookEndpointId { get; init; }
+    public string? EventType { get; init; }
+    public int MaxItems { get; init; }
+
+    string? ISecureRequest.ResourceId => TenantId.ToString("D");
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["tenantId"] = TenantId.ToString("D")
+    };
+}

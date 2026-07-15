@@ -1,0 +1,120 @@
+/* ABOUTME: Scoped layout and responsive styles for bounded webhook bulk replay operations. */
+/* ABOUTME: Applies repository spacing, radius, border, and color tokens through BEM selectors. */
+
+.webhook-bulk-replay {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.webhook-bulk-replay__header,
+.webhook-bulk-replay__preview-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--isl-space-4);
+}
+
+.webhook-bulk-replay__form,
+.webhook-bulk-replay__history {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.webhook-bulk-replay__form-heading {
+    display: grid;
+    gap: var(--isl-space-1);
+}
+
+.webhook-bulk-replay__filter-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--isl-space-3);
+}
+
+.webhook-bulk-replay__form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--isl-space-2);
+}
+
+.webhook-bulk-replay__preview {
+    display: grid;
+    gap: var(--isl-space-3);
+    padding: var(--isl-space-4);
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+    background: var(--isl-color-surface);
+}
+
+.webhook-bulk-replay__preview-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--isl-space-2);
+}
+
+.webhook-bulk-replay__preview-metric {
+    display: grid;
+    gap: var(--isl-space-1);
+    padding: var(--isl-space-3);
+    border-radius: var(--isl-radius-md);
+    background: var(--isl-color-background);
+}
+
+.webhook-bulk-replay__preview-metric span {
+    color: var(--isl-color-text);
+    font-size: var(--isl-typography-h5-size);
+    font-weight: 700;
+}
+
+.webhook-bulk-replay__preview-metric small {
+    color: var(--isl-color-text-secondary);
+}
+
+.webhook-bulk-replay__table {
+    overflow-x: auto;
+    overflow-y: hidden;
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+}
+
+.webhook-bulk-replay ::deep .webhook-bulk-replay__actions-cell {
+    text-align: end;
+}
+
+.webhook-bulk-replay__cell-content {
+    display: grid;
+    gap: var(--isl-space-1);
+    min-width: 0;
+    justify-items: start;
+}
+
+@media (max-width: 767.98px) {
+    .webhook-bulk-replay__filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .webhook-bulk-replay__form-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 599.98px) {
+    .webhook-bulk-replay__header,
+    .webhook-bulk-replay__preview-header {
+        align-items: stretch;
+    }
+
+    .webhook-bulk-replay__preview-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .webhook-bulk-replay__table {
+        overflow: visible;
+        border: 0;
+    }
+
+    .webhook-bulk-replay ::deep .webhook-bulk-replay__actions-cell {
+        text-align: start;
+    }
+}

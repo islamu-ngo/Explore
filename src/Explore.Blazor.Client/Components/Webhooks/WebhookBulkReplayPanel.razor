@@ -1,0 +1,512 @@
+@* ABOUTME: Bounded webhook bulk replay preview, scheduling, history, and cancellation UI.
+   ABOUTME: Uses generated contracts and collection/item HAL relations as the only action authority. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Webhooks
+@using MudBlazor
+@inject IWebhookOperationsService WebhookOperations
+@inject ISnackbar Snackbar
+
+<section class="webhook-bulk-replay" aria-labelledby="webhook-bulk-replay-title">
+    <div class="webhook-bulk-replay__header">
+        <div>
+            <MudText Typo="Typo.subtitle2" id="webhook-bulk-replay-title">Bulk replay</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Preview a bounded UTC window before scheduling terminal Local deliveries through the ordinary fairness and retry path.
+            </MudText>
+        </div>
+        <MudTooltip Text="Refresh bulk replay operations">
+            <AppIconButton Icon="@Icons.Material.Filled.Refresh"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           OnClick="LoadAsync"
+                           Disabled="_isLoading || _isBusy"
+                           aria-label="Refresh bulk replay operations" />
+        </MudTooltip>
+    </div>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="Loading bulk replay operations" />
+    }
+    else if (!_snapshot.IsSuccess)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_snapshot.ErrorMessage</MudAlert>
+    }
+    else
+    {
+        <AppCard>
+            <MudCardContent>
+                <div class="webhook-bulk-replay__form">
+                    <div class="webhook-bulk-replay__form-heading">
+                        <MudText Typo="Typo.subtitle2">Replay filter</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            The start is inclusive and the end is exclusive. Dates are interpreted at 00:00 UTC.
+                        </MudText>
+                    </div>
+                    <div class="webhook-bulk-replay__filter-grid">
+                        <MudDatePicker Label="From date (UTC)"
+                                       @bind-Date="_fromDate"
+                                       Variant="Variant.Outlined"
+                                       DateFormat="yyyy-MM-dd"
+                                       Required="true"
+                                       Editable="true" />
+                        <MudDatePicker Label="To date (UTC, exclusive)"
+                                       @bind-Date="_toDate"
+                                       Variant="Variant.Outlined"
+                                       DateFormat="yyyy-MM-dd"
+                                       Required="true"
+                                       Editable="true" />
+                        <MudSelect T="Guid?"
+                                   Value="_consumerId"
+                                   ValueChanged="ConsumerChanged"
+                                   Label="Consumer"
+                                   Variant="Variant.Outlined"
+                                   Clearable="true">
+                            <MudSelectItem T="Guid?" Value="@((Guid?)null)">All consumers</MudSelectItem>
+                            @foreach (var consumer in Consumers.Where(item => item.Id.HasValue))
+                            {
+                                <MudSelectItem T="Guid?" Value="@consumer.Id">@consumer.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudSelect T="Guid?"
+                                   @bind-Value="_endpointId"
+                                   Label="Endpoint"
+                                   Variant="Variant.Outlined"
+                                   Clearable="true">
+                            <MudSelectItem T="Guid?" Value="@((Guid?)null)">All endpoints</MudSelectItem>
+                            @foreach (var endpoint in FilteredEndpoints)
+                            {
+                                <MudSelectItem T="Guid?" Value="@endpoint.Id">@EndpointLabel(endpoint)</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudSelect T="string"
+                                   @bind-Value="_eventType"
+                                   Label="Event type"
+                                   Variant="Variant.Outlined"
+                                   Clearable="true">
+                            @foreach (var eventType in EventTypes.Where(item => item.IsEnabled == true).OrderBy(item => item.Name))
+                            {
+                                <MudSelectItem T="string" Value="@eventType.Name">@eventType.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudNumericField T="int"
+                                         @bind-Value="_maxItems"
+                                         Label="Maximum items"
+                                         Variant="Variant.Outlined"
+                                         Min="1"
+                                         Max="1000"
+                                         Required="true" />
+                    </div>
+                    <AppTextField T="string"
+                                  @bind-Value="_reasonCode"
+                                  Label="Reason code"
+                                  HelperText="Required for scheduling. Letters, digits, underscore, dash, dot, and colon only."
+                                  Required="true"
+                                  Immediate="true"
+                                  data-testid="webhook-bulk-replay-reason" />
+
+                    @if (!_snapshot.CanPreview || !_snapshot.CanSchedule)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                            @BulkReplayAvailability
+                        </MudAlert>
+                    }
+
+                    <div class="webhook-bulk-replay__form-actions">
+                        @if (_snapshot.CanPreview)
+                        {
+                            <AppButton Color="Color.Primary"
+                                       Variant="Variant.Outlined"
+                                       StartIcon="@Icons.Material.Filled.Visibility"
+                                       OnClick="PreviewAsync"
+                                       Disabled="@PreviewDisabled"
+                                       data-testid="webhook-bulk-replay-preview">
+                                @(_isBusy ? "Working..." : "Preview")
+                            </AppButton>
+                        }
+                        @if (_snapshot.CanSchedule)
+                        {
+                            <AppButton Color="Color.Primary"
+                                       Variant="Variant.Filled"
+                                       StartIcon="@Icons.Material.Filled.Replay"
+                                       OnClick="ScheduleAsync"
+                                       Disabled="@ScheduleDisabled"
+                                       data-testid="webhook-bulk-replay-schedule">
+                                @(_isBusy ? "Scheduling..." : "Schedule replay")
+                            </AppButton>
+                        }
+                    </div>
+                </div>
+            </MudCardContent>
+        </AppCard>
+
+        @if (_preview is not null)
+        {
+            <section class="webhook-bulk-replay__preview" aria-label="Bulk replay preview">
+                <div class="webhook-bulk-replay__preview-header">
+                    <MudText Typo="Typo.subtitle2">Preview evidence</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Generated @FormatDate(_preview.PreviewedAt)</MudText>
+                </div>
+                @if (!PreviewMatchesCurrentFilter)
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+                        Filters changed after this preview. Run preview again before scheduling.
+                    </MudAlert>
+                }
+                <div class="webhook-bulk-replay__preview-metrics">
+                    <div class="webhook-bulk-replay__preview-metric">
+                        <span>@(_preview.EligibleCount ?? 0)</span>
+                        <small>Eligible</small>
+                    </div>
+                    <div class="webhook-bulk-replay__preview-metric">
+                        <span>@(_preview.EstimatedSelectedCount ?? 0)</span>
+                        <small>Selected</small>
+                    </div>
+                    <div class="webhook-bulk-replay__preview-metric">
+                        <span>@(_preview.ExcludedCount ?? 0)</span>
+                        <small>Excluded</small>
+                    </div>
+                </div>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    @PreviewExclusionSummary(_preview)
+                </MudText>
+            </section>
+        }
+
+        <section class="webhook-bulk-replay__history" aria-labelledby="webhook-bulk-replay-history-title">
+            <MudText Typo="Typo.subtitle2" id="webhook-bulk-replay-history-title">Replay operations</MudText>
+            <div class="webhook-bulk-replay__table">
+                <MudTable T="HalResourceOfWebhookBulkReplayOperationDto"
+                          Items="_snapshot.Operations"
+                          Dense="true"
+                          Hover="true"
+                          Elevation="0"
+                          Breakpoint="Breakpoint.Xl">
+                    <HeaderContent>
+                        <MudTh>Status</MudTh>
+                        <MudTh>Window</MudTh>
+                        <MudTh>Counts</MudTh>
+                        <MudTh>Queued</MudTh>
+                        <MudTh>Availability</MudTh>
+                        <MudTh Class="webhook-bulk-replay__actions-cell">Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Status">
+                            <div class="webhook-bulk-replay__cell-content">
+                                <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.StatusCode)" Variant="Variant.Outlined">
+                                    @context.StatusName
+                                </MudChip>
+                                @if (!string.IsNullOrWhiteSpace(context.FailureCode))
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@context.FailureCode</MudText>
+                                }
+                            </div>
+                        </MudTd>
+                        <MudTd DataLabel="Window">
+                            <div class="webhook-bulk-replay__cell-content">
+                                <MudText Typo="Typo.caption">@FormatDate(context.Filter.FromUtc)</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">to @FormatDate(context.Filter.ToUtc)</MudText>
+                            </div>
+                        </MudTd>
+                        <MudTd DataLabel="Counts">
+                            <div class="webhook-bulk-replay__cell-content">
+                                <MudText Typo="Typo.body2">@(context.ScheduledCount ?? 0) scheduled</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @(context.EstimatedSelectedCount ?? 0) selected / @(context.EstimatedExcludedCount ?? 0) excluded
+                                </MudText>
+                            </div>
+                        </MudTd>
+                        <MudTd DataLabel="Queued">@FormatDate(context.QueuedAt)</MudTd>
+                        <MudTd DataLabel="Availability">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@OperationAvailability(context)</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Actions" Class="webhook-bulk-replay__actions-cell">
+                            @if (HasLink(context, WebhookClientLinkRelations.Cancel))
+                            {
+                                <MudTooltip Text="Cancel queued bulk replay">
+                                    <AppIconButton Icon="@Icons.Material.Filled.Cancel"
+                                                   Color="Color.Error"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => OpenCancelDialog(context))"
+                                                   Disabled="_isBusy"
+                                                   aria-label="Cancel queued bulk replay" />
+                                </MudTooltip>
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">No bulk replay operations.</MudText>
+                    </NoRecordsContent>
+                </MudTable>
+            </div>
+        </section>
+    }
+
+    <MudDialog @bind-Visible="_cancelDialogOpen" Options="DialogOptionsFactory.Small()">
+        <TitleContent>
+            <MudText Typo="Typo.h6">Cancel Bulk Replay</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Cancellation is optimistic and only succeeds while the operation remains queued.
+                </MudText>
+                <AppTextField T="string"
+                              @bind-Value="_cancelReasonCode"
+                              Label="Reason code"
+                              HelperText="Letters, digits, underscore, dash, dot, and colon only."
+                              Required="true"
+                              Immediate="true"
+                              data-testid="webhook-bulk-replay-cancel-reason" />
+            </MudStack>
+        </DialogContent>
+        <DialogActions>
+            <AppButton Variant="Variant.Text" OnClick="CloseCancelDialog" Disabled="_isBusy">Keep queued</AppButton>
+            <AppButton Color="Color.Error"
+                       Variant="Variant.Filled"
+                       OnClick="CancelAsync"
+                       Disabled="@CancelDisabled">
+                @(_isBusy ? "Cancelling..." : "Cancel replay")
+            </AppButton>
+        </DialogActions>
+    </MudDialog>
+</section>
+
+@code {
+    [Parameter] public IReadOnlyList<HalResourceOfWebhookConsumerDto> Consumers { get; set; } = [];
+
+    [Parameter] public IReadOnlyList<HalResourceOfWebhookEndpointDto> Endpoints { get; set; } = [];
+
+    [Parameter] public IReadOnlyList<WebhookEventTypeDto> EventTypes { get; set; } = [];
+
+    private WebhookBulkReplaySnapshot _snapshot = new();
+    private DateTime? _fromDate = DateTime.UtcNow.Date.AddDays(-7);
+    private DateTime? _toDate = DateTime.UtcNow.Date.AddDays(1);
+    private Guid? _consumerId;
+    private Guid? _endpointId;
+    private string? _eventType;
+    private int _maxItems = 100;
+    private string _reasonCode = string.Empty;
+    private Guid _operationKey = Guid.CreateVersion7();
+    private WebhookBulkReplayPreviewDto? _preview;
+    private string? _previewFilterIdentity;
+    private bool _isLoading = true;
+    private bool _isBusy;
+    private bool _cancelDialogOpen;
+    private HalResourceOfWebhookBulkReplayOperationDto? _selectedOperation;
+    private string _cancelReasonCode = string.Empty;
+
+    private IReadOnlyList<HalResourceOfWebhookEndpointDto> FilteredEndpoints =>
+        Endpoints
+            .Where(endpoint => endpoint.Id.HasValue &&
+                (!_consumerId.HasValue || endpoint.ConsumerId == _consumerId))
+            .OrderBy(endpoint => endpoint.DestinationHost, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private bool PreviewDisabled =>
+        _isBusy || !_fromDate.HasValue || !_toDate.HasValue || _toDate.Value.Date <= _fromDate.Value.Date || _maxItems <= 0;
+
+    private bool PreviewMatchesCurrentFilter =>
+        _preview is not null && string.Equals(_previewFilterIdentity, CurrentFilterIdentity(), StringComparison.Ordinal);
+
+    private bool ScheduleDisabled =>
+        PreviewDisabled ||
+        !PreviewMatchesCurrentFilter ||
+        (_preview?.EstimatedSelectedCount ?? 0) <= 0 ||
+        string.IsNullOrWhiteSpace(_reasonCode);
+
+    private bool CancelDisabled =>
+        _isBusy ||
+        _selectedOperation?.Id is null ||
+        _selectedOperation.ConcurrencyVersion is null or <= 0 ||
+        string.IsNullOrWhiteSpace(_cancelReasonCode);
+
+    private string BulkReplayAvailability =>
+        !_snapshot.CanPreview
+            ? "Replay preview is unavailable for the current tenant capability and policy."
+            : "Replay scheduling is unavailable for the current tenant capability and policy.";
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _snapshot = await WebhookOperations.GetBulkReplaysAsync();
+        _isLoading = false;
+    }
+
+    private Task ConsumerChanged(Guid? consumerId)
+    {
+        _consumerId = consumerId;
+        if (_endpointId.HasValue && !Endpoints.Any(endpoint => endpoint.Id == _endpointId && endpoint.ConsumerId == consumerId))
+        {
+            _endpointId = null;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task PreviewAsync()
+    {
+        var filter = CreateFilter();
+        _isBusy = true;
+        var result = await WebhookOperations.PreviewBulkReplayAsync(filter);
+        _isBusy = false;
+        Snackbar.Add(result.Message, result.Success ? Severity.Success : Severity.Error);
+        _preview = result.Preview;
+        _previewFilterIdentity = result.Success ? FilterIdentity(filter) : null;
+    }
+
+    private async Task ScheduleAsync()
+    {
+        if (ScheduleDisabled)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        var result = await WebhookOperations.ScheduleBulkReplayAsync(
+            new ScheduleWebhookBulkReplayRequestDto
+            {
+                OperationKey = _operationKey,
+                Filter = CreateFilter(),
+                ReasonCode = _reasonCode.Trim()
+            });
+        _isBusy = false;
+        Snackbar.Add(result.Message, result.Success ? Severity.Success : Severity.Error);
+        if (!result.Success)
+        {
+            return;
+        }
+
+        _operationKey = Guid.CreateVersion7();
+        _reasonCode = string.Empty;
+        _preview = null;
+        _previewFilterIdentity = null;
+        await LoadAsync();
+    }
+
+    private void OpenCancelDialog(HalResourceOfWebhookBulkReplayOperationDto operation)
+    {
+        _selectedOperation = operation;
+        _cancelReasonCode = string.Empty;
+        _cancelDialogOpen = true;
+    }
+
+    private void CloseCancelDialog() => _cancelDialogOpen = false;
+
+    private async Task CancelAsync()
+    {
+        if (_selectedOperation?.Id is not Guid operationId ||
+            _selectedOperation.ConcurrencyVersion is not long concurrencyVersion)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        var result = await WebhookOperations.CancelBulkReplayAsync(
+            operationId,
+            new CancelWebhookBulkReplayRequestDto
+            {
+                ExpectedConcurrencyVersion = concurrencyVersion,
+                ReasonCode = _cancelReasonCode.Trim()
+            });
+        _isBusy = false;
+        Snackbar.Add(result.Message, result.Success ? Severity.Success : Severity.Error);
+        if (!result.Success)
+        {
+            return;
+        }
+
+        CloseCancelDialog();
+        await LoadAsync();
+    }
+
+    private WebhookBulkReplayFilterDto CreateFilter() =>
+        new()
+        {
+            FromUtc = ToUtcDate(_fromDate),
+            ToUtc = ToUtcDate(_toDate),
+            WebhookConsumerId = _consumerId,
+            WebhookEndpointId = _endpointId,
+            EventType = string.IsNullOrWhiteSpace(_eventType) ? null : _eventType,
+            MaxItems = _maxItems
+        };
+
+    private string CurrentFilterIdentity() => FilterIdentity(CreateFilter());
+
+    private static string FilterIdentity(WebhookBulkReplayFilterDto filter) =>
+        string.Join(
+            "|",
+            filter.FromUtc?.ToUniversalTime().ToString("O"),
+            filter.ToUtc?.ToUniversalTime().ToString("O"),
+            filter.WebhookConsumerId?.ToString("D"),
+            filter.WebhookEndpointId?.ToString("D"),
+            filter.EventType?.Trim(),
+            filter.MaxItems);
+
+    private static DateTimeOffset? ToUtcDate(DateTime? value) =>
+        value.HasValue
+            ? new DateTimeOffset(DateTime.SpecifyKind(value.Value.Date, DateTimeKind.Utc))
+            : null;
+
+    private static bool HasLink(HalResourceOfWebhookBulkReplayOperationDto operation, string relation) =>
+        WebhookHal.HasLink(operation._links, relation);
+
+    private static string OperationAvailability(HalResourceOfWebhookBulkReplayOperationDto operation)
+    {
+        if (HasLink(operation, WebhookClientLinkRelations.Cancel))
+        {
+            return "Cancellation is available before execution starts.";
+        }
+
+        return operation.StatusCode switch
+        {
+            "QUEUED" => "Cancellation is unavailable for the current capability or policy.",
+            "EXECUTING" => "Execution has started; cancellation is closed.",
+            "COMPLETED" => "Replay completed through the Local delivery queue.",
+            "CANCELLED" => "Replay was cancelled before execution.",
+            "FAILED" => "Replay failed; review normalized failure evidence.",
+            _ => "No operator action is available for the current state."
+        };
+    }
+
+    private static string PreviewExclusionSummary(WebhookBulkReplayPreviewDto preview)
+    {
+        var exclusions = new List<string>();
+        AddExclusion(exclusions, preview.ExcludedHeldCount, "held");
+        AddExclusion(exclusions, preview.ExcludedPayloadUnavailableCount, "payload unavailable");
+        AddExclusion(exclusions, preview.ExcludedEndpointUnavailableCount, "endpoint unavailable");
+        AddExclusion(exclusions, preview.ExcludedIneligibleLocalStateCount, "Local state ineligible");
+        AddExclusion(exclusions, preview.ExcludedProviderConflictCount, "provider conflict");
+        AddExclusion(exclusions, preview.ExcludedProviderUnknownCount, "provider outcome unknown");
+        AddExclusion(exclusions, preview.ExcludedProviderManualReconciliationCount, "manual reconciliation");
+        AddExclusion(exclusions, preview.ExcludedProviderIneligibleCount, "provider ineligible");
+        return exclusions.Count == 0 ? "No exclusions in this window." : string.Join(", ", exclusions);
+    }
+
+    private static void AddExclusion(List<string> exclusions, int? count, string label)
+    {
+        if (count is > 0)
+        {
+            exclusions.Add($"{count} {label}");
+        }
+    }
+
+    private static string EndpointLabel(HalResourceOfWebhookEndpointDto endpoint) =>
+        $"{endpoint.ConsumerName}: {endpoint.DestinationHost}";
+
+    private static string FormatDate(DateTimeOffset? value) =>
+        value.HasValue ? value.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "-";
+
+    private static Color StatusColor(string? statusCode) =>
+        statusCode switch
+        {
+            "COMPLETED" => Color.Success,
+            "QUEUED" or "EXECUTING" => Color.Info,
+            "CANCELLED" => Color.Warning,
+            "FAILED" => Color.Error,
+            _ => Color.Default
+        };
+}
