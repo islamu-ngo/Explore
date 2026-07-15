@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    [Migration("20260714112331_EnforceWebhookConfigurationSnapshots")]
+    [Migration("20260714115533_EnforceWebhookConfigurationSnapshots")]
     partial class EnforceWebhookConfigurationSnapshots
     {
         /// <inheritdoc />
@@ -16667,6 +16667,7 @@ namespace Explore.Persistence.Migrations
                         .HasDefaultValueSql("uuidv7()");
 
                     b.Property<int>("ConfigurationVersion")
+                        .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(1)
@@ -17258,6 +17259,7 @@ namespace Explore.Persistence.Migrations
                         .HasColumnName("circuit_opened_at");
 
                     b.Property<int>("ConfigurationVersion")
+                        .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(1)
