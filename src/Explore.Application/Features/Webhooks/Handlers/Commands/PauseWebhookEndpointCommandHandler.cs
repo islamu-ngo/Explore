@@ -1,36 +1,39 @@
-// ABOUTME: Applies the transition from manual or automatic pause to Active for one owned webhook endpoint.
-// ABOUTME: Fails closed for missing, archived, non-Local, active, or concurrently changed endpoints.
+// ABOUTME: Atomically pauses an active Local webhook endpoint and appends mandatory operator audit.
+// ABOUTME: Rejects non-Local modes, stale endpoint states, missing actors, and concurrent transitions.
 
 using System.Text.Json;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Webhooks.Requests.Commands;
 using Explore.Application.Features.Webhooks.Validators;
+using Explore.Application.Lookups;
 using Explore.Application.Responses;
 using Explore.Domain;
 using MediatR;
 
 namespace Explore.Application.Features.Webhooks.Handlers.Commands;
 
-public sealed class ResumeWebhookEndpointCommandHandler(
+public sealed class PauseWebhookEndpointCommandHandler(
     IWebhookEndpointRepository endpointRepository,
     IWebhookAuditEventWriter auditWriter,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider)
-    : IRequestHandler<ResumeWebhookEndpointCommand, BaseCommandResponse<Guid>>
+    : IRequestHandler<PauseWebhookEndpointCommand, BaseCommandResponse<Guid>>
 {
     public async Task<BaseCommandResponse<Guid>> Handle(
-        ResumeWebhookEndpointCommand request,
+        PauseWebhookEndpointCommand request,
         CancellationToken cancellationToken)
     {
-        var validator = new ResumeWebhookEndpointCommandValidator();
+        var validator = new PauseWebhookEndpointCommandValidator();
         var validation = await validator.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid)
         {
             return Failure(
                 request.EndpointId,
-                "webhook_endpoint_resume_validation_failed",
-                "Webhook endpoint resume request failed validation.");
+                "webhook_endpoint_pause_validation_failed",
+                "Webhook endpoint pause request failed validation.",
+                validation.Errors.Select(error => error.ErrorMessage));
         }
 
         var endpoint = await endpointRepository.GetByIdForOwnerOperationAsync(
@@ -39,74 +42,67 @@ public sealed class ResumeWebhookEndpointCommandHandler(
             cancellationToken);
         if (endpoint is null || endpoint.Status == WebhookEndpointStatus.Archived)
         {
-            return Failure(
-                request.EndpointId,
-                "webhook_endpoint_not_found",
-                "Webhook endpoint was not found.");
+            return Failure(request.EndpointId, "webhook_endpoint_not_found", "Webhook endpoint was not found.");
         }
 
-        if (endpoint.Consumer?.ProviderMode is not (WebhookProviderMode.Local or WebhookProviderMode.Composite))
+        if (!SupportsLocalDelivery(endpoint))
         {
             return Failure(
                 request.EndpointId,
-                "webhook_endpoint_resume_unsupported",
-                "Only Local or Composite webhook endpoints can be resumed by this operation.");
+                "webhook_endpoint_pause_unsupported",
+                "Only Local or Composite webhook endpoints can be paused by this operation.");
         }
 
-        if (endpoint.Status is not (WebhookEndpointStatus.AutoPaused or WebhookEndpointStatus.Disabled))
+        if (endpoint.Status != WebhookEndpointStatus.Active)
         {
             return Failure(
                 request.EndpointId,
-                "webhook_endpoint_not_paused",
-                "Only a paused webhook endpoint can be resumed.");
+                "webhook_endpoint_not_active",
+                "Only an active webhook endpoint can be paused.");
         }
 
         if (endpoint.DeliveryStateVersion != request.ExpectedDeliveryStateVersion)
         {
             return Failure(
                 request.EndpointId,
-                "webhook_endpoint_resume_conflict",
-                "Webhook endpoint delivery state changed. Reload it before resuming.");
+                "webhook_endpoint_pause_conflict",
+                "Webhook endpoint delivery state changed. Reload it before pausing.");
         }
 
-        var resumedAt = timeProvider.GetUtcNow().UtcDateTime;
-
+        var pausedAt = timeProvider.GetUtcNow().UtcDateTime;
         return await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
-            var resumed = await endpointRepository.TryResumeAsync(
+            var paused = await endpointRepository.TryPauseAsync(
                 endpoint.TenantId,
                 request.EndpointId,
                 request.ExpectedDeliveryStateVersion,
-                resumedAt,
+                pausedAt,
                 request.ActorUserId,
                 token);
-            if (!resumed)
+            if (!paused)
             {
                 return Failure(
                     request.EndpointId,
-                    "webhook_endpoint_resume_conflict",
-                    "Webhook endpoint state changed before it could be resumed.");
+                    "webhook_endpoint_pause_conflict",
+                    "Webhook endpoint state changed before it could be paused.");
             }
 
             await auditWriter.AppendAsync(
                 new WebhookAuditWriteRequest(
                     endpoint.TenantId,
-                    WebhookAuditAction.EndpointResumed,
+                    WebhookAuditAction.EndpointPaused,
                     WebhookAuditTargetKind.Endpoint,
                     endpoint.Id,
                     request.ReasonCode,
                     WebhookAuditOutcome.Succeeded,
                     SafeBeforeJson: JsonSerializer.Serialize(new
                     {
-                        status = endpoint.Status.ToString(),
-                        endpoint.ConsecutiveFailureCount,
-                        endpoint.AutoPauseReason,
+                        status = NormalizedLookupMetadata.WebhookEndpointStatus(endpoint.StatusId).Code,
                         endpoint.DeliveryStateVersion
                     }),
                     SafeAfterJson: JsonSerializer.Serialize(new
                     {
-                        status = WebhookEndpointStatus.Active.ToString(),
-                        consecutiveFailureCount = 0,
+                        status = NormalizedLookupMetadata.WebhookEndpointStatus((int)WebhookEndpointStatus.Disabled).Code,
                         deliveryStateVersion = endpoint.DeliveryStateVersion + 1
                     }),
                     ConfigurationVersion: $"endpoint-v{endpoint.ConfigurationVersion}:delivery-v{endpoint.DeliveryStateVersion + 1}",
@@ -120,18 +116,25 @@ public sealed class ResumeWebhookEndpointCommandHandler(
             {
                 Id = request.EndpointId,
                 Success = true,
-                Message = "Webhook endpoint resumed."
+                Message = "Webhook endpoint paused."
             };
         }, cancellationToken);
     }
 
-    private static BaseCommandResponse<Guid> Failure(Guid endpointId, string code, string message) =>
+    private static bool SupportsLocalDelivery(WebhookEndpoint endpoint) =>
+        endpoint.Consumer?.ProviderMode is WebhookProviderMode.Local or WebhookProviderMode.Composite;
+
+    private static BaseCommandResponse<Guid> Failure(
+        Guid endpointId,
+        string code,
+        string message,
+        IEnumerable<string>? errors = null) =>
         new()
         {
             Id = endpointId,
             Success = false,
             Message = message,
             FailureCode = code,
-            Errors = [message]
+            Errors = errors?.ToList() ?? [message]
         };
 }

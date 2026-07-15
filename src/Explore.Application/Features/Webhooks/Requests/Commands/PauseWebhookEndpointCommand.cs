@@ -1,5 +1,5 @@
-// ABOUTME: Authorized command for resuming a Local webhook endpoint after manual or automatic pause.
-// ABOUTME: Carries persisted endpoint identity into the owner-aware authorization pipeline.
+// ABOUTME: Authorized command for manually pausing an active Local webhook endpoint.
+// ABOUTME: Carries endpoint, actor, and normalized audit-reason evidence into owner-aware CQRS.
 
 using Explore.Application.Authorization;
 using Explore.Application.Responses;
@@ -7,8 +7,8 @@ using MediatR;
 
 namespace Explore.Application.Features.Webhooks.Requests.Commands;
 
-[AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.Resume)]
-public sealed class ResumeWebhookEndpointCommand
+[AuthorizeResource(ResourceKinds.Webhook, AuthorizationActions.Webhooks.Pause)]
+public sealed class PauseWebhookEndpointCommand
     : IRequest<BaseCommandResponse<Guid>>, ISecureRequest, IWebhookPersistedOwnerRequest
 {
     public Guid EndpointId { get; init; }
@@ -26,7 +26,7 @@ public sealed class ResumeWebhookEndpointCommand
         : new Dictionary<string, object>
         {
             ["endpointId"] = EndpointId.ToString("D"),
-            ["webhookOperation"] = "resume"
+            ["webhookOperation"] = "pause"
         };
 
     WebhookOwnedResourceKind IWebhookPersistedOwnerRequest.OwnedResourceKind =>
