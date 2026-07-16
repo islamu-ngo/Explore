@@ -1,0 +1,46 @@
+// ABOUTME: Maps immutable local checkpoints for monotonic erasure-authority replay.
+// ABOUTME: Enforces unique sequences, unique intents, and a non-forking append-only chain.
+
+using Explore.Domain;
+using Explore.Persistence.ValueGenerators;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Explore.Persistence.Configurations.Entities;
+
+public sealed class LocationPrivacyErasureReplayCheckpointConfiguration
+    : IEntityTypeConfiguration<LocationPrivacyErasureReplayCheckpoint>
+{
+    public void Configure(EntityTypeBuilder<LocationPrivacyErasureReplayCheckpoint> builder)
+    {
+        builder.ToTable("location_privacy_erasure_replay_checkpoints", table =>
+        {
+            table.HasCheckConstraint(
+                "ck_location_privacy_erasure_replay_checkpoints_sequence",
+                "authority_sequence > 0");
+            table.HasCheckConstraint(
+                "ck_location_privacy_erasure_replay_checkpoints_chain",
+                "(authority_sequence = 1 AND previous_checkpoint_id IS NULL) OR " +
+                "(authority_sequence > 1 AND previous_checkpoint_id IS NOT NULL)");
+            table.HasCheckConstraint(
+                "ck_location_privacy_erasure_checkpoints_uuid_v7",
+                "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b') AND " +
+                "substring(intent_id::text, 15, 1) = '7' AND substring(intent_id::text, 20, 1) IN ('8', '9', 'a', 'b')");
+        });
+
+        builder.Property(item => item.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+        builder.HasIndex(item => item.AuthoritySequence)
+            .HasDatabaseName("ux_location_privacy_erasure_checkpoints_sequence")
+            .IsUnique();
+        builder.HasIndex(item => item.IntentId)
+            .HasDatabaseName("ux_location_privacy_erasure_checkpoints_intent")
+            .IsUnique();
+        builder.HasIndex(item => item.PreviousCheckpointId)
+            .HasDatabaseName("ux_location_privacy_erasure_checkpoints_previous")
+            .IsUnique();
+        builder.HasOne<LocationPrivacyErasureReplayCheckpoint>()
+            .WithMany()
+            .HasForeignKey(item => item.PreviousCheckpointId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}

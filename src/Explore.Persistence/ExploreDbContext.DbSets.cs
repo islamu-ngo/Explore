@@ -178,6 +178,13 @@ public partial class ExploreDbContext
     // ===== Locations =====
     public DbSet<Location> Locations { get; set; }
     public DbSet<LocationPii> LocationPii { get; set; }
+    public DbSet<LocationKind> LocationKinds { get; set; }
+    public DbSet<LocationPrivacyState> LocationPrivacyStates { get; set; }
+    public DbSet<LocationDisclosureAudience> LocationDisclosureAudiences { get; set; }
+    public DbSet<EventLocation> EventLocations { get; set; }
+    public DbSet<EventLocationDisclosureAudit> EventLocationDisclosureAudits { get; set; }
+    public DbSet<EventLocationExactReadAudit> EventLocationExactReadAudits { get; set; }
+    public DbSet<LocationPrivacyErasureReplayCheckpoint> LocationPrivacyErasureReplayCheckpoints { get; set; }
 
     // ===== Storage =====
     public DbSet<StorageObject> StorageObjects { get; set; }

@@ -23,6 +23,12 @@ public class EventAgendaItemConfiguration : IEntityTypeConfiguration<EventAgenda
             .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne(e => e.EventLocation)
+            .WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.EventId, e.EventLocationId })
+            .HasPrincipalKey(e => new { e.TenantId, e.EventId, e.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasOne(e => e.EventDay)
             .WithMany()
             .HasForeignKey(e => new { e.TenantId, e.EventId, e.EventDayId })
@@ -56,6 +62,13 @@ public class EventAgendaItemConfiguration : IEntityTypeConfiguration<EventAgenda
 
         builder.HasIndex(e => new { e.TenantId, e.EventId, e.SortOrder })
             .HasDatabaseName("ix_event_agenda_items_tenant_event_sort");
+
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.EventLocationId, e.LocationId })
+            .HasDatabaseName("ix_event_agenda_items_elp_consistency");
+
+        builder.HasAnnotation(
+            "EventLocationPrivacy:ConsistencyTrigger",
+            "event_agenda_items:tenant_id,event_id,event_location_id,location_id,room_id");
 
         builder.ToTable(t =>
         {

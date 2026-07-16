@@ -38,6 +38,12 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
             .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne(e => e.EventLocation)
+            .WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.EventId, e.EventLocationId })
+            .HasPrincipalKey(e => new { e.TenantId, e.EventId, e.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasOne(e => e.Location)
             .WithMany()
             .HasForeignKey(e => new { e.TenantId, e.LocationId })
@@ -76,6 +82,13 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
 
         builder.HasIndex(e => new { e.TenantId, e.LocationId, e.RoomId, e.StartTime, e.EndTime })
             .HasDatabaseName("ix_event_sessions_tenant_location_room_time");
+
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.EventLocationId, e.LocationId })
+            .HasDatabaseName("ix_event_sessions_elp_consistency");
+
+        builder.HasAnnotation(
+            "EventLocationPrivacy:ConsistencyTrigger",
+            "event_sessions:tenant_id,event_id,event_location_id,location_id,room_id");
 
         builder.HasIndex(e => new { e.TenantId, e.EventDayId, e.SortOrder })
             .HasDatabaseName("ix_event_sessions_tenant_day_sort");

@@ -351,6 +351,16 @@ public partial class ExploreDbContext
                 e => IsTenantFilterBypassed
                     || (e.Location != null && e.Location.TenantId == TenantFilterTenantId));
 
+        modelBuilder.Entity<EventLocation>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<EventLocationDisclosureAudit>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<EventLocationExactReadAudit>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
         // ===== Storage Entity =====
         modelBuilder.Entity<StorageObject>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)

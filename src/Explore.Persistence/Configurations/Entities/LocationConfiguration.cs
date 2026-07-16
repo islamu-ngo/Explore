@@ -2,6 +2,7 @@
 // ABOUTME: Exposes a tenant-scoped alternate key for composite FKs from sessions, rooms, and agenda rows.
 
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence.Seed;
 using Explore.Persistence.ValueGenerators;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,12 @@ public class LocationConfiguration : IEntityTypeConfiguration<Location>
         builder.Property(e => e.City).HasMaxLength(500).IsRequired();
         builder.Property(e => e.Timezone).HasMaxLength(500);
         builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
+        builder.Property(e => e.LocationKindId)
+            .HasDefaultValue((int)LocationKindEnum.Unclassified)
+            .IsRequired();
+        builder.Property(e => e.LocationPrivacyStateId)
+            .HasDefaultValue((int)LocationPrivacyStateEnum.NotProvided)
+            .IsRequired();
 
         builder.HasOne(e => e.Tenant)
             .WithMany()
@@ -33,6 +40,30 @@ public class LocationConfiguration : IEntityTypeConfiguration<Location>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Navigation(e => e.Pii).AutoInclude();
+
+        builder.HasOne(e => e.LocationKind)
+            .WithMany()
+            .HasForeignKey(e => e.LocationKindId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.LocationPrivacyState)
+            .WithMany()
+            .HasForeignKey(e => e.LocationPrivacyStateId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.OwnerUser)
+            .WithMany()
+            .HasForeignKey(e => e.OwnerUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.ToTable(table =>
+        {
+            table.HasCheckConstraint(
+                "ck_locations_owner_private_home",
+                "owner_user_id IS NULL OR location_kind_id = 5");
+            table.HasCheckConstraint(
+                "ck_locations_erasure_state",
+                "(location_privacy_state_id = 3 AND owner_user_id IS NULL AND pii_erased_at_utc IS NOT NULL AND pii_erasure_reason IS NOT NULL) OR " +
+                "(location_privacy_state_id <> 3 AND pii_erased_at_utc IS NULL AND pii_erasure_reason IS NULL)");
+        });
 
         // ===== Performance Indexes =====
 

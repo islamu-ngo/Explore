@@ -27,6 +27,12 @@ public class EventSessionGroupConfiguration : IEntityTypeConfiguration<EventSess
             .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne(e => e.EventLocation)
+            .WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.EventId, e.EventLocationId })
+            .HasPrincipalKey(e => new { e.TenantId, e.EventId, e.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasOne(e => e.Location)
             .WithMany()
             .HasForeignKey(e => new { e.TenantId, e.LocationId })
@@ -51,6 +57,13 @@ public class EventSessionGroupConfiguration : IEntityTypeConfiguration<EventSess
 
         builder.HasIndex(e => new { e.TenantId, e.EventId, e.SortOrder })
             .HasDatabaseName("ix_event_session_groups_tenant_event_sort");
+
+        builder.HasIndex(e => new { e.TenantId, e.EventId, e.EventLocationId, e.LocationId })
+            .HasDatabaseName("ix_event_session_groups_elp_consistency");
+
+        builder.HasAnnotation(
+            "EventLocationPrivacy:ConsistencyTrigger",
+            "event_session_groups:tenant_id,event_id,event_location_id,location_id,room_id");
 
         builder.ToTable(t => t.HasCheckConstraint(
             "CK_EventSessionGroup_RoomRequiresLocation",

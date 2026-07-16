@@ -241,6 +241,10 @@ public static class PersistenceServicesRegistration
         // Location Repository
         services.AddScoped<ILocationRepository, LocationRepository>();
         services.AddScoped<ILocationRoomRepository, LocationRoomRepository>();
+        services.AddScoped<IEventLocationRepository, EventLocationRepository>();
+        services.AddScoped<IEventLocationDisclosureAuditRepository, EventLocationDisclosureAuditRepository>();
+        services.AddScoped<IEventLocationExactReadAuditRepository, EventLocationExactReadAuditRepository>();
+        services.AddScoped<ILocationPrivacyErasureReplayCheckpointRepository, LocationPrivacyErasureReplayCheckpointRepository>();
 
         // Storage Repository
         services.AddScoped<IStorageObjectRepository, StorageObjectRepository>();
