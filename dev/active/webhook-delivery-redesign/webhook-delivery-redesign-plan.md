@@ -541,7 +541,7 @@ Implementation cannot ship until all of these are green:
 
 1. Canonical Release build.
 2. All project test suites required by `docs/OPERATIONS.md`.
-3. All mandatory webhook unit, persistence, integration, architecture, and E2E tests.
+3. All mandatory webhook unit, persistence, integration, and architecture tests plus manual browser checks.
 4. Local-only Docker/Aspire profile with Svix absent.
 5. Svix-enabled profile.
 6. Latest-released-schema migration smoke with representative data and lock timing.

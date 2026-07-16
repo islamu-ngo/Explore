@@ -87,7 +87,7 @@ Last Updated: 2026-07-15 Europe/Brussels
   panel in Instance, Tenant, Organization, Group, and User settings, forwards the exact normalized
   owner tuple through every collection read, fixes consumer creation to its host owner, and renders
   tenant-only provider/replay tabs only when collection HAL relations authorize them. Focused API,
-  Blazor service/component, and five-owner Application handler suites pass; browser ownership E2E
+  Blazor service/component, and five-owner Application handler suites pass; manual browser ownership QA
   remains in progress.
 - Phase 7 database containment is now complete in the CLI-generated
   `20260715172404_AddTypedWebhookOwnership` migration. A required normalized
@@ -182,7 +182,7 @@ Last Updated: 2026-07-15 Europe/Brussels
   reconciliation. Unsupported and zero-evidence profiles fail startup/readiness.
   Managed Svix SaaS is outside the supported deployment matrix. Its zero-evidence profile
   remains fail-closed and unselectable; the dormant manual harness does not count as
-  release evidence. Compose, Aspire, E2E infrastructure, runtime defaults, and operator
+  release evidence. Compose, Aspire, runtime infrastructure, runtime defaults, and operator
   docs use the same pinned
   tuple; Redis is explicit for both Svix queue and cache. Six readiness and eight option-
   validation cases pass, the AppHost Release build is green, and Compose validates cleanly.
@@ -965,7 +965,7 @@ governed, and independently production-operable.
 - [x] Render all actions from HAL relation presence only.
 - [x] Explain unavailable actions from safe capability/state metadata, not role guesses.
 - [x] Add responsive/accessibility and component tests for Local and Svix modes.
-- [x] Run browser E2E for portal, payload access, replay, pause/resume, and denial paths.
+- [x] Run manual browser QA for portal, payload access, replay, pause/resume, and denial paths.
   - Live complete: pause/resume, retained/cleared payload gating, Local portal/provider-action
     absence, replay preview/schedule, optimistic late-cancel conflict, cross-breakpoint containment,
     keyboard/focus, light/dark theme, and fresh screenshot review.
@@ -1043,8 +1043,8 @@ without exposing sensitive data or relying on undocumented provider behavior.
 - [x] Regenerate OpenAPI and the NSwag client from source.
 - [x] Add owner-scoped webhook panels for instance, tenant, organization, group, and user settings.
 - [x] Gate every Blazor action by HAL relation presence and add responsive/accessibility tests.
-- [x] Run browser E2E for allowed and denied ownership paths.
-  - **Completed 2026-07-15:** the Playwright/Aspire scenario provisions a real
+- [x] Run manual browser QA for allowed and denied ownership paths.
+  - **Completed 2026-07-15:** the retired browser scenario provisioned a real
     multi-tenant customer administrator through the production managed-provider workflow,
     creates Instance-, Tenant-, Organization-, Group-, and User-owned consumers through
     generated API contracts, and exercises all five settings panels. It verifies tenant-only
@@ -1073,7 +1073,7 @@ These require a new approved plan and are not implementation shortcuts:
 
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] Every project test suite required by `docs/OPERATIONS.md`
-- [ ] All mandatory webhook unit, persistence, integration, architecture, and E2E tests
+- [ ] All mandatory webhook unit, persistence, integration, and architecture tests plus manual browser checks
 - [ ] Local-only Docker/Aspire profile
 - [ ] Svix-enabled profile
 - [ ] Latest-released-schema migration smoke with representative timing/lock evidence
