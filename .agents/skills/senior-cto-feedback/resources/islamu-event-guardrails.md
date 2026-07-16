@@ -1,5 +1,5 @@
 <!-- ABOUTME: ISLAMU Event-specific planning guardrails for Senior CTO review of implementation plans. -->
-<!-- ABOUTME: Encodes repository invariants, /dev-docs expectations, and platform rules that plan feedback must preserve or challenge explicitly. -->
+<!-- ABOUTME: Encodes repository invariants, implementation-plan expectations, and platform rules that plan feedback must preserve or challenge explicitly. -->
 # ISLAMU Event Guardrails For CTO Plan Review
 
 Use these rules when improving implementation plans for ISLAMU Event.
@@ -25,9 +25,9 @@ CTO interpretation:
 - Still protect data integrity, tenant isolation, security, and operator clarity.
 - For self-hosters, document configuration resets and upgrade actions clearly.
 
-## `/dev-docs` Planning Baseline
+## Implementation-Plan Baseline
 
-Implementation plans in this repository are expected to follow `.claude/commands/dev-docs.md`.
+Implementation plans in this repository are expected to follow `.agents/skills/implementation-plan/SKILL.md` and its resources.
 
 That means a serious plan should usually provide:
 
@@ -219,23 +219,11 @@ For async side effects, prefer transactional outbox and idempotent consumers.
 
 ## Testing Rules
 
-Implementation plans should name exact test projects where possible.
+Implementation plans should select the fastest relevant deterministic test project for each phase.
 
-Standard validation uses project-level test commands, not solution-level `dotnet test`.
+At each phase end, run one Release build and at most one project-level `dotnet test` command. Do not add per-task checks, test-only phases, E2E/browser projects, Playwright, Chrome DevTools MCP, app startup, Aspire/Docker startup, live-service smoke, or manual runtime walkthroughs.
 
-Common projects:
-
-- `Event.Domain.UnitTests`
-- `Event.Application.UnitTests`
-- `Event.Architecture.Tests`
-- `Explore.Secrets.UnitTests`
-- `Event.Persistence.IntegrationTests`
-- `Event.API.IntegrationTests`
-- `Explore.Blazor.IntegrationTests`
-- `Explore.Blazor.Client.Tests`
-- `Explore.Blazor.Client.E2ETests` for Aspire/browser-dependent flows
-
-Architecture tests are not optional. They cover layer dependencies, naming, accessibility, authorization parity, ABOUTME headers, and test-suite governance.
+Repository-mandated projects remain contract requirements, but distribute them across existing phases without repeating commands or creating extra phases solely for verification. Architecture tests remain mandatory when agent context or architecture contracts change.
 
 Testing posture for pre-v1:
 

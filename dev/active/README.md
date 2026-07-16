@@ -192,9 +192,9 @@ To continue:
 
 ### Starting a New Task
 
-1. **Use /dev-docs slash command:**
+1. **Use the `implementation-plan` skill:**
    ```
-   /dev-docs refactor authentication system
+   Create an implementation plan for refactoring the authentication system.
    ```
 
 2. **Claude creates the three files:**
@@ -210,32 +210,33 @@ To continue:
 
 ### During Implementation
 
-1. **Refer to plan** for overall strategy
-2. **Update context.md** frequently:
-    - Mark completed work
-    - Note decisions made
-    - Add blockers
-3. **Check off tasks** in tasks.md as you complete them
-4. **Add a handoff** before pausing, transferring work, or approaching a context reset. Use [`../HANDOFF_TEMPLATE.md`](../HANDOFF_TEMPLATE.md) when a short standalone handoff is enough, or paste the same sections into the active context file.
+1. **Read the workstream once** when implementation starts; do not reread unchanged artifacts after every task.
+2. **Use tasks.md as the hot ledger:**
+    - Check substantial tasks immediately after implementation acceptance is met.
+    - Batch small related checkbox updates no later than phase end.
+    - Keep completed count, current priority, next slice, discovered work, and deferred work accurate.
+3. **Update context.md selectively** after a phase, decision, blocker, failed validation, material discovery, or handoff.
+4. **Update the plan only** when scope, architecture, sequencing, acceptance criteria, risk, or validation strategy changes.
+5. **Add a handoff** before pausing, transferring work, or approaching a context reset. Use [`../HANDOFF_TEMPLATE.md`](../HANDOFF_TEMPLATE.md) when a short standalone handoff is enough, or paste the same sections into the active context file.
 
 ### After Context Reset
 
-1. **Claude reads all three files**
-2. **Understands complete state** in seconds
-3. **Resumes exactly where you left off**
+1. **Claude reads context.md and tasks.md first**
+2. **Claude opens only the current phase and referenced decisions from plan.md**
+3. **Claude resumes from the first unchecked priority without rereading unchanged sections**
 
 No need to explain what you were doing - it's all documented!
 
 ---
 
-## Integration with Slash Commands
+## Integration with Planning Skills And Commands
 
-### /dev-docs
+### implementation-plan
 **Creates:** New dev docs for a task
 
 **Usage:**
 ```
-/dev-docs implement real-time notifications
+Create an implementation plan for real-time notifications.
 ```
 
 **Generates:**
@@ -244,21 +245,9 @@ No need to explain what you were doing - it's all documented!
   - implement-real-time-notifications-context.md
   - implement-real-time-notifications-tasks.md
 
-### /dev-docs-update
-**Updates:** Existing dev docs before context reset
+### Progressive Maintenance
 
-**Usage:**
-```
-/dev-docs-update
-```
-
-**Updates:**
-- Marks completed tasks
-- Adds new tasks discovered
-- Updates context with session progress
-- Captures current state
-
-**Use when:** Approaching context limits or ending session
+Implementation agents update active dev docs as part of normal work. A separate refresh command is not required: task checkboxes stay current during implementation, context is refreshed at meaningful state boundaries, and the plan changes only when strategy changes.
 
 ### Handoffs
 
@@ -308,16 +297,16 @@ This is the actual dev docs used to build this showcase!
 
 ## Best Practices
 
-### Update Context Frequently
+### Update State At Meaningful Boundaries
 
-**Bad:** Update only at end of session
-**Good:** Update after each major milestone
+**Bad:** Leave task checkboxes stale until the end of the session
+**Good:** Check substantial tasks immediately, reconcile small tasks by phase end, and refresh context only at meaningful milestones
 
 **SESSION PROGRESS section should always reflect reality:**
 ```markdown
 ## SESSION PROGRESS (YYYY-MM-DD)
 
-### ✅ COMPLETED (list everything done)
+### ✅ COMPLETED (summarize phases and substantial milestones; exact checkboxes stay in tasks.md)
 ### 🟡 IN PROGRESS (what you're working on RIGHT NOW)
 ### ⚠️ BLOCKERS (what's preventing progress)
 ```
@@ -346,7 +335,7 @@ If scope changes:
 
 **When user asks to create dev docs:**
 
-1. **Use the /dev-docs slash command** if available
+1. **Use the `implementation-plan` skill** if available
 2. **Or create manually:**
    - Ask about the task scope
    - Analyze relevant codebase files
@@ -366,22 +355,22 @@ If scope changes:
 
 **When resuming from dev docs:**
 
-1. **Read all three files** (plan, context, tasks)
-2. **Start with context.md** - has current state
-3. **Check tasks.md** - see what's done and what's next
-4. **Refer to plan.md** - understand overall strategy
+1. **Start with context.md** - it has the current state and handoff
+2. **Check tasks.md** - it is the hot ledger for done and next work
+3. **Open only the current phase and referenced decisions in plan.md**
+4. **Do not reread unchanged plan sections after each task**
 
 **Update frequently:**
-- Mark tasks complete immediately
-- Update SESSION PROGRESS after significant work
-- Add new tasks as discovered
+- Mark substantial tasks complete immediately and reconcile smaller tasks by phase end
+- Update SESSION PROGRESS after a phase or meaningful decision, blocker, validation failure, or discovery
+- Add new tasks as discovered without rereading the full plan
 - Add or refresh handoff notes before stopping work or handing off to another agent
 
 ---
 
 ## Creating Dev Docs Manually
 
-If you don't have the /dev-docs command:
+If you don't have the `implementation-plan` skill:
 
 **1. Create directory:**
 ```bash

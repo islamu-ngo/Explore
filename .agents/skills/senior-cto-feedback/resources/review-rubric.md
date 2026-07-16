@@ -147,7 +147,7 @@ Check:
 - Architecture tests enforce conventions.
 - BFF tests cover cookie/token/header behavior.
 - API contract tests cover OpenAPI/HAL/ProblemDetails.
-- E2E/manual lane is used only where needed.
+- Each phase uses one Release build and at most one fastest relevant non-browser project test, with no app-running or manual/browser verification lane.
 - Tests are per-project, not solution-level.
 - Obsolete compatibility tests are deleted when breaking changes are accepted.
 

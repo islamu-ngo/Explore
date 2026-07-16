@@ -1,12 +1,12 @@
 <!-- ABOUTME: Input contract for Senior CTO review of implementation-plan workstreams and missing-context handling. -->
-<!-- ABOUTME: Defines what artifacts to read, what minimum evidence is required, and how to review partial /dev-docs inputs safely. -->
+<!-- ABOUTME: Defines what artifacts to read, what minimum evidence is required, and how to review partial implementation-plan inputs safely. -->
 # Input Contract
 
 Use this file to determine whether enough material exists for a useful Senior CTO review and how to proceed when the input is partial.
 
 ## Preferred Input Shape
 
-Best input is a `/dev-docs` workstream:
+Best input is an `implementation-plan` workstream:
 
 - `dev/active/[task-name]/[task-name]-plan.md`
 - `dev/active/[task-name]/[task-name]-context.md`
@@ -14,7 +14,7 @@ Best input is a `/dev-docs` workstream:
 
 Also useful:
 
-- `.claude/commands/dev-docs.md`
+- `.agents/skills/implementation-plan/SKILL.md` and its resources
 - referenced repository docs, rules, skills, and source files;
 - related `dev/active/` or `dev/pause/` workstreams;
 - a concrete user goal such as “review this before implementation” or “rewrite this plan to be executable.”
@@ -32,14 +32,14 @@ You can still provide useful CTO feedback with partial inputs. Use this order:
 4. `plan.md` + referenced repo files:
    - allowed when the user wants architecture critique more than workflow critique.
 
-If the user provides only a vague idea and no implementation plan, this skill should recommend creating a `/dev-docs` workstream first instead of pretending there is a real plan to approve.
+If the user provides only a vague idea and no implementation plan, this skill should recommend creating an `implementation-plan` workstream first instead of pretending there is a real plan to approve.
 
 ## Required Reviewer Checks
 
 For every review, determine:
 
 1. What artifact set was provided?
-2. Was the workstream clearly created from `.claude/commands/dev-docs.md`, or does it diverge?
+2. Was the workstream clearly created from the `implementation-plan` skill, or does it diverge?
 3. Which claims are verified by files you actually read?
 4. Which claims remain assumptions?
 5. What is missing that blocks a credible approval?
@@ -61,14 +61,14 @@ Recommended wording:
 - “I can review the architecture direction, but I cannot approve implementation readiness because `...-tasks.md` is missing.”
 - “This plan may be viable, but the current artifacts do not prove verification scope or operator impact.”
 
-## `/dev-docs` Alignment Checks
+## Implementation-Plan Alignment Checks
 
-When the plan claims to follow `/dev-docs`, verify these concrete things:
+When the plan claims to follow `implementation-plan`, verify these concrete things:
 
 - `Last Updated: YYYY-MM-DD Europe/Brussels` exists in each file;
 - `plan.md` includes current state, future state, constraints, decisions, phases, testing, docs/ops/security/multi-tenancy/risk/success sections;
 - `context.md` includes session progress, quick resume, key files, decisions, constraints, validation baseline, risks, and handoff notes;
-- `tasks.md` includes implementation-maintenance rules, phase breakdown, verification checklist, and remaining/deferred work;
+- `tasks.md` includes implementation-maintenance rules, phase breakdown, one build plus at most one selected project test at each phase end, and remaining/deferred work;
 - plan/context/tasks agree on current status and next step.
 
 If they do not align, treat that as a planning quality issue, not a formatting nit.

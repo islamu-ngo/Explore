@@ -1,10 +1,10 @@
-<!-- ABOUTME: Rewrite guidance for improving /dev-docs implementation-plan workstreams after CTO review. -->
+<!-- ABOUTME: Rewrite guidance for improving implementation-plan workstreams after CTO review. -->
 <!-- ABOUTME: Converts vague planning into executable plan/context/tasks updates with cleaner sequencing and stronger verification. -->
 # Plan Rewrite Guidance
 
 Use this when the user wants the plan improved, or when the CTO feedback should include a better implementation sequence.
 
-The target is usually an existing `/dev-docs` workstream, not a blank outline. Rewrite the existing `plan.md`, `context.md`, and `tasks.md` so future agents can implement from them directly.
+The target is usually an existing `implementation-plan` workstream, not a blank outline. Rewrite the existing `plan.md`, `context.md`, and `tasks.md` so future agents can implement from them directly.
 
 ## Rewrite Principles
 
@@ -34,7 +34,7 @@ When improving a workstream:
 
 ## Recommended Plan Shape
 
-This shape should align with `.claude/commands/dev-docs.md`, not replace it.
+This shape should align with `.agents/skills/implementation-plan/SKILL.md` and its resources.
 
 ```markdown
 # <Workstream Name> — Implementation Plan
@@ -148,18 +148,18 @@ Last Updated: YYYY-MM-DD Europe/Brussels
 
 ## Status Summary
 ## Implementation Maintenance Rules
-## Phase 0: Plan Review And Baseline
 ## Phase 1: ...
 ## Phase 2: ...
-## Verification Checklist
+### Phase N Verification — one Release build and at most one project test
 ## Remaining / Deferred Work
 ```
 
 Rewrite rules:
 
 - every major plan phase should appear in tasks;
-- every risky boundary should have a validation item;
-- tasks should name files, projects, or commands where practical;
+- every risky boundary should have observable acceptance criteria in its owning implementation task;
+- each phase should name exactly one Release build and at most one fastest relevant non-browser project test at the end;
+- no task should start the app/browser or use Playwright, Chrome DevTools MCP, E2E, Aspire/Docker startup, live-service smoke, or a manual runtime walkthrough;
 - delete stale tasks created for a direction you are now rejecting.
 
 ## Breaking Change Rewrite Pattern
