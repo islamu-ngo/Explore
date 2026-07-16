@@ -69,7 +69,7 @@ jobs:
           RestorePackagesWithLockFile: "false"
         run: |
           mkdir -p artifacts/dependencies
-          dotnet list Explore.sln package --vulnerable --include-transitive --format json --output-version 1 --no-restore > artifacts/dependencies/nuget-vulnerabilities.json
+          dotnet list Explore.slnx package --vulnerable --include-transitive --format json --output-version 1 --no-restore > artifacts/dependencies/nuget-vulnerabilities.json
           rm -f .ci/scripts/packages.lock.json
           NUGET_VULNERABILITY_SUMMARY_PATH="artifacts/dependencies/nuget-vulnerability-summary.md" dotnet run .ci/scripts/validate-nuget-vulnerabilities.cs -- artifacts/dependencies/nuget-vulnerabilities.json
 
