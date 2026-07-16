@@ -72,7 +72,7 @@ public class GetEventAgendaProjectionRequestHandlerTests
             .Returns(new List<EventDay>());
         _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new List<EventSession>());
-        _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>())
+        _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new List<EventAgendaItem>());
 
         // Act
@@ -102,7 +102,7 @@ public class GetEventAgendaProjectionRequestHandlerTests
         await Assert.That(result).IsNull();
         await _eventDayRepository.DidNotReceive().GetByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _eventSessionRepository.DidNotReceive().GetPublicSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        await _eventAgendaItemRepository.DidNotReceive().GetByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _eventAgendaItemRepository.DidNotReceive().GetPublicByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -157,7 +157,7 @@ public class GetEventAgendaProjectionRequestHandlerTests
         calculator.Project(agendaItem.StartTime, agendaItem.EndTime, "Europe/Brussels")
             .Returns(new LocalScheduleProjection(localDate, localDate, new TimeOnly(9, 0), new TimeOnly(9, 30), 540, 570));
         agendaItem.ReprojectLocalTimes("Europe/Brussels", calculator);
-        _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>())
+        _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new List<EventAgendaItem> { agendaItem });
 
         // Act
@@ -169,6 +169,41 @@ public class GetEventAgendaProjectionRequestHandlerTests
         await Assert.That(result.Days.Count).IsEqualTo(1);
         await Assert.That(result.Days[0].LocalDate).IsEqualTo(localDate);
         await Assert.That(result.Days[0].Entries.Count).IsEqualTo(2);
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task HandlePublicAgendaDoesNotExposePhysicalLocationOrRoomIds()
+    {
+        var eventId = Guid.NewGuid();
+        var localDate = new DateOnly(2026, 7, 15);
+        var parentEvent = DataBuilder.Event.Generate();
+        parentEvent.Id = eventId;
+        parentEvent.EventStatusId = (int)EventStatusEnum.Published;
+        parentEvent.VisibilityTypeId = (int)VisibilityTypeEnum.Public;
+        _eventRepository.GetById(eventId).Returns(parentEvent);
+        _eventDayRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
+
+        var calculator = Substitute.For<IEventScheduleProjectionCalculator>();
+        var session = DataBuilder.EventSession.Generate();
+        session.EventId = eventId;
+        session.LocationId = Guid.NewGuid();
+        session.RoomId = Guid.NewGuid();
+        session.StartTime = new DateTimeOffset(2026, 7, 15, 8, 0, 0, TimeSpan.Zero);
+        session.EndTime = session.StartTime.Value.AddHours(1);
+        calculator.Project(session.StartTime.Value, session.EndTime.Value, Arg.Any<string>())
+            .Returns(new LocalScheduleProjection(localDate, localDate, new TimeOnly(10, 0), new TimeOnly(11, 0), 600, 660));
+        session.ReprojectLocalTimes("Europe/Brussels", calculator);
+
+        _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([session]);
+        _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await _handler.Handle(
+            new GetEventAgendaProjectionRequest { EventId = eventId },
+            CancellationToken.None);
+        var entry = result!.Days.Single().Entries.Single();
+
+        await Assert.That(entry.LocationId is null && entry.RoomId is null).IsTrue();
     }
 
     [Test]
@@ -188,7 +223,7 @@ public class GetEventAgendaProjectionRequestHandlerTests
             .Returns(new List<EventDay>());
         _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new List<EventSession>());
-        _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>())
+        _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new List<EventAgendaItem>());
 
         // Act

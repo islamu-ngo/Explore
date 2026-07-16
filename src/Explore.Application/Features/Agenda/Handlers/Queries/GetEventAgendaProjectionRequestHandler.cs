@@ -35,9 +35,11 @@ public class GetEventAgendaProjectionRequestHandler : IRequestHandler<GetEventAg
         if (parentEvent == null || !IsPublicAgendaEligible(parentEvent))
             return null;
 
-        var eventDays = await _eventDayRepository.GetByEventAsync(request.EventId, cancellationToken);
+        var eventDays = (await _eventDayRepository.GetByEventAsync(request.EventId, cancellationToken))
+            .Where(day => day.IsPublished)
+            .ToList();
         var sessions = await _eventSessionRepository.GetPublicSessionsByEventAsync(request.EventId, cancellationToken);
-        var agendaItems = await _eventAgendaItemRepository.GetByEventAsync(request.EventId, cancellationToken);
+        var agendaItems = await _eventAgendaItemRepository.GetPublicByEventAsync(request.EventId, cancellationToken);
 
         var entries = new List<AgendaScheduleEntryDto>();
 
@@ -67,8 +69,8 @@ public class GetEventAgendaProjectionRequestHandler : IRequestHandler<GetEventAg
                 LocalEndTime = localEndTime,
                 LocalStartMinuteOfDay = localStartMinuteOfDay,
                 LocalEndMinuteOfDay = localEndMinuteOfDay,
-                RoomId = session.RoomId,
-                LocationId = session.LocationId,
+                RoomId = null,
+                LocationId = null,
                 MaxAudienceAttendees = session.MaxAudienceAttendees,
                 CurrentAudienceAttendees = session.CurrentAudienceAttendees,
                 RegistrationModeId = session.RegistrationModeId,
@@ -94,8 +96,8 @@ public class GetEventAgendaProjectionRequestHandler : IRequestHandler<GetEventAg
                 LocalEndTime = item.LocalEndTime,
                 LocalStartMinuteOfDay = item.LocalStartMinuteOfDay,
                 LocalEndMinuteOfDay = item.LocalEndMinuteOfDay,
-                RoomId = item.RoomId,
-                LocationId = item.LocationId,
+                RoomId = null,
+                LocationId = null,
                 KindId = item.KindId,
                 KindFullName = item.Kind?.FullName,
                 SortOrder = item.SortOrder
