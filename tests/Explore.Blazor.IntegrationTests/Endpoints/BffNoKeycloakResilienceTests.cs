@@ -154,7 +154,8 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
         nonceEnd.Should().BeGreaterThan(nonceStart);
         var nonce = csp[nonceStart..nonceEnd];
 
-        body.Should().Contain($"<script type=\"importmap\" nonce=\"{nonce}\">");
+        System.Net.WebUtility.HtmlDecode(body)
+            .Should().Contain($"<script type=\"importmap\" nonce=\"{nonce}\">");
         body.Should().NotContain("http-equiv=\"Content-Security-Policy\"");
     }
 

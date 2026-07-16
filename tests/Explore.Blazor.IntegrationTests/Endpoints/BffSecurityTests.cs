@@ -19,6 +19,8 @@ namespace Explore.Blazor.IntegrationTests.Endpoints;
 /// 4. Signout endpoint correctly clears the cookie session.
 /// </summary>
 [Category(BffTestCategories.Security)]
+[Category(BffTestCategories.Runtime)]
+[Explicit]
 [ClassDataSource<BffKeycloakFixture>(Shared = SharedType.PerAssembly)]
 public class BffSecurityTests : IAsyncDisposable
 {

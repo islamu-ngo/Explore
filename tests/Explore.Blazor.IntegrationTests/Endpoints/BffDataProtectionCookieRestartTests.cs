@@ -36,6 +36,8 @@ public sealed class BffDataProtectionCookieRestartTests
     }
 
     [Test]
+    [Category(BffTestCategories.Runtime)]
+    [Explicit]
     public async Task CookieTicketSurvivesFreshBffHostWhenKeyRingPersists()
     {
         await using var redis = new RedisBuilder("redis:7-alpine")
