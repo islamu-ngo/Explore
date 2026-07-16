@@ -25,24 +25,35 @@ public sealed class EventLocationMigrationStageTests(PostgreSqlContainerFixture 
     private const string PreviousMigration = "20260715172404_AddTypedWebhookOwnership";
 
     [Test]
-    public async Task PendingExpand_RequiresExplicitStage_AndRejectsUnavailableContract()
+    public async Task GenericMigrator_RequiresExplicitPendingStage_AndRejectsUnavailableContract()
     {
         await WithDatabaseAsync(async context =>
         {
-            await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                EventLocationPrivacyMigrationStage.MigrateAsync(context, null));
-            await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                EventLocationPrivacyMigrationStage.MigrateAsync(context, "Contract"));
+            var configuration = new ConfigurationManager();
 
-            await EventLocationPrivacyMigrationStage.MigrateAsync(context, "Expand");
-            await EventLocationPrivacyMigrationStage.MigrateAsync(context, null);
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                ExploreDatabaseMigrator.MigrateAsync(context, configuration));
+
+            configuration[EventLocationPrivacyMigrationStage.ConfigurationKey] = "Contract";
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                ExploreDatabaseMigrator.MigrateAsync(context, configuration));
+
+            configuration[EventLocationPrivacyMigrationStage.ConfigurationKey] = "Expand";
+            await ExploreDatabaseMigrator.MigrateAsync(context, configuration);
+
+            configuration[EventLocationPrivacyMigrationStage.ConfigurationKey] = null;
+            await ExploreDatabaseMigrator.MigrateAsync(context, configuration);
 
             string[] applied = (await context.Database.GetAppliedMigrationsAsync()).ToArray();
             await Assert.That(applied).Contains(EventLocationPrivacyMigrationStage.ExpandMigration);
+
+            configuration[EventLocationPrivacyMigrationStage.ConfigurationKey] = "Contract";
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                EventLocationPrivacyMigrationStage.MigrateAsync(context, "Contract"));
+                ExploreDatabaseMigrator.MigrateAsync(context, configuration));
+
+            configuration[EventLocationPrivacyMigrationStage.ConfigurationKey] = "Everything";
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                EventLocationPrivacyMigrationStage.MigrateAsync(context, "Everything"));
+                ExploreDatabaseMigrator.MigrateAsync(context, configuration));
         });
     }
 
