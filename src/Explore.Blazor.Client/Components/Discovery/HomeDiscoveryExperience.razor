@@ -1,0 +1,444 @@
+@* ABOUTME: Composes the public home from one persisted discovery payload with explicit coarse-area controls. *@
+@* ABOUTME: Renders manual hero, honest section layouts, partial failures, localization fallbacks, and RTL-safe actions. *@
+
+@using Explore.Blazor.Client.Components.Collection
+@using Explore.Blazor.Client.Components.Presentation
+@using Explore.Blazor.Client.Contracts.Interop
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Pages.Events.Components
+@implements IDisposable
+@inject IHomeDiscoveryService HomeDiscoveryService
+@inject IHomeDiscoveryGeolocation Geolocation
+@inject ITranslationService Translation
+@inject IAccessibilityAnnouncerService Announcer
+@inject NavigationManager Navigation
+@inject IJSRuntime JsRuntime
+
+<section class="home-discovery" aria-busy="@_isLoading">
+    @if (_isLoading)
+    {
+        <header class="home-discovery__context home-discovery__context--loading">
+            <h1>@T("home.discovery.title", "Discover events")</h1>
+            <div class="home-discovery__context-skeleton" aria-hidden="true"></div>
+        </header>
+        <div class="home-discovery__hero-skeleton" aria-hidden="true"></div>
+        <section class="home-discovery__section" aria-label="@T("home.discovery.loading", "Loading events")">
+            <div class="home-discovery__detailed-grid">
+                @for (var index = 0; index < 3; index++)
+                {
+                    <EventCardSkeleton Layout="LayoutMode.DetailedList" />
+                }
+            </div>
+        </section>
+    }
+    else if (_discovery is null)
+    {
+        <header class="home-discovery__context">
+            <h1>@T("home.discovery.title", "Discover events")</h1>
+        </header>
+        <div class="home-discovery__failure" role="alert">
+            <h2>@T("home.discovery.failure.title", "Events could not be loaded")</h2>
+            <p>@T("home.discovery.failure.body", "Try again, or browse the full public event catalog.")</p>
+            <div class="home-discovery__actions">
+                <button type="button" @onclick="RetryAsync">@T("common.retry", "Try again")</button>
+                <a href="/events">@T("home.discovery.browse_all", "Browse all events")</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <header class="home-discovery__context">
+            <h1>@T("home.discovery.title", "Discover events")</h1>
+            <p class="home-discovery__context-label" data-testid="home-discovery-context">@ContextLabel</p>
+
+            @if (AvailableAreas.Count > 0)
+            {
+                <label class="home-discovery__area-picker">
+                    <span>@T("home.discovery.area.label", "Event area")</span>
+                    <select value="@SelectedAreaValue"
+                            disabled="@_isBusy"
+                            @onchange="SelectAreaAsync">
+                        @foreach (var area in AvailableAreas)
+                        {
+                            <option value="@area.Id">@area.DisplayName</option>
+                        }
+                    </select>
+                </label>
+            }
+
+            <div class="home-discovery__actions">
+                @if (HasCentroidAreas)
+                {
+                    <button type="button"
+                            disabled="@_isBusy"
+                            @onclick="UseCurrentLocationAsync">
+                        @T("home.discovery.use_location", "Use my current location")
+                    </button>
+                }
+                <button type="button"
+                        disabled="@(_isBusy || IsOnlineMode)"
+                        @onclick="BrowseOnlineAsync">
+                    @T("home.discovery.browse_online", "Browse online events")
+                </button>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_locationStatus))
+            {
+                <p class="home-discovery__location-status" role="status">@_locationStatus</p>
+            }
+        </header>
+
+        @if (HeroEvents.Count > 0)
+        {
+            <HeroCarousel Events="HeroEvents"
+                          RightToLeft="@IsRightToLeft"
+                          AriaLabel="@T("home.discovery.hero.label", "Featured events")"
+                          PreviousLabel="@T("home.discovery.hero.previous", "Previous featured event")"
+                          NextLabel="@T("home.discovery.hero.next", "Next featured event")"
+                          ViewEventLabel="@T("home.discovery.view_event", "View event")" />
+        }
+        else if (SectionStatus("hero") == HomeDiscoverySectionStatus.Failed)
+        {
+            <p class="home-discovery__section-failure" role="status">
+                @T("home.discovery.hero.failure", "Featured events are temporarily unavailable.")
+            </p>
+        }
+
+        <section class="home-discovery__section" aria-labelledby="home-upcoming-title">
+            <div class="home-discovery__section-heading">
+                <h2 id="home-upcoming-title">@UpcomingTitle</h2>
+                <a href="/events">@T("common.view_all", "View all")</a>
+            </div>
+            @if (UpcomingEvents.Count > 0)
+            {
+                <div class="home-discovery__detailed-grid">
+                    @foreach (var eventItem in UpcomingEvents)
+                    {
+                        <EventCard @key="eventItem.Id"
+                                   Event="eventItem"
+                                   Layout="LayoutMode.DetailedList"
+                                   OnClick="OpenEvent" />
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="home-discovery__empty" role="status">@SectionEmptyMessage("upcoming")</p>
+            }
+        </section>
+
+        @if (SpotlightEvents.Count > 0)
+        {
+            <section class="home-discovery__section" aria-labelledby="home-spotlight-title">
+                <div class="home-discovery__section-heading">
+                    <h2 id="home-spotlight-title">@_discovery.Spotlight!.Label</h2>
+                    <a href="/events">@T("common.view_all", "View all")</a>
+                </div>
+                <div class="home-discovery__single-row">
+                    @foreach (var eventItem in SpotlightEvents)
+                    {
+                        <EventCard @key="eventItem.Id"
+                                   Event="eventItem"
+                                   Layout="LayoutMode.SingleRow"
+                                   OnClick="OpenEvent" />
+                    }
+                </div>
+            </section>
+        }
+
+        @if (!IsOnlineMode && IsAreaMode)
+        {
+            <EventHorizontalRail Title="@MostViewedAreaTitle"
+                                 Events="MostViewedAreaEvents"
+                                 EmptyMessage="@(SectionEmptyMessage("most-viewed-area"))"
+                                 ViewAllLabel="@T("common.view_all", "View all")"
+                                 ViewAllUrl="/events?sortBy=views&amp;sortDescending=true"
+                                 RightToLeft="@IsRightToLeft"
+                                 OnEventClick="OpenEvent" />
+        }
+
+        <EventHorizontalRail Title="@T("home.discovery.most_viewed_online", "Most viewed online")"
+                             Events="MostViewedOnlineEvents"
+                             EmptyMessage="@(SectionEmptyMessage("most-viewed-online"))"
+                             ViewAllLabel="@T("common.view_all", "View all")"
+                             ViewAllUrl="/events?formatIds=2&amp;sortBy=views&amp;sortDescending=true"
+                             RightToLeft="@IsRightToLeft"
+                             OnEventClick="OpenEvent" />
+
+        @foreach (var section in CuratedSections)
+        {
+            <EventHorizontalRail @key="section.Key"
+                                 Title="@section.Label"
+                                 Events="@Events(section.Items)"
+                                 EmptyMessage="@T("home.discovery.empty", "No events are available in this section yet.")"
+                                 ViewAllLabel="@T("common.view_all", "View all")"
+                                 ViewAllUrl="/events"
+                                 RightToLeft="@IsRightToLeft"
+                                 OnEventClick="OpenEvent" />
+        }
+
+        <EventHorizontalRail Title="@T("home.discovery.recently_added", "Recently added")"
+                             Events="RecentlyAddedEvents"
+                             EmptyMessage="@(SectionEmptyMessage("recently-added"))"
+                             ViewAllLabel="@T("common.view_all", "View all")"
+                             ViewAllUrl="/events?sortBy=createdat&amp;sortDescending=true"
+                             RightToLeft="@IsRightToLeft"
+                             OnEventClick="OpenEvent" />
+    }
+</section>
+
+@code {
+    private HomeDiscoveryDto? _discovery;
+    private CancellationTokenSource? _loadCancellation;
+    private string? _loadedRequestKey;
+    private string? _locationStatus;
+    private string? _pendingAnnouncement;
+    private bool _isLoading = true;
+    private bool _isBusy;
+
+    [Parameter] public Guid? UrlAreaId { get; set; }
+    [Parameter] public string? UrlMode { get; set; }
+
+    [CascadingParameter] private LanguageContext? LanguageContext { get; set; }
+
+    [PersistentState] public HomeDiscoveryDto? PersistedDiscovery { get; set; }
+
+    private IReadOnlyList<PublicDiscoveryAreaDto> AvailableAreas =>
+        _discovery?.Context?.AvailableAreas?
+            .Where(area => area.Id.HasValue)
+            .OrderBy(area => area.SortOrder)
+            .ThenBy(area => area.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToArray() ?? [];
+
+    private bool HasCentroidAreas => AvailableAreas.Any(area =>
+        area.CentroidLatitude.HasValue && area.CentroidLongitude.HasValue);
+    private bool IsOnlineMode => _discovery?.Context?.Mode == HomeDiscoveryMode.Online;
+    private bool IsAreaMode => _discovery?.Context?.Mode == HomeDiscoveryMode.Area;
+    private bool IsRightToLeft => LanguageContext?.EffectiveIsRtl ?? false;
+    private string SelectedAreaValue => _discovery?.Context?.SelectedAreaId?.ToString() ?? string.Empty;
+    private string SelectedAreaName => string.IsNullOrWhiteSpace(_discovery?.Context?.SelectedAreaDisplayName)
+        ? T("home.discovery.all_areas", "all areas")
+        : _discovery.Context.SelectedAreaDisplayName;
+    private string ContextLabel => IsOnlineMode
+        ? T("home.discovery.context.online", "Browsing online events")
+        : IsAreaMode
+            ? string.Format(T("home.discovery.context.area", "Browsing events in {0}"), SelectedAreaName)
+            : T("home.discovery.context.all", "Browsing events from all areas");
+    private string UpcomingTitle => IsAreaMode
+        ? string.Format(T("home.discovery.upcoming.area", "Upcoming in {0}"), SelectedAreaName)
+        : IsOnlineMode
+            ? T("home.discovery.upcoming.online", "Upcoming online")
+            : T("home.discovery.upcoming.all", "Upcoming events");
+    private string MostViewedAreaTitle =>
+        string.Format(T("home.discovery.most_viewed.area", "Most viewed in {0}"), SelectedAreaName);
+
+    private IReadOnlyList<EventListDto> HeroEvents => Events(_discovery?.Hero);
+    private IReadOnlyList<EventListDto> UpcomingEvents => Events(_discovery?.UpcomingInArea);
+    private IReadOnlyList<EventListDto> SpotlightEvents => Events(_discovery?.Spotlight?.Items);
+    private IReadOnlyList<EventListDto> MostViewedAreaEvents => Events(_discovery?.MostViewedInArea);
+    private IReadOnlyList<EventListDto> MostViewedOnlineEvents => Events(_discovery?.MostViewedOnline);
+    private IReadOnlyList<HomeDiscoverySectionDto> CuratedSections =>
+        _discovery?.CuratedSections?.Where(section => !string.IsNullOrWhiteSpace(section.Label)).ToArray() ?? [];
+    private IReadOnlyList<EventListDto> RecentlyAddedEvents => Events(_discovery?.RecentlyAdded);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var requestKey = $"{UrlAreaId}:{UrlMode?.Trim().ToLowerInvariant()}";
+        if (_loadedRequestKey == requestKey)
+        {
+            return;
+        }
+
+        if (_loadedRequestKey is null && PersistedDiscovery is not null)
+        {
+            _discovery = PersistedDiscovery;
+            _loadedRequestKey = requestKey;
+            _isLoading = false;
+            _pendingAnnouncement = T("home.discovery.loaded", "Events loaded");
+            return;
+        }
+
+        await LoadAsync(requestKey);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pendingAnnouncement is not { } announcement)
+        {
+            return;
+        }
+
+        _pendingAnnouncement = null;
+        await Announcer.AnnouncePoliteAsync(announcement);
+    }
+
+    public void Dispose()
+    {
+        _loadCancellation?.Cancel();
+        _loadCancellation?.Dispose();
+    }
+
+    private async Task LoadAsync(string requestKey)
+    {
+        _loadCancellation?.Cancel();
+        _loadCancellation?.Dispose();
+        _loadCancellation = new CancellationTokenSource();
+        var cancellationToken = _loadCancellation.Token;
+        _isLoading = true;
+        _locationStatus = null;
+
+        try
+        {
+            var discovery = await HomeDiscoveryService.LoadAsync(UrlAreaId, UrlMode, cancellationToken);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _discovery = discovery;
+            PersistedDiscovery = discovery;
+            _loadedRequestKey = requestKey;
+            _pendingAnnouncement = discovery is null
+                ? T("home.discovery.failure.announcement", "Events could not be loaded")
+                : T("home.discovery.loaded", "Events loaded");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                _isLoading = false;
+            }
+        }
+    }
+
+    private async Task RetryAsync() => await LoadAsync($"{UrlAreaId}:{UrlMode?.Trim().ToLowerInvariant()}");
+
+    private async Task SelectAreaAsync(ChangeEventArgs args)
+    {
+        if (!Guid.TryParse(args.Value?.ToString(), out var areaId))
+        {
+            return;
+        }
+
+        await ApplyAreaAsync(areaId);
+    }
+
+    private async Task ApplyAreaAsync(Guid areaId)
+    {
+        _isBusy = true;
+        try
+        {
+            var discovery = await HomeDiscoveryService.SelectAreaAsync(areaId, CurrentCancellationToken);
+            if (discovery is null)
+            {
+                _locationStatus = T("home.discovery.area.failure", "That area could not be loaded. Your previous view is unchanged.");
+                return;
+            }
+
+            await SetDiscoveryAsync(discovery, areaId, "area");
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task BrowseOnlineAsync()
+    {
+        _isBusy = true;
+        try
+        {
+            var areaId = _discovery?.Context?.SelectedAreaId;
+            var discovery = await HomeDiscoveryService.SelectOnlineAsync(areaId, CurrentCancellationToken);
+            if (discovery is null)
+            {
+                _locationStatus = T("home.discovery.online.failure", "Online events could not be loaded. Your previous view is unchanged.");
+                return;
+            }
+
+            await SetDiscoveryAsync(discovery, areaId, "online");
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task UseCurrentLocationAsync()
+    {
+        _isBusy = true;
+        _locationStatus = T("home.discovery.location.requesting", "Finding the closest configured event area…");
+        try
+        {
+            var position = await Geolocation.GetCurrentPositionAsync(CurrentCancellationToken);
+            if (position.Status == HomeDiscoveryGeolocationStatus.Denied)
+            {
+                _locationStatus = T("home.discovery.location.denied", "Location permission was denied. Your previous area is unchanged.");
+                return;
+            }
+
+            if (position.Status != HomeDiscoveryGeolocationStatus.Available ||
+                !position.Latitude.HasValue ||
+                !position.Longitude.HasValue)
+            {
+                _locationStatus = T("home.discovery.location.unavailable", "Your location is unavailable. Choose an event area instead.");
+                return;
+            }
+
+            var area = HomeDiscoveryService.FindClosestArea(
+                AvailableAreas,
+                position.Latitude.Value,
+                position.Longitude.Value);
+            if (area?.Id is not { } areaId)
+            {
+                _locationStatus = T("home.discovery.location.no_areas", "No configured event area can use your location yet.");
+                return;
+            }
+
+            await ApplyAreaAsync(areaId);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task SetDiscoveryAsync(HomeDiscoveryDto discovery, Guid? areaId, string mode)
+    {
+        _discovery = discovery;
+        PersistedDiscovery = discovery;
+        UrlAreaId = areaId;
+        UrlMode = mode;
+        _loadedRequestKey = $"{areaId}:{mode}";
+        _locationStatus = null;
+        await JsRuntime.InvokeVoidAsync(
+            "history.replaceState",
+            null,
+            string.Empty,
+            BuildHomeUrl(areaId, mode));
+    }
+
+    private void OpenEvent(EventListDto eventItem) =>
+        Navigation.NavigateTo(EventUrlHelper.BuildPublicPath(eventItem.Slug, eventItem.PublicCode) ?? "/events");
+
+    private string SectionEmptyMessage(string key) => SectionStatus(key) == HomeDiscoverySectionStatus.Failed
+        ? T("home.discovery.section.failure", "This section is temporarily unavailable. Other event sections are still available.")
+        : T("home.discovery.empty", "No events are available in this section yet.");
+
+    private HomeDiscoverySectionStatus? SectionStatus(string key) =>
+        _discovery?.SectionStatuses?.TryGetValue(key, out var status) == true ? status : null;
+
+    private CancellationToken CurrentCancellationToken => _loadCancellation?.Token ?? CancellationToken.None;
+
+    private string T(string key, string fallback) => Translation.T(key, fallback);
+
+    private static IReadOnlyList<EventListDto> Events(IEnumerable<EventDiscoveryItemDto>? items) =>
+        items?.Where(item => item.Event is not null).Select(item => item.Event!).ToArray() ?? [];
+
+    private static string BuildHomeUrl(Guid? areaId, string mode) => areaId.HasValue
+        ? $"/home?areaId={areaId.Value}&mode={mode}"
+        : $"/home?mode={mode}";
+}

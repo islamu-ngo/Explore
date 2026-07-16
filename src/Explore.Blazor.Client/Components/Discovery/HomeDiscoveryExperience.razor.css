@@ -1,0 +1,184 @@
+/* ABOUTME: Scoped responsive layout for the public home discovery context, hero, detailed grid, and spotlight. */
+/* ABOUTME: Uses design tokens, logical properties, and reduced-motion-safe states across LTR and RTL. */
+
+.home-discovery {
+    display: grid;
+    gap: var(--isl-space-section, 2rem);
+    max-inline-size: 90rem;
+    margin-inline: auto;
+    padding: var(--isl-space-page, 1rem);
+    container-type: inline-size;
+}
+
+.home-discovery__context {
+    display: grid;
+    gap: var(--isl-space-3, 0.75rem);
+    padding-block: var(--isl-space-4, 1rem);
+}
+
+.home-discovery__context h1,
+.home-discovery__context p,
+.home-discovery__failure h2,
+.home-discovery__failure p,
+.home-discovery__section-heading h2,
+.home-discovery__empty,
+.home-discovery__section-failure {
+    margin: 0;
+}
+
+.home-discovery__context h1 {
+    color: var(--isl-color-text, var(--mud-palette-text-primary));
+    font-size: var(--isl-font-size-h1, clamp(2rem, 5vw, 3.5rem));
+    line-height: 1.05;
+}
+
+.home-discovery__context-label {
+    color: var(--isl-color-text-secondary, var(--mud-palette-text-secondary));
+    font-size: var(--isl-font-size-h5, 1.25rem);
+    font-weight: 650;
+}
+
+.home-discovery__area-picker {
+    display: grid;
+    gap: var(--isl-space-2, 0.5rem);
+    max-inline-size: 24rem;
+    color: var(--isl-color-text, var(--mud-palette-text-primary));
+    font-weight: 600;
+}
+
+.home-discovery__area-picker select {
+    min-block-size: 2.75rem;
+    padding-block: var(--isl-space-2, 0.5rem);
+    padding-inline: var(--isl-space-3, 0.75rem);
+    border: 1px solid var(--mud-palette-lines-inputs);
+    border-radius: var(--isl-radius-input, 0.5rem);
+    background: var(--isl-color-surface, var(--mud-palette-surface));
+    color: var(--isl-color-text, var(--mud-palette-text-primary));
+    font: inherit;
+}
+
+.home-discovery__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-3, 0.75rem);
+}
+
+.home-discovery__actions button,
+.home-discovery__actions a {
+    display: inline-flex;
+    min-block-size: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    padding-block: var(--isl-space-2, 0.5rem);
+    padding-inline: var(--isl-space-4, 1rem);
+    border: 1px solid var(--isl-color-primary, var(--mud-palette-primary));
+    border-radius: var(--isl-radius-button, 999px);
+    background: transparent;
+    color: var(--isl-color-primary, var(--mud-palette-primary));
+    font: inherit;
+    font-weight: 650;
+    text-decoration: none;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+        background: color-mix(in oklch, var(--isl-color-primary, var(--mud-palette-primary)) 10%, transparent);
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: var(--isl-state-disabled-opacity, 0.38);
+    }
+}
+
+.home-discovery__location-status,
+.home-discovery__empty,
+.home-discovery__section-failure {
+    color: var(--isl-color-text-secondary, var(--mud-palette-text-secondary));
+}
+
+.home-discovery__section {
+    display: grid;
+    gap: var(--isl-space-4, 1rem);
+}
+
+.home-discovery__section-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--isl-space-4, 1rem);
+}
+
+.home-discovery__section-heading a {
+    color: var(--isl-color-primary, var(--mud-palette-primary));
+    font-weight: 650;
+}
+
+.home-discovery__detailed-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--isl-space-4, 1rem);
+}
+
+.home-discovery__single-row {
+    display: grid;
+    gap: var(--isl-space-3, 0.75rem);
+}
+
+.home-discovery__failure {
+    display: grid;
+    gap: var(--isl-space-4, 1rem);
+    padding: var(--isl-space-6, 1.5rem);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-card, 0.75rem);
+    background: var(--isl-color-surface, var(--mud-palette-surface));
+}
+
+.home-discovery__context-skeleton,
+.home-discovery__hero-skeleton {
+    border-radius: var(--isl-radius-card, 0.75rem);
+    background: color-mix(in oklch, var(--mud-palette-text-primary) 10%, var(--mud-palette-surface));
+    animation: home-discovery-pulse 1.4s ease-in-out infinite alternate;
+}
+
+.home-discovery__context-skeleton {
+    inline-size: min(100%, 22rem);
+    block-size: 3rem;
+}
+
+.home-discovery__hero-skeleton {
+    aspect-ratio: 16 / 6.5;
+    min-block-size: 16rem;
+}
+
+@container (min-width: 42rem) {
+    .home-discovery__detailed-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@container (min-width: 70rem) {
+    .home-discovery__detailed-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@keyframes home-discovery-pulse {
+    from { opacity: 0.55; }
+    to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .home-discovery__context-skeleton,
+    .home-discovery__hero-skeleton {
+        animation: none;
+    }
+}
+
+@media (forced-colors: active) {
+    .home-discovery__actions button,
+    .home-discovery__actions a,
+    .home-discovery__area-picker select,
+    .home-discovery__failure {
+        border-color: CanvasText;
+    }
+}
