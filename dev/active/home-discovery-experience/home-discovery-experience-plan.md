@@ -24,8 +24,8 @@ Last Updated: 2026-07-16 Europe/Brussels
 |---|---|
 | Must-read docs | The fallback documents named above plus `dev/active/README.md` and `.claude/commands/dev-docs.md`. |
 | Skills/rules | Apply the listed Blazor, CSS isolation, design-system, accessibility, and test guidance. |
-| Paths in scope | Public-experience setting/config models, composite public-home query/controller/cache, generated contract artifacts, `src/Explore.Blazor.Client/**`, matching Domain/Application/API/Blazor tests, `tests/Explore.Blazor.Client.E2ETests/**`, `docs/DESIGN.md`, a planned-proximity ADR plus architecture/domain/self-hosting summaries, API contract docs, and these dev docs. |
-| Minimum tests | `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.API.IntegrationTests`, `Explore.Blazor.Client.Tests`, and `Event.Architecture.Tests`; run E2E manually/nightly after the Aspire host is available. |
+| Paths in scope | Public-experience setting/config models, composite public-home query/controller/cache, generated contract artifacts, `src/Explore.Blazor.Client/**`, matching Domain/Application/API/Blazor tests, `docs/DESIGN.md`, a planned-proximity ADR plus architecture/domain/self-hosting summaries, API contract docs, and these dev docs. |
+| Minimum tests | `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.API.IntegrationTests`, `Explore.Blazor.Client.Tests`, and `Event.Architecture.Tests`; perform focused manual browser QA for responsive behavior. |
 | Docs to update | `docs/DESIGN.md`, a new planned-proximity ADR, `docs/ARCHITECTURE.md`, `docs/DOMAIN.md`, `docs/SELF_HOSTING.md`, generated API contract/inventory/client artifacts, `docs/API_CHANGELOG.md`, and `docs/BLAZOR.md` for the composite home flow. |
 | Unique acceptance | `/home` has the approved MangaDex-inspired page rhythm, reuses the production three-mode `EventCard`, remains tenant-aware, and passes responsive/accessibility browser QA. |
 | Forbidden without approval | Exact venue coordinates in generic public DTOs, “near you”/distance claims without event-occurrence geospatial results, IP/third-party geolocation, an in-memory exact-distance fallback, a recommendation/quality-score backend, a new carousel dependency, advertising/ad-shaped filler, or a visual redesign of `/events`. |
@@ -148,7 +148,7 @@ Chrome DevTools MCP inspected the live [MangaDex homepage](https://mangadex.org/
 | `Explore.Blazor.Client.Tests/Pages/HomeTests.cs` | Loading, auth/anonymous branch, organization shell, HTML encoding, remediation, title, error fallback. | Re-baseline discovery expectations while retaining organization safety tests. |
 | `Explore.Blazor.Client.Tests/Components/Event/EventCardTests.cs` | Three modes, field visibility, HAL/share behavior, past state. | Add keyboard semantics and homepage-safe action tests. |
 | `Event.Architecture.Tests/AccessibilityConventionTests.cs` | Landmarks, h1, target/focus/RTL advisories. | Run unchanged; do not weaken. |
-| `Explore.Blazor.Client.E2ETests` | Aspire-backed browser smoke and critical flows. | Add a new public `/home` responsive interaction flow. |
+| Manual browser QA | Responsive and interaction behavior not covered by bUnit. | Verify the public `/home` matrix after component and API tests pass. |
 
 ### 2.5 Existing Documentation And Contracts
 
@@ -495,7 +495,7 @@ The task IDs below are canonical and must match the context and checklist exactl
 - **Current evidence:** `HomeDiscoveryFlowTests` builds and ran through route/hydration, responsive capture, manual hero, keyboard surfaces, granted Brussels geolocation, and online mode. It now uses deterministic denied-geolocation injection, resets focus/scroll before screenshots, guards fixed-header spacing, asserts one fallback-hero transfer within 500 KiB, and proves context actions do not trigger another `/home` document navigation. The latest retry could not start Docker Desktop because its QEMU VM terminated; the last healthy-Docker reruns failed during event seed because unrelated shared location-model columns are absent from migrations (`locations.location_kind_id` currently; `event_sessions.event_location_id` previously).
 - **Acceptance:** Route, one composite discovery call, area/online actions, granted/denied geolocation, manual hero, keyboard cards, rails, URL state, no coordinate leakage, and console cleanliness.
 - **Dependencies/Effort:** 4.5 / M
-- **Validation:** E2E project or documented environment blocker plus manual Chrome evidence.
+- **Validation:** component/API tests plus documented manual browser evidence or environment blocker.
 
 #### Task 5.2: Run Responsive Visual And Accessibility QA
 - **Current evidence:** Inspected captures at 375 light LTR, 768 dark LTR, and 1280 light RTL/reduced-motion. Composition, no-image fallback, theme/direction, mobile overlay, keyboard card focus, rail scrolling, shell spacing, and page overflow passed the observed run; refreshed captures wait on the shared migration.
@@ -551,7 +551,7 @@ The task IDs below are canonical and must match the context and checklist exactl
 | Home branch and hydration | bUnit | Auth/anonymous parity, organization remediation/encoding, one composite call, persistent state, failure isolation. |
 | Honest terminology | bUnit/API | No “near,” distance, “recommended,” “trending,” or unsupported community/grassroots labels. |
 | Accessibility/localization | architecture/bUnit/browser | h1/h2, controls, targets, translations/fallbacks, RTL, reduced motion, focus. |
-| Real route behavior and budgets | E2E/manual | Aspire home flow, area/online actions, granted/denied location, request/payload/image/LCP evidence. |
+| Real route behavior and budgets | Manual browser QA | Running home flow, area/online actions, granted/denied location, request/payload/image/LCP evidence. |
 
 Required before implementation and again before completion:
 
@@ -564,11 +564,10 @@ dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Te
 dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
 ```
 
-Manual/nightly after Aspire is available:
+Manual browser QA after the app is available:
 
 ```bash
 dotnet run --project src/Explore.AppHost/Explore.AppHost.csproj
-dotnet test --project tests/Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet
 ```
 
 Do not run solution-level `dotnet test`. Task 0.4 records the existing warning count; Task 5.3 fails on new warnings attributable to this work.

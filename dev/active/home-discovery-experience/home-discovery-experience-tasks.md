@@ -207,11 +207,11 @@ Last Updated: 2026-07-16 Europe/Brussels
 
 ## Current-Release Verification Checklist
 
-- [ ] Changed diagnostics clean and no new warnings versus Task 0.4 (the Home E2E file passes targeted format/analyzer verification; the shared tree currently has unrelated test compilation errors and warning churn; Razor LSP remains unavailable by prior user choice).
+- [ ] Changed diagnostics clean and no new warnings versus Task 0.4 (the retired Home browser flow passed targeted format/analyzer verification; the shared tree currently has unrelated test compilation errors and warning churn; Razor LSP remains unavailable by prior user choice).
 - [ ] Release build passes (last clean run: 26 projects, 0 errors, 0 warnings; current run fails on seven missing Event Location Privacy test symbols and two unrelated MudBlazor dialog-test type errors).
 - [ ] Domain, Application, API, Blazor Client, and Architecture test projects pass.
 - [x] OpenAPI/inventory/NSwag artifacts are regenerated deterministically, never hand-edited.
-- [ ] E2E passes or environment blocker has equivalent manual evidence.
+- [ ] Manual browser QA passes or the environment blocker is documented.
 - [ ] One composite discovery call and payload/latency/image budgets pass.
 - [ ] Keyboard, localization, RTL, reduced motion, light/dark, empty/error/no-image/long-title states pass.
 - [ ] No generic `LocationListDto`, address/coordinate catalog, origin leakage, deceptive labels, ad gap, raw HTML, role/claim action logic, or unrelated edits.
