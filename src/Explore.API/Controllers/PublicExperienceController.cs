@@ -50,4 +50,21 @@ public class PublicExperienceController : ControllerBase
         var shell = await _mediator.Send(new GetPublicExperienceShellQuery(), cancellationToken);
         return Ok(shell);
     }
+
+    [HttpGet("~/api/public-experience/home", Name = RouteNames.GetHomeDiscovery)]
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [EndpointSummary("Get Home Discovery")]
+    [EndpointDescription("Returns the tenant-aware event discovery sections for the public home page.")]
+    [ProducesResponseType(typeof(HomeDiscoveryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [OutputCache(PolicyName = "PublicHomeDiscovery")]
+    public async Task<ActionResult<HomeDiscoveryDto>> GetHomeDiscovery(
+        [FromQuery] Guid? areaId = null,
+        [FromQuery] string? mode = null,
+        CancellationToken cancellationToken = default)
+    {
+        var home = await _mediator.Send(new GetHomeDiscoveryQuery(areaId, mode), cancellationToken);
+        return Ok(home);
+    }
 }

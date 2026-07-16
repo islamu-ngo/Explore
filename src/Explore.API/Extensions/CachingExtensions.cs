@@ -52,6 +52,12 @@ public static class CachingExtensions
                 .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
                 .Tag("public-experience-shell"));
 
+            options.AddPolicy("PublicHomeDiscovery", builder => builder
+                .Expire(TimeSpan.FromSeconds(30))
+                .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
+                .SetVaryByQuery("areaId", "mode")
+                .Tag("public-home-discovery"));
+
             // SystemConfig: public first-run/runtime mode state for BFF startup.
             options.AddPolicy("SystemConfig", builder => builder
                 .Expire(TimeSpan.FromSeconds(10))
