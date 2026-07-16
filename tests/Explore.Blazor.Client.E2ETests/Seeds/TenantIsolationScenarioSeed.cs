@@ -16,20 +16,7 @@ public static class TenantIsolationScenarioSeed
         IEventApiClient instanceApi,
         Func<string, IEventApiClient> tenantApiFactory)
     {
-        EnsureSuccess(
-            await instanceApi.UpdateInstanceDeploymentModeAsync(new UpdateDeploymentModeRequest
-            {
-                DeploymentMode = "MultiTenant"
-            }),
-            "switching the E2E instance to multi-tenant mode");
-        EnsureSuccess(
-            await instanceApi.UpdateInstanceResolverConfigurationAsync(new ResolverConfigurationDto
-            {
-                HeaderEnabled = true,
-                PathEnabled = true,
-                PathPrefix = "/t"
-            }),
-            "enabling E2E tenant routing");
+        await WebhookManagementScenarioSeed.EnableMultiTenantRoutingAsync(instanceApi);
 
         var suffix = Guid.NewGuid().ToString("N")[..8];
         var tenantASlug = $"tenant-a-{suffix}";
@@ -39,7 +26,10 @@ public static class TenantIsolationScenarioSeed
 
         var tenantAApi = tenantApiFactory(tenantASlug);
         var title = $"Tenant A Private Event {suffix}";
-        await EventApiScenario.CreatePublishedEventAsync(tenantAApi, title, $"tenant-a-event-{suffix}");
+        await EventApiScenario.CreatePublishedEventAsync(
+            tenantAApi,
+            title,
+            $"tenant-a-event-{suffix}");
 
         return new Result(tenantASlug, tenantBSlug, title);
     }
