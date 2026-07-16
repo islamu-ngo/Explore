@@ -64,6 +64,27 @@ public partial class EventDetail : ComponentBase, IDisposable
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
+    private static readonly HashSet<string> PhysicalLocationExtensionFields = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "locationId",
+        "physicalLocationId",
+        "locationName",
+        "locationFullName",
+        "locationAddress",
+        "address",
+        "postcode",
+        "postalCode",
+        "locationCity",
+        "city",
+        "locationCountry",
+        "country",
+        "latitude",
+        "longitude",
+        "coordinates",
+        "roomId",
+        "roomName"
+    };
+
     private static readonly IReadOnlyList<EventModerationReasonOption> LightModerationReasonOptions =
     [
         new("policy_review", "Policy review"),
@@ -252,6 +273,8 @@ public partial class EventDetail : ComponentBase, IDisposable
 
             if (_eventDetails != null)
             {
+                RemovePhysicalLocationExtensionData(_eventDetails.AdditionalProperties);
+
                 if (_eventDetails.Id is not Guid loadedEventId || loadedEventId == Guid.Empty)
                 {
                     _errorMessage = "Event not found";
@@ -272,9 +295,9 @@ public partial class EventDetail : ComponentBase, IDisposable
 
                 CheckAuthorizationFromHalLinks();
 
-                _eventSessions = await EventService.GetSessionsByEventAsync(
+                _eventSessions = RemovePhysicalLocationData(await EventService.GetSessionsByEventAsync(
                     EventId,
-                    includeManagedSessions: CanRequestManagedSessions);
+                    includeManagedSessions: CanRequestManagedSessions));
                 _primarySession = _eventSessions?.FirstOrDefault();
                 Logger.LogInformation("Loaded {SessionCount} sessions", _eventSessions?.Count ?? 0);
 
@@ -289,7 +312,7 @@ public partial class EventDetail : ComponentBase, IDisposable
                     ? AgendaItemService.GetAgendaItemsBySessionAsync(_primarySession.Id.Value)
                     : Task.FromResult<ICollection<EventSessionAgendaItemListDto>>(new List<EventSessionAgendaItemListDto>());
                 await Task.WhenAll(registrationTask, aspectsTask, daysTask, eventAgendaTask, agendaTask);
-                _agendaItems = await agendaTask;
+                _agendaItems = RemovePhysicalLocationData(await agendaTask);
                 _eventDays = await daysTask;
                 _eventAgendaItems = await eventAgendaTask;
             }
@@ -325,13 +348,14 @@ public partial class EventDetail : ComponentBase, IDisposable
         }
 
         _eventDetails = PersistedState.EventDetails;
-        _eventSessions = PersistedState.EventSessions;
-        _primarySession = PersistedState.PrimarySession;
+        RemovePhysicalLocationExtensionData(_eventDetails?.AdditionalProperties);
+        _eventSessions = RemovePhysicalLocationData(PersistedState.EventSessions);
+        _primarySession = _eventSessions.FirstOrDefault();
         _islamicAspect = PersistedState.IslamicAspect;
         _techAspect = PersistedState.TechAspect;
         _eventDays = PersistedState.EventDays;
         _eventAgendaItems = PersistedState.EventAgendaItems;
-        _agendaItems = PersistedState.SessionAgendaItems;
+        _agendaItems = RemovePhysicalLocationData(PersistedState.SessionAgendaItems);
         _appearance = PersistedState.Appearance ?? new AppearanceSettings();
         _imageLoadFailed = false;
         PublishMainContentAppearance();
@@ -366,6 +390,7 @@ public partial class EventDetail : ComponentBase, IDisposable
                 return;
 
             _eventDetails = refreshedEvent;
+            RemovePhysicalLocationExtensionData(_eventDetails.AdditionalProperties);
             _appearance = new AppearanceSettings
             {
                 BackgroundColor = _eventDetails.BackgroundColor ?? string.Empty,
@@ -687,42 +712,11 @@ public partial class EventDetail : ComponentBase, IDisposable
         return "Date TBD";
     }
 
-    /// <summary>
-    /// Gets a short location display string.
-    /// </summary>
-    private string GetLocationDisplay()
-    {
-        if (_primarySession != null && !string.IsNullOrEmpty(_primarySession.LocationFullName))
-        {
-            return _primarySession.LocationFullName;
-        }
-        if (_primarySession != null && !string.IsNullOrEmpty(_primarySession.LocationCity))
-        {
-            return _primarySession.LocationCity;
-        }
-
-        return _eventDetails?.EventFormatFullName ?? "Online";
-    }
-
-    /// <summary>
-    /// Gets the full location display string with address details.
-    /// </summary>
-    private string GetFullLocation()
-    {
-        if (_primarySession != null)
-        {
-            var parts = new List<string>();
-            if (!string.IsNullOrEmpty(_primarySession.LocationFullName))
-                parts.Add(_primarySession.LocationFullName);
-            if (!string.IsNullOrEmpty(_primarySession.LocationCity))
-                parts.Add(_primarySession.LocationCity);
-
-            if (parts.Count > 0)
-                return string.Join(", ", parts);
-        }
-
-        return _eventDetails?.EventFormatFullName ?? "Location to be announced";
-    }
+    private string GetLocationDisplay() => IsDigitalEvent()
+        ? "Online"
+        : IsHybridEvent()
+            ? "Hybrid"
+            : "Location to be announced";
 
     /// <summary>
     /// Generates a color code based on event type for placeholder images.
@@ -1003,12 +997,6 @@ public partial class EventDetail : ComponentBase, IDisposable
         AddIfNotBlank(data, "startDate", _primarySession?.StartTime?.ToString("O"));
         AddIfNotBlank(data, "endDate", _primarySession?.EndTime?.ToString("O"));
 
-        var location = BuildSchemaLocation();
-        if (location is not null)
-        {
-            data["location"] = location;
-        }
-
         var organizer = BuildSchemaOrganizer();
         if (organizer is not null)
         {
@@ -1028,33 +1016,6 @@ public partial class EventDetail : ComponentBase, IDisposable
         string.Equals(_eventDetails?.EventStatusMasterCode, CancelledStatusMasterCode, StringComparison.OrdinalIgnoreCase)
             ? SchemaEventCancelled
             : SchemaEventScheduled;
-
-    private Dictionary<string, object?>? BuildSchemaLocation()
-    {
-        if (string.IsNullOrWhiteSpace(_primarySession?.LocationFullName)
-            && string.IsNullOrWhiteSpace(_primarySession?.LocationCity))
-        {
-            return null;
-        }
-
-        var location = new Dictionary<string, object?>
-        {
-            ["@type"] = "Place"
-        };
-
-        AddIfNotBlank(location, "name", _primarySession?.LocationFullName);
-
-        if (!string.IsNullOrWhiteSpace(_primarySession?.LocationCity))
-        {
-            location["address"] = new Dictionary<string, object?>
-            {
-                ["@type"] = "PostalAddress",
-                ["addressLocality"] = _primarySession.LocationCity
-            };
-        }
-
-        return location;
-    }
 
     private Dictionary<string, object?>? BuildSchemaOrganizer()
     {
@@ -1153,9 +1114,7 @@ public partial class EventDetail : ComponentBase, IDisposable
         var title = Uri.EscapeDataString(_eventDetails.Title);
         var details = Uri.EscapeDataString(
             GetMetaDescription() + "\n\n" + GetCanonicalUrl());
-        var location = Uri.EscapeDataString(_primarySession.LocationFullName ?? "");
-
-        var url = $"https://calendar.google.com/calendar/r/eventedit?text={title}&dates={start}/{end}&details={details}&location={location}";
+        var url = $"https://calendar.google.com/calendar/r/eventedit?text={title}&dates={start}/{end}&details={details}";
 
         await JsRuntime.InvokeVoidAsync("open", url, "_blank");
     }
@@ -1203,8 +1162,6 @@ public partial class EventDetail : ComponentBase, IDisposable
             sb.AppendLine($"DTSTART:{_primarySession.StartTime!.Value.UtcDateTime:yyyyMMdd'T'HHmmss'Z'}");
             sb.AppendLine($"DTEND:{_primarySession.EndTime!.Value.UtcDateTime:yyyyMMdd'T'HHmmss'Z'}");
 
-            if (!string.IsNullOrWhiteSpace(_primarySession.LocationFullName))
-                sb.AppendLine(IcsFoldLine($"LOCATION:{IcsEscape(_primarySession.LocationFullName)}"));
         }
 
         sb.AppendLine(IcsFoldLine($"SUMMARY:{IcsEscape(_eventDetails!.Title)}"));
@@ -1346,7 +1303,8 @@ public partial class EventDetail : ComponentBase, IDisposable
     {
         if (CanRequestManagedSessions)
         {
-            _eventSessions = await EventService.GetSessionsByEventAsync(EventId, includeManagedSessions: true);
+            _eventSessions = RemovePhysicalLocationData(
+                await EventService.GetSessionsByEventAsync(EventId, includeManagedSessions: true));
         }
 
         var sessions = _eventSessions?
@@ -2164,9 +2122,50 @@ public partial class EventDetail : ComponentBase, IDisposable
             return "Hybrid event";
         }
 
-        return string.IsNullOrWhiteSpace(GetFullLocation())
-            ? "Location to be announced"
-            : "Register to see any private address details";
+        return "Location details are not publicly available";
+    }
+
+    private static ICollection<EventSessionListDto> RemovePhysicalLocationData(
+        ICollection<EventSessionListDto>? sessions)
+    {
+        sessions ??= [];
+        foreach (var session in sessions)
+        {
+            session.LocationId = null;
+            session.LocationFullName = null;
+            session.LocationCity = null;
+            session.RoomId = null;
+            session.RoomName = null;
+            RemovePhysicalLocationExtensionData(session.AdditionalProperties);
+        }
+
+        return sessions;
+    }
+
+    private static ICollection<EventSessionAgendaItemListDto> RemovePhysicalLocationData(
+        ICollection<EventSessionAgendaItemListDto>? items)
+    {
+        items ??= [];
+        foreach (var item in items)
+        {
+            item.LocationFullName = null;
+            RemovePhysicalLocationExtensionData(item.AdditionalProperties);
+        }
+
+        return items;
+    }
+
+    private static void RemovePhysicalLocationExtensionData(IDictionary<string, object>? extensionData)
+    {
+        if (extensionData is null || extensionData.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var key in extensionData.Keys.Where(PhysicalLocationExtensionFields.Contains).ToArray())
+        {
+            extensionData.Remove(key);
+        }
     }
 
     private string GetAudienceDisplay()

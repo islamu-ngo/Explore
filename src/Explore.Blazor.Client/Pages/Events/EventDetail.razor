@@ -12,6 +12,7 @@
 @using Explore.Blazor.Client.Pages.Events.Dialogs
 @using Explore.Blazor.Client.Contracts.Services.Events
 @using Explore.Blazor.Client.Components.EventReporting
+@using Explore.Blazor.Client.Components.Events
 
 <PageTitle>@(_eventDetails?.Title ?? "Event Detail")</PageTitle>
 
@@ -148,14 +149,16 @@
                 @* ── Left Column: Image & Organizer Info ── *@
                 <MudItem xs="12" md="5" lg="4">
                     <div class="event-cover-image-wrapper mb-6">
+                        @{ var coverImageSrc = _imageLoadFailed ? GetFallbackSvgDataUri() : (GetImageUrl() ?? GetFallbackSvgDataUri()); }
                         @if (HasActualCoverImage)
                         {
                             <div class="event-cover-image-blur" style="background-image: url('@GetImageUrl()');"></div>
                         }
-                        <img src="@(_imageLoadFailed ? GetFallbackSvgDataUri() : (GetImageUrl() ?? GetFallbackSvgDataUri()))"
+                        <img src="@coverImageSrc"
                              alt="@_eventDetails.Title"
                              class="event-cover-image @(HasActualCoverImage ? "event-cover-image--actual" : "event-cover-image--fallback")"
                              @onerror="HandleImageError" />
+                        <EventImageLightbox ImageSource="@coverImageSrc" Alt="@_eventDetails.Title" />
 
                         @* Admin controls — 3-dot action menu *@
                         @if ((_canEdit || _canDelete) && !_isCheckingAuth)
@@ -724,10 +727,6 @@
                                                         <MudText Typo="Typo.body1" Style="font-weight: 700;">@item.Title</MudText>
                                                         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
                                                             @(item.StartTime?.ToString("HH:mm") ?? "")@(item.EndTime != null ? $" — {item.EndTime?.ToString("HH:mm")}" : "")
-                                                            @if (!string.IsNullOrEmpty(item.LocationFullName))
-                                                            {
-                                                                @($" · {item.LocationFullName}")
-                                                            }
                                                         </MudText>
                                                     </ItemContent>
                                                 </MudTimelineItem>

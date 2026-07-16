@@ -226,6 +226,7 @@
     position: absolute;
     top: 16px;
     inset-inline-end: 16px;
+    z-index: 3;
     background-color: var(--mud-palette-surface);
     border-radius: 50%;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
