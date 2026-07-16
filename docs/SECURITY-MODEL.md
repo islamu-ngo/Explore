@@ -84,7 +84,7 @@ Browser-facing BFF hosts emit security headers before HTML, error, static asset,
 
 - `Content-Security-Policy` keeps scripts self-hosted with the Blazor WebAssembly runtime allowances, blocks framing with `frame-ancestors 'none'`, limits forms to `self`, allows the documented Google font endpoints, and allows `data:`, `https:`, and `blob:` images so event images and browser-generated downloads keep working.
 - `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and `Referrer-Policy: strict-origin-when-cross-origin` are set at the BFF boundary.
-- `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()` disables browser capabilities that are not part of the launch surface.
+- `Permissions-Policy: camera=(), microphone=(), geolocation=(self), payment=()` permits geolocation only to the first-party BFF origin for the explicit Home Discovery action. Camera, microphone, and payment remain disabled; the API host continues to disable geolocation.
 
 In YARP transforms:
 
@@ -169,7 +169,7 @@ Event registration reads are self-service by default. Attendee identity is not a
 
 Cookie-authenticated unsafe BFF endpoints must validate antiforgery tokens because browsers automatically include BFF cookies on same-site requests.
 
-- Token issuance: `UseAntiforgeryTokenMiddleware` calls `IAntiforgery.GetAndStoreTokens` on `GET` requests and writes the request token to the readable `XSRF-TOKEN` cookie.
+- Token issuance: `UseAntiforgeryTokenMiddleware` calls `IAntiforgery.GetAndStoreTokens` on non-static `GET` requests and writes the request token to the readable `XSRF-TOKEN` cookie. Static assets bypass issuance so the antiforgery service does not disable browser caching for immutable UI resources.
 - Header contract: clients send the token back in the `X-CSRF-TOKEN` header. This matches the BFF `AddAntiforgery` configuration.
 - Browser client path: `BrowserCredentialsMessageHandler` attaches browser credentials and adds `X-CSRF-TOKEN` for `POST`, `PUT`, `PATCH`, and `DELETE` requests.
 - Server self-call path: `BffCookieForwardingHandler` forwards captured cookies and mirrors `XSRF-TOKEN` into `X-CSRF-TOKEN` when InteractiveServer code calls BFF endpoints.
