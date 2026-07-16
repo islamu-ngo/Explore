@@ -161,7 +161,9 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
             .Where(intent => intent.TenantId == tenantId
                 && intent.EventId == eventId
                 && !intent.IsDeleted
-                && intent.ApprovalStatusId != (int)ApprovalStatusEnum.Rejected)
+                && (intent.ApprovalStatusId == (int)ApprovalStatusEnum.Pending
+                    || intent.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
+                    || intent.ApprovalStatusId == (int)ApprovalStatusEnum.Waitlisted))
             .Select(intent => intent.UserId)
             .Distinct();
 

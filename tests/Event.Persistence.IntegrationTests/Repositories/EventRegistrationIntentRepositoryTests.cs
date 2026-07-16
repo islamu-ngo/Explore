@@ -49,6 +49,46 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
     }
 
     [Test]
+    [Category("EventLocationPrivacy")]
+    [Arguments((int)RegistrationScopeEnum.Event)]
+    [Arguments((int)RegistrationScopeEnum.Day)]
+    [Arguments((int)RegistrationScopeEnum.SessionSelection)]
+    public async Task CreateWithChildrenAndCapacityAsyncAppliesCapacityForEveryRegistrationScope(int scopeId)
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+        var scenario = await SeedRegistrationScenarioAsync(seedContext, userCount: 2, sessionCapacity: 1);
+        var scope = (RegistrationScopeEnum)scopeId;
+
+        var first = await CreateRegistrationAsync(scenario, scenario.UserIds[0], scope);
+        var second = await CreateRegistrationAsync(scenario, scenario.UserIds[1], scope);
+
+        await using var verifyContext = fixture.CreateDbContext();
+        var intentStates = await verifyContext.EventRegistrationIntents
+            .Where(intent => intent.EventId == scenario.EventId)
+            .OrderBy(intent => intent.UserId)
+            .Select(intent => intent.ApprovalStatusId)
+            .ToArrayAsync();
+        var childStates = await verifyContext.EventRegistrations
+            .Where(registration => registration.EventSessionId == scenario.SessionId)
+            .OrderBy(registration => registration.UserId)
+            .Select(registration => registration.ApprovalStatusId)
+            .ToArrayAsync();
+        var currentAttendees = await verifyContext.EventSessions
+            .Where(session => session.Id == scenario.SessionId)
+            .Select(session => session.CurrentAudienceAttendees)
+            .SingleAsync();
+
+        await Assert.That(first.HasWaitlistedSessions).IsFalse();
+        await Assert.That(second.HasWaitlistedSessions).IsTrue();
+        await Assert.That(intentStates.Count(status => status == (int)ApprovalStatusEnum.Approved)).IsEqualTo(1);
+        await Assert.That(intentStates.Count(status => status == (int)ApprovalStatusEnum.Waitlisted)).IsEqualTo(1);
+        await Assert.That(childStates.Count(status => status == (int)ApprovalStatusEnum.Approved)).IsEqualTo(1);
+        await Assert.That(childStates.Count(status => status == (int)ApprovalStatusEnum.Waitlisted)).IsEqualTo(1);
+        await Assert.That(currentAttendees).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task CreateWithChildrenAndCapacityAsync_DuplicateSessionSelectionIntent_ReturnsExistingIntent()
     {
         await fixture.ResetAsync();
@@ -309,6 +349,49 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
         await Assert.That(otherCurrentAttendees).IsEqualTo(0);
         await Assert.That(registrationCount).IsEqualTo(0);
         await Assert.That(intentCount).IsEqualTo(0);
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task GetRegisteredUserFanoutBatchAsyncReturnsOnlyLiveApprovalStates()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+        var scenario = await SeedRegistrationScenarioAsync(seedContext, userCount: 7, sessionCapacity: 10);
+        var statusCases = new (int StatusId, bool IsDeleted)[]
+        {
+            ((int)ApprovalStatusEnum.Pending, false),
+            ((int)ApprovalStatusEnum.Approved, false),
+            ((int)ApprovalStatusEnum.Waitlisted, false),
+            ((int)ApprovalStatusEnum.Rejected, false),
+            ((int)ApprovalStatusEnum.Cancelled, false),
+            ((int)ApprovalStatusEnum.Revoked, false),
+            ((int)ApprovalStatusEnum.Approved, true)
+        };
+
+        var intents = scenario.UserIds
+            .Zip(statusCases)
+            .Select(item =>
+            {
+                var intent = NewIntent(scenario, item.First, RegistrationScopeEnum.Event);
+                intent.ApprovalStatusId = item.Second.StatusId;
+                intent.IsDeleted = item.Second.IsDeleted;
+                return intent;
+            })
+            .ToArray();
+        seedContext.EventRegistrationIntents.AddRange(intents);
+        await seedContext.SaveChangesAsync();
+
+        await using var queryContext = CreateRetryingDbContext();
+        var repository = new EventRegistrationIntentRepository(queryContext);
+        var userIds = await repository.GetRegisteredUserFanoutBatchAsync(
+            scenario.TenantId,
+            scenario.EventId,
+            afterUserId: null,
+            pageSize: 20,
+            CancellationToken.None);
+
+        await Assert.That(userIds.ToHashSet().SetEquals(scenario.UserIds.Take(3))).IsTrue();
     }
 
     private async Task<EventRegistrationIntentCreationResult> CreateRegistrationAsync(
