@@ -5,11 +5,9 @@ using System.Net;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
-using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.Features.EventSessionLanguages.Requests.Commands;
 using Explore.Application.Features.EventSessionLanguages.Requests.Queries;
-using Explore.Application.Features.EventSessions.Requests.Queries;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -50,7 +48,6 @@ public sealed class EventSessionLanguageControllerTests
     public async Task Update_WhenCommandValidationFails_ReturnsValidationProblemDetails()
     {
         var eventSessionId = Guid.NewGuid();
-        var eventId = Guid.NewGuid();
         using var mediator = new EventSessionLanguageMediatorStub(request => request switch
         {
             GetEventSessionLanguageDetailsRequest => new EventSessionLanguageDto
@@ -58,13 +55,6 @@ public sealed class EventSessionLanguageControllerTests
                 Id = 7,
                 EventSessionId = eventSessionId,
                 LanguageId = 1,
-                ConcurrencyStamp = Guid.NewGuid()
-            },
-            GetEventSessionDetailsRequest => new EventSessionDto
-            {
-                Id = eventSessionId,
-                EventId = eventId,
-                EventTitle = "Session parent event",
                 ConcurrencyStamp = Guid.NewGuid()
             },
             UpdateEventSessionLanguageCommand => new BaseCommandResponse<int>
@@ -95,7 +85,6 @@ public sealed class EventSessionLanguageControllerTests
         await Assert.That(command).IsNotNull();
         await Assert.That(command!.EventSessionLanguageId).IsEqualTo(7);
         await Assert.That(command.EventSessionId).IsEqualTo(eventSessionId);
-        await Assert.That(command.EventId).IsEqualTo(eventId);
         await Assert.That(command.ExpectedConcurrencyStamp).IsEqualTo(concurrencyStamp);
     }
 

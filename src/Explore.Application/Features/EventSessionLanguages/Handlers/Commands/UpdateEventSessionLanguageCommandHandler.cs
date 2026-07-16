@@ -54,6 +54,11 @@ public class UpdateEventSessionLanguageCommandHandler : IRequestHandler<UpdateEv
             return response;
         }
 
+        if (eventSessionLanguage.EventSessionId != request.EventSessionId)
+        {
+            return ValidationFailure("Event session language does not belong to the authorized event session.");
+        }
+
         if (eventSessionLanguage.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
         {
             throw new ConcurrencyConflictException(
@@ -61,7 +66,13 @@ public class UpdateEventSessionLanguageCommandHandler : IRequestHandler<UpdateEv
                 $"Event session language {request.EventSessionLanguageId} was modified by another request.");
         }
 
-        var previousEventId = await GetEventIdOrNullAsync(eventSessionLanguage.EventSessionId);
+        var sourceSession = await _eventSessionRepository.GetById(eventSessionLanguage.EventSessionId);
+        if (sourceSession is null)
+        {
+            return ValidationFailure("Event session not found.");
+        }
+
+        var previousEventId = sourceSession.EventId;
         var targetSessionId = request.EventSessionLanguageDto.Session?.EventSessionId ?? eventSessionLanguage.EventSessionId;
         var targetLanguageId = request.EventSessionLanguageDto.Language?.LanguageId ?? eventSessionLanguage.LanguageId;
 
@@ -71,9 +82,9 @@ public class UpdateEventSessionLanguageCommandHandler : IRequestHandler<UpdateEv
             return ValidationFailure("Event session not found.");
         }
 
-        if (targetSession.TenantId != eventSessionLanguage.TenantId)
+        if (targetSession.TenantId != eventSessionLanguage.TenantId || targetSession.EventId != sourceSession.EventId)
         {
-            return ValidationFailure("Event session must belong to the same tenant as the language assignment.");
+            return ValidationFailure("Event session must belong to the same event as the language assignment.");
         }
 
         if (!await _languageRepository.Exists(targetLanguageId))
@@ -102,12 +113,6 @@ public class UpdateEventSessionLanguageCommandHandler : IRequestHandler<UpdateEv
         response.Message = "Event Session Language updated successfully.";
 
         return response;
-    }
-
-    private async Task<Guid?> GetEventIdOrNullAsync(Guid eventSessionId)
-    {
-        var session = await _eventSessionRepository.GetById(eventSessionId);
-        return session?.EventId;
     }
 
     private static void ApplySession(EventSessionLanguage entity, DTOs.EventSessionLanguage.UpdateEventSessionLanguageSessionDto? dto, EventSession targetSession)

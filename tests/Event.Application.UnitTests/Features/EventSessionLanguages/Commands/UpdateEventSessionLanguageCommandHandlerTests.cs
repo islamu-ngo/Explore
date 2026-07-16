@@ -37,8 +37,6 @@ public sealed class UpdateEventSessionLanguageCommandHandlerTests
         {
             EventSessionLanguageId = 4,
             EventSessionId = Guid.NewGuid(),
-            EventId = Guid.NewGuid(),
-            TenantId = Guid.NewGuid(),
             ExpectedConcurrencyStamp = Guid.NewGuid(),
             EventSessionLanguageDto = new UpdateEventSessionLanguageDto()
         };
@@ -120,13 +118,34 @@ public sealed class UpdateEventSessionLanguageCommandHandlerTests
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task Handle_WhenRetargetSessionBelongsToAnotherEvent_ReturnsValidationFailureWithoutSaving()
+    {
+        var tenantId = Guid.NewGuid();
+        var sourceEventId = Guid.NewGuid();
+        var targetEventId = Guid.NewGuid();
+        var sourceSessionId = Guid.NewGuid();
+        var targetSessionId = Guid.NewGuid();
+        var entity = CreateLanguageAssignment(tenantId: tenantId, eventSessionId: sourceSessionId);
+        _repository.GetById(entity.Id).Returns(entity);
+        _eventSessionRepository.GetById(sourceSessionId).Returns(CreateSession(sourceSessionId, tenantId, sourceEventId));
+        _eventSessionRepository.GetById(targetSessionId).Returns(CreateSession(targetSessionId, tenantId, targetEventId));
+
+        var result = await _handler.Handle(CreateCommand(entity, new UpdateEventSessionLanguageDto
+        {
+            Session = new UpdateEventSessionLanguageSessionDto { EventSessionId = targetSessionId }
+        }), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains("Event session must belong to the same event as the language assignment.");
+        await _repository.DidNotReceive().Update(Arg.Any<EventSessionLanguage>());
+    }
+
     private static UpdateEventSessionLanguageCommand CreateCommand(EventSessionLanguage entity, UpdateEventSessionLanguageDto dto) =>
         new()
         {
             EventSessionLanguageId = entity.Id,
             EventSessionId = entity.EventSessionId,
-            EventId = Guid.NewGuid(),
-            TenantId = entity.TenantId,
             ExpectedConcurrencyStamp = entity.ConcurrencyStamp,
             EventSessionLanguageDto = dto
         };

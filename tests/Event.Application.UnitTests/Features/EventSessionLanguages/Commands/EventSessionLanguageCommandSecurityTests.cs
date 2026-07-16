@@ -1,3 +1,6 @@
+// ABOUTME: Verifies session-language commands bind authorization to persisted session resources.
+// ABOUTME: Caller-supplied tenant and event attributes are intentionally unavailable.
+
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.Features.EventSessionLanguages.Requests.Commands;
@@ -9,16 +12,11 @@ namespace Event.Application.UnitTests.Features.EventSessionLanguages.Commands;
 public class EventSessionLanguageCommandSecurityTests
 {
     [Test]
-    public async Task CreateCommand_ResourceAttributes_ShouldCarryTenantAndEventContext()
+    public async Task CreateCommand_UsesSessionIdAndRequiresPersistedAttributeEnrichment()
     {
         var eventSessionId = Guid.NewGuid();
-        var eventId = Guid.NewGuid();
-        var tenantId = Guid.NewGuid();
-
         ISecureRequest command = new CreateEventSessionLanguageCommand
         {
-            TenantId = tenantId,
-            EventId = eventId,
             EventSessionLanguageDto = new CreateEventSessionLanguageDto
             {
                 EventSessionId = eventSessionId,
@@ -27,46 +25,32 @@ public class EventSessionLanguageCommandSecurityTests
         };
 
         await Assert.That(command.ResourceId).IsEqualTo(eventSessionId.ToString());
-        await Assert.That(command.ResourceAttributes).IsNotNull();
-        await Assert.That(command.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString());
-        await Assert.That(command.ResourceAttributes["eventId"]).IsEqualTo(eventId.ToString());
+        await Assert.That(command.ResourceAttributes).IsNull();
     }
 
     [Test]
-    public async Task DeleteCommand_ResourceId_ShouldUseParentSessionAndCarryTenantAndEventContext()
+    public async Task DeleteCommand_UsesParentSessionAndRequiresPersistedAttributeEnrichment()
     {
         var eventSessionId = Guid.NewGuid();
-        var eventId = Guid.NewGuid();
-        var tenantId = Guid.NewGuid();
-
         ISecureRequest command = new DeleteEventSessionLanguageCommand
         {
             Id = 42,
-            EventSessionId = eventSessionId,
-            TenantId = tenantId,
-            EventId = eventId
+            EventSessionId = eventSessionId
         };
 
         await Assert.That(command.ResourceId).IsEqualTo(eventSessionId.ToString());
-        await Assert.That(command.ResourceAttributes).IsNotNull();
-        await Assert.That(command.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString());
-        await Assert.That(command.ResourceAttributes["eventId"]).IsEqualTo(eventId.ToString());
+        await Assert.That(command.ResourceAttributes).IsNull();
     }
 
     [Test]
-    public async Task UpdateCommand_ResourceId_ShouldUseParentSessionAndCarryTenantAndEventContext()
+    public async Task UpdateCommand_UsesParentSessionAndRequiresPersistedAttributeEnrichment()
     {
         var eventSessionId = Guid.NewGuid();
-        var eventId = Guid.NewGuid();
-        var tenantId = Guid.NewGuid();
-
         ISecureRequest command = new UpdateEventSessionLanguageCommand
         {
             EventSessionLanguageId = 42,
             EventSessionId = eventSessionId,
             ExpectedConcurrencyStamp = Guid.NewGuid(),
-            TenantId = tenantId,
-            EventId = eventId,
             EventSessionLanguageDto = new UpdateEventSessionLanguageDto
             {
                 Language = new UpdateEventSessionLanguageLanguageDto { LanguageId = 2 }
@@ -74,8 +58,6 @@ public class EventSessionLanguageCommandSecurityTests
         };
 
         await Assert.That(command.ResourceId).IsEqualTo(eventSessionId.ToString());
-        await Assert.That(command.ResourceAttributes).IsNotNull();
-        await Assert.That(command.ResourceAttributes!["tenantId"]).IsEqualTo(tenantId.ToString());
-        await Assert.That(command.ResourceAttributes["eventId"]).IsEqualTo(eventId.ToString());
+        await Assert.That(command.ResourceAttributes).IsNull();
     }
 }

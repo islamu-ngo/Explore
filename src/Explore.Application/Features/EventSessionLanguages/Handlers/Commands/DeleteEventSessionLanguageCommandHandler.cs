@@ -25,6 +25,11 @@ public class DeleteEventSessionLanguageCommandHandler : IRequestHandler<DeleteEv
             return false;
         }
 
+        if (eventSessionLanguage.EventSessionId != request.EventSessionId)
+        {
+            return false;
+        }
+
         await _repository.Delete(eventSessionLanguage);
         return true;
     }

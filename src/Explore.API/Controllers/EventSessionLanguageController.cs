@@ -5,12 +5,9 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
-using Explore.Application.Contracts.Infrastructure;
-using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.Features.EventSessionLanguages.Requests.Commands;
 using Explore.Application.Features.EventSessionLanguages.Requests.Queries;
-using Explore.Application.Features.EventSessions.Requests.Queries;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -47,12 +44,10 @@ public class EventSessionLanguageController : ControllerBase
         "If-Match header is required and must contain the current event session language concurrency stamp.");
 
     private readonly IMediator _mediator;
-    private readonly ITenantContext _tenantContext;
 
-    public EventSessionLanguageController(IMediator mediator, ITenantContext tenantContext)
+    public EventSessionLanguageController(IMediator mediator)
     {
         _mediator = mediator;
-        _tenantContext = tenantContext;
     }
 
     [AllowAnonymous]
@@ -86,17 +81,9 @@ public class EventSessionLanguageController : ControllerBase
         [FromBody] CreateEventSessionLanguageDto language,
         CancellationToken cancellationToken = default)
     {
-        var session = await GetSessionOrNullAsync(language.EventSessionId, cancellationToken);
-        if (session is null)
-        {
-            return this.ToNotFoundProblem(EventSessionNotFoundProblem);
-        }
-
         var response = await _mediator.Send(new CreateEventSessionLanguageCommand
         {
-            EventSessionLanguageDto = language,
-            TenantId = _tenantContext.TenantId,
-            EventId = session.EventId
+            EventSessionLanguageDto = language
         }, cancellationToken);
 
         if (!response.Success)
@@ -141,20 +128,12 @@ public class EventSessionLanguageController : ControllerBase
             return this.ToNotFoundProblem(EventSessionLanguageNotFoundProblem);
         }
 
-        var session = await GetSessionOrNullAsync(existing.EventSessionId, cancellationToken);
-        if (session is null)
-        {
-            return this.ToNotFoundProblem(EventSessionNotFoundProblem);
-        }
-
         var response = await _mediator.Send(new UpdateEventSessionLanguageCommand
         {
             EventSessionLanguageId = id,
             EventSessionLanguageDto = language,
             ExpectedConcurrencyStamp = expectedConcurrencyStamp,
-            TenantId = _tenantContext.TenantId,
-            EventSessionId = existing.EventSessionId,
-            EventId = session.EventId
+            EventSessionId = existing.EventSessionId
         }, cancellationToken);
 
         if (!response.Success)
@@ -181,18 +160,10 @@ public class EventSessionLanguageController : ControllerBase
             return this.ToNotFoundProblem(EventSessionLanguageNotFoundProblem);
         }
 
-        var session = await GetSessionOrNullAsync(language.EventSessionId, cancellationToken);
-        if (session is null)
-        {
-            return this.ToNotFoundProblem(EventSessionNotFoundProblem);
-        }
-
         var deleted = await _mediator.Send(new DeleteEventSessionLanguageCommand
         {
             Id = id,
-            EventSessionId = language.EventSessionId,
-            TenantId = _tenantContext.TenantId,
-            EventId = session.EventId
+            EventSessionId = language.EventSessionId
         }, cancellationToken);
 
         if (!deleted)
@@ -201,12 +172,6 @@ public class EventSessionLanguageController : ControllerBase
         }
 
         return NoContent();
-    }
-
-    private async Task<EventSessionDto?> GetSessionOrNullAsync(Guid eventSessionId, CancellationToken cancellationToken)
-    {
-        var session = await _mediator.Send(new GetEventSessionDetailsRequest { Id = eventSessionId }, cancellationToken);
-        return session is not null && session.Id != Guid.Empty ? session : null;
     }
 
     private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
