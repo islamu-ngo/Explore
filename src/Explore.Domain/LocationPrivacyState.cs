@@ -1,0 +1,12 @@
+// ABOUTME: Normalized lookup entity for the physical-location PII lifecycle.
+// ABOUTME: Stable rows distinguish not-provided, active, and erased states.
+
+namespace Explore.Domain;
+
+public sealed class LocationPrivacyState
+{
+    public int Id { get; set; }
+    public required string MasterCode { get; set; }
+    public required string FullName { get; set; }
+    public string? Description { get; set; }
+}
