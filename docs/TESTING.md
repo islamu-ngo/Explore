@@ -39,28 +39,28 @@ Each project has a specific role. Run individually — never use solution-level 
 
 ```bash
 # Unit tests (no infrastructure needed)
-dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
-dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1
+dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1
 
 # Integration tests (requires Docker infrastructure running)
-dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
 
 # Runtime provider tests (requires Docker/Testcontainers)
-dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
-dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=RabbitMQ]" --minimum-expected-tests 1
+dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
+dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=RabbitMQ]" --minimum-expected-tests 1
 
 # BFF integration tests (no infrastructure needed — uses WebApplicationFactory with in-memory services)
-dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet
 
 # UI tests
-dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
 
 # E2E browser tests (manual/nightly only, requires Aspire AppHost infrastructure)
-dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet
 ```
 
 ### Event Lifecycle Focused Verification
@@ -68,12 +68,12 @@ dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETe
 Use these focused commands when changing nullable event-session scheduling, lifecycle transition endpoints, HAL lifecycle affordances, or generated lifecycle API contracts:
 
 ```bash
-dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity minimal --no-restore -maxcpucount:1
-dotnet msbuild Explore.Blazor.Client/Explore.Blazor.Client.csproj /t:GenerateApiClient /p:Configuration=Release /p:Restore=false /m:1 /v:minimal
-dotnet test Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build --treenode-filter "/*/*/GetEventPublishReadinessRequestHandlerTests/*" --minimum-expected-tests 1
-dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --treenode-filter "/*/*/EventsControllerTests/*|/*/*/EventSessionControllerTests/*|/*/*/EventLifecycleHateoasPolicyTests/*" --minimum-expected-tests 1
-dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --treenode-filter "/*/*/EventSessionVisibilityContractTests/*" --minimum-expected-tests 1
-dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --treenode-filter "/*/*/*/*"
+dotnet build src/Explore.API/Explore.API.csproj --configuration Release --verbosity minimal --no-restore -maxcpucount:1
+dotnet msbuild src/Explore.Blazor.Client/Explore.Blazor.Client.csproj /t:GenerateApiClient /p:Configuration=Release /p:Restore=false /m:1 /v:minimal
+dotnet test tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build --treenode-filter "/*/*/GetEventPublishReadinessRequestHandlerTests/*" --minimum-expected-tests 1
+dotnet test tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --treenode-filter "/*/*/EventsControllerTests/*|/*/*/EventSessionControllerTests/*|/*/*/EventLifecycleHateoasPolicyTests/*" --minimum-expected-tests 1
+dotnet test tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --treenode-filter "/*/*/EventSessionVisibilityContractTests/*" --minimum-expected-tests 1
+dotnet test tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --treenode-filter "/*/*/*/*"
 ```
 
 The solution-level build can be blocked by unrelated Blazor WebAssembly task-host issues on local SDK/tooling states where the WebAssembly workload is not installed. For the pinned .NET SDK `10.0.300`, verify the workload with `dotnet workload list` and install the official ASP.NET Core Blazor WebAssembly prerequisite with `dotnet workload install wasm-tools` when Release builds fail in `ComputeWasmBuildAssets`, `Microsoft.NETCore.App.Runtime.Mono.browser-wasm`, or `Microsoft.NET.Sdk.WebAssembly.Pack` resolution. When the change is API/Application/HAL-only, prefer the API project build plus focused tests above and report any broader build blocker separately instead of weakening lifecycle tests.
@@ -83,11 +83,11 @@ The solution-level build can be blocked by unrelated Blazor WebAssembly task-hos
 Use these focused commands when changing support-access domain/session rules, trusted BFF forwarding, HAL affordances, operator console UX, tenant evidence UX, or support-access docs:
 
 ```bash
-dotnet build Explore.Blazor/Explore.Blazor.csproj --configuration Release --no-restore -clp:ErrorsOnly
-dotnet build Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --no-restore -clp:ErrorsOnly
-dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --no-build --treenode-filter "/*/*/BffSupportAccessEndpointsTests/*|/*/*/SupportAccessForwardingHandlerTests/*|/*/*/BffProxyHeaderSanitizerTests/*" --minimum-expected-tests 1
-dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --no-build --treenode-filter "/*/*/SupportAccessClientServiceTests/*|/*/*/TenantSupportAccessEvidenceSectionTests/*" --minimum-expected-tests 1
-dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --treenode-filter "/*/*/SupportAccessApiTests/*" --minimum-expected-tests 1
+dotnet build src/Explore.Blazor/Explore.Blazor.csproj --configuration Release --no-restore -clp:ErrorsOnly
+dotnet build tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --no-restore -clp:ErrorsOnly
+dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --no-build --treenode-filter "/*/*/BffSupportAccessEndpointsTests/*|/*/*/SupportAccessForwardingHandlerTests/*|/*/*/BffProxyHeaderSanitizerTests/*" --minimum-expected-tests 1
+dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --no-build --treenode-filter "/*/*/SupportAccessClientServiceTests/*|/*/*/TenantSupportAccessEvidenceSectionTests/*" --minimum-expected-tests 1
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --treenode-filter "/*/*/SupportAccessApiTests/*" --minimum-expected-tests 1
 ```
 
 Support-access UI tests must assert affordances from HAL `_links`, not local role or claim checks. The tenant evidence view is intentionally read-only; tests should prove it does not render start or force-stop controls and only renders audit drill-in when the session resource contains an `audit-events` link.
@@ -114,13 +114,13 @@ Use TUnit metadata to route tests into the smallest lane that proves the behavio
 Example TUnit filters:
 
 ```bash
-dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Security]"
-dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1
-dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
-dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=RabbitMQ]" --minimum-expected-tests 1
-dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
-dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=E2E]" --minimum-expected-tests 1
-dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Manual]" --minimum-expected-tests 1
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Security]"
+dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1
+dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
+dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=RabbitMQ]" --minimum-expected-tests 1
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
+dotnet test --project tests/Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=E2E]" --minimum-expected-tests 1
+dotnet test --project tests/Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Manual]" --minimum-expected-tests 1
 ```
 
 The nightly E2E runtime workflow intentionally runs the full `Explore.Blazor.Client.E2ETests` project when artifact capture is enabled. Every flow test class under `Explore.Blazor.Client.E2ETests/Flows` is tagged with `[Category("E2E")]`; visual/operator-reviewed browser checks are additionally tagged `[Category("Manual")]` so approval lanes can include or exclude them explicitly.
@@ -209,7 +209,7 @@ dotnet test --project <ProjectPath> --configuration Release -- --report-trx --re
 Run documentation quality checks through the architecture test project:
 
 ```bash
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
 ```
 
 These checks intentionally run as part of the whole project because this repository uses TUnit. Do not use VSTest-style `--filter` for docs checks.
@@ -353,7 +353,7 @@ Respawn resets ALL tables except `__EFMigrationsHistory` and 27 lookup tables.
 | Concern | API Integration Tests | PostgreSQL API Benchmarks |
 |---|---|---|
 | Goal | Prove correctness: status codes, HAL contracts, auth behavior, tenant isolation, migrations, and persistence rules. | Compare endpoint cost through ASP.NET Core `TestServer`, EF Core, Npgsql, and PostgreSQL for performance work. |
-| Runner | TUnit via `dotnet test --project ...`; never solution-level `dotnet test`. | BenchmarkDotNet via `dotnet run --configuration Release --project Event.Benchmarks -- --filter "*ApiEndpointPostgreSqlBenchmarks*"`. |
+| Runner | TUnit via `dotnet test --project ...`; never solution-level `dotnet test`. | BenchmarkDotNet via `dotnet run --configuration Release --project tests/Event.Benchmarks/Event.Benchmarks.csproj -- --filter "*ApiEndpointPostgreSqlBenchmarks*"`. |
 | Database setup | PostgreSQL Testcontainer, `MigrateAsync()`, lookup seeding, Respawn reset per scenario. | PostgreSQL Testcontainer in BenchmarkDotNet `GlobalSetup`, current EF model schema via `EnsureCreatedAsync()`, PostgreSQL model constraints, lookup and benchmark-owned event seed data. |
 | Measured body | Assertions and scenario behavior; setup and assertions are part of the test. | Timed method only sends the HTTP request and reads the response; container start, schema creation, and seeding are outside measured iterations. |
 | Caching/auth | Uses profile-specific auth, Cerbos, rate-limit, and reset conventions according to the test purpose. | Uses benchmark auth and allow-all authorization; PostgreSQL suite disables output-cache replay with a no-op store so controller/MediatR/EF/Npgsql/PostgreSQL work remains visible. |
@@ -420,7 +420,7 @@ Snapshot rules:
 Run focused snapshot tests with TUnit tree filters. Example:
 
 ```bash
-dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj \
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj \
   --configuration Release --no-build \
   --treenode-filter "/*/*/*/EventList_AnonymousContract_MatchesSnapshot" \
   --minimum-expected-tests 1

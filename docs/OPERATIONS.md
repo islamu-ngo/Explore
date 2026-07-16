@@ -57,7 +57,7 @@ bundle contents, and TMS secrets must never be emitted as metric tags.
 `Explore.Diagnostic` includes a read-only doctor CLI for self-hosting and local-environment preflight checks:
 
 ```bash
-dotnet run --project Explore.Diagnostic/Explore.Diagnostic.csproj -- --root .
+dotnet run --project src/Explore.Diagnostic/Explore.Diagnostic.csproj -- --root .
 ```
 
 The doctor prints deterministic `PASS`, `WARN`, and `FAIL` results with remediation links. It exits `0` when all checks are `PASS` or `WARN`, and exits `1` when any check is `FAIL`.
@@ -91,7 +91,7 @@ Sensitive values are redacted before output. Do not add checks that print raw co
 Contributor default:
 
 ```bash
-aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
+aspire run --apphost src/Explore.AppHost/Explore.AppHost.csproj
 ```
 
 Install the Aspire CLI first if `aspire` is missing:
@@ -105,15 +105,15 @@ curl -sSL https://aspire.dev/install.sh | bash
 Foreground isolated run for repeatable local launch proof:
 
 ```bash
-aspire run --apphost Explore.AppHost/Explore.AppHost.csproj --isolated
+aspire run --apphost src/Explore.AppHost/Explore.AppHost.csproj --isolated
 ```
 
 For concurrent worktrees or repeated local proofs, isolate the Aspire run and discover ports from Aspire resource metadata in another shell while the foreground run is alive:
 
 ```bash
 aspire ps --format Json
-aspire describe explore-api --apphost Explore.AppHost/Explore.AppHost.csproj --format Json
-aspire describe mailpit --apphost Explore.AppHost/Explore.AppHost.csproj --format Json
+aspire describe explore-api --apphost src/Explore.AppHost/Explore.AppHost.csproj --format Json
+aspire describe mailpit --apphost src/Explore.AppHost/Explore.AppHost.csproj --format Json
 ```
 
 Detached Aspire commands remain useful for CLI lifecycle investigation, but they are not the current canonical launch proof path for this workspace. Official Aspire CLI documentation says `aspire start` starts an AppHost in the background and leaves it inspectable with `aspire ps`, `aspire describe`, `aspire logs`, and `aspire stop`. On 2026-07-04, local Aspire CLI `13.4.6` repeatedly returned detached startup JSON after AppHost readiness, then the AppHost process disappeared and `aspire ps --format Json` returned `[]`. If that reproduces, use the foreground `aspire run --isolated` path above and inspect the detached child log under `~/.aspire/logs/`.
@@ -121,18 +121,18 @@ Detached Aspire commands remain useful for CLI lifecycle investigation, but they
 Maintainer modes:
 
 ```bash
-ISLAMU_ASPIRE_MODE=FullLocal aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
-ISLAMU_ASPIRE_MODE=LocalDataExternalPlatform aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
-ISLAMU_ASPIRE_MODE=ExternalInfra aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
+ISLAMU_ASPIRE_MODE=FullLocal aspire run --apphost src/Explore.AppHost/Explore.AppHost.csproj
+ISLAMU_ASPIRE_MODE=LocalDataExternalPlatform aspire run --apphost src/Explore.AppHost/Explore.AppHost.csproj
+ISLAMU_ASPIRE_MODE=ExternalInfra aspire run --apphost src/Explore.AppHost/Explore.AppHost.csproj
 ```
 
 Launch profiles remain available through `dotnet run` for IDEs and compatibility:
 
 ```bash
-dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile https
-dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-full
-dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-core
-dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-lite
+dotnet run --project src/Explore.AppHost/Explore.AppHost.csproj --launch-profile https
+dotnet run --project src/Explore.AppHost/Explore.AppHost.csproj --launch-profile local-full
+dotnet run --project src/Explore.AppHost/Explore.AppHost.csproj --launch-profile local-core
+dotnet run --project src/Explore.AppHost/Explore.AppHost.csproj --launch-profile local-lite
 ```
 
 The `https` profile is the intuitive full-local alias for contributors who are used to the standard ASP.NET launch profile name.
@@ -385,7 +385,7 @@ MCP recovery and operator actions:
 MCP local debugging, Inspector, and redacted contract smoke:
 - The full local debug and client-smoke runbook is [MCP_DEBUGGING.md](MCP_DEBUGGING.md). It includes Debug-build startup, redacted `.vscode/mcp.json`/`.mcp.json` templates, Inspector, GitHub Copilot Agent Mode, JSON-RPC fallback, and compatibility gates.
 - First run the deterministic replay report. This is the CI-safe contract check and uses no live provider credentials:
-  `dotnet run --project Explore.Diagnostic/Explore.Diagnostic.csproj --configuration Release --no-restore -- ai-replay-report --output /tmp/explore-ai-replay-mcp-inspector`
+  `dotnet run --project src/Explore.Diagnostic/Explore.Diagnostic.csproj --configuration Release --no-restore -- ai-replay-report --output /tmp/explore-ai-replay-mcp-inspector`
 - Use MCP Inspector only for manual local/staging smoke against fake or disposable data. Current MCP docs start Inspector with `npx -y @modelcontextprotocol/inspector`; connect it to the API's Streamable HTTP URL, for example `https://<redacted-host>/mcp`.
 - Configure `X-API-Key: <redacted-api-key>` for normal scoped machine smoke, leave credentials blank for anonymous-safe discovery, or use `Authorization: Bearer <redacted-token>` only for user-delegated local smoke. For multi-tenant routing, use the same trusted tenant binding as normal API traffic, such as host/subdomain routing or `X-Tenant-Slug: <redacted-tenant-slug>`. Do not mix bearer and API-key credentials in one request.
 - Discovery checklist: initialize the connection, then list tools, resources, resource templates, and prompts. Anonymous or invalid-key tool surface is `list_ai_tool_contracts`, `search_public_events`, `get_public_event`, `get_public_event_program_summary`, and `list_public_event_sessions` only; a valid key with `mcp:read` plus event read-equivalent scope can also expose protected event-management reads such as `list_my_events`, `get_event_creation_context`, `get_event_publish_readiness`, `event_management_context`, and the Phase 5 program/custom-property/registration/team/template/sync context tools. Generic MCP read resources such as `ai_conversations` still require MCP read scope, while proposal tools/prompts require `mcp:propose`.
@@ -406,14 +406,14 @@ MCP protocol/client compatibility reviews:
 
 Advisory AI evaluation reports:
 - Generate deterministic ATCR evaluation evidence with:
-  `dotnet run --project Explore.Diagnostic/Explore.Diagnostic.csproj --configuration Release -- ai-eval-report --output artifacts/ai-evaluation`
+  `dotnet run --project src/Explore.Diagnostic/Explore.Diagnostic.csproj --configuration Release -- ai-eval-report --output artifacts/ai-evaluation`
 - The report is intentionally advisory and non-gating. It covers tool proposal correctness, refusal/safety behavior, prompt-injection resistance, selected-reference groundedness metadata, MCP proposal-flow posture, and event-draft regression using local fake/deterministic checks, so normal CI and operator smoke tests do not require live AI provider credentials or model calls.
 - JSON and Markdown artifacts must stay redacted. They may include scenario codes, dimensions, status, summaries, and recommendations, but not prompts, provider responses, selected-reference content beyond deterministic fixture labels, raw tool payloads, tenant/user identifiers, endpoint URLs, API keys, model secrets, or raw exceptions.
 - Treat report drift as trend evidence first. Do not promote model-scored or live-provider evaluation checks to hard CI gates until cost, cache stability, false-positive behavior, and provider volatility are reviewed.
 
 Fake/replay AI usability reports:
 - Generate deterministic assistant/MCP proposal-flow evidence with:
-  `dotnet run --project Explore.Diagnostic/Explore.Diagnostic.csproj --configuration Release -- ai-replay-report --output artifacts/ai-replay`
+  `dotnet run --project src/Explore.Diagnostic/Explore.Diagnostic.csproj --configuration Release -- ai-replay-report --output artifacts/ai-replay`
 - The report is suitable for normal CI because it uses local fake/replay checks only. It validates assistant rail catalog + plan-preview readiness, MCP Inspector discovery checklist posture, projected MCP tool selection, MCP proposal-first/confirmation-required behavior, missing-HAL blocking, and safe recovery metadata without live provider credentials, screenshots with user content, or database writes.
 - The command exits non-zero if a replay scenario fails, a live-provider credential path is used, content-bearing artifacts are detected, or database side effects are detected.
 - JSON and Markdown artifacts may include scenario codes, failure classes, pass rates, redacted diagnostics, and artifact paths. They must not include prompts, provider responses, selected-reference content, raw tool payloads, tenant/user identifiers, endpoint URLs, API keys, model secrets, or raw exception bodies.
@@ -645,9 +645,9 @@ DLQ replay is opt-in with `EmailDispatchRabbitMq:DeadLetterReplayEnabled=true`. 
 Operational verification commands:
 
 ```bash
-dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
-dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=RabbitMQ]" --minimum-expected-tests 1
-dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
+dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
+dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=RabbitMQ]" --minimum-expected-tests 1
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
 ```
 
 Use the first command for SMTP/Mailpit/Basic Dispatch runtime evidence, the second for optional RabbitMQ topology/publish/consumer/DLQ evidence, and the third for API health, scheduler wrapper, and HAL-gated operator contract evidence.

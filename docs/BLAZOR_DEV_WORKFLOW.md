@@ -22,7 +22,7 @@ Start-Sleep -Seconds 2
 dotnet build --configuration Release --verbosity quiet
 
 # 3. Start the Aspire AppHost (launches all child services)
-Start-Process -FilePath "dotnet" -ArgumentList "run","--project","Explore.AppHost" -WorkingDirectory "C:\ISLAMU\GitHub\Event" -WindowStyle Hidden
+Start-Process -FilePath "dotnet" -ArgumentList "run","--project","src/Explore.AppHost/Explore.AppHost.csproj" -WorkingDirectory "C:\ISLAMU\GitHub\Event" -WindowStyle Hidden
 
 # 4. Wait for the site to be ready (~15-20 seconds)
 Start-Sleep -Seconds 20
