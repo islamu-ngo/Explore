@@ -20,14 +20,129 @@ public sealed record EventLocationDisclosureDerivativeValues(
     string? MapUrl,
     string? Geohash);
 
+public enum EventLocationDisclosureAuthorityKind
+{
+    Public = 1,
+    AttendeeRegistration = 2,
+    Management = 3
+}
+
+public sealed class EventLocationDisclosureAuthorityFact
+{
+    private EventLocationDisclosureAuthorityFact(
+        EventLocationDisclosureAuthorityKind kind,
+        EventLocationDisclosurePurpose purpose,
+        Guid? requesterUserId,
+        Guid tenantId,
+        Guid eventId,
+        Guid eventLocationId,
+        EventLocationRegistrationAccess? registrationAccess)
+    {
+        Kind = kind;
+        Purpose = purpose;
+        RequesterUserId = requesterUserId;
+        TenantId = tenantId;
+        EventId = eventId;
+        EventLocationId = eventLocationId;
+        RegistrationAccess = registrationAccess;
+    }
+
+    public EventLocationDisclosureAuthorityKind Kind { get; }
+    public EventLocationDisclosurePurpose Purpose { get; }
+    public Guid? RequesterUserId { get; }
+    public Guid TenantId { get; }
+    public Guid EventId { get; }
+    public Guid EventLocationId { get; }
+    public EventLocationRegistrationAccess? RegistrationAccess { get; }
+
+    internal static EventLocationDisclosureAuthorityFact ForPublic(
+        Guid tenantId,
+        Guid eventId,
+        Guid eventLocationId)
+        => Create(
+            EventLocationDisclosureAuthorityKind.Public,
+            EventLocationDisclosurePurpose.Public,
+            null,
+            tenantId,
+            eventId,
+            eventLocationId,
+            null);
+
+    internal static EventLocationDisclosureAuthorityFact ForAttendee(
+        Guid requesterUserId,
+        Guid tenantId,
+        Guid eventId,
+        Guid eventLocationId,
+        EventLocationRegistrationAccess registrationAccess)
+    {
+        ArgumentNullException.ThrowIfNull(registrationAccess);
+        if (registrationAccess.EventId != eventId
+            || registrationAccess.RequestedEventLocationId != eventLocationId)
+        {
+            throw new ArgumentException(
+                "Registration access must match the scoped EventLocation authority.",
+                nameof(registrationAccess));
+        }
+
+        return Create(
+            EventLocationDisclosureAuthorityKind.AttendeeRegistration,
+            EventLocationDisclosurePurpose.Attendee,
+            requesterUserId,
+            tenantId,
+            eventId,
+            eventLocationId,
+            registrationAccess);
+    }
+
+    internal static EventLocationDisclosureAuthorityFact ForManagement(
+        Guid requesterUserId,
+        Guid tenantId,
+        Guid eventId,
+        Guid eventLocationId)
+        => Create(
+            EventLocationDisclosureAuthorityKind.Management,
+            EventLocationDisclosurePurpose.Management,
+            requesterUserId,
+            tenantId,
+            eventId,
+            eventLocationId,
+            null);
+
+    private static EventLocationDisclosureAuthorityFact Create(
+        EventLocationDisclosureAuthorityKind kind,
+        EventLocationDisclosurePurpose purpose,
+        Guid? requesterUserId,
+        Guid tenantId,
+        Guid eventId,
+        Guid eventLocationId,
+        EventLocationRegistrationAccess? registrationAccess)
+    {
+        if (tenantId == Guid.Empty
+            || eventId == Guid.Empty
+            || eventLocationId == Guid.Empty
+            || requesterUserId == Guid.Empty)
+        {
+            throw new ArgumentException("Scoped disclosure authority requires non-empty identifiers.");
+        }
+
+        return new(
+            kind,
+            purpose,
+            requesterUserId,
+            tenantId,
+            eventId,
+            eventLocationId,
+            registrationAccess);
+    }
+}
+
 public sealed record EventLocationDisclosureEvaluationFacts(
     EventLocationDisclosureRequest Request,
     EventLocation? EventLocation,
     Location? Location,
     LocationRoom? Room,
     EventLocationDisclosureGovernanceFact Governance,
-    EventLocationRegistrationAccess? RegistrationAccess,
-    bool IsManagementAuthorized,
+    EventLocationDisclosureAuthorityFact? Authority,
     DateTimeOffset ServerNowUtc,
     EventLocationDisclosureDerivativeValues? Derivatives);
 
@@ -48,6 +163,12 @@ public sealed class EventLocationDisclosureEvaluator
 
         var eventLocation = facts.EventLocation!;
         var isToBeAnnounced = eventLocation.IsToBeAnnounced;
+        if (isToBeAnnounced
+            && (request.RoomId.HasValue || facts.Room is not null))
+        {
+            return Unavailable(request);
+        }
+
         if (!isToBeAnnounced
             && (!HasValidPhysicalSource(request, eventLocation, facts.Location, facts.Room)
                 || !HasUsablePrivacyState(facts.Location!)))
@@ -133,7 +254,7 @@ public sealed class EventLocationDisclosureEvaluator
                 values),
             EventLocationDisclosurePurpose.Management => EventLocationDisclosureResult.Management(
                 request.EventLocationId,
-                location.Id,
+                location!.Id,
                 EventLocationDisclosureState.Available,
                 values),
             _ => Hidden(request)
@@ -173,7 +294,7 @@ public sealed class EventLocationDisclosureEvaluator
 
         if (request.RoomId is not { } roomId)
         {
-            return true;
+            return room is null;
         }
 
         return room is not null
@@ -208,17 +329,35 @@ public sealed class EventLocationDisclosureEvaluator
         EventLocation eventLocation,
         EventLocationDisclosureEvaluationFacts facts)
     {
+        var authority = facts.Authority;
+        if (authority is null
+            || !Enum.IsDefined(authority.Kind)
+            || authority.Purpose != request.Purpose
+            || authority.TenantId != request.TenantId
+            || authority.EventId != request.EventId
+            || authority.EventLocationId != request.EventLocationId)
+        {
+            return false;
+        }
+
         return request.Purpose switch
         {
-            EventLocationDisclosurePurpose.Public => true,
+            EventLocationDisclosurePurpose.Public =>
+                authority.Kind == EventLocationDisclosureAuthorityKind.Public
+                && authority.RequesterUserId is null
+                && authority.RegistrationAccess is null,
             EventLocationDisclosurePurpose.Attendee =>
                 request.RequesterUserId is { } requesterId
                 && requesterId != Guid.Empty
-                && HasMatchingRegistrationAccess(facts.RegistrationAccess, eventLocation),
+                && authority.Kind == EventLocationDisclosureAuthorityKind.AttendeeRegistration
+                && authority.RequesterUserId == requesterId
+                && HasMatchingRegistrationAccess(authority.RegistrationAccess, eventLocation),
             EventLocationDisclosurePurpose.Management =>
                 request.RequesterUserId is { } requesterId
                 && requesterId != Guid.Empty
-                && facts.IsManagementAuthorized,
+                && authority.Kind == EventLocationDisclosureAuthorityKind.Management
+                && authority.RequesterUserId == requesterId
+                && authority.RegistrationAccess is null,
             _ => false
         };
     }
@@ -255,7 +394,8 @@ public sealed class EventLocationDisclosureEvaluator
             return true;
         }
 
-        if (facts.RegistrationAccess is null
+        var registrationAccess = facts.Authority?.RegistrationAccess;
+        if (registrationAccess is null
             || !Enum.IsDefined((LocationDisclosureAudienceEnum)eventLocation.FullDetailsAudienceId))
         {
             return false;
@@ -269,7 +409,7 @@ public sealed class EventLocationDisclosureEvaluator
                 facts.Governance.MinimumHomeAudience);
         }
 
-        return facts.RegistrationAccess.AllowsAudience(requiredAudience);
+        return registrationAccess.AllowsAudience(requiredAudience);
     }
 
     private static bool RevealGateIsOpen(DateTime? revealFromUtc, DateTimeOffset serverNowUtc)

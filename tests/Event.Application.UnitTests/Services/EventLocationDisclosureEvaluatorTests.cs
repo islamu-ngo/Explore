@@ -34,6 +34,7 @@ public sealed class EventLocationDisclosureEvaluatorTests
             placement: placement,
             location: null,
             room: null,
+            includeRoom: false,
             accessState: purpose == EventLocationDisclosurePurpose.Attendee
                 ? EventLocationRegistrationEffectiveState.Confirmed
                 : null,
@@ -58,6 +59,7 @@ public sealed class EventLocationDisclosureEvaluatorTests
         var result = _evaluator.Evaluate(CreateFacts(
             purpose: purpose,
             placement: placement,
+            includeRoom: false,
             access: null,
             managerAuthorized: false));
 
@@ -99,6 +101,71 @@ public sealed class EventLocationDisclosureEvaluatorTests
             await Assert.That(result.DisclosedFields).IsEmpty();
             await Assert.That(result.LocationId).IsNull();
         }
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    [Arguments(EventLocationDisclosurePurpose.Public)]
+    [Arguments(EventLocationDisclosurePurpose.Management)]
+    public async Task Evaluate_UnrequestedRoomFact_IsRejectedForPublicAndManagement(
+        EventLocationDisclosurePurpose purpose)
+    {
+        var facts = CreateFacts(
+            purpose: purpose,
+            includeRoom: false,
+            managerAuthorized: purpose == EventLocationDisclosurePurpose.Management);
+        var forgedRoom = CreateRoom(facts.Location!);
+
+        var result = _evaluator.Evaluate(facts with { Room = forgedRoom });
+
+        await Assert.That(result.Values).IsNull();
+        await Assert.That(result.DisclosedFields).IsEmpty();
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    [Arguments(EventLocationDisclosurePurpose.Public)]
+    [Arguments(EventLocationDisclosurePurpose.Management)]
+    public async Task Evaluate_CrossTenantOrCrossLocationRoom_IsRejectedForPublicAndManagement(
+        EventLocationDisclosurePurpose purpose)
+    {
+        var facts = CreateFacts(
+            purpose: purpose,
+            managerAuthorized: purpose == EventLocationDisclosurePurpose.Management);
+        var crossTenant = CreateRoom(facts.Location!);
+        crossTenant.TenantId = Guid.CreateVersion7();
+        var crossLocation = CreateRoom(facts.Location!, Guid.CreateVersion7());
+
+        foreach (var room in new[] { crossTenant, crossLocation })
+        {
+            var result = _evaluator.Evaluate(facts with
+            {
+                Request = facts.Request with { RoomId = room.Id },
+                Room = room
+            });
+
+            await Assert.That(result.Values).IsNull();
+            await Assert.That(result.DisclosedFields).IsEmpty();
+        }
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task Evaluate_DeletedOrTombstonedRoom_IsRejectedForManagement()
+    {
+        var facts = CreateFacts(
+            purpose: EventLocationDisclosurePurpose.Management,
+            managerAuthorized: true);
+        var deletedRoom = CreateRoom(facts.Location!);
+        deletedRoom.IsDeleted = true;
+
+        var result = _evaluator.Evaluate(facts with
+        {
+            Request = facts.Request with { RoomId = deletedRoom.Id },
+            Room = deletedRoom
+        });
+
+        await Assert.That(result.Values).IsNull();
     }
 
     [Test]
@@ -235,7 +302,17 @@ public sealed class EventLocationDisclosureEvaluatorTests
 
         foreach (var access in new[] { validAccess, otherAccess })
         {
-            var facts = validFacts with { RegistrationAccess = access };
+            var facts = validFacts with
+            {
+                Authority = CreateAuthority(
+                    EventLocationDisclosureAuthorityKind.AttendeeRegistration,
+                    EventLocationDisclosurePurpose.Attendee,
+                    RequesterId,
+                    TenantId,
+                    EventId,
+                    validFacts.EventLocation!.Id,
+                    access)
+            };
             if (ReferenceEquals(access, validAccess))
             {
                 facts = facts with { Request = facts.Request with { EventId = Guid.CreateVersion7() } };
@@ -244,6 +321,116 @@ public sealed class EventLocationDisclosureEvaluatorTests
             var result = _evaluator.Evaluate(facts);
             await Assert.That(result.Values).IsNull();
         }
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task Evaluate_AttendeeAuthorityForAlice_CannotBeSubstitutedForBob()
+    {
+        var aliceFacts = CreateFacts(
+            purpose: EventLocationDisclosurePurpose.Attendee,
+            accessState: EventLocationRegistrationEffectiveState.Confirmed);
+
+        var result = _evaluator.Evaluate(aliceFacts with
+        {
+            Request = aliceFacts.Request with { RequesterUserId = Guid.CreateVersion7() }
+        });
+
+        await Assert.That(result.State).IsEqualTo(EventLocationDisclosureState.Hidden);
+        await Assert.That(result.Values).IsNull();
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task Evaluate_ManagementAuthorityMustMatchEveryScopedDimension()
+    {
+        var facts = CreateFacts(
+            purpose: EventLocationDisclosurePurpose.Management,
+            managerAuthorized: true);
+        EventLocationDisclosureAuthorityFact[] substitutions =
+        [
+            CreateAuthority(
+                EventLocationDisclosureAuthorityKind.Management,
+                EventLocationDisclosurePurpose.Management,
+                Guid.CreateVersion7(),
+                TenantId,
+                EventId,
+                facts.EventLocation!.Id,
+                null),
+            CreateAuthority(
+                EventLocationDisclosureAuthorityKind.Management,
+                EventLocationDisclosurePurpose.Management,
+                RequesterId,
+                Guid.CreateVersion7(),
+                EventId,
+                facts.EventLocation.Id,
+                null),
+            CreateAuthority(
+                EventLocationDisclosureAuthorityKind.Management,
+                EventLocationDisclosurePurpose.Management,
+                RequesterId,
+                TenantId,
+                Guid.CreateVersion7(),
+                facts.EventLocation.Id,
+                null),
+            CreateAuthority(
+                EventLocationDisclosureAuthorityKind.Management,
+                EventLocationDisclosurePurpose.Management,
+                RequesterId,
+                TenantId,
+                EventId,
+                Guid.CreateVersion7(),
+                null)
+        ];
+
+        foreach (var substitution in substitutions)
+        {
+            var result = _evaluator.Evaluate(facts with { Authority = substitution });
+            await Assert.That(result.State).IsEqualTo(EventLocationDisclosureState.Hidden);
+            await Assert.That(result.Values).IsNull();
+        }
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task Evaluate_NullOrUnknownAuthorityFact_FailsClosed()
+    {
+        var facts = CreateFacts(
+            purpose: EventLocationDisclosurePurpose.Management,
+            managerAuthorized: true);
+        var unknown = CreateAuthority(
+            (EventLocationDisclosureAuthorityKind)999,
+            EventLocationDisclosurePurpose.Management,
+            RequesterId,
+            TenantId,
+            EventId,
+            facts.EventLocation!.Id,
+            null);
+
+        foreach (var authority in new EventLocationDisclosureAuthorityFact?[] { null, unknown })
+        {
+            var result = _evaluator.Evaluate(facts with { Authority = authority });
+            await Assert.That(result.State).IsEqualTo(EventLocationDisclosureState.Hidden);
+            await Assert.That(result.Values).IsNull();
+        }
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task AuthorityFact_HasNoPublicConstructionFactoryOrMutationSurface()
+    {
+        var type = typeof(EventLocationDisclosureAuthorityFact);
+        var publicFactories = type.GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Where(method => method.ReturnType == type)
+            .ToArray();
+        var writableProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(property => property.SetMethod is not null)
+            .ToArray();
+
+        await Assert.That(type.IsSealed).IsTrue();
+        await Assert.That(type.GetConstructors()).IsEmpty();
+        await Assert.That(publicFactories).IsEmpty();
+        await Assert.That(writableProperties).IsEmpty();
     }
 
     [Test]
@@ -502,6 +689,7 @@ public sealed class EventLocationDisclosureEvaluatorTests
         Location? location = null,
         LocationRoom? room = null,
         Guid? roomId = null,
+        bool includeRoom = true,
         EventLocationDisclosureFields fields = EventLocationDisclosureFields.All,
         LocationDisclosureAudienceEnum audience = LocationDisclosureAudienceEnum.ConfirmedParticipant,
         DateTimeOffset? revealFromUtc = null,
@@ -522,12 +710,40 @@ public sealed class EventLocationDisclosureEvaluatorTests
             audience: audience,
             revealFromUtc: revealFromUtc,
             needsPrivacyReview: false);
-        room ??= CreateRoom(location);
-        var effectiveRoomId = roomId ?? room?.Id;
+        room = includeRoom ? room ?? CreateRoom(location) : null;
+        var effectiveRoomId = includeRoom ? roomId ?? room?.Id : roomId;
         Guid? requesterId = purpose == EventLocationDisclosurePurpose.Public ? null : RequesterId;
         access ??= accessState.HasValue
             ? CreateAccessForPlacement(accessState.Value, EventId, placement.Id)
             : null;
+        EventLocationDisclosureAuthorityFact? authority = purpose switch
+        {
+            EventLocationDisclosurePurpose.Public => CreateAuthority(
+                EventLocationDisclosureAuthorityKind.Public,
+                purpose,
+                null,
+                TenantId,
+                EventId,
+                placement.Id,
+                null),
+            EventLocationDisclosurePurpose.Attendee when access is not null => CreateAuthority(
+                EventLocationDisclosureAuthorityKind.AttendeeRegistration,
+                purpose,
+                requesterId,
+                TenantId,
+                EventId,
+                placement.Id,
+                access),
+            EventLocationDisclosurePurpose.Management when managerAuthorized => CreateAuthority(
+                EventLocationDisclosureAuthorityKind.Management,
+                purpose,
+                requesterId,
+                TenantId,
+                EventId,
+                placement.Id,
+                null),
+            _ => null
+        };
         return new(
             new EventLocationDisclosureRequest(
                 TenantId,
@@ -545,10 +761,33 @@ public sealed class EventLocationDisclosureEvaluatorTests
                 allowPublicExactAddress,
                 allowPublicCoordinates,
                 minimumHomeAudience),
-            access,
-            managerAuthorized,
+            authority,
             serverNowUtc ?? Now,
             derivatives);
+    }
+
+    private static EventLocationDisclosureAuthorityFact CreateAuthority(
+        EventLocationDisclosureAuthorityKind kind,
+        EventLocationDisclosurePurpose purpose,
+        Guid? requesterUserId,
+        Guid tenantId,
+        Guid eventId,
+        Guid eventLocationId,
+        EventLocationRegistrationAccess? registrationAccess)
+    {
+        var constructor = typeof(EventLocationDisclosureAuthorityFact)
+            .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic)
+            .Single();
+        return (EventLocationDisclosureAuthorityFact)constructor.Invoke(
+        [
+            kind,
+            purpose,
+            requesterUserId,
+            tenantId,
+            eventId,
+            eventLocationId,
+            registrationAccess
+        ]);
     }
 
     private static EventLocation CreatePlacement(
