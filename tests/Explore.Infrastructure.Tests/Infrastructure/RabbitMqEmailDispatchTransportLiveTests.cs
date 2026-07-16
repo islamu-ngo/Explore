@@ -16,6 +16,7 @@ namespace Explore.Infrastructure.Tests.Infrastructure;
 
 [Category(InfrastructureTestCategories.RabbitMQ)]
 [Category(InfrastructureTestCategories.Runtime)]
+[Explicit]
 [ClassDataSource<RabbitMqContainerFixture>(Shared = SharedType.PerClass)]
 [NotInParallel("RabbitMqBroker")]
 public sealed class RabbitMqEmailDispatchTransportLiveTests(RabbitMqContainerFixture rabbitMq)

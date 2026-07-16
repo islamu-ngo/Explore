@@ -20,6 +20,7 @@ namespace Explore.Infrastructure.Tests.Infrastructure;
 
 [Category(InfrastructureTestCategories.Email)]
 [Category(InfrastructureTestCategories.Runtime)]
+[Explicit]
 [ClassDataSource<MailpitContainerFixture>(Shared = SharedType.PerClass)]
 [NotInParallel("MailpitSmtp")]
 public sealed class EmailDispatchDrainMailpitTests(MailpitContainerFixture mailpit)

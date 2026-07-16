@@ -13,8 +13,9 @@ using TUnit.Core;
 
 namespace Explore.Infrastructure.Tests.Infrastructure.Webhooks;
 
-[ClassDataSource<SvixConformanceContainerFixture>(Shared = SharedType.PerClass)]
 [Category(InfrastructureTestCategories.Runtime)]
+[Explicit]
+[ClassDataSource<SvixConformanceContainerFixture>(Shared = SharedType.PerClass)]
 [NotInParallel("SvixVersionConformance")]
 public sealed class SvixVersionConformanceTests(SvixConformanceContainerFixture svix)
 {

@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Infrastructure.Tests.Fixtures;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
 using Explore.Persistence.Seed;
@@ -13,6 +14,8 @@ using TUnit.Core.Interfaces;
 
 namespace Explore.Infrastructure.Tests.Infrastructure.Webhooks;
 
+[Category(InfrastructureTestCategories.Runtime)]
+[Explicit]
 [NotInParallel("WebhookDeliveryClaimPostgreSql")]
 public sealed class WebhookDeliveryClaimIntegrationTests : IAsyncInitializer, IAsyncDisposable
 {

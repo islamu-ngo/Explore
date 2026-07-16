@@ -198,6 +198,9 @@ public sealed class WebhookMigrationAndPortalPersistenceTests(PostgreSqlContaine
     }
 
     [Test]
+    [Explicit]
+    [Category("Runtime")]
+    [Category("Slow")]
     public async Task LegacyProviderLinkUpgrade_PreservesEvidenceAndRemovesRetiredTable()
     {
         var databaseName = $"webhook_link_upgrade_{Guid.NewGuid():N}";

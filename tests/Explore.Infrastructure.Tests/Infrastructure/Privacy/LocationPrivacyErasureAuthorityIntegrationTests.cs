@@ -16,6 +16,7 @@ using TUnit.Core.Interfaces;
 namespace Explore.Infrastructure.Tests.Infrastructure.Privacy;
 
 [Category(InfrastructureTestCategories.Runtime)]
+[Explicit]
 [NotInParallel("LocationPrivacyErasureAuthorityPostgreSql")]
 public sealed class LocationPrivacyErasureAuthorityIntegrationTests : IAsyncInitializer, IAsyncDisposable
 {

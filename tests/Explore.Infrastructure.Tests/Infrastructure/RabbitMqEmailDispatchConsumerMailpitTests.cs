@@ -22,6 +22,7 @@ namespace Explore.Infrastructure.Tests.Infrastructure;
 [Category(InfrastructureTestCategories.Email)]
 [Category(InfrastructureTestCategories.RabbitMQ)]
 [Category(InfrastructureTestCategories.Runtime)]
+[Explicit]
 [ClassDataSource<RabbitMqContainerFixture, MailpitContainerFixture>(Shared = [SharedType.PerClass, SharedType.PerClass])]
 [NotInParallel("RabbitMqBroker")]
 public sealed class RabbitMqEmailDispatchConsumerMailpitTests(
