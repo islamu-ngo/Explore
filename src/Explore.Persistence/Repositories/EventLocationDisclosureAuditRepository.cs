@@ -5,12 +5,15 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Explore.Persistence.Repositories;
 
 public sealed class EventLocationDisclosureAuditRepository(ExploreDbContext dbContext)
     : IEventLocationDisclosureAuditRepository
 {
+    private const string PolicyVersionUniqueIndexName = "ux_event_location_disclosure_audits_policy_version";
+
     public async Task<EventLocationDisclosureAudit> AppendAsync(
         EventLocationDisclosureAudit audit,
         CancellationToken cancellationToken)
@@ -60,7 +63,24 @@ public sealed class EventLocationDisclosureAuditRepository(ExploreDbContext dbCo
         }
 
         dbContext.EventLocationDisclosureAudits.Add(audit);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: PolicyVersionUniqueIndexName
+        })
+        {
+            throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "The EventLocation disclosure policy was modified by another request. Reload and retry.",
+                nameof(EventLocation),
+                audit.EventLocationId.ToString(),
+                exception);
+        }
+
         return audit;
     }
 
