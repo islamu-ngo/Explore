@@ -16,7 +16,7 @@ public static class EventLocationPrivacyMigrationStage
 
     internal const string ExpandMigration = "20260716132239_AddEventLocationPrivacyExpand";
     internal const string BackfillMigration = "BackfillUnclassifiedEventLocations";
-    internal const string ContractMigration = "ContractEventLocationPrivacy";
+    internal const string ContractMigration = "ValidateAndContractEventLocationPrivacy";
 
     public static async Task MigrateAsync(
         ExploreDbContext db,

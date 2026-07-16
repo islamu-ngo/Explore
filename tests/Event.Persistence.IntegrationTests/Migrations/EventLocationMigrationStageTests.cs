@@ -31,8 +31,11 @@ public sealed class EventLocationMigrationStageTests(PostgreSqlContainerFixture 
         {
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 EventLocationPrivacyMigrationStage.MigrateAsync(context, null));
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                EventLocationPrivacyMigrationStage.MigrateAsync(context, "Contract"));
 
             await EventLocationPrivacyMigrationStage.MigrateAsync(context, "Expand");
+            await EventLocationPrivacyMigrationStage.MigrateAsync(context, null);
 
             string[] applied = (await context.Database.GetAppliedMigrationsAsync()).ToArray();
             await Assert.That(applied).Contains(EventLocationPrivacyMigrationStage.ExpandMigration);
