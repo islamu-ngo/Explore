@@ -1,21 +1,11 @@
 // ABOUTME: Component tests for the public Home page shell and public-experience rendering.
-// ABOUTME: Verifies authentication states, organization-centric projection, and encoded rich text.
+// ABOUTME: Verifies discovery parity, organization-centric projection, and encoded rich text.
 
 using Explore.Blazor.Client.Pages;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages;
 
-/// <summary>
-/// Component tests for Home page.
-/// Tests authentication state handling and conditional rendering.
-/// </summary>
-/// <remarks>
-/// Home page has three states:
-/// 1. Loading - Shows skeleton placeholders while checking auth
-/// 2. Authenticated - Shows LandingPageForUsers
-/// 3. Anonymous - Shows LandingPageForNonUsers
-/// </remarks>
 public class HomeTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
@@ -30,55 +20,32 @@ public class HomeTests : IDisposable
         _ctx.Dispose();
     }
 
-    #region Authentication State Tests
+    #region Discovery State Tests
 
     [Test]
-    public async Task Home_ShowsLoadingState_Initially()
+    public async Task HomeShowsDiscoveryForAuthenticatedVisitors()
     {
-        // Arrange - Set up slow auth response
-        _ctx.SetAuthorizingState();
-        SetupLandingPageServices();
-
-        // Act
-        var cut = _ctx.RenderMudComponent<Home>();
-
-        // Assert - Should show skeleton loading placeholders
-        await Assert.That(cut.Markup).Contains("mud-skeleton");
-    }
-
-    [Test]
-    public async Task Home_ShowsLandingPageForUsers_WhenAuthenticated()
-    {
-        // Arrange
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User", "test@example.com");
+        SetupHomeServices();
 
-        // Add required services for LandingPageForUsers
-        SetupLandingPageServices();
-
-        // Act
         var cut = _ctx.RenderMudComponent<Home>();
-        cut.WaitForState(() => !cut.Markup.Contains("mud-skeleton", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
+        cut.WaitForElement("[data-testid='home-discovery-context']", TimeSpan.FromSeconds(2));
 
-        // Assert - Should render authenticated content
-        // LandingPageForUsers typically has different content than non-user page
-        await Assert.That(cut.Markup).DoesNotContain("mud-skeleton");
+        await Assert.That(cut.Markup).Contains("Discover events");
+        await Assert.That(cut.Markup).Contains("Browsing events in Brussels");
     }
 
     [Test]
-    public async Task Home_ShowsLandingPageForNonUsers_WhenAnonymous()
+    public async Task HomeShowsSameDiscoveryForAnonymousVisitors()
     {
-        // Arrange
         _ctx.SetAnonymousUser();
+        SetupHomeServices();
 
-        // Add required services for LandingPageForNonUsers
-        SetupLandingPageServices();
-
-        // Act
         var cut = _ctx.RenderMudComponent<Home>();
-        cut.WaitForState(() => !cut.Markup.Contains("mud-skeleton", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
+        cut.WaitForElement("[data-testid='home-discovery-context']", TimeSpan.FromSeconds(2));
 
-        // Assert - Should render anonymous content
-        await Assert.That(cut.Markup).DoesNotContain("mud-skeleton");
+        await Assert.That(cut.Markup).Contains("Discover events");
+        await Assert.That(cut.Markup).Contains("Browsing events in Brussels");
     }
 
     [Test]
@@ -86,7 +53,7 @@ public class HomeTests : IDisposable
     {
         // Arrange
         _ctx.SetAnonymousUser();
-        SetupLandingPageServices(new PublicExperienceShellDto
+        SetupHomeServices(new PublicExperienceShellDto
         {
             Mode = PublicExperienceMode.OrganizationCentric,
             EventCatalog = new PublicExperienceEventCatalogDto
@@ -194,7 +161,7 @@ public class HomeTests : IDisposable
     public async Task Home_OrganizationRichTextBlock_RendersTenantContentAsEncodedText()
     {
         _ctx.SetAnonymousUser();
-        SetupLandingPageServices(new PublicExperienceShellDto
+        SetupHomeServices(new PublicExperienceShellDto
         {
             Mode = PublicExperienceMode.OrganizationCentric,
             EventCatalog = new PublicExperienceEventCatalogDto
@@ -246,7 +213,7 @@ public class HomeTests : IDisposable
     {
         // Arrange
         _ctx.SetAnonymousUser();
-        SetupLandingPageServices(new PublicExperienceShellDto
+        SetupHomeServices(new PublicExperienceShellDto
         {
             Mode = PublicExperienceMode.OrganizationCentric,
             EventCatalog = new PublicExperienceEventCatalogDto { Label = "Programs", Url = "/events" },
@@ -272,15 +239,13 @@ public class HomeTests : IDisposable
     {
         // Arrange
         _ctx.SetAnonymousUser();
-        SetupLandingPageServices();
+        SetupHomeServices();
 
         // Act
         var cut = _ctx.RenderMudComponent<Home>();
         cut.WaitForState(() => !cut.Markup.Contains("mud-skeleton", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
 
-        // Assert - PageTitle component renders in head, check landing page content instead
-        // LandingPageForNonUsers has specific content like "Sign Up" and "Explore"
-        await Assert.That(cut.Markup).Contains("Sign Up");
+        await Assert.That(cut.Markup).Contains("Discover events");
     }
 
     #endregion
@@ -292,7 +257,7 @@ public class HomeTests : IDisposable
     {
         // Arrange - Set anonymous (simulates auth error fallback)
         _ctx.SetAnonymousUser();
-        SetupLandingPageServices();
+        SetupHomeServices();
 
         // Act - Should not throw
         var cut = _ctx.RenderMudComponent<Home>();
@@ -304,21 +269,10 @@ public class HomeTests : IDisposable
 
     #endregion
 
-    /// <summary>
-    /// Sets up services required by the landing page components.
-    /// </summary>
-    private void SetupLandingPageServices(
+    private void SetupHomeServices(
         PublicExperienceShellDto? shell = null,
         IReadOnlyList<EventListDto>? featuredEvents = null)
     {
-        // LandingPageService is required by both landing pages
-        var landingPageService = Substitute.For<ILandingPageService>();
-        landingPageService.GetFeaturedEventsAsync(Arg.Any<int>()).Returns(new List<EventListDto>());
-        landingPageService.GetTotalMembersCountAsync().Returns(100);
-        landingPageService.GetUpcomingEventsCountAsync().Returns(10);
-        _ctx.Services.AddSingleton(landingPageService);
-
-        // Services that LandingPageForUsers/NonUsers might need
         var eventService = Substitute.For<IEventService>();
         eventService.GetAllEventsAsync().Returns(new List<EventListDto>());
         eventService.GetEventsPagedAsync(
@@ -336,7 +290,6 @@ public class HomeTests : IDisposable
                 exclusionMode: Arg.Any<string?>(),
                 formatIds: Arg.Any<List<int>?>(),
                 madhabIds: Arg.Any<List<int>?>(),
-                locationIds: Arg.Any<List<Guid>?>(),
                 registrationModeIds: Arg.Any<List<int>?>(),
                 languageIds: Arg.Any<List<int>?>(),
                 dateFrom: Arg.Any<DateTimeOffset?>(),
@@ -393,6 +346,39 @@ public class HomeTests : IDisposable
         var publicExperienceService = Substitute.For<IPublicExperienceService>();
         publicExperienceService.GetCachedShellAsync().Returns(Task.FromResult(shell));
         _ctx.Services.AddSingleton(publicExperienceService);
+
+        var areaId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        var homeDiscoveryService = Substitute.For<IHomeDiscoveryService>();
+        homeDiscoveryService.LoadAsync(
+                Arg.Any<Guid?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new HomeDiscoveryDto
+            {
+                Context = new HomeDiscoveryContextDto
+                {
+                    Mode = HomeDiscoveryMode.Area,
+                    SelectedAreaId = areaId,
+                    SelectedAreaDisplayName = "Brussels",
+                    AvailableAreas =
+                    [
+                        new PublicDiscoveryAreaDto
+                        {
+                            Id = areaId,
+                            DisplayName = "Brussels",
+                            CentroidLatitude = 50.85,
+                            CentroidLongitude = 4.35
+                        }
+                    ]
+                }
+            });
+        _ctx.Services.AddSingleton(homeDiscoveryService);
+        _ctx.Services.AddSingleton(Substitute.For<Explore.Blazor.Client.Contracts.Interop.IHomeDiscoveryGeolocation>());
+
+        var translation = Substitute.For<ITranslationService>();
+        translation.T(Arg.Any<string>(), Arg.Any<string?>())
+            .Returns(call => call.ArgAt<string?>(1) ?? call.ArgAt<string>(0));
+        _ctx.Services.AddSingleton(translation);
 
         // Add dialog and snackbar services
         _ctx.Services.AddSingleton(Substitute.For<IDialogService>());

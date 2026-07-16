@@ -24,6 +24,7 @@ using Explore.Blazor.Client.Services.Docking;
 using Explore.Blazor.Client.Services.EventSessionTemplateSync;
 using Explore.Blazor.Client.Services.EventTemplateSync;
 using Explore.Blazor.Client.Services.Http;
+using Explore.Blazor.Client.Services.Interop;
 using Explore.Blazor.Client.Services.Lookup;
 using Explore.Blazor.Client.Services.Webhooks;
 using Microsoft.Extensions.DependencyInjection;
@@ -68,7 +69,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<Explore.Blazor.Client.Contracts.Services.EventSessionTemplates.IEventSessionTemplateService, EventSessionTemplateService>();
         services.AddScoped<Explore.Blazor.Client.Services.EventTemplateSync.IEventTemplateSyncService, EventTemplateSyncService>();
         services.AddScoped<Explore.Blazor.Client.Services.EventSessionTemplateSync.IEventSessionTemplateSyncService, EventSessionTemplateSyncService>();
-        services.AddScoped<ILandingPageService, LandingPageService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<ISupportAccessClientService, SupportAccessClientService>();
         services.AddScoped<IAiAssistantClientService, AiAssistantClientService>();
@@ -123,6 +123,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IActorSubscriptionService, ActorSubscriptionService>();
         services.AddScoped<INotificationRefreshStreamClient, NotificationRefreshStreamClient>();
         services.AddScoped<IWebPushBrowserInterop, WebPushBrowserInterop>();
+        services.AddScoped<IHomeDiscoveryGeolocation, HomeDiscoveryGeolocation>();
 
         // BFF / onboarding services (use named HttpClient "BffClient")
         services.AddBffRefitClient<IBffAuthApi>(configureBffRefitClient)
@@ -130,6 +131,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IInstanceOnboardingService, InstanceOnboardingService>();
         services.AddScoped<ITenantOnboardingService, TenantOnboardingService>();
         services.AddScoped<IPublicExperienceService, PublicExperienceService>();
+        services.AddScoped<IHomeDiscoveryService, HomeDiscoveryService>();
         services.AddScoped<ITenantPublicExperienceAdminService, TenantPublicExperienceAdminService>();
         services.AddScoped<ITenantBrandingSettingsAdminService, TenantBrandingSettingsAdminService>();
         services.AddScoped<ITenantStorageSettingsAdminService, TenantStorageSettingsAdminService>();

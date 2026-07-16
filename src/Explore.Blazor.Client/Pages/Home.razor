@@ -1,10 +1,8 @@
-@using Microsoft.AspNetCore.Components.Authorization
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Components.Discovery
 @using Explore.Blazor.Client.Helpers
-@using Explore.Blazor.Client.Pages.Landing
 @using Explore.Blazor.Client.Services
 @using Microsoft.Extensions.Logging
-@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ILogger<Home> Logger
 @inject NavigationManager Navigation
 @inject IPublicExperienceService PublicExperienceService
@@ -182,13 +180,13 @@ else if (IsOrganizationHomeAvailable)
                 <MudItem xs="12" md="5">
                     <MudPaper Elevation="0" Class="organization-home__block pa-6 rounded-xl h-100">
                         <MudText Typo="Typo.h5" HtmlTag="h2" Class="mb-2">Connect with @OrganizationName</MudText>
-                        @if (!string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization.Handle))
+                        @if (!string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization?.Handle))
                         {
-                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">@_shell.PrimaryOrganization.Handle</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">@_shell!.PrimaryOrganization!.Handle</MudText>
                         }
-                        @if (!string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization.WebsiteUrl))
+                        @if (!string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization?.WebsiteUrl))
                         {
-                            <MudButton Elevation="0" Color="Color.Primary" Href="@_shell.PrimaryOrganization.WebsiteUrl" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.OpenInNew">
+                            <MudButton Elevation="0" Color="Color.Primary" Href="@_shell!.PrimaryOrganization!.WebsiteUrl" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.OpenInNew">
                                 Visit website
                             </MudButton>
                         }
@@ -229,20 +227,21 @@ else if (IsOrganizationHomeAvailable)
         }
     </MudContainer>
 }
-else if (isAuthenticated)
-{
-    <LandingPageForUsers />
-}
 else
 {
-    <LandingPageForNonUsers />
+    <HomeDiscoveryExperience UrlAreaId="AreaId" UrlMode="Mode" />
 }
 
 @code {
     private bool isLoading = true;
-    private bool isAuthenticated = false;
     private PublicExperienceShellDto? _shell;
     private IReadOnlyList<EventListDto> _featuredEvents = [];
+
+    [SupplyParameterFromQuery(Name = "areaId")]
+    public Guid? AreaId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "mode")]
+    public string? Mode { get; set; }
 
     private string HomePageTitle => string.IsNullOrWhiteSpace(_shell?.Home?.BrandDisplayName)
         ? "Event Platform"
@@ -259,12 +258,12 @@ else
             PublicExperiencePrimaryOrganizationState.HiddenOrInactive => "hidden or inactive",
             PublicExperiencePrimaryOrganizationState.CrossTenantInvalid => "not available for this tenant",
             PublicExperiencePrimaryOrganizationState.ActorUnavailable => "missing its public profile",
-            var state => state.ToString().ToLowerInvariant()
+            PublicExperiencePrimaryOrganizationState state => state.ToString().ToLowerInvariant()
         };
 
     private string OrganizationName => string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization?.DisplayName)
         ? _shell?.Home?.BrandDisplayName ?? "This organization"
-        : _shell.PrimaryOrganization.DisplayName;
+        : _shell!.PrimaryOrganization!.DisplayName;
 
     private string EventCatalogLabel => string.IsNullOrWhiteSpace(_shell?.EventCatalog?.Label)
         ? "Events"
@@ -320,28 +319,11 @@ else
         || !string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization?.Handle)
         || FooterLinkGroups.Count > 0;
 
-    [PersistentState]
-    public HomeState? PersistedState { get; set; }
-
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            var shellTask = PublicExperienceService.GetCachedShellAsync();
-            Task<AuthenticationState>? authStateTask = PersistedState is null
-                ? AuthenticationStateProvider.GetAuthenticationStateAsync()
-                : null;
-
-            _shell = shellTask is null ? null : await shellTask;
-            if (authStateTask is null)
-            {
-                isAuthenticated = PersistedState?.IsAuthenticated ?? false;
-            }
-            else
-            {
-                var authState = await authStateTask;
-                isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
-            }
+            _shell = await PublicExperienceService.GetCachedShellAsync();
 
             if (IsOrganizationHomeAvailable)
             {
@@ -350,19 +332,12 @@ else
         }
         catch (Exception ex)
         {
-            Logger.LogWarning(ex, "Auth check failed");
-            isAuthenticated = false;
+            Logger.LogWarning(ex, "Public home shell load failed");
         }
         finally
         {
             isLoading = false;
-            PersistedState = new HomeState { IsAuthenticated = isAuthenticated };
         }
-    }
-
-    public sealed class HomeState
-    {
-        public bool IsAuthenticated { get; init; }
     }
 
     private static Variant MapButtonVariant(PublicExperienceCtaStyle? style)
