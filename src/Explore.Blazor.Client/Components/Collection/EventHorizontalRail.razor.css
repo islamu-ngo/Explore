@@ -1,0 +1,77 @@
+/* ABOUTME: Provides responsive native scroll-snap layout for horizontal event discovery rails. */
+/* ABOUTME: Uses logical properties so touch, keyboard, and RTL browsing share one layout. */
+
+.event-rail {
+    min-inline-size: 0;
+}
+
+.event-rail__header {
+    display: flex;
+    gap: 1rem;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-block-end: 1rem;
+}
+
+.event-rail__title {
+    margin: 0;
+    color: var(--isl-color-text-primary, var(--mud-palette-text-primary));
+    font-size: clamp(1.25rem, 2vw, 1.5rem);
+    line-height: 1.25;
+}
+
+.event-rail__view-all {
+    flex: none;
+    color: var(--isl-color-primary, var(--mud-palette-primary));
+    font-weight: 700;
+    text-underline-offset: 0.2em;
+}
+
+.event-rail__track {
+    display: flex;
+    gap: 1rem;
+    max-inline-size: 100%;
+    padding-block: 0.25rem 0.75rem;
+    padding-inline: 0.125rem 1rem;
+    overflow-x: auto;
+    overflow-inline: auto;
+    overscroll-behavior-inline: contain;
+    scroll-padding-inline: 0.125rem;
+    scroll-snap-type: inline mandatory;
+    scrollbar-color: var(--isl-color-border, var(--mud-palette-divider)) transparent;
+    scrollbar-width: thin;
+}
+
+.event-rail__item {
+    flex: 0 0 clamp(15rem, 27vw, 17.5rem);
+    min-inline-size: 0;
+    scroll-snap-align: start;
+}
+
+.event-rail__empty {
+    margin: 0;
+    padding-block: 1.5rem;
+    padding-inline: 1rem;
+    border: 1px dashed var(--isl-color-border, var(--mud-palette-divider));
+    border-radius: var(--isl-radius-md, 0.5rem);
+    color: var(--isl-color-text-secondary, var(--mud-palette-text-secondary));
+    background: var(--isl-color-surface-subtle, transparent);
+}
+
+.event-rail__track:focus-visible,
+.event-rail__view-all:focus-visible {
+    outline: var(--isl-focus-ring-width, 2px) solid var(--isl-focus-ring-color, var(--isl-color-primary));
+    outline-offset: var(--isl-focus-ring-offset, 2px);
+}
+
+@media (max-width: 47.99rem) {
+    .event-rail__item {
+        flex-basis: min(15rem, 82vw);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .event-rail__track {
+        scroll-behavior: auto;
+    }
+}

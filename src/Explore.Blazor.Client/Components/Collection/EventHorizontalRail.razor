@@ -1,88 +1,63 @@
-@using MudBlazor
-@using Explore.Blazor.Client.Clients
-@using Explore.Blazor.Client.Components.Presentation
+@* ABOUTME: Renders a semantic native-scroll event rail using the production compact event card. *@
+@* ABOUTME: Supports explicit loading and empty states, keyboard scrolling, touch, and RTL. *@
 
-<div class="event-rail mb-10">
-    <div class="d-flex align-center justify-space-between mb-4 px-2">
-        <div class="d-flex align-center gap-3">
-            <MudText Typo="Typo.h5" Class="font-weight-black" Style="letter-spacing: 0.5px;">@Title.ToUpper()</MudText>
-            @if (IsTrending)
+<section class="event-rail" aria-label="@Title">
+    <header class="event-rail__header">
+        <h2 class="event-rail__title">@Title</h2>
+        @if (!string.IsNullOrWhiteSpace(ViewAllUrl))
+        {
+            <a class="event-rail__view-all" href="@ViewAllUrl">@ViewAllLabel</a>
+        }
+    </header>
+
+    @if (IsLoading)
+    {
+        <div class="event-rail__track" aria-busy="true" aria-label="@Title">
+            @for (var index = 0; index < 5; index++)
             {
-                <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Color="Color.Primary" />
+                <div class="event-rail__item" data-testid="event-rail-skeleton">
+                    <Explore.Blazor.Client.Pages.Events.Components.EventCardSkeleton Layout="LayoutMode.CompactGrid" />
+                </div>
             }
         </div>
-        <MudLink Href="@ViewAllUrl" Underline="Underline.None" Class="d-flex align-center gap-1 font-weight-bold">
-            VIEW ALL <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
-        </MudLink>
-    </div>
-
-    <div class="event-rail__container">
-        @if (Events == null || !Events.Any())
-        {
-            <div class="d-flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
-                @for (int i = 0; i < 5; i++)
-                {
-                    <div class="event-rail__item-skeleton">
-                        <Explore.Blazor.Client.Pages.Events.Components.EventCardSkeleton Layout="LayoutMode.CompactGrid" />
-                    </div>
-                }
-            </div>
-        }
-        else
-        {
-            <div class="d-flex gap-4 overflow-x-auto pb-4 hide-scrollbar px-2">
-                @foreach (var evt in Events)
-                {
-                    <div class="event-rail__item">
-                        <EventCard Event="evt" OnEventClick="HandleEventClick" />
-                    </div>
-                }
-            </div>
-        }
-    </div>
-</div>
-
-<style>
-    .event-rail__container {
-        position: relative;
     }
-
-    .hide-scrollbar::-webkit-scrollbar {
-        display: none;
+    else if (_events.Count == 0)
+    {
+        <p class="event-rail__empty" role="status">@EmptyMessage</p>
     }
-    .hide-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
+    else
+    {
+        <div class="event-rail__track"
+             data-testid="event-horizontal-rail"
+             role="list"
+             tabindex="0"
+             aria-label="@Title"
+             dir="@(RightToLeft ? "rtl" : "ltr")">
+            @foreach (var item in _events)
+            {
+                <div class="event-rail__item" role="listitem">
+                    <Explore.Blazor.Client.Pages.Events.Components.EventCard Event="item"
+                                                                                 Layout="LayoutMode.CompactGrid"
+                                                                                 OnClick="HandleEventClick" />
+                </div>
+            }
+        </div>
     }
-
-    .event-rail__item {
-        flex: 0 0 280px;
-        max-width: 280px;
-    }
-
-    .event-rail__item-skeleton {
-        flex: 0 0 280px;
-        width: 280px;
-    }
-
-    @@media (max-width: 600px) {
-        .event-rail__item, .event-rail__item-skeleton {
-            flex: 0 0 240px;
-            max-width: 240px;
-        }
-    }
-</style>
+</section>
 
 @code {
+    private IReadOnlyList<EventListDto> _events = [];
+
     [Parameter] public string Title { get; set; } = "Events";
+    [Parameter] public string ViewAllLabel { get; set; } = "View all";
     [Parameter] public string ViewAllUrl { get; set; } = "/events";
+    [Parameter] public string EmptyMessage { get; set; } = "No events available.";
     [Parameter] public IEnumerable<EventListDto>? Events { get; set; }
-    [Parameter] public bool IsTrending { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool RightToLeft { get; set; }
     [Parameter] public EventCallback<EventListDto> OnEventClick { get; set; }
 
-    private async Task HandleEventClick(EventListDto evt)
-    {
-        if (OnEventClick.HasDelegate)
-            await OnEventClick.InvokeAsync(evt);
-    }
+    protected override void OnParametersSet() => _events = Events?.ToArray() ?? [];
+
+    private Task HandleEventClick(EventListDto item) => OnEventClick.InvokeAsync(item);
 }
