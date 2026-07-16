@@ -1,20 +1,23 @@
 // ABOUTME: Aspire AppHost fixture for E2E tests starting the full application stack.
-// ABOUTME: Provides the Blazor frontend URL to Playwright tests.
+// ABOUTME: Provides application endpoints, authenticated API clients, and test-only runtime configuration seams.
 
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
+using System.Text.Json;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
 using Explore.Blazor.Client.Clients;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 
 namespace Explore.Blazor.Client.E2ETests.Fixtures;
 
 public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
 {
+    private static readonly JsonSerializerOptions WebJsonOptions = new(JsonSerializerDefaults.Web);
     public const string SetupSecret = "integration-setup-secret";
     private const string LocalSvixJwtSecret = "local-dev-svix-jwt-secret-change-me";
     private const string LocalSvixAuthToken =
@@ -27,6 +30,7 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     private readonly BffKeycloakFixture _keycloak = new();
     private readonly MailpitContainerFixture _mailpit = new();
     private readonly List<HttpClient> _apiHttpClients = [];
+    private Task<BffKeycloakFixture.TokenSet>? _testAdminTokens;
     private DistributedApplication? _app;
 
     public string BlazorBaseUrl => _app?.GetEndpoint("explore-blazor", "http")?.ToString().TrimEnd('/')
@@ -59,7 +63,26 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         => _keycloak.GetTestUserAccessTokenAsync(cancellationToken);
 
     public Task<BffKeycloakFixture.TokenSet> GetTestAdminTokensAsync(CancellationToken cancellationToken = default)
-        => _keycloak.GetTestAdminTokensAsync(cancellationToken);
+        => _testAdminTokens ??= _keycloak.GetTestAdminTokensAsync(cancellationToken);
+
+    public async Task EnableSupportAccessAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = new NpgsqlConnection(_database.ConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO system_settings
+                (setting_key, value, setting_value_type_id, is_locked, category, description)
+            VALUES
+                ('support_access.enabled', 'true', 2, true, 'SupportAccess', 'Support-access E2E setting.')
+            ON CONFLICT (setting_key) DO UPDATE SET
+                value = EXCLUDED.value,
+                setting_value_type_id = EXCLUDED.setting_value_type_id,
+                is_locked = EXCLUDED.is_locked,
+                updated_at = NOW();
+            """;
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
 
     public IEventApiClient CreateApiClient(
         string accessToken,
@@ -80,6 +103,30 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
 
         _apiHttpClients.Add(httpClient);
         return new EventApiClient(httpClient);
+    }
+
+    public async Task<ApiAdminIdentitySnapshot> SnapshotApiAdminIdentityAsync(
+        string accessToken,
+        CancellationToken cancellationToken = default)
+    {
+        using var httpClient = new HttpClient { BaseAddress = new Uri(ApiBaseUrl + "/", UriKind.Absolute) };
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await httpClient.PostAsync(
+            "api/_internal/admin-cache/current-user/snapshot",
+            content: null,
+            cancellationToken);
+        var content = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (response.StatusCode != HttpStatusCode.OK)
+        {
+            throw new InvalidOperationException(
+                $"API admin identity snapshot failed with {(int)response.StatusCode}: {content}");
+        }
+
+        return JsonSerializer.Deserialize<ApiAdminIdentitySnapshot>(
+                content,
+                WebJsonOptions)
+            ?? throw new InvalidOperationException("API admin identity snapshot returned an empty response.");
     }
 
     public async Task InitializeAsync()
@@ -340,6 +387,9 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
                 $"E2E instance onboarding preflight failed: {string.Join(" | ", blockers)}");
         }
 
+        var sync = await api.SyncUserAsync();
+        EnsureSuccess(sync, "syncing the E2E instance administrator");
+
         BaseCommandResponseOfGuid onboarding;
         try
         {
@@ -368,9 +418,6 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
                 exception);
         }
         EnsureSuccess(onboarding, "completing E2E instance onboarding");
-
-        var sync = await api.SyncUserAsync();
-        EnsureSuccess(sync, "syncing the E2E instance administrator");
 
         BaseCommandResponseOfGuid smtp;
         try
@@ -452,4 +499,14 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
             throw new InvalidOperationException($"API failed while {operation}: {response.Message}");
         }
     }
+
+    public sealed record ApiAdminIdentitySnapshot(
+        string? AuthenticationType,
+        string? InternalUserIdClaim,
+        string? SubjectClaim,
+        string? SessionIdClaim,
+        string? NameIdentifierClaim,
+        string? Provider,
+        string? ProviderId,
+        Guid? ResolvedUserId);
 }

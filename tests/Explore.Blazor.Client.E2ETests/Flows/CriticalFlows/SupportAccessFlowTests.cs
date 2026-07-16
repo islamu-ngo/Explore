@@ -39,7 +39,7 @@ public sealed class SupportAccessFlowTests(
             .Distinct(StringComparer.Ordinal)
             .ToArray();
         var adminApi = appHost.CreateApiClient(adminTokens.AccessToken);
-        var seed = await SupportAccessScenarioSeed.SeedAsync(adminApi);
+        var seed = await SupportAccessScenarioSeed.SeedAsync(appHost, adminApi);
 
         await AssertDirectAdminAuthorityAsync(adminApi, adminTokens.AccessToken, seed, adminProviderSubjects);
 

@@ -24,6 +24,19 @@ public partial class RegistrationFlowTests(
     {
         await appHost.ClearMailpitMessagesAsync();
         var adminTokens = await appHost.GetTestAdminTokensAsync();
+        var adminIdentity = await appHost.SnapshotApiAdminIdentityAsync(adminTokens.AccessToken);
+        if (!adminIdentity.ResolvedUserId.HasValue ||
+            string.IsNullOrWhiteSpace(adminIdentity.InternalUserIdClaim))
+        {
+            throw new InvalidOperationException(
+                "A fresh E2E admin token did not produce a complete internal identity. " +
+                $"internalUserId={adminIdentity.InternalUserIdClaim ?? "-"}; " +
+                $"resolvedUserId={adminIdentity.ResolvedUserId?.ToString("D") ?? "-"}; " +
+                $"sub={adminIdentity.SubjectClaim ?? "-"}; sid={adminIdentity.SessionIdClaim ?? "-"}; " +
+                $"nameidentifier={adminIdentity.NameIdentifierClaim ?? "-"}; " +
+                $"provider={adminIdentity.Provider ?? "-"}; providerId={adminIdentity.ProviderId ?? "-"}.");
+        }
+
         var adminApi = appHost.CreateApiClient(adminTokens.AccessToken);
         var scenario = await RegistrationScenarioSeed.SeedAsync(adminApi);
         var userApi = appHost.CreateApiClient(await appHost.GetTestUserAccessTokenAsync());
