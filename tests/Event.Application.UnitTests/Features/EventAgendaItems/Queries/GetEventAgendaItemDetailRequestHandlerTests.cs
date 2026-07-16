@@ -1,3 +1,6 @@
+// ABOUTME: Unit tests for public event-level agenda item detail queries.
+// ABOUTME: Verifies public eligibility repository routing and missing-item behavior.
+
 using AutoMapper;
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
@@ -42,7 +45,7 @@ public class GetEventAgendaItemDetailRequestHandlerTests
             Title = "Opening Ceremony"
         };
 
-        _eventAgendaItemRepository.GetById(agendaItemId).Returns(agendaItem);
+        _eventAgendaItemRepository.GetPublicByIdAsync(agendaItemId, Arg.Any<CancellationToken>()).Returns(agendaItem);
         _mapper.Map<EventAgendaItemDto>(agendaItem).Returns(expectedDto);
 
         // Act
@@ -61,7 +64,8 @@ public class GetEventAgendaItemDetailRequestHandlerTests
         var agendaItemId = Guid.NewGuid();
         var request = new GetEventAgendaItemDetailRequest { Id = agendaItemId };
 
-        _eventAgendaItemRepository.GetById(agendaItemId).Returns((EventAgendaItem?)null);
+        _eventAgendaItemRepository.GetPublicByIdAsync(agendaItemId, Arg.Any<CancellationToken>())
+            .Returns((EventAgendaItem?)null);
 
         // Act
         var result = await _handler.Handle(request, CancellationToken.None);

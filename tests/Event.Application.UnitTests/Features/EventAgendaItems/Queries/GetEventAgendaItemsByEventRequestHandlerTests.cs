@@ -1,3 +1,6 @@
+// ABOUTME: Unit tests for public event-level agenda item list queries.
+// ABOUTME: Verifies public eligibility repository routing and DTO mapping behavior.
+
 using AutoMapper;
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
@@ -46,7 +49,7 @@ public class GetEventAgendaItemsByEventRequestHandlerTests
             new() { Id = agendaItems[2].Id, Title = "Item 3" }
         };
 
-        _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns(agendaItems);
+        _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns(agendaItems);
         _mapper.Map<List<EventAgendaItemListDto>>(agendaItems).Returns(expectedDtos);
 
         // Act
@@ -64,7 +67,7 @@ public class GetEventAgendaItemsByEventRequestHandlerTests
         var eventId = Guid.NewGuid();
         var request = new GetEventAgendaItemsByEventRequest { EventId = eventId };
 
-        _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>())
+        _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new List<EventAgendaItem>());
         _mapper.Map<List<EventAgendaItemListDto>>(Arg.Any<List<EventAgendaItem>>())
             .Returns(new List<EventAgendaItemListDto>());

@@ -1,5 +1,5 @@
-// ABOUTME: Handler for retrieving a single event-level agenda item by Id.
-// ABOUTME: Returns null when not found; the controller translates to 404.
+// ABOUTME: Handler for retrieving a single public event-level agenda item by Id.
+// ABOUTME: Returns published data while redacting exact physical location and room IDs.
 
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
@@ -24,10 +24,13 @@ public class GetEventAgendaItemDetailRequestHandler : IRequestHandler<GetEventAg
 
     public async Task<EventAgendaItemDto?> Handle(GetEventAgendaItemDetailRequest request, CancellationToken cancellationToken)
     {
-        var agendaItem = await _eventAgendaItemRepository.GetById(request.Id);
+        var agendaItem = await _eventAgendaItemRepository.GetPublicByIdAsync(request.Id, cancellationToken);
         if (agendaItem == null)
             return null;
 
-        return _mapper.Map<EventAgendaItemDto>(agendaItem);
+        var dto = _mapper.Map<EventAgendaItemDto>(agendaItem);
+        dto.LocationId = null;
+        dto.RoomId = null;
+        return dto;
     }
 }

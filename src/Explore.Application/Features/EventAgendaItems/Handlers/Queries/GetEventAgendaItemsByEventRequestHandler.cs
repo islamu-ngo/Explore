@@ -24,7 +24,7 @@ public class GetEventAgendaItemsByEventRequestHandler : IRequestHandler<GetEvent
 
     public async Task<List<EventAgendaItemListDto>> Handle(GetEventAgendaItemsByEventRequest request, CancellationToken cancellationToken)
     {
-        var items = await _eventAgendaItemRepository.GetByEventAsync(request.EventId, cancellationToken);
+        var items = await _eventAgendaItemRepository.GetPublicByEventAsync(request.EventId, cancellationToken);
         return _mapper.Map<List<EventAgendaItemListDto>>(items);
     }
 }
