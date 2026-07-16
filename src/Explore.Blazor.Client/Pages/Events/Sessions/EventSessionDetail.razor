@@ -202,6 +202,8 @@ else
         try
         {
             _session = await EventService.GetManagedSessionByIdAsync(EventId, SessionId);
+            bool isManagedView = _session is not null;
+            _session ??= await EventService.GetSessionByIdAsync(SessionId);
             if (_session is null || _session.EventId != EventId)
             {
                 _errorMessage = "Session not found.";
@@ -210,7 +212,9 @@ else
             }
 
             CheckHalLinks();
-            var items = await AgendaItemService.GetAgendaItemsBySessionAsync(SessionId);
+            var items = isManagedView
+                ? await AgendaItemService.GetManagedAgendaItemsBySessionAsync(EventId, SessionId)
+                : await AgendaItemService.GetAgendaItemsBySessionAsync(SessionId);
             _agendaItems = items.ToList();
         }
         catch (Exception ex)

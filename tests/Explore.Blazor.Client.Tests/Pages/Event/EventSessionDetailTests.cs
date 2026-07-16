@@ -32,7 +32,7 @@ public sealed class EventSessionDetailTests : IDisposable
 
         eventService.GetManagedSessionByIdAsync(eventId, sessionId)
             .Returns(session);
-        agendaItemService.GetAgendaItemsBySessionAsync(sessionId)
+        agendaItemService.GetManagedAgendaItemsBySessionAsync(eventId, sessionId)
             .Returns(new List<EventSessionAgendaItemListDto>());
 
         _ctx.Services.AddScoped(_ => eventService);
@@ -55,6 +55,49 @@ public sealed class EventSessionDetailTests : IDisposable
         await Assert.That(cut.Markup).Contains("Archive");
         await Assert.That(cut.Markup.Contains("Moderate", StringComparison.Ordinal)).IsFalse();
         await Assert.That(cut.Markup.Contains("Heavy Redact", StringComparison.Ordinal)).IsFalse();
+    }
+
+    [Test]
+    public async Task Render_WhenManagedReadIsUnavailable_FallsBackToPublicRedactedSessionAndAgenda()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var eventService = Substitute.For<IEventService>();
+        var agendaItemService = Substitute.For<IEventSessionAgendaItemService>();
+        var publicSession = new EventSessionDto
+        {
+            Id = sessionId,
+            EventId = eventId,
+            EventTitle = "Public Parent",
+            Title = "Public workshop",
+            EventSessionStatusFullName = "Published",
+            EventSessionStatusMasterCode = "PUBLISHED",
+            AdditionalProperties = new Dictionary<string, object>()
+        };
+
+        eventService.GetManagedSessionByIdAsync(eventId, sessionId).Returns((EventSessionDto?)null);
+        eventService.GetSessionByIdAsync(sessionId).Returns(publicSession);
+        agendaItemService.GetAgendaItemsBySessionAsync(sessionId)
+            .Returns(new List<EventSessionAgendaItemListDto>());
+        _ctx.Services.AddScoped(_ => eventService);
+        _ctx.Services.AddScoped(_ => agendaItemService);
+
+        var cut = _ctx.RenderMudComponent<EventSessionDetail>(parameters => parameters
+            .Add(component => component.EventId, eventId)
+            .Add(component => component.SessionId, sessionId));
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Public workshop", StringComparison.Ordinal))
+                throw new InvalidOperationException("Public session details were not rendered.");
+        }, TimeSpan.FromSeconds(3));
+
+        await eventService.Received(1).GetManagedSessionByIdAsync(eventId, sessionId);
+        await eventService.Received(1).GetSessionByIdAsync(sessionId);
+        await agendaItemService.Received(1).GetAgendaItemsBySessionAsync(sessionId);
+        await agendaItemService.DidNotReceive()
+            .GetManagedAgendaItemsBySessionAsync(Arg.Any<Guid>(), Arg.Any<Guid>());
+        await Assert.That(cut.Markup).DoesNotContain("Edit");
     }
 
     public void Dispose()
