@@ -5,6 +5,7 @@ using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.Features.EventSessionGroups.Requests.Queries;
+using Explore.Application.Features.EventSessions.Handlers.Queries;
 using MediatR;
 
 namespace Explore.Application.Features.EventSessionGroups.Handlers.Queries;
@@ -29,15 +30,15 @@ public class GetEventSessionGroupSessionsRequestHandler : IRequestHandler<GetEve
         GetEventSessionGroupSessionsRequest request,
         CancellationToken cancellationToken)
     {
-        var group = await _eventSessionGroupRepository.GetWithDetailsAsync(request.EventSessionGroupId, cancellationToken);
+        var group = await _eventSessionGroupRepository.GetPublicWithDetailsAsync(request.EventSessionGroupId, cancellationToken);
         if (group is null)
         {
             return [];
         }
 
-        var assignments = await _assignmentRepository.GetByGroupAsync(request.EventSessionGroupId, cancellationToken);
+        var assignments = await _assignmentRepository.GetPublicByGroupAsync(request.EventSessionGroupId, cancellationToken);
         var sessions = assignments.Select(assignment => assignment.EventSession).ToList();
 
-        return _mapper.Map<List<EventSessionListDto>>(sessions);
+        return PublicEventSessionLocationRedactor.Redact(_mapper.Map<List<EventSessionListDto>>(sessions));
     }
 }

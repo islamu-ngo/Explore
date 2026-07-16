@@ -1,5 +1,5 @@
-// ABOUTME: Handler for event session group detail retrieval.
-// ABOUTME: Returns null for missing or tenant-filtered groups and maps entity data in Application.
+// ABOUTME: Handler for public event session group detail retrieval.
+// ABOUTME: Maps published data while redacting exact physical location and room fields.
 
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
@@ -24,7 +24,15 @@ public class GetEventSessionGroupDetailRequestHandler : IRequestHandler<GetEvent
 
     public async Task<EventSessionGroupDto?> Handle(GetEventSessionGroupDetailRequest request, CancellationToken cancellationToken)
     {
-        var group = await _eventSessionGroupRepository.GetWithDetailsAsync(request.Id, cancellationToken);
-        return group is null ? null : _mapper.Map<EventSessionGroupDto>(group);
+        var group = await _eventSessionGroupRepository.GetPublicWithDetailsAsync(request.Id, cancellationToken);
+        if (group is null)
+            return null;
+
+        var dto = _mapper.Map<EventSessionGroupDto>(group);
+        dto.LocationId = null;
+        dto.LocationName = null;
+        dto.RoomId = null;
+        dto.RoomName = null;
+        return dto;
     }
 }

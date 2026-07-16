@@ -1,5 +1,5 @@
-// ABOUTME: Handler for listing program sections/tracks/devrooms belonging to an event.
-// ABOUTME: Delegates tenant-safe entity reads to the repository and maps in Application.
+// ABOUTME: Handler for publicly listing program sections/tracks/devrooms belonging to an event.
+// ABOUTME: Maps published groups while redacting exact physical location and room fields.
 
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
@@ -24,7 +24,17 @@ public class GetEventSessionGroupsByEventRequestHandler : IRequestHandler<GetEve
 
     public async Task<List<EventSessionGroupListDto>> Handle(GetEventSessionGroupsByEventRequest request, CancellationToken cancellationToken)
     {
-        var groups = await _eventSessionGroupRepository.GetByEventAsync(request.EventId, cancellationToken);
-        return _mapper.Map<List<EventSessionGroupListDto>>(groups);
+        var groups = await _eventSessionGroupRepository.GetPublicByEventAsync(request.EventId, cancellationToken);
+        var dtos = _mapper.Map<List<EventSessionGroupListDto>>(groups);
+
+        foreach (var dto in dtos)
+        {
+            dto.LocationId = null;
+            dto.LocationName = null;
+            dto.RoomId = null;
+            dto.RoomName = null;
+        }
+
+        return dtos;
     }
 }
