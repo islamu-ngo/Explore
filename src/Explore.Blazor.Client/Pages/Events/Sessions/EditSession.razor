@@ -61,6 +61,13 @@
                     </MudAlert>
                 }
 
+                @if (_locations.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
+                        No event-associated locations are available. Location and room selection stays unavailable until a venue is linked through an authorized event management flow.
+                    </MudAlert>
+                }
+
                 <EditForm EditContext="_editContext" OnValidSubmit="SaveSessionAsync">
                     <FormSubmissionGuard State="@_submitState">
                     <AppValidationSummary />
@@ -142,14 +149,13 @@
 
     [Inject] private IEventService EventService { get; set; } = default!;
     [Inject] private IAdminService AdminService { get; set; } = default!;
-    [Inject] private ILocationService LocationService { get; set; } = default!;
-    [Inject] private ILocationRoomService LocationRoomService { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     private EventDto? _event;
     private EventSessionDto? _sourceSession;
-    private ICollection<LocationListDto> _locations = new List<LocationListDto>();
-    private ICollection<LocationRoomListDto> _rooms = new List<LocationRoomListDto>();
+    private ICollection<EventSessionCreateLocationOptionDto> _locations = new List<EventSessionCreateLocationOptionDto>();
+    private ICollection<EventSessionCreateRoomOptionDto> _allRooms = new List<EventSessionCreateRoomOptionDto>();
+    private ICollection<EventSessionCreateRoomOptionDto> _rooms = new List<EventSessionCreateRoomOptionDto>();
     private ICollection<HalResourceOfEventSessionGroupListDto> _sessionGroups = new List<HalResourceOfEventSessionGroupListDto>();
     private ICollection<RegistrationModeListDto> _registrationModes = new List<RegistrationModeListDto>();
     private readonly UpdateEventSessionDto _session = new();
@@ -173,14 +179,16 @@
         _editContext = new EditContext(_session);
         _errorStore.Init(_editContext);
         var eventTask = EventService.GetEventByIdAsync(EventId);
-        var sessionTask = EventService.GetSessionByIdAsync(SessionId);
-        var locationsTask = LocationService.GetAllLocationsAsync();
-        var sessionGroupsTask = EventService.GetSessionGroupsByEventAsync(EventId);
+        var sessionTask = EventService.GetManagedSessionByIdAsync(EventId, SessionId);
+        var createContextTask = EventService.GetEventSessionCreateContextAsync(EventId);
+        var sessionGroupsTask = EventService.GetManagedSessionGroupsByEventAsync(EventId);
         var registrationModesTask = AdminService.GetRegistrationModesAsync();
 
         _event = await eventTask;
         _sourceSession = await sessionTask;
-        _locations = await locationsTask;
+        var createContext = await createContextTask;
+        _locations = createContext?.Locations ?? new List<EventSessionCreateLocationOptionDto>();
+        _allRooms = createContext?.Rooms ?? new List<EventSessionCreateRoomOptionDto>();
         _sessionGroups = await sessionGroupsTask;
         _registrationModes = await registrationModesTask;
 
@@ -248,21 +256,23 @@
         await LoadRoomsForLocationAsync(locationId);
     }
 
-    private async Task LoadRoomsForLocationAsync(Guid? locationId)
+    private Task LoadRoomsForLocationAsync(Guid? locationId)
     {
         if (!locationId.HasValue || locationId.Value == Guid.Empty)
         {
-            _rooms = new List<LocationRoomListDto>();
+            _rooms = new List<EventSessionCreateRoomOptionDto>();
             _session.Room!.Value!.Value = null;
-            return;
+            return Task.CompletedTask;
         }
 
-        _rooms = await LocationRoomService.GetRoomsByLocationAsync(locationId.Value);
+        _rooms = _allRooms.Where(room => room.LocationId == locationId).ToList();
         if (_session.Room!.Value!.Value.HasValue
             && _rooms.All(room => room.Id != _session.Room.Value.Value.Value))
         {
             _session.Room.Value.Value = null;
         }
+
+        return Task.CompletedTask;
     }
 
     private EventSessionEditFormState PopulateSession(EventSessionDto session)
@@ -351,7 +361,7 @@
             out validationError);
     }
 
-    private static string FormatLocation(LocationListDto location)
+    private static string FormatLocation(EventSessionCreateLocationOptionDto location)
     {
         if (!string.IsNullOrWhiteSpace(location.City) && !string.IsNullOrWhiteSpace(location.Country))
         {
@@ -361,7 +371,7 @@
         return location.FullName;
     }
 
-    private static string FormatRoom(LocationRoomListDto room) => room.Capacity.HasValue
+    private static string FormatRoom(EventSessionCreateRoomOptionDto room) => room.Capacity.HasValue
         ? $"{room.Name} · {room.Capacity.Value} seats"
         : room.Name;
 
