@@ -384,6 +384,12 @@ public partial class FallbackAuthorizationService
         if (action is "create" or "view")
             return true;
 
+        if (action == AuthorizationActions.Delete &&
+            await IsActorUserOwnerAsync(resourceAttributes, cancellationToken))
+        {
+            return true;
+        }
+
         if (await EvaluateEventRolePermissionAsync("islamuevent_event_registration", resourceId, action, tenantId, eventId, cancellationToken))
             return true;
 

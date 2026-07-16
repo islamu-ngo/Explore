@@ -126,6 +126,8 @@ public partial class FallbackAuthorizationService
                             || HasEventRolePermission(eventAuthority, resourceKind, resourceId, action, resourceAttributes)),
             "islamuevent_event_registration" => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
                 && (action is "create" or "view"
+                    || action == AuthorizationActions.Delete
+                        && IsActorUserOwnerFromProfile(profile, resourceAttributes)
                     || IsAdminForOrgScope(profile, resourceAttributes, resourceId)
                     || HasEventRolePermission(eventAuthority, resourceKind, resourceId, action, resourceAttributes)),
             "islamuevent_event_contact_share_consent" => action is "viewsharedcontacts" or "exportsharedcontacts"

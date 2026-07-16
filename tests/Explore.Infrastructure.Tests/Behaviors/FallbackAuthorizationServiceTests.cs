@@ -1400,6 +1400,74 @@ public class FallbackAuthorizationServiceTests
     }
 
     [Test]
+    public async Task IsAllowed_EventRegistrationOwnerCanDeleteButCannotUpdate()
+    {
+        var userId = Guid.NewGuid();
+        var attrs = CreateEventContextAttributes();
+        attrs["eventSessionId"] = Guid.NewGuid();
+        attrs["userId"] = userId;
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var resourceId = Guid.NewGuid().ToString("D");
+        var deleteResult = await _service.IsAllowedAsync(
+            ResourceKinds.EventRegistration,
+            resourceId,
+            AuthorizationActions.Delete,
+            attrs);
+        var updateResult = await _service.IsAllowedAsync(
+            ResourceKinds.EventRegistration,
+            resourceId,
+            AuthorizationActions.Update,
+            attrs);
+
+        await Assert.That(deleteResult).IsTrue();
+        await Assert.That(updateResult).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_EventRegistrationDifferentUserCannotDelete()
+    {
+        var attrs = CreateEventContextAttributes();
+        attrs["eventSessionId"] = Guid.NewGuid();
+        attrs["userId"] = Guid.NewGuid();
+        _adminContext.UserId.Returns(Guid.NewGuid());
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _service.IsAllowedAsync(
+            ResourceKinds.EventRegistration,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Delete,
+            attrs);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_EventRegistrationOwnerCannotDeleteAcrossTenantBoundary()
+    {
+        var userId = Guid.NewGuid();
+        var attrs = CreateEventContextAttributes();
+        attrs["tenantId"] = Guid.NewGuid();
+        attrs["eventSessionId"] = Guid.NewGuid();
+        attrs["userId"] = userId;
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _service.IsAllowedAsync(
+            ResourceKinds.EventRegistration,
+            Guid.NewGuid().ToString("D"),
+            AuthorizationActions.Delete,
+            attrs);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
     public async Task IsAllowed_EventDayWithRolePermission_AllowsNonAdmin()
     {
         var userId = Guid.NewGuid();
@@ -1710,6 +1778,33 @@ public class FallbackAuthorizationServiceTests
         await Assert.That(results).Count().IsEqualTo(3);
         await Assert.That(results[0]).IsTrue();
         await Assert.That(results[1]).IsTrue();
+        await Assert.That(results[2]).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_EventRegistrationOwnerCanDeleteButCannotUpdate()
+    {
+        var userId = Guid.NewGuid();
+        var attrs = CreateEventContextAttributes();
+        attrs["eventSessionId"] = Guid.NewGuid();
+        attrs["userId"] = userId;
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(new List<Guid>());
+
+        var resourceId = Guid.NewGuid().ToString("D");
+        var checks = new List<AuthorizationCheck>
+        {
+            new(ResourceKinds.EventRegistration, resourceId, AuthorizationActions.Delete, attrs),
+            new(ResourceKinds.EventRegistration, resourceId, AuthorizationActions.Update, attrs),
+            new(ResourceKinds.Notification, Guid.NewGuid().ToString("D"), AuthorizationActions.View)
+        };
+
+        var results = await _service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(results[0]).IsTrue();
+        await Assert.That(results[1]).IsFalse();
         await Assert.That(results[2]).IsTrue();
     }
 
