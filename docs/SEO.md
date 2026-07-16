@@ -6,7 +6,7 @@ ABOUTME: Separates source-backed SEO features from planned or unsupported site-w
 > **Audience:** Operators | Admins | Integrators | Contributors
 > **Status:** Mixed
 > **Owner:** Frontend
-> **Last Verified:** 2026-07-05
+> **Last Verified:** 2026-07-16
 > **Source Anchors:** `Explore.API/Controllers/SitemapController.cs`, `Explore.Application/Features/Seo/Handlers/Queries/GetSitemapEventsQueryHandler.cs`, `Explore.Infrastructure/Services/PublicUrlBuilder.cs`, `Explore.Blazor/Controllers/RobotsController.cs`, `Explore.Blazor/Components/App.razor`, `Explore.Blazor/Extensions/BffManifestEndpoints.cs`, `Explore.Blazor.Client/Routes.razor`, `Explore.Blazor.Client/Services/RuntimeRenderPolicyService.cs`, `Explore.Blazor.Client/Pages/Events/EventDetail.razor`, `Explore.Blazor.Client/Pages/Events/EventDetail.razor.cs`, `Explore.Application/Features/PublicExperience/`, `Explore.Application/Services/TenantPolicySettingService.Read.cs`, `Explore.Application/Services/TenantPolicySettingService.Apply.cs`, `docs/RENDER_POLICIES.md`, `docs/ADMIN_GUIDE.md`
 
 SEO support is implemented as a focused set of public-discovery primitives: sitemap generation, robots output, render-policy decisions for public routes, and tenant public-experience settings. Do not describe this as full site-wide SEO automation.
@@ -17,7 +17,7 @@ SEO support is implemented as a focused set of public-discovery primitives: site
 
 | Sitemap Input | Behavior |
 |---|---|
-| Static routes | Includes public static paths such as `/`, `/events`, `/welcome`, `/about`, `/contact`, `/privacy`, `/terms`, and `/community-guidelines`. |
+| Static routes | Includes public static paths such as `/`, `/events`, `/about`, `/contact`, `/privacy`, `/terms`, and `/community-guidelines`. |
 | Event routes | Includes published public events returned by the sitemap query handler. |
 | URL base | Uses the public request base URL, including forwarded host/proto and path base handling. |
 | Size boundary | Event projection is clamped for sitemap safety; do not document unlimited event output. |
@@ -44,7 +44,7 @@ Important boundaries:
 - Onboarding routes render as `InteractiveServer` regardless of stored render-mode settings.
 - Public SEO routes default toward prerendering when advanced overrides do not override the preset.
 - Defaults fall back safely when tenant settings are missing.
-- `Explore.Blazor.Client/Routes.razor` registers `/home` and `/welcome`; keep route documentation tied to that router mapping and the runtime classifier instead of inventing separate page-level SEO behavior.
+- `Explore.Blazor.Client/Routes.razor` registers `/home`; keep route documentation tied to that router mapping and the runtime classifier instead of inventing separate page-level SEO behavior.
 
 See [RENDER_POLICIES.md](RENDER_POLICIES.md) for the canonical render-policy model.
 

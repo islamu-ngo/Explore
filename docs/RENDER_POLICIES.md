@@ -22,7 +22,7 @@ This render-policy system belongs to the ISLAMU Event Blazor web app (`Explore.B
 
 - `Onboarding`: `/setup`, `/startup`, `/onboarding/*`
 - `Admin`: `/admin/*`
-- `PublicSeo`: `/`, `/events`, `/welcome`, `/home`, `/event/detail/*`
+- `PublicSeo`: `/`, `/events`, `/home`, `/event/detail/*`
 - `Operational`: all other routes
 
 ## Policy Keys
