@@ -602,7 +602,7 @@ public class CreateEventTests : IDisposable
         await _organizationService.Received().GetMyOrganizationsAsync();
         await _categoryService.Received().GetAllCategoriesAsync();
         await _tagService.Received().GetAllTagsAsync();
-        await _locationService.Received().GetAllLocationsAsync();
+        await _locationService.DidNotReceive().GetAllLocationsAsync();
     }
 
     [Test]

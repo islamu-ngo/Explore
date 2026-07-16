@@ -179,7 +179,7 @@ public sealed class EventEditTests : IDisposable
     {
         var locationId = Guid.NewGuid();
         var component = CreateComponent(Guid.NewGuid(), canAddSession: true);
-        SetField(component, "locations", new List<LocationListDto>
+        SetField(component, "locations", new List<EventSessionCreateLocationOptionDto>
         {
             new()
             {

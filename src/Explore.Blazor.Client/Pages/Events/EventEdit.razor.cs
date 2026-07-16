@@ -33,7 +33,6 @@ public partial class EventEdit : IDisposable
     [Inject] protected IImageStorageService ImageStorageService { get; set; } = null!;
     [Inject] protected ICategoryService CategoryService { get; set; } = null!;
     [Inject] protected ITagService TagService { get; set; } = null!;
-    [Inject] protected ILocationService LocationService { get; set; } = null!;
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
     [Inject] protected RouterStateService RouterState { get; set; } = null!;
     [Inject] protected IDialogService DialogService { get; set; } = null!;
@@ -192,10 +191,9 @@ public partial class EventEdit : IDisposable
     {
         var localStart = item.LocalStartTime?.ToString(@"hh\:mm", CultureInfo.InvariantCulture) ?? "--:--";
         var localEnd = item.LocalEndTime?.ToString(@"hh\:mm", CultureInfo.InvariantCulture) ?? "--:--";
+        var localDate = item.LocalDate?.ToString("ddd d MMM", CultureInfo.InvariantCulture) ?? "Date not set";
 
-        return string.Create(
-            CultureInfo.InvariantCulture,
-            $"{item.LocalDate:ddd d MMM}, {localStart}–{localEnd}");
+        return $"{localDate}, {localStart}–{localEnd}";
     }
 
     private static string FormatSessionTimeRange(SessionEditorModel session)
@@ -293,7 +291,7 @@ public partial class EventEdit : IDisposable
     private ICollection<MadhabListDto>? madhabs;
     private ICollection<CategoryListDto>? allCategories;
     private ICollection<TagListDto>? allTags;
-    private ICollection<LocationListDto>? locations;
+    private ICollection<EventSessionCreateLocationOptionDto>? locations;
     private ICollection<RegistrationModeListDto>? registrationModes;
     private ICollection<LanguageListDto>? languages;
     private ICollection<EventRegistrationPolicyListDto>? registrationPolicies;
@@ -395,7 +393,7 @@ public partial class EventEdit : IDisposable
             var madhabsTask = AdminService.GetMadhabsAsync();
             var categoriesTask = CategoryService.GetAllCategoriesAsync();
             var tagsTask = TagService.GetAllTagsAsync();
-            var locationsTask = LocationService.GetAllLocationsAsync();
+            var sessionCreateContextTask = EventService.GetEventSessionCreateContextAsync(EventId);
             var registrationModesTask = AdminService.GetRegistrationModesAsync();
             var languagesTask = AdminService.GetLanguagesAsync();
             var registrationPoliciesTask = RegistrationPolicyService.GetEventRegistrationPoliciesAsync();
@@ -403,7 +401,7 @@ public partial class EventEdit : IDisposable
             await Task.WhenAll(
                 eventTypesTask, audienceGendersTask, audienceAgesTask, eventStatusesTask,
                 eventFormatsTask, visibilityTypesTask,
-                madhabsTask, categoriesTask, tagsTask, locationsTask,
+                madhabsTask, categoriesTask, tagsTask, sessionCreateContextTask,
                 registrationModesTask, languagesTask, registrationPoliciesTask);
 
             eventTypes = await eventTypesTask;
@@ -415,7 +413,7 @@ public partial class EventEdit : IDisposable
             madhabs = await madhabsTask;
             allCategories = await categoriesTask;
             allTags = await tagsTask;
-            locations = await locationsTask;
+            locations = (await sessionCreateContextTask)?.Locations;
             registrationModes = await registrationModesTask;
             languages = await languagesTask;
             registrationPolicies = await registrationPoliciesTask;
@@ -426,8 +424,8 @@ public partial class EventEdit : IDisposable
             {
                 PopulateFormFromEvent();
 
-                var programSummaryTask = EventService.GetEventProgramSummaryAsync(EventId);
-                var sessionGroupsTask = EventService.GetSessionGroupsByEventAsync(EventId);
+                var programSummaryTask = EventService.GetManagedEventProgramSummaryAsync(EventId);
+                var sessionGroupsTask = EventService.GetManagedSessionGroupsByEventAsync(EventId);
                 var eventSessions = await EventService.GetSessionsByEventAsync(
                     EventId,
                     includeManagedSessions: CanRequestManagedSessions);
@@ -744,8 +742,8 @@ public partial class EventEdit : IDisposable
 
     private async Task RefreshProgramSectionsAsync()
     {
-        _programSections = (await EventService.GetSessionGroupsByEventAsync(EventId)).ToList();
-        _programSummary = await EventService.GetEventProgramSummaryAsync(EventId);
+        _programSections = (await EventService.GetManagedSessionGroupsByEventAsync(EventId)).ToList();
+        _programSummary = await EventService.GetManagedEventProgramSummaryAsync(EventId);
     }
 
     private async void RemoveSession(int index)

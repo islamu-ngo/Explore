@@ -27,7 +27,6 @@ public partial class CreateEvent : IDisposable
     [Inject] protected IImageStorageService ImageStorageService { get; set; } = null!;
     [Inject] protected ICategoryService CategoryService { get; set; } = null!;
     [Inject] protected ITagService TagService { get; set; } = null!;
-    [Inject] protected ILocationService LocationService { get; set; } = null!;
     [Inject] protected IEventTemplateService EventTemplateService { get; set; } = null!;
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
     [Inject] protected IDialogService DialogService { get; set; } = null!;
@@ -876,13 +875,12 @@ public partial class CreateEvent : IDisposable
             var madhabsTask = AdminService.GetMadhabsAsync();
             var categoriesTask = CategoryService.GetAllCategoriesAsync();
             var tagsTask = TagService.GetAllTagsAsync();
-            var locationsTask = LocationService.GetAllLocationsAsync();
             var registrationModesTask = AdminService.GetRegistrationModesAsync();
             var languagesTask = AdminService.GetLanguagesAsync();
             var registrationPoliciesTask = RegistrationPolicyService.GetEventRegistrationPoliciesAsync();
             var eventTemplatesTask = LoadEventTemplatesAsync(createDto.EventTypeId);
 
-            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventFormatsTask, visibilityTypesTask, madhabsTask, categoriesTask, tagsTask, locationsTask, registrationModesTask, languagesTask, registrationPoliciesTask, eventTemplatesTask);
+            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventFormatsTask, visibilityTypesTask, madhabsTask, categoriesTask, tagsTask, registrationModesTask, languagesTask, registrationPoliciesTask, eventTemplatesTask);
 
             eventTypes = await eventTypesTask;
             audienceGenders = await audienceGendersTask;
@@ -892,7 +890,6 @@ public partial class CreateEvent : IDisposable
             madhabs = await madhabsTask;
             allCategories = await categoriesTask;
             allTags = await tagsTask;
-            locations = await locationsTask;
             registrationModes = await registrationModesTask;
             languages = await languagesTask;
             registrationPolicies = await registrationPoliciesTask;
