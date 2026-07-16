@@ -1,6 +1,9 @@
+@* ABOUTME: Presents a themed horizontal series of events using the production compact card. *@
+@* ABOUTME: Retains the legacy series layout while sharing canonical event-card behavior. *@
+
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
-@using Explore.Blazor.Client.Components.Presentation
+@using Explore.Blazor.Client.Pages.Events.Components
 
 <div class="event-series-rail mb-12 pa-6 rounded-xl" style="background: rgba(var(--mud-palette-primary-rgb), 0.03); border: 1px solid rgba(var(--mud-palette-primary-rgb), 0.1);">
     <div class="d-flex align-end justify-space-between mb-6 px-2">
@@ -24,7 +27,7 @@
         @foreach (var evt in Events)
         {
             <div class="event-rail__item">
-                <EventCard Event="evt" />
+                <EventCard Event="evt" Layout="LayoutMode.CompactGrid" />
             </div>
         }
     </div>
