@@ -69,6 +69,25 @@ public class EventCardTests : IDisposable
     }
 
     [Test]
+    [Arguments(LayoutMode.CompactGrid)]
+    [Arguments(LayoutMode.DetailedList)]
+    [Arguments(LayoutMode.SingleRow)]
+    public async Task EventCardImagesAreAccessibleLazyAndLayoutStable(LayoutMode layout)
+    {
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p
+            .Add(x => x.Event, CreateTestEvent())
+            .Add(x => x.Layout, layout));
+
+        var image = cut.Find("img");
+
+        await Assert.That(image.GetAttribute("alt")).IsEqualTo("Test Blazor Conference");
+        await Assert.That(image.GetAttribute("loading")).IsEqualTo("lazy");
+        await Assert.That(image.GetAttribute("decoding")).IsEqualTo("async");
+        await Assert.That(image.GetAttribute("width")).IsNotNull().And.IsNotEmpty();
+        await Assert.That(image.GetAttribute("height")).IsNotNull().And.IsNotEmpty();
+    }
+
+    [Test]
     public async Task EventCard_ShowsAllFields_WhenNoCardFieldVisibility()
     {
         var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p
@@ -195,6 +214,62 @@ public class EventCardTests : IDisposable
         await Assert.That(shareCount).IsEqualTo(1);
         await Assert.That(selectCount).IsEqualTo(0);
         await Assert.That(sharedEvent).IsSameReferenceAs(eventDto);
+    }
+
+    [Test]
+    public async Task EventCardRendersLabeledKeyboardTarget()
+    {
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p
+            .Add(x => x.Event, CreateTestEvent())
+            .Add(x => x.Layout, LayoutMode.DetailedList));
+
+        var card = cut.Find(".event-card");
+
+        await Assert.That(card.GetAttribute("role")).IsEqualTo("button");
+        await Assert.That(card.GetAttribute("tabindex")).IsEqualTo("0");
+        await Assert.That(card.GetAttribute("aria-label")).IsEqualTo("View event: Test Blazor Conference");
+    }
+
+    [Test]
+    public async Task EventCardKeyDownWithEnterInvokesCardCallback()
+    {
+        var selectCount = 0;
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p
+            .Add(x => x.Event, CreateTestEvent())
+            .Add(x => x.Layout, LayoutMode.DetailedList)
+            .Add(x => x.OnClick, EventCallback.Factory.Create<EventListDto>(this, _ => selectCount++)));
+
+        await cut.Find(".event-card").KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+
+        await Assert.That(selectCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task EventCardKeyDownWithSpaceInvokesCardCallback()
+    {
+        var selectCount = 0;
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p
+            .Add(x => x.Event, CreateTestEvent())
+            .Add(x => x.Layout, LayoutMode.CompactGrid)
+            .Add(x => x.OnClick, EventCallback.Factory.Create<EventListDto>(this, _ => selectCount++)));
+
+        await cut.Find(".event-card").KeyDownAsync(new KeyboardEventArgs { Key = " " });
+
+        await Assert.That(selectCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task EventCardKeyDownWithUnrelatedKeyDoesNotInvokeCardCallback()
+    {
+        var selectCount = 0;
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p
+            .Add(x => x.Event, CreateTestEvent())
+            .Add(x => x.Layout, LayoutMode.SingleRow)
+            .Add(x => x.OnClick, EventCallback.Factory.Create<EventListDto>(this, _ => selectCount++)));
+
+        await cut.Find(".event-card").KeyDownAsync(new KeyboardEventArgs { Key = "ArrowDown" });
+
+        await Assert.That(selectCount).IsEqualTo(0);
     }
 
     [Test]

@@ -5,6 +5,7 @@ using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Pages.Events.Components;
@@ -130,6 +131,7 @@ public partial class EventCard : ComponentBase
         Event.EventStatusId == ModeratedStatusId ||
         string.Equals(Event.EventStatusFullName, "Moderated", StringComparison.OrdinalIgnoreCase);
     private string ShareButtonLabel => $"Share event: {Event.Title}";
+    private string CardAriaLabel => $"View event: {Event.Title}";
 
     // ── Icon Mapping Helpers ──
 
@@ -194,6 +196,9 @@ public partial class EventCard : ComponentBase
     }
 
     private Task HandleClick() => OnClick.InvokeAsync(Event);
+
+    private Task HandleKeyDown(KeyboardEventArgs args) =>
+        args.Key is "Enter" or " " or "Spacebar" ? HandleClick() : Task.CompletedTask;
 
     private Task HandleEdit() => OnEditRequested.InvokeAsync(Event);
 
