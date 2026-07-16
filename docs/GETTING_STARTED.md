@@ -191,7 +191,7 @@ dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.
 dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=RabbitMQ]" --minimum-expected-tests 1
 ```
 
-See [TESTING.md](TESTING.md) for the full per-project validation matrix, TUnit conventions, runtime lane policy, and E2E expectations.
+See [TESTING.md](TESTING.md) for the full per-project validation matrix, TUnit conventions, and runtime lane policy.
 
 ## Related
 

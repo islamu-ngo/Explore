@@ -119,7 +119,6 @@ Event.sln
 ├── Event.API.IntegrationTests/
 ├── Explore.Blazor.IntegrationTests/
 ├── Explore.Blazor.Client.Tests/
-├── Explore.Blazor.Client.E2ETests/
 ├── docs/
 └── dev/
 ```
@@ -474,10 +473,8 @@ If no intent matches, stop and propose a new one per `.claude/contract/README.md
 | `Explore.Blazor.Client/**/*` (WASM) | [`.claude/rules/blazor-client.md`](../.claude/rules/blazor-client.md) |
 | `**/*Tests/**/*.cs`, `**/*UnitTests/**/*.cs`, `**/*IntegrationTests/**/*.cs` | [`.claude/rules/tests.md`](../.claude/rules/tests.md) |
 
-### Enforcement
+### Context Maintenance
 
-- Context-system integrity is enforced by `Event.Architecture.Tests.AgentContext{Schema,Link,IntentManifest,Duplication}Tests`.
-- CI workflow `.github/workflows/agent-context.yml` runs these tests on every PR that touches `AGENTS.md`, `AGENTS.md`, `docs/**`, `.claude/**`, or `dev/_journal/{README,FINDING_TEMPLATE,PROMOTION_RULES}.md`.
 - Benchmark scenarios live in `.claude/benchmarks/cold-start-tasks.yaml` to measure cold-start agent success.
 
 If a rule in `.claude/rules/` appears to conflict with `QUICK_REFERENCE.md` or this file, the canonical doc wins and the rule file must be fixed per [`AGENTS.md`](../AGENTS.md) §4.

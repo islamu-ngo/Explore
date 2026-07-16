@@ -120,7 +120,7 @@ dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.Integration
 dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
 ```
 
-`Explore.Blazor.Client.E2ETests` is a tenth test project, but it is not part of the standard PR validation pass because it requires the full Aspire AppHost/browser stack. When a change touches SMTP, EmailDispatch, or optional RabbitMQ transport, also run the focused runtime category that matches the change:
+When a change touches SMTP, EmailDispatch, or optional RabbitMQ transport, also run the focused runtime category that matches the change:
 
 ```bash
 dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
@@ -150,12 +150,6 @@ Every non-trivial PR must record one documentation impact outcome:
 | Updated | Behavior, commands, configuration, API contracts, operator flows, or release notes changed and docs were updated in the same PR. |
 | Not needed | The change is internal and does not alter documented behavior. |
 | Deferred | Docs impact exists but is intentionally split; include owner, follow-up path, and reason. |
-
-Run documentation quality checks through the architecture test project:
-
-```bash
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
-```
 
 ## Code Standards
 
@@ -237,7 +231,7 @@ Before submitting:
 - [ ] Scope is focused and independently testable (target ≤ 4 hours of work)
 - [ ] Pull request template is completed with summary, linked context, docs impact, validation, and risk notes
 - [ ] Build succeeds: `dotnet build --configuration Release --verbosity quiet`
-- [ ] All 9 standard PR test projects pass individually (`Explore.Blazor.Client.E2ETests` is the tenth project and remains manual/nightly)
+- [ ] All 9 standard PR test projects pass individually
 - [ ] Architecture tests pass (layer deps, naming, accessibility, auth parity)
 - [ ] Documentation impact is recorded: `Updated`, `Not needed`, or `Deferred` with reason
 - [ ] New C# files have `ABOUTME:` headers
