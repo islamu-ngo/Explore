@@ -23,7 +23,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         var eventService = Substitute.For<IEventService>();
         eventService.CreateSessionGroupAsync(Arg.Any<CreateEventSessionGroupRequestDto>())
             .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
-        eventService.GetSessionGroupsByEventAsync(eventId).Returns(new List<HalResourceOfEventSessionGroupListDto>());
+        eventService.GetManagedSessionGroupsByEventAsync(eventId).Returns(new List<HalResourceOfEventSessionGroupListDto>());
 
         RegisterServices(eventService);
 
@@ -56,18 +56,23 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         var locationId = Guid.NewGuid();
         var oldRoomId = Guid.NewGuid();
         var newRoomId = Guid.NewGuid();
+        var eventService = Substitute.For<IEventService>();
         var roomService = Substitute.For<ILocationRoomService>();
-        roomService.GetRoomsByLocationAsync(locationId).Returns(new List<LocationRoomListDto>
+        eventService.GetEventSessionCreateContextAsync(eventId).Returns(new EventSessionCreateContextDto
         {
-            new()
-            {
-                Id = newRoomId,
-                LocationId = locationId,
-                Name = "Auditorium"
-            }
+            Locations = [new EventSessionCreateLocationOptionDto { Id = locationId, FullName = "Main Hall" }],
+            Rooms =
+            [
+                new EventSessionCreateRoomOptionDto
+                {
+                    Id = newRoomId,
+                    LocationId = locationId,
+                    Name = "Auditorium"
+                }
+            ]
         });
 
-        RegisterServices(locationRoomService: roomService);
+        RegisterServices(eventService, locationRoomService: roomService);
 
         var cut = _ctx.RenderMudComponent<ProgramSectionsDialog>(parameters => parameters
             .Add(component => component.EventId, eventId)
@@ -77,7 +82,8 @@ public sealed class ProgramSectionsDialogTests : IDisposable
 
         await InvokePrivateAsync(cut.Instance, "OnLocationChangedAsync", locationId);
 
-        await roomService.Received(1).GetRoomsByLocationAsync(locationId);
+        await eventService.Received(1).GetEventSessionCreateContextAsync(eventId);
+        await roomService.DidNotReceive().GetRoomsByLocationAsync(Arg.Any<Guid>());
         await Assert.That(GetField<Guid?>(cut.Instance, "_roomId")).IsNull();
     }
 
@@ -88,7 +94,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         var sectionId = Guid.NewGuid();
         var eventService = Substitute.For<IEventService>();
         eventService.DeleteSessionGroupAsync(eventId, sectionId).Returns(true);
-        eventService.GetSessionGroupsByEventAsync(eventId).Returns(new List<HalResourceOfEventSessionGroupListDto>());
+        eventService.GetManagedSessionGroupsByEventAsync(eventId).Returns(new List<HalResourceOfEventSessionGroupListDto>());
         var dialogService = Substitute.For<IDialogService>();
         dialogService.ShowMessageBoxAsync(
                 Arg.Any<string>(),
@@ -116,7 +122,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
             "Cancel",
             Arg.Any<DialogOptions>());
         await eventService.Received(1).DeleteSessionGroupAsync(eventId, sectionId);
-        await eventService.Received(1).GetSessionGroupsByEventAsync(eventId);
+        await eventService.Received(1).GetManagedSessionGroupsByEventAsync(eventId);
     }
 
     [Test]

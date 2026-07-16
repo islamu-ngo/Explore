@@ -9,8 +9,6 @@
 @using MudBlazor
 
 @inject IEventService EventService
-@inject ILocationService LocationService
-@inject ILocationRoomService LocationRoomService
 @inject IDialogService DialogService
 @inject ILogger<ProgramSectionsDialog> Logger
 
@@ -26,6 +24,13 @@
             <MudText Typo="Typo.body2" Color="Color.Secondary">
                 Create tracks, devrooms, stages, or neutral program sections. Assign saved sessions to one section at a time.
             </MudText>
+
+            @if (_locations.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                    No event-associated locations are available. Location and room selection stays unavailable until a venue is linked through an authorized event management flow.
+                </MudAlert>
+            }
 
             @if (!string.IsNullOrWhiteSpace(_errorMessage))
             {
@@ -255,8 +260,9 @@
     private Guid? _roomId;
     private int? _sortOrder;
     private bool _isPublished = true;
-    private ICollection<LocationListDto> _locations = new List<LocationListDto>();
-    private ICollection<LocationRoomListDto> _rooms = new List<LocationRoomListDto>();
+    private ICollection<EventSessionCreateLocationOptionDto> _locations = new List<EventSessionCreateLocationOptionDto>();
+    private ICollection<EventSessionCreateRoomOptionDto> _allRooms = new List<EventSessionCreateRoomOptionDto>();
+    private ICollection<EventSessionCreateRoomOptionDto> _rooms = new List<EventSessionCreateRoomOptionDto>();
     private List<EventSessionListDto> _sessions = [];
     private HalResourceOfEventSessionGroupListDto? _assignmentSection;
     private bool _isAssignmentSaving;
@@ -269,7 +275,9 @@
     {
         _sections = InitialSections?.OrderBy(section => section.SortOrder).ThenBy(section => section.Name).ToList() ?? [];
         _sortOrder = _sections.Count == 0 ? 0 : _sections.Max(section => section.SortOrder ?? 0) + 10;
-        _locations = await LocationService.GetAllLocationsAsync();
+        var createContext = await EventService.GetEventSessionCreateContextAsync(EventId);
+        _locations = createContext?.Locations ?? new List<EventSessionCreateLocationOptionDto>();
+        _allRooms = createContext?.Rooms ?? new List<EventSessionCreateRoomOptionDto>();
     }
 
     private async Task EditSectionAsync(HalResourceOfEventSessionGroupListDto section)
@@ -299,20 +307,22 @@
         await LoadRoomsForLocationAsync(locationId);
     }
 
-    private async Task LoadRoomsForLocationAsync(Guid? locationId)
+    private Task LoadRoomsForLocationAsync(Guid? locationId)
     {
         if (!locationId.HasValue || locationId.Value == Guid.Empty)
         {
-            _rooms = new List<LocationRoomListDto>();
+            _rooms = new List<EventSessionCreateRoomOptionDto>();
             _roomId = null;
-            return;
+            return Task.CompletedTask;
         }
 
-        _rooms = await LocationRoomService.GetRoomsByLocationAsync(locationId.Value);
+        _rooms = _allRooms.Where(room => room.LocationId == locationId).ToList();
         if (_roomId.HasValue && _rooms.All(room => room.Id != _roomId.Value))
         {
             _roomId = null;
         }
+
+        return Task.CompletedTask;
     }
 
     private async Task SaveAsync()
@@ -367,7 +377,7 @@
                 return;
             }
 
-            _sections = (await EventService.GetSessionGroupsByEventAsync(EventId))
+            _sections = (await EventService.GetManagedSessionGroupsByEventAsync(EventId))
                 .OrderBy(section => section.SortOrder)
                 .ThenBy(section => section.Name)
                 .ToList();
@@ -417,7 +427,7 @@
                 return;
             }
 
-            _sections = (await EventService.GetSessionGroupsByEventAsync(EventId))
+            _sections = (await EventService.GetManagedSessionGroupsByEventAsync(EventId))
                 .OrderBy(programSection => programSection.SortOrder)
                 .ThenBy(programSection => programSection.Name)
                 .ToList();
@@ -595,7 +605,7 @@
         _color = null;
         _locationId = null;
         _roomId = null;
-        _rooms = new List<LocationRoomListDto>();
+        _rooms = new List<EventSessionCreateRoomOptionDto>();
         _sortOrder = _sections.Count == 0 ? 0 : _sections.Max(section => section.SortOrder ?? 0) + 10;
         _isPublished = true;
         _errorMessage = null;
@@ -618,13 +628,13 @@
         return string.Join(" · ", details);
     }
 
-    private static string FormatLocation(LocationListDto location)
+    private static string FormatLocation(EventSessionCreateLocationOptionDto location)
     {
         var fullName = location.FullName ?? string.Empty;
         return string.IsNullOrWhiteSpace(location.City) ? fullName : $"{fullName} · {location.City}";
     }
 
-    private static string FormatRoom(LocationRoomListDto room)
+    private static string FormatRoom(EventSessionCreateRoomOptionDto room)
     {
         return room.Capacity.HasValue ? $"{room.Name} ({room.Capacity} seats)" : room.Name ?? string.Empty;
     }
