@@ -71,13 +71,19 @@ builder.Services.AddServerOnlyServices(builder.Configuration);
 builder.Services.AddEventControlPlaneClient();
 builder.Services.AddApiHttpClients(builder.Configuration, builder.Environment);
 
+var detailedErrors = builder.Configuration.GetValue<bool>("DetailedErrors");
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents()
+    .AddInteractiveServerComponents(options => options.DetailedErrors = detailedErrors)
     .AddInteractiveWebAssemblyComponents()
     .AddAuthenticationStateSerialization(options =>
     {
         options.SerializationCallback = AuthStateSerializationPolicy.SerializeDisplaySafeClaimsAsync;
     });
+builder.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions>(options =>
+{
+    options.MaximumReceiveMessageSize = 512 * 1024;
+    options.EnableDetailedErrors = detailedErrors;
+});
 
 builder.Services.AddBlazouter();
 builder.Services.AddHttpContextAccessor();
