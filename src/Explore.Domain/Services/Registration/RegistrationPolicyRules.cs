@@ -31,4 +31,27 @@ public static class RegistrationPolicyRules
             _ => false
         };
     }
+
+    public static ApprovalStatusEnum? ResolveInitialApprovalStatus(IEnumerable<int?> registrationModeIds)
+    {
+        var resolved = ApprovalStatusEnum.Approved;
+        var hasSession = false;
+
+        foreach (var registrationModeId in registrationModeIds)
+        {
+            hasSession = true;
+            switch (registrationModeId)
+            {
+                case (int)RegistrationModeEnum.Open:
+                    break;
+                case (int)RegistrationModeEnum.ApprovalRequired:
+                    resolved = ApprovalStatusEnum.Pending;
+                    break;
+                default:
+                    return null;
+            }
+        }
+
+        return hasSession ? resolved : null;
+    }
 }

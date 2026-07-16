@@ -109,4 +109,35 @@ public class RegistrationPolicyRulesTests
 
         await Assert.That(result).IsFalse();
     }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    [Arguments((int)RegistrationModeEnum.Open, (int)ApprovalStatusEnum.Approved)]
+    [Arguments((int)RegistrationModeEnum.ApprovalRequired, (int)ApprovalStatusEnum.Pending)]
+    [Arguments((int)RegistrationModeEnum.InviteOnly, null)]
+    [Arguments((int)RegistrationModeEnum.Closed, null)]
+    [Arguments(null, null)]
+    public async Task ResolveInitialApprovalStatusCharacterizesEveryRegistrationMode(
+        int? registrationModeId,
+        int? expectedApprovalStatusId)
+    {
+        var result = RegistrationPolicyRules.ResolveInitialApprovalStatus([registrationModeId]);
+
+        await Assert.That((int?)result).IsEqualTo(expectedApprovalStatusId);
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task ResolveInitialApprovalStatusUsesMostRestrictiveCoveredSessionAndDeniesEmptyCoverage()
+    {
+        var mixedResult = RegistrationPolicyRules.ResolveInitialApprovalStatus(
+        [
+            (int)RegistrationModeEnum.Open,
+            (int)RegistrationModeEnum.ApprovalRequired
+        ]);
+        var emptyResult = RegistrationPolicyRules.ResolveInitialApprovalStatus([]);
+
+        await Assert.That(mixedResult).IsEqualTo(ApprovalStatusEnum.Pending);
+        await Assert.That(emptyResult).IsNull();
+    }
 }
