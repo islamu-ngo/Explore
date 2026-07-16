@@ -261,6 +261,7 @@ public static class RouteNames
     public const string CancelAiRun = "CancelAiRun";
     public const string GetPublicExperienceSettings = "GetPublicExperienceSettings";
     public const string GetPublicExperienceShell = "GetPublicExperienceShell";
+    public const string GetHomeDiscovery = "GetHomeDiscovery";
     public const string RelayAnalyticsEvent = "RelayAnalyticsEvent";
     public const string GetTranslationByLanguage = "GetTranslationByLanguage";
     public const string GetAvailableTranslationLanguages = "GetAvailableTranslationLanguages";

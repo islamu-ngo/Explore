@@ -4,6 +4,7 @@
 using System.Text.Json.Nodes;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.CustomPropertyProjection;
+using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.ManagedProviderProvisioning;
 using Explore.Application.DTOs.Settings;
 using Explore.Application.Features.EventReporting.Models;
@@ -35,9 +36,17 @@ internal static class OpenApiStringEnumSchemaCatalog
         typeof(EventReportProviderEvidenceMode),
         typeof(EventReportPriority),
         typeof(EventReportSeverityHint),
+        typeof(EventLocationDisclosureField),
+        typeof(EventLocationDisclosureFieldClass),
+        typeof(EventLocationDisclosureFields),
+        typeof(EventLocationDisclosurePolicyGate),
+        typeof(EventLocationDisclosurePurpose),
+        typeof(EventLocationDisclosureState),
         typeof(EventRoleAssignmentStatus),
         typeof(ExposureLevel),
         typeof(GenderSegregationMode),
+        typeof(HomeDiscoveryMode),
+        typeof(HomeDiscoverySectionStatus),
         typeof(KeycloakBootstrapMode),
         typeof(ManagedProviderOrganizerKindDto),
         typeof(PosthogCookielessMode),
@@ -99,10 +108,19 @@ internal sealed class OpenApiStringEnumDocumentTransformer : IOpenApiDocumentTra
 
         foreach (var (schemaName, schema) in document.Components.Schemas)
         {
-            if (schema is OpenApiSchema openApiSchema
+            var openApiSchema = schema as OpenApiSchema;
+
+            if (openApiSchema is not null
                 && OpenApiStringEnumSchemaCatalog.TryGetEnumType(schemaName, out var enumType))
             {
                 OpenApiStringEnumSchemaMutator.Apply(openApiSchema, enumType);
+            }
+
+            if (schema.Properties is not null
+                && schema.Properties.ContainsKey("endTimeType"))
+            {
+                schema.Properties["endTimeType"] =
+                    new OpenApiSchemaReference(nameof(SessionEndTimeType), document);
             }
         }
 

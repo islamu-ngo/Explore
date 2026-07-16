@@ -11331,8 +11331,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "ListData"
+        "x-endpoint-class": "Public"
       }
     },
     "/api/eventagendaitem/{id}": {
@@ -11404,8 +11403,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "DetailData"
+        "x-endpoint-class": "Public"
       },
       "patch": {
         "tags": [
@@ -11645,6 +11643,210 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/eventagendaitem/management/by-event/{eventId}": {
+      "get": {
+        "tags": [
+          "EventAgendaItem"
+        ],
+        "summary": "Get Managed Agenda Items by Event",
+        "description": "Returns exact agenda items for an authorized event management surface.",
+        "operationId": "GetManagedEventAgendaItemsByEvent",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventAgendaItemListDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventAgendaItemListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/eventagendaitem/management/by-event/{eventId}/{id}": {
+      "get": {
+        "tags": [
+          "EventAgendaItem"
+        ],
+        "summary": "Get Managed Agenda Item Details",
+        "description": "Returns exact agenda item details for an authorized event management surface.",
+        "operationId": "GetManagedEventAgendaItemById",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAgendaItemDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAgendaItemDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/eventagendaitem/agenda-projection/{eventId}": {
       "get": {
         "tags": [
@@ -11714,8 +11916,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "DetailData"
+        "x-endpoint-class": "Public"
       }
     },
     "/api/eventagendaitem": {
@@ -12357,7 +12558,7 @@
           "Event"
         ],
         "summary": "Get all Events",
-        "description": "Get a paginated, filterable list of all Events (Conference, Webinar, Workshop...). Default page size is 20, max is 100. Supports filtering by category, tag, format, madhab, location, language, date range, and free-text search. Supports module-conditional aspect filters: Islamic (genderMode, quranRecitation, referencePrayer, islamicLanguage) and Tech (skillLevel, codingCompetition, hackathon, requiresLaptop, techStack). Aspect filters are silently ignored when the corresponding module is not enabled for the tenant. Supports custom-property projection filters and text search gated behind the tenant feature flag 'custom_properties.projection_discovery_enabled' — silently ignored when disabled. Supports sorting by date, title, views, or createdAt. Response includes HATEOAS navigation links (first, prev, next, last). Send 'Prefer: return=minimal' header to strip links.",
+        "description": "Get a paginated, filterable list of all Events (Conference, Webinar, Workshop...). Default page size is 20, max is 100. Supports filtering by category, tag, format, madhab, language, date range, and free-text search. Supports module-conditional aspect filters: Islamic (genderMode, quranRecitation, referencePrayer, islamicLanguage) and Tech (skillLevel, codingCompetition, hackathon, requiresLaptop, techStack). Aspect filters are silently ignored when the corresponding module is not enabled for the tenant. Supports custom-property projection filters and text search gated behind the tenant feature flag 'custom_properties.projection_discovery_enabled' — silently ignored when disabled. Supports sorting by date, title, views, or createdAt. Response includes HATEOAS navigation links (first, prev, next, last). Send 'Prefer: return=minimal' header to strip links.",
         "operationId": "GetEvents",
         "parameters": [
           {
@@ -12522,17 +12723,6 @@
                   "string"
                 ],
                 "format": "int32"
-              }
-            }
-          },
-          {
-            "name": "LocationIds",
-            "in": "query",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "format": "uuid"
               }
             }
           },
@@ -13372,8 +13562,113 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "DetailData"
+        "x-endpoint-class": "Public"
+      }
+    },
+    "/api/event/{id}/management-program-summary": {
+      "get": {
+        "tags": [
+          "Event"
+        ],
+        "summary": "Get Managed Event Program Summary",
+        "description": "Returns draft and published program sections, items, and readiness warnings for authorized event management.",
+        "operationId": "GetManagedEventProgramSummary",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventProgramSummaryDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventProgramSummaryDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/event/{id}": {
@@ -14037,8 +14332,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "DetailData"
+        "x-endpoint-class": "Public"
       }
     },
     "/api/event/import": {
@@ -18639,8 +18933,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "ListData"
+        "x-endpoint-class": "Public"
       },
       "post": {
         "tags": [
@@ -18783,10 +19076,29 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "DetailData"
+        "x-endpoint-class": "Public"
       },
       "put": {
         "tags": [
@@ -18988,8 +19300,143 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "ListData"
+        "x-endpoint-class": "Public"
+      }
+    },
+    "/api/eventsessionagendaitem/management/by-event/{eventId}/by-session/{sessionId}": {
+      "get": {
+        "tags": [
+          "EventSessionAgendaItem"
+        ],
+        "summary": "Get Managed Agenda Items by Session",
+        "description": "Returns exact session agenda items for an authorized event management surface.",
+        "operationId": "GetManagedEventSessionAgendaItemsBySession",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventSessionAgendaItemListDto"
+                  }
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventSessionAgendaItemListDto"
+                  }
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventSessionAgendaItemListDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/eventsession": {
@@ -19093,8 +19540,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "ListData"
+        "x-endpoint-class": "Public"
       },
       "post": {
         "tags": [
@@ -19276,8 +19722,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "DetailData"
+        "x-endpoint-class": "Public"
       },
       "patch": {
         "tags": [
@@ -19517,6 +19962,121 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/eventsession/management/by-event/{eventId}/{id}": {
+      "get": {
+        "tags": [
+          "EventSession"
+        ],
+        "summary": "Get Managed Event Session Details",
+        "description": "Returns exact session details for an authorized event management surface.",
+        "operationId": "GetManagedEventSessionById",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventSessionDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventSessionDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/eventsession/by-event/{eventId}": {
       "get": {
         "tags": [
@@ -19569,8 +20129,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "ListData"
+        "x-endpoint-class": "Public"
       }
     },
     "/api/eventsession/management/by-event/{eventId}": {
@@ -21550,8 +22109,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "ListData"
+        "x-endpoint-class": "Public"
       }
     },
     "/api/eventsessiongroup/{id}": {
@@ -21635,8 +22193,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "DetailData"
+        "x-endpoint-class": "Public"
       },
       "put": {
         "tags": [
@@ -21903,6 +22460,252 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/eventsessiongroup/management/by-event/{eventId}": {
+      "get": {
+        "tags": [
+          "EventSessionGroup"
+        ],
+        "summary": "Get Managed Event Session Groups by Event",
+        "description": "Returns exact program-section selectors for an authorized event management surface.",
+        "operationId": "GetManagedEventSessionGroupsByEvent",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionGroupListDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionGroupListDto"
+                }
+              },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionGroupListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { },
+              "application/problem+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { },
+              "application/problem+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { },
+              "application/problem+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/eventsessiongroup/management/by-event/{eventId}/{id}": {
+      "get": {
+        "tags": [
+          "EventSessionGroup"
+        ],
+        "summary": "Get Managed Event Session Group Details",
+        "description": "Returns exact program-section details for an authorized event management surface.",
+        "operationId": "GetManagedEventSessionGroupById",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventSessionGroupDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventSessionGroupDto"
+                }
+              },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventSessionGroupDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { },
+              "application/problem+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { },
+              "application/problem+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { },
+              "application/problem+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { },
+              "application/problem+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/eventsessiongroup/{id}/sessions": {
       "get": {
         "tags": [
@@ -21961,8 +22764,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "ListData"
+        "x-endpoint-class": "Public"
       },
       "post": {
         "tags": [
@@ -36401,8 +37203,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "ListData"
+        "x-endpoint-class": "Authenticated"
       },
       "post": {
         "tags": [
@@ -36567,8 +37368,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "DetailData"
+        "x-endpoint-class": "Authenticated"
       },
       "patch": {
         "tags": [
@@ -36842,8 +37642,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "ListData"
+        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/location/by-country/{country}": {
@@ -36897,8 +37696,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "ListData"
+        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/locationroom/by-location/{locationId}": {
@@ -36953,8 +37751,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "ListData"
+        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/locationroom/{id}": {
@@ -37026,8 +37823,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "DetailData"
+        "x-endpoint-class": "Authenticated"
       },
       "patch": {
         "tags": [
@@ -44619,6 +45415,91 @@
         },
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "PublicExperienceShell"
+      }
+    },
+    "/api/public-experience/home": {
+      "get": {
+        "tags": [
+          "PublicExperience"
+        ],
+        "summary": "Get Home Discovery",
+        "description": "Returns the tenant-aware event discovery sections for the public home page.",
+        "operationId": "GetHomeDiscovery",
+        "parameters": [
+          {
+            "name": "areaId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomeDiscoveryDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomeDiscoveryDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomeDiscoveryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Public",
+        "x-output-cache-policy": "PublicHomeDiscovery"
       }
     },
     "/api/registrationmode": {
@@ -67668,6 +68549,50 @@
           }
         }
       },
+      "EventDiscoveryItemDto": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/EventListDto"
+          },
+          "distanceMeters": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "nearestSessionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "nearestLocationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "nearestLocationName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nearestOccurrenceStartsAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "EventDto": {
         "required": [
           "title",
@@ -68665,7 +69590,10 @@
         "type": "object",
         "properties": {
           "localDate": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "date"
           },
           "displayLabel": {
@@ -68711,23 +69639,38 @@
             ]
           },
           "startsAtUtc": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "date-time"
           },
           "endsAtUtc": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "date-time"
           },
           "localDate": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "date"
           },
           "localStartTime": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "time"
           },
           "localEndTime": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "time"
           },
           "sortOrder": {
@@ -70267,7 +71210,7 @@
             "format": "date-time"
           },
           "endTimeType": {
-            "type": "integer"
+            "$ref": "#/components/schemas/SessionEndTimeType"
           },
           "formattedEndTime": {
             "type": [
@@ -70942,7 +71885,7 @@
             "format": "date-time"
           },
           "endTimeType": {
-            "type": "integer"
+            "$ref": "#/components/schemas/SessionEndTimeType"
           },
           "formattedEndTime": {
             "type": [
@@ -80398,7 +81341,7 @@
             "format": "date-time"
           },
           "endTimeType": {
-            "type": "integer"
+            "$ref": "#/components/schemas/SessionEndTimeType"
           },
           "formattedEndTime": {
             "type": [
@@ -80924,7 +81867,7 @@
             "format": "date-time"
           },
           "endTimeType": {
-            "type": "integer"
+            "$ref": "#/components/schemas/SessionEndTimeType"
           },
           "formattedEndTime": {
             "type": [
@@ -87478,6 +88421,143 @@
           }
         }
       },
+      "HomeDiscoveryContextDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/HomeDiscoveryMode"
+          },
+          "selectedAreaId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "defaultAreaId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "selectedAreaDisplayName": {
+            "type": "string"
+          },
+          "availableAreas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicDiscoveryAreaDto"
+            }
+          }
+        }
+      },
+      "HomeDiscoveryDto": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "context": {
+            "$ref": "#/components/schemas/HomeDiscoveryContextDto"
+          },
+          "hero": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventDiscoveryItemDto"
+            }
+          },
+          "upcomingInArea": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventDiscoveryItemDto"
+            }
+          },
+          "spotlight": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/HomeDiscoverySectionDto"
+              }
+            ]
+          },
+          "mostViewedInArea": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventDiscoveryItemDto"
+            }
+          },
+          "mostViewedOnline": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventDiscoveryItemDto"
+            }
+          },
+          "curatedSections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HomeDiscoverySectionDto"
+            }
+          },
+          "recentlyAdded": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventDiscoveryItemDto"
+            }
+          },
+          "sectionStatuses": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HomeDiscoverySectionStatus"
+            }
+          },
+          "generatedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "HomeDiscoveryMode": {
+        "enum": [
+          "Area",
+          "Online",
+          "All"
+        ],
+        "type": "string"
+      },
+      "HomeDiscoverySectionDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventDiscoveryItemDto"
+            }
+          }
+        }
+      },
+      "HomeDiscoverySectionStatus": {
+        "enum": [
+          "Available",
+          "Empty",
+          "Failed",
+          "Omitted"
+        ],
+        "type": "string"
+      },
       "ImportEventRequestDto": {
         "required": [
           "title",
@@ -93321,6 +94401,53 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "PublicDiscoveryAreaDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "centroidLatitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "centroidLongitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -100123,7 +101250,7 @@
             "$ref": "#/components/schemas/OptionalUpdateOfDateTimeOffset"
           },
           "endTimeType": {
-            "$ref": "#/components/schemas/OptionalUpdateOfSessionEndTimeType"
+            "$ref": "#/components/schemas/SessionEndTimeType"
           }
         }
       },

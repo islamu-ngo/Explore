@@ -3,6 +3,8 @@
 
 using System;
 using System.Net.Http;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 
 namespace Explore.Blazor.Client.Clients;
@@ -14,6 +16,11 @@ namespace Explore.Blazor.Client.Clients;
 public partial class EventApiClient
 {
     private static readonly AsyncLocal<string?> CreateEventIdempotencyKey = new();
+
+    static partial void UpdateJsonSerializerSettings(JsonSerializerOptions settings)
+    {
+        settings.Converters.Add(new JsonStringEnumConverter());
+    }
 
     public async Task<BaseCommandResponseOfGuid> CreateEventWithIdempotencyKeyAsync(
         CreateEventDraftRequestDto body,
