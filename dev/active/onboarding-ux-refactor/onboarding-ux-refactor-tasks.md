@@ -169,7 +169,7 @@ Last Updated: 2026-07-12 Europe/Brussels
   - **Files:** all modified files and affected deployment config
   - **Acceptance:** Release build; SingleTenant; MultiTenant zero-tenant; optional first tenant; provider failure/retry; keyboard; screen reader; RTL; dark/light; long translations. `docker compose config`/Aspire smoke only if deployment config changed.
   - **Validation:** evidence and residual risks recorded in context.
-  - **Runtime evidence:** `aspire doctor` passes all four environment checks. The `.slnx` root-discovery and migration blockers recorded earlier are resolved: AppHost recognizes `Explore.slnx`, migration and `keycloak-init` exited zero, and API, Blazor, Keycloak, database, cache, and Cerbos resources ran. The last health probe was `503` only because S3 storage readiness was unhealthy. Previous Playwright base/detected runs passed at 1440x900 and 390x844 across LTR, Arabic RTL, dark mode, long text, keyboard disclosure/focus, and overflow/label/target checks; the independent visual gate was `PASS`. Those runs predate the authorization-page refactor and used a stubbed detected response, so fresh real-stack authorization screenshots and routing evidence remain required. Authenticated postlaunch instance/tenant, real deployed Keycloak realm-management, and assisted screen-reader journeys also remain open.
+  - **Runtime evidence:** `aspire doctor` passes all four environment checks. The `.slnx` root-discovery and migration blockers recorded earlier are resolved: AppHost recognizes `Explore.slnx`, migration and `keycloak-init` exited zero, and API, Blazor, Keycloak, database, cache, and Cerbos resources ran. The last health probe was `503` only because S3 storage readiness was unhealthy. Previous browser checks passed at 1440x900 and 390x844 across LTR, Arabic RTL, dark mode, long text, keyboard disclosure/focus, and overflow/label/target checks; the independent visual gate was `PASS`. Those runs predate the authorization-page refactor and used a stubbed detected response, so fresh real-stack authorization screenshots and routing evidence remain required. Authenticated postlaunch instance/tenant, real deployed Keycloak realm-management, and assisted screen-reader journeys also remain open.
   - **Effort:** L
   - **Dependencies:** 8.1
 
@@ -187,7 +187,7 @@ Last Updated: 2026-07-12 Europe/Brussels
   - Current focused evidence: 6/6 `AuthProviderConfigurationServiceTests`, 2/2 confidential-client validator tests, 5/5 `RotateKeycloakClientSecretCommandHandlerTests`, 1/1 API compatibility mapping test, and 1/1 TestServer onboarding projection test pass.
   - Save/update handler regression cases pass and cover server-derived configured-secret state versus forged request ownership.
   - The HTTP test covers public setup read, configured status, and authenticated administrator read, and asserts the deployment secret is absent from serialized responses.
-  - The existing detected-provider browser visual run used a stubbed response; it is not a full deployed Keycloak login or realm-repair E2E proof.
+  - The existing detected-provider browser visual run used a stubbed response; it is not a full deployed Keycloak login or realm-repair runtime proof.
 
 - [x] LSP diagnostics and compiler checks are clean for modified onboarding source files.
 - [x] `dotnet build --configuration Release --verbosity quiet` passes.

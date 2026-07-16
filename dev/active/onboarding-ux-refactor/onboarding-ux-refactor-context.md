@@ -31,7 +31,7 @@ Last Updated: 2026-07-12 Europe/Brussels
 - Retained configured Keycloak as a complete task with a HAL-gated management route before and after launch.
 - Hardened setup-secret forwarding against browser-header spoofing, query-string confusion, and similar-route prefix confusion; the final focused BFF suite passes 14/14.
 - Hardened the provider editor so setup reads only the public redacted contract, clears any returned secret fields before render, never prefills an existing client secret into bootstrap controls, and clears all one-time bootstrap values in `finally`.
-- Completed the earlier Keycloak-focused Playwright visual QA across base/detected, desktop/mobile, LTR/RTL, light/dark, long-text, disclosure-keyboard, focus, and provider-action states; that independent visual gate is `PASS`. Fresh authorization-page QA remains open.
+- Completed the earlier Keycloak-focused browser QA across base/detected, desktop/mobile, LTR/RTL, light/dark, long-text, disclosure-keyboard, focus, and provider-action states; that independent visual gate is `PASS`. Fresh authorization-page QA remains open.
 - Implemented explicit blank/Local/Cerbos authorization intent, runtime precedence, deployment-owned writes, instance PDP verification, instance-only policy publication, bounded startup retries, singleton single-flight state, safe failure remediation, authoritative route skipping, post-launch retry refresh, and the one-column Local-first page.
 - Updated canonical configuration, secrets, self-hosting, troubleshooting, Blazor, and API change documentation for the authorization flow.
 
@@ -75,7 +75,7 @@ Last Updated: 2026-07-12 Europe/Brussels
 ### ⚠️ BLOCKERS
 
 - **Workspace isolation risk:** The current working tree contains authorization/onboarding work plus unrelated managed-tenant provisioning changes that must not be reverted or folded into this slice accidentally.
-- **Runtime:** The prior `.slnx` and migration blockers are resolved. The current local stack still reports S3 storage unhealthy, and the E2E fixture points at a stale AppHost path.
+- **Runtime:** The prior `.slnx` and migration blockers are resolved. The current local stack still reports S3 storage unhealthy; the retired browser fixture no longer participates in verification.
 - **Full suites:** Post-change broad suites are pending. The latest baseline has eight API failures and four Architecture failures requiring attribution; Application, Client, BFF Integration, build, and Compose configuration were green.
 - **Accessibility:** No supported assisted screen reader is installed in this environment; browser semantics/keyboard evidence cannot substitute for that gate.
 
@@ -182,7 +182,7 @@ Final verification evidence on 2026-07-12:
 - Latest full Architecture: 263/268 passed, four failed, one governed skip.
 - Focused provider source 9/9, redacted endpoint mapping 1/1, and setup-layout source 1/1: passed.
 - Current authorization slice: configuration/options 13/13, provider/single-flight 19/19, policy-package target isolation 22/22, runtime provider 23/23, boot runner 4/4, authorization page 13/13, instance onboarding service 34/34, admin provider layout 10/10, Setup 9/9, and authentication source 10/10 passed. Client/API/Infrastructure Release builds have zero errors.
-- Final Playwright base and detected runs: exit zero. The independent visual gate is `PASS`; only pre-existing CSP meta/inline-script console warnings remain.
+- Final browser base and detected runs: exit zero. The independent visual gate is `PASS`; only pre-existing CSP meta/inline-script console warnings remain.
 - The prior `.slnx` and migration blockers are resolved. The last real stack ran API, Blazor, Keycloak, database, cache, and Cerbos; `/health` remained `503` because S3 storage was unhealthy. A fresh current-source replay is pending.
 - Post-refresh DocumentationQuality passes 4/4, AgentContextLink passes 8/8, and AgentContextSchema passes 9/9.
 
@@ -192,7 +192,7 @@ Final verification evidence on 2026-07-12:
 - **Resolved / Tasks 1.2 and 4.1:** Platform, tenant, setup, completion, and management relations have permission/setup-secret-scoped HAL coverage and fail-closed tests.
 - **Resolved at producer/service boundary:** Deployment-only Keycloak has current-source shared-service and TestServer integration coverage for sanitized detection, configured state, precedence, and secret exclusion.
 - **Resolved / Task 6.3 implementation/docs:** Explicit provider mapping, runtime precedence, deployment ownership, instance-only background reconciliation, bounded retries/single-flight, authoritative navigation, one-column UI, canonical docs, and focused server/client tests pass. Live Aspire/browser proof remains open.
-- **Open / Tasks 8.1 and 8.2:** Do not claim a full deployment/login/realm-management or authorization bootstrap E2E journey until it runs against the real stack.
+- **Open / Tasks 8.1 and 8.2:** Do not claim a full deployment/login/realm-management or authorization bootstrap journey until it is verified manually against the real stack.
 - **Open / Task 8.2:** Responsive, keyboard, focus, RTL, dark/light, and long-text browser checks pass; authenticated postlaunch and assisted screen-reader journeys still require a healthy real stack.
 - **Open / Task 8.1:** Eight API and four Architecture failures prevent a fully green required-project baseline until they are attributed or fixed.
 - **Open / all work:** Unrelated managed-control-plane changes must remain isolated from any future commit or diagnosis; `.codex/config.toml` currently has no diff.
@@ -207,7 +207,7 @@ Final verification evidence on 2026-07-12:
 
 - **Current state:** Core onboarding UI, production Keycloak detection/manageability, explicit authorization intent/reconciliation, generated contracts, and focused tests are implemented. Tasks 6.3, 8.1, 8.2, and 8.3 remain open.
 - **Next action:** Run real Aspire/browser authorization QA, rerun required suites, then complete authenticated Keycloak and assisted screen-reader journeys.
-- **Blockers:** Eight current API failures, four unrelated Architecture failures, the E2E fixture's stale AppHost path, S3 readiness in the local stack, and unavailable assisted screen-reader tooling. The prior `EMFILE` and `.slnx` root-discovery blockers are resolved.
+- **Blockers:** Eight current API failures, four unrelated Architecture failures, S3 readiness in the local stack, and unavailable assisted screen-reader tooling. The prior `EMFILE` and `.slnx` root-discovery blockers are resolved.
 - **Modified files:** Onboarding Blazor/BFF/API HAL/controller/service/test files, shared authentication and authorization provider services/handlers, API background/configuration mapping, AppHost/Compose deployment configuration, generated OpenAPI/client artifacts, canonical docs, and these three workstream documents. Unrelated work remains preserved.
 - **Validation:** Current focused Keycloak and authorization tests pass, including instance-target isolation, single-flight coordination, retries, endpoint hardening, route behavior, and one-column UI. Client/API/Infrastructure Release builds pass; earlier full Release/Application/Client/BFF runs were green, while post-change broad reruns remain pending. Exact API/Architecture/runtime blockers are recorded above and in the checklist.
 - **Documentation impact:** Canonical configuration, secrets, self-hosting, troubleshooting, deployment-mode, Blazor, API changelog, and API inventory documentation now match implemented behavior.
