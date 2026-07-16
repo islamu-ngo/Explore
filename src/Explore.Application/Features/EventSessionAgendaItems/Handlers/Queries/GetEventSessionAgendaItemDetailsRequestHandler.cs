@@ -10,7 +10,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionAgendaItems.Handlers.Queries;
 
-public class GetEventSessionAgendaItemDetailsRequestHandler : IRequestHandler<GetEventSessionAgendaItemDetailsRequest, EventSessionAgendaItemDto>
+public class GetEventSessionAgendaItemDetailsRequestHandler : IRequestHandler<GetEventSessionAgendaItemDetailsRequest, EventSessionAgendaItemDto?>
 {
     private readonly IEventSessionAgendaItemRepository _agendaItemRepository;
     private readonly IMapper _mapper;
@@ -23,9 +23,34 @@ public class GetEventSessionAgendaItemDetailsRequestHandler : IRequestHandler<Ge
         _mapper = mapper;
     }
 
-    public async Task<EventSessionAgendaItemDto> Handle(GetEventSessionAgendaItemDetailsRequest request, CancellationToken cancellationToken)
+    public async Task<EventSessionAgendaItemDto?> Handle(GetEventSessionAgendaItemDetailsRequest request, CancellationToken cancellationToken)
     {
-        var agendaItem = await _agendaItemRepository.GetByIdWithDetails(request.Id, cancellationToken);
-        return _mapper.Map<EventSessionAgendaItemDto>(agendaItem);
+        var agendaItem = await _agendaItemRepository.GetPublicByIdWithDetailsAsync(request.Id, cancellationToken);
+        return PublicEventSessionAgendaItemLocationRedactor.Redact(_mapper.Map<EventSessionAgendaItemDto>(agendaItem));
+    }
+}
+
+internal static class PublicEventSessionAgendaItemLocationRedactor
+{
+    public static EventSessionAgendaItemDto? Redact(EventSessionAgendaItemDto? dto)
+    {
+        if (dto is null)
+        {
+            return null;
+        }
+
+        dto.LocationId = null;
+        dto.LocationFullName = null;
+        return dto;
+    }
+
+    public static List<EventSessionAgendaItemListDto> Redact(List<EventSessionAgendaItemListDto> dtos)
+    {
+        foreach (var dto in dtos)
+        {
+            dto.LocationFullName = null;
+        }
+
+        return dtos;
     }
 }

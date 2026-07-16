@@ -26,7 +26,8 @@ public class GetAgendaItemsBySessionRequestHandler : IRequestHandler<GetAgendaIt
 
     public async Task<List<EventSessionAgendaItemListDto>> Handle(GetAgendaItemsBySessionRequest request, CancellationToken cancellationToken)
     {
-        var agendaItems = await _agendaItemRepository.GetBySession(request.EventSessionId, cancellationToken);
-        return _mapper.Map<List<EventSessionAgendaItemListDto>>(agendaItems);
+        var agendaItems = await _agendaItemRepository.GetPublicBySessionAsync(request.EventSessionId, cancellationToken);
+        return PublicEventSessionAgendaItemLocationRedactor.Redact(
+            _mapper.Map<List<EventSessionAgendaItemListDto>>(agendaItems));
     }
 }

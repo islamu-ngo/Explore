@@ -1,5 +1,5 @@
-// ABOUTME: Unit tests for event-session agenda item query cancellation propagation.
-// ABOUTME: Proves handlers pass MediatR cancellation tokens into repository reads.
+// ABOUTME: Unit tests for public event-session agenda item query privacy and cancellation propagation.
+// ABOUTME: Proves handlers strip physical venue data and pass cancellation tokens into repository reads.
 
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
@@ -24,12 +24,12 @@ public sealed class EventSessionAgendaItemQueryHandlerCancellationTests
         var request = new GetAgendaItemsBySessionRequest { EventSessionId = Guid.NewGuid() };
         using var cancellation = new CancellationTokenSource();
 
-        _repository.GetBySession(request.EventSessionId, cancellation.Token).Returns(agendaItems);
+        _repository.GetPublicBySessionAsync(request.EventSessionId, cancellation.Token).Returns(agendaItems);
         _mapper.Map<List<EventSessionAgendaItemListDto>>(agendaItems).Returns([]);
 
         await handler.Handle(request, cancellation.Token);
 
-        await _repository.Received(1).GetBySession(request.EventSessionId, cancellation.Token);
+        await _repository.Received(1).GetPublicBySessionAsync(request.EventSessionId, cancellation.Token);
     }
 
     [Test]
@@ -40,12 +40,12 @@ public sealed class EventSessionAgendaItemQueryHandlerCancellationTests
         var request = new GetEventSessionAgendaItemListRequest { PageNumber = 2, PageSize = 10 };
         using var cancellation = new CancellationTokenSource();
 
-        _repository.GetAgendaItemsWithDetailsPaged(2, 10, cancellation.Token).Returns((agendaItems, 0));
+        _repository.GetPublicAgendaItemsWithDetailsPagedAsync(2, 10, cancellation.Token).Returns((agendaItems, 0));
         _mapper.Map<List<EventSessionAgendaItemListDto>>(agendaItems).Returns([]);
 
         await handler.Handle(request, cancellation.Token);
 
-        await _repository.Received(1).GetAgendaItemsWithDetailsPaged(2, 10, cancellation.Token);
+        await _repository.Received(1).GetPublicAgendaItemsWithDetailsPagedAsync(2, 10, cancellation.Token);
     }
 
     [Test]
@@ -55,10 +55,70 @@ public sealed class EventSessionAgendaItemQueryHandlerCancellationTests
         var request = new GetEventSessionAgendaItemDetailsRequest { Id = Guid.NewGuid() };
         using var cancellation = new CancellationTokenSource();
 
-        _repository.GetByIdWithDetails(request.Id, cancellation.Token).Returns((EventSessionAgendaItem?)null);
+        _repository.GetPublicByIdWithDetailsAsync(request.Id, cancellation.Token).Returns((EventSessionAgendaItem?)null);
 
         await handler.Handle(request, cancellation.Token);
 
-        await _repository.Received(1).GetByIdWithDetails(request.Id, cancellation.Token);
+        await _repository.Received(1).GetPublicByIdWithDetailsAsync(request.Id, cancellation.Token);
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task GetAgendaItemsBySession_RedactsPhysicalLocation()
+    {
+        var agendaItems = new List<EventSessionAgendaItem>();
+        var mapped = new List<EventSessionAgendaItemListDto>
+        {
+            new() { Title = "Public agenda", LocationFullName = "Private venue" }
+        };
+        var handler = new GetAgendaItemsBySessionRequestHandler(_repository, _mapper);
+        var request = new GetAgendaItemsBySessionRequest { EventSessionId = Guid.NewGuid() };
+        _repository.GetPublicBySessionAsync(request.EventSessionId, Arg.Any<CancellationToken>()).Returns(agendaItems);
+        _mapper.Map<List<EventSessionAgendaItemListDto>>(agendaItems).Returns(mapped);
+
+        var result = await handler.Handle(request, CancellationToken.None);
+
+        await Assert.That(result.Single().LocationFullName).IsNull();
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task GetEventSessionAgendaItemList_RedactsPhysicalLocation()
+    {
+        var agendaItems = new List<EventSessionAgendaItem>();
+        var mapped = new List<EventSessionAgendaItemListDto>
+        {
+            new() { Title = "Public agenda", LocationFullName = "Private venue" }
+        };
+        var handler = new GetEventSessionAgendaItemListRequestHandler(_repository, _mapper);
+        var request = new GetEventSessionAgendaItemListRequest { PageNumber = 1, PageSize = 20 };
+        _repository.GetPublicAgendaItemsWithDetailsPagedAsync(1, 20, Arg.Any<CancellationToken>()).Returns((agendaItems, 1));
+        _mapper.Map<List<EventSessionAgendaItemListDto>>(agendaItems).Returns(mapped);
+
+        var result = await handler.Handle(request, CancellationToken.None);
+
+        await Assert.That(result.Items.Single().LocationFullName).IsNull();
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task GetEventSessionAgendaItemDetails_RedactsPhysicalLocation()
+    {
+        var entity = new EventSessionAgendaItem { Title = "Public agenda", EventSession = null!, Tenant = null! };
+        var mapped = new EventSessionAgendaItemDto
+        {
+            Title = "Public agenda",
+            LocationId = Guid.NewGuid(),
+            LocationFullName = "Private venue"
+        };
+        var handler = new GetEventSessionAgendaItemDetailsRequestHandler(_repository, _mapper);
+        var request = new GetEventSessionAgendaItemDetailsRequest { Id = Guid.NewGuid() };
+        _repository.GetPublicByIdWithDetailsAsync(request.Id, Arg.Any<CancellationToken>()).Returns(entity);
+        _mapper.Map<EventSessionAgendaItemDto>(entity).Returns(mapped);
+
+        var result = await handler.Handle(request, CancellationToken.None);
+
+        await Assert.That(result!.LocationId).IsNull();
+        await Assert.That(result.LocationFullName).IsNull();
     }
 }
