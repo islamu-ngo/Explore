@@ -109,25 +109,26 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
             return null;
 
         var cacheKey = $"{CacheKeyPrefix}ResolvedId_{provider}_{providerId}";
-        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        if (_cache.TryGetValue<Guid>(cacheKey, out var cachedUserId))
+            return cachedUserId;
+
+        var externalLogin = await _userExternalLoginRepository.GetByProviderAndKey(provider, providerId);
+        Guid? resolvedUserId = externalLogin?.UserId;
+
+        if (!resolvedUserId.HasValue && SupportsEmailAutoMatch(provider) && ResolveEmailVerified(user))
         {
-            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
-
-            var externalLogin = await _userExternalLoginRepository.GetByProviderAndKey(provider, providerId);
-            if (externalLogin != null) return externalLogin.UserId;
-
-            if (SupportsEmailAutoMatch(provider) && ResolveEmailVerified(user))
+            var email = user.FindFirst("email")?.Value ?? user.FindFirst(ClaimTypes.Email)?.Value;
+            if (!string.IsNullOrWhiteSpace(email))
             {
-                var email = user.FindFirst("email")?.Value ?? user.FindFirst(ClaimTypes.Email)?.Value;
-                if (!string.IsNullOrWhiteSpace(email))
-                {
-                    var dbUser = await _userRepository.GetUserByEmail(email.Trim().ToLowerInvariant());
-                    return dbUser?.Id;
-                }
+                var dbUser = await _userRepository.GetUserByEmail(email.Trim().ToLowerInvariant());
+                resolvedUserId = dbUser?.Id;
             }
+        }
 
-            return null;
-        });
+        if (resolvedUserId.HasValue)
+            _cache.Set(cacheKey, resolvedUserId.Value, TimeSpan.FromMinutes(10));
+
+        return resolvedUserId;
     }
 
     public async Task<bool> IsInstanceAdminAsync(Guid userId, CancellationToken cancellationToken = default)

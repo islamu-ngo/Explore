@@ -294,6 +294,35 @@ public class AdminContextTests
     }
 
     [Test]
+    public async Task ResolveUserIdAsync_AfterExternalLoginCreated_DoesNotReusePriorMissingResult()
+    {
+        var userId = Guid.NewGuid();
+        const string subject = "keycloak-onboarding-subject";
+        UserExternalLogin? externalLogin = null;
+        var externalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
+        externalLoginRepository
+            .GetByProviderAndKey(AuthSchemeNames.Keycloak.ToLowerInvariant(), subject)
+            .Returns(_ => externalLogin);
+
+        var sut = CreateSut(
+            CreateHttpContextAccessor(CreateExternalPrincipal(subject)),
+            Substitute.For<IPlatformUserRoleRepository>(),
+            Substitute.For<IInstanceBootstrapStateRepository>(),
+            Substitute.For<ITenantUserRoleGrantRepository>(),
+            Substitute.For<IOrganizationMemberRepository>(),
+            userExternalLoginRepository: externalLoginRepository);
+
+        var beforeOnboarding = await sut.ResolveUserIdAsync(CancellationToken.None);
+        externalLogin = NewExternalLogin(userId, AuthSchemeNames.Keycloak.ToLowerInvariant(), subject);
+        var afterOnboarding = await sut.ResolveUserIdAsync(CancellationToken.None);
+
+        await Assert.That(beforeOnboarding).IsNull();
+        await Assert.That(afterOnboarding).IsEqualTo(userId);
+        await externalLoginRepository.Received(2)
+            .GetByProviderAndKey(AuthSchemeNames.Keycloak.ToLowerInvariant(), subject);
+    }
+
+    [Test]
     public async Task IsGroupAdminAsync_WhenMembershipHasGroupAdminRole_ReturnsTrue()
     {
         // Arrange
