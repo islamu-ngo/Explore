@@ -1,5 +1,5 @@
 // ABOUTME: Static factory producing standard DialogOptions presets for consistent dialog behavior.
-// ABOUTME: Replaces scattered `new DialogOptions { ... }` with named presets (Small, Medium, Confirmation, Editor).
+// ABOUTME: Replaces scattered `new DialogOptions { ... }` with named presets for forms, confirmations, and media.
 
 using MudBlazor;
 
@@ -69,5 +69,18 @@ public static class DialogOptionsFactory
         FullWidth = true,
         CloseButton = true,
         BackdropClick = true
+    };
+
+    /// <summary>
+    /// Full-viewport media lightbox — transparent chrome with backdrop and Escape dismissal.
+    /// </summary>
+    public static DialogOptions ImageLightbox() => new()
+    {
+        CloseOnEscapeKey = true,
+        MaxWidth = MaxWidth.False,
+        FullWidth = true,
+        NoHeader = true,
+        BackdropClick = true,
+        Position = DialogPosition.Center
     };
 }

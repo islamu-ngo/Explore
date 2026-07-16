@@ -1,0 +1,61 @@
+/* ABOUTME: Scoped hover, focus, and fullscreen-icon styling for event-image lightbox triggers. */
+/* ABOUTME: Uses the existing overlay, spacing, focus, and motion tokens across detail and sidebar images. */
+
+.event-image-lightbox {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    inline-size: 100%;
+    block-size: 100%;
+    min-inline-size: var(--isl-target-min);
+    min-block-size: var(--isl-target-min);
+    padding: 0;
+    border: 0;
+    border-radius: inherit;
+    background-color: transparent;
+    color: var(--isl-overlay-text);
+    cursor: zoom-in;
+    transition: background-color 150ms ease;
+
+    &:hover,
+    &:focus-visible {
+        background-color: color-mix(in oklch, var(--isl-overlay-scrim) 55%, transparent);
+    }
+
+    &:focus-visible {
+        outline: var(--isl-focus-ring-width) solid var(--isl-color-primary);
+        outline-offset: calc(-1 * var(--isl-focus-ring-width));
+    }
+
+    &:hover .event-image-lightbox__icon,
+    &:focus-visible .event-image-lightbox__icon {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    &:active .event-image-lightbox__icon {
+        transform: scale(0.95);
+    }
+}
+
+.event-image-lightbox__icon {
+    display: grid;
+    place-items: center;
+    inline-size: var(--isl-space-16);
+    block-size: var(--isl-space-16);
+    border-radius: var(--isl-radius-full);
+    background-color: var(--isl-overlay-scrim);
+    font-size: var(--isl-space-10);
+    opacity: 0;
+    transform: scale(0.85);
+    transition: opacity 150ms ease, transform 150ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .event-image-lightbox,
+    .event-image-lightbox__icon {
+        transition-duration: 0.01ms;
+    }
+}

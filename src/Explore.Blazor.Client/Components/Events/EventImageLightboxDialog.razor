@@ -1,0 +1,29 @@
+@* ABOUTME: Full-viewport MudBlazor dialog for viewing an event image without surrounding page chrome. *@
+@* ABOUTME: Closes from the backdrop, the space around the image, or the Escape key. *@
+
+<MudDialog Class="event-image-lightbox-dialog"
+           Style="background-color: transparent; box-shadow: none; overflow: visible;"
+           DefaultFocus="DefaultFocus.None"
+           aria-label="@($"Full-size image of {Alt}")">
+    <DialogContent>
+        <div class="event-image-lightbox-dialog__surface" @onclick="Close">
+            <img src="@ImageSource"
+                 alt="@Alt"
+                 class="event-image-lightbox-dialog__image"
+                 @onclick:stopPropagation="true" />
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public required string ImageSource { get; set; }
+
+    [Parameter, EditorRequired]
+    public required string Alt { get; set; }
+
+    private void Close() => MudDialog.Cancel();
+}

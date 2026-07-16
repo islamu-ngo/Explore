@@ -1,0 +1,25 @@
+/* ABOUTME: Scoped fullscreen image sizing and interaction styling for the event-image lightbox. */
+/* ABOUTME: Keeps the event image centered while MudBlazor's modal backdrop dims the application. */
+
+.event-image-lightbox-dialog__surface {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    inline-size: 100vw;
+    block-size: 100dvh;
+    overflow: hidden;
+    cursor: zoom-out;
+}
+
+.event-image-lightbox-dialog__image {
+    display: block;
+    max-inline-size: calc(100vw - 20px);
+    max-block-size: calc(100dvh - 20px);
+    inline-size: auto;
+    block-size: calc(100dvh - 20px);
+    object-fit: contain;
+    background-color: var(--isl-color-surface);
+    box-shadow: var(--isl-shadow-lg);
+    cursor: default;
+}

@@ -1,0 +1,50 @@
+@* ABOUTME: Reusable event-image affordance that opens the source image in a modal lightbox. *@
+@* ABOUTME: Provides keyboard focus management and delegates modal rendering to MudBlazor's dialog portal. *@
+
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Services
+
+@inject IDialogService DialogService
+@inject IAccessibilityFocusService AccessibilityFocusService
+
+<button type="button"
+        class="event-image-lightbox"
+        aria-label="View full-size image for @Alt"
+        aria-haspopup="dialog"
+        @onclick="OpenAsync">
+    <span class="event-image-lightbox__icon" aria-hidden="true">
+        <MudIcon Icon="@Icons.Material.Filled.Fullscreen" />
+    </span>
+</button>
+
+@code {
+    [Parameter, EditorRequired]
+    public required string ImageSource { get; set; }
+
+    [Parameter, EditorRequired]
+    public required string Alt { get; set; }
+
+    private async Task OpenAsync()
+    {
+        await AccessibilityFocusService.SaveFocusAsync();
+        try
+        {
+            var parameters = new DialogParameters<EventImageLightboxDialog>
+            {
+                { dialog => dialog.ImageSource, ImageSource },
+                { dialog => dialog.Alt, Alt }
+            };
+
+            var dialog = await DialogService.ShowAsync<EventImageLightboxDialog>(
+                $"Full-size image of {Alt}",
+                parameters,
+                DialogOptionsFactory.ImageLightbox());
+
+            await dialog.Result;
+        }
+        finally
+        {
+            await AccessibilityFocusService.RestoreFocusAsync();
+        }
+    }
+}
