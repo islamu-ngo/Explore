@@ -532,9 +532,7 @@ if (!builder.Environment.IsEnvironment("Testing") && !isOpenApiGeneration)
         if (db.Database.IsRelational())
         {
             logger.LogInformation("Applying database migrations...");
-            await EventLocationPrivacyMigrationStage.MigrateAsync(
-                db,
-                app.Configuration[EventLocationPrivacyMigrationStage.ConfigurationKey]);
+            await ExploreDatabaseMigrator.MigrateAsync(db, app.Configuration);
             await PostgresModelConstraintApplier.ApplyAsync(db);
             logger.LogInformation("Database migrations completed successfully.");
         }
