@@ -47,6 +47,47 @@ public sealed class GetEventCalendarExportRequestHandlerTests
     }
 
     [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task HandlePublicCalendarDoesNotExposePhysicalVenueRoomOrCity()
+    {
+        var eventId = Guid.NewGuid();
+        var start = new DateTimeOffset(2026, 5, 3, 10, 0, 0, TimeSpan.Zero);
+        var session = CreateSession(eventId, start, start.AddHours(1));
+        session.Location = new Location
+        {
+            Id = Guid.NewGuid(),
+            FullName = "Private Home Venue",
+            City = "Brussels",
+            Country = "Belgium",
+            Pii = new LocationPii
+            {
+                Address = "Rue Privée 1",
+                Postcode = "1000",
+                Latitude = 50.8503,
+                Longitude = 4.3517
+            },
+            Tenant = null!
+        };
+        session.Room = new LocationRoom
+        {
+            Id = Guid.NewGuid(),
+            LocationId = session.Location.Id,
+            Location = session.Location,
+            Name = "Family Living Room",
+            Tenant = null!
+        };
+
+        _eventRepository.GetEventWithDetails(eventId)
+            .Returns(CreateEvent(eventId, EventStatusEnum.Published, VisibilityTypeEnum.Public));
+        _sessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>())
+            .Returns([session]);
+
+        var result = await _handler.Handle(new GetEventCalendarExportRequest(eventId), CancellationToken.None);
+
+        await Assert.That(result!.Location).IsNull();
+    }
+
+    [Test]
     public async Task Handle_WhenPublicSessionQueryReturnsNoSessions_ReturnsNull()
     {
         var eventId = Guid.NewGuid();

@@ -49,7 +49,7 @@ public sealed class GetEventCalendarExportRequestHandler(
             entity.Slug,
             primarySession.StartTime.Value.ToUniversalTime(),
             primarySession.EndTime.Value.ToUniversalTime(),
-            BuildLocation(primarySession));
+            null);
     }
 
     private static bool IsPublicCalendarEligible(Event entity)
@@ -58,22 +58,4 @@ public sealed class GetEventCalendarExportRequestHandler(
             entity.VisibilityTypeId == (int)VisibilityTypeEnum.Public;
     }
 
-    private static string? BuildLocation(EventSession session)
-    {
-        string?[] parts =
-        [
-            session.Location?.FullName,
-            session.Room?.Name,
-            session.Location?.City,
-            session.Location?.Country
-        ];
-
-        string location = string.Join(
-            ", ",
-            parts.Where(part => !string.IsNullOrWhiteSpace(part))
-                .Select(part => part!.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase));
-
-        return string.IsNullOrWhiteSpace(location) ? null : location;
-    }
 }
