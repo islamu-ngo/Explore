@@ -44,6 +44,12 @@ public static class PublicExperienceSettingDefinitions
         defaultValue: "{\"schemaVersion\":1,\"presets\":[]}",
         description: "Versioned public event-section preset configuration document");
 
+    public static readonly SettingDefinition DiscoveryAreas = PublicExperienceDefinition(
+        key: GovernanceSettingKeys.PublicExperience.DiscoveryAreas,
+        valueType: SettingValueType.Json,
+        defaultValue: "{\"schemaVersion\":1,\"areas\":[]}",
+        description: "Versioned public discovery-area configuration with stable IDs and coarse centroids");
+
     public static readonly SettingDefinition AnnouncementBarEnabled = PublicExperienceDefinition(
         key: GovernanceSettingKeys.PublicExperience.AnnouncementBarEnabled,
         valueType: SettingValueType.Boolean,
@@ -84,6 +90,27 @@ public static class PublicExperienceSettingDefinitions
         MaxScope: SettingScope.User,
         IsLockable: false);
 
+    public static readonly SettingDefinition HomeDiscoveryAreaId = new(
+        Key: GovernanceSettingKeys.HomeDiscoveryPreferences.AreaId,
+        ValueType: SettingValueType.String,
+        DefaultValue: "\"\"",
+        Category: "HomeDiscoveryPreferences",
+        Description: "Stable public discovery-area identifier selected by the current user",
+        MinScope: SettingScope.User,
+        MaxScope: SettingScope.User,
+        IsLockable: false);
+
+    public static readonly SettingDefinition HomeDiscoveryMode = new(
+        Key: GovernanceSettingKeys.HomeDiscoveryPreferences.Mode,
+        ValueType: SettingValueType.String,
+        DefaultValue: "\"area\"",
+        Category: "HomeDiscoveryPreferences",
+        Description: "Current user's public home discovery mode",
+        MinScope: SettingScope.User,
+        MaxScope: SettingScope.User,
+        AllowedValues: ["area", "online", "all"],
+        IsLockable: false);
+
     public static IReadOnlyList<SettingDefinition> All =>
     [
         Mode,
@@ -92,12 +119,15 @@ public static class PublicExperienceSettingDefinitions
         HomeBlocks,
         Ctas,
         EventSectionPresets,
+        DiscoveryAreas,
         AnnouncementBarEnabled,
         AnnouncementBarMessage,
         AnnouncementBarLinkText,
         AnnouncementBarLinkUrl,
         AnnouncementBarRevision,
-        AnnouncementBarDismissedRevision
+        AnnouncementBarDismissedRevision,
+        HomeDiscoveryAreaId,
+        HomeDiscoveryMode
     ];
 
     private static SettingDefinition PublicExperienceDefinition(

@@ -315,12 +315,15 @@ public class SettingRegistryTests
             GovernanceSettingKeys.PublicExperience.HomeBlocks,
             GovernanceSettingKeys.PublicExperience.Ctas,
             GovernanceSettingKeys.PublicExperience.EventSectionPresets,
+            GovernanceSettingKeys.PublicExperience.DiscoveryAreas,
             GovernanceSettingKeys.PublicExperience.AnnouncementBarEnabled,
             GovernanceSettingKeys.PublicExperience.AnnouncementBarMessage,
             GovernanceSettingKeys.PublicExperience.AnnouncementBarLinkText,
             GovernanceSettingKeys.PublicExperience.AnnouncementBarLinkUrl,
             GovernanceSettingKeys.PublicExperience.AnnouncementBarRevision,
             GovernanceSettingKeys.PublicExperiencePreferences.AnnouncementBarDismissedRevision,
+            GovernanceSettingKeys.HomeDiscoveryPreferences.AreaId,
+            GovernanceSettingKeys.HomeDiscoveryPreferences.Mode,
         });
 
         foreach (var key in keys)
@@ -349,6 +352,36 @@ public class SettingRegistryTests
         await Assert.That(definition!.MinScope).IsEqualTo(SettingScope.User);
         await Assert.That(definition.MaxScope).IsEqualTo(SettingScope.User);
         await Assert.That(definition.IsLockable).IsFalse();
+    }
+
+    [Test]
+    public async Task RegistryHomeDiscoveryPreferencesAreUserScoped()
+    {
+        var areaId = SettingRegistry.Get(GovernanceSettingKeys.HomeDiscoveryPreferences.AreaId);
+        var mode = SettingRegistry.Get(GovernanceSettingKeys.HomeDiscoveryPreferences.Mode);
+
+        await Assert.That(areaId).IsNotNull();
+        await Assert.That(areaId!.MinScope).IsEqualTo(SettingScope.User);
+        await Assert.That(areaId.MaxScope).IsEqualTo(SettingScope.User);
+        await Assert.That(areaId.IsLockable).IsFalse();
+
+        await Assert.That(mode).IsNotNull();
+        await Assert.That(mode!.MinScope).IsEqualTo(SettingScope.User);
+        await Assert.That(mode.MaxScope).IsEqualTo(SettingScope.User);
+        await Assert.That(mode.IsLockable).IsFalse();
+        await Assert.That(mode.AllowedValues).IsEquivalentTo(new[] { "area", "online", "all" });
+    }
+
+    [Test]
+    public async Task RegistryDiscoveryAreasUseVersionedTenantJson()
+    {
+        var definition = SettingRegistry.Get(GovernanceSettingKeys.PublicExperience.DiscoveryAreas);
+
+        await Assert.That(definition).IsNotNull();
+        await Assert.That(definition!.ValueType).IsEqualTo(SettingValueType.Json);
+        await Assert.That(definition.DefaultValue).IsEqualTo("{\"schemaVersion\":1,\"areas\":[]}");
+        await Assert.That(definition.MinScope).IsEqualTo(SettingScope.Instance);
+        await Assert.That(definition.MaxScope).IsEqualTo(SettingScope.Tenant);
     }
 
     [Test]

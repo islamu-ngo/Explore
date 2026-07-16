@@ -368,6 +368,7 @@ public static class GovernanceSettingKeys
         public const string HomeBlocks = "public_experience.home_blocks";
         public const string Ctas = "public_experience.ctas";
         public const string EventSectionPresets = "public_experience.event_section_presets";
+        public const string DiscoveryAreas = "public_experience.discovery_areas";
         public const string AnnouncementBarEnabled = "public_experience.announcement_bar.enabled";
         public const string AnnouncementBarMessage = "public_experience.announcement_bar.message";
         public const string AnnouncementBarLinkText = "public_experience.announcement_bar.link_text";
@@ -378,6 +379,12 @@ public static class GovernanceSettingKeys
     public static class PublicExperiencePreferences
     {
         public const string AnnouncementBarDismissedRevision = "public_experience_preferences.announcement_bar.dismissed_revision";
+    }
+
+    public static class HomeDiscoveryPreferences
+    {
+        public const string AreaId = "home_discovery.area_id";
+        public const string Mode = "home_discovery.mode";
     }
 
     public static class Footer
