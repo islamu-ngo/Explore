@@ -46,7 +46,11 @@ public class GetEventSessionListRequestHandler : IRequestHandler<GetEventSession
                 pageSize,
                 cancellationToken);
             var dtos = _mapper.Map<List<EventSessionListDto>>(items);
-            return PaginatedResult<EventSessionListDto>.Create(dtos, totalCount, pageNumber, pageSize);
+            return PaginatedResult<EventSessionListDto>.Create(
+                PublicEventSessionLocationRedactor.Redact(dtos),
+                totalCount,
+                pageNumber,
+                pageSize);
         }
 
         var (sessions, total) = await _eventSessionRepository.GetPublicSessionsWithDetailsPagedFilteredAsync(
@@ -55,7 +59,11 @@ public class GetEventSessionListRequestHandler : IRequestHandler<GetEventSession
             specification,
             cancellationToken);
         var sessionDtos = _mapper.Map<List<EventSessionListDto>>(sessions);
-        return PaginatedResult<EventSessionListDto>.Create(sessionDtos, total, pageNumber, pageSize);
+        return PaginatedResult<EventSessionListDto>.Create(
+            PublicEventSessionLocationRedactor.Redact(sessionDtos),
+            total,
+            pageNumber,
+            pageSize);
     }
 
     private async Task<EventSessionQuerySpecification?> BuildSpecificationAsync(

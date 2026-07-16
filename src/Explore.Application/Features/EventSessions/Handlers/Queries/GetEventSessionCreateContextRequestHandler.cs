@@ -1,5 +1,5 @@
 // ABOUTME: Query handler for event-scoped program item creation context.
-// ABOUTME: Aggregates event defaults, locations, rooms, and program sections through repository boundaries.
+// ABOUTME: Returns only locations and rooms already referenced by the authorized event boundary.
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSession;
@@ -15,17 +15,23 @@ public class GetEventSessionCreateContextRequestHandler : IRequestHandler<GetEve
     private readonly ILocationRepository _locationRepository;
     private readonly ILocationRoomRepository _locationRoomRepository;
     private readonly IEventSessionGroupRepository _eventSessionGroupRepository;
+    private readonly IEventSessionRepository _eventSessionRepository;
+    private readonly IEventAgendaItemRepository _eventAgendaItemRepository;
 
     public GetEventSessionCreateContextRequestHandler(
         IEventRepository eventRepository,
         ILocationRepository locationRepository,
         ILocationRoomRepository locationRoomRepository,
-        IEventSessionGroupRepository eventSessionGroupRepository)
+        IEventSessionGroupRepository eventSessionGroupRepository,
+        IEventSessionRepository eventSessionRepository,
+        IEventAgendaItemRepository eventAgendaItemRepository)
     {
         _eventRepository = eventRepository;
         _locationRepository = locationRepository;
         _locationRoomRepository = locationRoomRepository;
         _eventSessionGroupRepository = eventSessionGroupRepository;
+        _eventSessionRepository = eventSessionRepository;
+        _eventAgendaItemRepository = eventAgendaItemRepository;
     }
 
     public async Task<EventSessionCreateContextDto?> Handle(GetEventSessionCreateContextRequest request, CancellationToken cancellationToken)
@@ -34,30 +40,41 @@ public class GetEventSessionCreateContextRequestHandler : IRequestHandler<GetEve
         if (eventEntity is null)
             return null;
 
-        var locations = await _locationRepository.GetLocationsByTenant(eventEntity.TenantId, cancellationToken);
-        var orderedLocations = locations
-            .OrderBy(location => location.FullName)
-            .ThenBy(location => location.City)
-            .ToList();
+        var sessions = await _eventSessionRepository.GetSessionsByEvent(eventEntity.Id);
+        var groups = await _eventSessionGroupRepository.GetActiveByEventAsync(eventEntity.Id, cancellationToken);
+        var agendaItems = await _eventAgendaItemRepository.GetByEventAsync(eventEntity.Id, cancellationToken);
 
-        var rooms = new List<EventSessionCreateRoomOptionDto>();
-        foreach (var location in orderedLocations)
+        var referencedLocationIds = sessions
+            .Select(session => session.LocationId)
+            .Concat(groups.Select(group => group.LocationId))
+            .Concat(agendaItems.Select(item => item.LocationId))
+            .OfType<Guid>()
+            .ToHashSet();
+        var referencedRoomIds = sessions
+            .Select(session => session.RoomId)
+            .Concat(groups.Select(group => group.RoomId))
+            .Concat(agendaItems.Select(item => item.RoomId))
+            .OfType<Guid>()
+            .ToHashSet();
+
+        var referencedRooms = new List<Explore.Domain.LocationRoom>();
+        foreach (Guid roomId in referencedRoomIds)
         {
-            var locationRooms = await _locationRoomRepository.GetByLocationAsync(location.Id, cancellationToken);
-            rooms.AddRange(locationRooms
-                .OrderBy(room => room.SortOrder)
-                .ThenBy(room => room.Name)
-                .Select(room => new EventSessionCreateRoomOptionDto
-                {
-                    Id = room.Id,
-                    LocationId = room.LocationId,
-                    Name = room.Name,
-                    Capacity = room.Capacity,
-                    SortOrder = room.SortOrder
-                }));
+            var room = await _locationRoomRepository.GetById(roomId);
+            if (room?.TenantId != eventEntity.TenantId)
+                continue;
+
+            referencedRooms.Add(room);
+            referencedLocationIds.Add(room.LocationId);
         }
 
-        var groups = await _eventSessionGroupRepository.GetByEventAsync(eventEntity.Id, cancellationToken);
+        var referencedLocations = new List<Explore.Domain.Location>();
+        foreach (Guid locationId in referencedLocationIds)
+        {
+            var location = await _locationRepository.GetById(locationId);
+            if (location?.TenantId == eventEntity.TenantId)
+                referencedLocations.Add(location);
+        }
 
         var context = new EventSessionCreateContextDto
         {
@@ -72,7 +89,9 @@ public class GetEventSessionCreateContextRequestHandler : IRequestHandler<GetEve
                 SessionDate = eventEntity.FirstSessionDate,
                 RegistrationModeId = (int)RegistrationModeEnum.Open
             },
-            Locations = orderedLocations
+            Locations = referencedLocations
+                .OrderBy(location => location.FullName)
+                .ThenBy(location => location.City)
                 .Select(location => new EventSessionCreateLocationOptionDto
                 {
                     Id = location.Id,
@@ -82,7 +101,18 @@ public class GetEventSessionCreateContextRequestHandler : IRequestHandler<GetEve
                     TimeZoneId = location.Timezone
                 })
                 .ToList(),
-            Rooms = rooms,
+            Rooms = referencedRooms
+                .OrderBy(room => room.SortOrder)
+                .ThenBy(room => room.Name)
+                .Select(room => new EventSessionCreateRoomOptionDto
+                {
+                    Id = room.Id,
+                    LocationId = room.LocationId,
+                    Name = room.Name,
+                    Capacity = room.Capacity,
+                    SortOrder = room.SortOrder
+                })
+                .ToList(),
             SessionGroups = groups
                 .OrderBy(group => group.SortOrder)
                 .ThenBy(group => group.Name)
@@ -119,6 +149,11 @@ public class GetEventSessionCreateContextRequestHandler : IRequestHandler<GetEve
         if (context.SessionGroups.Count == 0)
         {
             context.Notices.Add("No program sections exist yet. You can save the program item now and assign it to a track or section later.");
+        }
+
+        if (context.Locations.Count == 0)
+        {
+            context.Notices.Add("No event-associated locations are available. Venue selection remains unavailable until a location is linked through an authorized event management flow.");
         }
     }
 }

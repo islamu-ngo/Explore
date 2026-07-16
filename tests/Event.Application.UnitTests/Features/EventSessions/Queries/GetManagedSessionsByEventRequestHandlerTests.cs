@@ -11,6 +11,7 @@ using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.EventSessions.Queries;
 
+[Category("EventLocationPrivacy")]
 public sealed class GetManagedSessionsByEventRequestHandlerTests
 {
     private readonly IEventSessionRepository _eventSessionRepository = Substitute.For<IEventSessionRepository>();
@@ -37,7 +38,11 @@ public sealed class GetManagedSessionsByEventRequestHandlerTests
                 Id = session.Id,
                 EventId = session.EventId,
                 EventTitle = string.Empty,
-                Title = session.Title
+                Title = session.Title,
+                LocationId = Guid.NewGuid(),
+                LocationFullName = "Managed venue",
+                RoomId = Guid.NewGuid(),
+                RoomName = "Managed room"
             })
             .ToList();
 
@@ -49,6 +54,7 @@ public sealed class GetManagedSessionsByEventRequestHandlerTests
             CancellationToken.None);
 
         await Assert.That(result).IsEquivalentTo(expectedDtos);
+        await Assert.That(result.All(dto => dto.LocationId.HasValue && dto.RoomId.HasValue)).IsTrue();
         await _eventSessionRepository.Received(1).GetSessionsByEvent(eventId);
         await _eventSessionRepository.DidNotReceive()
             .GetPublicSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());

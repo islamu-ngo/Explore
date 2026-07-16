@@ -18,6 +18,8 @@ public sealed class GetEventSessionCreateContextRequestHandlerTests
     private readonly ILocationRepository _locationRepository = Substitute.For<ILocationRepository>();
     private readonly ILocationRoomRepository _locationRoomRepository = Substitute.For<ILocationRoomRepository>();
     private readonly IEventSessionGroupRepository _eventSessionGroupRepository = Substitute.For<IEventSessionGroupRepository>();
+    private readonly IEventSessionRepository _eventSessionRepository = Substitute.For<IEventSessionRepository>();
+    private readonly IEventAgendaItemRepository _eventAgendaItemRepository = Substitute.For<IEventAgendaItemRepository>();
 
     [Test]
     public async Task Handle_WhenEventExists_ReturnsEventDefaultsAndSelectorOptions()
@@ -31,9 +33,11 @@ public sealed class GetEventSessionCreateContextRequestHandlerTests
         var group = CreateGroup(Guid.NewGuid(), eventEntity, tenant, location, room);
 
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
-        _locationRepository.GetLocationsByTenant(tenantId).Returns([location]);
-        _locationRoomRepository.GetByLocationAsync(location.Id, Arg.Any<CancellationToken>()).Returns([room]);
-        _eventSessionGroupRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([group]);
+        _locationRepository.GetById(location.Id).Returns(location);
+        _locationRoomRepository.GetById(room.Id).Returns(room);
+        _eventSessionGroupRepository.GetActiveByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([group]);
+        _eventSessionRepository.GetSessionsByEvent(eventId).Returns([]);
+        _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
 
         var result = await CreateHandler().Handle(
             new GetEventSessionCreateContextRequest { EventId = eventId },
@@ -63,7 +67,7 @@ public sealed class GetEventSessionCreateContextRequestHandlerTests
             CancellationToken.None);
 
         await Assert.That(result).IsNull();
-        await _locationRepository.DidNotReceive().GetLocationsByTenant(Arg.Any<Guid>());
+        await _locationRepository.DidNotReceive().GetById(Arg.Any<Guid>());
     }
 
     [Test]
@@ -79,18 +83,20 @@ public sealed class GetEventSessionCreateContextRequestHandlerTests
         eventEntity.LastSessionDate = null;
 
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
-        _locationRepository.GetLocationsByTenant(tenantId).Returns([]);
-        _eventSessionGroupRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
+        _eventSessionGroupRepository.GetActiveByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
+        _eventSessionRepository.GetSessionsByEvent(eventId).Returns([]);
+        _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
 
         var result = await CreateHandler().Handle(
             new GetEventSessionCreateContextRequest { EventId = eventId },
             CancellationToken.None);
 
         await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Notices.Count).IsEqualTo(3);
+        await Assert.That(result!.Notices.Count).IsEqualTo(4);
         await Assert.That(result.Notices[0]).Contains("No event timezone");
         await Assert.That(result.Notices[1]).Contains("No event date window");
         await Assert.That(result.Notices[2]).Contains("No program sections");
+        await Assert.That(result.Notices[3]).Contains("No event-associated locations");
     }
 
     private GetEventSessionCreateContextRequestHandler CreateHandler()
@@ -99,7 +105,9 @@ public sealed class GetEventSessionCreateContextRequestHandlerTests
             _eventRepository,
             _locationRepository,
             _locationRoomRepository,
-            _eventSessionGroupRepository);
+            _eventSessionGroupRepository,
+            _eventSessionRepository,
+            _eventAgendaItemRepository);
     }
 
     private static Tenant CreateTenant(Guid tenantId)
