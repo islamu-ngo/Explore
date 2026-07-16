@@ -23,7 +23,6 @@ public class CodeHygieneTests
         "Event.Architecture.Tests",
         "Explore.Blazor.Client.Tests",
         "Explore.Blazor.IntegrationTests",
-        "Explore.Blazor.Client.E2ETests",
         "Explore.Secrets.UnitTests"
     ];
 

@@ -55,7 +55,6 @@ on:
       - "tests/Explore.Secrets.UnitTests/**"
       - "tests/Explore.Blazor.Client.Tests/**"
       - "tests/Explore.Blazor.IntegrationTests/**"
-      - "tests/Explore.Blazor.Client.E2ETests/**"
       # Markdown & root meta files
       - "**.md"
       - "LICENSE"

@@ -208,7 +208,6 @@ static string ReleaseReviewHint(string category)
         "secret-scanning" => "Secret scan SARIF/text evidence was reviewed.",
         "scorecard" => "OpenSSF Scorecard evidence was reviewed.",
         "security-tests" => "Security/Cerbos test evidence was reviewed.",
-        "e2e-runtime" => "E2E runtime evidence and reliability inventory were reviewed.",
         _ => "Review and classify before publishing the release."
     };
 }
@@ -265,12 +264,10 @@ static string ClassifyArtifact(string relativePath)
         return "security-tests";
     }
 
-    if (normalized.Contains("e2e", StringComparison.Ordinal)
-        || normalized.Contains("playwright", StringComparison.Ordinal)
-        || normalized.Contains("screenshot", StringComparison.Ordinal)
+    if (normalized.Contains("screenshot", StringComparison.Ordinal)
         || normalized.Contains("video", StringComparison.Ordinal))
     {
-        return "e2e-runtime";
+        return "test-results";
     }
 
     if (fileName.EndsWith(".trx", StringComparison.Ordinal)

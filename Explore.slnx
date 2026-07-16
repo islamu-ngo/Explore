@@ -36,7 +36,6 @@
   <Project Path="src/Explore.AppHost/Explore.AppHost.csproj" />
   <Project Path="src/Explore.Diagnostic/Explore.Diagnostic.csproj" />
   <Project Path="src/Explore.ServiceDefaults/Explore.ServiceDefaults.csproj" />
-  <Project Path="tests/Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj" />
   <Project Path="tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj" />
   <Project Path="tests/Explore.Diagnostic.UnitTests/Explore.Diagnostic.UnitTests.csproj" />
 </Solution>

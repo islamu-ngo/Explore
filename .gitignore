@@ -41,7 +41,6 @@ schemas/archive/
 # MCP config
 .mcp.json
 
-.playwright-mcp
 
 .codex/config.toml
 
@@ -566,3 +565,4 @@ Explore.Blazor.Client/packages.lock.json
 # already sharing project management with the "Public" Roadmap ! wich only shows what it should be showing !
 # Thats a massive security vulnerability to share all work items as there may be security ones and more !
 event/
+.playwright-mcp/

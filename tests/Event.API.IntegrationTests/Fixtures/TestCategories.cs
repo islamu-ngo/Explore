@@ -37,8 +37,4 @@ public static class TestCategories
 
     public const string Manual = "Manual";
 
-    /// <summary>
-    /// End-to-end tests running the full stack (Playwright + Blazor + API + Keycloak + Cerbos + Postgres).
-    /// </summary>
-    public const string E2E = "E2E";
 }

@@ -51,8 +51,7 @@ public sealed class BlazorIsolationArchitectureTests
         "Explore.Blazor",
         "Explore.Blazor.Client",
         "Explore.Blazor.IntegrationTests",
-        "Explore.Blazor.Client.Tests",
-        "Explore.Blazor.Client.E2ETests"
+        "Explore.Blazor.Client.Tests"
     ];
 
     private static readonly string[] ForbiddenProjects =
