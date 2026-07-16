@@ -82,6 +82,25 @@ public class EventFilterBarTests : IDisposable
     }
 
     [Test]
+    public async Task ActiveSummary_RemainsVisibleWhenFiltersAreCollapsed()
+    {
+        var cut = _ctx.RenderMudComponent<EventFilterBarComponent>(p => p
+            .Add(x => x.ResultCount, 3)
+            .Add(x => x.ShowResultCount, true));
+
+        cut.Instance.SearchTerm = "youth";
+        cut.Render(p => p
+            .Add(x => x.ResultCount, 3)
+            .Add(x => x.ShowResultCount, true));
+
+        var summary = cut.Find(".filter-bar__layout-row .filter-bar__active-summary");
+
+        await Assert.That(summary.TextContent).Contains("1 active filter");
+        await Assert.That(summary.TextContent).Contains("Clear All");
+        await Assert.That(summary.TextContent).Contains("3 events found");
+    }
+
+    [Test]
     public async Task GetActiveFilterCount_CountsCorrectly()
     {
         var cut = _ctx.RenderMudComponent<EventFilterBarComponent>();

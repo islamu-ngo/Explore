@@ -428,67 +428,73 @@
                     }
                 </div>
 
-                @* ── Active Filters Summary ── *@
-                @{ var activeCount = GetActiveFilterCount(); }
-                @if (activeCount > 0)
-                {
-                    <div class="filter-bar__active-summary">
-                        <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Text">
-                            @activeCount active @(activeCount == 1 ? "filter" : "filters")
-                        </MudChip>
-                        <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Error" Size="Size.Small" StartIcon="@Icons.Material.Filled.ClearAll" OnClick="ClearAllFilters">
-                            Clear All
-                        </MudButton>
-                    </div>
-                }
             </div>
         </MudCollapse>
     }
 
-    @* ── Layout Switcher Row: filter icon (mobile) + result count + layout icons ── *@
+    @{ var activeCount = GetActiveFilterCount(); }
     <div class="filter-bar__layout-row">
-        @if (_isMobile)
+        @if (!_isMobile && activeCount > 0)
         {
-            <MudBadge Content="@GetActiveFilterCount()"
-                      Color="Color.Primary"
-                      Overlap="true"
-                      Bordered="true"
-                      Visible="@(GetActiveFilterCount() > 0)">
-                <MudIconButton Icon="@Icons.Material.Filled.FilterList"
-                               Color="@(_mobileDrawerOpen ? Color.Primary : Color.Default)"
-                               OnClick="ToggleFilters"
-                               Size="Size.Medium"
-                               aria-label="Open filters" />
-            </MudBadge>
+            <div class="filter-bar__active-summary">
+                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Text">
+                    @activeCount active @(activeCount == 1 ? "filter" : "filters")
+                </MudChip>
+                <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Error" Size="Size.Small" StartIcon="@Icons.Material.Filled.ClearAll" OnClick="ClearAllFilters">
+                    Clear All
+                </MudButton>
+                @if (ShowResultCount)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="filter-bar__result-count">
+                        @ResultCount @(ResultCount == 1 ? "event" : "events") found
+                    </MudText>
+                }
+            </div>
         }
-        @if (ShowResultCount)
+        else if (ShowResultCount)
         {
             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="filter-bar__result-count">
                 @ResultCount @(ResultCount == 1 ? "event" : "events") found
             </MudText>
         }
-        <MudSpacer />
-        @if (ShowCustomizationButton)
-        {
-            <MudIconButton Icon="@Icons.Material.Filled.Tune"
-                           Color="Color.Default"
-                           Size="Size.Medium"
-                           OnClick="@(() => OnCustomizationRequested.InvokeAsync())"
-                           aria-label="Customize view" />
-        }
-        <MudToggleGroup T="LayoutMode" Value="CurrentLayout" ValueChanged="OnLayoutChanged"
-                        Size="Size.Medium" Color="Color.Primary"
-                        Class="filter-bar__layout-switcher">
-            <MudToggleItem Value="@LayoutMode.SingleRow" Title="Single Row">
-                <MudIcon Icon="@Icons.Material.Filled.ViewList" Size="Size.Medium" />
-            </MudToggleItem>
-            <MudToggleItem Value="@LayoutMode.DetailedList" Title="Detailed List">
-                <MudIcon Icon="@Icons.Material.Filled.ViewModule" Size="Size.Medium" />
-            </MudToggleItem>
-            <MudToggleItem Value="@LayoutMode.CompactGrid" Title="Compact Grid">
-                <MudIcon Icon="@Icons.Material.Filled.GridView" Size="Size.Medium" />
-            </MudToggleItem>
-        </MudToggleGroup>
+
+        <div class="filter-bar__layout-controls">
+            @if (_isMobile)
+            {
+                <MudBadge Content="@activeCount"
+                          Color="Color.Primary"
+                          Overlap="true"
+                          Bordered="true"
+                          Visible="@(activeCount > 0)">
+                    <MudIconButton Icon="@Icons.Material.Filled.FilterList"
+                                   Color="@(_mobileDrawerOpen ? Color.Primary : Color.Default)"
+                                   OnClick="ToggleFilters"
+                                   Size="Size.Medium"
+                                   aria-label="Open filters" />
+                </MudBadge>
+            }
+            @if (ShowCustomizationButton)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Tune"
+                               Color="Color.Default"
+                               Size="Size.Medium"
+                               OnClick="@(() => OnCustomizationRequested.InvokeAsync())"
+                               aria-label="Customize view" />
+            }
+            <MudToggleGroup T="LayoutMode" Value="CurrentLayout" ValueChanged="OnLayoutChanged"
+                            Size="Size.Medium" Color="Color.Primary"
+                            Class="filter-bar__layout-switcher">
+                <MudToggleItem Value="@LayoutMode.SingleRow" Title="Single Row">
+                    <MudIcon Icon="@Icons.Material.Filled.ViewList" Size="Size.Medium" />
+                </MudToggleItem>
+                <MudToggleItem Value="@LayoutMode.DetailedList" Title="Detailed List">
+                    <MudIcon Icon="@Icons.Material.Filled.ViewModule" Size="Size.Medium" />
+                </MudToggleItem>
+                <MudToggleItem Value="@LayoutMode.CompactGrid" Title="Compact Grid">
+                    <MudIcon Icon="@Icons.Material.Filled.GridView" Size="Size.Medium" />
+                </MudToggleItem>
+            </MudToggleGroup>
+        </div>
     </div>
 
 </div>
