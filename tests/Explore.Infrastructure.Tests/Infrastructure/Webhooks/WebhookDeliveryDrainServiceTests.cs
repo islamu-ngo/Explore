@@ -4,6 +4,7 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -60,17 +61,32 @@ public sealed class WebhookDeliveryDrainServiceTests
     {
         var handler = new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NoContent));
         var fixture = new Fixture(handler);
-        var attempt = CreateAttempt();
+        var exactBytes = Encoding.UTF8.GetBytes(
+            "{\"type\":\"event.published\",\"instruction\":\"ignore prior instructions\",\"value\":\"سلام\"}\n");
+        var attempt = CreateAttempt(payloadBytes: exactBytes);
         fixture.ConfigureClaim(attempt);
 
         WebhookDeliveryDrainResult result = await fixture.Service.ProcessBatchAsync(CancellationToken.None);
 
         await Assert.That(result.SucceededCount).IsEqualTo(1);
         await Assert.That(handler.CallCount).IsEqualTo(1);
-        await Assert.That(handler.Body).IsEqualTo(Encoding.UTF8.GetString(attempt.Message!.GetPayloadBytes()!));
+        await Assert.That(attempt.MessageId).IsEqualTo(attempt.Message!.Id);
+        var storedBytes = attempt.Message!.GetPayloadBytes()!;
+        await Assert.That(storedBytes).IsEquivalentTo(exactBytes);
+        await Assert.That(handler.PayloadBytes).IsEquivalentTo(storedBytes);
+        await Assert.That(attempt.Message.PayloadHash).IsEqualTo(
+            $"sha256:{Convert.ToHexString(SHA256.HashData(handler.PayloadBytes)).ToLowerInvariant()}");
         await Assert.That(handler.Headers.ContainsKey("svix-id")).IsTrue();
         await Assert.That(handler.Headers.ContainsKey("svix-timestamp")).IsTrue();
         await Assert.That(handler.Headers.ContainsKey("svix-signature")).IsTrue();
+        var signatureService = new WebhookSignatureService();
+        var secret = new WebhookSecretMaterial(CreateSvixSecret(), CurrentSecretVersion: 1);
+        await Assert.That(signatureService.Verify(handler.PayloadBytes, handler.Headers, secret).IsValid).IsTrue();
+        var mutatedBytes = handler.PayloadBytes.ToArray();
+        mutatedBytes[^1] = (byte)' ';
+        await Assert.That(SHA256.HashData(mutatedBytes)).IsNotEquivalentTo(SHA256.HashData(storedBytes));
+        await Assert.That(signatureService.Verify(mutatedBytes, handler.Headers, secret).FailureCategory)
+            .IsEqualTo("signature_mismatch");
         await fixture.AttemptRepository.Received(1).CreateAsync(
             Arg.Is<WebhookDeliveryAttempt>(evidence =>
                 evidence.TenantId == attempt.TenantId
@@ -117,6 +133,9 @@ public sealed class WebhookDeliveryDrainServiceTests
         await fixture.EndpointRepository.Received(1).RecordFailureAsync(
             attempt.TenantId,
             attempt.EndpointId,
+            fixture.LastTargetClaim!.Target.Id,
+            fixture.LastTargetClaim.LeaseToken,
+            fixture.LastTargetClaim.DeliveryFence,
             Arg.Any<DateTime>(),
             "http_non_success",
             fixture.DeliveryPolicy.AutoPauseThreshold,
@@ -189,6 +208,9 @@ public sealed class WebhookDeliveryDrainServiceTests
         await fixture.EndpointRepository.Received(1).RecordFailureAsync(
             attempt.TenantId,
             attempt.EndpointId,
+            fixture.LastTargetClaim!.Target.Id,
+            fixture.LastTargetClaim.LeaseToken,
+            fixture.LastTargetClaim.DeliveryFence,
             Arg.Any<DateTime>(),
             "private_network_blocked",
             1,
@@ -216,6 +238,9 @@ public sealed class WebhookDeliveryDrainServiceTests
         await fixture.EndpointRepository.Received(1).RecordFailureAsync(
             attempt.TenantId,
             attempt.EndpointId,
+            fixture.LastTargetClaim!.Target.Id,
+            fixture.LastTargetClaim.LeaseToken,
+            fixture.LastTargetClaim.DeliveryFence,
             Arg.Any<DateTime>(),
             "http_non_success",
             3,
@@ -255,6 +280,9 @@ public sealed class WebhookDeliveryDrainServiceTests
         fixture.EndpointRepository.RecordFailureAsync(
                 attempt.TenantId,
                 attempt.EndpointId,
+                fixture.LastTargetClaim!.Target.Id,
+                fixture.LastTargetClaim.LeaseToken,
+                fixture.LastTargetClaim.DeliveryFence,
                 Arg.Any<DateTime>(),
                 "http_non_success",
                 policy.AutoPauseThreshold,
@@ -425,32 +453,33 @@ public sealed class WebhookDeliveryDrainServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    private static WebhookDeliveryAttempt CreateAttempt(DateTime? createdAtOverride = null)
+    private static WebhookDeliveryAttempt CreateAttempt(
+        DateTime? createdAtOverride = null,
+        byte[]? payloadBytes = null)
     {
         var tenantId = Guid.CreateVersion7();
-        var messageId = Guid.CreateVersion7();
         var endpointId = Guid.CreateVersion7();
         var consumerId = Guid.CreateVersion7();
         var createdAt = createdAtOverride ?? DateTime.UtcNow;
+        var message = WebhookMessage.Create(
+            tenantId,
+            "event.published",
+            "domain-event-1",
+            "Event",
+            Guid.CreateVersion7(),
+            consumerId,
+            payloadBytes ?? "{\"type\":\"event.published\"}"u8.ToArray(),
+            "application/json",
+            "utf-8",
+            createdAt,
+            createdAt.AddDays(14),
+            createdAt);
         return new WebhookDeliveryAttempt
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenantId,
-            MessageId = messageId,
-            Message = WebhookMessage.Create(
-                messageId,
-                tenantId,
-                "event.published",
-                "domain-event-1",
-                "Event",
-                Guid.CreateVersion7(),
-                consumerId,
-                "{\"type\":\"event.published\"}"u8,
-                "application/json",
-                "utf-8",
-                createdAt,
-                createdAt.AddDays(14),
-                createdAt),
+            MessageId = message.Id,
+            Message = message,
             EndpointId = endpointId,
             Endpoint = new WebhookEndpoint
             {
@@ -478,7 +507,6 @@ public sealed class WebhookDeliveryDrainServiceTests
         var tenantId = Guid.CreateVersion7();
         var consumerId = Guid.CreateVersion7();
         var message = WebhookMessage.Create(
-            Guid.CreateVersion7(),
             tenantId,
             "event.published",
             "canonical-local-target",
@@ -637,6 +665,9 @@ public sealed class WebhookDeliveryDrainServiceTests
             EndpointRepository.RecordFailureAsync(
                     Arg.Any<Guid>(),
                     Arg.Any<Guid>(),
+                    Arg.Any<Guid>(),
+                    Arg.Any<Guid>(),
+                    Arg.Any<long>(),
                     Arg.Any<DateTime>(),
                     Arg.Any<string>(),
                     Arg.Any<int>(),
@@ -781,7 +812,7 @@ public sealed class WebhookDeliveryDrainServiceTests
         Func<HttpRequestMessage, HttpResponseMessage> responseFactory) : HttpMessageHandler
     {
         public int CallCount { get; private set; }
-        public string? Body { get; private set; }
+        public byte[] PayloadBytes { get; private set; } = [];
         public string? RequestUri { get; private set; }
         public Dictionary<string, string> Headers { get; } = new(StringComparer.OrdinalIgnoreCase);
 
@@ -791,9 +822,9 @@ public sealed class WebhookDeliveryDrainServiceTests
         {
             CallCount++;
             RequestUri = request.RequestUri?.AbsoluteUri;
-            Body = request.Content is null
-                ? null
-                : await request.Content.ReadAsStringAsync(cancellationToken);
+            PayloadBytes = request.Content is null
+                ? []
+                : await request.Content.ReadAsByteArrayAsync(cancellationToken);
             foreach (var header in request.Headers)
             {
                 Headers[header.Key] = string.Join(" ", header.Value);

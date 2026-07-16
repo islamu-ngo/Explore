@@ -109,6 +109,9 @@ public interface IWebhookEndpointRepository
     Task<WebhookEndpointFailureState> RecordFailureAsync(
         Guid tenantId,
         Guid endpointId,
+        Guid localTargetId,
+        Guid leaseToken,
+        long deliveryFence,
         DateTime failedAt,
         string failureCategory,
         int autoPauseThreshold,

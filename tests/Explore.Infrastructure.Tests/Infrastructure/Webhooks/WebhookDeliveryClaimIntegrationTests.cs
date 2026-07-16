@@ -160,18 +160,143 @@ public sealed class WebhookDeliveryClaimIntegrationTests : IAsyncInitializer, IA
     }
 
     [Test]
+    public async Task RecordFailure_WhenClaimLeaseIsStale_DoesNotMutateEndpoint()
+    {
+        await ResetDatabaseAsync();
+        var now = DateTimeOffset.UtcNow;
+        var target = await SeedTargetAsync(now.AddSeconds(-1));
+        var request = CreateClaimRequest(target, now, TimeSpan.FromSeconds(1));
+        var limits = CreateClaimLimits(target);
+        var claim = (await ClaimAsync(request, limits)).Single();
+
+        await using (var recoveryContext = CreateDbContext())
+        {
+            await new WebhookLocalTargetRepository(recoveryContext)
+                .RecoverExpiredClaimsAsync(
+                    now.AddSeconds(2),
+                    "processing_lease_expired",
+                    10,
+                    CancellationToken.None);
+        }
+
+        await using (var staleWorkerContext = CreateDbContext())
+        {
+            await new WebhookEndpointRepository(staleWorkerContext).RecordFailureAsync(
+                target.TenantId,
+                target.WebhookEndpointId,
+                target.Id,
+                claim.LeaseToken,
+                claim.DeliveryFence,
+                now.AddSeconds(2).UtcDateTime,
+                "http_non_success",
+                2,
+                CancellationToken.None);
+        }
+
+        await using var verificationContext = CreateDbContext();
+        var endpoint = await verificationContext.WebhookEndpoints
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .SingleAsync(candidate => candidate.Id == target.WebhookEndpointId);
+        await Assert.That(endpoint.ConsecutiveFailureCount).IsEqualTo(0);
+        await Assert.That(endpoint.Status).IsEqualTo(WebhookEndpointStatus.Active);
+    }
+
+    [Test]
+    public async Task RecordFailure_RequiresCurrentTokenAndFence_AndAutoPausesExactlyOnce()
+    {
+        await ResetDatabaseAsync();
+        var now = DateTimeOffset.UtcNow;
+        var target = await SeedTargetAsync(now.AddSeconds(-1));
+        var claim = (await ClaimAsync(
+            CreateClaimRequest(target, now, TimeSpan.FromMinutes(2)),
+            CreateClaimLimits(target))).Single();
+        await using var context = CreateDbContext();
+        var repository = new WebhookEndpointRepository(context);
+
+        var wrongToken = await repository.RecordFailureAsync(
+            target.TenantId,
+            target.WebhookEndpointId,
+            target.Id,
+            Guid.CreateVersion7(),
+            claim.DeliveryFence,
+            now.UtcDateTime,
+            "http_non_success",
+            2,
+            CancellationToken.None);
+        var wrongFence = await repository.RecordFailureAsync(
+            target.TenantId,
+            target.WebhookEndpointId,
+            target.Id,
+            claim.LeaseToken,
+            claim.DeliveryFence + 1,
+            now.UtcDateTime,
+            "http_non_success",
+            2,
+            CancellationToken.None);
+        var firstOwnedFailure = await repository.RecordFailureAsync(
+            target.TenantId,
+            target.WebhookEndpointId,
+            target.Id,
+            claim.LeaseToken,
+            claim.DeliveryFence,
+            now.UtcDateTime,
+            "http_non_success",
+            2,
+            CancellationToken.None);
+        var autoPause = await repository.RecordFailureAsync(
+            target.TenantId,
+            target.WebhookEndpointId,
+            target.Id,
+            claim.LeaseToken,
+            claim.DeliveryFence,
+            now.AddSeconds(1).UtcDateTime,
+            "http_non_success",
+            2,
+            CancellationToken.None);
+        var afterAutoPause = await repository.RecordFailureAsync(
+            target.TenantId,
+            target.WebhookEndpointId,
+            target.Id,
+            claim.LeaseToken,
+            claim.DeliveryFence,
+            now.AddSeconds(2).UtcDateTime,
+            "http_non_success",
+            2,
+            CancellationToken.None);
+
+        var endpoint = await context.WebhookEndpoints
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .SingleAsync(candidate => candidate.Id == target.WebhookEndpointId);
+        await Assert.That(wrongToken).IsEqualTo(new WebhookEndpointFailureState(0, false));
+        await Assert.That(wrongFence).IsEqualTo(new WebhookEndpointFailureState(0, false));
+        await Assert.That(firstOwnedFailure).IsEqualTo(new WebhookEndpointFailureState(1, false));
+        await Assert.That(autoPause).IsEqualTo(new WebhookEndpointFailureState(2, true, true));
+        await Assert.That(afterAutoPause).IsEqualTo(new WebhookEndpointFailureState(2, true));
+        await Assert.That(endpoint.ConsecutiveFailureCount).IsEqualTo(2);
+        await Assert.That(endpoint.Status).IsEqualTo(WebhookEndpointStatus.AutoPaused);
+    }
+
+    [Test]
     public async Task EndpointCircuit_AutoPauseAndTenantScopedResumeResetState()
     {
         await ResetDatabaseAsync();
         var now = DateTimeOffset.UtcNow;
         var target = await SeedTargetAsync(now.AddSeconds(-1));
         var actorUserId = Guid.CreateVersion7();
+        var claim = (await ClaimAsync(
+            CreateClaimRequest(target, now, TimeSpan.FromMinutes(2)),
+            CreateClaimLimits(target))).Single();
         await using var context = CreateDbContext();
         var repository = new WebhookEndpointRepository(context);
 
         var firstFailure = await repository.RecordFailureAsync(
             target.TenantId,
             target.WebhookEndpointId,
+            target.Id,
+            claim.LeaseToken,
+            claim.DeliveryFence,
             now.UtcDateTime,
             "http_non_success",
             2,
@@ -179,6 +304,9 @@ public sealed class WebhookDeliveryClaimIntegrationTests : IAsyncInitializer, IA
         var secondFailure = await repository.RecordFailureAsync(
             target.TenantId,
             target.WebhookEndpointId,
+            target.Id,
+            claim.LeaseToken,
+            claim.DeliveryFence,
             now.AddSeconds(1).UtcDateTime,
             "http_non_success",
             2,
@@ -256,7 +384,6 @@ public sealed class WebhookDeliveryClaimIntegrationTests : IAsyncInitializer, IA
         var tenantId = Guid.CreateVersion7();
         var consumerId = Guid.CreateVersion7();
         var endpointId = Guid.CreateVersion7();
-        var messageId = Guid.CreateVersion7();
         var tenant = new Tenant
         {
             Id = tenantId,
@@ -293,10 +420,9 @@ public sealed class WebhookDeliveryClaimIntegrationTests : IAsyncInitializer, IA
             CreatedAt = capturedAtUtc.UtcDateTime
         };
         var message = WebhookMessage.Create(
-            messageId,
             tenantId,
             "event.published",
-            $"target-claim-{messageId:N}",
+            $"target-claim-{Guid.CreateVersion7():N}",
             "Event",
             Guid.CreateVersion7(),
             consumerId,
@@ -308,7 +434,7 @@ public sealed class WebhookDeliveryClaimIntegrationTests : IAsyncInitializer, IA
             capturedAtUtc.UtcDateTime);
         var plan = WebhookDeliveryPlanSnapshot.Create(
             tenantId,
-            messageId,
+            message.Id,
             consumerId,
             WebhookProviderMode.Local,
             "consumer-v1",

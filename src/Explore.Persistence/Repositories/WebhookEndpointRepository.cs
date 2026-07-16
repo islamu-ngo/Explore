@@ -397,6 +397,9 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
     public async Task<WebhookEndpointFailureState> RecordFailureAsync(
         Guid tenantId,
         Guid endpointId,
+        Guid localTargetId,
+        Guid leaseToken,
+        long deliveryFence,
         DateTime failedAt,
         string failureCategory,
         int autoPauseThreshold,
@@ -404,12 +407,23 @@ public class WebhookEndpointRepository : IWebhookEndpointRepository
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(autoPauseThreshold, 1);
         var normalizedFailureCategory = Truncate(failureCategory, 100);
+        var failedAtUtc = new DateTimeOffset(DateTime.SpecifyKind(failedAt, DateTimeKind.Utc));
 
         var updated = await _dbContext.WebhookEndpoints
             .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
             .Where(e => e.Id == endpointId
                 && (e.TenantId == tenantId || e.TenantId == null && e.InstanceId != null)
-                && e.StatusId == (int)WebhookEndpointStatus.Active)
+                && e.StatusId == (int)WebhookEndpointStatus.Active
+                && _dbContext.WebhookLocalTargetSnapshots
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.WebhookTenantOperation)
+                    .Any(target =>
+                        target.TenantId == tenantId
+                        && target.Id == localTargetId
+                        && target.WebhookEndpointId == endpointId
+                        && target.DeliveryStatusId == (int)WebhookLocalDeliveryStatus.Delivering
+                        && target.ProcessingLeaseToken == leaseToken
+                        && target.DeliveryFence == deliveryFence
+                        && target.ProcessingLeaseExpiresAtUtc > failedAtUtc))
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(e => e.LastFailureAt, failedAt)
                 .SetProperty(e => e.ConsecutiveFailureCount, e => e.ConsecutiveFailureCount + 1)

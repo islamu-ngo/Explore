@@ -589,6 +589,9 @@ public sealed class WebhookDeliveryDrainService(
             var failureState = await endpointRepository.RecordFailureAsync(
                 target.TenantId,
                 target.WebhookEndpointId,
+                target.Id,
+                claim.LeaseToken,
+                claim.DeliveryFence,
                 completedAt.UtcDateTime,
                 failureCategory,
                 autoPauseThreshold,
