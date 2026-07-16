@@ -33,16 +33,9 @@ Invoke-WebRequest -Uri "https://localhost:7177" -UseBasicParsing -SkipCertificat
 
 ---
 
-## 2. Visual Inspection (Playwriter MCP)
+## 2. Visual Inspection
 
-After the site is up, use the Playwriter MCP to visually verify your changes:
-
-- **Reset connection first:** call `playwriter-reset`.
-- **Get the page:** `state.myPage = context.pages()[0]`.
-- **Navigate / reload / scroll / screenshot** to verify changes.
-- **Keep Playwright commands short and independent** — long chains time out.
-
-Alternative: the Chrome-DevTools MCP for deeper frontend inspection (see [`AGENTS.md`](../AGENTS.md) § Specialized Tooling).
+After the site is up, inspect the affected page in a browser at the relevant desktop and mobile widths. Verify focus behavior, keyboard navigation, RTL, dark mode, responsive layout, and reduced motion when those surfaces changed.
 
 ---
 

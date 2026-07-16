@@ -197,9 +197,9 @@ Do not add Codecov, SonarCloud, or coverage-percentage badges until the correspo
 
 ### Runtime Test Reliability Policy
 
-Runtime, stress, E2E, and manual visual lanes remain advisory until their known flaky or deferred tests are tracked with owner, first-seen date, evidence source, and promotion/removal criteria in [TEST_RELIABILITY.md](TEST_RELIABILITY.md). This keeps nightly/manual failures actionable instead of silently normalizing noisy failures.
+Runtime, stress, and manual visual lanes remain advisory until their known flaky or deferred tests are tracked with owner, first-seen date, evidence source, and promotion/removal criteria in [TEST_RELIABILITY.md](TEST_RELIABILITY.md). This keeps nightly/manual failures actionable instead of silently normalizing noisy failures.
 
-Do not promote E2E, stress, security, or runtime lanes to required status while a blocking reliability item lacks an owner or removal condition. When a tracked item is fixed, remove the skip in code and update `TEST_RELIABILITY.md` in the same PR. API-contract-specific skips remain governed by [API_CONTRACT_TEST_DEBT.md](API_CONTRACT_TEST_DEBT.md).
+Do not promote stress, security, or runtime lanes to required status while a blocking reliability item lacks an owner or removal condition. When a tracked item is fixed, remove the skip in code and update `TEST_RELIABILITY.md` in the same PR. API-contract-specific skips remain governed by [API_CONTRACT_TEST_DEBT.md](API_CONTRACT_TEST_DEBT.md).
 
 ### OpenAPI Breaking-Change Evidence
 
@@ -234,7 +234,6 @@ This is now a missing-evidence gate for breaking OpenAPI changes, not full autom
 | OpenSSF Scorecard | No | Yes | Scheduled/manual supply-chain posture evidence. Uploads SARIF to code scanning and retains `scorecard-evidence`; keep advisory until repository permissions and signal quality are proven. |
 | Local secret scanning | New findings only | Yes | `gitleaks` blocks on PR/push/merge-queue ranges for newly introduced leaks and keeps scheduled/manual history scans advisory until legacy findings are triaged or baselined. |
 | Dependency license policy | Yes | No | `Build & Test` blocks denied or unknown product dependency licenses unless a package-specific exception with removal condition is encoded in the repository-owned C# validator. |
-| E2E browser/runtime tests | No | Yes | Manual/nightly until `docs/TEST_RELIABILITY.md` tracked flakes are resolved or explicitly baselined and reliability data justifies required status. |
 | Container SBOM/provenance/Trivy/attestation/promotion verification | Deploy-only | No | Required before deployment workflows call Coolify; retained evidence includes registry manifest/index output, immutable primary-registry tag promotion evidence, vulnerability scan artifacts, attestation verification JSON, and checksum manifests. |
 | Production smoke checks | Deploy-only | No | Required for production deploys; `PRODUCTION_API_URL` and `PRODUCTION_UI_URL` must be configured and both `/alive` and `/health` must pass for deployed components. Staging smoke checks run when staging URL variables are configured. |
 
@@ -292,7 +291,6 @@ Never hand-edit OpenAPI or NSwag generated client artifacts. Regenerate them thr
 | Repository settings drift evidence | `Repository Settings Drift` | 30 days |
 | Security and Cerbos logs/TRX | `Security Integration Tests`, `Cerbos Policy Validation` | 30 days |
 | Coverage Cobertura/TRX/log evidence | `Coverage Evidence` | 30 days |
-| E2E TRX, traces, screenshots, videos, Docker diagnostics | `E2E Runtime Tests` | 30 days |
 | Performance smoke logs/results | `Performance Smoke` | 30 days |
 | Container digest, OCI inspect/index output, immutable promotion evidence, Trivy text/SARIF output, attestation verification JSON, checksum manifest, SBOM/provenance evidence | `Container Build (Reusable)` | 90 days; preserve release evidence externally for release lifetime |
 | Deployment summaries/logs | Coolify deploy workflows | 90 days minimum |
@@ -322,7 +320,6 @@ Use [CI_CD_RUNBOOKS.md](CI_CD_RUNBOOKS.md) for the approved rerun and emergency 
 | Secret-scanning SARIF/text | Is this a newly introduced secret or a legacy history finding? | Newly introduced findings block and require secret rotation/removal. Legacy scheduled/manual findings need triage or baseline before history-wide blocking. |
 | Security and Cerbos logs/TRX | Did the security test fail in code, fixture setup, Keycloak/Cerbos startup, or policy contract expectations? | Use TRX for failing test identity and retained logs for container/service context. Assign to API/security or policy owner. |
 | Coverage evidence | Did the stable unit coverage lane generate Cobertura, TRX, HTML, build, and test evidence? | Keep coverage advisory and artifact-only. Expand scope or add thresholds only after the target lane is stable and the publication owner is documented. |
-| E2E runtime evidence | Is failure in app startup, browser interaction, infrastructure container, or assertion logic? | Review the E2E step summary first, then TRX, Playwright artifacts, screenshots/videos, traces, and Docker diagnostics before rerunning locally. Repeated scheduled failures must be tracked in `docs/TEST_RELIABILITY.md`. |
 | Performance smoke evidence | Did a representative API endpoint benchmark fail to build/run, or did runtime behavior change enough to invalidate the benchmark? | Review `performance-smoke-evidence` logs and BenchmarkDotNet results. Keep the lane advisory until enough scheduled runs prove stable signal and explicit thresholds are documented. |
 | Container evidence | Do digest, scan, SBOM/provenance, attestation, promotion, and checksum artifacts agree for the same image digest? | Treat mismatches as release blockers. Preserve evidence externally for release lifetime before GitHub artifact expiry. |
 | Deployment summaries/logs | Did the webhook, expected digest/tag resolution, smoke checks, freeze override, or rollback evidence fail? | Do not promote production until the failed component has a retained summary with redacted failure context and a rollback/override note. |

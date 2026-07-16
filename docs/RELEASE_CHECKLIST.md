@@ -7,7 +7,7 @@ ABOUTME: Provides the release documentation contract for self-hostable operators
 > **Status:** Implemented
 > **Owner:** Platform/Ops
 > **Last Verified:** 2026-05-06
-> **Source Anchors:** `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/CONTRIBUTING.md`, `docs/TESTING.md`, `.github/workflows/test.yml`, `.github/workflows/agent-context.yml`
+> **Source Anchors:** `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/CONTRIBUTING.md`, `docs/TESTING.md`, `.github/workflows/test.yml`
 
 Use this checklist before tagging or publishing a release. A release is not ready until operators can understand what changed, how to upgrade, how to verify, and how to roll back.
 
@@ -60,14 +60,14 @@ Use `Not applicable` only when the change has no release-impact category. If the
   ```
 
 - [ ] Required per-project tests pass; do not run solution-level `dotnet test`.
-- [ ] Architecture/docs quality tests pass:
+- [ ] Architecture tests pass:
 
   ```bash
   dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
   ```
 
 - [ ] Infrastructure-dependent tests are either passed in the release lane or explicitly marked as deferred with the reason; email or messaging changes include the focused `Explore.Infrastructure.Tests` `Email` category evidence.
-- [ ] E2E/manual visual checks are completed when the release changes auth, routing, onboarding, or core browser flows.
+- [ ] Manual visual checks are completed when the release changes auth, routing, onboarding, or core browser flows.
 - [ ] Required GitHub checks match [CI_CD_GOVERNANCE.md](CI_CD_GOVERNANCE.md): fast build/test, OpenAPI drift, CodeQL, dependency review, and any path-relevant security/Cerbos checks. If `CodeQL Advanced` owns uploads, confirm GitHub CodeQL default setup is `not-configured`.
 - [ ] Advisory/nightly failures are triaged or explicitly deferred with owner and reason.
 
@@ -116,7 +116,6 @@ Expected artifact names:
 - `cerbos-policy-publish-evidence`
 - `container-build-*`
 - `deployment-production-evidence` / `deployment-staging-evidence`
-- `e2e-runtime-evidence`
 
 ## Documentation Impact
 

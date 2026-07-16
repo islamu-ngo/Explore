@@ -102,7 +102,6 @@ dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.
 dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/RabbitMqEmailDispatchTransportLiveTests/*" --minimum-expected-tests 1
 dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/RabbitMqEmailDispatchConsumerMailpitTests/*" --minimum-expected-tests 1
 dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/RabbitMqEmailDispatchDeadLetterReplayLiveTests/*" --minimum-expected-tests 1
-dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/RegistrationFlowTests/*" --minimum-expected-tests 1
 ```
 
 ## Admin Workflow
