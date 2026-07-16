@@ -4,8 +4,10 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
+using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.API.Models;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Location;
 using Explore.Application.Features.Locations.Requests.Commands;
 using Explore.Application.Features.Locations.Requests.Queries;
@@ -14,7 +16,6 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -45,23 +46,26 @@ public class LocationController : ControllerBase
 
     private readonly IMediator _mediator;
     private readonly ILogger<LocationController> _logger;
+    private readonly ITenantContext _tenantContext;
     private readonly IResourceAssembler<LocationDto, LocationListDto> _resourceAssembler;
 
     public LocationController(
         IMediator mediator,
         ILogger<LocationController> logger,
+        ITenantContext tenantContext,
         IResourceAssembler<LocationDto, LocationListDto> resourceAssembler)
     {
         _mediator = mediator;
         _logger = logger;
+        _tenantContext = tenantContext;
         _resourceAssembler = resourceAssembler;
     }
 
     /// <summary>
     /// Get all locations with pagination.
     /// </summary>
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet(Name = RouteNames.GetLocations)]
     [EndpointSummary("Get all Locations")]
     [EndpointDescription("Retrieve a paginated list of all locations. " +
@@ -70,13 +74,14 @@ public class LocationController : ControllerBase
         "Send 'Prefer: return=minimal' header to strip links.")]
     [ProducesResponseType(typeof(HalCollectionResource<LocationListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [OutputCache(PolicyName = "ListData")]
+    [PrivateNoStore]
     public async Task<ActionResult<HalCollectionResource<LocationListDto>>> GetAll(
         [FromQuery] PaginationQueryRequest query,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetLocationListRequest
         {
+            TenantId = _tenantContext.TenantId,
             PageNumber = query.PageNumber,
             PageSize = query.PageSize
         }, cancellationToken);
@@ -93,17 +98,21 @@ public class LocationController : ControllerBase
     /// <summary>
     /// Get location details by ID.
     /// </summary>
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("{id:guid}", Name = RouteNames.GetLocationById)]
     [EndpointSummary("Get Location Details")]
     [EndpointDescription("Get detailed information about a specific location including coordinates.")]
     [ProducesResponseType(typeof(HalResource<LocationDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [OutputCache(PolicyName = "DetailData")]
+    [PrivateNoStore]
     public async Task<ActionResult<HalResource<LocationDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var location = await _mediator.Send(new GetLocationDetailsRequest { Id = id }, cancellationToken);
+        var location = await _mediator.Send(new GetLocationDetailsRequest
+        {
+            Id = id,
+            TenantId = _tenantContext.TenantId
+        }, cancellationToken);
         if (location == null)
         {
             return this.ToNotFoundProblem(LocationNotFoundProblem);
@@ -116,16 +125,20 @@ public class LocationController : ControllerBase
     /// <summary>
     /// Get locations by city.
     /// </summary>
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("by-city/{city}", Name = RouteNames.GetLocationsByCity)]
     [EndpointSummary("Get Locations by City")]
     [EndpointDescription("Get all locations in a specific city.")]
     [ProducesResponseType(typeof(HalCollectionResource<LocationListDto>), StatusCodes.Status200OK)]
-    [OutputCache(PolicyName = "ListData")]
+    [PrivateNoStore]
     public async Task<ActionResult<HalCollectionResource<LocationListDto>>> GetByCity(string city, CancellationToken cancellationToken = default)
     {
-        var locations = await _mediator.Send(new GetLocationsByCityRequest { City = city }, cancellationToken);
+        var locations = await _mediator.Send(new GetLocationsByCityRequest
+        {
+            City = city,
+            TenantId = _tenantContext.TenantId
+        }, cancellationToken);
 
         var halResource = await _resourceAssembler.ToCollectionResource(
             locations,
@@ -138,16 +151,20 @@ public class LocationController : ControllerBase
     /// <summary>
     /// Get locations by country.
     /// </summary>
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("by-country/{country}", Name = RouteNames.GetLocationsByCountry)]
     [EndpointSummary("Get Locations by Country")]
     [EndpointDescription("Get all locations in a specific country.")]
     [ProducesResponseType(typeof(HalCollectionResource<LocationListDto>), StatusCodes.Status200OK)]
-    [OutputCache(PolicyName = "ListData")]
+    [PrivateNoStore]
     public async Task<ActionResult<HalCollectionResource<LocationListDto>>> GetByCountry(string country, CancellationToken cancellationToken = default)
     {
-        var locations = await _mediator.Send(new GetLocationsByCountryRequest { Country = country }, cancellationToken);
+        var locations = await _mediator.Send(new GetLocationsByCountryRequest
+        {
+            Country = country,
+            TenantId = _tenantContext.TenantId
+        }, cancellationToken);
 
         var halResource = await _resourceAssembler.ToCollectionResource(
             locations,

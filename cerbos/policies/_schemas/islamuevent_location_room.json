@@ -6,10 +6,6 @@
     "tenantId": {
       "type": "string",
       "description": "Owning tenant identifier. Used by islamuevent_tenant_admin derived role."
-    },
-    "organizationId": {
-      "type": "string",
-      "description": "Owning organization identifier. Used by islamuevent_org_admin derived role."
     }
   },
   "required": ["tenantId"]

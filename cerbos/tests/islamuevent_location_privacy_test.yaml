@@ -1,0 +1,127 @@
+# ABOUTME: Cerbos policy tests for sensitive physical location and room resources.
+# ABOUTME: Verifies generic reads are administrator-scoped and tenant-isolated.
+
+name: EventLocationPrivacyPolicyTests
+description: "Validates private physical location read authority"
+
+principals:
+  instance_admin:
+    id: "user-instance-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: true
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  tenant_admin:
+    id: "user-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-1": "admin"
+      orgMemberships: {}
+
+  other_tenant_admin:
+    id: "user-other-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-2": "admin"
+      orgMemberships: {}
+
+  organization_admin:
+    id: "user-organization-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships:
+        "organization-1": "admin"
+
+  regular_user:
+    id: "user-regular"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+resources:
+  tenant_location:
+    kind: "islamuevent_location"
+    id: "location-1"
+    attr:
+      tenantId: "tenant-1"
+
+  tenant_room:
+    kind: "islamuevent_location_room"
+    id: "room-1"
+    attr:
+      tenantId: "tenant-1"
+
+tests:
+  - name: "Instance and owning tenant administrators can view physical locations"
+    input:
+      principals: ["instance_admin", "tenant_admin"]
+      resources: ["tenant_location"]
+      actions: ["view"]
+    expected:
+      - principal: "instance_admin"
+        resource: "tenant_location"
+        actions:
+          view: EFFECT_ALLOW
+      - principal: "tenant_admin"
+        resource: "tenant_location"
+        actions:
+          view: EFFECT_ALLOW
+
+  - name: "Regular users and unrelated tenant administrators cannot view physical locations"
+    input:
+      principals: ["regular_user", "other_tenant_admin"]
+      resources: ["tenant_location"]
+      actions: ["view"]
+    expected:
+      - principal: "regular_user"
+        resource: "tenant_location"
+        actions:
+          view: EFFECT_DENY
+      - principal: "other_tenant_admin"
+        resource: "tenant_location"
+        actions:
+          view: EFFECT_DENY
+
+  - name: "Instance and owning tenant administrators retain room view authority"
+    input:
+      principals: ["instance_admin", "tenant_admin"]
+      resources: ["tenant_room"]
+      actions: ["view"]
+    expected:
+      - principal: "instance_admin"
+        resource: "tenant_room"
+        actions:
+          view: EFFECT_ALLOW
+      - principal: "tenant_admin"
+        resource: "tenant_room"
+        actions:
+          view: EFFECT_ALLOW
+
+  - name: "Organization admins without tenant authority and unrelated users cannot view physical rooms"
+    input:
+      principals: ["organization_admin", "regular_user", "other_tenant_admin"]
+      resources: ["tenant_room"]
+      actions: ["view"]
+    expected:
+      - principal: "organization_admin"
+        resource: "tenant_room"
+        actions:
+          view: EFFECT_DENY
+      - principal: "regular_user"
+        resource: "tenant_room"
+        actions:
+          view: EFFECT_DENY
+      - principal: "other_tenant_admin"
+        resource: "tenant_room"
+        actions:
+          view: EFFECT_DENY

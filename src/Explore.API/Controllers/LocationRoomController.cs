@@ -4,7 +4,9 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
+using Explore.API.Filters;
 using Explore.API.Hateoas;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.LocationRoom;
 using Explore.Application.Features.LocationRooms.Requests.Commands;
 using Explore.Application.Features.LocationRooms.Requests.Queries;
@@ -13,7 +15,6 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -45,31 +46,38 @@ public class LocationRoomController : ControllerBase
 
     private readonly IMediator _mediator;
     private readonly ILogger<LocationRoomController> _logger;
+    private readonly ITenantContext _tenantContext;
     private readonly IResourceAssembler<LocationRoomDto, LocationRoomListDto> _resourceAssembler;
 
     public LocationRoomController(
         IMediator mediator,
         ILogger<LocationRoomController> logger,
+        ITenantContext tenantContext,
         IResourceAssembler<LocationRoomDto, LocationRoomListDto> resourceAssembler)
     {
         _mediator = mediator;
         _logger = logger;
+        _tenantContext = tenantContext;
         _resourceAssembler = resourceAssembler;
     }
 
     /// <summary>
     /// Get all rooms for a specific location.
     /// </summary>
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("by-location/{locationId:guid}", Name = RouteNames.GetLocationRoomsByLocation)]
     [EndpointSummary("Get Rooms by Location")]
     [EndpointDescription("Get all rooms for a specific location, ordered by sort order.")]
     [ProducesResponseType(typeof(HalCollectionResource<LocationRoomListDto>), StatusCodes.Status200OK)]
-    [OutputCache(PolicyName = "ListData")]
+    [PrivateNoStore]
     public async Task<ActionResult<HalCollectionResource<LocationRoomListDto>>> GetByLocation(Guid locationId, CancellationToken cancellationToken = default)
     {
-        var rooms = await _mediator.Send(new GetLocationRoomsByLocationRequest { LocationId = locationId }, cancellationToken);
+        var rooms = await _mediator.Send(new GetLocationRoomsByLocationRequest
+        {
+            LocationId = locationId,
+            TenantId = _tenantContext.TenantId
+        }, cancellationToken);
 
         var halResource = await _resourceAssembler.ToCollectionResource(
             rooms,
@@ -83,17 +91,21 @@ public class LocationRoomController : ControllerBase
     /// <summary>
     /// Get location room details by ID.
     /// </summary>
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("{id:guid}", Name = RouteNames.GetLocationRoomById)]
     [EndpointSummary("Get Room Details")]
     [EndpointDescription("Get detailed information about a specific location room.")]
     [ProducesResponseType(typeof(HalResource<LocationRoomDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [OutputCache(PolicyName = "DetailData")]
+    [PrivateNoStore]
     public async Task<ActionResult<HalResource<LocationRoomDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var room = await _mediator.Send(new GetLocationRoomDetailRequest { Id = id }, cancellationToken);
+        var room = await _mediator.Send(new GetLocationRoomDetailRequest
+        {
+            Id = id,
+            TenantId = _tenantContext.TenantId
+        }, cancellationToken);
         if (room == null)
         {
             return this.ToNotFoundProblem(LocationRoomNotFoundProblem);

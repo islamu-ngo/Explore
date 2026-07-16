@@ -1,5 +1,5 @@
 # ABOUTME: Cerbos resource policy for location resources.
-# Locations are tenant-scoped: tenant admins manage, users can view.
+# Locations are tenant-scoped: only authorized administrators can view or manage them.
 
 apiVersion: api.cerbos.dev/v1
 resourcePolicy:
@@ -24,9 +24,3 @@ resourcePolicy:
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_tenant_admin
-
-    # All authenticated users can view locations
-    - actions: ["view"]
-      effect: EFFECT_ALLOW
-      roles:
-        - islamuevent_authenticated_user

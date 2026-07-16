@@ -24,15 +24,3 @@ resourcePolicy:
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_tenant_admin
-
-    # Org admins can manage rooms for their locations
-    - actions: ["view", "create", "update", "delete"]
-      effect: EFFECT_ALLOW
-      derivedRoles:
-        - islamuevent_org_admin
-
-    # All authenticated users can view rooms
-    - actions: ["view"]
-      effect: EFFECT_ALLOW
-      roles:
-        - islamuevent_authenticated_user
