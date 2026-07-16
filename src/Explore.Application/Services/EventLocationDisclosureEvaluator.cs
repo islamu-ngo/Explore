@@ -1,0 +1,425 @@
+// ABOUTME: Pure fail-closed evaluator for purpose-scoped EventLocation field disclosure.
+// ABOUTME: Applies association, privacy, governance, authority, server-time, policy, and Home-redaction gates.
+
+using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Location;
+using Explore.Domain;
+using Explore.Domain.Enums;
+
+namespace Explore.Application.Services;
+
+public sealed record EventLocationDisclosureGovernanceFact(
+    bool IsResolved,
+    bool AllowHomeLocations,
+    bool AllowPublicExactAddress,
+    bool AllowPublicCoordinates,
+    LocationDisclosureAudienceEnum MinimumHomeAudience);
+
+public sealed record EventLocationDisclosureDerivativeValues(
+    string? FormattedAddress,
+    string? MapUrl,
+    string? Geohash);
+
+public sealed record EventLocationDisclosureEvaluationFacts(
+    EventLocationDisclosureRequest Request,
+    EventLocation? EventLocation,
+    Location? Location,
+    LocationRoom? Room,
+    EventLocationDisclosureGovernanceFact Governance,
+    EventLocationRegistrationAccess? RegistrationAccess,
+    bool IsManagementAuthorized,
+    DateTimeOffset ServerNowUtc,
+    EventLocationDisclosureDerivativeValues? Derivatives);
+
+public sealed class EventLocationDisclosureEvaluator
+{
+    public EventLocationDisclosureResult Evaluate(EventLocationDisclosureEvaluationFacts facts)
+    {
+        ArgumentNullException.ThrowIfNull(facts);
+        ArgumentNullException.ThrowIfNull(facts.Request);
+        ArgumentNullException.ThrowIfNull(facts.Governance);
+
+        var request = facts.Request;
+        if (!HasValidRequest(request)
+            || !HasValidAssociation(request, facts.EventLocation))
+        {
+            return Hidden(request);
+        }
+
+        var eventLocation = facts.EventLocation!;
+        var isToBeAnnounced = eventLocation.IsToBeAnnounced;
+        if (!isToBeAnnounced
+            && (!HasValidPhysicalSource(request, eventLocation, facts.Location, facts.Room)
+                || !HasUsablePrivacyState(facts.Location!)))
+        {
+            return Unavailable(request);
+        }
+
+        var location = facts.Location;
+        var isPrivateHome = location?.LocationKindId == (int)LocationKindEnum.PrivateHome;
+        if (!HasValidGovernance(facts.Governance))
+        {
+            return Hidden(request);
+        }
+
+        if (isPrivateHome && !facts.Governance.AllowHomeLocations)
+        {
+            return Unavailable(request);
+        }
+
+        if (!HasPurposeAuthority(request, eventLocation, facts)
+            || !HasValidServerTime(facts.ServerNowUtc))
+        {
+            return Hidden(request);
+        }
+
+        if (!Enum.IsDefined((LocationDisclosureAudienceEnum)eventLocation.FullDetailsAudienceId))
+        {
+            return Hidden(request);
+        }
+
+        if (isToBeAnnounced)
+        {
+            return EventLocationDisclosureResult.Suppressed(
+                request.EventLocationId,
+                request.Purpose,
+                EventLocationDisclosureState.ToBeAnnounced);
+        }
+
+        if (eventLocation.NeedsPrivacyReview)
+        {
+            return EventLocationDisclosureResult.Suppressed(
+                request.EventLocationId,
+                request.Purpose,
+                EventLocationDisclosureState.NeedsPrivacyReview);
+        }
+
+        if (isPrivateHome && request.Purpose == EventLocationDisclosurePurpose.Public)
+        {
+            return EventLocationDisclosureResult.Public(
+                request.EventLocationId,
+                EventLocationDisclosureState.PrivateVenue,
+                new EventLocationDisclosureValues(
+                    VenueName: EventLocationDisclosureContract.PrivateHomePublicLabel));
+        }
+
+        var exactAllowed = HasExactAuthority(facts, eventLocation, isPrivateHome);
+        if (isPrivateHome
+            && request.Purpose == EventLocationDisclosurePurpose.Attendee
+            && !exactAllowed)
+        {
+            return EventLocationDisclosureResult.Attendee(
+                request.EventLocationId,
+                EventLocationDisclosureState.PrivateVenue,
+                new EventLocationDisclosureValues(
+                    VenueName: EventLocationDisclosureContract.PrivateHomePublicLabel));
+        }
+
+        var values = SelectValues(facts, eventLocation, location!, exactAllowed);
+        if (values.GetPresentFields().IsEmpty)
+        {
+            return Hidden(request);
+        }
+
+        return request.Purpose switch
+        {
+            EventLocationDisclosurePurpose.Public => EventLocationDisclosureResult.Public(
+                request.EventLocationId,
+                EventLocationDisclosureState.Available,
+                values),
+            EventLocationDisclosurePurpose.Attendee => EventLocationDisclosureResult.Attendee(
+                request.EventLocationId,
+                EventLocationDisclosureState.Available,
+                values),
+            EventLocationDisclosurePurpose.Management => EventLocationDisclosureResult.Management(
+                request.EventLocationId,
+                location.Id,
+                EventLocationDisclosureState.Available,
+                values),
+            _ => Hidden(request)
+        };
+    }
+
+    private static bool HasValidRequest(EventLocationDisclosureRequest request)
+        => request.TenantId != Guid.Empty
+            && request.EventId != Guid.Empty
+            && request.EventLocationId != Guid.Empty
+            && (!request.RoomId.HasValue || request.RoomId.Value != Guid.Empty)
+            && Enum.IsDefined(request.Purpose);
+
+    private static bool HasValidAssociation(
+        EventLocationDisclosureRequest request,
+        EventLocation? eventLocation)
+        => eventLocation is not null
+            && !eventLocation.IsDeleted
+            && eventLocation.Id == request.EventLocationId
+            && eventLocation.TenantId == request.TenantId
+            && eventLocation.EventId == request.EventId
+            && eventLocation.HasValidLocationOrTbaShape;
+
+    private static bool HasValidPhysicalSource(
+        EventLocationDisclosureRequest request,
+        EventLocation eventLocation,
+        Location? location,
+        LocationRoom? room)
+    {
+        if (eventLocation.LocationId is not { } locationId
+            || location is null
+            || location.Id != locationId
+            || location.TenantId != request.TenantId)
+        {
+            return false;
+        }
+
+        if (request.RoomId is not { } roomId)
+        {
+            return true;
+        }
+
+        return room is not null
+            && !room.IsDeleted
+            && room.Id == roomId
+            && room.TenantId == request.TenantId
+            && room.LocationId == locationId;
+    }
+
+    private static bool HasUsablePrivacyState(Location location)
+    {
+        if (!Enum.IsDefined((LocationPrivacyStateEnum)location.LocationPrivacyStateId)
+            || !Enum.IsDefined((LocationKindEnum)location.LocationKindId)
+            || location.LocationPrivacyStateId != (int)LocationPrivacyStateEnum.Active
+            || location.Pii is null
+            || !HasText(location.Pii.Address)
+            || !HasText(location.Pii.Postcode))
+        {
+            return false;
+        }
+
+        return location.LocationKindId != (int)LocationKindEnum.PrivateHome
+            || location.OwnerUserId is { } ownerId && ownerId != Guid.Empty;
+    }
+
+    private static bool HasValidGovernance(EventLocationDisclosureGovernanceFact governance)
+        => governance.IsResolved
+            && Enum.IsDefined(governance.MinimumHomeAudience);
+
+    private static bool HasPurposeAuthority(
+        EventLocationDisclosureRequest request,
+        EventLocation eventLocation,
+        EventLocationDisclosureEvaluationFacts facts)
+    {
+        return request.Purpose switch
+        {
+            EventLocationDisclosurePurpose.Public => true,
+            EventLocationDisclosurePurpose.Attendee =>
+                request.RequesterUserId is { } requesterId
+                && requesterId != Guid.Empty
+                && HasMatchingRegistrationAccess(facts.RegistrationAccess, eventLocation),
+            EventLocationDisclosurePurpose.Management =>
+                request.RequesterUserId is { } requesterId
+                && requesterId != Guid.Empty
+                && facts.IsManagementAuthorized,
+            _ => false
+        };
+    }
+
+    private static bool HasValidServerTime(DateTimeOffset serverNowUtc)
+        => serverNowUtc != default && serverNowUtc.Offset == TimeSpan.Zero;
+
+    private static bool HasMatchingRegistrationAccess(
+        EventLocationRegistrationAccess? access,
+        EventLocation eventLocation)
+        => access is not null
+            && access.EventId == eventLocation.EventId
+            && access.RequestedEventLocationId == eventLocation.Id
+            && access.CoversRequestedEventLocation;
+
+    private static bool HasExactAuthority(
+        EventLocationDisclosureEvaluationFacts facts,
+        EventLocation eventLocation,
+        bool isPrivateHome)
+    {
+        var purpose = facts.Request.Purpose;
+        if (purpose == EventLocationDisclosurePurpose.Management)
+        {
+            return true;
+        }
+
+        if (!RevealGateIsOpen(eventLocation.RevealFullDetailsFromUtc, facts.ServerNowUtc))
+        {
+            return false;
+        }
+
+        if (purpose == EventLocationDisclosurePurpose.Public)
+        {
+            return true;
+        }
+
+        if (facts.RegistrationAccess is null
+            || !Enum.IsDefined((LocationDisclosureAudienceEnum)eventLocation.FullDetailsAudienceId))
+        {
+            return false;
+        }
+
+        var requiredAudience = (LocationDisclosureAudienceEnum)eventLocation.FullDetailsAudienceId;
+        if (isPrivateHome)
+        {
+            requiredAudience = MoreRestrictive(
+                requiredAudience,
+                facts.Governance.MinimumHomeAudience);
+        }
+
+        return facts.RegistrationAccess.AllowsAudience(requiredAudience);
+    }
+
+    private static bool RevealGateIsOpen(DateTime? revealFromUtc, DateTimeOffset serverNowUtc)
+    {
+        if (!revealFromUtc.HasValue)
+        {
+            return true;
+        }
+
+        return revealFromUtc.Value.Kind == DateTimeKind.Utc
+            && new DateTimeOffset(revealFromUtc.Value) <= serverNowUtc;
+    }
+
+    private static LocationDisclosureAudienceEnum MoreRestrictive(
+        LocationDisclosureAudienceEnum first,
+        LocationDisclosureAudienceEnum second)
+        => RestrictionRank(first) >= RestrictionRank(second) ? first : second;
+
+    private static int RestrictionRank(LocationDisclosureAudienceEnum audience)
+        => audience switch
+        {
+            LocationDisclosureAudienceEnum.AnyCurrentRegistrant => 1,
+            LocationDisclosureAudienceEnum.ConfirmedParticipant => 2,
+            LocationDisclosureAudienceEnum.Never => 3,
+            _ => int.MaxValue
+        };
+
+    private static EventLocationDisclosureValues SelectValues(
+        EventLocationDisclosureEvaluationFacts facts,
+        EventLocation eventLocation,
+        Location location,
+        bool exactAllowed)
+    {
+        var purpose = facts.Request.Purpose;
+        var pii = location.Pii!;
+        var room = facts.Room;
+        var canShowAddress = exactAllowed
+            && (purpose != EventLocationDisclosurePurpose.Public
+                || facts.Governance.AllowPublicExactAddress);
+        var canShowCoordinates = exactAllowed
+            && (purpose != EventLocationDisclosurePurpose.Public
+                || facts.Governance.AllowPublicCoordinates)
+            && HasValidCoordinates(pii.Latitude, pii.Longitude);
+
+        var country = Selected(eventLocation.ShowCountry, purpose, EventLocationDisclosureField.Country)
+            ? TextOrNull(location.Country)
+            : null;
+        var city = Selected(eventLocation.ShowCity, purpose, EventLocationDisclosureField.City)
+            ? TextOrNull(location.City)
+            : null;
+        var venueName = Selected(eventLocation.ShowVenueName, purpose, EventLocationDisclosureField.VenueName)
+            ? TextOrNull(location.FullName)
+            : null;
+        var roomName = Selected(eventLocation.ShowRoomName, purpose, EventLocationDisclosureField.RoomName)
+            ? TextOrNull(room?.Name)
+            : null;
+        var roomDescription = purpose == EventLocationDisclosurePurpose.Management
+            && EventLocationDisclosureContract.IsWithinPurposeCeiling(
+                purpose,
+                EventLocationDisclosureField.RoomDescription)
+            ? TextOrNull(room?.Description)
+            : null;
+        var streetAddress = canShowAddress
+            && Selected(eventLocation.ShowStreetAddress, purpose, EventLocationDisclosureField.StreetAddress)
+            ? TextOrNull(pii.Address)
+            : null;
+        var postcode = canShowAddress
+            && Selected(eventLocation.ShowPostcode, purpose, EventLocationDisclosureField.Postcode)
+            ? TextOrNull(pii.Postcode)
+            : null;
+        var latitude = canShowCoordinates
+            && Selected(eventLocation.ShowCoordinates, purpose, EventLocationDisclosureField.Latitude)
+            ? pii.Latitude
+            : null;
+        var longitude = canShowCoordinates
+            && Selected(eventLocation.ShowCoordinates, purpose, EventLocationDisclosureField.Longitude)
+            ? pii.Longitude
+            : null;
+        var formattedAddress = streetAddress is not null
+            && WithinPurpose(purpose, EventLocationDisclosureField.FormattedAddress)
+            ? TextOrNull(facts.Derivatives?.FormattedAddress)
+            : null;
+        var mapUrl = latitude.HasValue
+            && longitude.HasValue
+            && WithinPurpose(purpose, EventLocationDisclosureField.MapUrl)
+            ? TextOrNull(facts.Derivatives?.MapUrl)
+            : null;
+        var geohash = latitude.HasValue
+            && longitude.HasValue
+            && WithinPurpose(purpose, EventLocationDisclosureField.Geohash)
+            ? TextOrNull(facts.Derivatives?.Geohash)
+            : null;
+
+        return new EventLocationDisclosureValues(
+            Country: country,
+            City: city,
+            VenueName: venueName,
+            RoomName: roomName,
+            RoomDescription: roomDescription,
+            StreetAddress: streetAddress,
+            Postcode: postcode,
+            Latitude: latitude,
+            Longitude: longitude,
+            FormattedAddress: formattedAddress,
+            MapUrl: mapUrl,
+            Geohash: geohash);
+    }
+
+    private static bool Selected(
+        bool selected,
+        EventLocationDisclosurePurpose purpose,
+        EventLocationDisclosureField field)
+        => selected
+            && WithinPurpose(purpose, field)
+            && EventLocationDisclosureContract.HasCurrentlySatisfiablePolicyGate(field);
+
+    private static bool WithinPurpose(
+        EventLocationDisclosurePurpose purpose,
+        EventLocationDisclosureField field)
+        => EventLocationDisclosureContract.IsWithinPurposeCeiling(purpose, field)
+            && EventLocationDisclosureContract.HasCurrentlySatisfiablePolicyGate(field);
+
+    private static bool HasValidCoordinates(double? latitude, double? longitude)
+        => latitude is { } lat
+            && longitude is { } lon
+            && double.IsFinite(lat)
+            && double.IsFinite(lon)
+            && lat is >= -90 and <= 90
+            && lon is >= -180 and <= 180;
+
+    private static bool HasText(string? value) => !string.IsNullOrWhiteSpace(value);
+
+    private static string? TextOrNull(string? value) => HasText(value) ? value : null;
+
+    private static EventLocationDisclosureResult Hidden(EventLocationDisclosureRequest request)
+        => EventLocationDisclosureResult.Suppressed(
+            RequireResultId(request.EventLocationId),
+            request.Purpose,
+            EventLocationDisclosureState.Hidden);
+
+    private static EventLocationDisclosureResult Unavailable(EventLocationDisclosureRequest request)
+        => EventLocationDisclosureResult.Suppressed(
+            RequireResultId(request.EventLocationId),
+            request.Purpose,
+            EventLocationDisclosureState.Unavailable);
+
+    private static Guid RequireResultId(Guid eventLocationId)
+        => eventLocationId != Guid.Empty
+            ? eventLocationId
+            : throw new ArgumentException(
+                "A non-empty EventLocation id is required to produce a disclosure result.",
+                nameof(eventLocationId));
+}
