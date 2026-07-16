@@ -28,7 +28,6 @@ public interface IEventService
         string? exclusionMode = null,
         List<int>? formatIds = null,
         List<int>? madhabIds = null,
-        List<Guid>? locationIds = null,
         List<int>? registrationModeIds = null,
         List<int>? languageIds = null,
         DateTimeOffset? dateFrom = null,
@@ -64,6 +63,7 @@ public interface IEventService
     Task<EventCreationContextDto?> GetEventCreationContextAsync(CancellationToken cancellationToken = default);
     Task<EventSessionCreateContextDto?> GetEventSessionCreateContextAsync(Guid eventId, CancellationToken cancellationToken = default);
     Task<EventProgramSummaryDto?> GetEventProgramSummaryAsync(Guid eventId, CancellationToken cancellationToken = default);
+    Task<EventProgramSummaryDto?> GetManagedEventProgramSummaryAsync(Guid eventId, CancellationToken cancellationToken = default);
     Task<EventPublishReadinessDto?> GetEventPublishReadinessAsync(Guid eventId, CancellationToken cancellationToken = default);
     Task<bool> DeleteEventAsync(Guid eventId);
     Task<BaseCommandResponseOfGuid?> UpdateEventAsync(Guid eventId, EventDraftEditModel request);
@@ -87,6 +87,7 @@ public interface IEventService
     Task<BaseCommandResponseOfGuid?> CompleteEventSessionAsync(Guid sessionId, Guid expectedConcurrencyStamp, CancellationToken cancellationToken = default);
     Task<bool> DeleteSessionAsync(Guid sessionId);
     Task<ICollection<HalResourceOfEventSessionGroupListDto>> GetSessionGroupsByEventAsync(Guid eventId);
+    Task<ICollection<HalResourceOfEventSessionGroupListDto>> GetManagedSessionGroupsByEventAsync(Guid eventId);
     Task<BaseCommandResponseOfGuid> CreateSessionGroupAsync(CreateEventSessionGroupRequestDto group);
     Task<BaseCommandResponseOfGuid> UpdateSessionGroupAsync(UpdateEventSessionGroupRequestDto group);
     Task<bool> DeleteSessionGroupAsync(Guid eventId, Guid sessionGroupId);
@@ -182,7 +183,6 @@ public partial class EventService : IEventService
         string? exclusionMode = null,
         List<int>? formatIds = null,
         List<int>? madhabIds = null,
-        List<Guid>? locationIds = null,
         List<int>? registrationModeIds = null,
         List<int>? languageIds = null,
         DateTimeOffset? dateFrom = null,
@@ -221,7 +221,6 @@ public partial class EventService : IEventService
             var safeExcludedTagIds = excludedTagIds is { Count: > 0 } ? excludedTagIds : null;
             var safeFormatIds = formatIds is { Count: > 0 } ? formatIds : null;
             var safeMadhabIds = madhabIds is { Count: > 0 } ? madhabIds : null;
-            var safeLocationIds = locationIds is { Count: > 0 } ? locationIds : null;
             var safeRegistrationModeIds = registrationModeIds is { Count: > 0 } ? registrationModeIds : null;
             var safeLanguageIds = languageIds is { Count: > 0 } ? languageIds : null;
             var safeEventTypeIds = eventTypeIds is { Count: > 0 } ? eventTypeIds : null;
@@ -256,7 +255,6 @@ public partial class EventService : IEventService
                 exclusionMode: safeTagExcMode,
                 formatIds: safeFormatIds,
                 madhabIds: safeMadhabIds,
-                locationIds: safeLocationIds,
                 registrationModeIds: safeRegistrationModeIds,
                 languageIds: safeLanguageIds,
                 dateFrom: dateFrom,
@@ -417,6 +415,21 @@ public partial class EventService : IEventService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching event program summary {EventId}", eventId);
+            return null;
+        }
+    }
+
+    public async Task<EventProgramSummaryDto?> GetManagedEventProgramSummaryAsync(
+        Guid eventId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _apiClient.GetManagedEventProgramSummaryAsync(eventId, cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching managed event program summary {EventId}", eventId);
             return null;
         }
     }
@@ -900,6 +913,20 @@ public partial class EventService : IEventService
         }
     }
 
+    public async Task<ICollection<HalResourceOfEventSessionGroupListDto>> GetManagedSessionGroupsByEventAsync(Guid eventId)
+    {
+        try
+        {
+            var result = await _apiClient.GetManagedEventSessionGroupsByEventAsync(eventId);
+            return result?.GetItems() ?? new List<HalResourceOfEventSessionGroupListDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching managed session groups for event {EventId}", eventId);
+            return new List<HalResourceOfEventSessionGroupListDto>();
+        }
+    }
+
     public async Task<BaseCommandResponseOfGuid> CreateSessionGroupAsync(CreateEventSessionGroupRequestDto group)
     {
         try
@@ -1251,40 +1278,8 @@ public partial class EventService : IEventService
     {
         try
         {
-            var result = await _apiClient.GetEventSessionByIdAsync(sessionId);
-            var session = result?.ToDto();
-            if (session is not null)
-                return session;
-
-            return await GetManagedSessionByEventAsync(eventId, sessionId);
-        }
-        catch (ApiException ex) when (ex.StatusCode is 401 or 403 or 404)
-        {
-            _logger.LogDebug(
-                "Public event session detail unavailable for session {SessionId}; status {StatusCode}. Trying managed event session read.",
-                sessionId,
-                ex.StatusCode);
-            return await GetManagedSessionByEventAsync(eventId, sessionId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching managed-capable session {SessionId} on event {EventId}", sessionId, eventId);
-            return null;
-        }
-    }
-
-    private async Task<EventSessionDto?> GetManagedSessionByEventAsync(Guid eventId, Guid sessionId)
-    {
-        try
-        {
-            var result = await _apiClient.GetManagedEventSessionsByEventAsync(eventId);
-            var session = result?
-                .GetItems()
-                .FirstOrDefault(item => item.Id == sessionId);
-
-            return session is null
-                ? null
-                : MapManagedSessionListToDetail(session);
+            var result = await _apiClient.GetManagedEventSessionByIdAsync(eventId, sessionId);
+            return result?.ToDto();
         }
         catch (ApiException ex) when (ex.StatusCode is 401 or 403 or 404)
         {
@@ -1297,54 +1292,9 @@ public partial class EventService : IEventService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error fetching managed session {SessionId} on event {EventId}", sessionId, eventId);
+            _logger.LogError(ex, "Error fetching managed session {SessionId} on event {EventId}", sessionId, eventId);
             return null;
         }
-    }
-
-    private static EventSessionDto MapManagedSessionListToDetail(EventSessionListDto session)
-    {
-        var dto = new EventSessionDto
-        {
-            Id = session.Id,
-            ConcurrencyStamp = session.ConcurrencyStamp,
-            EventId = session.EventId,
-            EventTitle = session.EventTitle ?? string.Empty,
-            EventDayId = session.EventDayId,
-            StartTime = session.StartTime,
-            EndTime = session.EndTime,
-            IsScheduled = session.IsScheduled,
-            LocalStartDate = session.LocalStartDate,
-            LocalStartTime = session.LocalStartTime,
-            LocalEndTime = session.LocalEndTime,
-            SortOrder = session.SortOrder,
-            LocationId = session.LocationId,
-            LocationFullName = session.LocationFullName,
-            LocationCity = session.LocationCity,
-            RoomId = session.RoomId,
-            RoomName = session.RoomName,
-            Title = session.Title,
-            EventSessionKindId = session.EventSessionKindId,
-            EventSessionKindFullName = session.EventSessionKindFullName,
-            EventSessionKindMasterCode = session.EventSessionKindMasterCode,
-            EventSessionStatusId = session.EventSessionStatusId,
-            EventSessionStatusFullName = session.EventSessionStatusFullName,
-            EventSessionStatusMasterCode = session.EventSessionStatusMasterCode,
-            Slug = session.Slug,
-            FeaturedImageId = session.FeaturedImageId,
-            FeaturedImageUri = session.FeaturedImageUri,
-            MaxAudienceAttendees = session.MaxAudienceAttendees,
-            CurrentAudienceAttendees = session.CurrentAudienceAttendees,
-            RegistrationModeId = session.RegistrationModeId,
-            RegistrationModeFullName = session.RegistrationModeFullName,
-            Price = session.Price,
-            CurrencyCode = session.CurrencyCode,
-            IslamicAspect = session.IslamicAspect,
-            TenantId = session.TenantId
-        };
-
-        dto.AdditionalProperties = new Dictionary<string, object>(session.AdditionalProperties);
-        return dto;
     }
 
     public async Task<ICollection<EventListDto>> GetPublicEventsByActorAsync(Guid actorId)

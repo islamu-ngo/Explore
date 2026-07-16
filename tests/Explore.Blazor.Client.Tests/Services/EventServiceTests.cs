@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for EventService.
-// Tests all event-related operations including CRUD and session management.
+// ABOUTME: Tests event CRUD, exact management reads, and generated session enum contracts.
 
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models.Events;
@@ -1302,11 +1302,11 @@ public class EventServiceTests
     }
 
     [Test]
-    public async Task GetManagedSessionByIdAsync_WhenPublicDetailHidden_ReturnsManagedSession()
+    public async Task GetManagedSessionByIdAsync_UsesExactEventScopedManagedDetail()
     {
         var eventId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
-        var draftSession = new EventSessionListDto
+        var draftSession = new HalResourceOfEventSessionDto
         {
             Id = sessionId,
             EventId = eventId,
@@ -1318,10 +1318,13 @@ public class EventServiceTests
             AdditionalProperties = CreateHalLinks("publish", "archive")
         };
 
-        _apiClient.GetEventSessionByIdAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(CreateApiException("Not Found", 404));
-        _apiClient.GetManagedEventSessionsByEventAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(CreateHalSessionCollectionResponse([draftSession]));
+        _apiClient.GetManagedEventSessionByIdAsync(
+                eventId,
+                sessionId,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(draftSession);
 
         var result = await _service.GetManagedSessionByIdAsync(eventId, sessionId);
 
@@ -1332,6 +1335,25 @@ public class EventServiceTests
         await Assert.That(result.EventSessionStatusMasterCode).IsEqualTo("DRAFT");
         await Assert.That(result.HasHalLink("publish")).IsTrue();
         await Assert.That(result.HasHalLink("archive")).IsTrue();
+        await _apiClient.DidNotReceive().GetEventSessionByIdAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+        await _apiClient.DidNotReceive().GetManagedEventSessionsByEventAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GeneratedEventSessionDetail_UsesStringEnumContractForEndTimeType()
+    {
+        var property = typeof(EventSessionDto).GetProperty(nameof(EventSessionDto.EndTimeType));
+
+        await Assert.That(property).IsNotNull();
+        await Assert.That(property!.PropertyType).IsEqualTo(typeof(SessionEndTimeType?));
     }
 
     [Test]
@@ -1363,6 +1385,73 @@ public class EventServiceTests
 
         // Assert
         await _apiClient.Received(1).GetEventSessionByIdAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GetManagedSessionGroupsByEventAsync_PreservesDraftGroupAndManagementLinks()
+    {
+        var eventId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        _apiClient.GetManagedEventSessionGroupsByEventAsync(
+                eventId,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new HalCollectionResourceOfEventSessionGroupListDto
+            {
+                _embedded = new HalCollectionEmbeddedOfEventSessionGroupListDto
+                {
+                    Items =
+                    [
+                        new HalResourceOfEventSessionGroupListDto
+                        {
+                            Id = groupId,
+                            EventId = eventId,
+                            Name = "Draft track",
+                            IsPublished = false,
+                            _links = new Dictionary<string, HalLink>
+                            {
+                                ["edit"] = new() { Href = $"/api/eventsessiongroup/{groupId}" },
+                                ["delete"] = new() { Href = $"/api/eventsessiongroup/{groupId}" },
+                                ["assign-session"] = new() { Href = $"/api/eventsessiongroup/{groupId}/sessions" }
+                            }
+                        }
+                    ]
+                }
+            });
+
+        var result = await _service.GetManagedSessionGroupsByEventAsync(eventId);
+
+        var draftGroup = result.Single();
+        await Assert.That(draftGroup.Name).IsEqualTo("Draft track");
+        await Assert.That(draftGroup.IsPublished).IsFalse();
+        await Assert.That(draftGroup._links!.Keys).Contains("edit");
+        await Assert.That(draftGroup._links.Keys).Contains("delete");
+        await Assert.That(draftGroup._links.Keys).Contains("assign-session");
+        await _apiClient.DidNotReceiveWithAnyArgs().GetEventSessionGroupsByEventAsync(default);
+    }
+
+    [Test]
+    public async Task GetManagedEventProgramSummaryAsync_UsesManagedRoute()
+    {
+        var eventId = Guid.NewGuid();
+        var expected = new EventProgramSummaryDto { EventId = eventId, EventTitle = "Draft event" };
+        _apiClient.GetManagedEventProgramSummaryAsync(
+                eventId,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        var result = await _service.GetManagedEventProgramSummaryAsync(eventId);
+
+        await Assert.That(result).IsSameReferenceAs(expected);
+        await _apiClient.Received(1).GetManagedEventProgramSummaryAsync(
+            eventId,
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+        await _apiClient.DidNotReceiveWithAnyArgs().GetEventProgramSummaryAsync(default);
     }
 
     [Test]
