@@ -7,7 +7,6 @@ public sealed class CanonicalMetadataTests
 {
     [Arguments("Pages/HomeStart.razor")]
     [Arguments("Pages/Home.razor")]
-    [Arguments("Pages/Landing/LandingPageForNonUsers.razor")]
     [Arguments("Pages/Events/EventList.razor")]
     [Arguments("Pages/Organizations/OrganizationProfile.razor")]
     [Arguments("Pages/Organizations/OrganizationDetails.razor")]

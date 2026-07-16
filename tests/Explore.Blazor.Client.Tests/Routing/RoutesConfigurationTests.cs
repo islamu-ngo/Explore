@@ -49,6 +49,15 @@ public class RoutesConfigurationTests
     }
 
     [Test]
+    public async Task Routes_ShouldNotInclude_RemovedWelcomeMarketingPage()
+    {
+        var routesContent = await File.ReadAllTextAsync(FindRoutesFilePath());
+
+        await Assert.That(routesContent).DoesNotContain("Path = \"/welcome\"");
+        await Assert.That(routesContent).DoesNotContain("typeof(LandingPageForNonUsers)");
+    }
+
+    [Test]
     public async Task Routes_ShouldInclude_OrganizationCreate_Path_AndNoStaleSingularCreatePath()
     {
         var routesFilePath = FindRoutesFilePath();

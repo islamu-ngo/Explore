@@ -25,7 +25,6 @@ public sealed class SitemapController(IMediator mediator, IPublicUrlBuilder publ
     [
         new("/", "daily", "1.0"),
         new("/events", "hourly", "0.9"),
-        new("/welcome", "weekly", "0.8"),
         new("/about", "monthly", "0.5"),
         new("/contact", "monthly", "0.5"),
         new("/privacy", "yearly", "0.3"),
