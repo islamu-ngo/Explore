@@ -12,6 +12,7 @@ using Explore.Application.Responses;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Services.Registration;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -121,8 +122,8 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         }
 
         // Derive child session access rows from the scope.
-        var childSessionIds = await ResolveChildSessionsAsync(dto, cancellationToken);
-        if (childSessionIds.Count == 0)
+        var childSessions = await ResolveChildSessionsAsync(dto);
+        if (childSessions.Count == 0)
         {
             response.Success = false;
             response.Message = "Event Registration failed.";
@@ -132,6 +133,18 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             };
             return response;
         }
+
+        var initialApprovalStatus = RegistrationPolicyRules.ResolveInitialApprovalStatus(
+            childSessions.Select(session => session.RegistrationModeId));
+        if (initialApprovalStatus is null)
+        {
+            response.Success = false;
+            response.Message = "Event Registration failed.";
+            response.Errors = ["Registration is not currently available for every selected session."];
+            return response;
+        }
+
+        var initialApprovalStatusId = (int)initialApprovalStatus.Value;
 
         var tenantId = parentEvent.TenantId;
 
@@ -146,21 +159,21 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             RegistrationScope = null!,
             SelectedEventDayId = dto.SelectedEventDayId,
             RegistrationPolicySnapshotId = parentEvent.RegistrationPolicyId,
-            ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+            ApprovalStatusId = initialApprovalStatusId,
             TenantId = tenantId,
             Tenant = null!
         };
 
-        var childRows = childSessionIds
-            .Select(sessionId => new EventRegistration
+        var childRows = childSessions
+            .Select(session => new EventRegistration
             {
                 EventId = dto.EventId,
                 Event = null!,
                 UserId = dto.UserId,
                 User = null!,
-                EventSessionId = sessionId,
+                EventSessionId = session.Id,
                 EventSession = null!,
-                ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+                ApprovalStatusId = initialApprovalStatusId,
                 TenantId = tenantId,
                 Tenant = null!
             })
@@ -185,7 +198,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         var creationResult = await _intentRepository.CreateWithChildrenAndCapacityAsync(
             intent,
             childRows,
-            (int)ApprovalStatusEnum.Approved,
+            initialApprovalStatusId,
             (int)ApprovalStatusEnum.Waitlisted,
             cancellationToken,
             emailDispatchOutbox,
@@ -243,13 +256,16 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             user,
             created.Id,
             creationResult.HasWaitlistedSessions,
+            created.ApprovalStatusId,
             cancellationToken);
 
         response.Success = true;
         response.Id = created.Id;
         response.Message = creationResult.HasWaitlistedSessions
             ? "Event Registration added to the waitlist."
-            : "Event Registration created successfully.";
+            : created.ApprovalStatusId == (int)ApprovalStatusEnum.Pending
+                ? "Event Registration submitted for approval."
+                : "Event Registration created successfully.";
         _metrics.RecordRegistrationCreated(tenantId.ToString());
 
         return response;
@@ -261,6 +277,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         User user,
         Guid registrationIntentId,
         bool hasWaitlistedSessions,
+        int? approvalStatusId,
         CancellationToken cancellationToken)
     {
         try
@@ -274,7 +291,12 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
                     nameof(EventRegistrationIntent),
                     registrationIntentId,
                     DateTimeOffset.UtcNow,
-                    BuildRegistrationCreatedWebhookData(dto, user, registrationIntentId, hasWaitlistedSessions)),
+                    BuildRegistrationCreatedWebhookData(
+                        dto,
+                        user,
+                        registrationIntentId,
+                        hasWaitlistedSessions,
+                        approvalStatusId)),
                 cancellationToken);
 
             if (!result.Succeeded && !result.Skipped)
@@ -299,13 +321,18 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         CreateEventRegistrationDto dto,
         User user,
         Guid registrationIntentId,
-        bool hasWaitlistedSessions)
+        bool hasWaitlistedSessions,
+        int? approvalStatusId)
     {
         var data = new Dictionary<string, object?>
         {
             ["registrationId"] = registrationIntentId.ToString(),
             ["eventId"] = dto.EventId.ToString(),
-            ["status"] = hasWaitlistedSessions ? "Waitlisted" : "Approved",
+            ["status"] = hasWaitlistedSessions
+                ? ApprovalStatusEnum.Waitlisted.ToString()
+                : Enum.IsDefined(typeof(ApprovalStatusEnum), approvalStatusId ?? 0)
+                    ? ((ApprovalStatusEnum)approvalStatusId!.Value).ToString()
+                    : ApprovalStatusEnum.Rejected.ToString(),
             ["consentToEmailShare"] = dto.ShareEmailWithOrganizer
         };
 
@@ -332,30 +359,32 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         return data;
     }
 
-    private async Task<List<Guid>> ResolveChildSessionsAsync(CreateEventRegistrationDto dto, CancellationToken cancellationToken)
+    private async Task<List<EventSession>> ResolveChildSessionsAsync(CreateEventRegistrationDto dto)
     {
         var scope = (RegistrationScopeEnum)dto.RegistrationScopeId;
+        var allSessions = await _eventSessionRepository.GetSessionsByEvent(dto.EventId);
 
         if (scope == RegistrationScopeEnum.SessionSelection)
         {
-            return dto.SelectedSessionIds?.Distinct().ToList() ?? [];
+            var selectedSessionIds = dto.SelectedSessionIds?.ToHashSet() ?? [];
+            var selectedSessions = allSessions
+                .Where(session => selectedSessionIds.Contains(session.Id))
+                .ToList();
+            return selectedSessions.Count == selectedSessionIds.Count ? selectedSessions : [];
         }
-
-        var allSessions = await _eventSessionRepository.GetSessionsByEvent(dto.EventId);
 
         if (scope == RegistrationScopeEnum.Event)
         {
-            return allSessions.Select(s => s.Id).ToList();
+            return allSessions;
         }
 
         if (scope == RegistrationScopeEnum.Day && dto.SelectedEventDayId.HasValue)
         {
             return allSessions
                 .Where(s => s.EventDayId == dto.SelectedEventDayId.Value)
-                .Select(s => s.Id)
                 .ToList();
         }
 
-        return new List<Guid>();
+        return [];
     }
 }

@@ -444,6 +444,192 @@ public sealed class CreateEventRegistrationCommandHandlerTests
     }
 
     [Test]
+    [Category("EventLocationPrivacy")]
+    [Arguments((int)RegistrationModeEnum.Open, true, (int)ApprovalStatusEnum.Approved)]
+    [Arguments((int)RegistrationModeEnum.ApprovalRequired, true, (int)ApprovalStatusEnum.Pending)]
+    [Arguments((int)RegistrationModeEnum.InviteOnly, false, 0)]
+    [Arguments((int)RegistrationModeEnum.Closed, false, 0)]
+    public async Task HandleWithNullApprovalDerivesFailClosedStateFromRegistrationMode(
+        int registrationModeId,
+        bool shouldCreate,
+        int expectedApprovalStatusId)
+    {
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var command = CreateSessionRegistrationCommand(eventId, userId, sessionId);
+        SetupValidRegistration(tenantId, eventId, userId, sessionId);
+        var session = CreateEventSession(eventId, tenantId, sessionId);
+        session.RegistrationModeId = registrationModeId;
+        session.RegistrationMode = new RegistrationMode
+        {
+            Id = registrationModeId,
+            MasterCode = ((RegistrationModeEnum)registrationModeId).ToString().ToUpperInvariant(),
+            FullName = ((RegistrationModeEnum)registrationModeId).ToString()
+        };
+        _eventSessionRepository.GetSessionsByEvent(eventId).Returns([session]);
+
+        EventRegistrationIntent? capturedIntent = null;
+        IReadOnlyList<EventRegistration>? capturedChildren = null;
+        _intentRepository.CreateWithChildrenAndCapacityAsync(
+                Arg.Do<EventRegistrationIntent>(intent => capturedIntent = intent),
+                Arg.Do<IReadOnlyList<EventRegistration>>(children => capturedChildren = children),
+                Arg.Any<int>(),
+                (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<CancellationToken>(),
+                Arg.Any<EmailDispatchOutbox?>(),
+                Arg.Any<IntegrationSyncOutbox?>())
+            .Returns(callInfo => new EventRegistrationIntentCreationResult(
+                callInfo.ArgAt<EventRegistrationIntent>(0),
+                []));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsEqualTo(shouldCreate);
+        if (shouldCreate)
+        {
+            await Assert.That(capturedIntent!.ApprovalStatusId).IsEqualTo(expectedApprovalStatusId);
+            await Assert.That(capturedChildren).IsNotNull();
+            await Assert.That(capturedChildren!.Count).IsEqualTo(1);
+            await Assert.That(capturedChildren[0].ApprovalStatusId).IsEqualTo(expectedApprovalStatusId);
+            await _intentRepository.Received(1).CreateWithChildrenAndCapacityAsync(
+                Arg.Any<EventRegistrationIntent>(),
+                Arg.Any<IReadOnlyList<EventRegistration>>(),
+                expectedApprovalStatusId,
+                (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<CancellationToken>(),
+                Arg.Any<EmailDispatchOutbox?>(),
+                Arg.Any<IntegrationSyncOutbox?>());
+        }
+        else
+        {
+            await _intentRepository.DidNotReceive().CreateWithChildrenAndCapacityAsync(
+                Arg.Any<EventRegistrationIntent>(),
+                Arg.Any<IReadOnlyList<EventRegistration>>(),
+                Arg.Any<int>(),
+                Arg.Any<int>(),
+                Arg.Any<CancellationToken>(),
+                Arg.Any<EmailDispatchOutbox?>(),
+                Arg.Any<IntegrationSyncOutbox?>());
+        }
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task HandleAcrossOpenAndApprovalRequiredSessionsUsesMostRestrictiveInitialState()
+    {
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var openSession = CreateEventSession(eventId, tenantId, Guid.NewGuid(), RegistrationModeEnum.Open);
+        var approvalSession = CreateEventSession(eventId, tenantId, Guid.NewGuid(), RegistrationModeEnum.ApprovalRequired);
+        var command = new CreateEventRegistrationCommand
+        {
+            EventRegistrationDto = new CreateEventRegistrationDto
+            {
+                EventId = eventId,
+                UserId = userId,
+                RegistrationScopeId = (int)RegistrationScopeEnum.Event
+            }
+        };
+
+        _tenantContext.TenantId.Returns(tenantId);
+        _eventRepository.Exists(eventId).Returns(true);
+        _userRepository.Exists(userId).Returns(true);
+        _userRepository.GetById(userId).Returns(CreateUser(userId));
+        _eventRepository.GetById(eventId).Returns(CreateEvent(eventId, tenantId, EventRegistrationPolicyEnum.WholeEventOnly));
+        _eventSessionRepository.GetSessionsByEvent(eventId).Returns([openSession, approvalSession]);
+        _intentRepository.FindExistingAsync(
+                eventId,
+                userId,
+                (int)RegistrationScopeEnum.Event,
+                null,
+                Arg.Any<CancellationToken>())
+            .Returns((EventRegistrationIntent?)null);
+        _intentRepository.CreateWithChildrenAndCapacityAsync(
+                Arg.Any<EventRegistrationIntent>(),
+                Arg.Any<IReadOnlyList<EventRegistration>>(),
+                (int)ApprovalStatusEnum.Pending,
+                (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<CancellationToken>(),
+                Arg.Any<EmailDispatchOutbox?>(),
+                Arg.Any<IntegrationSyncOutbox?>())
+            .Returns(callInfo => new EventRegistrationIntentCreationResult(
+                callInfo.ArgAt<EventRegistrationIntent>(0),
+                []));
+        WebhookEventBuildContext? webhookContext = null;
+        _webhookPublisher.PublishAsync(
+                Arg.Do<WebhookEventBuildContext>(context => webhookContext = context),
+                Arg.Any<CancellationToken>())
+            .Returns(WebhookEventPublishResult.Success(Guid.CreateVersion7()));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Message).IsEqualTo("Event Registration submitted for approval.");
+        await Assert.That(webhookContext!.Data["status"]).IsEqualTo("Pending");
+        await _intentRepository.Received(1).CreateWithChildrenAndCapacityAsync(
+            Arg.Is<EventRegistrationIntent>(intent => intent.ApprovalStatusId == (int)ApprovalStatusEnum.Pending),
+            Arg.Is<IReadOnlyList<EventRegistration>>(children =>
+                children.Count == 2
+                && children.All(child => child.ApprovalStatusId == (int)ApprovalStatusEnum.Pending)),
+            (int)ApprovalStatusEnum.Pending,
+            (int)ApprovalStatusEnum.Waitlisted,
+            Arg.Any<CancellationToken>(),
+            Arg.Any<EmailDispatchOutbox?>(),
+            Arg.Any<IntegrationSyncOutbox?>());
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task HandleWhenAnyCoveredSessionHasNoRegistrationModeDeniesWithoutMutation()
+    {
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var openSession = CreateEventSession(eventId, tenantId, Guid.NewGuid(), RegistrationModeEnum.Open);
+        var unknownSession = CreateEventSession(eventId, tenantId, Guid.NewGuid());
+        unknownSession.RegistrationModeId = null;
+        unknownSession.RegistrationMode = null;
+        var command = new CreateEventRegistrationCommand
+        {
+            EventRegistrationDto = new CreateEventRegistrationDto
+            {
+                EventId = eventId,
+                UserId = userId,
+                RegistrationScopeId = (int)RegistrationScopeEnum.Event
+            }
+        };
+
+        _tenantContext.TenantId.Returns(tenantId);
+        _eventRepository.Exists(eventId).Returns(true);
+        _userRepository.Exists(userId).Returns(true);
+        _userRepository.GetById(userId).Returns(CreateUser(userId));
+        _eventRepository.GetById(eventId).Returns(CreateEvent(eventId, tenantId, EventRegistrationPolicyEnum.WholeEventOnly));
+        _eventSessionRepository.GetSessionsByEvent(eventId).Returns([openSession, unknownSession]);
+        _intentRepository.FindExistingAsync(
+                eventId,
+                userId,
+                (int)RegistrationScopeEnum.Event,
+                null,
+                Arg.Any<CancellationToken>())
+            .Returns((EventRegistrationIntent?)null);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await _intentRepository.DidNotReceive().CreateWithChildrenAndCapacityAsync(
+            Arg.Any<EventRegistrationIntent>(),
+            Arg.Any<IReadOnlyList<EventRegistration>>(),
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<EmailDispatchOutbox?>(),
+            Arg.Any<IntegrationSyncOutbox?>());
+    }
+
+    [Test]
     public async Task HandleWhenRepositoryReturnsExistingRaceWinnerReturnsAlreadyExists()
     {
         var tenantId = Guid.NewGuid();
@@ -565,6 +751,100 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             Arg.Any<IntegrationSyncOutbox?>());
     }
 
+    [Test]
+    [Category("EventLocationPrivacy")]
+    [Arguments((int)RegistrationScopeEnum.Event)]
+    [Arguments((int)RegistrationScopeEnum.Day)]
+    [Arguments((int)RegistrationScopeEnum.SessionSelection)]
+    public async Task HandleWithNullApprovalDerivesPendingCapacityRowsForEveryScope(int scopeId)
+    {
+        var scope = (RegistrationScopeEnum)scopeId;
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var selectedDayId = Guid.NewGuid();
+        var otherDayId = Guid.NewGuid();
+        var selectedSession = CreateEventSession(
+            eventId,
+            tenantId,
+            Guid.NewGuid(),
+            RegistrationModeEnum.ApprovalRequired);
+        selectedSession.EventDayId = selectedDayId;
+        var otherSession = CreateEventSession(
+            eventId,
+            tenantId,
+            Guid.NewGuid(),
+            RegistrationModeEnum.ApprovalRequired);
+        otherSession.EventDayId = otherDayId;
+        var dto = new CreateEventRegistrationDto
+        {
+            EventId = eventId,
+            UserId = userId,
+            RegistrationScopeId = scopeId,
+            ApprovalStatusId = null,
+            SelectedEventDayId = scope == RegistrationScopeEnum.Day ? selectedDayId : null,
+            SelectedSessionIds = scope == RegistrationScopeEnum.SessionSelection
+                ? [selectedSession.Id]
+                : null
+        };
+        var command = new CreateEventRegistrationCommand { EventRegistrationDto = dto };
+
+        _tenantContext.TenantId.Returns(tenantId);
+        _eventRepository.Exists(eventId).Returns(true);
+        _userRepository.Exists(userId).Returns(true);
+        _userRepository.GetById(userId).Returns(CreateUser(userId));
+        _eventRepository.GetById(eventId).Returns(CreateEvent(
+            eventId,
+            tenantId,
+            EventRegistrationPolicyEnum.Flexible));
+        _eventSessionRepository.GetSessionsByEvent(eventId).Returns([selectedSession, otherSession]);
+        if (scope == RegistrationScopeEnum.Day)
+        {
+            _eventDayRepository.BelongsToEventAsync(
+                    selectedDayId,
+                    eventId,
+                    Arg.Any<CancellationToken>())
+                .Returns(true);
+        }
+
+        _intentRepository.FindExistingAsync(
+                eventId,
+                userId,
+                scopeId,
+                dto.SelectedEventDayId,
+                Arg.Any<CancellationToken>())
+            .Returns((EventRegistrationIntent?)null);
+        EventRegistrationIntent? capturedIntent = null;
+        IReadOnlyList<EventRegistration>? capturedChildren = null;
+        _intentRepository.CreateWithChildrenAndCapacityAsync(
+                Arg.Do<EventRegistrationIntent>(intent => capturedIntent = intent),
+                Arg.Do<IReadOnlyList<EventRegistration>>(children => capturedChildren = children),
+                (int)ApprovalStatusEnum.Pending,
+                (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<CancellationToken>(),
+                Arg.Any<EmailDispatchOutbox?>(),
+                Arg.Any<IntegrationSyncOutbox?>())
+            .Returns(callInfo => new EventRegistrationIntentCreationResult(
+                callInfo.ArgAt<EventRegistrationIntent>(0),
+                []));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        var expectedSessionIds = scope == RegistrationScopeEnum.Event
+            ? new[] { selectedSession.Id, otherSession.Id }.ToHashSet()
+            : new[] { selectedSession.Id }.ToHashSet();
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(capturedIntent).IsNotNull();
+        await Assert.That(capturedIntent!.ApprovalStatusId).IsEqualTo((int)ApprovalStatusEnum.Pending);
+        await Assert.That(capturedIntent.RegistrationScopeId).IsEqualTo(scopeId);
+        await Assert.That(capturedIntent.SelectedEventDayId).IsEqualTo(dto.SelectedEventDayId);
+        await Assert.That(capturedChildren).IsNotNull();
+        await Assert.That(capturedChildren!.Select(child => child.EventSessionId).ToHashSet()
+            .SetEquals(expectedSessionIds)).IsTrue();
+        await Assert.That(capturedChildren.All(child =>
+            child.ApprovalStatusId == (int)ApprovalStatusEnum.Pending)).IsTrue();
+    }
+
     private void SetupValidRegistration(Guid tenantId, Guid eventId, Guid userId, Guid sessionId, User? user = null)
     {
         _tenantContext.TenantId.Returns(tenantId);
@@ -618,7 +898,11 @@ public sealed class CreateEventRegistrationCommandHandlerTests
         };
     }
 
-    private static EventSession CreateEventSession(Guid eventId, Guid tenantId, Guid sessionId)
+    private static EventSession CreateEventSession(
+        Guid eventId,
+        Guid tenantId,
+        Guid sessionId,
+        RegistrationModeEnum registrationMode = RegistrationModeEnum.Open)
     {
         return new EventSession
         {
@@ -628,7 +912,14 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             TenantId = tenantId,
             Tenant = null!,
             StartTime = DateTimeOffset.UtcNow.AddDays(7),
-            EndTime = DateTimeOffset.UtcNow.AddDays(7).AddHours(2)
+            EndTime = DateTimeOffset.UtcNow.AddDays(7).AddHours(2),
+            RegistrationModeId = (int)registrationMode,
+            RegistrationMode = new RegistrationMode
+            {
+                Id = (int)registrationMode,
+                MasterCode = registrationMode.ToString().ToUpperInvariant(),
+                FullName = registrationMode.ToString()
+            }
         };
     }
 

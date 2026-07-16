@@ -112,6 +112,41 @@ public sealed class CreateEventRegistrationDtoValidatorTests
             .Contains("All SelectedSessionIds must belong to the supplied EventId.");
     }
 
+    [Test]
+    [Category("EventLocationPrivacy")]
+    [Arguments((int)RegistrationScopeEnum.Event)]
+    [Arguments((int)RegistrationScopeEnum.Day)]
+    [Arguments((int)RegistrationScopeEnum.SessionSelection)]
+    public async Task Validate_WithNullApprovalStatus_AcceptsEveryWellFormedScope(int scopeId)
+    {
+        var scope = (RegistrationScopeEnum)scopeId;
+        var dto = CreateDto(scope);
+        dto.ApprovalStatusId = null;
+        SetupValidBaseLookups(dto, EventRegistrationPolicyEnum.Flexible);
+
+        if (scope == RegistrationScopeEnum.Day)
+        {
+            dto.SelectedEventDayId = Guid.NewGuid();
+            _eventDayRepository.BelongsToEventAsync(
+                    dto.SelectedEventDayId.Value,
+                    dto.EventId,
+                    Arg.Any<CancellationToken>())
+                .Returns(true);
+        }
+        else if (scope == RegistrationScopeEnum.SessionSelection)
+        {
+            var sessionId = Guid.NewGuid();
+            dto.SelectedSessionIds = [sessionId];
+            _eventSessionRepository.GetSessionsByEvent(dto.EventId)
+                .Returns([CreateSession(dto.EventId, sessionId)]);
+        }
+
+        var result = await _validator.ValidateAsync(dto);
+
+        await Assert.That(result.IsValid).IsTrue();
+        await _approvalStatusRepository.DidNotReceive().Exists(Arg.Any<int>());
+    }
+
     private void SetupValidBaseLookups(CreateEventRegistrationDto dto, EventRegistrationPolicyEnum policy)
     {
         _eventRepository.Exists(dto.EventId).Returns(true);
