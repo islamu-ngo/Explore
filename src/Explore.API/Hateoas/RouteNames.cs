@@ -108,6 +108,7 @@ public static class RouteNames
 
     public const string GetEventSessions_List = "GetEventSessionsList";
     public const string GetEventSessionById = "GetEventSessionById";
+    public const string GetManagedEventSessionById = "GetManagedEventSessionById";
     public const string GetManagedEventSessionsByEvent = "GetManagedEventSessionsByEvent";
     public const string CreateEventSession = "CreateEventSession";
     public const string CreateDraftEventSession = "CreateDraftEventSession";
@@ -127,6 +128,7 @@ public static class RouteNames
     public const string UpdateEventSessionSpeaker = "UpdateEventSessionSpeaker";
     public const string DeleteEventSessionSpeaker = "DeleteEventSessionSpeaker";
     public const string GetEventSessionAgendaItems = "GetEventSessionAgendaItems";
+    public const string GetManagedEventSessionAgendaItemsBySession = "GetManagedEventSessionAgendaItemsBySession";
     public const string GetEventRegistrations = "GetEventRegistrations";
     public const string GetEventSessionTemplateSyncDiff = "GetEventSessionTemplateSyncDiff";
     public const string ApplyEventSessionTemplateSync = "ApplyEventSessionTemplateSync";
@@ -134,6 +136,8 @@ public static class RouteNames
 
     public const string GetEventSessionGroupsByEvent = "GetEventSessionGroupsByEvent";
     public const string GetEventSessionGroupById = "GetEventSessionGroupById";
+    public const string GetManagedEventSessionGroupsByEvent = "GetManagedEventSessionGroupsByEvent";
+    public const string GetManagedEventSessionGroupById = "GetManagedEventSessionGroupById";
     public const string GetEventSessionGroupSessions = "GetEventSessionGroupSessions";
     public const string CreateEventSessionGroup = "CreateEventSessionGroup";
     public const string UpdateEventSessionGroup = "UpdateEventSessionGroup";
@@ -682,6 +686,8 @@ public static class RouteNames
 
     public const string GetEventAgendaItemsByEvent = "GetEventAgendaItemsByEvent";
     public const string GetEventAgendaItemById = "GetEventAgendaItemById";
+    public const string GetManagedEventAgendaItemsByEvent = "GetManagedEventAgendaItemsByEvent";
+    public const string GetManagedEventAgendaItemById = "GetManagedEventAgendaItemById";
     public const string CreateEventAgendaItem = "CreateEventAgendaItem";
     public const string UpdateEventAgendaItem = "UpdateEventAgendaItem";
     public const string DeleteEventAgendaItem = "DeleteEventAgendaItem";

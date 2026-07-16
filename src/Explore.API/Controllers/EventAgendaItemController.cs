@@ -4,6 +4,7 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
+using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Agenda;
 using Explore.Application.DTOs.EventAgendaItem;
@@ -15,7 +16,6 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -73,7 +73,6 @@ public class EventAgendaItemController : ControllerBase
     [EndpointSummary("Get Agenda Items by Event")]
     [EndpointDescription("Get all agenda items for a specific event, ordered by sort order.")]
     [ProducesResponseType(typeof(HalCollectionResource<EventAgendaItemListDto>), StatusCodes.Status200OK)]
-    [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventAgendaItemListDto>>> GetByEvent(Guid eventId, CancellationToken cancellationToken = default)
     {
         var items = await _mediator.Send(new GetEventAgendaItemsByEventRequest { EventId = eventId }, cancellationToken);
@@ -97,12 +96,66 @@ public class EventAgendaItemController : ControllerBase
     [EndpointDescription("Get detailed information about a specific agenda item.")]
     [ProducesResponseType(typeof(HalResource<EventAgendaItemDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<EventAgendaItemDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var item = await _mediator.Send(new GetEventAgendaItemDetailRequest { Id = id }, cancellationToken);
         if (item == null)
             return this.ToNotFoundProblem(AgendaItemNotFoundProblem);
+
+        var halResource = await _resourceAssembler.ToResource(item, HttpContext);
+        return Ok(halResource);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
+    [HttpGet("management/by-event/{eventId:guid}", Name = RouteNames.GetManagedEventAgendaItemsByEvent)]
+    [EndpointSummary("Get Managed Agenda Items by Event")]
+    [EndpointDescription("Returns exact agenda items for an authorized event management surface.")]
+    [ProducesResponseType(typeof(HalCollectionResource<EventAgendaItemListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<HalCollectionResource<EventAgendaItemListDto>>> GetManagedByEvent(
+        Guid eventId,
+        CancellationToken cancellationToken = default)
+    {
+        var items = await _mediator.Send(
+            new GetManagedEventAgendaItemsByEventRequest { EventId = eventId },
+            cancellationToken);
+
+        var halResource = await _resourceAssembler.ToCollectionResource(
+            items,
+            RouteNames.GetManagedEventAgendaItemsByEvent,
+            new { eventId },
+            HttpContext);
+
+        return Ok(halResource);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
+    [HttpGet("management/by-event/{eventId:guid}/{id:guid}", Name = RouteNames.GetManagedEventAgendaItemById)]
+    [EndpointSummary("Get Managed Agenda Item Details")]
+    [EndpointDescription("Returns exact agenda item details for an authorized event management surface.")]
+    [ProducesResponseType(typeof(HalResource<EventAgendaItemDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<EventAgendaItemDto>>> GetManagedById(
+        Guid eventId,
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var item = await _mediator.Send(new GetManagedEventAgendaItemDetailRequest
+        {
+            EventId = eventId,
+            Id = id
+        }, cancellationToken);
+        if (item is null)
+        {
+            return this.ToNotFoundProblem(AgendaItemNotFoundProblem);
+        }
 
         var halResource = await _resourceAssembler.ToResource(item, HttpContext);
         return Ok(halResource);
@@ -119,7 +172,6 @@ public class EventAgendaItemController : ControllerBase
         "grouped by local day and room with local time projections.")]
     [ProducesResponseType(typeof(EventAgendaProjectionDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<EventAgendaProjectionDto>> GetAgendaProjection(Guid eventId, CancellationToken cancellationToken = default)
     {
         var projection = await _mediator.Send(new GetEventAgendaProjectionRequest { EventId = eventId }, cancellationToken);

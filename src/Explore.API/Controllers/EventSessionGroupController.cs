@@ -4,6 +4,7 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
+using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.EventSession;
@@ -15,7 +16,6 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -87,7 +87,6 @@ public class EventSessionGroupController : ControllerBase
     [EndpointSummary("Get Event Session Groups by Event")]
     [EndpointDescription("Get tracks, devrooms, stages, or program sections for a specific event.")]
     [ProducesResponseType(typeof(HalCollectionResource<EventSessionGroupListDto>), StatusCodes.Status200OK)]
-    [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventSessionGroupListDto>>> GetByEvent(
         Guid eventId,
         CancellationToken cancellationToken = default)
@@ -113,12 +112,66 @@ public class EventSessionGroupController : ControllerBase
     [EndpointDescription("Get detailed information about a specific track, devroom, stage, or program section.")]
     [ProducesResponseType(typeof(HalResource<EventSessionGroupDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<EventSessionGroupDto>>> GetById(
         Guid id,
         CancellationToken cancellationToken = default)
     {
         var group = await _mediator.Send(new GetEventSessionGroupDetailRequest { Id = id }, cancellationToken);
+        if (group is null)
+        {
+            return this.ToNotFoundProblem(EventSessionGroupNotFoundProblem);
+        }
+
+        var halResource = await _resourceAssembler.ToResource(group, HttpContext);
+        return Ok(halResource);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
+    [HttpGet("management/by-event/{eventId:guid}", Name = RouteNames.GetManagedEventSessionGroupsByEvent)]
+    [EndpointSummary("Get Managed Event Session Groups by Event")]
+    [EndpointDescription("Returns exact program-section selectors for an authorized event management surface.")]
+    [ProducesResponseType(typeof(HalCollectionResource<EventSessionGroupListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<HalCollectionResource<EventSessionGroupListDto>>> GetManagedByEvent(
+        Guid eventId,
+        CancellationToken cancellationToken = default)
+    {
+        var groups = await _mediator.Send(
+            new GetManagedEventSessionGroupsByEventRequest { EventId = eventId },
+            cancellationToken);
+
+        var halResource = await _resourceAssembler.ToCollectionResource(
+            groups,
+            RouteNames.GetManagedEventSessionGroupsByEvent,
+            new { eventId },
+            HttpContext);
+
+        return Ok(halResource);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
+    [HttpGet("management/by-event/{eventId:guid}/{id:guid}", Name = RouteNames.GetManagedEventSessionGroupById)]
+    [EndpointSummary("Get Managed Event Session Group Details")]
+    [EndpointDescription("Returns exact program-section details for an authorized event management surface.")]
+    [ProducesResponseType(typeof(HalResource<EventSessionGroupDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<EventSessionGroupDto>>> GetManagedById(
+        Guid eventId,
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var group = await _mediator.Send(new GetManagedEventSessionGroupDetailRequest
+        {
+            EventId = eventId,
+            Id = id
+        }, cancellationToken);
         if (group is null)
         {
             return this.ToNotFoundProblem(EventSessionGroupNotFoundProblem);
@@ -137,7 +190,6 @@ public class EventSessionGroupController : ControllerBase
     [EndpointSummary("Get Event Session Group Sessions")]
     [EndpointDescription("Get talks, workshops, panels, or activities assigned to a specific program section.")]
     [ProducesResponseType(typeof(HalCollectionResource<EventSessionListDto>), StatusCodes.Status200OK)]
-    [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventSessionListDto>>> GetSessions(
         Guid id,
         CancellationToken cancellationToken = default)

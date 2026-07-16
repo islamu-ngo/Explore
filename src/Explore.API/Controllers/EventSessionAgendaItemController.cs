@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
+using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.DTOs.EventSessionAgendaItem;
@@ -16,7 +17,6 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -25,6 +25,10 @@ namespace Explore.API.Controllers;
 [ApiController]
 public class EventSessionAgendaItemController : ControllerBase
 {
+    private static readonly ApiNotFoundProblemDescriptor AgendaItemNotFoundProblem = new(
+        "Event session agenda item not found",
+        "Event session agenda item not found.");
+
     private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
         "eventSessionAgendaItem",
         "Event session agenda item validation failed",
@@ -52,7 +56,6 @@ public class EventSessionAgendaItemController : ControllerBase
     [EndpointDescription("Retrieve a paginated list of all event session agenda items. Default page size is 20, max is 100.")]
     [ProducesResponseType(typeof(PaginatedResult<EventSessionAgendaItemListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<PaginatedResult<EventSessionAgendaItemListDto>>> GetAll(
         [FromQuery] PaginationQueryRequest query,
         CancellationToken cancellationToken = default)
@@ -71,10 +74,15 @@ public class EventSessionAgendaItemController : ControllerBase
     [HttpGet("{id}", Name = RouteNames.GetEventSessionAgendaItemById)]
     [EndpointSummary("Get Agenda Item Details")]
     [EndpointDescription("Get detailed information about a specific agenda item")]
-    [OutputCache(PolicyName = "DetailData")]
+    [ProducesResponseType(typeof(EventSessionAgendaItemDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EventSessionAgendaItemDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var agendaItem = await _mediator.Send(new GetEventSessionAgendaItemDetailsRequest { Id = id }, cancellationToken);
+        if (agendaItem is null)
+        {
+            return this.ToNotFoundProblem(AgendaItemNotFoundProblem);
+        }
 
         return Ok(agendaItem);
     }
@@ -85,10 +93,39 @@ public class EventSessionAgendaItemController : ControllerBase
     [HttpGet("by-session/{sessionId}", Name = RouteNames.GetEventSessionAgendaItemsBySession)]
     [EndpointSummary("Get Agenda Items by Session")]
     [EndpointDescription("Get all agenda items for a specific event session")]
-    [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<List<EventSessionAgendaItemListDto>>> GetBySession(Guid sessionId, CancellationToken cancellationToken = default)
     {
         var agendaItems = await _mediator.Send(new GetAgendaItemsBySessionRequest { EventSessionId = sessionId }, cancellationToken);
+        return Ok(agendaItems);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
+    [HttpGet(
+        "management/by-event/{eventId:guid}/by-session/{sessionId:guid}",
+        Name = RouteNames.GetManagedEventSessionAgendaItemsBySession)]
+    [EndpointSummary("Get Managed Agenda Items by Session")]
+    [EndpointDescription("Returns exact session agenda items for an authorized event management surface.")]
+    [ProducesResponseType(typeof(List<EventSessionAgendaItemListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<List<EventSessionAgendaItemListDto>>> GetManagedBySession(
+        Guid eventId,
+        Guid sessionId,
+        CancellationToken cancellationToken = default)
+    {
+        var agendaItems = await _mediator.Send(new GetManagedAgendaItemsBySessionRequest
+        {
+            EventId = eventId,
+            EventSessionId = sessionId
+        }, cancellationToken);
+        if (agendaItems is null)
+        {
+            return this.ToNotFoundProblem(AgendaItemNotFoundProblem);
+        }
+
         return Ok(agendaItems);
     }
 

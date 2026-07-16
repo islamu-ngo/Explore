@@ -4,6 +4,7 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
+using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.Contracts.Infrastructure;
@@ -15,7 +16,6 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -106,7 +106,6 @@ public class EventSessionController : ControllerBase
         "Send 'Prefer: return=minimal' header to strip links.")]
     [ProducesResponseType(typeof(HalCollectionResource<EventSessionListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventSessionListDto>>> GetAll(
         [FromQuery] EventSessionFilterRequest filter,
         CancellationToken cancellationToken = default)
@@ -139,11 +138,39 @@ public class EventSessionController : ControllerBase
         "Response includes links to related resources (event, speakers, agenda).")]
     [ProducesResponseType(typeof(HalResource<EventSessionDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<EventSessionDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var session = await _mediator.Send(new GetEventSessionDetailsRequest { Id = id }, cancellationToken);
         if (session == null)
+        {
+            return this.ToNotFoundProblem(EventSessionNotFoundProblem);
+        }
+
+        var halResource = await _resourceAssembler.ToResource(session, HttpContext);
+        return Ok(halResource);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
+    [HttpGet("management/by-event/{eventId:guid}/{id:guid}", Name = RouteNames.GetManagedEventSessionById)]
+    [EndpointSummary("Get Managed Event Session Details")]
+    [EndpointDescription("Returns exact session details for an authorized event management surface.")]
+    [ProducesResponseType(typeof(HalResource<EventSessionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<EventSessionDto>>> GetManagedById(
+        Guid eventId,
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var session = await _mediator.Send(new GetManagedEventSessionDetailsRequest
+        {
+            EventId = eventId,
+            Id = id
+        }, cancellationToken);
+        if (session is null)
         {
             return this.ToNotFoundProblem(EventSessionNotFoundProblem);
         }
@@ -161,7 +188,6 @@ public class EventSessionController : ControllerBase
     [EndpointSummary("Get Sessions by Event")]
     [EndpointDescription("Get all sessions for a specific event.")]
     [ProducesResponseType(typeof(HalCollectionResource<EventSessionListDto>), StatusCodes.Status200OK)]
-    [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventSessionListDto>>> GetByEvent(Guid eventId, CancellationToken cancellationToken = default)
     {
         var sessions = await _mediator.Send(new GetSessionsByEventRequest { EventId = eventId }, cancellationToken);
@@ -176,6 +202,7 @@ public class EventSessionController : ControllerBase
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
     [HttpGet("management/by-event/{eventId:guid}", Name = RouteNames.GetManagedEventSessionsByEvent)]
     [EndpointSummary("Get Managed Sessions by Event")]
     [EndpointDescription("Returns all sessions for an event in management contexts, including draft/internal sessions hidden from public program routes.")]
