@@ -33,7 +33,7 @@ public class EventProgramSessionGroupSectionDto
 
 public class EventProgramDayGroupDto
 {
-    public DateOnly LocalDate { get; set; }
+    public DateOnly? LocalDate { get; set; }
     public string DisplayLabel { get; set; } = string.Empty;
     public List<EventProgramItemDto> Items { get; set; } = [];
 }
@@ -45,11 +45,11 @@ public class EventProgramItemDto
     public int? EventSessionKindId { get; set; }
     public string? EventSessionKindName { get; set; }
     public string? EventSessionKindMasterCode { get; set; }
-    public DateTimeOffset StartsAtUtc { get; set; }
-    public DateTimeOffset EndsAtUtc { get; set; }
-    public DateOnly LocalDate { get; set; }
-    public TimeOnly LocalStartTime { get; set; }
-    public TimeOnly LocalEndTime { get; set; }
+    public DateTimeOffset? StartsAtUtc { get; set; }
+    public DateTimeOffset? EndsAtUtc { get; set; }
+    public DateOnly? LocalDate { get; set; }
+    public TimeOnly? LocalStartTime { get; set; }
+    public TimeOnly? LocalEndTime { get; set; }
     public int SortOrder { get; set; }
     public Guid? SessionGroupId { get; set; }
     public string? LocationName { get; set; }

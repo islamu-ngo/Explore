@@ -13,17 +13,13 @@ internal sealed class ProgramGroupAccumulator
         Guid? sessionGroupId,
         string title,
         int sortOrder,
-        string? color,
-        string? locationName,
-        string? roomName)
+        string? color)
     {
         SectionKey = sectionKey;
         SessionGroupId = sessionGroupId;
         Title = title;
         SortOrder = sortOrder;
         Color = color;
-        LocationName = locationName;
-        RoomName = roomName;
     }
 
     public string SectionKey { get; }
@@ -31,8 +27,6 @@ internal sealed class ProgramGroupAccumulator
     public string Title { get; }
     public int SortOrder { get; }
     public string? Color { get; }
-    public string? LocationName { get; }
-    public string? RoomName { get; }
     public List<EventProgramItemDto> Items { get; } = [];
 
     public static ProgramGroupAccumulator FromGroup(EventSessionGroup group)
@@ -42,9 +36,7 @@ internal sealed class ProgramGroupAccumulator
             group.Id,
             group.Name,
             group.SortOrder,
-            group.Color,
-            group.Location?.FullName,
-            group.Room?.Name);
+            group.Color);
     }
 
     public static ProgramGroupAccumulator Unassigned(string sectionKey, int sortOrder)
@@ -54,8 +46,6 @@ internal sealed class ProgramGroupAccumulator
             null,
             "Unassigned program items",
             sortOrder,
-            null,
-            null,
             null);
     }
 }

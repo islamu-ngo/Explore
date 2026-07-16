@@ -12,7 +12,9 @@ using MediatR;
 
 namespace Explore.Application.Features.EventPrograms.Handlers.Queries;
 
-public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProgramSummaryRequest, EventProgramSummaryDto?>
+public class GetEventProgramSummaryRequestHandler :
+    IRequestHandler<GetEventProgramSummaryRequest, EventProgramSummaryDto?>,
+    IRequestHandler<GetManagedEventProgramSummaryRequest, EventProgramSummaryDto?>
 {
     private const string UnassignedSectionKey = "unassigned";
     private const int UnassignedSortOrder = int.MaxValue;
@@ -35,14 +37,29 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
     }
 
     public async Task<EventProgramSummaryDto?> Handle(GetEventProgramSummaryRequest request, CancellationToken cancellationToken)
+        => await BuildSummaryAsync(request.EventId, includeManaged: false, cancellationToken);
+
+    public async Task<EventProgramSummaryDto?> Handle(GetManagedEventProgramSummaryRequest request, CancellationToken cancellationToken)
+        => await BuildSummaryAsync(request.EventId, includeManaged: true, cancellationToken);
+
+    private async Task<EventProgramSummaryDto?> BuildSummaryAsync(
+        Guid eventId,
+        bool includeManaged,
+        CancellationToken cancellationToken)
     {
-        var eventEntity = await _eventRepository.GetEventWithDetails(request.EventId);
-        if (eventEntity is null || !IsPublicProgramEligible(eventEntity))
+        var eventEntity = await _eventRepository.GetEventWithDetails(eventId);
+        if (eventEntity is null || (!includeManaged && !IsPublicProgramEligible(eventEntity)))
             return null;
 
-        var sessions = await _eventSessionRepository.GetPublicSessionsByEventAsync(request.EventId, cancellationToken);
-        var groups = await _eventSessionGroupRepository.GetByEventAsync(request.EventId, cancellationToken);
-        var agendaItems = await _eventAgendaItemRepository.GetByEventAsync(request.EventId, cancellationToken);
+        var sessions = includeManaged
+            ? await _eventSessionRepository.GetSessionsByEvent(eventId)
+            : await _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, cancellationToken);
+        var groups = includeManaged
+            ? await _eventSessionGroupRepository.GetActiveByEventAsync(eventId, cancellationToken)
+            : await _eventSessionGroupRepository.GetPublicByEventAsync(eventId, cancellationToken);
+        var agendaItems = includeManaged
+            ? await _eventAgendaItemRepository.GetByEventAsync(eventId, cancellationToken)
+            : await _eventAgendaItemRepository.GetPublicByEventAsync(eventId, cancellationToken);
         var groupLookup = groups.ToDictionary(group => group.Id);
         var timezoneId = eventEntity.EventTimeZoneId ?? eventEntity.Timezone;
         var timezone = ResolveTimeZone(timezoneId);
@@ -128,19 +145,23 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
         TimeZoneInfo timezone,
         Event eventEntity)
     {
-        var startTime = session.StartTime!.Value;
-        var endTime = session.EndTime!.Value;
+        var startTime = session.StartTime;
+        var endTime = session.EndTime;
 
-        var localStart = session.LocalStartDate is null || session.LocalStartTime is null
-            ? TimeZoneInfo.ConvertTime(startTime, timezone)
+        var localStart = startTime is null
+            ? (DateTimeOffset?)null
+            : session.LocalStartDate is null || session.LocalStartTime is null
+            ? TimeZoneInfo.ConvertTime(startTime.Value, timezone)
             : new DateTimeOffset(
                 session.LocalStartDate.Value.ToDateTime(session.LocalStartTime.Value),
-                TimeZoneInfo.ConvertTime(startTime, timezone).Offset);
-        var localEnd = session.LocalEndDate is null || session.LocalEndTime is null
-            ? TimeZoneInfo.ConvertTime(endTime, timezone)
+                TimeZoneInfo.ConvertTime(startTime.Value, timezone).Offset);
+        var localEnd = endTime is null
+            ? (DateTimeOffset?)null
+            : session.LocalEndDate is null || session.LocalEndTime is null
+            ? TimeZoneInfo.ConvertTime(endTime.Value, timezone)
             : new DateTimeOffset(
                 session.LocalEndDate.Value.ToDateTime(session.LocalEndTime.Value),
-                TimeZoneInfo.ConvertTime(endTime, timezone).Offset);
+                TimeZoneInfo.ConvertTime(endTime.Value, timezone).Offset);
 
         return new EventProgramItemDto
         {
@@ -151,13 +172,13 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
             EventSessionKindMasterCode = session.EventSessionKind?.MasterCode,
             StartsAtUtc = startTime,
             EndsAtUtc = endTime,
-            LocalDate = DateOnly.FromDateTime(localStart.DateTime),
-            LocalStartTime = TimeOnly.FromDateTime(localStart.DateTime),
-            LocalEndTime = TimeOnly.FromDateTime(localEnd.DateTime),
+            LocalDate = localStart is null ? null : DateOnly.FromDateTime(localStart.Value.DateTime),
+            LocalStartTime = localStart is null ? null : TimeOnly.FromDateTime(localStart.Value.DateTime),
+            LocalEndTime = localEnd is null ? null : TimeOnly.FromDateTime(localEnd.Value.DateTime),
             SortOrder = assignment?.SortOrder ?? session.SortOrder,
             SessionGroupId = group?.Id,
-            LocationName = session.Location?.FullName ?? group?.Location?.FullName,
-            RoomName = session.Room?.Name ?? group?.Room?.Name,
+            LocationName = null,
+            RoomName = null,
             Capacity = session.MaxAudienceAttendees,
             RegistrationModeName = session.RegistrationMode?.FullName
         };
@@ -171,15 +192,15 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
             Title = accumulator.Title,
             SortOrder = accumulator.SortOrder,
             Color = accumulator.Color,
-            LocationName = accumulator.LocationName,
-            RoomName = accumulator.RoomName,
+            LocationName = null,
+            RoomName = null,
             Days = accumulator.Items
                 .GroupBy(item => item.LocalDate)
                 .OrderBy(group => group.Key)
                 .Select(group => new EventProgramDayGroupDto
                 {
                     LocalDate = group.Key,
-                    DisplayLabel = group.Key.ToString("ddd d MMM", CultureInfo.InvariantCulture),
+                    DisplayLabel = group.Key?.ToString("ddd d MMM", CultureInfo.InvariantCulture) ?? "Unscheduled",
                     Items = group
                         .OrderBy(item => item.SortOrder)
                         .ThenBy(item => item.LocalStartTime)
@@ -226,12 +247,6 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
             item.ReadinessWarnings.Add(CreateWarning(ProgramSessionPath(sessionIndex, "title"), "Title is missing."));
         }
 
-        if (session.LocationId is null && session.RoomId is null)
-        {
-            AddWarning(summary, ProgramSessionPath(sessionIndex, "locationId"), $"{item.Title} has no location or room assigned.");
-            item.ReadinessWarnings.Add(CreateWarning(ProgramSessionPath(sessionIndex, "locationId"), "Location or room is missing."));
-        }
-
         if (session.MaxAudienceAttendees is null)
         {
             AddWarning(summary, ProgramSessionPath(sessionIndex, "maxAudienceAttendees"), $"{item.Title} has no capacity configured.");
@@ -242,8 +257,21 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
             AddWarning(summary, ProgramSessionPath(sessionIndex, "registrationModeId"), $"{item.Title} has no registration mode configured.");
         }
 
-        if (eventEntity.FirstSessionDate.HasValue && item.LocalDate < eventEntity.FirstSessionDate.Value ||
-            eventEntity.LastSessionDate.HasValue && item.LocalDate > eventEntity.LastSessionDate.Value)
+        if (session.StartTime is null)
+        {
+            AddWarning(summary, ProgramSessionPath(sessionIndex, "startTime"), $"{item.Title} is not scheduled yet.");
+            item.ReadinessWarnings.Add(CreateWarning(ProgramSessionPath(sessionIndex, "startTime"), "Start time is not scheduled."));
+        }
+
+        if (session.EndTime is null)
+        {
+            AddWarning(summary, ProgramSessionPath(sessionIndex, "endTime"), $"{item.Title} has no end time yet.");
+            item.ReadinessWarnings.Add(CreateWarning(ProgramSessionPath(sessionIndex, "endTime"), "End time is not scheduled."));
+        }
+
+        if (item.LocalDate.HasValue &&
+            (eventEntity.FirstSessionDate.HasValue && item.LocalDate.Value < eventEntity.FirstSessionDate.Value ||
+             eventEntity.LastSessionDate.HasValue && item.LocalDate.Value > eventEntity.LastSessionDate.Value))
         {
             AddWarning(summary, ProgramSessionPath(sessionIndex, "startTime"), $"{item.Title} is outside the event date window.");
             item.ReadinessWarnings.Add(CreateWarning(ProgramSessionPath(sessionIndex, "startTime"), "Outside event date window."));

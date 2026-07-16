@@ -40,8 +40,8 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
 
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
         _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([session]);
-        _eventSessionGroupRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([group]);
-        _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
+        _eventSessionGroupRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([group]);
+        _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
 
         var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
 
@@ -56,11 +56,50 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         await Assert.That(item.Title).IsEqualTo("Opening talk");
         await Assert.That(item.LocalStartTime).IsEqualTo(new TimeOnly(9, 0));
         await Assert.That(item.LocalEndTime).IsEqualTo(new TimeOnly(10, 15));
-        await Assert.That(item.RoomName).IsEqualTo("Auditorium");
+        await Assert.That(item.RoomName).IsNull();
         await Assert.That(item.Capacity).IsEqualTo(120);
         await Assert.That(item.RegistrationModeName).IsEqualTo("Open");
         await Assert.That(result.ReadinessWarnings).IsEmpty();
         await _eventSessionRepository.DidNotReceive().GetSessionsByEvent(Arg.Any<Guid>());
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task HandlePublicProgramDoesNotExposePhysicalVenueOrRoomNames()
+    {
+        var eventId = Guid.NewGuid();
+        var tenant = CreateTenant(Guid.NewGuid());
+        var eventEntity = CreateEvent(eventId, tenant);
+        var location = CreateLocation(Guid.NewGuid(), tenant, "Private Home Venue");
+        var room = CreateRoom(Guid.NewGuid(), location, "Family Living Room");
+        var group = CreateGroup(Guid.NewGuid(), eventEntity, tenant, location, room);
+        var session = CreateSession(
+            Guid.NewGuid(),
+            eventEntity,
+            tenant,
+            location,
+            room,
+            new DateTimeOffset(2026, 6, 1, 7, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 6, 1, 8, 0, 0, TimeSpan.Zero));
+        session.SessionGroups.Add(CreateAssignment(group, session, eventEntity, tenant, isPrimary: true, sortOrder: 1));
+
+        _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
+        _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([session]);
+        _eventSessionGroupRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([group]);
+        _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
+        var section = result!.Sections.Single().SessionGroups.Single();
+        var item = section.Days.Single().Items.Single();
+        var leakedFields = new[]
+        {
+            section.LocationName,
+            section.RoomName,
+            item.LocationName,
+            item.RoomName
+        }.Where(value => !string.IsNullOrWhiteSpace(value)).ToArray();
+
+        await Assert.That(leakedFields).IsEmpty();
     }
 
     [Test]
@@ -74,7 +113,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         await Assert.That(result).IsNull();
         await _eventSessionRepository.DidNotReceive().GetSessionsByEvent(Arg.Any<Guid>());
         await _eventSessionRepository.DidNotReceive().GetPublicSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        await _eventAgendaItemRepository.DidNotReceive().GetByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _eventAgendaItemRepository.DidNotReceive().GetPublicByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -91,8 +130,46 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
 
         await Assert.That(result).IsNull();
         await _eventSessionRepository.DidNotReceive().GetPublicSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        await _eventSessionGroupRepository.DidNotReceive().GetByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        await _eventAgendaItemRepository.DidNotReceive().GetByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _eventSessionGroupRepository.DidNotReceive().GetPublicByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _eventAgendaItemRepository.DidNotReceive().GetPublicByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task HandleManaged_WhenDraftSessionIsUnscheduled_ReturnsItemAndReadinessWarnings()
+    {
+        var eventId = Guid.NewGuid();
+        var tenant = CreateTenant(Guid.NewGuid());
+        var eventEntity = CreateEvent(eventId, tenant);
+        eventEntity.EventStatusId = (int)EventStatusEnum.Draft;
+        eventEntity.VisibilityTypeId = (int)VisibilityTypeEnum.Private;
+        var session = CreateSession(
+            Guid.NewGuid(),
+            eventEntity,
+            tenant,
+            location: null,
+            room: null,
+            new DateTimeOffset(2026, 6, 1, 7, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 6, 1, 8, 0, 0, TimeSpan.Zero));
+        session.StartTime = null;
+        session.EndTime = null;
+        session.ReprojectLocalTimes("Europe/Brussels", new Explore.Domain.Services.Scheduling.EventScheduleProjectionCalculator());
+
+        _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
+        _eventSessionRepository.GetSessionsByEvent(eventId).Returns([session]);
+        _eventSessionGroupRepository.GetActiveByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
+        _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await CreateHandler().Handle(
+            new GetManagedEventProgramSummaryRequest { EventId = eventId },
+            CancellationToken.None);
+
+        var item = result!.Sections.Single().SessionGroups.Single().Days.Single().Items.Single();
+        await Assert.That(item.SessionId).IsEqualTo(session.Id);
+        await Assert.That(item.StartsAtUtc).IsNull();
+        await Assert.That(item.LocalDate).IsNull();
+        await Assert.That(item.ReadinessWarnings.Any(warning => warning.Path.EndsWith("startTime", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(item.ReadinessWarnings.Any(warning => warning.Path.EndsWith("endTime", StringComparison.Ordinal))).IsTrue();
+        await _eventSessionRepository.DidNotReceive().GetPublicSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -120,8 +197,8 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
 
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
         _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([session]);
-        _eventSessionGroupRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
-        _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
+        _eventSessionGroupRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
+        _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
 
         var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
 
@@ -131,7 +208,9 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         await Assert.That(result.ReadinessWarnings.Any(warning => warning.Path == "event.timeZoneId")).IsTrue();
         await Assert.That(result.ReadinessWarnings.Any(warning => warning.Path == "program.groups")).IsTrue();
         await Assert.That(result.ReadinessWarnings.Any(warning => warning.Path == "program.sessions[0].title")).IsTrue();
-        await Assert.That(result.ReadinessWarnings.Any(warning => warning.Path == "program.sessions[0].locationId")).IsTrue();
+        await Assert.That(result.ReadinessWarnings.Any(warning =>
+            warning.Path.Contains("locationId", StringComparison.OrdinalIgnoreCase)
+            || warning.Message.Contains("no location or room assigned", StringComparison.OrdinalIgnoreCase))).IsFalse();
     }
 
     [Test]
@@ -157,8 +236,8 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
 
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
         _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([session]);
-        _eventSessionGroupRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
-        _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([agendaItem]);
+        _eventSessionGroupRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
+        _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([agendaItem]);
 
         var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
 
