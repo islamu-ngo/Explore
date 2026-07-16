@@ -3,20 +3,20 @@
 
 # MangaDex-Inspired `/home` Discovery Experience — Implementation Plan
 
-Last Updated: 2026-07-15 Europe/Brussels
+Last Updated: 2026-07-16 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Request:** Analyze the whole [MangaDex homepage](https://mangadex.org/) with Chrome DevTools and plan an ISLAMU Event `/home` experience with an immersive carousel, dense vertical event sections, horizontal shelves, and the existing three event-card layouts. Do not redesign `/events`.
 - **Task directory:** `dev/active/home-discovery-experience/`
-- **Planning status:** User-reviewed and architecture-amended after Senior CTO review; implementation not started
+- **Planning status:** User-reviewed and architecture-amended after Senior CTO review; in implementation
 - **Matched intents:** No intent covers the whole public-page redesign. `blazor-component-affordance` governs only edit/delete visibility. The composite home endpoint and dedicated discovery-area DTO invoke the secondary `openapi-contract-change` contract, while the broader work uses the fallback contract below and includes a task to consider a reusable `blazor-public-experience` intent.
 - **Fallback contract:** `AGENTS.md`, `docs/QUICK_REFERENCE.md`, `docs/GOVERNANCE.md`, `docs/ARCHITECTURE.md`, `docs/DOMAIN.md`, `docs/API.md`, `docs/BLAZOR.md`, `docs/DESIGN.md`, `docs/DESIGN_SYSTEM.md`, `docs/ACCESSIBILITY.md`, `docs/RENDER_POLICIES.md`, `docs/SEO.md`, `docs/TESTING.md`, `docs/CODEBASE_STRUCTURE.md`, and `docs/BLAZOR_DEV_WORKFLOW.md`.
 - **Relevant skills:** `clean-architecture-rules`, `blazor-ui-conventions`, `blazor-css-isolation`, `design-system`, `senior-cto-feedback`, and the frontend reference-analysis workflow.
 - **Relevant rules:** `.claude/rules/domain.md`, `.claude/rules/application-layer.md`, `.claude/rules/api-controllers.md` for contract governance, `.claude/rules/blazor-client.md`, and `.claude/rules/tests.md`.
 - **Primary layers touched:** Domain setting definitions, Application public-experience models/query, API controller/cache contract, generated OpenAPI/client artifacts, Blazor Client, tests, and docs. The area-only release needs no Persistence schema or migration.
 - **Estimated complexity:** **L**. The first release changes a public SEO route, establishes one composite cacheable read model, adds a coarse tenant-configured discovery-area contract, consolidates duplicate components, and requires responsive/accessibility/privacy/browser verification. Exact proximity is a separate planned PostGIS phase.
-- **Baseline:** `dotnet build --configuration Release --verbosity quiet` passed on 2026-07-15 with 0 errors. The shared worktree already produced 4,445 warnings unrelated to this plan; do not treat those as introduced by this work.
+- **Baseline:** Task 0.4 passed on 2026-07-16 before home-discovery edits: Release build completed 26 projects with 0 errors and 0 warnings; Domain, Application, API Integration, Blazor Client, and Architecture test projects all passed with 0 warnings.
 
 ### 0.1 Fallback Contract Details
 
@@ -38,7 +38,7 @@ The first release will:
 
 1. keep the existing ISLAMU navigation, announcement, tenant shell, footer, render policy, and `/events` catalog;
 2. turn `/home` into the public event-discovery surface for both anonymous and authenticated visitors;
-3. leave `/welcome` as the anonymous marketing/registration page;
+3. remove the obsolete anonymous marketing/registration page;
 4. render the three existing `LayoutMode` variants deliberately:
    - `SingleRow` for a short editorial spotlight list;
    - `DetailedList` in a responsive multi-column “Upcoming in {Area}” grid;
@@ -56,7 +56,7 @@ The first release will:
 
 - No redesign of `/events`; only canonical “View all” links may target it.
 - No database schema or migration for the area-only release. Discovery areas are a versioned tenant public-experience configuration with stable IDs, coarse centroids, and internal location-ID mappings.
-- No changes to generic `LocationListDto` and no generic exposure of exact venue coordinates.
+- Home Discovery never consumes generic `LocationListDto`: its existing `Address` plus identifying venue/city/country fields make it unsafe for public discovery. This work uses only the dedicated coarse area DTO; Event Location Privacy owns generic-contract minimization/retirement.
 - No opaque “quality score.” `EventListDto` exposes views but not organizer verification or RSVP totals, so the pasted quality-gate idea cannot be implemented honestly yet.
 - No “Free” quick filter until the event API supports a server-side price predicate. Filtering a single fetched page in the browser would be incomplete and misleading.
 - No exact “near me,” radius filtering, distance ordering/display, IP lookup, automatic permission prompt, third-party geocoding, ad system, personalization model, or tracking expansion.
@@ -72,7 +72,7 @@ The first release will:
 | `/home` resolves to `Home`; `/` resolves to `HomeStart`. | Verified: `src/Explore.Blazor.Client/Routes.razor` lines 63-66. | High | `HomeStart` may render `<Home />` for `PublicLanding`, so a `/home` change can also affect `/`. |
 | `/home` is a public SEO route governed at runtime. | Verified: `docs/RENDER_POLICIES.md`; `docs/SEO.md`. | High | Do not hardcode a component render mode. |
 | `Home` branches into organization-centric content or authenticated/anonymous landing components. | Verified: `src/Explore.Blazor.Client/Pages/Home.razor`. | High | Organization remediation and tenant shell content must be preserved. |
-| The anonymous marketing page is independently routable at `/welcome`. | Verified: `src/Explore.Blazor.Client/Routes.razor`; `LandingPageForNonUsers.razor`. | High | This enables `/home` to specialize in discovery without deleting the marketing page. |
+| The standalone anonymous marketing page is obsolete. | Confirmed by the follow-up product directive after `/home` became the shared discovery surface. | High | Remove its route, component, service, sitemap/render-policy entries, tests, and stale documentation. |
 | Production event cards support exactly three layouts. | Verified: `src/Explore.Blazor.Client/Models/LayoutMode.cs`; `Pages/Events/Components/EventCard.razor`. | High | Modes are `CompactGrid`, `DetailedList`, and `SingleRow`. |
 | The three-mode event card has bUnit coverage. | Verified: `tests/Explore.Blazor.Client.Tests/Components/Event/EventCardTests.cs`. | High | Tests cover layout classes, fields, HAL actions, past state, and share behavior. |
 | Edit/delete actions are already HAL-gated. | Verified: `EventCard.razor.cs::CanEdit` and `CanDelete`. | High | Homepage reuse must not add role/claim checks. |
@@ -80,7 +80,7 @@ The first release will:
 | Existing public-experience settings can describe home blocks, CTAs, and filtered event-section presets. | Verified: `PublicExperienceSettingDefinitions.cs`; `PublicEventSectionPresetsConfig.cs`; `PublicExperienceShellDto.cs`. | High | The shell currently projects event presets as label/icon/URL, not hydrated event items. |
 | The event service already supports the filters needed for initial shelves. | Verified: `src/Explore.Blazor.Client/Services/EventService.cs::GetEventsPagedAsync`. | High | Supports format, location, date, owner, category/tag, and exact sort strings. |
 | Server sort keys are `date`, `title`, `views`, and `createdat`. | Verified: `GetEventListRequestHandler.cs::ResolveSortField`. | High | Do not use UI labels `popularity` or `created`. |
-| Exact location coordinates live behind the `LocationPii` boundary and are intentionally absent from `LocationListDto`. | Verified: `LocationPii`, `Location`, `LocationListDto`, generated client. | High | Preserve this boundary; the area-only release exposes coarse discovery-area centroids through a dedicated DTO instead. |
+| Exact coordinates live behind `LocationPii`, but generic `LocationListDto` still exposes `Address` plus identifying venue/city/country fields. | Verified: `LocationPii`, `Location`, `LocationListDto`, generated client. | High | Treat the generic contract as unsafe and never consume it for Home Discovery; expose only coarse discovery-area data through the dedicated DTO. |
 | Public-experience configuration already uses versioned tenant JSON documents. | Verified: `PublicExperienceSettingDefinitions`, `PublicExperienceHomeBlocksConfig`, `PublicEventSectionPresetsConfig`, shell handler. | High | Add one bounded `public_experience.discovery_areas` document rather than a new table/entity for the first release. |
 | User-scoped settings already support authenticated API persistence and anonymous localStorage with SSR-safe reads. | Verified: `IUserSettingsService`, `UserSettingsService`, and existing public-experience preference definition. | High | Add stable `home_discovery.area_id`/`mode`; never persist a display name or origin. |
 | The API already exposes a cached public-experience controller/shell pattern. | Verified: `PublicExperienceController`, `GetPublicExperienceShellQueryHandler`, `PublicExperienceShell` output-cache policy. | High | Add a separate composite home query/route with query-varying cache and ETag behavior. |
@@ -118,22 +118,20 @@ Chrome DevTools MCP inspected the live [MangaDex homepage](https://mangadex.org/
 
 #### Routing And Render Policy
 
-- `Routes.razor` maps `/home` to `Home`, `/welcome` to `LandingPageForNonUsers`, and `/` to `HomeStart`.
+- `Routes.razor` maps `/home` to `Home` and `/` to `HomeStart`; the obsolete standalone marketing route has been removed.
 - `HomeStart.razor` chooses setup, public landing, event list, tenant redirect, or login state. It renders `Home` when startup policy returns `PublicLanding`.
-- `RuntimeRenderPolicyService` owns render decisions; `/`, `/home`, `/welcome`, and `/events` belong to `PublicSeo`.
+- `RuntimeRenderPolicyService` owns render decisions; `/`, `/home`, and `/events` belong to `PublicSeo`.
 
 #### Home Composition
 
 - `Home.razor` loads `IPublicExperienceService`, authentication state, and up to three organization events.
 - Organization-centric mode renders shell-driven hero blocks, CTAs, preset links, upcoming events, organization contact, and footer-link projections.
-- Discovery-centric mode delegates to `LandingPageForUsers` or `LandingPageForNonUsers`.
-- `LandingPageForUsers` contains a marketing hero, three explore tiles, and a three-card `MudCarousel`.
-- `LandingPageForNonUsers` contains a separate marketing hero, benefits, another three-card carousel, FAQ, metrics, and final CTA.
-- The two landing pages duplicate event-card/carousel markup and fixed inline styling.
+- Discovery-centric mode renders the shared `HomeDiscoveryExperience` for anonymous and authenticated visitors.
+- Both legacy landing components and their duplicate marketing/card/carousel markup have been removed.
 
 #### Event Data
 
-- `LandingPageService` currently fetches the default event page and sorts that page in memory by `TotalViews`; it does not request server sort order and therefore does not prove a global “Most viewed” result.
+- The deleted landing-page service fetched one default event page and sorted it in memory by `TotalViews`; the composite home handler now owns honest server-side section ordering.
 - `GetEventListRequestHandler` already provides the server-side query semantics needed by the composite home handler.
 - `PublicEventSectionPresetsConfig` stores typed owner and event filters, but `PublicExperienceEventSectionDto` projects them into a browse URL only.
 
@@ -149,7 +147,6 @@ Chrome DevTools MCP inspected the live [MangaDex homepage](https://mangadex.org/
 |---|---|---|
 | `Explore.Blazor.Client.Tests/Pages/HomeTests.cs` | Loading, auth/anonymous branch, organization shell, HTML encoding, remediation, title, error fallback. | Re-baseline discovery expectations while retaining organization safety tests. |
 | `Explore.Blazor.Client.Tests/Components/Event/EventCardTests.cs` | Three modes, field visibility, HAL/share behavior, past state. | Add keyboard semantics and homepage-safe action tests. |
-| `Explore.Blazor.Client.Tests/Services/LandingPageServiceTests.cs` | Current `/welcome` featured sorting/filtering and error handling. | Preserve for marketing; add separate `HomeDiscoveryServiceTests`. |
 | `Event.Architecture.Tests/AccessibilityConventionTests.cs` | Landmarks, h1, target/focus/RTL advisories. | Run unchanged; do not weaken. |
 | `Explore.Blazor.Client.E2ETests` | Aspire-backed browser smoke and critical flows. | Add a new public `/home` responsive interaction flow. |
 
@@ -165,11 +162,11 @@ Chrome DevTools MCP inspected the live [MangaDex homepage](https://mangadex.org/
 ### 2.6 Current Pain Points / Improvement Areas
 
 1. **Discovery is split across three home variants.** The same route changes identity based on auth and public-experience mode, making the product harder to understand and test.
-2. **Duplicate card and carousel markup.** Marketing pages and presentation prototypes bypass the production three-mode card.
+2. **Duplicate card and carousel markup.** Legacy landing pages and presentation prototypes bypassed the production three-mode card; the obsolete paths are removed.
 3. **Inline styling conflicts with the design-system contract.** Prototype components use inline `<style>`, raw colors, physical `left/right`, and no colocated CSS.
 4. **Prototype hero accessibility is incomplete.** Bookmark/share icon buttons have no labels, and auto-rotation has no explicit pause control.
 5. **Production cards are click-only containers.** `MudCard @onclick` lacks verified keyboard link semantics; homepage reuse would amplify the issue.
-6. **Popularity is currently page-local.** `LandingPageService` sorts only the default returned page in memory and is the wrong use-case boundary for primary discovery.
+6. **Popularity was page-local.** The removed landing-page service sorted only the default returned page in memory; the composite query now owns primary discovery.
 7. **No honest quality gate exists.** The current list projection cannot rank verified hosts or RSVP strength.
 8. **Area context has no contract.** No stable public discovery-area ID, coarse centroid, tenant default, or public-coordinate boundary exists.
 9. **Empty/error behavior is fragmented.** Each landing branch handles loading and failures differently.
@@ -181,7 +178,7 @@ Chrome DevTools MCP inspected the live [MangaDex homepage](https://mangadex.org/
 
 | Unknown | What was searched | Resolution task |
 |---|---|---|
-| Route impact of `/`. | `Routes.razor`, `HomeStart.razor`, onboarding/public-experience docs. | Resolved: startup-selected `PublicLanding` intentionally renders the same `Home`; `/welcome` remains marketing. |
+| Route impact of `/`. | `Routes.razor`, `HomeStart.razor`, onboarding/public-experience docs. | Resolved: startup-selected `PublicLanding` intentionally renders the same `Home`; there is no separate marketing route. |
 | First-visit area without browser permission. | Public-experience settings, user settings, browser APIs. | Resolve stable area ID in this order: valid URL → saved user area ID → tenant default active area → first active area → all-area mode. Never infer from a localized city string or prompt automatically. |
 | Whether a “Free” quick filter is mandatory now. | Event service/API/filter-bar price predicates. | No server predicate found. Deferred unless user explicitly expands scope. |
 | Which configured presets can be hydrated honestly. | Preset config, shell DTO, handler URL builder, Home/EventList consumers. | Task 3.2 supports only typed filters/labels that prove their content; unsupported semantic labels remain links or are omitted. |
@@ -224,12 +221,12 @@ One public composite request returns all bounded sections. The Application handl
 | Section | Query | Limit | Notes |
 |---|---|---:|---|
 | Hero | upcoming, `sortBy=views`, descending | 10 | “Featured events” is presentation copy, not a recommendation claim; prefer images only as a secondary deterministic choice. |
-| Upcoming in area | area location IDs, `dateFrom=now`, `dateTo=now+7d`, `sortBy=date`, ascending | 12 | Label with the selected area's display name; never “near you.” |
+| Upcoming in area | area location IDs, `dateFrom=now`, `dateTo=now+7d`, `sortBy=date`, ascending | 10 | Label with the selected area's display name; never “near you.” |
 | Community spotlight | explicit tenant-curated preset or available primary actor only | 3 | Omit when no evidence exists; never fall back to views. |
-| Most viewed in area | in-person/hybrid format IDs, area location IDs, `sortBy=views`, descending | 12 | “Most viewed” states the actual signal. |
-| Most viewed online | online format ID, upcoming, `sortBy=views`, descending | 12 | No “trending,” trust, or recommendation claim. |
-| Curated sections | explicit typed tenant preset only | bounded by config/max 12 | Omit unsupported labels; no `createdat` substitute for “grassroots.” |
-| Recently added | `sortBy=createdat`, descending | 12 | Public upcoming events only. |
+| Most viewed in area | in-person/hybrid format IDs, area location IDs, `sortBy=views`, descending | 10 | “Most viewed” states the actual signal. |
+| Most viewed online | online format ID, upcoming, `sortBy=views`, descending | 10 | No “trending,” trust, or recommendation claim. |
+| Curated sections | explicit typed tenant preset only | at most 2 sections × 10 | Omit unsupported labels; no `createdat` substitute for “grassroots.” |
+| Recently added | `sortBy=createdat`, descending | 10 | Public upcoming events only. |
 
 Area initialization is deterministic: valid `/home?area={guid}` state, then saved `home_discovery.area_id`, then the tenant's default active area, then its first active area, then all-area mode. Selecting “Use my current location” requests browser permission at that moment, compares the temporary origin with coarse `PublicDiscoveryAreaDto` centroids, persists only the selected area ID/mode, updates the canonical URL, and requests one new composite payload. Selecting “Browse online events” changes the label to “Browsing online events,” applies online mode, and preserves the saved area ID. No first-release response contains event distance.
 
@@ -306,11 +303,11 @@ Use CSS container queries for event-card composition and viewport queries only f
 
 ## 5. Architecture And Design Decisions
 
-### Decision 1: `/home` becomes discovery; `/welcome` remains marketing
+### Decision 1: `/home` becomes the sole public discovery home
 
 - **Why:** It removes auth-dependent page identity and aligns the requested route with event discovery.
-- **Alternatives considered:** Keep separate authenticated/anonymous home designs; redesign `/events`; merge `/welcome` and `/home`.
-- **Consequences:** `LandingPageForUsers` becomes obsolete and can be deleted after tests prove no call sites. `LandingPageForNonUsers` remains for `/welcome`.
+- **Alternatives considered:** Keep separate authenticated/anonymous home designs; redesign `/events`; retain a standalone marketing page.
+- **Consequences:** Both legacy landing components, the marketing-only service, route, sitemap/render-policy entries, tests, and orphaned prototype component are removed after caller proof.
 - **Files/layers:** `Home.razor`, `Home.razor.css`, `HomeStart.razor` tests, landing components, routes tests.
 
 ### Decision 2: Reuse the production three-mode event card
@@ -358,15 +355,21 @@ Use CSS container queries for event-card composition and viewport queries only f
 
 ### Decision 9: Dedicated `HomeDiscoveryService`
 
-- **Why:** `LandingPageService` remains a marketing-page service for `/welcome`; it should not become the primary discovery orchestrator.
-- **Alternatives considered:** extend or rename the legacy service and disturb `/welcome`; call generated client directly from `Home`.
-- **Consequences:** Add a small `IHomeDiscoveryService`/`HomeDiscoveryService` wrapper following current Blazor test/DI conventions. Do not extend `LandingPageService`; remove its authenticated-home caller with `LandingPageForUsers`.
+- **Why:** Home discovery needs one dedicated orchestrator rather than inheriting the removed marketing-page service's page-local behavior.
+- **Alternatives considered:** rename the legacy service; call the generated client directly from `Home`.
+- **Consequences:** Add a small `IHomeDiscoveryService`/`HomeDiscoveryService` wrapper following current Blazor test/DI conventions and delete the obsolete service after its final page caller is removed.
 
 ### Decision 10: PostGIS is planned, not approximated
 
 - **Why:** Exact proximity belongs to eligible future event-session occurrences and requires governed public points plus indexed geodesic queries.
 - **Alternatives considered:** Haversine over downloaded venues; one distance on `Event`; provider abstraction or in-memory fallback.
 - **Consequences:** The area-only release forbids “near you” and distances. A durable ADR records PostGIS `geography(Point, 4326)`, GiST indexing, `LocationDiscoveryPoint`, transient first-party POST origin, nearest eligible occurrence semantics, readiness, and self-hosting requirements. Phase 6 remains explicitly deferred.
+
+### Decision 11: Do not add a general public-Blazor intent yet
+
+- **Why:** This work spans public UI, an additive OpenAPI contract, tenant settings, and privacy; the existing intent registry already routes the contract-specific portions while the documented fallback contract handled the one-off cross-layer composition without ambiguity.
+- **Alternatives considered:** Add a broad `blazor-public-experience` intent that would overlap existing component, OpenAPI, and setting intents.
+- **Consequences:** No intent-registry change belongs to this feature. Reconsider only after a second public-Blazor workstream demonstrates a stable repeated scope and test matrix; the unrelated current edits in `intents.yaml` remain untouched.
 
 ## 6. Implementation Phases
 
@@ -386,102 +389,102 @@ The task IDs below are canonical and must match the context and checklist exactl
 - **Result:** First release is area-only; exact venue PII remains private; stable area IDs/coarse centroids replace city strings/venue enumeration; “near you” is forbidden; PostGIS is the sole planned exact engine.
 - **Validation:** Sections 3, 5, 9, 12, and Phase 6 agree.
 
-#### Task 0.4: Run Fresh Pre-Implementation Baseline
+#### Task 0.4: Run Fresh Pre-Implementation Baseline (complete)
 - **Files:** No edits; repository state and test output only.
-- **Acceptance:** Build plus Domain, Application, API, Blazor Client, and Architecture projects pass or exact pre-existing failures are recorded; warning count is captured for a no-new-warning delta.
+- **Result:** Release build passed (26 projects, 0 errors, 0 warnings); Domain, Application, API Integration, Blazor Client, and Architecture test projects all passed with 0 warnings on 2026-07-16.
 - **Dependencies/Effort:** 0.3 / M
 - **Validation:** Commands in Section 7.
 
 ### Phase 1: Durable Design And Planned-Architecture Contracts
 
-#### Task 1.1: Extend The Public Discovery Design Contract
+#### Task 1.1: Extend The Public Discovery Design Contract (complete)
 - **Files:** `docs/DESIGN.md`
-- **Acceptance:** Page order, area selector, manual hero, layout-mode mapping, no-ad rule, honest labels, responsive/RTL/motion/accessibility, and image-loading rules are explicit.
+- **Result:** `docs/DESIGN.md` now defines page order, area selector/privacy, reusable hero/card/rail states, three layout mappings, no-ad and honest-label rules, responsive/RTL/motion/accessibility/hydration behavior, and image/payload/latency budgets. Architecture tests passed with 0 warnings.
 - **Dependencies/Effort:** 0.4 / S
 - **Validation:** Docs review and architecture context tests.
 
-#### Task 1.2: Document Planned PostGIS Proximity Discovery
+#### Task 1.2: Document Planned PostGIS Proximity Discovery (complete)
 - **Files:** Next available `docs/adr/ADR-*-postgis-proximity-discovery.md`, plus summaries in `docs/ARCHITECTURE.md`, `docs/DOMAIN.md`, and `docs/SELF_HOSTING.md`
-- **Acceptance:** Clearly marked **Planned, not implemented**; defines `LocationPii` vs governed `LocationDiscoveryPoint`, `geography(Point,4326)`, GiST, eligible future session distance, transient POST origin/privacy, cache/readiness, and self-hosting operations.
+- **Result:** Proposed ADR-013 and canonical summaries clearly mark the phase planned/not implemented and define `LocationPii` separation, governed `LocationDiscoveryPoint`, `geography(Point,4326)`, GiST, eligible future occurrence distance, private/no-store transient origin, readiness, backup, and area-only rollback. Architecture tests passed with 0 warnings.
 - **Dependencies/Effort:** 0.3 / M
 - **Validation:** Links resolve; no documentation claims the capability currently exists; context tests pass.
 
 ### Phase 2: Component Consolidation
 
-#### Task 2.1: Make Production `EventCard` Keyboard-Safe
+#### Task 2.1: Make Production `EventCard` Keyboard-Safe (complete)
 - **Files:** Production `EventCard.*`, `EventCardTests.cs`
-- **Acceptance:** Card-body Enter/Space navigation works once in all three modes; nested share/edit/delete remain isolated and HAL-gated.
+- **Result:** Card-body Enter/Space activation works once in all three modes with labeled focus semantics; nested share/edit/delete/organizer wrappers remain isolated and HAL edit/delete logic is unchanged. Focused/full Blazor Client and Architecture tests passed.
 - **Dependencies/Effort:** 1.1 / S
 - **Validation:** Focused and full Blazor tests.
 
-#### Task 2.2: Refactor The Manual Hero
-- **Files:** Existing `HeroCarousel`/`FeaturedEventHero`, isolated CSS, focused tests
-- **Acceptance:** Up to 10 slides, previous/next/swipe/counter, no autoplay, safe fallback, active image prioritized, next optionally preloaded, remainder lazy, compact mobile/RTL/reduced-motion behavior.
+#### Task 2.2: Refactor The Manual Hero (complete)
+- **Files:** `HeroCarousel.razor`, isolated CSS, focused tests; obsolete `FeaturedEventHero.razor` removed after caller proof
+- **Result:** One manual hero renders at most 10 slides with wrapping previous/next controls, counter, pointer swipe with RTL reversal, public slug navigation, local image fallback, and exactly one eager/high-priority active image while the rest are lazy. Unsupported FREE/LIVE NOW claims, autoplay, inline CSS, and the unreferenced child prototype are gone. Four focused tests plus full Blazor Client and Architecture suites passed; responsive browser/network evidence remains grouped under Phase 5.
 - **Dependencies/Effort:** 1.1, 2.1 / M
 - **Validation:** Component tests and browser keyboard/image-network smoke.
 
-#### Task 2.3: Refactor The Native Horizontal Rail
-- **Files:** Existing `EventHorizontalRail`, isolated CSS/tests, duplicate presentation `EventCard` deleted only after reference proof
-- **Acceptance:** Production `CompactGrid` cards, native scroll-snap, clipped preview, semantic heading/View all, keyboard/touch/RTL, no new dependency or duplicate card.
+#### Task 2.3: Refactor The Native Horizontal Rail (complete)
+- **Files:** `EventHorizontalRail.razor`, isolated CSS/tests, two legacy collection callers, duplicate presentation `EventCard` removed after reference proof
+- **Result:** The rail renders canonical `CompactGrid` cards in a semantic, focusable native logical-axis scroll-snap list with heading/View-all navigation, explicit loading and empty states, responsive clipped items, touch/keyboard/RTL behavior, reduced-motion handling, and callback forwarding. The duplicate presentation card's only two legacy prototype callers moved to the production card before deletion. Four focused tests plus full Blazor Client and Architecture suites passed.
 - **Dependencies/Effort:** 2.1 / M
 - **Validation:** Focused tests, `rg` caller proof, build.
 
 ### Phase 3: Area-Only Composite Discovery Contract
 
-#### Task 3.1: Add The Discovery-Area Contract
-- **Files:** Governance keys, `PublicExperienceSettingDefinitions`, new `PublicDiscoveryAreasConfig`, public DTOs, serialization context, setting/config tests
-- **Acceptance:** Versioned tenant config has stable Guid, display name, city, country code, coarse centroid, active/default flags, and internal tenant location IDs; user preferences are `home_discovery.area_id` and `home_discovery.mode`; no `LocationListDto` or `LocationPii` change.
+#### Task 3.1: Add The Discovery-Area Contract (complete)
+- **Files:** Governance keys, `PublicExperienceSettingDefinitions`, `PublicDiscoveryAreasConfig` and validator, `PublicDiscoveryAreaDto`, serialization context, Domain/Application tests
+- **Result:** Tenant configuration is a bounded versioned JSON document with stable Guid, display/city/country, optional paired two-decimal coarse centroid, active/default state, ordering, and internal location IDs. Exact user preferences are `home_discovery.area_id` and `home_discovery.mode` (`area`, `online`, `all`). Validation rejects unsupported schema/size, duplicate IDs/defaults/location mappings, inactive defaults, invalid centroids, and cross-tenant locations. The public DTO omits internal location IDs and all location PII. Task 3.1 did not consume the unsafe generic `LocationListDto`; its existing Address exposure is tracked by Event Location Privacy. Focused validation, full Domain/Application, and Architecture suites passed.
 - **Dependencies/Effort:** 0.4, 1.2 / M
 - **Validation:** Domain/Application tests for invalid, duplicate, default, and tenant-boundary cases.
 
-#### Task 3.2: Add The Composite Home-Discovery Query And API
+#### Task 3.2: Add The Composite Home-Discovery Query And API (complete)
 - **Files:** `HomeDiscoveryDto`/`EventDiscoveryItemDto`, query/handler, `PublicExperienceController`, `RouteNames`, cache policy, API/Application tests, regenerated OpenAPI/inventory/NSwag client/changelog
-- **Acceptance:** One `GET /api/public-experience/home?areaId={guid}&mode={mode}` returns bounded context/sections/statuses; tenant and published/public rules remain authoritative; server performs deterministic dedupe/backfill; unsupported curated sections are omitted; cache varies by tenant/area/mode and retains ETag behavior.
+- **Result:** One `GET /api/public-experience/home?areaId={guid}&mode={mode}` returns bounded context/sections/statuses from an Application CQRS orchestrator that delegates to existing public event reads. Tenant area mappings fail closed, area/online/all filters are server-owned, dedupe/backfill follows fixed section priority, failures are isolated, and unsupported curation is omitted. The anonymous route uses tenant/host/query-varying output cache and existing ETag middleware. OpenAPI, API inventory, generated NSwag client, and API changelog were regenerated; five handler and two controller-contract tests passed.
 - **Dependencies/Effort:** 3.1 / L
 - **Validation:** Handler/API tests, deterministic contract regeneration, one-call/payload budgets.
 
-#### Task 3.3: Add The Frontend Discovery Context
-- **Files:** New `IHomeDiscoveryService`/`HomeDiscoveryService`, DI, `IUserSettingsService` use, `wwwroot/js/home-location.js`, small area-distance helper/model, tests
-- **Acceptance:** URL/saved/default resolution uses area ID; current-location action is hidden/disabled when no active centroid areas exist; geolocation occurs only after explicit action and compares with public area centroids; denied/unavailable keeps prior context; online mode preserves area; `LandingPageService` is not extended and remains `/welcome`-only.
+#### Task 3.3: Add The Frontend Discovery Context (complete)
+- **Files:** `IHomeDiscoveryService`/`HomeDiscoveryService`, DI, `IUserSettingsService` use, `IHomeDiscoveryGeolocation`/adapter, `wwwroot/js/home-discovery.js`, tests
+- **Result:** URL then saved coarse context is resolved before one generated-client composite read; server context supplies default/first/all fallback. The explicit low-accuracy geolocation action compares transient origin with public centroids, persists/selects only area ID and mode, hides when no centroids exist, and preserves area through online mode. Six service and two interop tests passed; the obsolete marketing service was removed with its final caller.
 - **Dependencies/Effort:** 3.2 / M
 - **Validation:** Service/default-order/JS interop tests and permission-denied browser smoke.
 
-#### Task 3.4: Add Explicit Location-Privacy Tests
+#### Task 3.4: Add Explicit Location-Privacy Tests (complete)
 - **Files:** Setting/config, DTO serialization, API response, JS interop, Home tests
-- **Acceptance:** Generic location DTOs expose no coordinates; area centroids are coarse config data; user origin never enters URL, settings, persistent state, logs, analytics, errors, or outbound API payload in area-only mode; Permissions-Policy permits geolocation only for self.
+- **Result:** Application DTO tests, generated-client reflection, persistent-state reflection, JS source guards, component actions, and BFF header tests prove the coarse-only boundary. The BFF permits geolocation to self only; the API host still disables it. No origin sink or generic location DTO dependency exists.
 - **Dependencies/Effort:** 3.1, 3.3 / M
 - **Validation:** Serialization/API tests, source/log assertions, browser policy inspection.
 
-#### Task 3.5: Compose And Persist Homepage State
+#### Task 3.5: Compose And Persist Homepage State (complete)
 - **Files:** `Home.*`, Home tests
-- **Acceptance:** One composite payload supplies all sections; `[PersistentState]` avoids hydration duplicates; no origin is persisted; section failures remain bounded; cancellation prevents late writes; anonymous/authenticated discovery composition is identical.
+- **Result:** `HomeDiscoveryExperience` owns one `[PersistentState]` DTO, restores before service access, cancels stale loads, preserves successful sections, and renders the same discovery branch for anonymous/authenticated users. Focused component, privacy, and Home tests passed.
 - **Dependencies/Effort:** 2.2, 2.3, 3.3, 3.4 / M
 - **Validation:** Home prerender/hydration/partial-failure tests and request-count assertion.
 
 ### Phase 4: `/home` Composition
 
-#### Task 4.1: Replace Discovery-Centric Home Branches
+#### Task 4.1: Replace Discovery-Centric Home Branches (complete)
 - **Files:** `Home.*`, `LandingPageForUsers.*`, Home/route tests
-- **Acceptance:** `/home` and startup-selected `/` use discovery for all visitors; `/welcome` remains marketing; organization-centric remediation/encoding stays; obsolete authenticated landing component is removed after proof.
+- **Acceptance:** `/home` and startup-selected `/` use discovery for all visitors; organization-centric remediation/encoding stays; both obsolete landing components and the standalone marketing route are removed after proof.
 - **Dependencies/Effort:** 3.5 / M
 - **Validation:** Home/route tests and build.
 
-#### Task 4.2: Render Area Context Directly Above The Hero
+#### Task 4.2: Render Area Context Directly Above The Hero (complete)
 - **Acceptance:** “Browsing events in {Area}”/“Browsing online events,” the two requested dropdown actions, one h1, manual hero, theme contrast, and no ad/CTA/reserved break.
 - **Dependencies/Effort:** 4.1 / M
 - **Validation:** bUnit, keyboard, contrast, permission states.
 
-#### Task 4.3: Render All Three Honest Event Layouts
+#### Task 4.3: Render All Three Honest Event Layouts (complete)
 - **Acceptance:** `DetailedList` renders “Upcoming in {Area}” at 1/2/3 columns; optional curated/actor `SingleRow` spotlight is omitted without evidence; `CompactGrid` rails use “Most viewed in {Area},” “Most viewed online,” explicit curated labels, and “Recently added.” No “near,” “trending,” “recommended,” or unsupported community/grassroots copy.
 - **Dependencies/Effort:** 4.2 / M
 - **Validation:** Content/layout tests and responsive screenshots.
 
-#### Task 4.4: Finish Loading, Empty, And Partial-Failure States
+#### Task 4.4: Finish Loading, Empty, And Partial-Failure States (complete)
 - **Acceptance:** Stable skeletons, polite announcements, safe empty/error copy, `/events` fallback, successful sections survive one failed section.
 - **Dependencies/Effort:** 4.3 / S
 - **Validation:** Failure-path tests.
 
-#### Task 4.5: Complete Localization And RTL
+#### Task 4.5: Complete Localization And RTL (complete)
 - **Acceptance:** Every new label, action, error, section heading, counter, and accessibility label uses the existing translation path with fallback; area display data remains data; RTL order/focus is verified. Future distance units are documented but not rendered now.
 - **Dependencies/Effort:** 4.4 / S
 - **Validation:** Localization-key coverage and RTL browser smoke.
@@ -489,27 +492,31 @@ The task IDs below are canonical and must match the context and checklist exactl
 ### Phase 5: Verification And Handoff
 
 #### Task 5.1: Add Aspire-Backed Public Home Flow
+- **Current evidence:** `HomeDiscoveryFlowTests` builds and ran through route/hydration, responsive capture, manual hero, keyboard surfaces, granted Brussels geolocation, and online mode. It now uses deterministic denied-geolocation injection, resets focus/scroll before screenshots, guards fixed-header spacing, asserts one fallback-hero transfer within 500 KiB, and proves context actions do not trigger another `/home` document navigation. The latest retry could not start Docker Desktop because its QEMU VM terminated; the last healthy-Docker reruns failed during event seed because unrelated shared location-model columns are absent from migrations (`locations.location_kind_id` currently; `event_sessions.event_location_id` previously).
 - **Acceptance:** Route, one composite discovery call, area/online actions, granted/denied geolocation, manual hero, keyboard cards, rails, URL state, no coordinate leakage, and console cleanliness.
 - **Dependencies/Effort:** 4.5 / M
 - **Validation:** E2E project or documented environment blocker plus manual Chrome evidence.
 
 #### Task 5.2: Run Responsive Visual And Accessibility QA
+- **Current evidence:** Inspected captures at 375 light LTR, 768 dark LTR, and 1280 light RTL/reduced-motion. Composition, no-image fallback, theme/direction, mobile overlay, keyboard card focus, rail scrolling, shell spacing, and page overflow passed the observed run; refreshed captures wait on the shared migration.
 - **Acceptance:** 375/768/1280, light/dark, RTL, reduced motion, long title, no image, empty/partial failure, no overflow, lazy-image behavior, and no ad gap.
 - **Dependencies/Effort:** 5.1 / M
 - **Validation:** Chrome screenshots/network/console evidence in context.
 
 #### Task 5.3: Run Quality, Contract, And Performance Gates
+- **Current evidence:** Payload, section/composite timeout, one-eager-image, image semantics, and bounded cache-key regressions pass. The first live initial composite sample was 644.83 ms, which is not a p95. Runtime tracing exposed and fixed action-triggered navigation reloads and duplicate fallback-image transfers; BFF static-cache and antiforgery regressions pass. The real Aspire flow now contains 20-sample uncached/cached p95 gates, a fresh-cache 375×844 Chromium LCP gate with 4× CPU/100ms/4,000 Kbit/s down/1,500 Kbit/s up throttling, and a JSON evidence artifact. Executing those gates still waits on the shared migration.
 - **Acceptance:** Required projects pass; generated artifacts are deterministic; no new warnings over Task 0.4; initial discovery uses one API call; response is at most 256 KiB uncompressed/120 KiB compressed; each section times out safely at 1 s and composite execution at 3 s; controlled uncached p95 target is 800 ms, cached p95 200 ms, page LCP target 2.5 s; at most two hero images load eagerly and initial hero bytes stay within 500 KiB.
 - **Dependencies/Effort:** 5.2 / M
 - **Validation:** Section 7 commands, contract drift, browser network evidence, controlled performance run.
 
-#### Task 5.4: Refresh Canonical And Dev Docs
+#### Task 5.4: Refresh Canonical And Dev Docs (complete)
 - **Acceptance:** DESIGN/BLAZOR/API docs, plan/context/tasks, actual files, budgets, tests, and remaining Phase 6 scope agree.
+- **Result:** Canonical design, Blazor, API changelog/inventory, security, planned PostGIS summaries, and all workstream docs match the area-only implementation. Runtime evidence gaps remain explicit and Phase 6 remains deferred.
 - **Dependencies/Effort:** 5.3 / S
 - **Validation:** Cold-resume review and link checks.
 
-#### Task 5.5: Decide Whether To Add A General Public-Blazor Intent
-- **Acceptance:** Decision recorded; any intent change is isolated and passes context schema/duplication tests.
+#### Task 5.5: Decide Whether To Add A General Public-Blazor Intent (complete)
+- **Result:** Decision 11 records that no broad intent should be added yet because it would overlap existing component/OpenAPI/setting routes. No context-governance file was changed by this task.
 - **Dependencies/Effort:** 5.4 / S
 - **Validation:** Architecture context tests if changed.
 
@@ -537,7 +544,7 @@ The task IDs below are canonical and must match the context and checklist exactl
 | Setting registration and area-config validation | Domain/Application unit | Stable/duplicate IDs, country/display fields, exactly one default, inactive/foreign location IDs, centroid bounds, user setting scopes. |
 | Composite section semantics | Application unit | Exact `date`/`views`/`createdat` keys, area/mode filters, honest labels, optional curation, dedupe/backfill, cancellation, partial status. |
 | Public API/cache contract | API integration | Anonymous tenant isolation, query validation, one composite response, cache vary by tenant/area/mode, ETag, generated contract. |
-| Location privacy | Domain/API/Blazor/browser | No `LocationListDto` coordinates; no origin in URL, settings, state, logs, analytics, errors, or requests in area-only mode; geolocation self policy. |
+| Location privacy | Domain/API/Blazor/browser | No generic `LocationListDto`, address, or venue coordinate in Home Discovery responses/browser state; no origin in URL, settings, logs, analytics, errors, or requests in area-only mode; geolocation self policy. |
 | Three card modes and keyboard behavior | bUnit | Existing mode coverage plus Enter/Space and nested HAL/share isolation. |
 | Manual hero and image loading | bUnit/browser | Counter/wrap/fallback/labels, no autoplay, active/next/lazy network behavior. |
 | Rail semantics and overflow | bUnit/browser | Production `CompactGrid`, empty/skeleton/View all, touch/keyboard/RTL/no page overflow. |
@@ -608,7 +615,7 @@ Additional invariants:
 | Federation | No new federation reads; only tenant-public events already exposed by the API participate. |
 | Analytics | No new location tracking; origin and exact private points are forbidden properties. |
 | Curated content | Spotlight/community/grassroots require explicit typed curation or actor scope; otherwise omit. |
-| Compatibility | `/welcome` remains marketing; `/events` is unchanged visually; startup-selected `/` intentionally follows `Home`. |
+| Compatibility | `/events` is unchanged visually; startup-selected `/` intentionally follows `Home`; the obsolete standalone marketing route is removed. |
 
 ## 11. Observability, Budgets, And Image Policy
 
@@ -620,8 +627,8 @@ Additional invariants:
 | Response size | At most 256 KiB uncompressed and 120 KiB compressed |
 | API latency | Controlled p95 target: 800 ms uncached, 200 ms cached |
 | Per-section execution | 1 s hard timeout with a safe section status |
-| Composite execution | 3 s hard maximum before a safe endpoint failure |
-| Page LCP | 2.5 s target on defined mid-tier mobile/4G profile |
+| Composite execution | 3 s hard maximum returning the already-composed safe partial payload |
+| Page LCP | 2.5 s on fresh-cache 375×844 Chromium with 4× CPU slowdown, 100ms latency, 4,000 Kbit/s down, and 1,500 Kbit/s up |
 | Hero eager images | Active slide only; optionally next slide; maximum two eager images |
 | Initial hero image bytes | At most 500 KiB total |
 | Other images | Below-fold hero/rail images lazy |
@@ -636,9 +643,9 @@ Additional invariants:
 
 ### Current Release
 
-- No database migration and no `LocationListDto` coordinate change.
+- No database migration and no Home Discovery use of generic `LocationListDto`; Event Location Privacy separately owns its unsafe Address/exact-contract minimization.
 - Additive composite public-home and discovery-area contracts are regenerated through the canonical workflow.
-- `LandingPageService` remains for `/welcome`; new home code uses `HomeDiscoveryService`.
+- `HomeDiscoveryService` is the sole client orchestrator for the public home experience; the obsolete marketing-only service is removed.
 - `LandingPageForUsers` and duplicate presentation `EventCard` may be removed only after caller proof/build/tests.
 - No first-release UI or API claims exact proximity or displays distance.
 
@@ -667,7 +674,7 @@ The future `POST /api/public-experience/home/nearby` accepts a rounded/bounded t
 | Risk | Impact | Mitigation | Owner |
 |---|---:|---|---|
 | Area wording drifts into proximity claims | High | Forbidden-term tests; only Phase 6 enables “near you”/distance | 3.2, 4.3 |
-| Generic venue PII becomes public | High | Dedicated area DTO/config; serialization/API tests; no `LocationListDto` edit | 3.1, 3.4 |
+| Generic venue PII becomes public | High | Dedicated area DTO/config; serialization/API tests prove Home Discovery never consumes `LocationListDto`, Address, or venue coordinates | 3.1, 3.4 |
 | Composite handler is slow | High | Bounded overfetch/dedupe, cache/ETag, explicit p95/payload gates, timing | 3.2, 5.3 |
 | Anonymous saved area causes hydration refetch | Medium | Canonical URL and persistent payload are primary; any post-hydration preference correction is one explicit composite reload and tested | 3.3, 3.5 |
 | Invalid/cross-tenant area selection | High | Server validates active area in resolved tenant and falls back safely | 3.1, 3.2 |
@@ -683,7 +690,7 @@ The future `POST /api/public-experience/home/nearby` accepts a rounded/bounded t
 
 ### Functional
 
-- `/home` and startup-selected `/` render discovery for anonymous/authenticated users; `/welcome` remains marketing.
+- `/home` and startup-selected `/` render discovery for anonymous/authenticated users; there is no standalone marketing route.
 - One composite response supplies area context and all supported sections.
 - Dropdown above the hero provides the two requested actions and persists stable area ID/mode.
 - Current-location action uses only coarse area centroids and makes no distance claim.
