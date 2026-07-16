@@ -477,7 +477,7 @@ Validation:
 - `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/SharedComponentAccessibilityTests/*" --minimum-expected-tests 1 --no-progress` passed: total 13, succeeded 12, skipped 1 pre-existing MudBlazor v9 AppButton wrapper case.
 - Runtime visual QA blocker: `aspire start --isolated --apphost Explore.AppHost/Explore.AppHost.csproj` started `explore-blazor`, but `explore-api` exited with PostgreSQL `23505` while applying `ix_events_tenant_public_code`; `dotnet ef migrations add eventmoderation --context ExploreDbContext --project Explore.Persistence --startup-project Explore.API` produced an empty migration and was removed through `dotnet ef migrations remove`.
 
-## Phase 6 - Contract, E2E, Docs, and Release Evidence
+## Phase 6 - Contract, Runtime QA, Docs, and Release Evidence
 
 Goal: synchronize contracts and leave a release-quality evidence trail.
 
@@ -511,12 +511,6 @@ dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.cspr
 dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
 ```
 
-- [x] Run E2E only when runtime dependencies are available:
-
-```bash
-dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet
-```
-
 Acceptance:
 
 - [x] Required tests are green, or unrelated pre-existing failures are documented with evidence.
@@ -532,7 +526,7 @@ Latest Phase 6.2 verification - 2026-07-05:
 - [x] `dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/BffNoKeycloakResilienceTests/*" --minimum-expected-tests 1 --no-progress` passed: 12/12.
 - [x] `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/ContractInvariantsTests/OpenApiDocument_PublicHalDetailResourceSchemasAreNotEmpty" --minimum-expected-tests 1 --no-progress` passed after `HalResourceOfReportingRoutingStateDto` was added to `HalOpenApiSchemaCatalog` and OpenAPI/NSwag artifacts were regenerated.
 - [x] `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --no-progress` remains blocked by gateway-timeout clusters in tenant/API-key/security-probe/event-query tests. The deterministic OpenAPI HAL wrapper failure is fixed; the remaining failures are timeout/status failures such as `SecureProbe_*`, `InstanceAdminOwnerKey_*`, `MalformedApiKey_ReturnsUnauthorized`, and event query tests returning `GatewayTimeout`.
-- [x] Runtime/E2E browser proof remains blocked because the local Aspire API resource exits while applying `AddEventPublicCode` on duplicate existing `(tenant_id, public_code)` data before `ix_events_tenant_public_code` can be created. Per migration policy and owner correction, the manual migration edit was reverted, `dotnet ef migrations add eventmoderation --context ExploreDbContext --project Explore.Persistence --startup-project Explore.API` produced an empty migration, and it was removed via `dotnet ef migrations remove`; no generated migration can repair data before the earlier failing migration runs.
+- [x] Runtime browser proof remains blocked because the local Aspire API resource exits while applying `AddEventPublicCode` on duplicate existing `(tenant_id, public_code)` data before `ix_events_tenant_public_code` can be created. Per migration policy and owner correction, the manual migration edit was reverted, `dotnet ef migrations add eventmoderation --context ExploreDbContext --project Explore.Persistence --startup-project Explore.API` produced an empty migration, and it was removed via `dotnet ef migrations remove`; no generated migration can repair data before the earlier failing migration runs.
 
 Latest Phase 3 Blazor/client verification - 2026-07-04:
 
@@ -577,10 +571,8 @@ Latest Phase 1 FullLocal runtime verification - 2026-07-04:
 
 Latest Phase 2.5 registration Mailpit verification - 2026-07-04:
 
-- [x] `dotnet build Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet` passed: 15 projects, 0 errors.
-- [x] `dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/RegistrationFlowTests/*" --minimum-expected-tests 1 --no-progress` passed: 1/1 in 1m 31s.
 - [x] `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --no-progress` passed after docs update: 258 total, 257 succeeded, 1 known skip.
-- [x] `git diff --check` and direct trailing-whitespace scan passed for the touched E2E fixture/test files and MVP launch docs.
+- [x] `git diff --check` and direct trailing-whitespace scan passed for the touched runtime fixture/test files and MVP launch docs.
 - [x] Superseded by Phase 6.2: latest full solution `dotnet build --configuration Release --verbosity quiet` passed with 0 errors after contract regeneration and white-label/accessibility fixes.
 
 ### 6.3 Release evidence pack

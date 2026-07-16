@@ -108,11 +108,11 @@ Completed during Phase 1 FullLocal runtime proof slice:
 
 Completed during Phase 2.5 registration email runtime proof slice:
 
-- Confirmed the current Mailpit API shape against official Mailpit API/OpenAPI docs before extending the E2E fixture: `/api/v1/message/{ID}/headers` returns header arrays, and message details expose HTML/text content.
-- Extended `MailpitContainerFixture` and `AppHostFixture` so E2E tests can fetch Mailpit HTML bodies and raw headers, not only summary metadata and plain text.
+- Confirmed the current Mailpit API shape against official Mailpit API/OpenAPI docs before extending the retired runtime fixture: `/api/v1/message/{ID}/headers` returns header arrays, and message details expose HTML/text content.
+- Extended the historical Mailpit/AppHost fixture so runtime checks could fetch Mailpit HTML bodies and raw headers, not only summary metadata and plain text.
 - Updated `RegistrationFlowTests` to prove the runtime registration-confirmation path through AppHost, the real API, `TickerQScheduledEmailDispatchTrigger`, `EmailDispatchDrainService`, SMTP, and Mailpit.
-- The E2E now verifies exactly one sent `EmailDispatchOutbox` row, succeeded attempt count, completed receipt count, Mailpit subject/recipient, expected text body, HTML body, `X-Email-Dispatch-ID`, `X-Correlation-ID`, `List-Unsubscribe`, `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, visible unsubscribe URL in text and HTML, and a tenant-aware unsubscribe POST that disables `NotificationPreferenceCategories.RegistrationConfirmations` for the dispatch user.
-- AppHost E2E wiring now supplies `PublicBaseUrl` for the API resource so generated unsubscribe links are present during runtime proof. The test posts the generated token back through the reachable AppHost API endpoint while preserving the delivered link shape.
+- The historical runtime proof verified exactly one sent `EmailDispatchOutbox` row, succeeded attempt count, completed receipt count, Mailpit subject/recipient, expected text body, HTML body, `X-Email-Dispatch-ID`, `X-Correlation-ID`, `List-Unsubscribe`, `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, visible unsubscribe URL in text and HTML, and a tenant-aware unsubscribe POST that disables `NotificationPreferenceCategories.RegistrationConfirmations` for the dispatch user.
+- AppHost runtime wiring supplied `PublicBaseUrl` for the API resource so generated unsubscribe links were present during the proof.
 
 Completed during Phase 1.2 Data Protection restart proof slice:
 
@@ -202,7 +202,6 @@ If resuming this workstream:
 | `Event.Persistence.IntegrationTests/Repositories/EventRegistrationIntentRepositoryTests.cs` | Proves capacity-one concurrency, event/day/session duplicate parent-intent idempotency, duplicate registration-confirmation dispatch-row prevention, alternate-session rollback, and child-level unique failure rollback against PostgreSQL. |
 | `Event.API.IntegrationTests/Features/EventRegistrationControllerTests.cs` | Proves the create endpoint preserves an idempotent command success response with the existing registration id. |
 | `Event.API.IntegrationTests/Features/EventRegistrationRealRuntimeTests.cs` | Uses `RealRuntimeApiFixture` and PostgreSQL/Testcontainers to prove session-selection create success, repeat-submit idempotency, full-session waitlist behavior, one registration-confirmation outbox row, capacity preservation, and unauthenticated create rejection. |
-| `Explore.Blazor.Client.E2ETests/Flows/CriticalFlows/RegistrationFlowTests.cs` | Exercises API registration and checks Mailpit/email dispatch when full runtime dependencies are available. |
 
 Launch implication:
 
@@ -383,22 +382,16 @@ Results:
 
 ## Validation Results for Phase 2.5 Registration Mailpit Runtime Proof
 
-Checks run after extending the AppHost/Mailpit E2E fixture and registration-flow assertions:
-
-```bash
-dotnet build Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet
-dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/RegistrationFlowTests/*" --minimum-expected-tests 1 --no-progress
-```
+Historical checks ran against the retired browser suite after extending its AppHost/Mailpit fixture and registration-flow assertions.
 
 Results:
 
-- Focused E2E build passed: 15 projects, 0 errors; warnings remain the existing package/analyzer backlog.
-- Focused registration critical-flow E2E passed: 1 total, 1 succeeded, 0 failed in 1m 31s.
+- Focused browser-suite build passed: 15 projects, 0 errors; warnings remained the existing package/analyzer backlog.
+- Focused registration critical flow passed: 1 total, 1 succeeded, 0 failed in 1m 31s.
 - The runtime proof exercised real Testcontainers/PostgreSQL, Keycloak auth, AppHost API/Blazor wiring, Mailpit SMTP capture, the TickerQ email-dispatch trigger, and the `EmailDispatchDrainService`.
-- The test report was written to `Explore.Blazor.Client.E2ETests/bin/Release/net10.0/TestResults/Explore.Blazor.Client.E2ETests-linux-net10.0-report.html`.
-- Diff whitespace check passed for the touched E2E fixture/test files and MVP launch docs, and direct trailing-whitespace scan returned no matches.
+- Diff whitespace check passed for the touched fixture/test files and MVP launch docs, and direct trailing-whitespace scan returned no matches.
 - Architecture tests passed after the docs update: 258 total, 257 succeeded, 1 known response-metadata skip.
-- Full solution Release build was attempted after the focused E2E proof and did not pass because of unrelated dirty-worktree issues outside this slice: `Explore.Blazor.Client.Tests` has generated-client anonymous HAL type mismatches such as `Anonymous56` versus `Anonymous57`, and `Explore.API` hit a transient static-web-assets cache file lock on `obj/Release/net10.0/rjsmcshtml.dswa.cache.json`.
+- Full solution Release build was attempted after the focused runtime proof and did not pass because of unrelated dirty-worktree issues outside this slice: `Explore.Blazor.Client.Tests` has generated-client anonymous HAL type mismatches such as `Anonymous56` versus `Anonymous57`, and `Explore.API` hit a transient static-web-assets cache file lock on `obj/Release/net10.0/rjsmcshtml.dswa.cache.json`.
 
 ## Key Decisions
 

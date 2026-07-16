@@ -44,7 +44,7 @@ Launch should focus on six closure phases:
 3. Registration integrity and concurrency evidence.
 4. Security, audit, and HAL affordance cleanup.
 5. Public SEO, manifest, accessibility, and UX polish.
-6. Contract, generated-client, E2E, docs, and release evidence.
+6. Contract, generated-client, runtime QA, docs, and release evidence.
 
 ## 2. Source-Grounded Current State
 
@@ -247,7 +247,7 @@ Progress as of 2026-07-04:
 - Added terminal `Skipped` statuses for outbox, attempt, receipt, drain result, API/HAL command behavior, RabbitMQ DLQ replay safety, and EF repository transitions.
 - Added unsubscribe headers/body footer generation using `IEmailUnsubscribeTokenService` and configured public base URL.
 - Added unit and PostgreSQL integration tests for headers, preference skip, terminal operator behavior, skipped repository settlement, stale-processing recovery, retry/dead-letter behavior, and receipt idempotency.
-- API SMTP health, configured-SMTP outage readiness, bounded SMTP probe behavior, dynamic Mailpit setting proof, and registration-driven Mailpit delivery proof are green. The runtime E2E checks the durable dispatch row, Mailpit message, text/HTML body, custom headers, one-click unsubscribe headers, visible unsubscribe link, and persisted preference disablement after POST.
+- API SMTP health, configured-SMTP outage readiness, bounded SMTP probe behavior, dynamic Mailpit setting proof, and registration-driven Mailpit delivery proof are green. The runtime proof checks the durable dispatch row, Mailpit message, text/HTML body, custom headers, one-click unsubscribe headers, visible unsubscribe link, and persisted preference disablement after POST.
 
 ### Phase 3: Registration Integrity and Concurrency Evidence
 
@@ -329,7 +329,7 @@ Exit criteria:
 - Registration and event detail flows meet WCAG 2.2 AA expectations for launch-critical paths.
 - Manifest scope is explicit: minimal install metadata only, unless the owner separately approves offline/PWA work.
 
-### Phase 6: Contract, E2E, Docs, and Release Evidence
+### Phase 6: Contract, Runtime QA, Docs, and Release Evidence
 
 Objective: leave a verifiable release trail.
 
@@ -337,7 +337,7 @@ Actions:
 
 - Regenerate OpenAPI/NSwag clients after any API contract changes.
 - Update snapshot tests for HAL and response shapes.
-- Run project-level unit, integration, architecture, Blazor, and selected E2E tests according to `docs/TESTING.md`.
+- Run project-level unit, integration, architecture, and Blazor tests plus selected manual browser QA according to `docs/TESTING.md`.
 - Capture traces/screenshots/log snippets for registration, email delivery, calendar, sitemap, robots, error pages, and health degradation.
 - Update `docs/API.md`, `docs/BLAZOR.md`, `docs/OPERATIONS.md`, `docs/SECURITY-MODEL.md`, and release notes only where behavior changed.
 - Log durable non-obvious findings in `dev/_journal/journal.md`.
@@ -360,12 +360,6 @@ dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.cs
 dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
 dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
 dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
-```
-
-Add targeted E2E only when runtime dependencies are available:
-
-```bash
-dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet
 ```
 
 Do not run solution-level `dotnet test`.
