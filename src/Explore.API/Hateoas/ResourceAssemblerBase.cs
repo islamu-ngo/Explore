@@ -46,7 +46,7 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
             return new HalResource<TDto>(dto);
         }
 
-        var user = httpContext.User;
+        var user = ResolveCapabilityPrincipal(httpContext);
         var definitions = await GetDetailLinkDefinitionsAsync(dto, user, httpContext);
         var links = await GenerateLinks(definitions, user, httpContext);
 
@@ -66,7 +66,7 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
             return new HalResource<TListDto>(dto);
         }
 
-        var user = httpContext.User;
+        var user = ResolveCapabilityPrincipal(httpContext);
         var definitions = await GetListItemLinkDefinitionsAsync(dto, user, httpContext);
         var links = await GenerateLinks(definitions, user, httpContext);
 
@@ -84,7 +84,7 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
         object? additionalRouteValues,
         HttpContext httpContext)
     {
-        var user = httpContext.User;
+        var user = ResolveCapabilityPrincipal(httpContext);
         var isMinimal = IsMinimalResponse(httpContext);
 
         // Minimal response: wrap items without link generation (skip auth evaluation entirely)
@@ -146,7 +146,7 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
         HttpContext httpContext)
     {
         var itemsList = items.ToList();
-        var user = httpContext.User;
+        var user = ResolveCapabilityPrincipal(httpContext);
         var isMinimal = IsMinimalResponse(httpContext);
 
         // Minimal response: wrap items without link generation
@@ -216,6 +216,9 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
     {
         return null;
     }
+
+    protected virtual ClaimsPrincipal? ResolveCapabilityPrincipal(HttpContext httpContext)
+        => httpContext.User;
 
     protected virtual Task<IReadOnlyList<LinkDefinition>> GetDetailLinkDefinitionsAsync(
         TDto dto,
