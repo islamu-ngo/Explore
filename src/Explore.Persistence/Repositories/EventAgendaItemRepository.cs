@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -23,6 +24,25 @@ public class EventAgendaItemRepository : GenericRepository<EventAgendaItem, Guid
             .Where(a => a.EventId == eventId)
             .OrderBy(a => a.SortOrder)
             .ThenBy(a => a.StartTime)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<EventAgendaItem?> GetPublicByIdAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return await _dbContext.EventAgendaItems
+            .AsNoTracking()
+            .WherePubliclyEligible()
+            .FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+    }
+
+    public async Task<List<EventAgendaItem>> GetPublicByEventAsync(Guid eventId, CancellationToken cancellationToken)
+    {
+        return await _dbContext.EventAgendaItems
+            .AsNoTracking()
+            .WherePubliclyEligible()
+            .Where(item => item.EventId == eventId)
+            .OrderBy(item => item.SortOrder)
+            .ThenBy(item => item.StartTime)
             .ToListAsync(cancellationToken);
     }
 }

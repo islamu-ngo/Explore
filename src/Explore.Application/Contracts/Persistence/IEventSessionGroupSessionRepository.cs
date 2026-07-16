@@ -9,6 +9,8 @@ public interface IEventSessionGroupSessionRepository : IGenericRepository<EventS
 {
     Task<List<EventSessionGroupSession>> GetByGroupAsync(Guid eventSessionGroupId, CancellationToken cancellationToken);
 
+    Task<List<EventSessionGroupSession>> GetPublicByGroupAsync(Guid eventSessionGroupId, CancellationToken cancellationToken);
+
     Task<List<EventSessionGroupSession>> GetBySessionAsync(Guid eventSessionId, CancellationToken cancellationToken);
 
     Task<EventSessionGroupSession?> GetExistingAssignmentAsync(

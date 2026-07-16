@@ -336,12 +336,7 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
             .AsNoTracking()
             .AsSplitQuery()
             .IncludeStandardDetails()
-            .Where(s => s.EventSessionStatusId == (int)EventSessionStatusEnum.Published)
-            .Where(s => s.StartTime != null && s.EndTime != null)
-            .Where(s => s.Event.VisibilityTypeId == (int)VisibilityTypeEnum.Public)
-            .Where(s => s.Event.EventStatusId != (int)EventStatusEnum.Draft
-                && s.Event.EventStatusId != (int)EventStatusEnum.Moderated
-                && s.Event.EventStatusId != (int)EventStatusEnum.Archived);
+            .WherePubliclyEligible();
     }
 
     private IQueryable<EventSession> ApplySessionProjectionFilters(
