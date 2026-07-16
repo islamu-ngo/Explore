@@ -3,8 +3,8 @@
 
 # Event Location Privacy Tasks
 
-**Status:** Planning complete; implementation not started  
-**Last Updated:** 2026-07-15 Europe/Brussels  
+**Status:** W1-W5 complete through ELP-240/260 persistence and retained authority; W6 ELP-230A/250/500 plus ELP-310 next
+**Last Updated:** 2026-07-16 Europe/Brussels
 **Plan:** `dev/active/event-location-privacy/event-location-privacy-plan.md`  
 **Context:** `dev/active/event-location-privacy/event-location-privacy-context.md`
 
@@ -19,7 +19,7 @@
 - Stop for approval before weakening tenant isolation, public minimization, irreversible erasure, transaction atomicity, or governance floors.
 - Generated clients and migrations are generated through canonical commands, never hand-edited.
 
-## Phase Dependencies
+## Execution Dependencies
 
 | Phase | Entry gate | Exit gate |
 |---|---|---|
@@ -34,95 +34,142 @@
 | 8. Outbound/discovery/docs | Disclosure authority stable | Every surface has evidence and operations/docs match behavior |
 | 9. Final QA | All prior phases complete | Full build/tests/contracts/migrations/visual review green |
 
+The exact execution order is the wave table in plan Section 16. Critical corrections are: `ELP-015` runs immediately after leakage/route characterization; `ELP-350` precedes `ELP-315`; `ELP-505` and `ELP-515` are one atomic lane; `ELP-420A` precedes Blazor adoption; and `ELP-230C`, `ELP-430`, then `ELP-420B` form the final contraction lane.
+
 ## Phase 0: Contract and Characterization
 
-- [x] **ELP-000 — Incorporate Senior CTO amendments across all three durable docs**
+- [x] **ELP-000 — Re-baseline the approved architecture across all three durable docs**
   - Paths: `dev/active/event-location-privacy/*`.
-  - Result: canonical EventLocation, contextual field sensitivity, irreversible state, intent coverage, global erasure, transactional outbox, route split, and enterprise operations are decision-complete.
-  - Evidence: planning-only diff and architecture-document quality gate.
+  - Result: canonical EventLocation, nullable-TBA XOR, retained internal scheduling IDs, deterministic legacy state, immediate Stage A, staged migrations, separate retained PostgreSQL erasure-authority database, corrected ownership/waves, and verification owners are decision-complete.
+  - Evidence: initial six-file protected-diff capture plus 2026-07-16 re-synchronization to the authority-first two-database protocol; focused architecture documentation/context tests and `git diff --check` pass after the prior authority wording is removed.
 
-- [ ] **ELP-005 — Block stale Home Discovery address/coordinate contract before product edits**
+- [x] **ELP-005 — Block stale Home Discovery address/coordinate contract before product edits**
   - Paths: `dev/active/home-discovery-experience/home-discovery-experience-plan.md`, `home-discovery-experience-context.md`, `home-discovery-experience-tasks.md`.
   - Change: correct the false claim that `LocationListDto` omits private data; source currently exposes Address. Forbid browser enumeration of exact addresses/coordinates. Block current-location work on coarse `PublicDiscoveryArea` or a later governed PostGIS design.
   - Result: Home Discovery cannot reintroduce location leakage or treat `ShowCoordinates` as indexing consent.
   - Verify: documentation link/schema tests and grep for contradictory exact-coordinate/address guidance.
+  - Evidence: four focused Architecture documentation/context tests passed; contradiction grep and six-file `git diff --check` passed; pre-existing Home Discovery implementation hunks remain present.
 
-- [ ] **ELP-010 — Add current-leakage characterization tests before contracts change**
+- [x] **ELP-010 — Add current-leakage characterization tests before contracts change**
   - Paths: `tests/Event.API.IntegrationTests/Features/LocationControllerTests.cs`, EventSession controller tests, `tests/Event.Application.UnitTests/Features/EventPrograms/`, Events calendar tests, and Blazor EventDetail tests.
   - Cases: anonymous Location detail/list address exposure; session/program/calendar/JSON-LD direct mapping; auth-cookie public response behavior; current private-address hint copy.
   - Result: tests document every current leak and become red/updated as authority is introduced.
+  - Evidence: focused API/Application/Blazor/MCP tests characterize generic Location/room reads, public projections, filter URLs, cache headers, principal invariance, and private-address copy; the completed ELP-015 behavior makes them green.
 
-- [ ] **ELP-020 — Freeze outbound surface inventory and purpose table**
+- [x] **ELP-015 — Ship immediate Stage A fail-closed public minimization**
+  - Dependencies: ELP-010 and ELP-400 characterization only; do not wait for Domain/schema work.
+  - Paths: anonymous Location detail/list, public session/program/calendar projections, Blazor JSON-LD, MCP location output, and public filter URL construction plus their focused tests.
+  - Change: preserve route shapes where safe, but omit every physical LocationId, address, postcode, coordinate, identifying name/city/room, and location-bearing fragment until EventLocation policy exists. If an old non-null contract cannot express a safe value, return no location/result rather than a fabricated neutral address.
+  - Result: all known anonymous location surfaces are coarse or fail closed, and an auth cookie cannot enrich them.
+  - Verify: ELP-010/400 tests turn green; API/Blazor/MCP contract assertions and source scan prove no compatibility fallback restores exact data.
+  - Evidence: public session/group/agenda/program/calendar/JSON-LD surfaces redact physical fields and require public parent/child eligibility; public HAL is principal-invariant; generic reads and event management routes are authorized and `private, no-store`; MCP builders disclose zero physical values and the gateway requires exact ordered cardinality/identity. Managed/API ELP passed 19/19, Application ELP 18/18, API ELP 11/11, MCP ELP at least 10, authenticated MCP management at least 6, SDK at least 10, full Application 2,317/2,317, and full Blazor 1,702/1,702 executed with one not executed. Canonical OpenAPI/inventory/client hashes are recorded in context.
+  - Boundary: the temporary management picker returns only locations/rooms already associated with that event. First/new venue selection remains fail-closed for non-admins until ELP-405/610; neither task is complete.
+
+- [x] **ELP-020 — Freeze outbound surface inventory and purpose table**
   - Paths: plan Section 11, context outbound inventory, `docs/API.md`, `docs/SECURITY-MODEL.md`.
   - Inventory: sessions/program/agenda/JSON-LD, public/attendee calendars, email/reminders, tickets/QR, Svix webhooks, CSV/JSON, search, moderation, API keys, print/PDF/reports, MCP/AI, federation/PDS, discovery.
   - Result: each surface has owner, audience, purpose, allowed fields, cache policy, and target test.
+  - Evidence: plan Section 11 and the context inventory record every named surface, current owner/absence proof, correction behavior, and focused test path; completeness grep passed.
 
-- [ ] **ELP-030 — Capture API/OpenAPI/generated-client and migration baselines**
+- [x] **ELP-030 — Capture API/OpenAPI/generated-client and migration baselines**
   - Paths: `src/Explore.API/OpenApi/HalOpenApiSchemaCatalog.cs`, `src/Explore.Blazor.Client/Clients/EventApiClient.g.cs`, current EF snapshot, API contract snapshots.
   - Result: known baseline and exact regeneration commands recorded in context.
   - Verify: generation commands produce no unexplained pre-change diff.
+  - Evidence: context records commit, migration head, seven SHA-256 artifact hashes, dirty/clean capture state, and workflow-exact deterministic commands. Generators were deliberately not run over three protected concurrent Home Discovery artifacts; ELP-420A/B must compare against this byte baseline before accepting generated changes.
 
-- [ ] **ELP-040 — Lock instance/tenant governance source and most-restrictive merge**
+- [x] **ELP-040 — Lock instance/tenant governance source and most-restrictive merge**
   - Paths: `src/Explore.Application/Contracts/Services/ITenantPolicySettingService.cs`, `src/Explore.Application/Services/TenantPolicySettingService.cs`, `TenantPolicySettingService.Read.cs`, `TenantPolicySettingService.Apply.cs`, planned `src/Explore.Application/Contracts/Services/ILocationPrivacyGovernanceService.cs`, and `src/Explore.Application/Services/LocationPrivacyGovernanceService.cs`.
   - Keys: `allow_home_locations`, `allow_public_exact_address`, `allow_public_coordinates`, `minimum_home_audience`, `default_reveal_offset` under `location_privacy`.
   - Result: exact ownership, precedence, validation, and audit paths recorded before schema work.
+  - Evidence: plan Section 9 and context lock SystemSetting/TenantSetting ownership, field-by-field merge lattice, JSON formats/ranges, fail-closed defaults, widening rejection, setting audit, correction outbox, and cache invalidation owners/tests.
 
-- [ ] **ELP-060 — Lock LocationKind, LocationPrivacyState, and irreversible erasure contract in tests**
-  - Paths: planned `src/Explore.Domain/LocationKind.cs`, `LocationPrivacyState.cs`, `Location.cs`; tests under `tests/Event.Domain.UnitTests/`.
-  - Cases: Unclassified codes; Active Home owner requirement; non-Home owner rejection; NotProvided vs Erased; Erased no owner/PII; reattachment rejected; replacement requires new Location.
-  - Result: Domain lifecycle cannot be weakened by later persistence/UI work.
+- [x] **ELP-060 — Lock LocationKind, LocationPrivacyState, and audience code contracts in tests**
+  - Paths: `src/Explore.Domain/LocationKind.cs`, `LocationPrivacyState.cs`, `LocationDisclosureAudience.cs`, enum companions, and `tests/Event.Domain.UnitTests/LocationPrivacyLookupContractTests.cs`.
+  - Cases: exact stable IDs/master codes for Unclassified and all kind/state/audience values; kind remains descriptive and never grants disclosure.
+  - Result: persisted lookup vocabulary cannot drift. Aggregate owner/PII/erasure/resurrection invariants remain owned by open task ELP-120.
+  - Evidence: Domain lookup contract 2/2; Domain build 0 errors; Clean Architecture/Code Hygiene/Naming green.
 
-- [ ] **ELP-070 — Lock global-account deletion versus tenant-membership removal semantics**
+- [x] **ELP-070 — Lock global-account deletion versus tenant-membership removal semantics**
   - Paths: `docs/MULTI_TENANCY.md`, `src/Explore.Application/Features/Users/Handlers/Commands/DeleteUserCommandHandler.cs`, planned `src/Explore.Application/Features/TenantUsers/Requests/Commands/RemoveTenantMembershipCommand.cs`, `src/Explore.Application/Features/TenantUsers/Handlers/Commands/RemoveTenantMembershipCommandHandler.cs`, and matching tests under `tests/Event.Application.UnitTests/Features/TenantUsers/Commands/`.
   - Result: global deletion erases every owned Home across tenants; membership removal changes TenantUser/TenantUserProfile only.
   - Verify: architecture test forbids membership handlers from invoking global privacy erasure.
+  - Evidence: plan/context ownership tables name global and membership handlers, repository/transaction boundaries, negative mutation rules, unit/integration owners, and the `EventLocationPrivacyArchitectureTests` dependency prohibition.
 
 ## Phase 1: Domain Model
 
-- [ ] **ELP-100 — Add normalized LocationKind lookup**
-  - Paths: `src/Explore.Domain/LocationKind.cs`, enum/master-code companion following existing lookup convention, Domain tests.
+- [x] **ELP-100 — Add normalized LocationKind lookup**
+  - Paths: `src/Explore.Domain/LocationKind.cs`, `Enums/LocationKindEnum.cs`, EF configuration/DbSet, repair seeder, and focused Domain/Persistence tests.
   - Values: `UNCLASSIFIED`, `COMMERCIAL_VENUE`, `PUBLIC_SPACE`, `COMMUNITY_VENUE`, `PRIVATE_HOME`.
   - Result: stable int lookup; no behavior grants disclosure by kind.
+  - Evidence: IDs 1-5 map to `UNCLASSIFIED`, `COMMERCIAL_VENUE`, `PUBLIC_SPACE`, `COMMUNITY_VENUE`, and `PRIVATE_HOME`; Domain 2/2, Persistence 2/2, PostgreSQL startup/idempotency 1, and Domain/Persistence builds have 0 errors.
 
-- [ ] **ELP-110 — Add normalized LocationPrivacyState and audience lookups**
-  - Paths: `src/Explore.Domain/LocationPrivacyState.cs`, `LocationDisclosureAudience.cs`, Domain tests.
+- [x] **ELP-110 — Add normalized LocationPrivacyState and audience lookups**
+  - Paths: `src/Explore.Domain/LocationPrivacyState.cs`, `LocationDisclosureAudience.cs`, enum companions, EF configurations/DbSets, repair seeder, and focused Domain/Persistence tests.
   - Values: NotProvided/Active/Erased and Never/AnyCurrentRegistrant/ConfirmedParticipant.
   - Result: backend values are stable and separate from UI labels.
+  - Evidence: state IDs 1-3 map to `NOT_PROVIDED`, `ACTIVE`, `ERASED`; audience IDs 1-3 map to `NEVER`, `ANY_CURRENT_REGISTRANT`, `CONFIRMED_PARTICIPANT`. The idempotent repair method is tested directly; global seeder activation is deferred until ELP-230A creates the tables, and the expected EF pending-model check remains open with that migration.
 
-- [ ] **ELP-120 — Implement Location lifecycle and consent-backed Home ownership**
-  - Paths: `src/Explore.Domain/Location.cs`, `LocationPii.cs`, planned ownership-transfer domain records/commands, Domain tests.
+- [x] **ELP-120 — Implement Location lifecycle and consent-backed Home ownership**
+  - Paths: `src/Explore.Domain/Location.cs`, `LocationPii.cs`, `LocationRoom.cs`, `LocationOwnershipConsent.cs`, Domain tests.
   - Change: kind/state/owner/erasure fields; `EraseOwnedPii()` tombstone; reject PII recreation; current-user default owner; explicit consent transfer.
   - Result: irreversible aggregate lifecycle with optimistic concurrency.
+  - Evidence: `LocationPrivacyLifecycleTests` prove optional PII, same-aggregate attachment, owner-stable Private Home classification, versioned explicit transfer consent, irreversible erasure, unique room tombstones, identifying-label restoration rejection, and replacement-by-new-Location behavior. The combined lifecycle/EventLocation Domain category passed 50/50; Domain Release build and architecture/hygiene/naming gates were green, followed by a clean independent re-review.
 
-- [ ] **ELP-125 — Add canonical first-class EventLocation and migrate aggregate references conceptually**
-  - Paths: planned `src/Explore.Domain/EventLocation.cs`; existing EventSession, EventSessionGroup, EventAgendaItem, EventSessionAgendaItem, and LocationRoom entities.
-  - Change: field selections, audience, reveal time, review flag, policy version, concurrency/audit/soft-delete; nullable EventLocationId references prepared for migration.
+- [x] **ELP-125 — Add canonical first-class EventLocation and migrate aggregate references conceptually**
+  - Paths: `src/Explore.Domain/EventLocation.cs`; EventSession, EventSessionGroup, EventAgendaItem, EventSessionAgendaItem, and their persistence configurations.
+  - Change: field selections, audience, reveal time, review flag, policy version, concurrency/audit/soft-delete; nullable `LocationId` only for explicit TBA with a database XOR; nullable EventLocationId references prepared for migration.
+  - Integrity: retain internal physical LocationId on session/group/agenda carriers where composite room-containment and GiST overlap rules require it; constrain it to match EventLocation and never expose it as public authority.
   - Lifecycle: server fail-closed creation; final detach soft-delete; reattach fresh association.
   - Result: every event-local physical place is mediated by one EventLocation.
+  - Evidence: `EventLocationTests` prove UUIDv7 identity/concurrency, immutable tenant/event/physical identity, exactly-one physical-or-TBA shape, fail-closed v1 policy, independent per-event policies, terminal detach, and publication readiness. EventSession, EventSessionGroup, EventAgendaItem, and EventSessionAgendaItem now carry authoritative EventLocationId and clear stale physical room keys on TBA/physical changes; database cross-table enforcement remains explicitly owned by ELP-230A.
 
-- [ ] **ELP-130 — Encode contextual field matrix including rooms and operational secrets**
-  - Paths: `src/Explore.Application/Services/EventLocationDisclosureEvaluator.cs` tests, `docs/DOMAIN.md`, `docs/SECURITY-MODEL.md`.
+- [x] **ELP-130 — Encode contextual field matrix including rooms and operational secrets**
+  - Paths: `src/Explore.Application/DTOs/Location/EventLocationDisclosureContract.cs` and `tests/Event.Application.UnitTests/Services/EventLocationDisclosureContractTests.cs`; ELP-310 owns evaluator implementation and ELP-740 owns canonical documentation.
   - Cases: country/timezone baseline; city/name/room contextual; room description management-only; exact derivatives sensitive; access instructions never public; Private Home generic label.
   - Result: field decisions are explicit and executable, not inferred from table location.
+  - Evidence: `EventLocationDisclosureContractTests` passed 17/17 across all 16 fields and Public/Attendee/Management ceilings. One contract owns derivative source authority, timezone fails closed pending explicit policy, operational secrets have no route purpose, and public Private Home output permits only `Private venue` with no city/room/address/postcode/coordinates/derivatives.
 
-- [ ] **ELP-140 — Add EventLocation policy and exact-read audit models**
-  - Paths: planned `src/Explore.Domain/EventLocationDisclosureAudit.cs`, exact-read security audit model in the established audit layer, tests.
-  - Result: append-only old/new policy and audience/version audit plus PII-free exact-read audit; no address values.
+- [x] **ELP-140 — Add EventLocation policy and exact-read audit models**
+  - Paths: `src/Explore.Domain/EventLocationDisclosureAudit.cs`, `EventLocationExactReadAudit.cs`, `LocationPrivacyErasureAuthorityIntent.cs`, `LocationPrivacyErasureReplayCheckpoint.cs`, typed privacy-audit enums, and tests.
+  - Result: append-only old/new policy and audience/version audit, UUIDv7 idempotency/monotonic authority sequence facts, local checkpoint, plus PII-free exact-read audit; no address values.
+  - Evidence: typed closed reason/purpose enums, nonempty GUID trace/correlation IDs, immutable audit/intent/checkpoint records, and negative structural tests prevent durable free-text PII fields. Initial and changed policy evidence is aggregate-derived and contiguous; the combined Domain EventLocationPrivacy lane passed 62/62 before persistence and 63/63 after it.
 
-- [ ] **ELP-150 — Add explicit Location To Be Announced remediation state**
-  - Paths: `src/Explore.Domain/EventLocation.cs`, planned `tests/Event.Domain.UnitTests/EventLocationTests.cs`, and publication validation tests.
+- [x] **ELP-150 — Add explicit Location To Be Announced remediation state**
+  - Paths: `src/Explore.Domain/EventLocation.cs`, `tests/Event.Domain.UnitTests/EventLocationTests.cs`, and publication validation tests.
   - Result: `EventLocation.IsToBeAnnounced=true` is explicit, suppresses every physical-location field, permits publication without a usable physical venue, and is never inferred from erasure or missing PII; unusable required physical venues otherwise block publication.
+  - Evidence: Domain tests prove explicit TBA is publishable, while physical publication requires a tenant/identity-matching Active Location with nonblank address and postcode; missing, mismatched, NotProvided, Erased, or empty PII fails closed.
 
 ## Phase 2: Registration-Intent Access
 
-- [ ] **ELP-200 — Characterize registration intent lifecycle and null approval by mode**
-  - Paths: `src/Explore.Domain/EventRegistrationIntent.cs`, `EventRegistration.cs`, `Enums/RegistrationScopeEnum.cs`, `Services/Registration/RegistrationPolicyRules.cs`, registration handlers/repositories and tests.
-  - Result: table of effective Pending/Waitlisted/Confirmed/Rejected/Cancelled/Revoked states per registration mode; no guessed null semantics.
+The following ELP-200/210 tables are authoritative and synchronized with plan Section 7. `Approved` is the current persisted approval term; the disclosure resolver treats it as the `Confirmed`-equivalent effective state.
 
-- [ ] **ELP-210 — Add EventLocationRegistrationAccess immutable result and effective-state resolver**
-  - Paths: planned `src/Explore.Application/DTOs/Location/EventLocationRegistrationAccess.cs`, `src/Explore.Application/Contracts/Services/IEventLocationRegistrationAccessService.cs`, `src/Explore.Application/Services/EventLocationRegistrationAccessService.cs`, and `tests/Event.Application.UnitTests/Services/EventLocationRegistrationAccessServiceTests.cs`.
+| Registration mode when approval is null | Effective result | Disclosure consequence |
+|---|---|---|
+| `Open` | `Approved` (`Confirmed`-equivalent) | May qualify for attendee disclosure only after requested-placement scope coverage and every policy/governance/reveal gate pass. |
+| `ApprovalRequired` | `Pending` | Qualifies only for organizer-selected `ANY_CURRENT_REGISTRANT`; never for `CONFIRMED_PARTICIPANT`. |
+| `InviteOnly` | Deny unless a separate authority proves a valid invitation | No invitation authority exists today, so null approval denies registration and location access. |
+| `Closed` | Deny | Do not create an access-bearing intent. |
+
+| Persisted/lifecycle fact | Effective disclosure state | Location disclosure ceiling |
+|---|---|---|
+| `Approved` | `Confirmed` | Exact disclosure may proceed only when the intent scope covers the requested EventLocation placement and all remaining gates pass. |
+| `Pending` or `Waitlisted` | Same state | `ANY_CURRENT_REGISTRANT` only, with requested-placement coverage; never confirmed-participant authority. |
+| `Rejected`, `Cancelled`, or `Revoked` | Same terminal state | Deny. |
+| Soft-deleted or expired intent/registration | Non-live | Deny. |
+
+`ApprovalStatus` now persists stable `Cancelled=5`/`CANCELLED` and `Revoked=6`/`REVOKED` values. Partial cancellation removes only the cancelled child coverage while remaining live children keep the parent intent live; last-child cancellation synchronizes the parent terminal state. Pending/Approved consume capacity and terminal transitions release it. ELP-210 provides the immutable pure EventLocation entitlement result; ELP-225 still owns persistence-backed Event/Day/SessionSelection placement coverage.
+
+- [x] **ELP-200 — Characterize registration intent lifecycle and null approval by mode**
+  - Paths: `src/Explore.Domain/EventRegistrationIntent.cs`, `EventRegistration.cs`, `ApprovalStatus.cs`, `Enums/ApprovalStatusEnum.cs`, `Enums/RegistrationModeEnum.cs`, `Enums/RegistrationScopeEnum.cs`, `Services/Registration/RegistrationPolicyRules.cs`, registration handlers/repositories and tests.
+  - Result: the authoritative tables above are executable; stable persisted `Cancelled`/`Revoked` vocabulary lands before attendee authority, and null approval is never guessed.
+  - Security/capacity result: PATCH cannot reassign event, intent, or user identity. Attendees may DELETE only their own registration and never PATCH; organizer/admin management remains policy-authorized. Authorization enrichment captures persisted tenant/event/session/user ownership and the serializable repository transaction revalidates that snapshot against ownership races. Pending/Approved reserve capacity; leave/move/terminal transitions release it, and a full destination waitlists atomically. Child and parent terminal evidence remains synchronized.
+  - Evidence: approval rules at least 24, policy rules exactly 30, create handler at least 18, validator at least 9, update at least 11, PostgreSQL registration repository at least 16, intent repository at least 11, approval seeder at least 1, Persistence ELP 20, Domain ELP at least 30, own-cancel Application 22/22, PostgreSQL cancellation/race 8/8, real Cerbos 2/2, native Cerbos 461/461, architecture/parity 24/24, and full Release build 26 projects with 0 errors.
+
+- [x] **ELP-210 — Add EventLocationRegistrationAccess immutable result and effective-state resolver**
+  - Paths: `src/Explore.Application/Contracts/Services/EventLocationRegistrationAccess.cs`, `IEventLocationRegistrationAccessService.cs`, `src/Explore.Application/Services/EventLocationRegistrationAccessService.cs`, and `tests/Event.Application.UnitTests/Services/EventLocationRegistrationAccessServiceTests.cs`.
   - Fields: intent ID, scope, effective state, event/day/session coverage, requested EventLocation coverage.
-  - Result: one fail-closed entitlement fact for the evaluator.
+  - Result: one fail-closed entitlement fact for the evaluator; it applies the tables above, ignores cancelled child coverage, and denies a non-live parent.
+  - Evidence: `EventLocationRegistrationAccessServiceTests` passed 42/42. The sealed result has a non-public constructor; the pure resolver validates identity/coverage, maps Approved to Confirmed, resolves null by registration mode, caps Pending/Waitlisted at AnyCurrentRegistrant, and denies terminal, deleted, expired, non-live, malformed, or uncovered facts. Repositories do not return this authority fact.
 
 - [ ] **ELP-225 — Implement Event, Day, and SessionSelection EventLocation coverage**
   - Paths: planned `src/Explore.Application/Services/EventLocationRegistrationAccessService.cs`, `src/Explore.Application/Contracts/Persistence/IEventRegistrationRepository.cs`, `src/Explore.Persistence/Repositories/EventRegistrationRepository.cs`, `tests/Event.Application.UnitTests/Services/EventLocationRegistrationAccessServiceTests.cs`, and Persistence integration tests.
@@ -134,38 +181,44 @@
 
 - [ ] **ELP-230A — Generate focused expand migration**
   - Paths: planned configurations `LocationKindConfiguration.cs`, `LocationPrivacyStateConfiguration.cs`, `LocationDisclosureAudienceConfiguration.cs`, `EventLocationConfiguration.cs`, `EventLocationDisclosureAuditConfiguration.cs`; `ExploreDbContext.cs`, `ExploreDbContext.QueryFilters.cs`, generated migration/snapshot.
-  - Change: lookup seeds, Location lifecycle columns, optional PII, EventLocation/audit/ledger tables, nullable EventLocationId references, indexes/checks/tenant-safe FKs.
+  - Change: lookup seeds, Location lifecycle columns, optional PII, EventLocation/audit/local replay-checkpoint tables, nullable EventLocationId references, TBA/location XOR, filtered uniqueness, indexes/checks/tenant-safe consistency FKs. The separate authority database is provisioned/backed up independently and is not created by application EF migration.
   - Result: additive schema supports fail-closed dual-write with valid Down before irreversible activation.
-  - Verify: generated SQL reviewed for locks, defaults, tenant keys, UUIDv7, concurrency, and rollback.
+  - Verify: generated SQL reviewed for locks, defaults, tenant keys, UUIDv7, concurrency, local checkpoint, and rollback; `Database:Migrations:EventLocationPrivacyStage=Expand|Backfill|Contract` is required while ELP migrations are pending, and a missing/invalid selector cannot auto-apply backfill/contract.
 
 - [ ] **ELP-230B — Implement idempotent Unclassified and EventLocation backfill**
   - Paths: generated `src/Explore.Persistence/Migrations/*_BackfillUnclassifiedEventLocations.cs`, EF snapshot, and planned `tests/Event.Persistence.IntegrationTests/Migrations/EventLocationBackfillTests.cs`.
-  - Rules: every legacy Location => Unclassified; unique tenant/event/location EventLocation; country only; city only with recorded continuity exception; all other fields false; audience Never; NeedsPrivacyReview true; never infer Home/owner.
+  - Rules: every legacy Location => Unclassified; PII present => Active, PII absent => NotProvided, never legacy Erased; unique tenant/event/location EventLocation; country only; city only with recorded continuity exception; all other fields false; audience Never; NeedsPrivacyReview true; never infer Home/owner.
   - Result: repeat-safe backfill plus unresolved review metrics.
+  - Gate: operator-selected `Backfill` target; zero-gap verification succeeds before policy activation.
 
 - [ ] **ELP-230C — Validate zero-gap data and contract old references**
   - Paths: focused contract migration, verification SQL in `docs/OPERATIONS.md`, integration tests.
   - Gate: zero missing EventLocationId, orphan, duplicate active pair, tenant mismatch, invalid Home state, resurrected Erased PII.
-  - Result: required EventLocation references and removal of obsolete physical event-local references only after all consumers migrate.
+  - Result: required EventLocation references and obsolete public/contract references removed only after all consumers migrate; internal physical scheduling IDs required for composite room/GiST integrity remain consistency-constrained.
+  - Gate: operator-selected `Contract` target runs only in W18 after ELP-420A client adoption and all consumers; automatic startup migration cannot collapse A/B/C. ELP-420B regenerates the final client afterward.
 
-- [ ] **ELP-240 — Add EventLocation repositories and bounded batch loading**
-  - Paths: planned `src/Explore.Application/Contracts/Persistence/IEventLocationRepository.cs`, `src/Explore.Persistence/Repositories/EventLocationRepository.cs`, repository registration, tests.
+- [x] **ELP-240 — Add EventLocation repositories and bounded batch loading**
+  - Paths: `src/Explore.Application/Contracts/Persistence/IEventLocationRepository.cs`, `src/Explore.Persistence/Repositories/EventLocationRepository.cs`, related audit/checkpoint contracts and repositories, registration, and tests.
   - Result: entity-returning, AsNoTracking read batches; tracked mutation; tenant-safe unique active association; no DTO projection.
+  - Evidence: Application persistence contracts and repositories cover EventLocation, disclosure audit, exact-read audit, and replay checkpoint without DTO, `IQueryable`, or DbContext leakage. Reads are bounded/ordered/no-tracking, mutations tracked, and missing tenant context fails closed. Repository integration passed 12/12 and relational model verification passed 1/1; SaveChanges rejects tenant/event/location/room/parent-session mismatches across all four carriers pending ELP-230A database triggers.
 
 - [ ] **ELP-250 — Add named global privacy-erasure repository query**
   - Paths: `ILocationRepository.cs`, `LocationRepository.cs`, `ExploreDbContext.QueryFilters.cs`, architecture and PostgreSQL tests.
   - Rule: explicit tenant-filter bypass strictly bounded by OwnerUserId and PrivateHome; no general unrestricted query.
   - Result: all current/former-tenant owned Homes found without cross-user leakage.
 
-- [ ] **ELP-260 — Persist policy audit, erasure ledger, and concurrency**
-  - Paths: planned repositories/configurations for EventLocation audit and erasure ledger, tests.
-  - Result: xmin/concurrency conflicts produce stable API errors; policy versions monotonic; audit payloads PII-free.
+- [x] **ELP-260 — Persist policy audit, authority client/checkpoint, and concurrency**
+  - Paths: EventLocation audit/exact-read/checkpoint repositories and configurations; `src/Explore.Application/Contracts/LocationPrivacy/`; `src/Explore.Infrastructure/Privacy/ErasureAuthority/`; two-database integration tests.
+  - Result: concurrency-token conflicts produce stable API errors; UUIDv7 append is idempotent, authority sequence/checkpoint are monotonic, app restore cannot overwrite independently retained authority facts, and payloads are PII-free.
+  - Persistence evidence: EventLocation creation atomically writes truthful aggregate-derived `0→1` `AssociationCreated` audit; later writes require contiguous versions matching the aggregate and competing writers yield one winner plus stable `concurrent_update`. Disclosure/exact-read audits and checkpoints are tenant-filtered and append-oriented. Persistence repository passed 12/12, model 1/1, Domain EventLocationPrivacy 63/63, and final independent persistence review returned PASS with no high/medium finding.
+  - Separate-authority evidence: `ILocationPrivacyErasureAuthority` and `PostgreSqlLocationPrivacyErasureAuthority` use typed PII-free facts and an independently configured PostgreSQL database. A dedicated NOLOGIN owner exposes fixed-search-path `SECURITY DEFINER` append/read functions to execute-only runtime; transactional counter allocation is globally serialized, UUIDv7 RFC variant is checked in client/Domain/SQL, normalized duplicates are idempotent, mismatched duplicates reject, server owns UTC metadata, and reads are ordered/bounded to 500. PostgreSQL authority tests passed 16/16 across concurrency, rollback/failed insert, ambiguous acknowledgement, cancellation, runtime table/counter denial, and application-database recreation; final authority re-review returned PASS.
 
 ## Phase 4: Application Disclosure Authority
 
-- [ ] **ELP-300 — Add purpose-specific EventLocation DTOs and requests**
-  - Paths: `src/Explore.Application/DTOs/Location/` planned public, attendee, management, update, request, and result records.
+- [x] **ELP-300 — Add purpose-specific EventLocation DTOs and requests**
+  - Paths: `src/Explore.Application/DTOs/Location/EventLocationDisclosureContract.cs`, `EventLocationDisclosureRequest.cs`, `EventLocationDisclosureResult.cs`, and `EventLocationDtos.cs`.
   - Result: public DTO exposes EventLocationId only; attendee/management shapes are separate; no generic exact LocationDto reuse.
+  - Evidence: separate public, attendee, management, policy-update, internal request, and constrained result contracts use closed purpose-specific factories. Public exposes EventLocationId but no physical LocationId; suppressed Hidden/TBA/unavailable/review states cannot carry values. Disclosure contract tests passed 17/17 and final security/code-quality reviews found no high/medium issue.
 
 - [ ] **ELP-310 — Implement pure EventLocationDisclosureEvaluator with exhaustive tests**
   - Paths: `src/Explore.Application/Services/EventLocationDisclosureEvaluator.cs`, unit tests.
@@ -176,9 +229,10 @@
   - Paths: `src/Explore.Application/Contracts/Services/IEventLocationDisclosureService.cs`, `Services/EventLocationDisclosureService.cs`, request/result records, unit/integration tests.
   - API: `ResolveManyAsync(IReadOnlyCollection<EventLocationDisclosureRequest>, CancellationToken)`.
   - Result: deduplicated immutable EventLocationId-keyed result; bounded association/location+PII/room/registration/governance queries; one batched manager authorization; no N+1.
+  - Dependencies: ELP-340 governance and ELP-350 batched manager authorization are complete.
 
-- [ ] **ELP-320 — Migrate public session/program/agenda/calendar projections**
-  - Paths: public EventSession query handlers, `GetEventProgramSummaryRequestHandler.cs`, `GetEventCalendarExportRequestHandler.cs`, agenda handlers, `EventSessionMappingProfile.cs`.
+- [ ] **ELP-320 — Migrate public session/program/agenda backend projections**
+  - Paths: public EventSession query handlers, `GetEventProgramSummaryRequestHandler.cs`, agenda handlers, `EventSessionMappingProfile.cs`; ELP-440 owns calendar builders/routes and ELP-650 owns JSON-LD.
   - Result: no direct Location/PII/room mapping; batch disclosure used once per response.
 
 - [ ] **ELP-330 — Migrate event/location creation and attachment commands to server-created fail-closed EventLocation**
@@ -199,9 +253,11 @@
 
 ## Phase 5: API, HAL, and Contracts
 
-- [ ] **ELP-400 — Add route-level authorization/cache characterization tests**
+- [x] **ELP-400 — Add route-level authorization/cache characterization tests**
   - Paths: Event/Location API integration tests.
   - Cases: anonymous/auth-cookie equivalence, unauthorized attendee/manager, no-store headers, tenant mismatch, stale policy version.
+  - Result: Stage-A public responses are identical across anonymous/authenticated principals and physical values are absent; generic Location/room and temporary managed event routes require resource authorization, reject cross-tenant/cross-event enumeration, and send `private, no-store`. Final EventLocation stale-policy-version behavior remains with ELP-405/810.
+  - Evidence: managed/API ELP 19/19, API public ELP 11/11, public eligibility 2, native Cerbos 461/461, language security 3/3 plus handler 5/5/controller 2/2, and API Release build 7 projects with 0 errors/0 warnings.
 
 - [ ] **ELP-405 — Implement exact public/attendee/management route split**
   - Paths: planned `src/Explore.API/Controllers/EventLocationController.cs` and `src/Explore.API/Hateoas/RouteNames.cs`.
@@ -212,9 +268,14 @@
   - Paths: planned `Hateoas/Policies/EventLocationLinkPolicy.cs`, `Hateoas/Assemblers/EventLocationResourceAssembler.cs`, `Extensions/HateoasAssemblerRegistration.cs`, tests.
   - Result: server-authorized edit/disclosure/owner-transfer/remediation links; no client role logic.
 
-- [ ] **ELP-420 — Update OpenAPI/HAL schema and regenerate NSwag client**
+- [ ] **ELP-420A — Generate additive OpenAPI/HAL schema and NSwag client**
   - Paths: `OpenApi/HalOpenApiSchemaCatalog.cs`, API changelog, generated `Explore.Blazor.Client/Clients/EventApiClient.g.cs`, serializer context.
-  - Result: purpose-specific contracts and EventLocationId; generated artifacts clean and never hand-edited.
+  - Result: purpose-specific additive contracts and EventLocationId are available for ELP-600 adoption; generated artifacts clean and never hand-edited.
+
+- [ ] **ELP-420B — Regenerate and prove final OpenAPI/HAL contract**
+  - Dependencies: every backend and Blazor consumer uses purpose-specific contracts, ELP-230C contracted persistence, and ELP-430 removed obsolete anonymous exact routes/contracts.
+  - Paths: the ELP-420A artifacts, API inventory/snapshots, and generated-client cleanliness checks.
+  - Result: obsolete generic event-location schemas have zero consumers and final generation is clean; generated artifacts match the contracted runtime.
 
 - [ ] **ELP-430 — Remove generic anonymous exact Location detail and obsolete contracts**
   - Paths: `LocationController.cs`, old Location DTO endpoints/assemblers/policies after consumer migration.
@@ -228,11 +289,12 @@
 
 - [ ] **ELP-500 — Add adversarial transaction and cross-tenant erasure tests first**
   - Paths: `tests/Event.Application.UnitTests/Features/Users/Commands/DeleteUserCommandHandlerTests.cs`, Persistence integration tests.
-  - Cases: two tenants/former memberships; room/name tombstone; rollback; crash-after-commit; membership removal; discovery derivative; no PII in outbox.
+  - Cases: authority unavailable; duplicate/ambiguous UUIDv7 append; crash after authority append before app commit; app rollback leaves authority intent pending; crash after app commit; sequence-zero fresh-DB replay; two tenants/former memberships; room/name tombstone; membership removal; discovery derivative; no PII in authority/outbox.
 
 - [ ] **ELP-505 — Implement global cross-tenant Home erasure and durable tombstones**
-  - Paths: `src/Explore.Application/Features/Users/Handlers/Commands/DeleteUserCommandHandler.cs`, planned `src/Explore.Application/Contracts/Persistence/IGlobalLocationPrivacyErasureRepository.cs`, `src/Explore.Persistence/Repositories/GlobalLocationPrivacyErasureRepository.cs`, `src/Explore.Domain/Location.cs`, `src/Explore.Persistence/Repositories/LocationRepository.cs`, `src/Explore.Domain/LocationErasureLedgerEntry.cs`, and its repository/configuration.
-  - Result: one v1 transaction finds all OwnerUserId Homes across tenants, erases/tombstones, clears owner, preserves durable references, and completes user erasure.
+  - Paths: `src/Explore.Application/Features/Users/Handlers/Commands/DeleteUserCommandHandler.cs`, planned erasure-authority client contract/Infrastructure adapter, `IGlobalLocationPrivacyErasureRepository.cs`, `GlobalLocationPrivacyErasureRepository.cs`, `Location.cs`, `LocationRepository.cs`, local replay checkpoint repository/configuration, and two-database tests.
+  - Result: fail closed when authority is unavailable; append immutable PII-free UUIDv7-idempotent monotonic-sequence intent first; then one app-DB transaction erases/tombstones all OwnerUserId Homes across tenants, clears owner, preserves references, writes local checkpoint/correction outbox, and completes user erasure. Success is returned only after app commit; pending authority intent makes a pre-commit crash replay-safe.
+  - Atomic lane: implement and verify together with ELP-515; neither task can be checked independently.
 
 - [ ] **ELP-510 — Separate tenant membership removal from global deletion**
   - Paths: planned `src/Explore.Application/Features/TenantUsers/Requests/Commands/RemoveTenantMembershipCommand.cs`, `src/Explore.Application/Features/TenantUsers/Handlers/Commands/RemoveTenantMembershipCommandHandler.cs`, authorization descriptor/policy beside that feature, and `tests/Event.Application.UnitTests/Features/TenantUsers/Commands/RemoveTenantMembershipCommandHandlerTests.cs`.
@@ -241,7 +303,8 @@
 - [ ] **ELP-515 — Persist privacy correction outbox inside the erasure transaction**
   - Paths: `src/Explore.Application/Services/LocationPrivacyOutboxMessageFactory.cs`, `IOutboxRepository.cs`, `DeleteUserCommandHandler.cs`, tests.
   - Messages: `LocationPiiErased` and required external-correction intents with IDs/versions only.
-  - Result: rollback preserves PII and creates no message; committed erasure always has durable outbox rows before cache eviction.
+  - Result: app rollback preserves PII/checkpoint/outbox while the authority intent remains pending; committed app erasure always has its local checkpoint and durable outbox rows before cache eviction.
+  - Atomic lane: same app-DB transaction and evidence as ELP-505 after the authority-first append; neither task can be checked independently.
 
 - [ ] **ELP-520 — Verify concrete correction dispatch, idempotency, retry, and dead-letter recovery**
   - Paths: `src/Explore.Infrastructure/Messaging/CompositeOutboxMessageDispatcher.cs`, planned concrete location-privacy correction dispatcher/service, `InfrastructureServicesRegistration.cs`, `tests/Explore.Infrastructure.Tests/Infrastructure/CompositeOutboxMessageDispatcherTests.cs`, API outbox dead-letter tests.
@@ -249,8 +312,8 @@
 
 - [ ] **ELP-525 — Add backup/restore erasure replay runbook and pre-traffic gate**
   - Paths: `docs/OPERATIONS.md`, planned `src/Explore.Application/Contracts/Services/ILocationErasureReplayService.cs`, `src/Explore.Infrastructure/Services/Privacy/LocationErasureReplayService.cs`, `src/Explore.API/BackgroundServices/LocationPrivacyStartupGate.cs`, registration in `src/Explore.API/Program.cs`, and integration/operational tests.
-  - Content: retention limits, external erasure ledger, replay before traffic, cache/index purge, correction replay, evidence SQL, failure incident path.
-  - Result: older backup cannot serve resurrected Home PII.
+  - Content: retention limits; separately retained/backed-up PostgreSQL authority database outside app restore set; immutable intents and monotonic sequence; local checkpoint; sequence-zero fresh-DB replay before traffic; independent physical-cluster restore/authority overlay; cache/index purge; correction replay; evidence SQL; failure incident path.
+  - Result: older/fresh app database cannot serve resurrected Home PII; authority unavailable fails startup closed; API, BFF proxying, MCP, outbox/workers, and readiness all remain blocked on continuity/replay evidence.
 
 - [ ] **ELP-530 — Implement post-erasure EventLocation remediation workflow**
   - Paths: EventLocation review query/commands, notification outbox, publication validator, admin dashboard API, tests.
@@ -295,9 +358,9 @@
 
 ## Phase 8: Outbound Surfaces, Discovery, and Documentation
 
-- [ ] **ELP-700 — Migrate session/program/agenda/JSON-LD and both calendar surfaces**
-  - Paths: handlers/components identified in context and ELP-020 inventory.
-  - Result: batch disclosure authority used; public vs attendee purpose cannot drift.
+- [ ] **ELP-700 — Prove shared projection convergence and remove remaining bypasses**
+  - Paths: negative source scan and focused regression tests across ELP-320-owned session/program/agenda handlers, ELP-440-owned calendars, and ELP-650-owned JSON-LD/copy.
+  - Result: no direct physical Location/PII/room mapping remains and public vs attendee purpose cannot drift; this task verifies owners rather than duplicating their implementation.
 
 - [ ] **ELP-715 — Audit email, notification, webhook, export, ticket, search, API-key, print, and report surfaces**
   - Paths: every concrete producer/serializer discovered from ELP-020; add tests beside each owner.
@@ -309,7 +372,7 @@
 
 - [ ] **ELP-730 — Enforce PostGIS/discovery separation and erasure behavior**
   - Paths: Home Discovery docs and future discovery entity/service only if already in implementation scope; tests.
-  - Result: no PII auto-copy, Private Home no point by default, erasure transactional cleanup, EventLocation/occurrence server-side joins, no exact client catalog.
+  - Result: current implementation records architecture/source absence proof because no `LocationDiscoveryPoint` store exists; if one enters scope later, prove no PII auto-copy, Private Home no point by default, transactional erasure cleanup, EventLocation/occurrence server-side joins, and no exact client catalog.
 
 - [ ] **ELP-740 — Update canonical architecture/security/API/domain/privacy/federation/testing docs**
   - Paths: docs listed in plan Section 3, API changelog, AI matrix/registry, Home Discovery overlap.
@@ -336,29 +399,29 @@
 
 ## Mandatory Acceptance Matrix
 
-| Acceptance case | Primary task |
-|---|---|
-| Unknown legacy becomes Unclassified, never Public | ELP-230B |
-| Active Home owner valid; non-erased ownerless invalid; Erased ownerless/PII-less valid; resurrection rejected | ELP-060 / ELP-120 |
-| Person/household venue and room labels/descriptions tombstoned and never public | ELP-130 / ELP-505 |
-| Same physical Location has independent per-event policies | ELP-125 |
-| Public contract exposes EventLocationId, not unrestricted LocationId | ELP-300 / ELP-405 |
-| Event/Day/SessionSelection coverage is exact | ELP-225 |
-| Pending/waitlisted broad only; cancelled/revoked/deleted deny; null resolved by mode | ELP-200 / ELP-225 |
-| Homes in two tenants are both globally erased | ELP-500 / ELP-505 |
-| Membership removal does not erase global/other-tenant data | ELP-070 / ELP-510 |
-| Rollback leaves PII and outbox unchanged; post-commit crash finds outbox | ELP-500 / ELP-515 |
-| Public endpoint remains public-only with auth cookie | ELP-400 / ELP-405 |
-| Attendee/management are private/no-store | ELP-400 / ELP-405 |
-| Tightened policy/governance defeats stale cache | ELP-340 / ELP-810 |
-| Public calendar public-only; attendee calendar authorized/no-store | ELP-440 / ELP-700 |
-| Email/webhook/export/ticket/search/report cannot bypass authority | ELP-715 |
-| Concrete correction dispatcher is idempotent/retryable/dead-letter visible | ELP-520 |
-| Backup restore replays erasure before traffic | ELP-525 |
-| Discovery point is never auto-created from PII and erases transactionally | ELP-730 |
-| Batch projection stays within query/auth count budget | ELP-315 |
-| Server time controls reveal and cannot bypass entitlement | ELP-310 / ELP-340 |
-| Private Home safe default is generic public label plus ConfirmedParticipant | ELP-110 / ELP-310 |
+| Acceptance case | Primary task | Primary automated owner |
+|---|---|---|
+| Unknown legacy becomes Unclassified, never Public; PII presence maps only to Active/NotProvided | ELP-230B | `EventLocationBackfillTests` in Persistence Integration |
+| Active Home owner valid; non-erased ownerless invalid; Erased ownerless/PII-less valid; resurrection rejected | ELP-120 | `LocationPrivacyLifecycleTests` in Domain Unit |
+| Person/household venue and room labels/descriptions tombstoned and never public | ELP-130 / ELP-505 | `GlobalLocationPrivacyErasureTests` in Persistence Integration |
+| Same physical Location has independent per-event policies; TBA/location XOR holds | ELP-125 / ELP-150 | `EventLocationTests` in Domain Unit |
+| Public contract exposes EventLocationId, not unrestricted LocationId | ELP-300 / ELP-405 | `EventLocationControllerTests` in API Integration |
+| Event/Day/SessionSelection coverage is exact | ELP-225 | `EventLocationRegistrationAccessServiceTests` in Application Unit |
+| Pending/waitlisted broad only; cancelled/revoked/deleted deny; null resolved by mode | ELP-200 / ELP-225 | `EventLocationRegistrationAccessServiceTests` in Application Unit |
+| Homes in two tenants are both globally erased | ELP-500 / ELP-505 | `GlobalLocationPrivacyErasureTests` in Persistence Integration |
+| Membership removal does not erase global/other-tenant data | ELP-070 / ELP-510 | `RemoveTenantMembershipCommandHandlerTests` in Application Unit |
+| Authority intent remains immutable across app rollback; PII/checkpoint/outbox roll back; retry/replay is idempotent; post-commit crash finds checkpoint/outbox | ELP-500 / ELP-505 / ELP-515 | `GlobalLocationPrivacyErasureTests` in Persistence Integration |
+| Public endpoint remains public-only with auth cookie | ELP-400 / ELP-405 | `EventLocationControllerTests` in API Integration |
+| Attendee/management are private/no-store | ELP-400 / ELP-405 | `EventLocationControllerTests` in API Integration |
+| Tightened policy/governance defeats stale cache | ELP-340 / ELP-810 | `EventLocationGovernanceTests` in API Integration |
+| Public calendar public-only; attendee calendar authorized/no-store | ELP-440 | `EventCalendarPrivacyTests` in API Integration |
+| Email/webhook/export/ticket/search/report cannot bypass authority | ELP-715 | Focused test beside every ELP-020 inventory owner |
+| Concrete correction dispatcher is idempotent/retryable/dead-letter visible | ELP-520 | `CompositeOutboxMessageDispatcherTests` in Infrastructure plus API dead-letter tests |
+| Separate authority survives app restore; fresh app DB replays sequence zero before every traffic/worker surface; unavailability fails closed | ELP-525 | `LocationPrivacyStartupGateTests` in API Integration |
+| Discovery data is absent today or never auto-created from PII and erases transactionally | ELP-730 | Architecture absence proof or `LocationDiscoveryPrivacyTests` in Persistence Integration |
+| Batch projection stays within query/auth count budget | ELP-315 | `EventLocationDisclosureBatchTests` in Persistence Integration |
+| Server time controls reveal and cannot bypass entitlement | ELP-130 / ELP-310 / ELP-340 | `EventLocationDisclosureEvaluatorTests` in Application Unit |
+| Private Home safe default is generic public label plus ConfirmedParticipant | ELP-110 / ELP-310 | `EventLocationDisclosureEvaluatorTests` in Application Unit |
 
 ## Implementation Completion Evidence
 
