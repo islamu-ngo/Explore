@@ -145,6 +145,17 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
         csp.Should().Contain("base-uri 'self'");
         csp.Should().Contain("object-src 'none'");
         csp.Should().Contain("form-action 'self'");
+
+        var body = await response.Content.ReadAsStringAsync();
+        var nonceStart = csp.IndexOf("'nonce-", StringComparison.Ordinal);
+        nonceStart.Should().BeGreaterThanOrEqualTo(0);
+        nonceStart += "'nonce-".Length;
+        var nonceEnd = csp.IndexOf('\'', nonceStart);
+        nonceEnd.Should().BeGreaterThan(nonceStart);
+        var nonce = csp[nonceStart..nonceEnd];
+
+        body.Should().Contain($"<script type=\"importmap\" nonce=\"{nonce}\">");
+        body.Should().NotContain("http-equiv=\"Content-Security-Policy\"");
     }
 
     [Test]
@@ -270,7 +281,7 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
         response.Headers.GetValues("X-Content-Type-Options").Should().ContainSingle().Which.Should().Be("nosniff", path);
         response.Headers.GetValues("Referrer-Policy").Should().ContainSingle().Which.Should().Be("strict-origin-when-cross-origin", path);
         response.Headers.GetValues("Permissions-Policy").Should().ContainSingle().Which.Should().Be(
-            "camera=(), microphone=(), geolocation=(), payment=()",
+            "camera=(), microphone=(), geolocation=(self), payment=()",
             path);
     }
 

@@ -1,6 +1,7 @@
 // ABOUTME: Centralizes middleware pipeline configuration and graceful shutdown for the Blazor BFF server.
 // ABOUTME: Extracts forwarded headers, XSRF token distribution, startup redirect, and access token capture.
 
+using System.Security.Cryptography;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Middleware;
 using Explore.Blazor.Services;
@@ -13,11 +14,16 @@ namespace Explore.Blazor.Extensions;
 
 public static class MiddlewareExtensions
 {
-    private const string ContentSecurityPolicy =
+    internal const string ContentSecurityPolicyNonceItemKey = "Explore.Blazor.CspNonce";
+
+    private const string ContentSecurityPolicyPrefix =
         "default-src 'self'; " +
         "img-src 'self' data: https: blob:; " +
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-        "script-src 'self' 'wasm-unsafe-eval' 'unsafe-hashes' 'sha256-qnHnQs7NjQNHHNYv/I9cW+I62HzDJjbnyS/OFzqlix0='; " +
+        "script-src 'self' 'wasm-unsafe-eval' 'unsafe-hashes' 'sha256-qnHnQs7NjQNHHNYv/I9cW+I62HzDJjbnyS/OFzqlix0=' ";
+
+    private const string ContentSecurityPolicySuffix =
+        "; " +
         "connect-src 'self' https: http: ws: wss:; " +
         "font-src 'self' https://fonts.gstatic.com; " +
         "frame-ancestors 'none'; " +
@@ -25,7 +31,7 @@ public static class MiddlewareExtensions
         "object-src 'none'; " +
         "form-action 'self'";
 
-    private const string PermissionsPolicy = "camera=(), microphone=(), geolocation=(), payment=()";
+    private const string PermissionsPolicy = "camera=(), microphone=(), geolocation=(self), payment=()";
 
     /// <summary>
     /// Configures forwarded headers for reverse proxy / SSL termination (Coolify, Nginx).
@@ -62,7 +68,7 @@ public static class MiddlewareExtensions
     }
 
     /// <summary>
-    /// Distributes XSRF tokens via cookie on GET requests for the BFF antiforgery pattern.
+    /// Distributes XSRF tokens via cookie on non-static GET requests for the BFF antiforgery pattern.
     /// </summary>
     public static WebApplication UseAntiforgeryTokenMiddleware(this WebApplication app)
     {
@@ -165,10 +171,14 @@ public static class MiddlewareExtensions
 
     private static async Task AddBffSecurityHeadersAsync(HttpContext context, Func<Task> next)
     {
+        var nonce = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        context.Items[ContentSecurityPolicyNonceItemKey] = nonce;
+
         context.Response.OnStarting(() =>
         {
             var headers = context.Response.Headers;
-            headers[HeaderNames.ContentSecurityPolicy] = ContentSecurityPolicy;
+            headers[HeaderNames.ContentSecurityPolicy] =
+                $"{ContentSecurityPolicyPrefix}'nonce-{nonce}'{ContentSecurityPolicySuffix}";
             headers[HeaderNames.XFrameOptions] = "DENY";
             headers[HeaderNames.XContentTypeOptions] = "nosniff";
             headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
@@ -186,7 +196,8 @@ public static class MiddlewareExtensions
         IAntiforgery antiforgery,
         bool secureCookie)
     {
-        if (HttpMethods.IsGet(ctx.Request.Method))
+        if (HttpMethods.IsGet(ctx.Request.Method) &&
+            !System.IO.Path.HasExtension(ctx.Request.Path.Value))
         {
             var tokens = antiforgery.GetAndStoreTokens(ctx);
             if (!string.IsNullOrEmpty(tokens.RequestToken))
