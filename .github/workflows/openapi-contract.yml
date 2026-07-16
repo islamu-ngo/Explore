@@ -59,7 +59,8 @@ jobs:
             base_sha="HEAD~1"
           fi
 
-          relevant_files="$(printf '%s\n' "$changed_files" | grep -E '^(Explore\.API/.*\.(cs|csproj|json)$|Explore\.Application/.*\.cs$|Explore\.Domain/.*\.cs$|Event\.API\.IntegrationTests/.*\.(cs|csproj)$|Explore\.Blazor\.Client/(nswag\.json|Explore\.Blazor\.Client\.csproj|Clients/EventApiClient\.g\.cs)$|schemas/openapi_islamu-event\.json$|docs/API_CONTRACT_INVENTORY\.md$|docs/API_CONTRACT_TEST_DEBT\.md$|docs/API_CHANGELOG\.md$|Directory\.Packages\.props$|global\.json$|\.ci/spectral\.yaml$|\.ci/scripts/validate-api-contract-skip-inventory\.cs$|\.github/workflows/openapi-contract\.yml$)' || true)"
+          changed_files="$(git diff --name-only "$base_sha" "$GITHUB_SHA")"
+          relevant_files="$(printf '%s\n' "$changed_files" | grep -E '^(src/Explore\.API/.*\.(cs|csproj|json)$|src/Explore\.Application/.*\.cs$|src/Explore\.Domain/.*\.cs$|tests/Event\.API\.IntegrationTests/.*\.(cs|csproj)$|src/Explore\.Blazor\.Client/(nswag\.json|Explore\.Blazor\.Client\.csproj|Clients/EventApiClient\.g\.cs)$|schemas/openapi_islamu-event\.json$|docs/API_CONTRACT_INVENTORY\.md$|docs/API_CONTRACT_TEST_DEBT\.md$|docs/API_CHANGELOG\.md$|Directory\.Packages\.props$|global\.json$|\.ci/spectral\.yaml$|\.ci/scripts/validate-api-contract-skip-inventory\.cs$|\.github/workflows/openapi-contract\.yml$)' || true)"
 
           if [ -n "$relevant_files" ]; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
@@ -217,24 +218,29 @@ jobs:
             enforce_changelog=false
           fi
 
-          .tools/oasdiff/oasdiff breaking \
+          if .tools/oasdiff/oasdiff breaking \
             --allow-external-refs=false \
             --fail-on ERR \
             --format markdown \
             artifacts/openapi-contract/base-openapi.json \
             schemas/openapi_islamu-event.json \
-            > artifacts/openapi-contract/oasdiff-breaking.md
-          markdown_exit=$?
+            > artifacts/openapi-contract/oasdiff-breaking.md; then
+            markdown_exit=0
+          else
+            markdown_exit=$?
+          fi
 
-          .tools/oasdiff/oasdiff breaking \
+          if .tools/oasdiff/oasdiff breaking \
             --allow-external-refs=false \
             --fail-on ERR \
             --format json \
             artifacts/openapi-contract/base-openapi.json \
             schemas/openapi_islamu-event.json \
-            > artifacts/openapi-contract/oasdiff-breaking.json
-          json_exit=$?
-          set -e
+            > artifacts/openapi-contract/oasdiff-breaking.json; then
+            json_exit=0
+          else
+            json_exit=$?
+          fi
 
           breaking_detected=false
           if [ "$markdown_exit" -ne 0 ] || [ "$json_exit" -ne 0 ]; then
@@ -270,22 +276,27 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/openapi-contract
 
-          npx --yes "@stoplight/spectral-cli@${SPECTRAL_VERSION}" lint \
+          if npx --yes "@stoplight/spectral-cli@${SPECTRAL_VERSION}" lint \
             schemas/openapi_islamu-event.json \
             --quiet \
             --ruleset .ci/spectral.yaml \
             --format json \
-            --output artifacts/openapi-contract/spectral-openapi.json
-          json_exit=$?
+            --output artifacts/openapi-contract/spectral-openapi.json; then
+            json_exit=0
+          else
+            json_exit=$?
+          fi
 
-          npx --yes "@stoplight/spectral-cli@${SPECTRAL_VERSION}" lint \
+          if npx --yes "@stoplight/spectral-cli@${SPECTRAL_VERSION}" lint \
             schemas/openapi_islamu-event.json \
             --quiet \
             --ruleset .ci/spectral.yaml \
             --format markdown \
-            --output artifacts/openapi-contract/spectral-openapi.md
-          markdown_exit=$?
-          set -e
+            --output artifacts/openapi-contract/spectral-openapi.md; then
+            markdown_exit=0
+          else
+            markdown_exit=$?
+          fi
 
           {
             echo "## Advisory OpenAPI Spectral Lint"
