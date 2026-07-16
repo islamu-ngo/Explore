@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Explore.Persistence.Schema;
 
-public static class EventLocationPrivacyMigrationStage
+internal static class EventLocationPrivacyMigrationStage
 {
     public const string ConfigurationKey = "Database:Migrations:EventLocationPrivacyStage";
     public const string Expand = "Expand";
