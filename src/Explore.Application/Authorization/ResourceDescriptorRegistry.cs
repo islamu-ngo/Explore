@@ -23,6 +23,7 @@ using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.GroupMember;
 using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.DTOs.Location;
+using Explore.Application.DTOs.LocationRoom;
 using Explore.Application.DTOs.Notification;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.OrganizationMember;
@@ -104,6 +105,8 @@ public static class ResourceDescriptorRegistry
         // Location
         [typeof(LocationDto)] = global::Explore.Application.Authorization.ResourceKinds.Location,
         [typeof(LocationListDto)] = global::Explore.Application.Authorization.ResourceKinds.Location,
+        [typeof(LocationRoomDto)] = global::Explore.Application.Authorization.ResourceKinds.LocationRoom,
+        [typeof(LocationRoomListDto)] = global::Explore.Application.Authorization.ResourceKinds.LocationRoom,
 
         // Indexed DID
         [typeof(IndexedDidDto)] = global::Explore.Application.Authorization.ResourceKinds.IndexedDid,

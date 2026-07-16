@@ -67,7 +67,7 @@ public sealed class LocationQueryHandlerCancellationTests
     }
 
     [Test]
-    public async Task GetEventSessionCreateContext_ForwardsCancellationTokenToLocationLookup()
+    public async Task GetEventSessionCreateContext_ForwardsCancellationTokenToEventScopedLookups()
     {
         var tenant = new Tenant
         {
@@ -90,19 +90,25 @@ public sealed class LocationQueryHandlerCancellationTests
         var eventRepository = Substitute.For<IEventRepository>();
         var roomRepository = Substitute.For<ILocationRoomRepository>();
         var groupRepository = Substitute.For<IEventSessionGroupRepository>();
+        var sessionRepository = Substitute.For<IEventSessionRepository>();
+        var agendaItemRepository = Substitute.For<IEventAgendaItemRepository>();
         var handler = new GetEventSessionCreateContextRequestHandler(
             eventRepository,
             _locationRepository,
             roomRepository,
-            groupRepository);
+            groupRepository,
+            sessionRepository,
+            agendaItemRepository);
         using var cancellation = new CancellationTokenSource();
 
         eventRepository.GetEventWithDetails(eventEntity.Id).Returns(eventEntity);
-        _locationRepository.GetLocationsByTenant(eventEntity.TenantId, cancellation.Token).Returns([]);
-        groupRepository.GetByEventAsync(eventEntity.Id, cancellation.Token).Returns([]);
+        groupRepository.GetActiveByEventAsync(eventEntity.Id, cancellation.Token).Returns([]);
+        sessionRepository.GetSessionsByEvent(eventEntity.Id).Returns([]);
+        agendaItemRepository.GetByEventAsync(eventEntity.Id, cancellation.Token).Returns([]);
 
         await handler.Handle(new GetEventSessionCreateContextRequest { EventId = eventEntity.Id }, cancellation.Token);
 
-        await _locationRepository.Received(1).GetLocationsByTenant(eventEntity.TenantId, cancellation.Token);
+        await groupRepository.Received(1).GetActiveByEventAsync(eventEntity.Id, cancellation.Token);
+        await agendaItemRepository.Received(1).GetByEventAsync(eventEntity.Id, cancellation.Token);
     }
 }
