@@ -1,0 +1,177 @@
+/* ABOUTME: Responsive, direction-safe presentation for the public featured-event hero. */
+/* ABOUTME: Uses design tokens and disables decorative transitions for reduced-motion users. */
+
+.hero-carousel {
+    position: relative;
+    block-size: clamp(20rem, 46vw, 32.5rem);
+    min-block-size: 20rem;
+    overflow: hidden;
+    border-radius: var(--isl-radius-xl, 1rem);
+    background: var(--isl-color-surface, var(--mud-palette-surface));
+    box-shadow: var(--isl-shadow-md);
+    color: var(--isl-overlay-text, #fff);
+    touch-action: pan-y;
+}
+
+.hero-carousel__viewport,
+.hero-carousel__slide {
+    block-size: 100%;
+}
+
+.hero-carousel__slide {
+    position: relative;
+    isolation: isolate;
+}
+
+.hero-carousel__slide[hidden] {
+    display: none;
+}
+
+.hero-carousel__image,
+.hero-carousel__scrim {
+    position: absolute;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+}
+
+.hero-carousel__image {
+    object-fit: cover;
+}
+
+.hero-carousel__scrim {
+    background: linear-gradient(0deg, rgb(0 0 0 / 0.9), rgb(0 0 0 / 0.08) 78%);
+}
+
+.hero-carousel__content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    block-size: 100%;
+    max-inline-size: 50rem;
+    padding-block: clamp(1.5rem, 4vw, 4rem) 4.5rem;
+    padding-inline: clamp(1.25rem, 5vw, 4.5rem);
+}
+
+.hero-carousel__format {
+    margin-block-end: 0.75rem;
+    padding-block: 0.25rem;
+    padding-inline: 0.65rem;
+    border-radius: var(--isl-radius-pill, 999px);
+    background: var(--isl-color-primary, var(--mud-palette-primary));
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.hero-carousel__title {
+    max-inline-size: 18ch;
+    margin: 0;
+    font-size: clamp(1.75rem, 5vw, 3.5rem);
+    line-height: 1.06;
+    text-wrap: balance;
+}
+
+.hero-carousel__metadata,
+.hero-carousel__description {
+    margin-block: 0.75rem 0;
+    text-shadow: 0 0.125rem 0.5rem rgb(0 0 0 / 0.55);
+}
+
+.hero-carousel__metadata {
+    font-weight: 650;
+}
+
+.hero-carousel__description {
+    display: -webkit-box;
+    max-inline-size: 60ch;
+    overflow: hidden;
+    opacity: 0.92;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.hero-carousel__link {
+    margin-block-start: 1.25rem;
+    padding-block: 0.7rem;
+    padding-inline: 1.15rem;
+    border-radius: var(--isl-radius-md, 0.5rem);
+    background: var(--isl-color-primary, var(--mud-palette-primary));
+    color: var(--isl-color-on-primary, #fff);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.hero-carousel__controls {
+    position: absolute;
+    z-index: 2;
+    inset-block-end: 1rem;
+    inset-inline-end: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.hero-carousel__control,
+.hero-carousel__counter {
+    border: 1px solid rgb(255 255 255 / 0.35);
+    background: rgb(0 0 0 / 0.58);
+    color: inherit;
+    backdrop-filter: blur(0.5rem);
+}
+
+.hero-carousel__control {
+    display: grid;
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    padding: 0;
+    border-radius: 50%;
+    cursor: pointer;
+    place-items: center;
+    font: inherit;
+    font-size: 1.75rem;
+}
+
+.hero-carousel__counter {
+    min-inline-size: 4rem;
+    padding-block: 0.45rem;
+    padding-inline: 0.65rem;
+    border-radius: var(--isl-radius-pill, 999px);
+    text-align: center;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.hero-carousel__control:hover,
+.hero-carousel__link:hover {
+    filter: brightness(1.12);
+}
+
+.hero-carousel__control:focus-visible,
+.hero-carousel__link:focus-visible {
+    outline: var(--isl-focus-ring-width, 2px) solid var(--isl-focus-ring-color, currentColor);
+    outline-offset: var(--isl-focus-ring-offset, 2px);
+}
+
+@media (max-width: 47.99rem) {
+    .hero-carousel__description {
+        display: none;
+    }
+
+    .hero-carousel__content {
+        padding-block-end: 4.75rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-carousel *,
+    .hero-carousel *::before,
+    .hero-carousel *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+}
