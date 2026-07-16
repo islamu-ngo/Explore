@@ -8,10 +8,12 @@ using Explore.Application.Behaviors;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventCustomPropertyProjections.Requests.Queries;
+using Explore.Application.Features.EventRegistrations.Requests.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Features.EventSessionCustomPropertyProjections.Requests.Queries;
 using Explore.Application.Features.OrganizationMembers.Requests.Queries;
@@ -447,6 +449,155 @@ public class AuthorizationBehaviorTests
     }
 
     [Test]
+    public async Task Handle_WithDeleteEventRegistration_EnrichesPersistedRegistrationAuthorizationContext()
+    {
+        var eventRepository = Substitute.For<IEventRepository>();
+        var registrationRepository = Substitute.For<IEventRegistrationRepository>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var registrationId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var eventSessionId = Guid.NewGuid();
+        var attendeeUserId = Guid.NewGuid();
+        var organizationId = Guid.NewGuid();
+        tenantContext.TenantId.Returns(tenantId);
+        registrationRepository.GetByIdWithDetails(registrationId, Arg.Any<CancellationToken>())
+            .Returns(CreateRegistration(registrationId, tenantId, eventId, eventSessionId, attendeeUserId));
+        eventRepository.GetEventWithDetails(eventId)
+            .Returns(CreateAuthorizationEvent(eventId, tenantId, organizationId));
+
+        var behavior = new AuthorizationBehavior<DeleteEventRegistrationCommand, bool>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<DeleteEventRegistrationCommand, bool>>>(),
+            eventRepository: eventRepository,
+            eventRegistrationRepository: registrationRepository,
+            tenantContext: tenantContext);
+        var command = new DeleteEventRegistrationCommand { Id = registrationId };
+
+        _authService.IsAllowedAsync(
+                ResourceKinds.EventRegistration,
+                registrationId.ToString(),
+                AuthorizationActions.Delete,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    HasRegistrationAuthorizationContext(
+                        attributes,
+                        tenantId,
+                        eventId,
+                        eventSessionId,
+                        attendeeUserId,
+                        organizationId)),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await behavior.Handle(command, _ => Task.FromResult(true), CancellationToken.None);
+
+        await Assert.That(result).IsTrue();
+        await Assert.That(command.ExpectedOwnerUserId).IsEqualTo(attendeeUserId);
+        await registrationRepository.Received(1)
+            .GetByIdWithDetails(registrationId, Arg.Any<CancellationToken>());
+        await eventRepository.Received(1).GetEventWithDetails(eventId);
+    }
+
+    [Test]
+    public async Task Handle_WithUpdateEventRegistration_EnrichesPersistedRegistrationAuthorizationContext()
+    {
+        var eventRepository = Substitute.For<IEventRepository>();
+        var registrationRepository = Substitute.For<IEventRegistrationRepository>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var registrationId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var eventSessionId = Guid.NewGuid();
+        var attendeeUserId = Guid.NewGuid();
+        var organizationId = Guid.NewGuid();
+        tenantContext.TenantId.Returns(tenantId);
+        registrationRepository.GetByIdWithDetails(registrationId, Arg.Any<CancellationToken>())
+            .Returns(CreateRegistration(registrationId, tenantId, eventId, eventSessionId, attendeeUserId));
+        eventRepository.GetEventWithDetails(eventId)
+            .Returns(CreateAuthorizationEvent(eventId, tenantId, organizationId));
+
+        var behavior = new AuthorizationBehavior<UpdateEventRegistrationCommand, BaseCommandResponse<Guid>>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<UpdateEventRegistrationCommand, BaseCommandResponse<Guid>>>>(),
+            eventRepository: eventRepository,
+            eventRegistrationRepository: registrationRepository,
+            tenantContext: tenantContext);
+        var command = new UpdateEventRegistrationCommand
+        {
+            EventRegistrationId = registrationId,
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            EventRegistrationDto = new UpdateEventRegistrationDto()
+        };
+        var expectedResponse = new BaseCommandResponse<Guid> { Success = true, Id = registrationId };
+
+        _authService.IsAllowedAsync(
+                ResourceKinds.EventRegistration,
+                registrationId.ToString(),
+                AuthorizationActions.Update,
+                Arg.Is<IDictionary<string, object>?>(attributes =>
+                    HasRegistrationAuthorizationContext(
+                        attributes,
+                        tenantId,
+                        eventId,
+                        eventSessionId,
+                        attendeeUserId,
+                        organizationId)),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await behavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await registrationRepository.Received(1)
+            .GetByIdWithDetails(registrationId, Arg.Any<CancellationToken>());
+        await eventRepository.Received(1).GetEventWithDetails(eventId);
+    }
+
+    [Test]
+    public async Task Handle_WithEventRegistrationHiddenByTenantBoundary_DeniesBeforeHandler()
+    {
+        var eventRepository = Substitute.For<IEventRepository>();
+        var registrationRepository = Substitute.For<IEventRegistrationRepository>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var registrationId = Guid.NewGuid();
+        var persistedTenantId = Guid.NewGuid();
+        tenantContext.TenantId.Returns(Guid.NewGuid());
+        registrationRepository.GetByIdWithDetails(registrationId, Arg.Any<CancellationToken>())
+            .Returns(CreateRegistration(
+                registrationId,
+                persistedTenantId,
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Guid.NewGuid()));
+
+        var behavior = new AuthorizationBehavior<DeleteEventRegistrationCommand, bool>(
+            _authService,
+            Substitute.For<ILogger<AuthorizationBehavior<DeleteEventRegistrationCommand, bool>>>(),
+            eventRepository: eventRepository,
+            eventRegistrationRepository: registrationRepository,
+            tenantContext: tenantContext);
+        var handlerCalled = false;
+
+        await Assert.ThrowsAsync<AuthorizationException>(() => behavior.Handle(
+            new DeleteEventRegistrationCommand { Id = registrationId },
+            _ =>
+            {
+                handlerCalled = true;
+                return Task.FromResult(true);
+            },
+            CancellationToken.None));
+
+        await Assert.That(handlerCalled).IsFalse();
+        await _authService.DidNotReceive().IsAllowedAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<IDictionary<string, object>?>(),
+            Arg.Any<CancellationToken>());
+        await eventRepository.DidNotReceive().GetEventWithDetails(Arg.Any<Guid>());
+    }
+
+    [Test]
     public async Task Handle_WithOrganizationMemberResource_EnrichesMissingMemberAuthorizationContext()
     {
         var memberRepository = Substitute.For<IOrganizationMemberRepository>();
@@ -695,6 +846,67 @@ public class AuthorizationBehaviorTests
         Assert.That(attribute.Resource == "islamuevent_organization");
         Assert.That(attribute.Action == "update");
     }
+
+    private static EventRegistration CreateRegistration(
+        Guid id,
+        Guid tenantId,
+        Guid eventId,
+        Guid eventSessionId,
+        Guid userId) => new()
+        {
+            Id = id,
+            TenantId = tenantId,
+            EventId = eventId,
+            EventSessionId = eventSessionId,
+            UserId = userId,
+            Event = null!,
+            EventSession = null!,
+            User = null!,
+            Tenant = null!
+        };
+
+    private static Explore.Domain.Event CreateAuthorizationEvent(
+        Guid eventId,
+        Guid tenantId,
+        Guid organizationId)
+    {
+        var actorId = Guid.NewGuid();
+        return new Explore.Domain.Event
+        {
+            Id = eventId,
+            TenantId = tenantId,
+            Title = "Registration authorization event",
+            ActorId = actorId,
+            Actor = new Actor
+            {
+                Id = actorId,
+                TenantId = tenantId,
+                OrganizationId = organizationId,
+                ActorTypeId = 2,
+                ActorType = null!,
+                Tenant = null!,
+                Pii = new ActorPii { DisplayName = "Organizer" }
+            },
+            Tenant = null!,
+            EventStatus = null!,
+            EventFormat = null!,
+            VisibilityType = null!
+        };
+    }
+
+    private static bool HasRegistrationAuthorizationContext(
+        IDictionary<string, object>? attributes,
+        Guid tenantId,
+        Guid eventId,
+        Guid eventSessionId,
+        Guid attendeeUserId,
+        Guid organizationId) =>
+        attributes is not null
+        && attributes["tenantId"].Equals(tenantId.ToString("D"))
+        && attributes["eventId"].Equals(eventId.ToString("D"))
+        && attributes["eventSessionId"].Equals(eventSessionId.ToString("D"))
+        && attributes["userId"].Equals(attendeeUserId.ToString("D"))
+        && attributes["organizationId"].Equals(organizationId.ToString("D"));
 }
 
 // Test command implementing IAuthorizedRequest

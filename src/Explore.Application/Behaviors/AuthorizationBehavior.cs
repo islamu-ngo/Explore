@@ -34,6 +34,8 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
     private readonly IStorageObjectRepository? _storageObjectRepository;
     private readonly IEventSessionRepository? _eventSessionRepository;
     private readonly IWebhookOwnershipScopeResolver? _webhookOwnershipScopeResolver;
+    private readonly IEventRegistrationRepository? _eventRegistrationRepository;
+    private readonly ITenantContext? _tenantContext;
 
     public AuthorizationBehavior(
         IAuthorizationProvider authorizationProvider,
@@ -42,7 +44,9 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         IOrganizationMemberRepository? organizationMemberRepository = null,
         IStorageObjectRepository? storageObjectRepository = null,
         IEventSessionRepository? eventSessionRepository = null,
-        IWebhookOwnershipScopeResolver? webhookOwnershipScopeResolver = null)
+        IWebhookOwnershipScopeResolver? webhookOwnershipScopeResolver = null,
+        IEventRegistrationRepository? eventRegistrationRepository = null,
+        ITenantContext? tenantContext = null)
     {
         _authorizationProvider = authorizationProvider;
         _logger = logger;
@@ -51,6 +55,8 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         _storageObjectRepository = storageObjectRepository;
         _eventSessionRepository = eventSessionRepository;
         _webhookOwnershipScopeResolver = webhookOwnershipScopeResolver;
+        _eventRegistrationRepository = eventRegistrationRepository;
+        _tenantContext = tenantContext;
     }
 
     public async Task<TResponse> Handle(
@@ -111,6 +117,11 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
                 resourceId,
                 resourceAttributes,
                 cancellationToken);
+
+            if (attribute.Resource == ResourceKinds.EventRegistration && resourceAttributes is null)
+                throw new AuthorizationException(attribute.Resource, attribute.Action);
+
+            BindPersistedUserOwner(request, resourceAttributes);
 
             await EnforceAuthorizationAsync(
                 attribute.Resource,
@@ -187,11 +198,58 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         {
             ResourceKinds.Event => await EnrichEventResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
             ResourceKinds.EventSession => await EnrichEventSessionResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
+            ResourceKinds.EventRegistration => await EnrichEventRegistrationResourceAttributesAsync(resourceId, cancellationToken),
             ResourceKinds.OrganizationMember => await EnrichOrganizationMemberResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
             ResourceKinds.StorageObject => await EnrichStorageObjectResourceAttributesAsync(resourceId, resourceAttributes, cancellationToken),
             ResourceKinds.CustomPropertyProjection => await EnrichCustomPropertyProjectionResourceAttributesAsync(resourceAttributes, cancellationToken),
             _ => resourceAttributes
         };
+    }
+
+    private async Task<IDictionary<string, object>?> EnrichEventRegistrationResourceAttributesAsync(
+        string resourceId,
+        CancellationToken cancellationToken)
+    {
+        if (_eventRegistrationRepository is null ||
+            _eventRepository is null ||
+            _tenantContext is null ||
+            !Guid.TryParse(resourceId, out var registrationId))
+        {
+            return null;
+        }
+
+        var registration = await _eventRegistrationRepository.GetByIdWithDetails(
+            registrationId,
+            cancellationToken);
+        if (registration is null || registration.TenantId != _tenantContext.TenantId)
+            return null;
+
+        var eventEntity = await _eventRepository.GetEventWithDetails(registration.EventId);
+        if (eventEntity is null || eventEntity.TenantId != _tenantContext.TenantId)
+            return null;
+
+        var attributes = new Dictionary<string, object>
+        {
+            ["eventId"] = registration.EventId.ToString("D"),
+            ["eventSessionId"] = registration.EventSessionId.ToString("D"),
+            ["userId"] = registration.UserId.ToString("D"),
+            ["tenantId"] = registration.TenantId.ToString("D")
+        };
+        AddIfMissing(attributes, "organizationId", eventEntity.Actor?.OrganizationId);
+        AddIfMissing(attributes, "groupId", eventEntity.Actor?.GroupId);
+        return attributes;
+    }
+
+    private static void BindPersistedUserOwner(
+        TRequest request,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        if (request is IPersistedUserOwnerBoundRequest ownerBoundRequest &&
+            resourceAttributes is not null &&
+            TryGetGuidAttribute(resourceAttributes, "userId", out var ownerUserId))
+        {
+            ownerBoundRequest.ExpectedOwnerUserId = ownerUserId;
+        }
     }
 
     private async Task<IDictionary<string, object>?> EnrichCustomPropertyProjectionResourceAttributesAsync(

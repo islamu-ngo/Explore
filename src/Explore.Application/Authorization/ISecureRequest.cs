@@ -1,5 +1,5 @@
-// ABOUTME: Companion interface for [AuthorizeResource] enabling dynamic resource context from MediatR requests.
-// ABOUTME: When a request implements both [AuthorizeResource] and ISecureRequest, the AuthorizationBehavior uses instance values.
+// ABOUTME: Authorization request interfaces for dynamic resource context and persisted owner binding.
+// ABOUTME: Lets the pipeline enrich policy inputs and carry an authorized owner snapshot into atomic writes.
 
 namespace Explore.Application.Authorization;
 
@@ -25,4 +25,9 @@ public interface ISecureRequest
     /// Returns null when no additional attributes are needed.
     /// </summary>
     IDictionary<string, object>? ResourceAttributes => null;
+}
+
+public interface IPersistedUserOwnerBoundRequest
+{
+    Guid? ExpectedOwnerUserId { get; set; }
 }
