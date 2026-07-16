@@ -12,17 +12,61 @@ internal static class EventApiScenario
         string title,
         string slug,
         bool registrationRequired = false,
-        int? registrationPolicyId = null)
+        int? registrationPolicyId = null,
+        int startsInDays = 14)
     {
-        var eventId = await CreateDraftEventAsync(
-            api,
-            title,
-            slug,
-            registrationRequired,
-            registrationPolicyId);
-        await CreatePublishedSessionAsync(api, eventId, title, slug);
-        await PublishEventAsync(api, eventId);
-        return eventId;
+        var formats = await api.GetEventFormatOptionsAsync();
+        var visibilities = await api.GetVisibilityTypesAsync();
+        var sessionKinds = await api.GetEventSessionKindsAsync();
+        var registrationModes = await api.GetRegistrationModesAsync();
+        var start = DateTimeOffset.UtcNow.AddDays(startsInDays);
+
+        return SuccessfulId(
+            await api.CreateEventAsync(new CreateEventDraftRequestDto
+            {
+                Title = title,
+                Slug = slug,
+                Description = $"E2E event created through the API for {title}.",
+                EventFormatId = FindLookup(formats, value => value.MasterCode, value => value.Id, "local"),
+                VisibilityTypeId = FindLookup(visibilities, value => value.MasterCode, value => value.Id, "public"),
+                EventStatusId = 2,
+                Timezone = "Europe/Brussels",
+                EventTimeZoneId = "Europe/Brussels",
+                IsRegistrationRequired = registrationRequired,
+                RegistrationPolicyId = registrationPolicyId,
+                CategoryIds = [],
+                TagIds = [],
+                Locations = [],
+                Sessions =
+                [
+                    new CreateEventSessionRequest
+                    {
+                        Title = $"{title} Session",
+                        Slug = $"{slug}-session",
+                        Description = $"Scheduled session for {title}.",
+                        StartTime = start,
+                        EndTime = start.AddHours(2),
+                        EndTimeType = SessionEndTimeType.Fixed,
+                        SortOrder = 1,
+                        EventSessionKindId = FindLookup(
+                            sessionKinds,
+                            value => value.MasterCode,
+                            value => value.Id,
+                            "talk"),
+                        RegistrationModeId = FindLookup(
+                            registrationModes,
+                            value => value.MasterCode,
+                            value => value.Id,
+                            "open"),
+                        LanguageIds = [],
+                        SpeakerActorIds = []
+                    }
+                ],
+                Days = [],
+                Rooms = [],
+                AgendaItems = []
+            }),
+            "creating a published E2E event");
     }
 
     public static async Task<Guid> CreateDraftEventAsync(
@@ -34,18 +78,50 @@ internal static class EventApiScenario
     {
         var formats = await api.GetEventFormatOptionsAsync();
         var visibilities = await api.GetVisibilityTypesAsync();
-        var response = await api.CreateEventAsync(new CreateEventDraftRequestDto
+        BaseCommandResponseOfGuid response;
+        try
         {
-            Title = title,
-            Slug = slug,
-            Description = $"E2E event created through the API for {title}.",
-            EventFormatId = FindLookup(formats, value => value.MasterCode, value => value.Id, "local"),
-            VisibilityTypeId = FindLookup(visibilities, value => value.MasterCode, value => value.Id, "public"),
-            Timezone = "Europe/Brussels",
-            EventTimeZoneId = "Europe/Brussels",
-            IsRegistrationRequired = registrationRequired,
-            RegistrationPolicyId = registrationPolicyId
-        });
+            response = await api.CreateEventAsync(new CreateEventDraftRequestDto
+            {
+                Title = title,
+                Slug = slug,
+                Description = $"E2E event created through the API for {title}.",
+                EventFormatId = FindLookup(formats, value => value.MasterCode, value => value.Id, "local"),
+                VisibilityTypeId = FindLookup(visibilities, value => value.MasterCode, value => value.Id, "public"),
+                EventStatusId = 1,
+                Timezone = "Europe/Brussels",
+                EventTimeZoneId = "Europe/Brussels",
+                IsRegistrationRequired = registrationRequired,
+                RegistrationPolicyId = registrationPolicyId,
+                CategoryIds = [],
+                TagIds = [],
+                Locations = [],
+                Sessions = [],
+                Days = [],
+                Rooms = [],
+                AgendaItems = []
+            });
+        }
+        catch (ApiException<ValidationProblemDetails> exception)
+        {
+            var errors = exception.Result.Errors?
+                .SelectMany(pair => pair.Value.Select(message => $"{pair.Key}: {message}"))
+                .ToArray() ?? [];
+            throw new InvalidOperationException(
+                "API rejected the E2E event draft. " +
+                $"Title={exception.Result.Title}. Detail={exception.Result.Detail}. " +
+                $"Errors={string.Join(" | ", errors)}",
+                exception);
+        }
+        catch (ApiException<ProblemDetails> exception)
+        {
+            throw new InvalidOperationException(
+                "API denied the E2E event draft. " +
+                $"Status={exception.StatusCode}. Title={exception.Result.Title}. " +
+                $"Detail={exception.Result.Detail}. Type={exception.Result.Type}.",
+                exception);
+        }
+
         return SuccessfulId(response, "creating an E2E event");
     }
 
@@ -58,47 +134,6 @@ internal static class EventApiScenario
                 ExpectedConcurrencyStamp = created.ConcurrencyStamp
             }),
             "publishing an E2E event");
-    }
-
-    private static async Task CreatePublishedSessionAsync(
-        IEventApiClient api,
-        Guid eventId,
-        string eventTitle,
-        string eventSlug)
-    {
-        var sessionKinds = await api.GetEventSessionKindsAsync();
-        var registrationModes = await api.GetRegistrationModesAsync();
-        var start = DateTimeOffset.UtcNow.AddDays(14);
-        var sessionId = SuccessfulId(
-            await api.CreateEventSessionAsync(new CreateEventSessionDto
-            {
-                EventId = eventId,
-                Title = $"{eventTitle} Session",
-                Slug = $"{eventSlug}-session",
-                Description = $"Scheduled session for {eventTitle}.",
-                StartTime = start,
-                EndTime = start.AddHours(2),
-                EndTimeType = SessionEndTimeType.Fixed,
-                SortOrder = 1,
-                EventSessionKindId = FindLookup(
-                    sessionKinds,
-                    value => value.MasterCode,
-                    value => value.Id,
-                    "talk"),
-                RegistrationModeId = FindLookup(
-                    registrationModes,
-                    value => value.MasterCode,
-                    value => value.Id,
-                    "open")
-            }),
-            "creating an E2E event session");
-        var session = await api.GetEventSessionByIdAsync(sessionId);
-        EnsureSuccess(
-            await api.PublishEventSessionAsync(sessionId, new PublishEventSessionRequestDto
-            {
-                ExpectedConcurrencyStamp = session.ConcurrencyStamp
-            }),
-            "publishing an E2E event session");
     }
 
     public static int FindLookup<T>(
