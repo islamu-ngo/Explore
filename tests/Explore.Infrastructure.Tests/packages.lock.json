@@ -809,6 +809,7 @@
           "Microsoft.Extensions.AI.Abstractions": "[10.4.0, )",
           "Microsoft.Extensions.AI.OpenAI": "[10.4.0, )",
           "Microsoft.Extensions.Http.Resilience": "[10.1.0, )",
+          "Npgsql": "[10.0.2, )",
           "OpenFeature": "[2.11.1, )",
           "Polly": "[8.6.6, )",
           "RabbitMQ.Client": "[7.2.1, )",

@@ -1119,6 +1119,7 @@
           "Microsoft.Extensions.AI.Abstractions": "[10.4.0, )",
           "Microsoft.Extensions.AI.OpenAI": "[10.4.0, )",
           "Microsoft.Extensions.Http.Resilience": "[10.1.0, )",
+          "Npgsql": "[10.0.2, )",
           "OpenFeature": "[2.11.1, )",
           "Polly": "[8.6.6, )",
           "RabbitMQ.Client": "[7.2.1, )",
@@ -1415,10 +1416,10 @@
       "Npgsql": {
         "type": "CentralTransitive",
         "requested": "[10.0.2, )",
-        "resolved": "8.0.3",
-        "contentHash": "6WEmzsQJCZAlUG1pThKg/RmeF6V+I0DmBBBE/8YzpRtEzhyZzKcK7ulMANDm5CkxrALBEC8H+5plxHWtIL7xnA==",
+        "resolved": "10.0.2",
+        "contentHash": "q5RfBI+wywJSFUNDE1L4ZbHEHCFTblo8Uf6A6oe4feOUFYiUQXyAf9GBh5qEZpvJaHiEbpBPkQumjEhXCJxdrg==",
         "dependencies": {
-          "Microsoft.Extensions.Logging.Abstractions": "8.0.0"
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.0"
         }
       },
       "OpenFeature": {
