@@ -286,8 +286,8 @@ Legend: STRUCTURAL · BEHAVIORAL · SECURITY · CONTRACT · OPERATOR · HOTFIX
 - [ ] 18B.1 Migrate 154 brittle Markup.Contains() in 18 files to data-testid (cut.Find / cut.FindAll)
 - [ ] 18B.2 MockServiceFactory: add 20 missing service mocks
 - [ ] 18B.3 BlazorTestContext helpers: SetServiceThrows, SimulateNetworkFailure, WaitForRenderComplete
-- [ ] 18B.4 PlaywrightFixture: NavigateAndWaitForReady, ScreenshotOnFailure, page object models
-- [ ] 18B.5 8 critical E2E user-journey scenarios (login, logout-IdP-terminated, discovery+filter, registration, org+members, admin save, multi-tenant switch, error 404/500/network)
+- [ ] 18B.4 BFF integration helpers for deterministic auth, timeout, and navigation responses
+- [ ] 18B.5 8 critical integration user-journey scenarios (login, logout-IdP-terminated, discovery+filter, registration, org+members, admin save, multi-tenant switch, error 404/500/network)
 - [ ] 18B.6 Blazor architecture-test suite expansion (2 → 15)
 - [ ] 18B.7 DelegatingHandler depth tests (error/timeout/cancellation/retry for AccessToken/BrowserCredentials/SetupSecret handlers)
 

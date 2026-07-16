@@ -20,7 +20,7 @@ v2 (CTO-approved 2026-04-16) is structurally sound but missed several stop-the-l
 4. **EXPANDED Wave A Observability**: Auth provider startup config validation must FAIL on critical misconfig (currently only logs warnings).
 5. **EXPANDED Phase X**: Added health checks for API/Keycloak/DB dependencies; OpenTelemetry minimum (ActivitySource for auth/token-refresh/yarp; HTTP client + ASP.NET Core instrumentation; OTLP exporter).
 6. **TIGHTENED Wave D**: Page-local presentation state (NOT a global ViewModel layer); IEventService split is mandatory inside Phase 7/12 because the ISP violation actively blocks ServiceResult conversion.
-7. **EXPANDED Phase 18 + new Wave E phase**: bUnit `data-testid` migration off 154 brittle `Markup.Contains()` assertions; MockServiceFactory closure (20 missing services); 8 critical E2E user journey scenarios; Blazor architecture-test suite expansion (currently zero).
+7. **EXPANDED Phase 18 + new Wave E phase**: bUnit `data-testid` migration off 154 brittle `Markup.Contains()` assertions; MockServiceFactory closure (20 missing services); 8 critical integration journey scenarios; Blazor architecture-test suite expansion (currently zero).
 8. **EXPANDED Phase 14**: a11y compliance for touched components only — aria-label parameters on AppButton/AppIconButton, aria-invalid/aria-describedby on AppTextField, focus-trap audit on dialogs, alt parameter on S3Image, `loading="lazy"` on EventCard image, RTL/MudRTLProvider sync, `[dir="rtl"]` selectors in CSS for touched files.
 9. **EXPLICITLY DEFERRED — Separate Modernization Track (NOT in this program)**: app-wide IStringLocalizer + .resx migration; full app-wide ViewModel layer; LazyAssemblyLoader; NativeAOT for WASM; WebSocket compression for Blazor Server; PWA/service worker; Microsoft.FeatureManagement adoption; nonce-based CSP. Documented in "Deferred Work — Separate Tracks" section.
 10. **REWRITTEN Risk Register**: Top 5 risks now lead with cross-user/circuit state leakage, render-mode migration regressions, auth hardening regressions, ServiceResult contract churn, and test blind spots.
@@ -38,7 +38,6 @@ Full-scale Blazor refactor program for the Event repository. Six delivery waves 
 - `Explore.Blazor.Client` (WASM UI, pages, components, services)
 - `Explore.Blazor.IntegrationTests`
 - `Explore.Blazor.Client.Tests`
-- `Explore.Blazor.Client.E2ETests`
 
 **Explicitly out of scope:**
 - `Explore.API`, `Explore.Application`, `Explore.Domain`, `Explore.Persistence`, `Explore.Infrastructure` (covered by api-clean-code-refactor)
@@ -53,7 +52,7 @@ This plan covers:
 - Component decomposition with explicit page-state classification
 - Structured service error contract (ServiceResult<T>) with IEventService ISP split
 - CSS architecture compliance, design token adoption, a11y on touched components
-- Test coverage expansion (data-testid migration, MockServiceFactory closure, E2E journeys)
+- Test coverage expansion (data-testid migration, MockServiceFactory closure, integration journeys)
 
 The plan does **not** assume backward compatibility. This is development mode. Every phase item is classified by change type for review discipline.
 
@@ -86,7 +85,7 @@ By end of program, the Blazor codebase has these characteristics:
 4. **Render mode is intentional.** Every page declares its render mode; `InteractiveAuto` is the documented default; `InteractiveServer` only on the eligibility matrix.
 5. **CSS is fully compliant.** All scoped styles follow BEM, design tokens are used, no hardcoded colors/spacing on touched files; a11y compliance on touched components.
 6. **Components are composable and testable.** Shared patterns extracted, dependency counts ≤8, explicit page-state classification.
-7. **Test coverage is meaningful.** Critical paths have unit tests, workflow E2E scenarios exist, architecture tests catch regressions, brittle Markup.Contains() assertions migrated to data-testid.
+7. **Test coverage is meaningful.** Critical paths have unit and integration tests, architecture tests catch regressions, and brittle Markup.Contains() assertions are migrated to data-testid.
 8. **ABOUTME headers on every file.** Automated or batched.
 9. **BFF endpoint handlers are decomposed by capability module.** Auth status vs auth mutation vs setup vs preferences.
 10. **State management is explicit and classified before decomposition.** URL for filters/pagination, services for domain state, cascading for UI, page coordinator for complex pages. Page-local presentation models on refactored hotspots only.
@@ -195,7 +194,7 @@ These flows must work identically before/after refactor:
 |-------|---------|--------|
 | Blazor Integration | 21 | All pass |
 | Blazor Client Unit | 686 | All pass |
-| Blazor Client E2E | 2 | Requires Aspire |
+| Manual browser checks | 2 historical scenarios | Requires a running app |
 | Architecture (Blazor) | 2 | All pass |
 | Total | 711 | |
 
@@ -207,7 +206,7 @@ These flows must work identically before/after refactor:
 | Brittle `Markup.Contains()` assertions | 154 across 18 files |
 | `GetByRole` / `GetByTestId` / `data-testid` usage | 0 |
 | MockServiceFactory missing services | 20 |
-| E2E user-journey tests | 2 (HTTP 200 + /auth/status anonymous) |
+| Integration user-journey tests | 2 (HTTP 200 + /auth/status anonymous) |
 | Blazor architecture tests | 2 (target: 10+) |
 | Accessibility tests | 1 file |
 | Performance/load tests | 0 |
@@ -277,9 +276,9 @@ Phases: 8 (EventList), 9 (EventDetail), 10 (Create/Edit), 11 (Admin), 12-rest (r
 
 ### Wave E — Conformance, Test Hardening & Operability
 
-**Goal**: Polish, standardize, expand tests, document, hand off. Includes data-testid migration, MockServiceFactory closure, E2E journey scenarios, a11y on touched components.
+**Goal**: Polish, standardize, expand tests, document, hand off. Includes data-testid migration, MockServiceFactory closure, integration journey scenarios, and a11y on touched components.
 
-Phases: 6B (Auth Refactor), 14 (CSS + a11y on touched components), 15 (ABOUTME), 17B (State Standardization), 18 (Tests — expanded), **18B (Test Migration — data-testid + MockServiceFactory + E2E journeys, NEW)**, 19 (Conformance), 20 (Handoff)
+Phases: 6B (Auth Refactor), 14 (CSS + a11y on touched components), 15 (ABOUTME), 17B (State Standardization), 18 (Tests — expanded), **18B (Test Migration — data-testid + MockServiceFactory + integration journeys, NEW)**, 19 (Conformance), 20 (Handoff)
 
 **Effort**: Medium (~1 week)
 
@@ -893,8 +892,8 @@ Priority order:
 18B.1. **bUnit data-testid migration**: Migrate the 18 test files using brittle `Markup.Contains()` (154 assertions) to use `cut.Find("[data-testid='...']")` and `cut.FindAll("[data-testid='...']")`. Add `data-testid` to extracted components in Phases 8–11 by default.
 18B.2. **MockServiceFactory closure**: Add the 20 missing service mocks (IAdminService, IDialogService, ISnackbar, IUserSettingsService, IContactShareConsentService, IPublicExperienceService, IEventRegistrationService, IOrganizationMemberService, IOrganizationReviewService, IEventSessionSpeakerService, IEventAspectService, IFooterAdminService, IExternalApiKeyService, IFeatureFlagClientService, ILanguagePreferenceService, ILocalLocalizationAdminService, IMapsService, IEventSessionAgendaItemService, ILandingPageService, IRuntimeRenderPolicyService).
 18B.3. **BlazorTestContext helpers**: Add `SetServiceThrows<T>(Exception)`, `SimulateNetworkFailure()`, `WaitForRenderComplete()`.
-18B.4. **PlaywrightFixture expansion**: Add `NavigateAndWaitForReady`, `ScreenshotOnFailure`, `Page object models` for top user journeys.
-18B.5. **8 critical E2E user-journey scenarios** (replace today's 2):
+18B.4. **BFF integration helper expansion**: Add deterministic auth, timeout, and navigation-response helpers for top user journeys.
+18B.5. **8 critical integration user-journey scenarios**:
   1. Login OAuth flow (Keycloak)
   2. Logout (verify IdP session terminated)
   3. Event discovery + filtering
@@ -906,7 +905,7 @@ Priority order:
 18B.6. **Blazor architecture-test suite**: Expand from 2 tests to all v3 Phase 1 entries (15 tests).
 18B.7. **DelegatingHandler depth**: Add error/timeout/cancellation/retry scenarios for AccessTokenForwardingHandler, BrowserCredentialsMessageHandler, SetupSecretForwardingHandler.
 
-**Acceptance**: Zero `Markup.Contains` in unit tests for components touched by Phases 8–11. MockServiceFactory covers 100% of injected services. 8 E2E journeys passing. 15 architecture tests passing.
+**Acceptance**: Zero `Markup.Contains` in unit tests for components touched by Phases 8–11. MockServiceFactory covers 100% of injected services. Eight integration journeys and 15 architecture tests pass.
 
 ---
 
@@ -995,7 +994,7 @@ WAVE E — Conformance, Test Hardening & Operability
     ↓
   Phase 14 (CSS + a11y) ── Phase 15 (ABOUTME) ── Phase 17B (State Standardization) [parallel]
     ↓
-  Phase 18 (Test Expansion) ── Phase 18B (Test Migration + E2E + arch tests) [parallel]
+  Phase 18 (Test Expansion) ── Phase 18B (Test Migration + integration + arch tests) [parallel]
     ↓
   Phase 19 (Conformance)
     ↓
@@ -1014,7 +1013,7 @@ WAVE E — Conformance, Test Hardening & Operability
 | 2 | **Render-mode migration regressions** from prerender, double initialization, missing service registration, JS interop timing | HIGH | Medium-High | Phase A0 cohort-based migration; eligibility matrix; service registration audit per cohort; cohort smoke test; PersistentComponentState verification | BEHAVIORAL |
 | 3 | **Auth hardening regressions** breaking login/logout/provider refresh when changing scheme management, cache headers, or CSP | HIGH | Medium | 6A stabilize first, 6B refactor after; CSP in report-only mode for one release; integration test for all auth paths; rollback path documented | SECURITY |
 | 4 | **ServiceResult contract churn** from rippling through many components with weak test coverage | HIGH | Medium | Convert one service at a time; UI error tiers defined upfront in Phase X.3; IEventService split BEFORE ServiceResult conversion; before/after behavior matrix | CONTRACT |
-| 5 | **Test blind spots** allowing UI/a11y/render regressions to ship because most pages/components lack meaningful tests | HIGH | High | Phase 18B `data-testid` migration off 154 brittle assertions; MockServiceFactory closure (20 services); 8 E2E journeys; arch test suite expansion to 15 tests | STRUCTURAL |
+| 5 | **Test blind spots** allowing UI/a11y/render regressions to ship because most pages/components lack meaningful tests | HIGH | High | Phase 18B `data-testid` migration off 154 brittle assertions; MockServiceFactory closure (20 services); eight integration journeys; arch test suite expansion to 15 tests | STRUCTURAL |
 
 **Other tracked risks:**
 
@@ -1076,7 +1075,7 @@ These items are **NOT** part of this refactor program. They are tracked as separ
 1. **Centralized state management** (Fluxor/Redux) — too large for refactor
 2. **NSwag client splitting** — 86k-line generated file; NSwag config changes needed
 3. **PWA/offline support** — feature work
-4. **Visual regression testing** — requires Playwright infrastructure expansion
+4. **Visual regression testing** — requires a separately approved browser-testing strategy
 5. **Real API integration tests** (non-mocked) — different testing strategy
 6. **Refresh token rotation** — security feature
 7. **Multi-language rendering tests** — feature-level testing
@@ -1094,7 +1093,7 @@ These items are **NOT** part of this refactor program. They are tracked as separ
 17. **Front-channel logout / single sign-out** — Wave B Phase 2.14 documents only; implementation deferred unless trivial
 18. **Client-side OpenTelemetry** — Wave A Phase X.6 covers BFF only
 19. **Bundle size monitoring + Core Web Vitals** — performance program
-20. **axe-playwright integration for full-app a11y audit** — Phase 14 covers touched components only
+20. **Automated full-app accessibility audit** — Phase 14 covers touched components only
 
 ### v3 Spike (Allowed but Time-Boxed)
 - **Wave F (.NET 10 modernization)** — NOT in this program. If product wants to evaluate, spin a Short (2–3d) spike to assess `[PersistentState]` adoption beyond render-mode-driven sites, LazyAssemblyLoader feasibility, NativeAOT viability for the hot WASM path. Output: a separate plan, not absorbed into this refactor.
@@ -1118,5 +1117,5 @@ If any of these occur during execution, halt the affected wave and re-plan:
 - **Wave 0** is non-negotiable and blocking. Three CRITICAL bugs (singleton state leakage × 2, async void crash) and three HIGH defects (.Result deadlocks, missing Cache-Control, missing YARP timeout) ship in production today. Fix them before doing anything else.
 - **Render mode** is its own phase, not cleanup. 32-page hardcoded `InteractiveServer` plus 3 pages with `[PersistentState]` and no rendermode is a behavioral defect, not a style issue.
 - **Scope is tight on purpose**. App-wide i18n, app-wide ViewModel layer, .NET 10 platform modernization, PWA, NativeAOT, Microsoft.FeatureManagement — all out. The team is not bored. Adding them would burn 4× the calendar with no operability gain.
-- **Tests are the gate, not the polish**. Phase 18B exists because shipping a refactor with 154 brittle assertions, 20 missing mocks, and 2 E2E tests is shipping a refactor with no safety net.
+- **Tests are the gate, not the polish**. Phase 18B exists because shipping a refactor with 154 brittle assertions, 20 missing mocks, and only two integration journeys is shipping a refactor with no safety net.
 - **Operability is product quality**. Phase X.6 (OTel + health checks) is required, not optional.

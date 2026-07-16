@@ -14,7 +14,6 @@ ABOUTME: Contains hotspot inventory, CTO decisions, ServiceResult design, and op
 | Explore.Blazor.Client | WASM UI, pages, components, services | YES |
 | Explore.Blazor.IntegrationTests | BFF integration tests | YES |
 | Explore.Blazor.Client.Tests | Component/service unit tests | YES |
-| Explore.Blazor.Client.E2ETests | E2E browser tests | YES |
 | Explore.API/Application/Domain/Persistence/Infrastructure | Backend | NO |
 
 ## Skills Required
@@ -173,7 +172,7 @@ Phase 13 moved late in Wave D. Extract abstractions from stable understanding, n
 - BlazorTestContext (custom bUnit) with MudBlazor support + auth helpers
 - MockServiceFactory with pre-configured mocks for all services
 - BlazorBffWebApplicationFactory for integration tests
-- PlaywrightFixture for E2E with Aspire orchestration
+- BFF integration fixture with in-memory host orchestration
 - 686 unit tests + 21 integration tests
 
 ## BFF Pattern Summary
@@ -233,7 +232,7 @@ catch (HttpRequestException ex) { _logger.LogError(ex, "..."); return ServiceRes
 |-------|---------|--------|
 | Blazor Integration | 21 | Pass |
 | Blazor Client Unit | 686 | Pass |
-| Blazor Client E2E | 2 | Requires Aspire |
+| Manual browser checks | 2 historical scenarios | Requires a running app |
 | Architecture (Blazor) | 2 | Pass |
 
 ## Continuation Notes
@@ -306,7 +305,7 @@ User asked: "what do you think about the @dev/active/blazor-clean-code-refactor/
 - 0 GetByRole/data-testid usage
 - MockServiceFactory missing 20 services
 - 24 pages, 15 services, 14 components untested
-- 2 E2E tests (HTTP 200 + /auth/status)
+- 2 integration tests (HTTP 200 + /auth/status)
 - Blazor architecture tests = 2 (target 15)
 
 **a11y on touched components (added to Phase 14):**
@@ -346,7 +345,7 @@ User asked: "what do you think about the @dev/active/blazor-clean-code-refactor/
 - **Total: ~7–10 weeks**
 
 ### Items Explicitly DEFERRED to Separate Tracks
-App-wide IStringLocalizer + .resx, app-wide ViewModel layer, LazyAssemblyLoader, NativeAOT for WASM, WebSocket compression, PWA/service worker, Microsoft.FeatureManagement, nonce-based CSP, front-channel logout, client-side OpenTelemetry, full a11y axe-playwright audit, bundle size monitoring + Core Web Vitals.
+App-wide IStringLocalizer + .resx, app-wide ViewModel layer, LazyAssemblyLoader, NativeAOT for WASM, WebSocket compression, PWA/service worker, Microsoft.FeatureManagement, nonce-based CSP, front-channel logout, client-side OpenTelemetry, full-app automated accessibility audit, bundle size monitoring + Core Web Vitals.
 
 ### Files Updated This Session
 - `dev/active/blazor-clean-code-refactor/blazor-clean-code-refactor-plan.md` (rewritten v3)
@@ -499,7 +498,7 @@ Fully-qualified type names are namespace-stripped before check.
 | Explore.Blazor.Client.Tests | 692 pass, 1 pre-existing skip (`ErrorState_RendersRetryButton` — AppButton MudBlazor v9 migration) |
 | **TOTAL** | **2839 pass / 1 skip / 0 fail** |
 
-E2E tests skipped (require Aspire AppHost).
+Manual browser checks deferred until the app is running.
 
 ### Precondition Resync
 Branch includes api-contract-stabilization files that develop's HEAD (af8a9401) is missing — required for clean build. Added `RouteNames.GetEventRegistrations` constant to `Explore.API/Hateoas/RouteNames.cs:54`. These are preconditions, not Wave A deliverables; they'll merge cleanly via their own PR or as part of this one.
@@ -570,7 +569,7 @@ Arch guardrail `Known_ConsoleWriteLine_Files` reduced from 3 entries to empty Ha
 | Explore.Blazor.Client.Tests | 692 pass, 1 pre-existing skip (`ErrorState_RendersRetryButton` — AppButton MudBlazor v9) |
 | **TOTAL** | **2837 pass / 1 skip / 0 fail** |
 
-Full solution build: 0 errors, pre-existing vulnerability/deprecation warnings only. E2E skipped (requires Aspire).
+Full solution build: 0 errors, pre-existing vulnerability/deprecation warnings only. Manual browser checks were deferred.
 
 ### Wave A Commits Landed (4 on branch `refactor/blazor-clean-code-wave-a`)
 
@@ -607,4 +606,4 @@ Current branch: `develop`. Wave A is fully shipped. The `refactor/blazor-clean-c
 - Phase 4 (full) — `IMiddleware` class extraction + hosted service for `Console.CancelKeyPress`; per-handler `DelegatingHandler` timeouts (4.7 is Wave B)
 - Phase 5.2-5.8 — ILogger severity audit, correlation ID verification, event IDs, secret leakage check, startup config validation, tenant-aware log scope, 36-site `GetLogger` migration
 
-**Test baseline after Wave A:** 2837 pass / 1 skip (pre-existing MudBlazor v9) / 0 fail across 8 test projects (E2E skipped — Aspire dependency).
+**Test baseline after Wave A:** 2837 pass / 1 skip (pre-existing MudBlazor v9) / 0 fail across 8 test projects; manual browser checks were deferred.
