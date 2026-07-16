@@ -39,7 +39,7 @@ We aim to conform to the Web Content Accessibility Guidelines (WCAG) 2.2, Level 
 ### Known Limitations
 
 - Some advanced form validation states are not announced to screen readers (`aria-invalid` not yet set by MudBlazor)
-- Browser-level accessibility testing (Playwright + axe-core) not yet automated
+- Browser-level accessibility testing is not automated
 - Not all data-loading pages announce completion to screen readers
 
 ### Feedback
@@ -106,7 +106,7 @@ Legend: ✅ Pass | ⚠️ Minor issues | ❌ Blocking | — Not yet tested
 
 ### axe-core Scan Results
 
-> Deferred until Playwright E2E infrastructure is established.
+> Browser scan evidence is not currently automated; record manual results per release.
 
 ---
 

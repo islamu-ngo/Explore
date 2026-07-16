@@ -729,7 +729,7 @@ Visual ownership is split like this:
 
 ### Responsive visual QA matrix
 
-The manual browser visual contract lives in `Explore.Blazor.Client.E2ETests/Flows/SidebarLayoutVisualTests.cs`. These tests remain skipped until the Aspire-backed visual baseline lane has seeded event data and approved screenshot storage, but the matrix is now explicit and compile-checked.
+Use this matrix for focused manual browser verification after changing dock layout or responsive behavior.
 
 The matrix covers these widths and modes:
 
@@ -744,9 +744,7 @@ The matrix covers these widths and modes:
 | `desktop-1280-ltr` | 1280 x 900 | LTR | Default | Normal desktop inline dock tracks and split stack behavior. |
 | `wide-1760-ltr` | 1760 x 1000 | LTR | Default | Wide desktop shell + workspace parallel dock layout. |
 
-Each scenario opens the shell AI rail, event customization dock, and event preview dock together. The assertions intentionally check shell and workspace dock hosts plus the two workspace panel hosts; screenshots/traces are captured by the Playwright fixture when the skipped visual lane is enabled.
-
-Reduced motion is applied through an injected test stylesheet instead of a guessed Playwright `.NET` API call. This keeps the test compile-safe while still proving that dock UI can be captured under a reduced-motion contract. If the Playwright package later exposes a verified typed `prefers-reduced-motion` API in this repo, the helper can move from stylesheet injection to browser context emulation.
+Each scenario opens the shell AI rail, event customization dock, and event preview dock together. Verify shell and workspace dock hosts plus the two workspace panel hosts. Enable the operating system or browser reduced-motion preference for the reduced-motion scenario.
 
 ## What "Everything Related" Means In Current Code
 
@@ -792,6 +790,6 @@ Key test areas:
 - `LocalStorageDockLayoutPersistenceTests`: schema versioning, corrupt data handling, non-browser safety
 - `DockRegistrationTests`: DI registration
 - `DockLayoutArchitectureTests`: no central panel enum and no new page-level shell compensation hacks
-- `SidebarLayoutVisualTests`: skipped/manual Playwright matrix for 390, 600, 768, 970, 1280, and 1760 px dock scenarios, including RTL and reduced-motion variants
+- manual responsive matrix above for 390, 600, 768, 970, 1280, and 1760 px dock scenarios, including RTL and reduced-motion variants
 
 Those tests are the best proof of intended behavior when changing widths, breakpoints, stacking logic, or modal behavior.
