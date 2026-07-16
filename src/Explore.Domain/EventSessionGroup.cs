@@ -1,5 +1,5 @@
-// ABOUTME: Tenant-scoped program section/track/devroom grouping for sessions inside an event.
-// ABOUTME: Keeps conference program structure on EventSession instead of modeling talks as child events.
+// ABOUTME: Tenant-scoped program section grouping sessions and an event-mediated physical placement.
+// ABOUTME: Retains room scheduling keys only when a matching EventLocation proves the same physical place.
 
 using System;
 using System.Collections.Generic;
@@ -20,6 +20,11 @@ public class EventSessionGroup : ITenantEntity, IAuditableEntity, ISoftDeletable
     public string? Slug { get; set; }
     public string? Description { get; set; }
 
+    [ForeignKey(nameof(EventLocation))]
+    public Guid? EventLocationId { get; private set; }
+    public EventLocation? EventLocation { get; private set; }
+
+    // Legacy physical consistency seam; ELP-330 migrates callers to AssignEventLocation.
     [ForeignKey("Location")]
     public Guid? LocationId { get; set; }
     public Location? Location { get; set; }
@@ -48,4 +53,24 @@ public class EventSessionGroup : ITenantEntity, IAuditableEntity, ISoftDeletable
     public Guid? DeletedBy { get; set; }
 
     public Guid ConcurrencyStamp { get; set; }
+
+    public void AssignEventLocation(EventLocation eventLocation)
+    {
+        ArgumentNullException.ThrowIfNull(eventLocation);
+        if (eventLocation.IsDeleted || eventLocation.TenantId != TenantId || eventLocation.EventId != EventId)
+        {
+            throw new InvalidOperationException("EventLocation must be active and match the group tenant and event.");
+        }
+
+        var priorLocationId = LocationId;
+        EventLocationId = eventLocation.Id;
+        EventLocation = eventLocation;
+        LocationId = eventLocation.LocationId;
+        Location = eventLocation.Location;
+        if (LocationId is null || priorLocationId != LocationId)
+        {
+            RoomId = null;
+            Room = null;
+        }
+    }
 }

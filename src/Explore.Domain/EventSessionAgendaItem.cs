@@ -1,3 +1,6 @@
+// ABOUTME: Tenant-scoped timed session segment with authoritative event-local placement.
+// ABOUTME: Derives its retained physical consistency key only from a matching EventLocation.
+
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
@@ -17,6 +20,11 @@ public class EventSessionAgendaItem : ITenantEntity
     public string Title { get; set; }
     public string? Description { get; set; }
 
+    [ForeignKey(nameof(EventLocation))]
+    public Guid? EventLocationId { get; private set; }
+    public EventLocation? EventLocation { get; private set; }
+
+    // Legacy physical consistency seam; ELP-330 migrates callers to AssignEventLocation.
     [ForeignKey("Location")]
     public Guid? LocationId { get; set; }
     public Location? Location { get; set; }
@@ -24,4 +32,20 @@ public class EventSessionAgendaItem : ITenantEntity
     [ForeignKey("Tenant")]
     public Guid TenantId { get; set; }
     public required Tenant Tenant { get; set; }
+
+    public void AssignEventLocation(EventLocation eventLocation)
+    {
+        ArgumentNullException.ThrowIfNull(eventLocation);
+        if (eventLocation.IsDeleted
+            || eventLocation.TenantId != TenantId
+            || eventLocation.EventId != EventSession.EventId)
+        {
+            throw new InvalidOperationException("EventLocation must be active and match the session agenda tenant and event.");
+        }
+
+        EventLocationId = eventLocation.Id;
+        EventLocation = eventLocation;
+        LocationId = eventLocation.LocationId;
+        Location = eventLocation.Location;
+    }
 }

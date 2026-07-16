@@ -1,5 +1,5 @@
-// ABOUTME: Event-level agenda band (break, prayer, opening, logistics, closing) distinct from session-owned EventSessionAgendaItem.
-// ABOUTME: Cached local projection fields are written exclusively via aggregate methods that consume IEventScheduleProjectionCalculator.
+// ABOUTME: Event-level agenda band with cached local schedule projections and mediated EventLocation placement.
+// ABOUTME: Aggregate methods own time projection and retain room keys only for the same physical location.
 
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -34,6 +34,11 @@ public class EventAgendaItem : ITenantEntity, IAuditableEntity, ISoftDeletable, 
     public int LocalStartMinuteOfDay { get; private set; }
     public int LocalEndMinuteOfDay { get; private set; }
 
+    [ForeignKey(nameof(EventLocation))]
+    public Guid? EventLocationId { get; private set; }
+    public EventLocation? EventLocation { get; private set; }
+
+    // Legacy physical consistency seam; ELP-330 migrates callers to AssignEventLocation.
     [ForeignKey("Location")]
     public Guid? LocationId { get; set; }
     public Location? Location { get; set; }
@@ -97,5 +102,25 @@ public class EventAgendaItem : ITenantEntity, IAuditableEntity, ISoftDeletable, 
         StartTime = startUtc.ToUniversalTime();
         EndTime = endUtc.ToUniversalTime();
         ReprojectLocalTimes(timezoneId, calculator);
+    }
+
+    public void AssignEventLocation(EventLocation eventLocation)
+    {
+        ArgumentNullException.ThrowIfNull(eventLocation);
+        if (eventLocation.IsDeleted || eventLocation.TenantId != TenantId || eventLocation.EventId != EventId)
+        {
+            throw new InvalidOperationException("EventLocation must be active and match the agenda item tenant and event.");
+        }
+
+        var priorLocationId = LocationId;
+        EventLocationId = eventLocation.Id;
+        EventLocation = eventLocation;
+        LocationId = eventLocation.LocationId;
+        Location = eventLocation.Location;
+        if (LocationId is null || priorLocationId != LocationId)
+        {
+            RoomId = null;
+            Room = null;
+        }
     }
 }
