@@ -22,7 +22,6 @@ public sealed class WebhookExactPayloadPersistenceTests
 
         var outbound = WebhookMessage.Create(
             Guid.CreateVersion7(),
-            Guid.CreateVersion7(),
             "event.updated",
             "evt-exact",
             "event",

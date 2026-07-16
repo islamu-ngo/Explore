@@ -352,7 +352,6 @@ public class WebhookRepositoryBypassTests(PostgreSqlContainerFixture fixture)
     {
         var createdAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         return WebhookMessage.Create(
-            Guid.CreateVersion7(),
             tenantId,
             "event.published",
             eventId,

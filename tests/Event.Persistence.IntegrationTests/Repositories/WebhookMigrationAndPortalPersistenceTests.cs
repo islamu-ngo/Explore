@@ -641,7 +641,6 @@ public sealed class WebhookMigrationAndPortalPersistenceTests(PostgreSqlContaine
         string eventId,
         DateTime materializedAt) =>
         WebhookMessage.Create(
-            Guid.CreateVersion7(),
             tenantId,
             "event.updated",
             eventId,

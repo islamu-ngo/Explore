@@ -168,7 +168,6 @@ public sealed class WebhookRetentionCleanupRepositoryTests(PostgreSqlContainerFi
 
     private static WebhookMessage CreateOutgoing(Guid tenantId, string identity, DateTime materializedAt) =>
         WebhookMessage.Create(
-            Guid.CreateVersion7(),
             tenantId,
             "retention.test",
             identity,

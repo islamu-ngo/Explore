@@ -330,7 +330,6 @@ public sealed class WebhookPublicationClaimRepositoryTests(PostgreSqlContainerFi
 
     private static WebhookMessage CreateMessage(Guid tenantId, Guid consumerId, string eventId) =>
         WebhookMessage.Create(
-            Guid.CreateVersion7(),
             tenantId,
             "event.updated",
             eventId,

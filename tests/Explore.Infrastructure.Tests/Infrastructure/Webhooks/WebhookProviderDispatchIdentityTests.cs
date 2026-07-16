@@ -157,7 +157,6 @@ public sealed class WebhookProviderDispatchIdentityTests
     private sealed class Fixture
     {
         private static readonly Guid TenantId = Guid.Parse("01900000-0000-7000-8000-000000000001");
-        private static readonly Guid MessageId = Guid.Parse("01900000-0000-7000-8000-000000000002");
         private static readonly Guid ConsumerId = Guid.Parse("01900000-0000-7000-8000-000000000003");
         private static readonly Guid BindingId = Guid.Parse("01900000-0000-7000-8000-000000000004");
         private static readonly Guid PlanId = Guid.Parse("01900000-0000-7000-8000-000000000005");
@@ -177,11 +176,12 @@ public sealed class WebhookProviderDispatchIdentityTests
             Client = Substitute.For<ISvixWebhookClient>();
             Message = CreateMessage(payloadRetentionDays);
             Publication = CreatePublication(
+                Message.Id,
                 messageHashMatches ? Message.PayloadHash : new string('a', 64).Insert(0, "sha256:"),
                 payloadRetentionDays);
             Claim = ClaimForPublishing();
 
-            MessageRepository.GetByTenantAndIdAsync(TenantId, MessageId, Arg.Any<CancellationToken>())
+            MessageRepository.GetByTenantAndIdAsync(TenantId, Message.Id, Arg.Any<CancellationToken>())
                 .Returns(Message);
             PublicationRepository.UpdateAsync(
                     Arg.Any<WebhookProviderPublication>(),
@@ -252,7 +252,6 @@ public sealed class WebhookProviderDispatchIdentityTests
 
         private static WebhookMessage CreateMessage(int payloadRetentionDays) =>
             WebhookMessage.Create(
-                MessageId,
                 TenantId,
                 WebhookEventNames.EventPublished,
                 "evt-1",
@@ -267,11 +266,12 @@ public sealed class WebhookProviderDispatchIdentityTests
                 PreparedAt);
 
         private static WebhookProviderPublication CreatePublication(
+            Guid messageId,
             string requestHash,
             int payloadRetentionDays) =>
             WebhookProviderPublication.Create(
                 TenantId,
-                MessageId,
+                messageId,
                 PlanId,
                 WebhookProviderKind.Svix,
                 BindingId,

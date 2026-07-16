@@ -224,7 +224,6 @@ public sealed class WebhookBulkReplayRepositoryTests(PostgreSqlContainerFixture 
     {
         var materializedAt = ObservedAt.AddDays(-4);
         var message = WebhookMessage.Create(
-            Guid.CreateVersion7(),
             tenantId,
             "event.published",
             identity,

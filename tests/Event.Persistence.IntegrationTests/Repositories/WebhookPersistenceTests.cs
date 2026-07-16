@@ -536,7 +536,6 @@ public sealed class WebhookPersistenceTests(PostgreSqlContainerFixture fixture)
     {
         var createdAt = retentionUntil.AddDays(-1);
         return WebhookMessage.Create(
-            Guid.CreateVersion7(),
             tenantId,
             eventType,
             eventId,

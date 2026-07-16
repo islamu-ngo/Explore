@@ -132,7 +132,6 @@ public sealed class WebhookProviderUnknownReconciliationTests
     private sealed class Fixture
     {
         private static readonly Guid TenantId = Guid.Parse("01900000-0000-7000-8000-000000000101");
-        private static readonly Guid MessageId = Guid.Parse("01900000-0000-7000-8000-000000000102");
         private static readonly Guid BindingId = Guid.Parse("01900000-0000-7000-8000-000000000103");
         private static readonly Guid PlanId = Guid.Parse("01900000-0000-7000-8000-000000000104");
         private static readonly DateTime PreparedAt = new(2026, 7, 14, 8, 0, 0, DateTimeKind.Utc);
@@ -152,9 +151,9 @@ public sealed class WebhookProviderUnknownReconciliationTests
                     Arg.Any<string>())
                 .Returns(lookupSupported);
             Message = CreateMessage();
-            Publication = CreateUnknownPublication(Message.PayloadHash);
+            Publication = CreateUnknownPublication(Message.Id, Message.PayloadHash);
             Claim = ClaimForReconciliation();
-            MessageRepository.GetByTenantAndIdAsync(TenantId, MessageId, Arg.Any<CancellationToken>())
+            MessageRepository.GetByTenantAndIdAsync(TenantId, Message.Id, Arg.Any<CancellationToken>())
                 .Returns(Message);
             PublicationRepository.UpdateAsync(
                     Arg.Any<WebhookProviderPublication>(),
@@ -223,7 +222,6 @@ public sealed class WebhookProviderUnknownReconciliationTests
 
         private static WebhookMessage CreateMessage() =>
             WebhookMessage.Create(
-                MessageId,
                 TenantId,
                 "event.published",
                 "evt-unknown",
@@ -237,11 +235,13 @@ public sealed class WebhookProviderUnknownReconciliationTests
                 PreparedAt.AddDays(14),
                 PreparedAt);
 
-        private static WebhookProviderPublication CreateUnknownPublication(string requestHash)
+        private static WebhookProviderPublication CreateUnknownPublication(
+            Guid messageId,
+            string requestHash)
         {
             var publication = WebhookProviderPublication.Create(
                 TenantId,
-                MessageId,
+                messageId,
                 PlanId,
                 WebhookProviderKind.Svix,
                 BindingId,

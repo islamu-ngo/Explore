@@ -613,7 +613,8 @@ public sealed class WebhookProviderResolverTests
         var result = await publisher.PublishAsync(context, CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsTrue();
-        await Assert.That(result.MessageId).IsEqualTo(context.MessageId);
+        await Assert.That(result.MessageId).IsEqualTo(captured!.Message.Id);
+        await Assert.That(result.MessageId).IsNotEqualTo(context.MessageId);
         await Assert.That(result.ProviderMessageId).IsNull();
         await Assert.That(captured).IsNotNull();
         await Assert.That(captured!.DeliveryPlan.ProviderMode).IsEqualTo(WebhookProviderMode.DryRun);
