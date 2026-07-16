@@ -13,6 +13,7 @@ using Cerbos.Sdk.Builder;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
+using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Strategies;
 using Explore.Application.Contracts.Webhooks;
@@ -31,6 +32,7 @@ using Explore.Infrastructure.Mail;
 using Explore.Infrastructure.Mail.Unsubscribe;
 using Explore.Infrastructure.Management;
 using Explore.Infrastructure.Messaging;
+using Explore.Infrastructure.Privacy.ErasureAuthority;
 using Explore.Infrastructure.Services;
 using Explore.Infrastructure.Services.Federation;
 using Explore.Infrastructure.Services.Keycloak;
@@ -56,6 +58,10 @@ public static class InfrastructureServicesRegistration
 {
     public static IServiceCollection ConfigureInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddOptions<LocationPrivacyErasureAuthorityOptions>()
+            .Bind(configuration.GetSection(LocationPrivacyErasureAuthorityOptions.SectionName));
+        services.AddSingleton<ILocationPrivacyErasureAuthority, PostgreSqlLocationPrivacyErasureAuthority>();
+
         services.AddOptions<ManagedControlPlaneOptions>()
             .Bind(configuration.GetSection(ManagedControlPlaneOptions.SectionName))
             .ValidateOnStart();
