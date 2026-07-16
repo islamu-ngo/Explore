@@ -161,7 +161,6 @@ public class EventListTests : IDisposable
             Arg.Any<string?>(),                // exclusionMode
             Arg.Any<List<int>?>(),             // formatIds
             Arg.Any<List<int>?>(),             // madhabIds
-            Arg.Any<List<Guid>?>(),            // locationIds
             Arg.Any<List<int>?>(),             // registrationModeIds
             Arg.Any<List<int>?>(),             // languageIds
             Arg.Any<DateTimeOffset?>(),        // dateFrom
@@ -362,7 +361,6 @@ public class EventListTests : IDisposable
             Arg.Any<string?>(),
             Arg.Any<List<int>?>(),
             Arg.Any<List<int>?>(),
-            Arg.Any<List<Guid>?>(),
             Arg.Any<List<int>?>(),
             Arg.Any<List<int>?>(),
             Arg.Any<DateTimeOffset?>(),

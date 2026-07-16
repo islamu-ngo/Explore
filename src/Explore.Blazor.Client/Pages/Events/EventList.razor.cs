@@ -26,7 +26,6 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     [Inject] protected ICategoryService CategoryService { get; set; } = null!;
     [Inject] protected ITagService TagService { get; set; } = null!;
     [Inject] protected IAdminService AdminService { get; set; } = null!;
-    [Inject] protected ILocationService LocationService { get; set; } = null!;
     [Inject] protected IEventRegistrationService RegistrationService { get; set; } = null!;
     [Inject] protected IDialogService DialogService { get; set; } = null!;
     [Inject] protected IPublicExperienceService PublicExperienceService { get; set; } = null!;
@@ -108,7 +107,6 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private ICollection<CategoryListDto> categories = new List<CategoryListDto>();
     private ICollection<TagListDto> tags = new List<TagListDto>();
     private ICollection<MadhabListDto> madhabs = new List<MadhabListDto>();
-    private ICollection<LocationListDto> locations = new List<LocationListDto>();
     private ICollection<RegistrationModeListDto> registrationModes = new List<RegistrationModeListDto>();
     private ICollection<LanguageListDto> languages = new List<LanguageListDto>();
     private ICollection<TagTypeWithTagsDto> tagGroups = new List<TagTypeWithTagsDto>();
@@ -346,7 +344,6 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         categories = PersistedState.Categories;
         tags = PersistedState.Tags;
         madhabs = PersistedState.Madhabs;
-        locations = PersistedState.Locations;
         registrationModes = PersistedState.RegistrationModes;
         languages = PersistedState.Languages;
         tagGroups = PersistedState.TagGroups;
@@ -427,13 +424,12 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             var categoriesTask = CategoryService.GetAllCategoriesAsync();
             var tagsTask = TagService.GetAllTagsAsync();
             var madhabsTask = AdminService.GetMadhabsAsync();
-            var locationsTask = LocationService.GetAllLocationsAsync();
             var registrationModesTask = AdminService.GetRegistrationModesAsync();
             var languagesTask = AdminService.GetLanguagesAsync();
             var tagGroupsTask = TagService.GetTagsGroupedByTagTypeAsync();
             var categoryGroupsTask = CategoryService.GetCategoriesGroupedByCategoryTypeAsync();
 
-            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventFormatsTask, categoriesTask, tagsTask, madhabsTask, locationsTask, registrationModesTask, languagesTask, tagGroupsTask, categoryGroupsTask);
+            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventFormatsTask, categoriesTask, tagsTask, madhabsTask, registrationModesTask, languagesTask, tagGroupsTask, categoryGroupsTask);
 
             eventTypes = await eventTypesTask ?? new List<EventTypeListDto>();
             audienceGenders = await audienceGendersTask ?? new List<AudienceGenderListDto>();
@@ -442,7 +438,6 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             categories = await categoriesTask ?? new List<CategoryListDto>();
             tags = await tagsTask ?? new List<TagListDto>();
             madhabs = await madhabsTask ?? new List<MadhabListDto>();
-            locations = await locationsTask ?? new List<LocationListDto>();
             registrationModes = await registrationModesTask ?? new List<RegistrationModeListDto>();
             languages = await languagesTask ?? new List<LanguageListDto>();
             tagGroups = await tagGroupsTask ?? new List<TagTypeWithTagsDto>();
@@ -652,7 +647,6 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             Categories = categories.ToList(),
             Tags = tags.ToList(),
             Madhabs = madhabs.ToList(),
-            Locations = locations.ToList(),
             RegistrationModes = registrationModes.ToList(),
             Languages = languages.ToList(),
             TagGroups = tagGroups.ToList(),
@@ -1827,7 +1821,6 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         public List<CategoryListDto> Categories { get; init; } = new();
         public List<TagListDto> Tags { get; init; } = new();
         public List<MadhabListDto> Madhabs { get; init; } = new();
-        public List<LocationListDto> Locations { get; init; } = new();
         public List<RegistrationModeListDto> RegistrationModes { get; init; } = new();
         public List<LanguageListDto> Languages { get; init; } = new();
         public List<TagTypeWithTagsDto> TagGroups { get; init; } = new();

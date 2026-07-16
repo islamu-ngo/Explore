@@ -33,7 +33,6 @@ public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
     [Parameter] public ICollection<EventTypeListDto> EventTypes { get; set; } = new List<EventTypeListDto>();
     [Parameter] public ICollection<CategoryListDto> Categories { get; set; } = new List<CategoryListDto>();
     [Parameter] public ICollection<CategoryTypeWithCategoriesDto> CategoryGroups { get; set; } = new List<CategoryTypeWithCategoriesDto>();
-    [Parameter] public ICollection<LocationListDto> Locations { get; set; } = new List<LocationListDto>();
     [Parameter] public ICollection<EventFormatListDto> EventFormats { get; set; } = new List<EventFormatListDto>();
     [Parameter] public ICollection<MadhabListDto> Madhabs { get; set; } = new List<MadhabListDto>();
     [Parameter] public ICollection<RegistrationModeListDto> RegistrationModes { get; set; } = new List<RegistrationModeListDto>();
@@ -49,7 +48,6 @@ public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
     // Filter State
     public DateRange? SelectedDateRange { get; set; }
     public string? SearchTerm { get; set; }
-    public IReadOnlyCollection<Guid> SelectedLocationIds { get; set; } = new HashSet<Guid>();
     public IReadOnlyCollection<int> SelectedFormatIds { get; set; } = new HashSet<int>();
     public IReadOnlyCollection<int> SelectedMadhabIds { get; set; } = new HashSet<int>();
     public IReadOnlyCollection<int> SelectedRegistrationModeIds { get; set; } = new HashSet<int>();
@@ -114,7 +112,6 @@ public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
     {
         SelectedDateRange = null;
         SearchTerm = null;
-        SelectedLocationIds = new HashSet<Guid>();
         SelectedFormatIds = new HashSet<int>();
         SelectedMadhabIds = new HashSet<int>();
         SelectedRegistrationModeIds = new HashSet<int>();
@@ -142,7 +139,6 @@ public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
         int count = 0;
         if (SelectedDateRange?.Start != null || SelectedDateRange?.End != null) count++;
         if (!string.IsNullOrEmpty(SearchTerm)) count++;
-        if (SelectedLocationIds.Any()) count++;
         if (SelectedFormatIds.Any()) count++;
         if (SelectedMadhabIds.Any()) count++;
         if (SelectedRegistrationModeIds.Any()) count++;
@@ -165,12 +161,6 @@ public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
 
         return count;
     }
-
-    private string FormatSelectedLocations(IReadOnlyList<string> selectedValues) => FormatSelectedGuidLookup(
-        selectedValues,
-        Locations,
-        location => location.Id,
-        location => location.FullName);
 
     private string FormatSelectedFormats(IReadOnlyList<string> selectedValues) => FormatSelectedIntLookup(
         selectedValues,

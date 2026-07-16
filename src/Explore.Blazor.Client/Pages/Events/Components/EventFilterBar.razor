@@ -52,16 +52,6 @@
             </div>
 
             <div class="filter-bar__filter-item filter-bar__filter-item--full">
-                <div class="filter-bar__label">Location</div>
-                <MudSelect T="Guid" MultiSelection="true" @bind-SelectedValues="SelectedLocationIds" MultiSelectionTextFunc="FormatSelectedLocations" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
-                    @foreach (var location in Locations)
-                    {
-                        <MudSelectItem T="Guid" Value="@(location.Id.GetValueOrDefault())">@location.FullName</MudSelectItem>
-                    }
-                </MudSelect>
-            </div>
-
-            <div class="filter-bar__filter-item filter-bar__filter-item--full">
                 <div class="filter-bar__label">Format</div>
                 <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedFormatIds" MultiSelectionTextFunc="FormatSelectedFormats" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
                     @foreach (var format in EventFormats)
@@ -295,16 +285,6 @@
                                             AdditionalDateClassesFunc="GetDateClasses"
                                             AutoClose="true"
                                             Dense="true" />
-                    </div>
-
-                    <div class="filter-bar__filter-item">
-                        <div class="filter-bar__label">Location</div>
-                        <MudSelect T="Guid" MultiSelection="true" @bind-SelectedValues="SelectedLocationIds" MultiSelectionTextFunc="FormatSelectedLocations" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
-                            @foreach (var location in Locations)
-                            {
-                                <MudSelectItem T="Guid" Value="@(location.Id.GetValueOrDefault())">@location.FullName</MudSelectItem>
-                            }
-                        </MudSelect>
                     </div>
 
                     <div class="filter-bar__filter-item">

@@ -39,13 +39,11 @@ public sealed class EventListFilterStateTests
     [Test]
     public async Task From_CapturesFilterBarSelectionsAndInclusiveDateRange()
     {
-        var locationId = Guid.NewGuid();
         var filterBar = new EventFilterBar
         {
             SearchTerm = "lecture",
             SelectedFormatIds = new HashSet<int> { 2 },
             SelectedMadhabIds = new HashSet<int> { 3 },
-            SelectedLocationIds = new HashSet<Guid> { locationId },
             SelectedRegistrationModeIds = new HashSet<int> { 4 },
             SelectedLanguageIds = new HashSet<int> { 5 },
             SelectedEventTypeIds = new HashSet<int> { 6 },
@@ -65,7 +63,6 @@ public sealed class EventListFilterStateTests
         await Assert.That(state.SearchTerm).IsEqualTo("lecture");
         await Assert.That(state.FormatIds!.SequenceEqual([2])).IsTrue();
         await Assert.That(state.MadhabIds!.SequenceEqual([3])).IsTrue();
-        await Assert.That(state.LocationIds!.SequenceEqual([locationId])).IsTrue();
         await Assert.That(state.RegistrationModeIds!.SequenceEqual([4])).IsTrue();
         await Assert.That(state.LanguageIds!.SequenceEqual([5])).IsTrue();
         await Assert.That(state.EventTypeIds!.SequenceEqual([6])).IsTrue();
@@ -101,7 +98,6 @@ public sealed class EventListFilterStateTests
                 exclusionMode: Arg.Any<string?>(),
                 formatIds: Arg.Any<List<int>?>(),
                 madhabIds: Arg.Any<List<int>?>(),
-                locationIds: Arg.Any<List<Guid>?>(),
                 registrationModeIds: Arg.Any<List<int>?>(),
                 languageIds: Arg.Any<List<int>?>(),
                 dateFrom: Arg.Any<DateTimeOffset?>(),
@@ -150,7 +146,6 @@ public sealed class EventListFilterStateTests
             TagExclusionMode: "any",
             FormatIds: null,
             MadhabIds: null,
-            LocationIds: null,
             RegistrationModeIds: null,
             LanguageIds: null,
             DateFrom: null,

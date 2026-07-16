@@ -28,7 +28,6 @@ public sealed class EventFilterUrlState
     public List<int>? EventTypeIds { get; init; }
     public List<Guid>? CategoryIds { get; init; }
     public List<Guid>? TagIds { get; init; }
-    public List<Guid>? LocationIds { get; init; }
     public List<int>? MadhabIds { get; init; }
     public List<int>? RegistrationModeIds { get; init; }
     public List<int>? LanguageIds { get; init; }
@@ -53,7 +52,6 @@ public sealed class EventFilterUrlState
         EventTypeIds is { Count: > 0 } ||
         CategoryIds is { Count: > 0 } ||
         TagIds is { Count: > 0 } ||
-        LocationIds is { Count: > 0 } ||
         MadhabIds is { Count: > 0 } ||
         RegistrationModeIds is { Count: > 0 } ||
         LanguageIds is { Count: > 0 } ||
@@ -123,8 +121,6 @@ public static class EventFilterUrlHelper
         AddIntCsv(dict, "audienceGenderIds", filterBar.SelectedAudienceGenderIds);
         AddIntCsv(dict, "audienceAgeIds", filterBar.SelectedAudienceAgeIds);
 
-        AddGuidCsv(dict, "locationIds", filterBar.SelectedLocationIds);
-
         // Islamic filters
         AddIntCsv(dict, "genderModeIds", filterBar.SelectedGenderModeIds);
         AddIntCsv(dict, "prayerIds", filterBar.SelectedReferencePrayerIds);
@@ -188,9 +184,6 @@ public static class EventFilterUrlHelper
 
         if (state.AudienceAgeIds is { Count: > 0 })
             filterBar.SelectedAudienceAgeIds = new HashSet<int>(state.AudienceAgeIds);
-
-        if (state.LocationIds is { Count: > 0 })
-            filterBar.SelectedLocationIds = new HashSet<Guid>(state.LocationIds);
 
         // Islamic
         if (state.GenderModeIds is { Count: > 0 })
