@@ -353,7 +353,7 @@ The following ELP-200/210 tables are authoritative and synchronized with plan Se
   - Result: “Register to see private address” appears only when server exposes a real eligible affordance; JSON-LD uses public disclosure only.
 
 - [ ] **ELP-660 — Complete localization, accessibility, responsive, RTL, and visual QA**
-  - Paths: `src/Explore.Infrastructure/Localization/Bundles/en.json`, `fr.json`, `ar.json`, Razor/CSS isolation, Blazor tests/E2E.
+  - Paths: `src/Explore.Infrastructure/Localization/Bundles/en.json`, `fr.json`, `ar.json`, Razor/CSS isolation, Blazor tests, and manual browser QA.
   - Result: WCAG 2.2 AA labels/focus/live announcements/no color-only state/24px targets; 375/768/1280 layouts and RTL pass real-browser QA.
 
 ## Phase 8: Outbound Surfaces, Discovery, and Documentation

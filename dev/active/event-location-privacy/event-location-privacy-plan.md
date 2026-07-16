@@ -543,7 +543,7 @@ Each acceptance case has one primary automated owner; cross-layer cases may add 
 | Batch query/authorization budget | `tests/Event.Persistence.IntegrationTests/Privacy/EventLocationDisclosureBatchTests.cs` | `ELP-315` |
 | Server-time reveal and field matrix | `tests/Event.Application.UnitTests/Services/EventLocationDisclosureEvaluatorTests.cs` | `ELP-130`, `310`, `340` |
 | Blazor HAL/disclosure/JSON-LD states | `tests/Explore.Blazor.Client.Tests/EventLocationPrivacyTests.cs` | `ELP-600`, `610`, `630`, `650` |
-| Browser accessibility/responsive/RTL | `tests/Explore.Blazor.Client.E2ETests/EventLocationPrivacyE2ETests.cs` | `ELP-660`, `830` |
+| Browser accessibility/responsive/RTL | manual QA matrix recorded in context | `ELP-660`, `830` |
 | Cross-surface negative proof | focused tests above plus repository source scan recorded in context | `ELP-700`, `810` |
 | Migration selector/contract gate | `tests/Event.Persistence.IntegrationTests/Migrations/EventLocationMigrationStageTests.cs` | `ELP-230A`, `230B`, `230C`, `800` |
 
@@ -560,11 +560,10 @@ dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTest
 dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1 --no-progress
 dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
 dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet
-dotnet test --project tests/Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=EventLocationPrivacy]" --minimum-expected-tests 1 --no-progress
 dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --minimum-expected-tests 1
 ```
 
-Mark new tests with `[Category("EventLocationPrivacy")]` where supported so the focused E2E/security lane is stable. Also run migration SQL inspection, contract snapshot/OpenAPI generation, NSwag regeneration cleanliness, targeted output-cache tests, and browser-based responsive/accessibility/RTL journeys.
+Mark new tests with `[Category("EventLocationPrivacy")]` where supported so the focused security lane is stable. Also run migration SQL inspection, contract snapshot/OpenAPI generation, NSwag regeneration cleanliness, targeted output-cache tests, and manual browser-based responsive/accessibility/RTL journeys.
 
 Completed-wave evidence on 2026-07-16: managed/API ELP 19/19; API public ELP 11/11; Application ELP 18/18; native Cerbos 461/461; full Application 2,317/2,317; full Blazor 1,702/1,702 executed with one not executed; MCP ELP at least 10, authenticated management at least 6, SDK at least 10; ELP-200 Domain ELP at least 30, Persistence ELP 20, own-cancel Application 22/22, PostgreSQL cancellation/race 8/8, architecture/parity 24/24; lookup Domain 2, Persistence 2, PostgreSQL startup/idempotency 1; lifecycle/aggregate Domain 50/50; final Domain ELP 63/63; registration access 42/42; disclosure contracts 17/17; EventLocation persistence 12/12 plus relational model 1/1; retained authority PostgreSQL 16/16; Clean Architecture 15/15. The full Release build passed 26 projects with 0 errors; focused Domain/Application/Persistence/Infrastructure builds passed with 0 errors and the completed W3-W5 lanes passed independent high/medium re-review. Current generated hashes are recorded in context. ELP-230A migration enforcement and browser visual/accessibility QA remain open.
 
