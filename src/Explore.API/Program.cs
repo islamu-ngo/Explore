@@ -261,8 +261,8 @@ builder.Services.AddOpenApi("islamu-event", options =>
     });
     options.AddDocumentTransformer<Explore.API.OpenApi.KeycloakOpenApiSecurityTransformer>();
     options.AddDocumentTransformer<Explore.API.OpenApi.ManagedControlPlaneOpenApiSecurityTransformer>();
-    options.AddDocumentTransformer<Explore.API.OpenApi.OpenApiStringEnumDocumentTransformer>();
     options.AddDocumentTransformer<Explore.API.OpenApi.HalDtoSchemaTransformer>();
+    options.AddDocumentTransformer<Explore.API.OpenApi.OpenApiStringEnumDocumentTransformer>();
     options.AddDocumentTransformer<Explore.API.OpenApi.OperationIdInvariantTransformer>();
     options.AddOperationTransformer<Explore.API.OpenApi.EndpointClassificationTransformer>();
     options.AddOperationTransformer<Explore.API.OpenApi.ManagedControlPlaneOpenApiSecurityTransformer>();
@@ -532,7 +532,9 @@ if (!builder.Environment.IsEnvironment("Testing") && !isOpenApiGeneration)
         if (db.Database.IsRelational())
         {
             logger.LogInformation("Applying database migrations...");
-            await db.Database.MigrateAsync();
+            await EventLocationPrivacyMigrationStage.MigrateAsync(
+                db,
+                app.Configuration[EventLocationPrivacyMigrationStage.ConfigurationKey]);
             await PostgresModelConstraintApplier.ApplyAsync(db);
             logger.LogInformation("Database migrations completed successfully.");
         }
