@@ -152,7 +152,7 @@ intents:
       - schemas/islamu-event.md
     unique_acceptance:
       - "Migration is idempotent and reversible"
-      - "HasData seed synchronized with enum values"
+      - "Stable enum IDs and codes stay synchronized with idempotent LookupTableSeeder repair and migration-local InsertData before dependent backfills"
     forbidden_without_approval:
       - "Destructive Down() that silently loses data"
     related_agents:

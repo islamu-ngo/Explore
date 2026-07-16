@@ -8,24 +8,40 @@ ABOUTME: Covers creation, safety constraints, naming, and rollback patterns.
 ```bash
 # Create a new migration
 dotnet ef migrations add <MigrationName> \
-    --project Event.Persistence \
-    --startup-project Explore.AppHost
+    --context ExploreDbContext \
+    --project src/Explore.Persistence/Explore.Persistence.csproj \
+    --startup-project src/Explore.API/Explore.API.csproj \
+    --configuration Release
 
-# Apply pending migrations
-dotnet ef database update \
-    --project Event.Persistence \
-    --startup-project Explore.AppHost
+# Apply migrations only through the reviewed rollout target
+dotnet ef database update <TargetMigration> \
+    --context ExploreDbContext \
+    --project src/Explore.Persistence/Explore.Persistence.csproj \
+    --startup-project src/Explore.API/Explore.API.csproj \
+    --configuration Release
 
 # Generate SQL script for review (recommended before applying)
 dotnet ef migrations script \
-    --project Event.Persistence \
-    --startup-project Explore.AppHost \
-    --idempotent
+    --context ExploreDbContext \
+    --project src/Explore.Persistence/Explore.Persistence.csproj \
+    --startup-project src/Explore.API/Explore.API.csproj \
+    --configuration Release \
+    --idempotent \
+    --output /tmp/explore-migration.sql
 
 # Remove last unapplied migration
 dotnet ef migrations remove \
-    --project Event.Persistence \
-    --startup-project Explore.AppHost
+    --context ExploreDbContext \
+    --project src/Explore.Persistence/Explore.Persistence.csproj \
+    --startup-project src/Explore.API/Explore.API.csproj \
+    --configuration Release
+
+# Verify the model has no ungenerated changes
+dotnet ef migrations has-pending-model-changes \
+    --context ExploreDbContext \
+    --project src/Explore.Persistence/Explore.Persistence.csproj \
+    --startup-project src/Explore.API/Explore.API.csproj \
+    --configuration Release
 ```
 
 ## Safety Rules
@@ -48,15 +64,27 @@ Use PascalCase verb-noun format describing the change:
 
 ## MigrationService
 
-The project uses `MigrationService` (registered as a hosted service via Aspire) to apply pending migrations at startup in development. In production, migrations are applied via the CLI commands above.
+`src/Explore.AppHost/AppHost.cs` registers `src/Event.MigrationService/Event.MigrationService.csproj` as a separate project and makes the API wait for it. Its worker applies every pending migration, applies model-owned PostgreSQL constraints, runs `DatabaseSeeder`, and then exits. Operator-selected staged migrations must therefore use an explicit migration target rather than letting one startup run collapse expand, backfill, and contract stages.
 
 ## Seed Data
 
-Lookup tables use `HasData()` in entity configurations. When adding a new lookup:
-1. Create the enum in Domain
-2. Add the entity configuration with `HasData()` seed
-3. Create the migration
-4. Verify the seed SQL in the generated migration
+For new or updated Event Location Privacy lookup families:
+
+1. Give every Domain enum value an explicit stable integer ID and stable uppercase `MasterCode`.
+2. Keep entity configuration structural (`ValueGeneratedNever`, unique code, relationships); do not use model `HasData()` while EF Core #36682 applies.
+3. Add the required rows to `LookupTableSeeder` through the existing `SeedMissingLookupRowsAsync` pattern so runtime startup repairs rows missing by stable ID.
+4. Insert lookup rows with migration-local `InsertData` before any SQL or column backfill that depends on them; runtime seeding happens only after all pending migrations finish.
+5. Test enum/ID/code parity and review generated SQL before applying the migration.
+
+The helper repairs absent IDs and does not overwrite an existing row's code or label. Treat parity mismatches as defects. Do not claim every legacy lookup seeder already repairs individual missing rows; this invariant applies to new and updated Event Location Privacy lookup families.
+
+## Verification
+
+```bash
+dotnet build Explore.slnx --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+```
 
 ## Related
 

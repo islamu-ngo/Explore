@@ -17,7 +17,9 @@ related_intents: [add-ef-migration]
 ## Path-Specific Constraints
 - **Reversibility**: Always provide a valid `Down` method that correctly reverses the `Up` migration.
 - **Named Filters**: Verify that `SoftDelete` and tenant filters remain intact after schema changes.
-- **Lookup Sync**: Synchronize `enum` changes with `HasData()` seed data in the same migration.
+- **Lookup Parity**: Keep lookup enum IDs and stable `MasterCode` values synchronized with idempotent missing-row repair in `LookupTableSeeder`.
+- **Seed Ordering**: Use migration-local `InsertData` before any dependent backfill because runtime seeding runs only after all migrations finish.
+- **HasData Guard**: Do not add model `HasData()` while EF Core #36682 applies; existing migration-owned seed history remains immutable.
 - **History Integrity**: Never rename or rewrite migrations that have already been merged.
 - **Snapshot Accuracy**: Ensure the `ModelSnapshot` is updated and reflects the final intended model state.
 
