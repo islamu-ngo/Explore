@@ -1,8 +1,10 @@
-// ABOUTME: Component tests for the shared event details sidebar registration affordance.
-// ABOUTME: Verifies registration actions are rendered from HAL links instead of local role assumptions.
+// ABOUTME: Component tests for shared event-sidebar affordances and its event-image lightbox integration.
+// ABOUTME: Verifies HAL-gated registration, accessible image triggers, and outside-image dismissal behavior.
 
 using System.Text.Json;
 using Explore.Blazor.Client.Components.Events;
+using Explore.Blazor.Client.Services;
+using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Components.Event;
 
@@ -37,6 +39,60 @@ public sealed class EventDetailsSidebarTests : IDisposable
             .Add(component => component.EventDetail, CreateEventDetail(eventId, includeRegisterLink: false)));
 
         await Assert.That(cut.Markup).DoesNotContain("Register for this Event");
+    }
+
+    [Test]
+    public async Task Render_WhenActualEventImageIsReady_ShowsAccessibleLightboxTrigger()
+    {
+        var eventId = Guid.NewGuid();
+        var eventItem = CreateEventListItem(eventId);
+        eventItem.FeaturedImageUri = "https://example.test/event-image.webp";
+
+        var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
+            .Add(component => component.SelectedEvent, eventItem)
+            .Add(component => component.EventDetail, CreateEventDetail(eventId, includeRegisterLink: false))
+            .Add(component => component.IsDetailImageLoading, false));
+
+        await Assert.That(cut.Markup).Contains("aria-label=\"View full-size image for Registration Affordance Event\"");
+        await Assert.That(cut.Markup).Contains("aria-haspopup=\"dialog\"");
+    }
+
+    [Test]
+    public async Task Render_WhenEventUsesFallbackImage_ShowsAccessibleLightboxTrigger()
+    {
+        var eventId = Guid.NewGuid();
+
+        var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
+            .Add(component => component.SelectedEvent, CreateEventListItem(eventId))
+            .Add(component => component.EventDetail, CreateEventDetail(eventId, includeRegisterLink: false)));
+
+        await Assert.That(cut.Markup).Contains("aria-label=\"View full-size image for Registration Affordance Event\"");
+        await Assert.That(cut.Markup).Contains("aria-haspopup=\"dialog\"");
+    }
+
+    [Test]
+    public async Task LightboxDialog_ClickOutsideImage_ClosesDialog()
+    {
+        _ctx.Render<MudPopoverProvider>();
+        var provider = _ctx.Render<MudDialogProvider>();
+        var dialogService = _ctx.Services.GetRequiredService<IDialogService>();
+        var parameters = new DialogParameters<EventImageLightboxDialog>
+        {
+            { component => component.ImageSource, "https://example.test/event-image.webp" },
+            { component => component.Alt, "Registration Affordance Event" }
+        };
+
+        var dialog = await dialogService.ShowAsync<EventImageLightboxDialog>(
+            string.Empty,
+            parameters,
+            DialogOptionsFactory.ImageLightbox());
+        var surface = provider.WaitForElement(".event-image-lightbox-dialog__surface");
+
+        await Assert.That(provider.Markup).Contains("alt=\"Registration Affordance Event\"");
+        await Assert.That(provider.Markup).DoesNotContain("Close full-size image");
+        surface.Click();
+
+        await Assert.That((await dialog.Result).Canceled).IsTrue();
     }
 
     private static EventListDto CreateEventListItem(Guid eventId) => new()

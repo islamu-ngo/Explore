@@ -98,6 +98,10 @@
                      @onerror="OnDetailImageError"
                      class="@GetDetailImageCssClass(hasDetailActualImage, showDetailImageSkeleton)"
                      alt="@SelectedEvent.Title" />
+                @if (!showDetailImageSkeleton)
+                {
+                    <EventImageLightbox ImageSource="@detailImageSrc" Alt="@SelectedEvent.Title" />
+                }
             </div>
 
             @* ── Status & Type Chips ── *@
