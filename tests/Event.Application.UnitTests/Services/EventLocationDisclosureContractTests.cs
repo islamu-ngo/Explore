@@ -4,6 +4,7 @@
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Text.Json;
+using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.DTOs.Location;
 using Explore.Domain.Enums;
 

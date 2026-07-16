@@ -1,7 +1,7 @@
 // ABOUTME: Immutable input contract for one purpose-scoped EventLocation disclosure decision.
 // ABOUTME: Carries association and requester identity without embedding registration-access state.
 
-namespace Explore.Application.DTOs.Location;
+namespace Explore.Application.Contracts.LocationPrivacy;
 
 public sealed record EventLocationDisclosureRequest(
     Guid TenantId,

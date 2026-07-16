@@ -3,7 +3,7 @@
 
 using System.Collections.Immutable;
 
-namespace Explore.Application.DTOs.Location;
+namespace Explore.Application.Contracts.LocationPrivacy;
 
 public sealed record EventLocationDisclosureValues(
     string? Country = null,

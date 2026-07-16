@@ -3,8 +3,8 @@
 
 using System.Collections.Immutable;
 using System.Reflection;
+using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Services;
-using Explore.Application.DTOs.Location;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;

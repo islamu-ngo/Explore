@@ -2,7 +2,7 @@
 // ABOUTME: Applies association, privacy, governance, authority, server-time, policy, and Home-redaction gates.
 
 using Explore.Application.Contracts.Services;
-using Explore.Application.DTOs.Location;
+using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Domain;
 using Explore.Domain.Enums;
 

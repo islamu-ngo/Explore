@@ -2,6 +2,7 @@
 // ABOUTME: Materializes response shapes only from validated disclosure results to prevent contradictory states.
 
 using System.Text.Json.Serialization;
+using Explore.Application.Contracts.LocationPrivacy;
 
 namespace Explore.Application.DTOs.Location;
 

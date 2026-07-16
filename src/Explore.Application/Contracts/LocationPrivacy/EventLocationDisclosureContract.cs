@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Explore.Domain.Enums;
 
-namespace Explore.Application.DTOs.Location;
+namespace Explore.Application.Contracts.LocationPrivacy;
 
 public enum EventLocationDisclosurePurpose
 {

@@ -3,6 +3,7 @@
 
 using System.Text.Json.Nodes;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.ManagedProviderProvisioning;
