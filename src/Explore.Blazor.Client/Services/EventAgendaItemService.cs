@@ -33,6 +33,20 @@ public class EventAgendaItemService : IEventAgendaItemService
         }
     }
 
+    public async Task<ICollection<EventAgendaItemListDto>> GetManagedAgendaItemsByEventAsync(Guid eventId)
+    {
+        try
+        {
+            var result = await _client.GetManagedEventAgendaItemsByEventAsync(eventId);
+            return result?.GetItems() ?? new List<EventAgendaItemListDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching managed agenda items for event {EventId}", eventId);
+            return new List<EventAgendaItemListDto>();
+        }
+    }
+
     public async Task<EventAgendaItemDto?> GetAgendaItemByIdAsync(Guid agendaItemId)
     {
         try
@@ -47,6 +61,28 @@ public class EventAgendaItemService : IEventAgendaItemService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching agenda item {AgendaItemId}", agendaItemId);
+            return null;
+        }
+    }
+
+    public async Task<EventAgendaItemDto?> GetManagedAgendaItemByIdAsync(Guid eventId, Guid agendaItemId)
+    {
+        try
+        {
+            var result = await _client.GetManagedEventAgendaItemByIdAsync(eventId, agendaItemId);
+            return result?.ToDto();
+        }
+        catch (ApiException ex) when (ex.StatusCode is 401 or 403 or 404)
+        {
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error fetching managed agenda item {AgendaItemId} for event {EventId}",
+                agendaItemId,
+                eventId);
             return null;
         }
     }

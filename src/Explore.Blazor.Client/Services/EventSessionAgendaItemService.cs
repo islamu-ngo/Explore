@@ -1,3 +1,6 @@
+// ABOUTME: Blazor API wrapper for public and event-authorized session agenda operations.
+// ABOUTME: Routes management pages through exact event-scoped reads without weakening public reads.
+
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Microsoft.Extensions.Logging;
@@ -24,6 +27,25 @@ public class EventSessionAgendaItemService : IEventSessionAgendaItemService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching agenda items for session {SessionId}", sessionId);
+            return new List<EventSessionAgendaItemListDto>();
+        }
+    }
+
+    public async Task<ICollection<EventSessionAgendaItemListDto>> GetManagedAgendaItemsBySessionAsync(
+        Guid eventId,
+        Guid sessionId)
+    {
+        try
+        {
+            return await _client.GetManagedEventSessionAgendaItemsBySessionAsync(eventId, sessionId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error fetching managed agenda items for session {SessionId} on event {EventId}",
+                sessionId,
+                eventId);
             return new List<EventSessionAgendaItemListDto>();
         }
     }

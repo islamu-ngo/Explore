@@ -111,6 +111,40 @@ public class EventAgendaItemServiceTests
         await Assert.That(result).IsNull();
     }
 
+    [Test]
+    public async Task GetManagedAgendaItemByIdAsync_PreservesRoomForEdit()
+    {
+        var eventId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+        var roomId = Guid.NewGuid();
+        var dto = new EventAgendaItemDto
+        {
+            Id = itemId,
+            EventId = eventId,
+            Title = "Keynote Speech",
+            RoomId = roomId,
+            StartTime = DateTimeOffset.Parse("2026-05-07T09:00:00+00:00", CultureInfo.InvariantCulture),
+            EndTime = DateTimeOffset.Parse("2026-05-07T10:00:00+00:00", CultureInfo.InvariantCulture)
+        };
+        _apiClient.GetManagedEventAgendaItemByIdAsync(
+                eventId,
+                itemId,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(CreateHalResourceResponse(dto));
+
+        var result = await _service.GetManagedAgendaItemByIdAsync(eventId, itemId);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.RoomId).IsEqualTo(roomId);
+        await _apiClient.DidNotReceive().GetEventAgendaItemByIdAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
     // ========== CreateAgendaItemAsync ==========
 
     [Test]
