@@ -125,14 +125,14 @@ public sealed class EventLocationMigrationStageTests(PostgreSqlContainerFixture 
 
             await EventLocationPrivacyMigrationStage.MigrateAsync(context, "Expand");
 
-            int[] privacyDefaults = await context.Database.SqlQueryRaw<int>(
+            int[] privacyDefaults = await context.Database.SqlQuery<int>(
                     $"SELECT location_kind_id AS \"Value\" FROM locations WHERE id = '{locationId:D}'::uuid UNION ALL SELECT location_privacy_state_id AS \"Value\" FROM locations WHERE id = '{locationId:D}'::uuid")
                 .ToArrayAsync();
             await Assert.That(privacyDefaults).IsEquivalentTo([1, 1]);
 
             await migrator.MigrateAsync(PreviousMigration);
 
-            int preserved = await context.Database.SqlQueryRaw<int>(
+            int preserved = await context.Database.SqlQuery<int>(
                     $"SELECT COUNT(*)::integer AS \"Value\" FROM locations WHERE id = '{locationId:D}'::uuid")
                 .SingleAsync();
             int removedColumns = await context.Database.SqlQueryRaw<int>(
@@ -161,7 +161,7 @@ public sealed class EventLocationMigrationStageTests(PostgreSqlContainerFixture 
 
             PrivacyGraph graph = await SeedGraphAsync(context);
 
-            await Assert.ThrowsAsync<PostgresException>(() => context.Database.ExecuteSqlRawAsync(
+            await Assert.ThrowsAsync<PostgresException>(() => context.Database.ExecuteSqlAsync(
                 $"DELETE FROM event_location_disclosure_audits WHERE id = '{graph.AuditId:D}'::uuid"));
 
             Location home = await context.Locations
@@ -171,11 +171,11 @@ public sealed class EventLocationMigrationStageTests(PostgreSqlContainerFixture 
             await context.SaveChangesAsync();
             context.ChangeTracker.Clear();
 
-            await Assert.ThrowsAsync<PostgresException>(() => context.Database.ExecuteSqlRawAsync(
+            await Assert.ThrowsAsync<PostgresException>(() => context.Database.ExecuteSqlAsync(
                 $"INSERT INTO location_pii (location_id, address, postcode) VALUES ('{graph.HomeLocationId:D}'::uuid, 'restored', 'restored')"));
-            await Assert.ThrowsAsync<PostgresException>(() => context.Database.ExecuteSqlRawAsync(
+            await Assert.ThrowsAsync<PostgresException>(() => context.Database.ExecuteSqlAsync(
                 $"UPDATE locations SET location_privacy_state_id = 1 WHERE id = '{graph.HomeLocationId:D}'::uuid"));
-            await Assert.ThrowsAsync<PostgresException>(() => context.Database.ExecuteSqlRawAsync(
+            await Assert.ThrowsAsync<PostgresException>(() => context.Database.ExecuteSqlAsync(
                 $"UPDATE location_rooms SET name = 'restored' WHERE id = '{graph.HomeRoomId:D}'::uuid"));
 
             foreach (string table in new[]
@@ -187,11 +187,11 @@ public sealed class EventLocationMigrationStageTests(PostgreSqlContainerFixture 
                      })
             {
                 Guid carrierId = graph.CarrierIds[table];
-                await Assert.ThrowsAsync<PostgresException>(() => context.Database.ExecuteSqlRawAsync(
+                await Assert.ThrowsAsync<PostgresException>(() => context.Database.ExecuteSqlAsync(
                     $"UPDATE {table} SET location_id = '{graph.OtherLocationId:D}'::uuid WHERE id = '{carrierId:D}'::uuid"));
             }
 
-            await Assert.ThrowsAsync<PostgresException>(() => context.Database.ExecuteSqlRawAsync(
+            await Assert.ThrowsAsync<PostgresException>(() => context.Database.ExecuteSqlAsync(
                 $"UPDATE event_locations SET is_deleted = true WHERE id = '{graph.EventLocationId:D}'::uuid"));
         });
     }

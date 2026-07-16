@@ -1,8 +1,8 @@
 // ABOUTME: Pure fail-closed evaluator for purpose-scoped EventLocation field disclosure.
 // ABOUTME: Applies association, privacy, governance, authority, server-time, policy, and Home-redaction gates.
 
-using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.LocationPrivacy;
+using Explore.Application.Contracts.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 
