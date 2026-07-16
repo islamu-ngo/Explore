@@ -34,7 +34,6 @@ public class HateoasLinkGeneratorTests
     [Arguments("/api/event")]
     [Arguments("/api/eventsession")]
     [Arguments("/api/actor")]
-    [Arguments("/api/location")]
     [Arguments("/api/category")]
     [Arguments("/api/tag")]
     public async Task LinkGenerator_CollectionEndpoints_ShouldHaveSelfLink(string endpoint)

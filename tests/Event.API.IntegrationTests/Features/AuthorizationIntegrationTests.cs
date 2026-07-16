@@ -107,7 +107,6 @@ public class AuthorizationIntegrationTests
     [Arguments("/api/event")]
     [Arguments("/api/eventsession")]
     [Arguments("/api/actor")]
-    [Arguments("/api/location")]
     [Arguments("/api/category")]
     [Arguments("/api/tag")]
     public async Task GetAllPublicEndpoints_WithoutAuth_ShouldReturnOk(string endpoint)
@@ -120,6 +119,16 @@ public class AuthorizationIntegrationTests
 
         // Assert — public read endpoints should be accessible without auth
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task GetPhysicalLocations_WithoutAuth_ShouldReturnUnauthorized()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/location");
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     #endregion

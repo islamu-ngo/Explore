@@ -1026,7 +1026,6 @@ public class CerbosPolicyContractTests : IDisposable
         yield return "islamuevent_user";
         yield return "islamuevent_category";
         yield return "islamuevent_tag";
-        yield return "islamuevent_location";
         yield return "islamuevent_actor";
         yield return "islamuevent_group";
         yield return "islamuevent_group_member";
@@ -1056,6 +1055,22 @@ public class CerbosPolicyContractTests : IDisposable
 
         result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW",
             $"regular users should be able to view '{resourceKind}' resources");
+    }
+
+    [Test]
+    public async Task RegularUser_ShouldBeDenied_ViewPhysicalLocations()
+    {
+        var result = await _cerbos.CheckResourceAsync(
+            principalId: "user-regular",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
+            resourceKind: "islamuevent_location",
+            resourceId: "location-1",
+            resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
+            actions: ["view"]);
+
+        result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_DENY",
+            "generic physical-location data is restricted to tenant administrators");
     }
 
     [Test]
@@ -1356,7 +1371,7 @@ public class CerbosPolicyContractTests : IDisposable
     #region Location Room — Org Admin Access
 
     [Test]
-    public async Task OrgAdmin_ShouldBeAllowed_ManageLocationRooms()
+    public async Task OrgAdmin_ShouldBeDenied_ManageLocationRooms()
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-org-admin",
@@ -1374,8 +1389,8 @@ public class CerbosPolicyContractTests : IDisposable
 
         foreach (var action in new[] { "view", "create", "update", "delete" })
         {
-            result.Should().ContainKey(action).WhoseValue.Should().Be("EFFECT_ALLOW",
-                $"org admin should manage location rooms for their org");
+            result.Should().ContainKey(action).WhoseValue.Should().Be("EFFECT_DENY",
+                $"generic location rooms are tenant-admin-only physical-location data");
         }
     }
 

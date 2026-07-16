@@ -261,7 +261,6 @@ public class PreferHeaderMiddlewareTests
     [Arguments("/api/event")]
     [Arguments("/api/eventsession")]
     [Arguments("/api/actor")]
-    [Arguments("/api/location")]
     [Arguments("/api/category")]
     [Arguments("/api/tag")]
     public async Task Middleware_AllEndpoints_ShouldRespectPreferMinimal(string endpoint)

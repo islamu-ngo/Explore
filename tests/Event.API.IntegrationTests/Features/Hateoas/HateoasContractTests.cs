@@ -37,7 +37,7 @@ public class HateoasContractTests(ContractApiFixture fixture)
     [Arguments("/api/tag")]
     public async Task GetAll_ShouldReturnHalCollection_WithLinksAndEmbedded(string endpoint)
     {
-        var response = await _fixture.Client.GetAsync(WithCacheBust(endpoint));
+        var response = await GetAsync(endpoint, WithCacheBust(endpoint));
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
@@ -179,6 +179,7 @@ public class HateoasContractTests(ContractApiFixture fixture)
     public async Task GetAll_WithPreferMinimal_ItemsShouldNotHaveLinks(string endpoint)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
+        AddLocationAuthentication(endpoint, request);
         request.Headers.Add("Prefer", "return=minimal");
 
         var response = await _fixture.Client.SendAsync(request);
@@ -193,6 +194,23 @@ public class HateoasContractTests(ContractApiFixture fixture)
         {
             var hasLinks = items[0].TryGetProperty("_links", out _);
             await Assert.That(hasLinks).IsFalse();
+        }
+    }
+
+    private async Task<HttpResponseMessage> GetAsync(string endpoint, string url)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        AddLocationAuthentication(endpoint, request);
+        return await _fixture.Client.SendAsync(request);
+    }
+
+    private static void AddLocationAuthentication(string endpoint, HttpRequestMessage request)
+    {
+        if (endpoint.Equals("/api/location", StringComparison.OrdinalIgnoreCase))
+        {
+            request.Headers.Add(
+                TestAuthHandler.AuthHeaderName,
+                TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid()));
         }
     }
 

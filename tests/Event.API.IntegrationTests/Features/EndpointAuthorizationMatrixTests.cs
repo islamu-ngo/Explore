@@ -153,9 +153,9 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Matrix_Public_Locations_AnonymousOK()
+    public async Task Matrix_Protected_Locations_AnonymousDenied()
     {
-        await AssertAnonymousOk("/api/location");
+        await AssertAnonymousUnauthorized("/api/location");
     }
 
     [Test]

@@ -1,5 +1,5 @@
-// ABOUTME: Integration tests for public Location API routing and authorization behavior.
-// ABOUTME: Verifies read endpoints plus authenticated PATCH route and If-Match contracts.
+// ABOUTME: Integration tests for protected Location API routing and authorization behavior.
+// ABOUTME: Verifies authenticated reads plus protected PATCH route and If-Match contracts.
 
 using System.Net;
 using System.Net.Http.Json;
@@ -10,14 +10,13 @@ using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
 
-[NotInParallel("ApiTestFixture")]
-[ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
+[ClassDataSource<ContractApiFixture>(Shared = SharedType.PerAssembly)]
 public class LocationControllerTests
 {
-    private readonly ApiTestFixture _fixture;
+    private readonly ContractApiFixture _fixture;
     private const string BaseUrl = "/api/location";
 
-    public LocationControllerTests(ApiTestFixture fixture)
+    public LocationControllerTests(ContractApiFixture fixture)
     {
         _fixture = fixture;
     }
@@ -28,7 +27,8 @@ public class LocationControllerTests
     public async Task GetAll_ShouldReturnOk_WithPaginatedResult()
     {
         // Act
-        var response = await _fixture.Client.GetAsync(BaseUrl);
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Get, BaseUrl);
+        var response = await _fixture.Client.SendAsync(request);
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -44,7 +44,10 @@ public class LocationControllerTests
     public async Task GetAll_WithPaginationParams_ShouldReturnPaginatedResult(int pageNumber, int pageSize)
     {
         // Act
-        var response = await _fixture.Client.GetAsync($"{BaseUrl}?pageNumber={pageNumber}&pageSize={pageSize}");
+        using var request = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            $"{BaseUrl}?pageNumber={pageNumber}&pageSize={pageSize}");
+        var response = await _fixture.Client.SendAsync(request);
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -57,7 +60,8 @@ public class LocationControllerTests
         var id = Guid.NewGuid();
 
         // Act
-        var response = await _fixture.Client.GetAsync($"{BaseUrl}/{id}");
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Get, $"{BaseUrl}/{id}");
+        var response = await _fixture.Client.SendAsync(request);
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);

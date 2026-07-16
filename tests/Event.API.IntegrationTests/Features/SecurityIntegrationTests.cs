@@ -304,7 +304,6 @@ public class SecurityIntegrationTests : IAsyncDisposable
     [Arguments("/api/category")]
     [Arguments("/api/tag")]
     [Arguments("/api/actor")]
-    [Arguments("/api/location")]
     public async Task GetPublicEndpoint_WithoutToken_ShouldReturnOk(string endpoint)
     {
         // Arrange — no token, testing [AllowAnonymous] endpoints
@@ -316,6 +315,17 @@ public class SecurityIntegrationTests : IAsyncDisposable
         // Assert — public GET endpoints must remain accessible without authentication
         response.StatusCode.Should().Be(HttpStatusCode.OK,
             $"public endpoint {endpoint} should be accessible without a Bearer token");
+    }
+
+    [Test]
+    public async Task GetPhysicalLocations_WithoutToken_ShouldReturnUnauthorized()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/location");
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
+            "generic physical-location data requires an authenticated principal");
     }
 
     #endregion

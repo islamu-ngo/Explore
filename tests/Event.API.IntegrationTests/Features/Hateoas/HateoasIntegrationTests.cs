@@ -40,7 +40,6 @@ public class HateoasIntegrationTests
     [Arguments("/api/event")]
     [Arguments("/api/eventsession")]
     [Arguments("/api/actor")]
-    [Arguments("/api/location")]
     [Arguments("/api/category")]
     [Arguments("/api/tag")]
     public async Task GetAll_WithoutPreferHeader_ShouldIncludeLinks(string endpoint)
@@ -99,7 +98,6 @@ public class HateoasIntegrationTests
     [Arguments("/api/event")]
     [Arguments("/api/eventsession")]
     [Arguments("/api/actor")]
-    [Arguments("/api/location")]
     [Arguments("/api/category")]
     [Arguments("/api/tag")]
     public async Task GetAll_WithPreferMinimal_ShouldExcludeLinks(string endpoint)

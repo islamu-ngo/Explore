@@ -10,14 +10,13 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 /// HATEOAS-specific tests for LocationController.
 /// Validates location-specific links.
 /// </summary>
-[NotInParallel("ApiTestFixture")]
-[ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
+[ClassDataSource<ContractApiFixture>(Shared = SharedType.PerAssembly)]
 public class LocationHateoasTests
 {
-    private readonly ApiTestFixture _fixture;
+    private readonly ContractApiFixture _fixture;
     private const string BaseUrl = "/api/location";
 
-    public LocationHateoasTests(ApiTestFixture fixture)
+    public LocationHateoasTests(ContractApiFixture fixture)
     {
         _fixture = fixture;
     }
@@ -26,7 +25,7 @@ public class LocationHateoasTests
     public async Task GetAll_ShouldIncludeHalStructure()
     {
         // Act
-        var response = await _fixture.Client.GetAsync(BaseUrl);
+        var response = await GetAuthenticatedAsync(BaseUrl);
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -45,7 +44,7 @@ public class LocationHateoasTests
     public async Task GetAll_ItemLinks_ShouldIncludeSelfLink()
     {
         // Act
-        var response = await _fixture.Client.GetAsync(BaseUrl);
+        var response = await GetAuthenticatedAsync(BaseUrl);
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -72,7 +71,7 @@ public class LocationHateoasTests
     public async Task GetAll_ItemLinks_ShouldIncludeCollectionLink()
     {
         // Act
-        var response = await _fixture.Client.GetAsync(BaseUrl);
+        var response = await GetAuthenticatedAsync(BaseUrl);
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -99,7 +98,7 @@ public class LocationHateoasTests
     public async Task GetById_ShouldIncludeDetailLinks()
     {
         // Arrange - First get list to find a location
-        var listResponse = await _fixture.Client.GetAsync(BaseUrl);
+        var listResponse = await GetAuthenticatedAsync(BaseUrl);
         var listContent = await listResponse.Content.ReadAsStringAsync();
         var listJson = JsonDocument.Parse(listContent);
 
@@ -127,7 +126,7 @@ public class LocationHateoasTests
         }
 
         // Act
-        var response = await _fixture.Client.GetAsync($"{BaseUrl}/{locationId}");
+        var response = await GetAuthenticatedAsync($"{BaseUrl}/{locationId}");
 
         // Assert
         if (response.StatusCode == HttpStatusCode.OK)
@@ -149,7 +148,7 @@ public class LocationHateoasTests
     public async Task GetAll_WithPreferMinimal_ShouldExcludeItemLinks()
     {
         // Arrange
-        var request = new HttpRequestMessage(HttpMethod.Get, BaseUrl);
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Get, BaseUrl);
         request.Headers.Add("Prefer", "return=minimal");
 
         // Act
@@ -178,7 +177,7 @@ public class LocationHateoasTests
     public async Task GetAll_PaginationLinks_ShouldBeCorrect()
     {
         // Act
-        var response = await _fixture.Client.GetAsync($"{BaseUrl}?pageNumber=1&pageSize=5");
+        var response = await GetAuthenticatedAsync($"{BaseUrl}?pageNumber=1&pageSize=5");
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -203,5 +202,11 @@ public class LocationHateoasTests
                 await Assert.That(href).Contains("pageNumber=1");
             }
         }
+    }
+
+    private async Task<HttpResponseMessage> GetAuthenticatedAsync(string url)
+    {
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Get, url);
+        return await _fixture.Client.SendAsync(request);
     }
 }

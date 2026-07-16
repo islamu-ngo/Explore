@@ -1,5 +1,5 @@
-// ABOUTME: Integration tests for LocationRoom API routing and authorization behavior.
-// ABOUTME: Verifies public reads plus PATCH route, If-Match precondition, and old PUT rejection.
+// ABOUTME: Integration tests for protected LocationRoom API routing and authorization behavior.
+// ABOUTME: Verifies authenticated reads plus PATCH route, If-Match precondition, and old PUT rejection.
 
 using System.Net;
 using System.Net.Http.Json;
@@ -10,14 +10,13 @@ using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
 
-[NotInParallel("ApiTestFixture")]
-[ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
+[ClassDataSource<ContractApiFixture>(Shared = SharedType.PerAssembly)]
 public class LocationRoomControllerTests
 {
-    private readonly ApiTestFixture _fixture;
+    private readonly ContractApiFixture _fixture;
     private const string BaseUrl = "/api/locationroom";
 
-    public LocationRoomControllerTests(ApiTestFixture fixture)
+    public LocationRoomControllerTests(ContractApiFixture fixture)
     {
         _fixture = fixture;
     }
@@ -27,7 +26,8 @@ public class LocationRoomControllerTests
     {
         var id = Guid.NewGuid();
 
-        var response = await _fixture.Client.GetAsync($"{BaseUrl}/{id}");
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Get, $"{BaseUrl}/{id}");
+        var response = await _fixture.Client.SendAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
