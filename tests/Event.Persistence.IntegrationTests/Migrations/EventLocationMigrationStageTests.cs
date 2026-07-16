@@ -126,14 +126,14 @@ public sealed class EventLocationMigrationStageTests(PostgreSqlContainerFixture 
             await EventLocationPrivacyMigrationStage.MigrateAsync(context, "Expand");
 
             int[] privacyDefaults = await context.Database.SqlQuery<int>(
-                    $"SELECT location_kind_id AS \"Value\" FROM locations WHERE id = '{locationId:D}'::uuid UNION ALL SELECT location_privacy_state_id AS \"Value\" FROM locations WHERE id = '{locationId:D}'::uuid")
+                    $"SELECT location_kind_id AS \"Value\" FROM locations WHERE id = {locationId} UNION ALL SELECT location_privacy_state_id AS \"Value\" FROM locations WHERE id = {locationId}")
                 .ToArrayAsync();
             await Assert.That(privacyDefaults).IsEquivalentTo([1, 1]);
 
             await migrator.MigrateAsync(PreviousMigration);
 
             int preserved = await context.Database.SqlQuery<int>(
-                    $"SELECT COUNT(*)::integer AS \"Value\" FROM locations WHERE id = '{locationId:D}'::uuid")
+                    $"SELECT COUNT(*)::integer AS \"Value\" FROM locations WHERE id = {locationId}")
                 .SingleAsync();
             int removedColumns = await context.Database.SqlQueryRaw<int>(
                     """
