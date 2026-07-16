@@ -89,6 +89,14 @@ Complex filtering uses a custom Specification Pattern:
 6. If a custom property becomes sector-standard or discovery-critical, promote it into typed Layer 2 schema instead of adding sector-specific factories to `EventCustomPropertyProjectionFilter` or `EventSessionCustomPropertyProjectionFilter`.
 7. `EventCustomPropertyProjection`, `EventSessionCustomPropertyProjection`, and aggregate event-with-sessions read views are derived query models only; source of truth remains typed schema plus event-local and session-local custom-property rows.
 
+## Proximity Discovery Status
+
+Current public discovery is area-only. Tenant configuration may publish stable area IDs and coarse centroids, but the runtime does not expose exact venue points, calculate event distance, or support “near you” semantics. `LocationPii` remains the private source for address-derived coordinates and generic location DTOs remain coordinate-free.
+
+[ADR-013](adr/ADR-013-postgis-proximity-discovery.md) records a **proposed, separately approved** PostGIS phase. That phase would add an explicitly governed tenant-scoped `LocationDiscoveryPoint` using `geography(Point,4326)`, a GiST-backed `ST_DWithin` query, and minimum distance to an eligible future public event-session occurrence. A first-party private/no-store POST would carry a rounded transient origin; origins and points would never enter URLs, settings, logs, traces, analytics, or shared caches.
+
+No PostGIS extension, spatial entity/index, proximity endpoint, or readiness check is implemented today. If the planned capability is later enabled but unavailable, the product falls back to honest area-only behavior; there is no browser, Haversine, or in-memory exact-distance fallback.
+
 ## Caching Architecture (3 Layers)
 1. **Output Cache** (HTTP response level): `LookupData` (1h), `ListData` (30s, varies by `Authorization` header), `DetailData` (60s, varies by `Authorization` header), `PublicData` (1h, no auth variance). Applied via `[OutputCache]` on endpoints.
 2. **HybridCache** (application level, L1 in-memory + L2 distributed): 30min default expiration, 5min local, 10MB max payload. Used in MediatR handlers with read-through and explicit invalidation patterns.

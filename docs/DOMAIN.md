@@ -62,6 +62,10 @@ Some entities keep sensitive fields in dedicated PII tables and expose convenien
 
 `EnsurePii()` helper methods create PII objects lazily when mapped properties are set.
 
+Exact proximity discovery is **not implemented**. [ADR-013](adr/ADR-013-postgis-proximity-discovery.md) proposes a separate governed `LocationDiscoveryPoint` projection for a future PostGIS phase. It would be tenant-scoped, explicitly approved, revocable, and stored as `geography(Point,4326)` with GiST indexing; it would not replace or automatically publish `LocationPii` coordinates. Generic location DTOs remain coordinate-free.
+
+The proposed distance unit is an eligible future public `EventSession` occurrence: scheduled, published, non-deleted, tenant-matching, under a public published event, and attached to a location with an active governed point. Online-only, past, draft, private, moderated, unscheduled, deleted, or unapproved occurrences do not participate. PostgreSQL would select the minimum qualifying occurrence distance per event; no current entity, migration, or runtime query provides that capability.
+
 ### 2) Optional Event Aspects (Layer 2 typed schema)
 
 Base event data stays in `Event`. Optional modules add 1:1 aspect records sharing the same primary key:

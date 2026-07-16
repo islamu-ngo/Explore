@@ -38,6 +38,14 @@ Profiles:
 - `moderation` starts local Coop for moderation review-queue testing with an isolated PostgreSQL database. `COOP_UI_URL` defaults to `http://localhost:8082`, matching the local Coop port; the local profile also supplies Coop's `DATABASE_*`, `SESSION_SECRET`, `OTEL_SERVICE_NAME`, placeholder Scylla client settings, and no-op warehouse/analytics adapter defaults so the provider image can boot without ClickHouse or production secrets. Keep `REPORTING_MODE=LocalOnly` unless provider endpoints are intentionally enabled.
 - `osprey` starts `ghcr.io/roostorg/osprey/osprey-coordinator:latest` by default. It exposes coordinator ports, not the app's HTTP-compatible `Reporting:Osprey` facade. Keep `REPORTING_OSPREY_ENABLED=false` unless you provide a compatible HTTP facade or adapter endpoint.
 
+### Planned PostGIS Proximity Profile
+
+Exact proximity discovery is **planned, not implemented**. The current required database uses plain `postgres:18-alpine`; no PostGIS extension, spatial migration, spatial health check, or proximity endpoint ships today. Current deployments need no PostGIS action and must retain area-only wording and behavior.
+
+[ADR-013](adr/ADR-013-postgis-proximity-discovery.md) defines the separately approved future package. Before selecting its planned `postgis` mode, operators would need a pinned PostGIS-capable PostgreSQL image/service, a database backup, the canonical extension/schema migration, verified GiST and tenant indexes, and a successful bounded spatial readiness query. Deployment manifests and restore tests must preserve the extension and governed discovery-point data.
+
+Failure or rollback returns the product to `area_only`; it must not start a browser-side or in-memory distance fallback. Future readiness and troubleshooting output must use bounded status categories and never expose origins, coordinates, addresses, location or tenant identifiers, query text, connection strings, or raw database errors.
+
 Email dispatch modes:
 
 - **Basic Dispatch Mode is implemented and requires no extra Compose profile.** API + PostgreSQL + configured SMTP are sufficient for registration confirmation email. By default, API-hosted TickerQ schedules `email-dispatch-drain`, which claims `EmailDispatchOutbox` rows from PostgreSQL through the shared drain service and sends through the SMTP abstraction. `EmailDispatchProcessor:Mode=HostedService` is a fallback trigger, not a separate business workflow.
