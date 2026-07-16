@@ -20,7 +20,10 @@ public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLif
 
         // Apply migrations
         logger.LogInformation("Applying database migrations...");
-        await db.Database.MigrateAsync(stoppingToken);
+        await EventLocationPrivacyMigrationStage.MigrateAsync(
+            db,
+            configuration[EventLocationPrivacyMigrationStage.ConfigurationKey],
+            stoppingToken);
         logger.LogInformation("Database migrations applied successfully.");
 
         logger.LogInformation("Applying model-owned PostgreSQL constraints...");
