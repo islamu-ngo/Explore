@@ -9,6 +9,7 @@ using Explore.Application.Features.EventRegistrations.Handlers.Commands;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
 using Explore.Application.Models.Common;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 
@@ -51,7 +52,9 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Errors).Contains("At least one event registration update group must be provided.");
-        await _eventRegistrationRepository.DidNotReceive().Update(Arg.Any<EventRegistration>());
+        await _eventRegistrationRepository.DidNotReceive().UpdateAndAdjustCapacityAsync(
+            Arg.Any<EventRegistration>(),
+            Arg.Any<CancellationToken>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
@@ -78,7 +81,9 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Event Registration not found.");
-        await _eventRegistrationRepository.DidNotReceive().Update(Arg.Any<EventRegistration>());
+        await _eventRegistrationRepository.DidNotReceive().UpdateAndAdjustCapacityAsync(
+            Arg.Any<EventRegistration>(),
+            Arg.Any<CancellationToken>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
@@ -105,7 +110,9 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
 
         await Assert.That(async () => await _handler.Handle(command, CancellationToken.None))
             .Throws<ConcurrencyConflictException>();
-        await _eventRegistrationRepository.DidNotReceive().Update(Arg.Any<EventRegistration>());
+        await _eventRegistrationRepository.DidNotReceive().UpdateAndAdjustCapacityAsync(
+            Arg.Any<EventRegistration>(),
+            Arg.Any<CancellationToken>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
@@ -137,22 +144,23 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(registration.ApprovalStatusId).IsNull();
-        await _eventRegistrationRepository.Received(1).Update(registration);
+        await _eventRegistrationRepository.Received(1).UpdateAndAdjustCapacityAsync(
+            registration,
+            Arg.Any<CancellationToken>());
         await _cache.Received(1).RemoveAsync($"event:detail:{eventId}", Arg.Any<CancellationToken>());
         await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task Handle_WithSessionChange_UpdatesDerivedEventAndInvalidatesOldAndNewEventCaches()
+    public async Task Handle_WithSessionChangeWithinEvent_UpdatesSessionAndInvalidatesEventCache()
     {
         var tenantId = Guid.NewGuid();
-        var oldEventId = Guid.NewGuid();
-        var newEventId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
         var newSessionId = Guid.NewGuid();
         var stamp = Guid.NewGuid();
-        var registration = CreateRegistration(Guid.NewGuid(), tenantId, oldEventId);
+        var registration = CreateRegistration(Guid.NewGuid(), tenantId, eventId);
         registration.ConcurrencyStamp = stamp;
-        var newSession = CreateSession(newSessionId, tenantId, newEventId);
+        var newSession = CreateSession(newSessionId, tenantId, eventId);
         _eventRegistrationRepository.GetById(registration.Id).Returns(registration);
         _eventSessionRepository.GetById(newSessionId).Returns(newSession);
         _eventRegistrationRepository.GetRegistrationByUserAndSession(registration.UserId, newSessionId)
@@ -172,15 +180,16 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(registration.EventSessionId).IsEqualTo(newSessionId);
-        await Assert.That(registration.EventId).IsEqualTo(newEventId);
-        await _eventRegistrationRepository.Received(1).Update(registration);
-        await _cache.Received(1).RemoveAsync($"event:detail:{newEventId}", Arg.Any<CancellationToken>());
-        await _cache.Received(1).RemoveAsync($"event:detail:{oldEventId}", Arg.Any<CancellationToken>());
+        await Assert.That(registration.EventId).IsEqualTo(eventId);
+        await _eventRegistrationRepository.Received(1).UpdateAndAdjustCapacityAsync(
+            registration,
+            Arg.Any<CancellationToken>());
+        await _cache.Received(1).RemoveAsync($"event:detail:{eventId}", Arg.Any<CancellationToken>());
         await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task Handle_WithIntentFromDifferentEvent_ReturnsValidationFailureWithoutSaving()
+    public async Task Handle_WithParentIntentReassignment_ReturnsValidationFailureWithoutSaving()
     {
         var tenantId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
@@ -189,18 +198,6 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
         registration.ConcurrencyStamp = stamp;
         var intentId = Guid.NewGuid();
         _eventRegistrationRepository.GetById(registration.Id).Returns(registration);
-        _intentRepository.GetById(intentId).Returns(new EventRegistrationIntent
-        {
-            Id = intentId,
-            EventId = Guid.NewGuid(),
-            Event = null!,
-            UserId = registration.UserId,
-            User = null!,
-            RegistrationScopeId = 1,
-            RegistrationScope = null!,
-            TenantId = tenantId,
-            Tenant = null!
-        });
 
         var command = new UpdateEventRegistrationCommand
         {
@@ -218,9 +215,157 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Errors).Contains("EventRegistrationIntentId must belong to the effective registration event and tenant.");
-        await _eventRegistrationRepository.DidNotReceive().Update(Arg.Any<EventRegistration>());
+        await Assert.That(result.Errors)
+            .Contains("Registration user, event, tenant, and parent intent are immutable.");
+        await _eventRegistrationRepository.DidNotReceive().UpdateAndAdjustCapacityAsync(
+            Arg.Any<EventRegistration>(),
+            Arg.Any<CancellationToken>());
+        await _intentRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task Handle_WithUserReassignment_ReturnsValidationFailureWithoutSaving()
+    {
+        var stamp = Guid.NewGuid();
+        var registration = CreateRegistration(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        registration.EventRegistrationIntentId = Guid.NewGuid();
+        registration.ConcurrencyStamp = stamp;
+        var replacementUserId = Guid.NewGuid();
+        _eventRegistrationRepository.GetById(registration.Id).Returns(registration);
+        _userRepository.GetById(replacementUserId).Returns(new User
+        {
+            Id = replacementUserId,
+            Pii = new UserPii
+            {
+                Email = "replacement@example.com",
+                FirstName = "Replacement",
+                LastName = "User"
+            }
+        });
+
+        var command = new UpdateEventRegistrationCommand
+        {
+            EventRegistrationId = registration.Id,
+            ExpectedConcurrencyStamp = stamp,
+            EventRegistrationDto = new UpdateEventRegistrationDto
+            {
+                User = new UpdateEventRegistrationUserDto { UserId = replacementUserId }
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors)
+            .Contains("Registration user, event, tenant, and parent intent are immutable.");
+        await _eventRegistrationRepository.DidNotReceive().UpdateAndAdjustCapacityAsync(
+            Arg.Any<EventRegistration>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task Handle_WithCrossEventSessionMove_ReturnsValidationFailureWithoutSaving()
+    {
+        var tenantId = Guid.NewGuid();
+        var stamp = Guid.NewGuid();
+        var registration = CreateRegistration(Guid.NewGuid(), tenantId, Guid.NewGuid());
+        registration.ConcurrencyStamp = stamp;
+        var replacementSession = CreateSession(Guid.NewGuid(), tenantId, Guid.NewGuid());
+        _eventRegistrationRepository.GetById(registration.Id).Returns(registration);
+        _eventSessionRepository.GetById(replacementSession.Id).Returns(replacementSession);
+
+        var command = new UpdateEventRegistrationCommand
+        {
+            EventRegistrationId = registration.Id,
+            ExpectedConcurrencyStamp = stamp,
+            EventRegistrationDto = new UpdateEventRegistrationDto
+            {
+                Session = new UpdateEventRegistrationSessionDto
+                {
+                    EventSessionId = replacementSession.Id
+                }
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors)
+            .Contains("Registration user, event, tenant, and parent intent are immutable.");
+        await _eventRegistrationRepository.DidNotReceive().UpdateAndAdjustCapacityAsync(
+            Arg.Any<EventRegistration>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task Handle_WithAdministrativeRevocation_UsesCapacityAwareRepository()
+    {
+        var stamp = Guid.NewGuid();
+        var registration = CreateRegistration(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        registration.ApprovalStatusId = (int)ApprovalStatusEnum.Approved;
+        registration.ConcurrencyStamp = stamp;
+        _eventRegistrationRepository.GetById(registration.Id).Returns(registration);
+        _approvalStatusRepository.Exists((int)ApprovalStatusEnum.Revoked).Returns(true);
+
+        var command = new UpdateEventRegistrationCommand
+        {
+            EventRegistrationId = registration.Id,
+            ExpectedConcurrencyStamp = stamp,
+            EventRegistrationDto = new UpdateEventRegistrationDto
+            {
+                ApprovalStatus = new UpdateEventRegistrationApprovalStatusDto
+                {
+                    ApprovalStatusId = OptionalUpdate<int?>.Set((int)ApprovalStatusEnum.Revoked)
+                }
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(registration.ApprovalStatusId).IsEqualTo((int)ApprovalStatusEnum.Revoked);
+        await _eventRegistrationRepository.Received(1).UpdateAndAdjustCapacityAsync(
+            registration,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    [Arguments((int)ApprovalStatusEnum.Cancelled)]
+    [Arguments((int)ApprovalStatusEnum.Revoked)]
+    public async Task Handle_WhenTerminalRegistrationIsReopened_ReturnsFailureWithoutSaving(
+        int terminalApprovalStatusId)
+    {
+        var stamp = Guid.NewGuid();
+        var registration = CreateRegistration(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        registration.ApprovalStatusId = terminalApprovalStatusId;
+        registration.ConcurrencyStamp = stamp;
+        _eventRegistrationRepository.GetById(registration.Id).Returns(registration);
+
+        var command = new UpdateEventRegistrationCommand
+        {
+            EventRegistrationId = registration.Id,
+            ExpectedConcurrencyStamp = stamp,
+            EventRegistrationDto = new UpdateEventRegistrationDto
+            {
+                ApprovalStatus = new UpdateEventRegistrationApprovalStatusDto
+                {
+                    ApprovalStatusId = OptionalUpdate<int?>.Set((int)ApprovalStatusEnum.Approved)
+                }
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains("Terminal registration approval statuses cannot be changed.");
+        await _eventRegistrationRepository.DidNotReceive().UpdateAndAdjustCapacityAsync(
+            Arg.Any<EventRegistration>(),
+            Arg.Any<CancellationToken>());
     }
 
     private static EventRegistration CreateRegistration(Guid id, Guid tenantId, Guid eventId)

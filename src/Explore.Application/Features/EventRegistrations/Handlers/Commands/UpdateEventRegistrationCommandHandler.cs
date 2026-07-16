@@ -9,6 +9,7 @@ using Explore.Application.Exceptions;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Services.Registration;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -117,6 +118,19 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
             effectiveIntentId = update.Intent.EventRegistrationIntentId.Value;
         }
 
+        if (!RegistrationApprovalStatusRules.PreservesRegistrationIdentity(
+                eventRegistration.EventRegistrationIntentId,
+                effectiveIntentId,
+                eventRegistration.UserId,
+                effectiveUserId,
+                eventRegistration.EventId,
+                effectiveEventId,
+                eventRegistration.TenantId,
+                effectiveTenantId))
+        {
+            return ValidationFailure("Registration user, event, tenant, and parent intent are immutable.");
+        }
+
         if (effectiveIntentId.HasValue)
         {
             var intent = await _intentRepository.GetById(effectiveIntentId.Value);
@@ -140,11 +154,21 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
             }
         }
 
-        if (update.ApprovalStatus?.ApprovalStatusId.HasValue == true
-            && update.ApprovalStatus.ApprovalStatusId.Value.HasValue
-            && !await _approvalStatusRepository.Exists(update.ApprovalStatus.ApprovalStatusId.Value.Value))
+        if (update.ApprovalStatus?.ApprovalStatusId.HasValue == true)
         {
-            return ValidationFailure("ApprovalStatusId not found.");
+            var desiredApprovalStatusId = update.ApprovalStatus.ApprovalStatusId.Value;
+            if (!RegistrationApprovalStatusRules.CanTransition(
+                    eventRegistration.ApprovalStatusId,
+                    desiredApprovalStatusId))
+            {
+                return ValidationFailure("Terminal registration approval statuses cannot be changed.");
+            }
+
+            if (desiredApprovalStatusId.HasValue
+                && !await _approvalStatusRepository.Exists(desiredApprovalStatusId.Value))
+            {
+                return ValidationFailure("ApprovalStatusId not found.");
+            }
         }
 
         if (update.AtprotoRecord?.AtprotoRecordId.HasValue == true
@@ -160,7 +184,7 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
         ApplyApprovalStatus(eventRegistration, update.ApprovalStatus);
         ApplyAtprotoRecord(eventRegistration, update.AtprotoRecord);
 
-        await _eventRegistrationRepository.Update(eventRegistration);
+        await _eventRegistrationRepository.UpdateAndAdjustCapacityAsync(eventRegistration, cancellationToken);
         await InvalidateCachesAsync(oldEventId, eventRegistration.EventId, eventRegistration.TenantId, cancellationToken);
 
         response.Success = true;
