@@ -4,6 +4,7 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
+using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.API.Services.Calendar;
@@ -71,6 +72,11 @@ public class EventController : ExploreControllerBase
         "Event validation failed",
         "Event cancel failed.");
 
+    private static readonly ApiValidationProblemDescriptor FilterValidationProblem = new(
+        "eventFilter",
+        "Event filter validation failed",
+        "Event filtering failed.");
+
     private static readonly ApiNotFoundProblemDescriptor EventNotFoundProblem = new(
         "Event not found",
         "Event not found.");
@@ -104,7 +110,7 @@ public class EventController : ExploreControllerBase
     [EndpointSummary("Get all Events")]
     [EndpointDescription("Get a paginated, filterable list of all Events (Conference, Webinar, Workshop...). " +
         "Default page size is 20, max is 100. " +
-        "Supports filtering by category, tag, format, madhab, location, language, date range, and free-text search. " +
+        "Supports filtering by category, tag, format, madhab, language, date range, and free-text search. " +
         "Supports module-conditional aspect filters: Islamic (genderMode, quranRecitation, referencePrayer, islamicLanguage) " +
         "and Tech (skillLevel, codingCompetition, hackathon, requiresLaptop, techStack). " +
         "Aspect filters are silently ignored when the corresponding module is not enabled for the tenant. " +
@@ -120,6 +126,14 @@ public class EventController : ExploreControllerBase
         [FromQuery] EventFilterRequest filter,
         CancellationToken cancellationToken = default)
     {
+        if (Request.Query.Keys.Any(static key =>
+                string.Equals(key, "locationIds", StringComparison.OrdinalIgnoreCase)))
+        {
+            return this.ToValidationProblem(
+                FilterValidationProblem,
+                "The locationIds filter is not available on public event discovery.");
+        }
+
         var result = await _mediator.Send(new GetEventListRequest
         {
             PageNumber = filter.PageNumber,
@@ -139,7 +153,6 @@ public class EventController : ExploreControllerBase
             ExclusionMode = ParseTagFilterMode(filter.ExclusionMode, TagFilterMode.Or),
             FormatIds = filter.FormatIds,
             MadhabIds = filter.MadhabIds,
-            LocationIds = filter.LocationIds,
             RegistrationModeIds = filter.RegistrationModeIds,
             LanguageIds = filter.LanguageIds,
             DateFrom = filter.DateFrom,
@@ -271,6 +284,7 @@ public class EventController : ExploreControllerBase
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
     [HttpGet("{id:guid}/session-create-context", Name = RouteNames.GetEventSessionCreateContext)]
     [EndpointSummary("Get Event Session Create Context")]
     [EndpointDescription("Returns inherited event defaults, location options, room options, and program sections for the dedicated program item composer.")]
@@ -296,10 +310,30 @@ public class EventController : ExploreControllerBase
     [EndpointDescription("Returns program sections, local-day groupings, program items, and server-generated readiness warnings for the event program.")]
     [ProducesResponseType(typeof(EventProgramSummaryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<EventProgramSummaryDto>> GetProgramSummary(Guid id, CancellationToken cancellationToken = default)
     {
         var summary = await _mediator.Send(new GetEventProgramSummaryRequest { EventId = id }, cancellationToken);
+        if (summary is null)
+            return this.ToNotFoundProblem(EventNotFoundProblem);
+
+        return Ok(summary);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
+    [HttpGet("{id:guid}/management-program-summary", Name = RouteNames.GetManagedEventProgramSummary)]
+    [EndpointSummary("Get Managed Event Program Summary")]
+    [EndpointDescription("Returns draft and published program sections, items, and readiness warnings for authorized event management.")]
+    [ProducesResponseType(typeof(EventProgramSummaryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<EventProgramSummaryDto>> GetManagedProgramSummary(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var summary = await _mediator.Send(new GetManagedEventProgramSummaryRequest { EventId = id }, cancellationToken);
         if (summary is null)
             return this.ToNotFoundProblem(EventNotFoundProblem);
 
@@ -400,7 +434,6 @@ public class EventController : ExploreControllerBase
     [Produces("text/calendar")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [OutputCache(PolicyName = "DetailData")]
     public async Task<IActionResult> GetCalendar(Guid id, CancellationToken cancellationToken = default)
     {
         var export = await _mediator.Send(new GetEventCalendarExportRequest(id), cancellationToken);

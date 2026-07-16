@@ -26,7 +26,6 @@ public sealed class EventFilterRequest : IValidatableObject
     public string? ExclusionMode { get; set; }
     public List<int>? FormatIds { get; set; }
     public List<int>? MadhabIds { get; set; }
-    public List<Guid>? LocationIds { get; set; }
     public List<int>? RegistrationModeIds { get; set; }
     public List<int>? LanguageIds { get; set; }
     public DateOnly? DateFrom { get; set; }
@@ -128,9 +127,6 @@ public sealed class EventFilterRequest : IValidatableObject
             yield return result;
 
         foreach (var result in QueryValidationRules.ValidateGuidList(ExcludedTagIds, nameof(ExcludedTagIds)))
-            yield return result;
-
-        foreach (var result in QueryValidationRules.ValidateGuidList(LocationIds, nameof(LocationIds)))
             yield return result;
 
         foreach (var result in QueryValidationRules.ValidatePositiveIntList(FormatIds, nameof(FormatIds)))

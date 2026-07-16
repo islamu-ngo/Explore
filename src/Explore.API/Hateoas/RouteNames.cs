@@ -60,6 +60,7 @@ public static class RouteNames
     public const string GetEventCreationContext = "GetEventCreationContext";
     public const string GetEventSessionCreateContext = "GetEventSessionCreateContext";
     public const string GetEventProgramSummary = "GetEventProgramSummary";
+    public const string GetManagedEventProgramSummary = "GetManagedEventProgramSummary";
     public const string GetEventPublishReadiness = "GetEventPublishReadiness";
     public const string CreateEvent = "CreateEvent";
     public const string ImportEvent = "ImportEvent";
