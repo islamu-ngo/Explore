@@ -208,6 +208,89 @@ public class CerbosPolicyContractTests : IDisposable
     }
 
     [Test]
+    public async Task EventRegistration_ShouldAllowOwnerCancellationWithoutApprovalUpdate()
+    {
+        var resourceAttrs = new
+        {
+            tenantId = "tenant-1",
+            eventId = "event-1",
+            eventSessionId = "session-1",
+            userId = "user-attendee",
+            organizationId = "org-1"
+        };
+        var ownerResult = await _cerbos.CheckResourceAsync(
+            principalId: "subject-owner",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new
+            {
+                userId = "user-attendee",
+                isInstanceAdmin = false,
+                tenantMemberships = new { },
+                orgMemberships = new { }
+            },
+            resourceKind: "islamuevent_event_registration",
+            resourceId: "registration-1",
+            resourceAttrs,
+            actions: ["delete", "update"]);
+        var otherResult = await _cerbos.CheckResourceAsync(
+            principalId: "subject-other",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new
+            {
+                userId = "user-other",
+                isInstanceAdmin = false,
+                tenantMemberships = new { },
+                orgMemberships = new { }
+            },
+            resourceKind: "islamuevent_event_registration",
+            resourceId: "registration-1",
+            resourceAttrs,
+            actions: ["delete", "update"]);
+
+        ownerResult.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_ALLOW");
+        ownerResult.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
+        otherResult.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
+        otherResult.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_DENY");
+    }
+
+    [Test]
+    public async Task EventRegistration_ShouldPreserveRegistrationManagerUpdateBoundary()
+    {
+        var result = await _cerbos.CheckResourceAsync(
+            principalId: "subject-registration-manager",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new
+            {
+                isInstanceAdmin = false,
+                tenantMemberships = new { },
+                orgMemberships = new { },
+                eventAssignments = new Dictionary<string, object>
+                {
+                    ["event-1"] = new
+                    {
+                        tenantId = "tenant-1",
+                        roles = new[] { "event.registration_manager" },
+                        permissions = new[] { "event_registration:view", "event_registration:manage" }
+                    }
+                }
+            },
+            resourceKind: "islamuevent_event_registration",
+            resourceId: "registration-1",
+            resourceAttrs: new
+            {
+                tenantId = "tenant-1",
+                eventId = "event-1",
+                eventSessionId = "session-1",
+                userId = "user-attendee",
+                organizationId = "org-1"
+            },
+            actions: ["delete", "update"]);
+
+        result.Should().ContainKey("delete").WhoseValue.Should().Be("EFFECT_DENY");
+        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW");
+    }
+
+    [Test]
     public async Task TenantAdmin_ShouldBeAllowed_ManageOrganizationsInOwnTenant()
     {
         var result = await _cerbos.CheckResourceAsync(

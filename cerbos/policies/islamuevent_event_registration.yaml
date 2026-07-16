@@ -1,5 +1,5 @@
 # ABOUTME: Cerbos resource policy for event_registration resources.
-# Event registrations: org admins manage registrations, users can register themselves.
+# ABOUTME: Allows persisted registration owners to cancel without granting attendee approval updates.
 
 apiVersion: api.cerbos.dev/v1
 resourcePolicy:
@@ -54,3 +54,17 @@ resourcePolicy:
       effect: EFFECT_ALLOW
       roles:
         - islamuevent_authenticated_user
+
+    - actions: ["delete"]
+      effect: EFFECT_ALLOW
+      roles:
+        - islamuevent_authenticated_user
+      condition:
+        match:
+          expr: >
+            has(request.resource.attr.tenantId) &&
+            has(request.resource.attr.userId) &&
+            has(request.principal.attr.userId) &&
+            request.resource.attr.userId == request.principal.attr.userId &&
+            (!has(request.principal.attr.is_machine) ||
+             request.principal.attr.is_machine != true)
