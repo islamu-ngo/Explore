@@ -1,0 +1,21 @@
+// ABOUTME: EF Core configuration for normalized physical location kinds.
+// ABOUTME: Maps stable integer IDs and unique machine codes without model seed data.
+
+using Explore.Domain;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Explore.Persistence.Configurations.Entities;
+
+public sealed class LocationKindConfiguration : IEntityTypeConfiguration<LocationKind>
+{
+    public void Configure(EntityTypeBuilder<LocationKind> builder)
+    {
+        builder.ToTable("location_kinds");
+        builder.Property(row => row.Id).ValueGeneratedNever();
+        builder.Property(row => row.MasterCode).IsRequired().HasMaxLength(100);
+        builder.Property(row => row.FullName).IsRequired().HasMaxLength(200);
+        builder.Property(row => row.Description).HasMaxLength(500);
+        builder.HasIndex(row => row.MasterCode).IsUnique();
+    }
+}

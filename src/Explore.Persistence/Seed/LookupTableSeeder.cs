@@ -57,6 +57,7 @@ public static class LookupTableSeeder
         await SeedWebhookProviderBindingVerificationStatesAsync(context, cancellationToken);
         await SeedWebhookLookupsAsync(context, cancellationToken);
         await SeedApprovalStatusesAsync(context, cancellationToken);
+        await SeedLocationPrivacyLookupsAsync(context, cancellationToken);
         await SeedAnalyticsProvidersAsync(context, cancellationToken);
         await SeedTenantStatusesAsync(context, cancellationToken);
         await SeedTenantPlanStatusesAsync(context, cancellationToken);
@@ -1009,7 +1010,7 @@ public static class LookupTableSeeder
         await context.SaveChangesAsync(ct);
     }
 
-    private static async Task SeedApprovalStatusesAsync(ExploreDbContext context, CancellationToken ct)
+    internal static async Task SeedApprovalStatusesAsync(ExploreDbContext context, CancellationToken ct)
     {
         var existingIds = await context.Set<ApprovalStatus>()
             .Select(status => status.Id)
@@ -1019,7 +1020,9 @@ public static class LookupTableSeeder
             new ApprovalStatus { Id = (int)ApprovalStatusEnum.Pending, MasterCode = "PENDING", FullName = "Pending", Description = "Status is pending approval of Admin verifying the Existence of Legal Entity" },
             new ApprovalStatus { Id = (int)ApprovalStatusEnum.Approved, MasterCode = "APPROVED", FullName = "Approved", Description = "Status has been approved by Admin after verifying the Existence of Legal Entity" },
             new ApprovalStatus { Id = (int)ApprovalStatusEnum.Rejected, MasterCode = "REJECTED", FullName = "Rejected", Description = "Status has been rejected by Admin after failing to verify the Existence of Legal Entity" },
-            new ApprovalStatus { Id = (int)ApprovalStatusEnum.Waitlisted, MasterCode = "WAITLISTED", FullName = "Waitlisted", Description = "Registration is waitlisted because the event session is currently at capacity" }
+            new ApprovalStatus { Id = (int)ApprovalStatusEnum.Waitlisted, MasterCode = "WAITLISTED", FullName = "Waitlisted", Description = "Registration is waitlisted because the event session is currently at capacity" },
+            new ApprovalStatus { Id = (int)ApprovalStatusEnum.Cancelled, MasterCode = "CANCELLED", FullName = "Cancelled", Description = "Registration was cancelled by the attendee and is no longer live" },
+            new ApprovalStatus { Id = (int)ApprovalStatusEnum.Revoked, MasterCode = "REVOKED", FullName = "Revoked", Description = "Registration authority was administratively revoked and cannot be restored" }
         }.Where(status => !existingIds.Contains(status.Id));
 
         context.Set<ApprovalStatus>().AddRange(missingStatuses);
@@ -1307,6 +1310,44 @@ public static class LookupTableSeeder
             new RegistrationMode { Id = (int)RegistrationModeEnum.InviteOnly, MasterCode = "INVITE_ONLY", FullName = "Invite Only", Description = "Only invited users can register" },
             new RegistrationMode { Id = (int)RegistrationModeEnum.Closed, MasterCode = "CLOSED", FullName = "Closed", Description = "Registration is closed" });
         await context.SaveChangesAsync(ct);
+    }
+
+    internal static async Task SeedLocationPrivacyLookupsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await SeedMissingLookupRowsAsync(
+            context,
+            new LocationKind[]
+            {
+                new() { Id = (int)LocationKindEnum.Unclassified, MasterCode = "UNCLASSIFIED", FullName = "Unclassified", Description = "Physical location kind has not been reviewed" },
+                new() { Id = (int)LocationKindEnum.CommercialVenue, MasterCode = "COMMERCIAL_VENUE", FullName = "Commercial venue", Description = "Commercially operated event venue" },
+                new() { Id = (int)LocationKindEnum.PublicSpace, MasterCode = "PUBLIC_SPACE", FullName = "Public space", Description = "Publicly accessible physical space" },
+                new() { Id = (int)LocationKindEnum.CommunityVenue, MasterCode = "COMMUNITY_VENUE", FullName = "Community venue", Description = "Community-operated physical venue" },
+                new() { Id = (int)LocationKindEnum.PrivateHome, MasterCode = "PRIVATE_HOME", FullName = "Private home", Description = "Private residential location" }
+            },
+            row => row.Id,
+            ct);
+
+        await SeedMissingLookupRowsAsync(
+            context,
+            new LocationPrivacyState[]
+            {
+                new() { Id = (int)LocationPrivacyStateEnum.NotProvided, MasterCode = "NOT_PROVIDED", FullName = "Not provided", Description = "No physical location PII has been provided" },
+                new() { Id = (int)LocationPrivacyStateEnum.Active, MasterCode = "ACTIVE", FullName = "Active", Description = "Physical location PII is active" },
+                new() { Id = (int)LocationPrivacyStateEnum.Erased, MasterCode = "ERASED", FullName = "Erased", Description = "Physical location PII was irreversibly erased" }
+            },
+            row => row.Id,
+            ct);
+
+        await SeedMissingLookupRowsAsync(
+            context,
+            new LocationDisclosureAudience[]
+            {
+                new() { Id = (int)LocationDisclosureAudienceEnum.Never, MasterCode = "NEVER", FullName = "Never", Description = "Physical location details are never disclosed" },
+                new() { Id = (int)LocationDisclosureAudienceEnum.AnyCurrentRegistrant, MasterCode = "ANY_CURRENT_REGISTRANT", FullName = "Any current registrant", Description = "Eligible current registrations may receive disclosed details" },
+                new() { Id = (int)LocationDisclosureAudienceEnum.ConfirmedParticipant, MasterCode = "CONFIRMED_PARTICIPANT", FullName = "Confirmed participant", Description = "Only confirmed eligible participants may receive disclosed details" }
+            },
+            row => row.Id,
+            ct);
     }
 
     private static async Task SeedSystemSettingsAsync(ExploreDbContext context, CancellationToken ct)

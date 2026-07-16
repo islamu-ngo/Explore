@@ -1,0 +1,21 @@
+// ABOUTME: EF Core configuration for normalized physical-location privacy states.
+// ABOUTME: Maps stable integer IDs and unique machine codes without model seed data.
+
+using Explore.Domain;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Explore.Persistence.Configurations.Entities;
+
+public sealed class LocationPrivacyStateConfiguration : IEntityTypeConfiguration<LocationPrivacyState>
+{
+    public void Configure(EntityTypeBuilder<LocationPrivacyState> builder)
+    {
+        builder.ToTable("location_privacy_states");
+        builder.Property(row => row.Id).ValueGeneratedNever();
+        builder.Property(row => row.MasterCode).IsRequired().HasMaxLength(100);
+        builder.Property(row => row.FullName).IsRequired().HasMaxLength(200);
+        builder.Property(row => row.Description).HasMaxLength(500);
+        builder.HasIndex(row => row.MasterCode).IsUnique();
+    }
+}

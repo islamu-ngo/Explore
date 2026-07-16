@@ -1,0 +1,21 @@
+// ABOUTME: EF Core configuration for normalized event-location disclosure audiences.
+// ABOUTME: Maps stable integer IDs and unique machine codes without model seed data.
+
+using Explore.Domain;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Explore.Persistence.Configurations.Entities;
+
+public sealed class LocationDisclosureAudienceConfiguration : IEntityTypeConfiguration<LocationDisclosureAudience>
+{
+    public void Configure(EntityTypeBuilder<LocationDisclosureAudience> builder)
+    {
+        builder.ToTable("location_disclosure_audiences");
+        builder.Property(row => row.Id).ValueGeneratedNever();
+        builder.Property(row => row.MasterCode).IsRequired().HasMaxLength(100);
+        builder.Property(row => row.FullName).IsRequired().HasMaxLength(200);
+        builder.Property(row => row.Description).HasMaxLength(500);
+        builder.HasIndex(row => row.MasterCode).IsUnique();
+    }
+}
