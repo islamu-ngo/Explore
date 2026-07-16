@@ -155,7 +155,6 @@ public sealed class GetWebhookMessagePayloadQueryHandlerTests
     private static WebhookMessage CreateMessage(byte[] payloadBytes, DateTime retentionUntil) =>
         WebhookMessage.Create(
             Guid.CreateVersion7(),
-            Guid.CreateVersion7(),
             "event.published",
             Guid.CreateVersion7().ToString("D"),
             "Event",

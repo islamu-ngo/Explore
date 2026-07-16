@@ -92,7 +92,6 @@ public sealed class TestWebhookEndpointCommandHandler(
         }
 
         var message = WebhookMessage.Create(
-            messageId,
             request.SourceTenantId,
             WebhookEventNames.WebhookTest,
             messageId.ToString("D"),

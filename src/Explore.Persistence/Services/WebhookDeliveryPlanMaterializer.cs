@@ -112,8 +112,7 @@ public sealed class WebhookDeliveryPlanMaterializer(
 
     private static void EnsureSameSemanticMessage(WebhookMessage existing, WebhookMessage requested)
     {
-        if (existing.Id != requested.Id ||
-            existing.TenantId != requested.TenantId ||
+        if (existing.TenantId != requested.TenantId ||
             existing.ConsumerId != requested.ConsumerId ||
             existing.AggregateId != requested.AggregateId ||
             !string.Equals(existing.EventType, requested.EventType, StringComparison.Ordinal) ||

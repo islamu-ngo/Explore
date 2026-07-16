@@ -29,13 +29,15 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
         await using var context = fixture.CreateDbContext();
         var materializer = new WebhookDeliveryPlanMaterializer(context, new EfCoreUnitOfWork(context));
 
+        var materialization = CreateMaterialization(scenario);
         var result = await materializer.MaterializeAsync(
-            CreateMaterialization(scenario),
+            materialization,
             CancellationToken.None);
 
         await Assert.That(result.Created).IsTrue();
-        await Assert.That(result.Message.Id).IsEqualTo(scenario.MessageId);
-        await Assert.That(result.DeliveryPlan.WebhookMessageId).IsEqualTo(scenario.MessageId);
+        await Assert.That(result.Message.Id).IsEqualTo(materialization.Message.Id);
+        await Assert.That(result.Message.Id.Version).IsEqualTo(7);
+        await Assert.That(result.DeliveryPlan.WebhookMessageId).IsEqualTo(result.Message.Id);
         await Assert.That(await context.WebhookMessages.CountAsync()).IsEqualTo(1);
         await Assert.That(await context.WebhookDeliveryPlanSnapshots.CountAsync()).IsEqualTo(1);
         await Assert.That(await context.WebhookLocalTargetSnapshots.CountAsync()).IsEqualTo(1);
@@ -109,7 +111,9 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
         var scenario = await SeedAuthorityAsync();
         await using var context = fixture.CreateDbContext();
         var materializer = new WebhookDeliveryPlanMaterializer(context, new EfCoreUnitOfWork(context));
-        await materializer.MaterializeAsync(CreateMaterialization(scenario), CancellationToken.None);
+        var original = await materializer.MaterializeAsync(
+            CreateMaterialization(scenario),
+            CancellationToken.None);
 
         await Assert.ThrowsAsync<WebhookMaterializationConflictException>(async () =>
             await materializer.MaterializeAsync(
@@ -117,6 +121,7 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
                 CancellationToken.None));
 
         var storedMessage = await context.WebhookMessages.AsNoTracking().SingleAsync();
+        await Assert.That(storedMessage.Id).IsEqualTo(original.Message.Id);
         await Assert.That(Encoding.UTF8.GetString(storedMessage.GetPayloadBytes()!))
             .IsEqualTo("{\"event\":\"materialized\"}");
         await Assert.That(await context.WebhookMessages.CountAsync()).IsEqualTo(1);
@@ -131,7 +136,9 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
         var scenario = await SeedAuthorityAsync();
         await using var context = fixture.CreateDbContext();
         var materializer = new WebhookDeliveryPlanMaterializer(context, new EfCoreUnitOfWork(context));
-        await materializer.MaterializeAsync(CreateMaterialization(scenario), CancellationToken.None);
+        var original = await materializer.MaterializeAsync(
+            CreateMaterialization(scenario),
+            CancellationToken.None);
 
         var endpoint = await context.WebhookEndpoints.SingleAsync();
         endpoint.UpdateConfiguration(
@@ -146,19 +153,20 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
         var nextScenario = scenario with
         {
             Endpoint = endpoint,
-            MessageId = Guid.CreateVersion7(),
             AggregateId = Guid.CreateVersion7(),
             EventId = $"domain-event-{Guid.NewGuid():N}"
         };
-        await materializer.MaterializeAsync(CreateMaterialization(nextScenario), CancellationToken.None);
+        var next = await materializer.MaterializeAsync(
+            CreateMaterialization(nextScenario),
+            CancellationToken.None);
 
         var targets = await context.WebhookLocalTargetSnapshots
             .AsNoTracking()
             .OrderBy(target => target.CapturedAtUtc)
             .ThenBy(target => target.Id)
             .ToListAsync();
-        var originalTarget = targets.Single(target => target.WebhookMessageId == scenario.MessageId);
-        var newTarget = targets.Single(target => target.WebhookMessageId == nextScenario.MessageId);
+        var originalTarget = targets.Single(target => target.WebhookMessageId == original.Message.Id);
+        var newTarget = targets.Single(target => target.WebhookMessageId == next.Message.Id);
 
         await Assert.That(originalTarget.EndpointConfigurationVersion).IsEqualTo(1);
         await Assert.That(originalTarget.DestinationUrl).IsEqualTo("https://webhook.example.test/events");
@@ -174,20 +182,23 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
         var scenario = await SeedAuthorityAsync();
         await using var context = fixture.CreateDbContext();
         var materializer = new WebhookDeliveryPlanMaterializer(context, new EfCoreUnitOfWork(context));
-        await materializer.MaterializeAsync(CreateMaterialization(scenario), CancellationToken.None);
+        var original = await materializer.MaterializeAsync(
+            CreateMaterialization(scenario),
+            CancellationToken.None);
 
         var attemptedScenario = scenario with
         {
-            MessageId = Guid.CreateVersion7(),
             AggregateId = Guid.CreateVersion7(),
             EventId = $"domain-event-{Guid.NewGuid():N}"
         };
-        await materializer.MaterializeAsync(CreateMaterialization(attemptedScenario), CancellationToken.None);
+        var attemptedMaterialization = await materializer.MaterializeAsync(
+            CreateMaterialization(attemptedScenario),
+            CancellationToken.None);
         context.WebhookDeliveryAttempts.Add(new WebhookDeliveryAttempt
         {
             Id = Guid.CreateVersion7(),
             TenantId = scenario.TenantId,
-            MessageId = attemptedScenario.MessageId,
+            MessageId = attemptedMaterialization.Message.Id,
             EndpointId = scenario.Endpoint.Id,
             AttemptNumber = 1,
             Outcome = WebhookDeliveryAttemptOutcome.Failed,
@@ -215,7 +226,7 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
             CancellationToken.None);
 
         await Assert.That(eligibleTargets.Count).IsEqualTo(1);
-        await Assert.That(eligibleTargets.Single().WebhookMessageId).IsEqualTo(scenario.MessageId);
+        await Assert.That(eligibleTargets.Single().WebhookMessageId).IsEqualTo(original.Message.Id);
 
         eligibleTargets.Single().MigratePendingConfiguration(
             endpoint,
@@ -227,8 +238,9 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
             .AsNoTracking()
             .OrderBy(target => target.WebhookMessageId)
             .ToListAsync();
-        var migrated = targets.Single(target => target.WebhookMessageId == scenario.MessageId);
-        var attempted = targets.Single(target => target.WebhookMessageId == attemptedScenario.MessageId);
+        var migrated = targets.Single(target => target.WebhookMessageId == original.Message.Id);
+        var attempted = targets.Single(target =>
+            target.WebhookMessageId == attemptedMaterialization.Message.Id);
 
         await Assert.That(migrated.EndpointConfigurationVersion).IsEqualTo(2);
         await Assert.That(migrated.DestinationUrl).IsEqualTo("https://migrated.example.test/events");
@@ -322,7 +334,6 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
             endpoint,
             binding.Id,
             Guid.CreateVersion7(),
-            Guid.CreateVersion7(),
             $"domain-event-{Guid.NewGuid():N}");
     }
 
@@ -332,7 +343,6 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
         bool duplicateProviderPublication = false)
     {
         var message = WebhookMessage.Create(
-            authority.MessageId,
             authority.TenantId,
             "event.materialized",
             authority.EventId,
@@ -468,7 +478,6 @@ public sealed class WebhookMaterializationAtomicityTests(PostgreSqlContainerFixt
         Guid ConsumerId,
         WebhookEndpoint Endpoint,
         Guid BindingId,
-        Guid MessageId,
         Guid AggregateId,
         string EventId);
 }

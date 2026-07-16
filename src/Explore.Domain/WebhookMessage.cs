@@ -47,7 +47,6 @@ public sealed class WebhookMessage : ITenantEntity, IAuditableEntity
     public Guid? UpdatedBy { get; set; }
 
     public static WebhookMessage Create(
-        Guid id,
         Guid tenantId,
         string eventType,
         string eventId,
@@ -61,7 +60,6 @@ public sealed class WebhookMessage : ITenantEntity, IAuditableEntity
         DateTime payloadRetentionUntil,
         DateTime materializedAt)
     {
-        RequireGuid(id, nameof(id));
         RequireGuid(tenantId, nameof(tenantId));
         RequireGuid(aggregateId, nameof(aggregateId));
         if (consumerId == Guid.Empty)
@@ -92,7 +90,7 @@ public sealed class WebhookMessage : ITenantEntity, IAuditableEntity
         var ownedPayload = payloadBytes.ToArray();
         return new WebhookMessage
         {
-            Id = id,
+            Id = Guid.CreateVersion7(),
             TenantId = tenantId,
             EventType = NormalizeRequired(eventType, MaxEventTypeLength, nameof(eventType)),
             EventId = NormalizeRequired(eventId, MaxEventIdLength, nameof(eventId)),

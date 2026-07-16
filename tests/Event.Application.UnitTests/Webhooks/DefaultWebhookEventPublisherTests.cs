@@ -36,6 +36,7 @@ public sealed class DefaultWebhookEventPublisherTests
 
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.Skipped).IsTrue();
+        await Assert.That(result.MessageId).IsNull();
         await Assert.That(result.FailureCategory).IsEqualTo("webhooks_disabled");
         await fixture.PayloadBuilder.DidNotReceiveWithAnyArgs().BuildAsync(default!, default);
         await fixture.Materializer.DidNotReceiveWithAnyArgs().MaterializeAsync(default!, default);
@@ -63,17 +64,18 @@ public sealed class DefaultWebhookEventPublisherTests
 
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.Skipped).IsFalse();
-        await Assert.That(result.MessageId).IsEqualTo(MessageId);
+        await Assert.That(result.MessageId).IsEqualTo(captured!.Message.Id);
         await Assert.That(result.ProviderMessageId).IsNull();
         await Assert.That(captured).IsNotNull();
-        await Assert.That(captured!.Message.Id).IsEqualTo(MessageId);
+        await Assert.That(captured!.Message.Id.Version).IsEqualTo(7);
+        await Assert.That(captured.Message.Id).IsNotEqualTo(MessageId);
         await Assert.That(captured.Message.TenantId).IsEqualTo(TenantId);
         await Assert.That(captured.Message.ConsumerId).IsEqualTo(ConsumerId);
         await Assert.That(captured.Message.EventType).IsEqualTo(WebhookEventNames.EventPublished);
         await Assert.That(captured.Message.MaterializedAt).IsEqualTo(MaterializedAt.UtcDateTime);
         await Assert.That(captured.Message.GetPayloadBytes()!).IsEquivalentTo(PayloadBytes);
         await Assert.That(captured.Message.PayloadHash).IsEqualTo(ComputePayloadHash(PayloadBytes));
-        await Assert.That(captured.DeliveryPlan.WebhookMessageId).IsEqualTo(MessageId);
+        await Assert.That(captured.DeliveryPlan.WebhookMessageId).IsEqualTo(captured.Message.Id);
         await Assert.That(captured.DeliveryPlan.WebhookConsumerId).IsEqualTo(ConsumerId);
         await Assert.That(captured.DeliveryPlan.ProviderMode).IsEqualTo(WebhookProviderMode.DryRun);
         await Assert.That(captured.DeliveryPlan.ConfigurationVersion).IsEqualTo("configuration-v7");
@@ -161,7 +163,7 @@ public sealed class DefaultWebhookEventPublisherTests
         var result = await fixture.Publisher.PublishAsync(CreateContext(), CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsTrue();
-        await Assert.That(result.MessageId).IsEqualTo(MessageId);
+        await Assert.That(result.MessageId!.Value.Version).IsEqualTo(7);
         await Assert.That(result.ProviderMessageId).IsNull();
         await fixture.Materializer.Received(1).MaterializeAsync(
             Arg.Any<WebhookDeliveryMaterialization>(),
@@ -181,7 +183,7 @@ public sealed class DefaultWebhookEventPublisherTests
         var result = await fixture.Publisher.PublishAsync(CreateContext(), CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();
-        await Assert.That(result.MessageId).IsEqualTo(MessageId);
+        await Assert.That(result.MessageId).IsNull();
         await Assert.That(result.IsRetryable).IsFalse();
         await Assert.That(result.FailureCategory).IsEqualTo("webhook_payload_conflict");
     }
@@ -197,6 +199,7 @@ public sealed class DefaultWebhookEventPublisherTests
         var result = await fixture.Publisher.PublishAsync(context, CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.MessageId).IsNull();
         await Assert.That(result.IsRetryable).IsFalse();
         await Assert.That(result.FailureCategory).IsEqualTo("unknown_event_type");
         await fixture.Materializer.DidNotReceiveWithAnyArgs().MaterializeAsync(default!, default);
@@ -228,6 +231,7 @@ public sealed class DefaultWebhookEventPublisherTests
         var result = await fixture.Publisher.PublishAsync(CreateContext(), CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.MessageId).IsNull();
         await Assert.That(result.IsRetryable).IsFalse();
         await Assert.That(result.FailureCategory).IsEqualTo("invalid_webhook_delivery_plan");
         await fixture.Materializer.DidNotReceiveWithAnyArgs().MaterializeAsync(default!, default);
@@ -243,6 +247,7 @@ public sealed class DefaultWebhookEventPublisherTests
         var result = await fixture.Publisher.PublishAsync(CreateContext(), CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.MessageId).IsNull();
         await Assert.That(result.FailureCategory).IsEqualTo("invalid_webhook_delivery_plan");
         await fixture.Materializer.DidNotReceiveWithAnyArgs().MaterializeAsync(default!, default);
     }
@@ -257,6 +262,7 @@ public sealed class DefaultWebhookEventPublisherTests
         var result = await fixture.Publisher.PublishAsync(CreateContext(), CancellationToken.None);
 
         await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.MessageId).IsNull();
         await Assert.That(result.FailureCategory).IsEqualTo("invalid_webhook_delivery_plan");
         await fixture.Materializer.DidNotReceiveWithAnyArgs().MaterializeAsync(default!, default);
     }

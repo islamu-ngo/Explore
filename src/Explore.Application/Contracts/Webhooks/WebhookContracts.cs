@@ -58,11 +58,10 @@ public sealed record WebhookEventPublishResult(
         new(true, true, null, null, false, failureCategory, safeDetail);
 
     public static WebhookEventPublishResult Failure(
-        Guid? messageId,
         string failureCategory,
         bool isRetryable,
         string? safeDetail = null) =>
-        new(false, false, messageId, null, isRetryable, failureCategory, safeDetail);
+        new(false, false, null, null, isRetryable, failureCategory, safeDetail);
 }
 
 public sealed record CreateWebhookEndpointInput(

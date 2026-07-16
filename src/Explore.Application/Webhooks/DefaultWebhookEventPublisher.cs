@@ -35,7 +35,6 @@ public sealed class DefaultWebhookEventPublisher(
         if (!payload.Succeeded)
         {
             return WebhookEventPublishResult.Failure(
-                context.MessageId,
                 payload.FailureCategory ?? "webhook_payload_build_failed",
                 isRetryable: false,
                 payload.SafeDetail);
@@ -64,7 +63,6 @@ public sealed class DefaultWebhookEventPublisher(
         catch (WebhookMaterializationConflictException)
         {
             return WebhookEventPublishResult.Failure(
-                context.MessageId,
                 "webhook_payload_conflict",
                 isRetryable: false,
                 "The message identity already exists with different immutable data.");
@@ -72,7 +70,6 @@ public sealed class DefaultWebhookEventPublisher(
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
         {
             return WebhookEventPublishResult.Failure(
-                context.MessageId,
                 "invalid_webhook_delivery_plan",
                 isRetryable: false,
                 exception.GetType().Name);
@@ -114,7 +111,6 @@ public sealed class DefaultWebhookEventPublisher(
         }
 
         var message = WebhookMessage.Create(
-            context.MessageId,
             context.TenantId,
             context.EventType,
             context.EventId,

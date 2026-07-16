@@ -46,6 +46,17 @@ public sealed class WebhookMessageExactByteAuthorityTests
     }
 
     [Test]
+    public async Task Create_OwnsUuidV7MessageIdentity()
+    {
+        var create = typeof(WebhookMessage).GetMethods()
+            .Single(method => method.Name == nameof(WebhookMessage.Create));
+
+        await Assert.That(create.GetParameters().Select(parameter => parameter.Name))
+            .DoesNotContain("id");
+        await Assert.That(CreateMessage("{}"u8.ToArray()).Id.Version).IsEqualTo(7);
+    }
+
+    [Test]
     public async Task Create_CopiesExactBytesAndComputesSha256Authority()
     {
         var source = Encoding.UTF8.GetBytes("{\"type\":\"event.published\",\"value\":\"سلام\"}\n");
@@ -112,9 +123,29 @@ public sealed class WebhookMessageExactByteAuthorityTests
             $"sha256:{Convert.ToHexString(SHA256.HashData(result.PayloadBytes!)).ToLowerInvariant()}");
     }
 
+    [Test]
+    public async Task PayloadBuilder_WhenCancelled_DoesNotSerialize()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var builder = new DefaultWebhookPayloadBuilder(new WebhookEventTypeRegistry());
+
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await builder.BuildAsync(
+                new WebhookEventBuildContext(
+                    MessageId,
+                    TenantId,
+                    WebhookEventNames.EventPublished,
+                    "domain-event-cancelled",
+                    "Event",
+                    AggregateId,
+                    new DateTimeOffset(CreatedAt),
+                    new Dictionary<string, object?>()),
+                cancellation.Token));
+    }
+
     private static WebhookMessage CreateMessage(byte[] payloadBytes) =>
         WebhookMessage.Create(
-            MessageId,
             TenantId,
             WebhookEventNames.EventPublished,
             "domain-event-1",
@@ -127,4 +158,5 @@ public sealed class WebhookMessageExactByteAuthorityTests
             CreatedAt,
             CreatedAt.AddDays(14),
             CreatedAt);
+
 }
