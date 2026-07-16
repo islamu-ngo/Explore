@@ -160,6 +160,7 @@ Pre-configured dialog presets in `Explore.Blazor.Client/Services/`:
 | `Medium` | `MaxWidth.Medium` | FullWidth, CloseOnEscape |
 | `Confirmation` | `MaxWidth.Small` | Center position |
 | `Editor` | `MaxWidth.Medium` | CloseButton, BackdropClick |
+| `ImageLightbox` | Unconstrained | NoHeader, BackdropClick, CloseOnEscape |
 
 ## AppearanceStyleBuilder
 

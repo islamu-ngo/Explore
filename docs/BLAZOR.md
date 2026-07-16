@@ -6,8 +6,8 @@ ABOUTME: Keeps token handling, proxying, render policy, service state, and clien
 > **Audience:** Contributors | Frontend | AI agents
 > **Status:** Implemented
 > **Owner:** Frontend
-> **Last Verified:** 2026-07-12
-> **Source Anchors:** `Explore.Blazor/Program.cs`, `Explore.Blazor/Extensions/`, `Explore.Blazor/Components/ControlPlane/`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Explore.Blazor.Client/Services/`, `Explore.Blazor.Client/Layout/`, `Explore.Blazor.Client/Pages/Admin/Instance/ControlPlane/`, `docs/RENDER_POLICIES.md`, `docs/DESIGN_SYSTEM.md`
+> **Last Verified:** 2026-07-16
+> **Source Anchors:** `Explore.Blazor/Program.cs`, `Explore.Blazor/Extensions/`, `Explore.Blazor/Components/ControlPlane/`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Explore.Blazor.Client/Components/Discovery/`, `Explore.Blazor.Client/Services/`, `Explore.Blazor.Client/Layout/`, `Explore.Blazor.Client/Pages/Admin/Instance/ControlPlane/`, `docs/RENDER_POLICIES.md`, `docs/DESIGN_SYSTEM.md`
 
 ## Scope
 
@@ -45,6 +45,16 @@ Control-plane UI primitives live under `Explore.Blazor.Client/Components/Control
 The embedded instance console owns the public tenant-plan workflows. `/admin/instance/plans` creates structured plan drafts and `/admin/instance/plans/{key}` creates or edits version drafts, validates drafts, previews setting diffs, publishes or archives versions with typed confirmation, and clones published versions. Version lifecycle relations live on each `versions[]` resource, never on the root plan. `/admin/instance/tenants/{tenantId}/configuration` switches published plan assignments and applies or rolls them back with typed confirmation; rollback uses the separately returned eligible previous assignment. Every mutation is exposed only from the matching server-emitted HAL relation and matches the resource identifier in the advertised link before rendering or dispatch.
 
 Domain inventory remains an Event-owned read model. The domain page follows its HAL `settings` or `edit` relation into `/admin/instance/settings?section=domain`; DNS-provider verification and certificate probing are operator-managed because Event does not expose verification, test, or retry endpoints for that resource.
+
+## Public Home Discovery Boundary
+
+`/home` renders the same discovery composition for anonymous and authenticated visitors unless the existing organization-centric shell branch is authoritative. `HomeDiscoveryExperience` owns one persisted `HomeDiscoveryDto`, so PublicSeo prerendering can hydrate without issuing a duplicate discovery request. The obsolete standalone marketing page has been removed.
+
+`HomeDiscoveryService` is the only client orchestrator for `GET /api/public-experience/home`. It resolves URL context before saved user context, sends only `areaId` and `mode`, and persists only `home_discovery.area_id` and `home_discovery.mode`. Area names and centroids come from the server-owned coarse public area DTO; generic location/address DTOs are not consumed.
+
+Browser geolocation is requested only from the explicit “Use my current location” action. The browser compares the one-shot, low-accuracy result with configured coarse centroids, immediately reduces it to an area ID, and never sends or stores the origin. The BFF `Permissions-Policy` is `geolocation=(self)`; camera, microphone, and payment remain disabled. Online mode preserves the selected area so returning to area discovery does not require another location request.
+
+The composite response owns section truth, ordering, failure status, and deterministic dedupe. The UI reuses the production `EventCard` in `DetailedList`, `SingleRow`, and `CompactGrid` modes, the manual `HeroCarousel`, and native `EventHorizontalRail`; edit/delete affordances remain HAL-gated. Standard sections return at most 10 items, up to two explicit curated rails are included, each section has a one-second budget, and the full composition has a three-second budget.
 
 ## BFF Endpoint Families
 
@@ -149,7 +159,7 @@ Authentication challenge and OIDC callback failures are intentionally safe by de
 
 Cookie-authenticated BFF mutations use a double-submit-style antiforgery contract:
 
-1. `UseAntiforgeryTokenMiddleware` issues a JavaScript-readable `XSRF-TOKEN` cookie on `GET` requests by calling `IAntiforgery.GetAndStoreTokens`.
+1. `UseAntiforgeryTokenMiddleware` issues a JavaScript-readable `XSRF-TOKEN` cookie on non-static `GET` requests by calling `IAntiforgery.GetAndStoreTokens`. Static assets bypass token issuance so ASP.NET antiforgery does not mark images, scripts, and styles `no-store`.
 2. `Program.cs` configures ASP.NET Core antiforgery to validate the `X-CSRF-TOKEN` request header.
 3. `BrowserCredentialsMessageHandler` sends browser credentials and adds `X-CSRF-TOKEN` for `POST`, `PUT`, `PATCH`, and `DELETE` requests when the token cookie is present.
 4. `BffCookieForwardingHandler` preserves cookie/XSRF context for InteractiveServer self-calls that legitimately call BFF endpoints from the server.
