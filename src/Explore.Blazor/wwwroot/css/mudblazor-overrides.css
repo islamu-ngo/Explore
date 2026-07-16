@@ -12,6 +12,7 @@
     ║  1. Drawer overrides: MudDrawerContainer renders <div>/<aside>     ║
     ║     outside Blazor component scope boundary                        ║
     ║  2. Overlay z-index: MudOverlay renders outside component scope    ║
+    ║  3. Dialog z-index: MudDialog renders through a body-level portal  ║
    ║                                                                    ║
    ║  Adding new overrides requires documented justification.           ║
    ║  No bare .mud-* selectors allowed outside this file.               ║
@@ -113,4 +114,14 @@
     background-color: var(--isl-overlay-scrim) !important;
 }
 
+/* ========================================
+   Event Image Lightbox
+   JUSTIFICATION: MudDialog renders its container through a body-level
+   portal, outside the lightbox component's CSS-isolation boundary. The
+   container must be above the dock inspector so its backdrop owns all
+   pointer interaction while the image is open.
+   ======================================== */
+.mud-dialog-container:has(.event-image-lightbox-dialog) {
+    z-index: calc(var(--isl-dock-z-inspector, 1400) + 100) !important;
+}
 

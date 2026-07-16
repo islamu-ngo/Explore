@@ -2,8 +2,8 @@
 @* ABOUTME: Closes from the backdrop, the space around the image, or the Escape key. *@
 
 <MudDialog Class="event-image-lightbox-dialog"
-           Style="background-color: transparent; box-shadow: none; overflow: visible;"
-           DefaultFocus="DefaultFocus.None"
+           Style="position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; background-color: transparent; box-shadow: none; overflow: hidden; transform: none;"
+           DefaultFocus="DefaultFocus.Element"
            aria-label="@($"Full-size image of {Alt}")">
     <DialogContent>
         <div class="event-image-lightbox-dialog__surface" @onclick="Close">

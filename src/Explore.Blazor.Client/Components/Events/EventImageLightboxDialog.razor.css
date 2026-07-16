@@ -2,7 +2,7 @@
 /* ABOUTME: Keeps the event image centered while MudBlazor's modal backdrop dims the application. */
 
 .event-image-lightbox-dialog__surface {
-    position: fixed;
+    position: absolute;
     inset: 0;
     display: grid;
     place-items: center;

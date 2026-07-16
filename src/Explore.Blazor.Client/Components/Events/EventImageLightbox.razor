@@ -11,6 +11,7 @@
         class="event-image-lightbox"
         aria-label="View full-size image for @Alt"
         aria-haspopup="dialog"
+        disabled="@_isOpen"
         @onclick="OpenAsync">
     <span class="event-image-lightbox__icon" aria-hidden="true">
         <MudIcon Icon="@Icons.Material.Filled.Fullscreen" />
@@ -24,11 +25,20 @@
     [Parameter, EditorRequired]
     public required string Alt { get; set; }
 
+    private bool _isOpen;
+
     private async Task OpenAsync()
     {
-        await AccessibilityFocusService.SaveFocusAsync();
+        if (_isOpen)
+        {
+            return;
+        }
+
+        _isOpen = true;
         try
         {
+            await AccessibilityFocusService.SaveFocusAsync();
+
             var parameters = new DialogParameters<EventImageLightboxDialog>
             {
                 { dialog => dialog.ImageSource, ImageSource },
@@ -44,6 +54,7 @@
         }
         finally
         {
+            _isOpen = false;
             await AccessibilityFocusService.RestoreFocusAsync();
         }
     }
