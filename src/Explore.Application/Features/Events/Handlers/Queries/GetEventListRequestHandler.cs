@@ -1,5 +1,7 @@
 // ABOUTME: Query handler returning a paginated, filtered list of events.
 // ABOUTME: Applies EventFilter specification and maps to EventListDto.
+using System.Security.Cryptography;
+using System.Text;
 using AutoMapper;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Infrastructure;
@@ -65,7 +67,9 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
         var tenantCacheKey = _tenantContext.TenantId.ToString("N");
         var ownershipCacheKey = ownershipActorId?.ToString("N") ?? "none";
         var cacheKeySuffix = specification.ToCacheKeySuffix();
-        var cacheKey = $"events:list:tenant:{tenantCacheKey}:{request.PageNumber}:{request.PageSize}:owner:{ownershipCacheKey}:{cacheKeySuffix}";
+        var cacheKeyDigest = Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(cacheKeySuffix)));
+        var cacheKey = $"events:list:tenant:{tenantCacheKey}:{request.PageNumber}:{request.PageSize}:owner:{ownershipCacheKey}:{cacheKeyDigest}";
 
         var cachedResult = await _cache.GetOrCreateAsync(
             cacheKey,

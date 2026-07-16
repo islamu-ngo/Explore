@@ -221,6 +221,28 @@ public class GetEventListRequestHandlerTests
     }
 
     [Test]
+    public async Task Handle_CompoundDiscoveryRequest_UsesBoundedCacheKey()
+    {
+        _eventRepository.GetEventsWithDetailsPaged(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<EventQuerySpecification>())
+            .Returns((new List<Explore.Domain.Event>(), 0));
+
+        await _handler.Handle(
+            new GetEventListRequest
+            {
+                PageSize = 30,
+                DateFrom = new DateOnly(2026, 7, 16),
+                DateTo = new DateOnly(2026, 7, 23),
+                FormatIds = [(int)EventFormatEnum.Local, (int)EventFormatEnum.Hybrid],
+                LocationIds = [Guid.NewGuid()],
+                SortBy = "views",
+                SortDescending = true
+            },
+            CancellationToken.None);
+
+        await Assert.That(_cache.TagsByKey.Keys.Single().Length).IsLessThanOrEqualTo(512);
+    }
+
+    [Test]
     public async Task Handle_AfterTenantListTagInvalidation_RequeriesRepository()
     {
         _eventRepository.GetEventsWithDetailsPaged(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<EventQuerySpecification>())
