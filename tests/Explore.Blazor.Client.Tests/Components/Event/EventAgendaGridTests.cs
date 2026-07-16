@@ -69,7 +69,7 @@ public class EventAgendaGridTests : IDisposable
         var testRooms = rooms ?? [];
 
         var agendaService = Substitute.For<IEventAgendaItemService>();
-        agendaService.GetAgendaItemsByEventAsync(TestEventId)
+        agendaService.GetManagedAgendaItemsByEventAsync(TestEventId)
             .Returns(Task.FromResult<ICollection<EventAgendaItemListDto>>(testItems));
 
         _ctx.Services.AddScoped(_ => agendaService);

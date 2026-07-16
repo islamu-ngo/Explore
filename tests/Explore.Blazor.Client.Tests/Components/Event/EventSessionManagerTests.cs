@@ -44,7 +44,7 @@ public sealed class EventSessionManagerTests : IDisposable
 
         eventService.GetSessionsByEventAsync(eventId, includeManagedSessions: true)
             .Returns(sessions);
-        agendaItemService.GetAgendaItemsBySessionAsync(Arg.Any<Guid>())
+        agendaItemService.GetManagedAgendaItemsBySessionAsync(eventId, Arg.Any<Guid>())
             .Returns(new List<EventSessionAgendaItemListDto>());
 
         _ctx.Services.AddScoped(_ => eventService);
@@ -61,6 +61,9 @@ public sealed class EventSessionManagerTests : IDisposable
         });
 
         await eventService.Received(1).GetSessionsByEventAsync(eventId, includeManagedSessions: true);
+        await agendaItemService.Received(1).GetManagedAgendaItemsBySessionAsync(eventId, publishedSessionId);
+        await agendaItemService.Received(1).GetManagedAgendaItemsBySessionAsync(eventId, draftSessionId);
+        _ = agendaItemService.DidNotReceive().GetAgendaItemsBySessionAsync(Arg.Any<Guid>());
         await Assert.That(cut.Markup).Contains("Draft");
         await Assert.That(cut.Markup).Contains("Schedule TBD");
         await Assert.That(cut.Markup).Contains("Location TBD");

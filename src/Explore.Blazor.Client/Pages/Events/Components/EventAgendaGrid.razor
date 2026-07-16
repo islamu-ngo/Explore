@@ -166,7 +166,9 @@
 
         try
         {
-            var result = await AgendaItemService.GetAgendaItemsByEventAsync(EventId);
+            var result = CanManage
+                ? await AgendaItemService.GetManagedAgendaItemsByEventAsync(EventId)
+                : await AgendaItemService.GetAgendaItemsByEventAsync(EventId);
             _allItems = result?.ToList() ?? new List<EventAgendaItemListDto>();
             ApplyDayFilter();
         }

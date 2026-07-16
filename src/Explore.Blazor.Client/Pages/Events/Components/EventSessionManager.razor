@@ -218,7 +218,9 @@
             .Where(s => s.Id.HasValue && s.Id != Guid.Empty)
             .Select(async s =>
             {
-                var items = await AgendaItemService.GetAgendaItemsBySessionAsync(s.Id!.Value);
+                var items = IncludeManagedSessions
+                    ? await AgendaItemService.GetManagedAgendaItemsBySessionAsync(EventId, s.Id!.Value)
+                    : await AgendaItemService.GetAgendaItemsBySessionAsync(s.Id!.Value);
                 return (SessionId: s.Id!.Value, Items: items);
             });
         var results = await Task.WhenAll(agendaTasks);

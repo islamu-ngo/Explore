@@ -198,7 +198,7 @@
         if (!IsNew && ItemId.HasValue)
         {
             _isLoadingDetail = true;
-            var item = await AgendaItemService.GetAgendaItemByIdAsync(ItemId.Value);
+            var item = await AgendaItemService.GetManagedAgendaItemByIdAsync(EventId, ItemId.Value);
             if (item != null)
             {
                 _title = item.Title;
