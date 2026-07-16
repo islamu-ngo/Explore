@@ -21,6 +21,7 @@ using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventSessionTemplate;
 using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.Exceptions;
+using Explore.Application.Features.AiAssistant.Disclosure;
 using Explore.Application.Features.EventAgendaItems.Requests.Queries;
 using Explore.Application.Features.EventCustomProperties.Requests.Queries;
 using Explore.Application.Features.EventDays.Requests.Queries;
@@ -55,7 +56,8 @@ public sealed class EventManagementMcpTools(
     IUserContext userContext,
     ITenantContext tenantContext,
     IResourceAssembler<EventDto, EventListDto> eventResourceAssembler,
-    IHttpContextAccessor httpContextAccessor)
+    IHttpContextAccessor httpContextAccessor,
+    IAiContextGateway aiContextGateway)
 {
     private const int DefaultPublicEventPageSize = 10;
     private const int MaxPublicEventPageSize = 25;
@@ -264,13 +266,20 @@ public sealed class EventManagementMcpTools(
             var summary = publicEvent is null
                 ? null
                 : await mediator.Send(new GetEventProgramSummaryRequest { EventId = eventId }, cancellationToken);
-            var descriptor = summary is null
-                ? EventMcpProgramResultDescriptor.NotFound(eventId)
-                : new EventMcpProgramResultDescriptor(
+            EventMcpProgramResultDescriptor descriptor;
+            if (summary is null)
+            {
+                descriptor = EventMcpProgramResultDescriptor.NotFound(eventId);
+            }
+            else
+            {
+                EnforcePublicProgramLocationDisclosureCeiling(summary);
+                descriptor = new EventMcpProgramResultDescriptor(
                     Found: true,
                     EventId: summary.EventId,
                     FailureCode: null,
                     Program: MapProgram(summary));
+            }
 
             McpAdapterTelemetry.MarkSuccess(activity);
             McpAdapterTelemetry.RecordToolCall(
@@ -331,9 +340,16 @@ public sealed class EventManagementMcpTools(
             var sessions = publicEvent is null
                 ? null
                 : await mediator.Send(new GetSessionsByEventRequest { EventId = eventId }, cancellationToken);
-            var descriptor = sessions is null
-                ? EventMcpSessionListResultDescriptor.NotFound(eventId)
-                : MapSessions(eventId, sessions);
+            EventMcpSessionListResultDescriptor descriptor;
+            if (sessions is null)
+            {
+                descriptor = EventMcpSessionListResultDescriptor.NotFound(eventId);
+            }
+            else
+            {
+                EnforcePublicSessionLocationDisclosureCeiling(sessions);
+                descriptor = MapSessions(eventId, sessions);
+            }
 
             McpAdapterTelemetry.MarkSuccess(activity);
             McpAdapterTelemetry.RecordToolCall(
@@ -900,9 +916,15 @@ public sealed class EventManagementMcpTools(
 
         var eventDto = gate.Event!;
         var sessions = await mediator.Send(new GetManagedSessionsByEventRequest { EventId = eventDto.Id }, cancellationToken);
-        var sessionGroups = await mediator.Send(new GetEventSessionGroupsByEventRequest { EventId = eventDto.Id }, cancellationToken);
+        var sessionGroups = await mediator.Send(
+            new GetManagedEventSessionGroupsByEventRequest { EventId = eventDto.Id },
+            cancellationToken);
         var days = await mediator.Send(new GetEventDaysByEventRequest { EventId = eventDto.Id }, cancellationToken);
-        var agendaItems = await mediator.Send(new GetEventAgendaItemsByEventRequest { EventId = eventDto.Id }, cancellationToken);
+        var agendaItems = await mediator.Send(
+            new GetManagedEventAgendaItemsByEventRequest { EventId = eventDto.Id },
+            cancellationToken);
+
+        EnforceManagedProgramLocationDisclosureCeiling(sessions, sessionGroups);
 
         return new EventMcpProgramManagementResultDescriptor(
             Found: true,
@@ -1496,8 +1518,6 @@ public sealed class EventManagementMcpTools(
             dto.EventId,
             TrimToEmpty(dto.Name, MaxShortTextLength, truncatedFields, nameof(dto.Name)),
             TrimToNull(dto.Slug, MaxShortTextLength, truncatedFields, nameof(dto.Slug)),
-            TrimToNull(dto.LocationName, MaxShortTextLength, truncatedFields, nameof(dto.LocationName)),
-            TrimToNull(dto.RoomName, MaxShortTextLength, truncatedFields, nameof(dto.RoomName)),
             TrimToNull(dto.Color, MaxShortTextLength, truncatedFields, nameof(dto.Color)),
             dto.SortOrder,
             dto.IsPublished);
@@ -1978,8 +1998,6 @@ public sealed class EventManagementMcpTools(
             TrimToEmpty(dto.Title, MaxShortTextLength, truncatedFields, nameof(dto.Title)),
             dto.SortOrder,
             TrimToNull(dto.Color, MaxShortTextLength, truncatedFields, nameof(dto.Color)),
-            TrimToNull(dto.LocationName, MaxShortTextLength, truncatedFields, nameof(dto.LocationName)),
-            TrimToNull(dto.RoomName, MaxShortTextLength, truncatedFields, nameof(dto.RoomName)),
             days);
     }
 
@@ -1989,6 +2007,11 @@ public sealed class EventManagementMcpTools(
         ref int remainingProgramItems,
         ref bool programItemsWereTruncated)
     {
+        if (!dto.LocalDate.HasValue)
+        {
+            throw new InvalidOperationException("Public program days must have a local date.");
+        }
+
         var items = new List<EventMcpProgramItemDescriptor>();
 
         foreach (var item in dto.Items)
@@ -2004,7 +2027,7 @@ public sealed class EventManagementMcpTools(
         }
 
         return new EventMcpProgramDayDescriptor(
-            dto.LocalDate,
+            dto.LocalDate.Value,
             TrimToEmpty(dto.DisplayLabel, MaxShortTextLength, truncatedFields, nameof(dto.DisplayLabel)),
             items);
     }
@@ -2013,6 +2036,12 @@ public sealed class EventManagementMcpTools(
         EventProgramItemDto dto,
         ICollection<string> truncatedFields)
     {
+        if (!dto.StartsAtUtc.HasValue || !dto.EndsAtUtc.HasValue || !dto.LocalDate.HasValue ||
+            !dto.LocalStartTime.HasValue || !dto.LocalEndTime.HasValue)
+        {
+            throw new InvalidOperationException("Public program items must be fully scheduled.");
+        }
+
         var warningCount = dto.ReadinessWarnings.Count;
         var warnings = dto.ReadinessWarnings
             .Take(MaxReadinessWarnings)
@@ -2030,15 +2059,13 @@ public sealed class EventManagementMcpTools(
             dto.EventSessionKindId,
             TrimToNull(dto.EventSessionKindName, MaxShortTextLength, truncatedFields, nameof(dto.EventSessionKindName)),
             TrimToNull(dto.EventSessionKindMasterCode, MaxShortTextLength, truncatedFields, nameof(dto.EventSessionKindMasterCode)),
-            dto.StartsAtUtc,
-            dto.EndsAtUtc,
-            dto.LocalDate,
-            dto.LocalStartTime,
-            dto.LocalEndTime,
+            dto.StartsAtUtc.Value,
+            dto.EndsAtUtc.Value,
+            dto.LocalDate.Value,
+            dto.LocalStartTime.Value,
+            dto.LocalEndTime.Value,
             dto.SortOrder,
             dto.SessionGroupId,
-            TrimToNull(dto.LocationName, MaxShortTextLength, truncatedFields, nameof(dto.LocationName)),
-            TrimToNull(dto.RoomName, MaxShortTextLength, truncatedFields, nameof(dto.RoomName)),
             dto.Capacity,
             TrimToNull(dto.RegistrationModeName, MaxShortTextLength, truncatedFields, nameof(dto.RegistrationModeName)),
             warnings);
@@ -2088,9 +2115,6 @@ public sealed class EventManagementMcpTools(
             dto.LocalStartTime,
             dto.LocalEndTime,
             dto.SortOrder,
-            TrimToNull(dto.LocationFullName, MaxShortTextLength, truncatedFields, nameof(dto.LocationFullName)),
-            TrimToNull(dto.LocationCity, MaxShortTextLength, truncatedFields, nameof(dto.LocationCity)),
-            TrimToNull(dto.RoomName, MaxShortTextLength, truncatedFields, nameof(dto.RoomName)),
             dto.MaxAudienceAttendees,
             TrimToNull(dto.RegistrationModeFullName, MaxShortTextLength, truncatedFields, nameof(dto.RegistrationModeFullName)),
             dto.Price,
@@ -2103,6 +2127,104 @@ public sealed class EventManagementMcpTools(
                 .Take(10)
                 .ToArray(),
             truncatedFields);
+    }
+
+    private void EnforcePublicSessionLocationDisclosureCeiling(
+        IEnumerable<EventSessionListDto> sessions)
+    {
+        var requests = sessions
+            .Select(session => CreateZeroDisclosureLocationSanitizationInput(
+                session.LocationId,
+                session.LocationFullName,
+                session.LocationCity,
+                session.RoomId,
+                session.RoomName))
+            .ToArray();
+
+        EnforceSuccessfulSanitization(requests, aiContextGateway.SanitizeMany(requests));
+    }
+
+    private void EnforcePublicProgramLocationDisclosureCeiling(EventProgramSummaryDto program)
+    {
+        var requests = new List<AiContextSanitizationInput>();
+        foreach (var group in program.Sections.SelectMany(section => section.SessionGroups))
+        {
+            requests.Add(CreateZeroDisclosureLocationSanitizationInput(
+                locationName: group.LocationName,
+                roomName: group.RoomName));
+
+            requests.AddRange(group.Days
+                .SelectMany(day => day.Items)
+                .Select(item => CreateZeroDisclosureLocationSanitizationInput(
+                    locationName: item.LocationName,
+                    roomName: item.RoomName)));
+        }
+
+        EnforceSuccessfulSanitization(requests, aiContextGateway.SanitizeMany(requests));
+    }
+
+    private void EnforceManagedProgramLocationDisclosureCeiling(
+        IReadOnlyList<EventSessionListDto> sessions,
+        IReadOnlyList<EventSessionGroupListDto> sessionGroups)
+    {
+        var requests = sessions
+            .Select(session => CreateZeroDisclosureLocationSanitizationInput(
+                session.LocationId,
+                session.LocationFullName,
+                session.LocationCity,
+                session.RoomId,
+                session.RoomName))
+            .Concat(sessionGroups.Select(group => CreateZeroDisclosureLocationSanitizationInput(
+                group.LocationId,
+                group.LocationName,
+                roomId: group.RoomId,
+                roomName: group.RoomName)))
+            .ToArray();
+
+        EnforceSuccessfulSanitization(requests, aiContextGateway.SanitizeMany(requests));
+    }
+
+    private static AiContextSanitizationInput CreateZeroDisclosureLocationSanitizationInput(
+        Guid? locationId = null,
+        string? locationName = null,
+        string? locationCity = null,
+        Guid? roomId = null,
+        string? roomName = null)
+        => new(
+            EntityName: "LocationPii",
+            Fields: new Dictionary<string, object?>
+            {
+                ["LocationId"] = locationId,
+                ["LocationName"] = locationName,
+                ["LocationCity"] = locationCity,
+                ["RoomId"] = roomId,
+                ["RoomName"] = roomName
+            },
+            ProviderTrustTier: AiProviderTrustTierEnum.Unknown,
+            ViewerScope: AiViewerScopeEnum.Public,
+            GrantedFieldKeys: new HashSet<string>(),
+            PiiDisclosureEnabled: false,
+            MaxSensitivity: AiContextSensitivityEnum.Public);
+
+    private static void EnforceSuccessfulSanitization(
+        IReadOnlyList<AiContextSanitizationInput> requests,
+        IReadOnlyList<AiContextSanitizedEnvelope> envelopes)
+    {
+        if (requests.Count != envelopes.Count)
+        {
+            throw new InvalidOperationException("AI context disclosure failed for public location data.");
+        }
+
+        for (var index = 0; index < requests.Count; index++)
+        {
+            var envelope = envelopes[index];
+            if (!string.Equals(requests[index].EntityName, envelope.EntityName, StringComparison.Ordinal)
+                || !envelope.Succeeded
+                || envelope.DisclosedFields.Any(field => field.Value is not null))
+            {
+                throw new InvalidOperationException("AI context disclosure failed for public location data.");
+            }
+        }
     }
 
     private async Task<EventDto?> GetPublicEventOrNullAsync(Guid eventId, CancellationToken cancellationToken)

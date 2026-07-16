@@ -300,6 +300,8 @@ public sealed class EventManagementMcpAuthenticatedReadTests
         programContext.GetProperty("AgendaItemCount").GetInt32().Should().Be(1);
         programText.Should().Contain("MCP Management Session");
         programText.Should().Contain("MCP Management Track");
+        programText.Should().NotContain("LocationName");
+        programText.Should().NotContain("RoomName");
         programText.Should().NotContain("TenantId");
         programText.Should().NotContain("UserId");
 
