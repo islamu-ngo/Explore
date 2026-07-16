@@ -7,7 +7,7 @@ ABOUTME: Optimized for concise, implementation-accurate docs that are easy for j
 > **Status:** Implemented
 > **Owner:** Contributor Experience
 > **Last Verified:** 2026-05-06
-> **Source Anchors:** `docs/DOCUMENTATION_ARCHITECTURE.md`, `docs/index.md`, `Event.Architecture.Tests/DocumentationQualityTests.cs`
+> **Source Anchors:** `docs/DOCUMENTATION_ARCHITECTURE.md`, `docs/index.md`
 
 ## Writing Principles
 

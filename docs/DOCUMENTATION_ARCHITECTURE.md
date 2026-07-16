@@ -7,7 +7,7 @@ ABOUTME: Keeps docs source-grounded, audience-oriented, and safe to evolve witho
 > **Status:** Implemented
 > **Owner:** Contributor Experience
 > **Last Verified:** 2026-06-12
-> **Source Anchors:** `README.md`, `docs/index.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`, `Event.Architecture.Tests/DocumentationQualityTests.cs`, `.github/workflows/agent-context.yml`
+> **Source Anchors:** `README.md`, `docs/index.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`
 
 This repository uses Markdown-first documentation as the canonical operator, contributor, and agent knowledge base. A separately hosted public docs website is deferred until repository docs are accurate, validated, and release-ready.
 
@@ -96,25 +96,6 @@ Every non-trivial change must record one of these outcomes in the PR or dev hand
 | Deferred | Docs impact exists but is intentionally split; include the follow-up path and reason. |
 
 API contract, operator, security, onboarding, and release changes should default to `Updated` unless proven otherwise.
-
-## Quality Gates
-
-Docs quality is enforced through `Event.Architecture.Tests` and `.github/workflows/agent-context.yml`.
-
-Current gates:
-
-- markdown link integrity for the agent/docs entry points and custom slash commands;
-- metadata and source-anchor validation for newly canonical docs;
-- stale marker checks for new canonical/operator docs;
-- stale TUnit command detection for repository docs and custom slash commands.
-
-Run the local docs quality check with:
-
-```bash
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
-```
-
-Do not use solution-level `dotnet test`, and do not use VSTest-style `--filter` for TUnit projects.
 
 ## Public Docs Website Boundary
 

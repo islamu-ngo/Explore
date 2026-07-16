@@ -7,7 +7,7 @@ ABOUTME: Keeps only the decisions and actions that materially improve developer 
 > **Status:** Implemented
 > **Owner:** Contributor Experience
 > **Last Verified:** 2026-06-12
-> **Source Anchors:** `README.md`, `docs/DOCUMENTATION_ARCHITECTURE.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`, `docs/index.md`, `Event.Architecture.Tests/DocumentationQualityTests.cs`
+> **Source Anchors:** `README.md`, `docs/DOCUMENTATION_ARCHITECTURE.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`, `docs/index.md`
 
 ## Current State
 
@@ -59,7 +59,6 @@ These docs should remain the highest-priority source of truth:
 - Prefer links over duplicated explanations.
 - Remove stale roadmap text from reference docs.
 - Use source anchors for drift-prone claims about runtime, configuration, CI, tests, or deployment.
-- Run the architecture documentation quality tests before merging docs-only changes.
 
 ## Near-Term Actions
 

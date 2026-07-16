@@ -7,7 +7,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 > **Status:** Implemented
 > **Owner:** Contributor Experience
 > **Last Verified:** 2026-06-12
-> **Source Anchors:** `README.md`, `docs/DOCUMENTATION_ARCHITECTURE.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`, `.github/workflows/agent-context.yml`
+> **Source Anchors:** `README.md`, `docs/DOCUMENTATION_ARCHITECTURE.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`
 
 Start with [README.md](../README.md) if you are new to the project. Use this page when you already know your task or need the complete documentation inventory.
 
@@ -91,7 +91,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [SECURITY.md](SECURITY.md) - auth/authz model and trust boundaries.
 - [OPERATIONS.md](OPERATIONS.md) - deployment, health, observability.
 - [TESTING.md](TESTING.md) - TUnit framework, test projects, TDD workflow.
-- [TEST_RELIABILITY.md](TEST_RELIABILITY.md) - flaky/deferred runtime, stress, E2E, and visual-test tracking.
+- [TEST_RELIABILITY.md](TEST_RELIABILITY.md) - flaky/deferred runtime, stress, and manual-test tracking.
 - [BENCHMARKS.md](BENCHMARKS.md) - BenchmarkDotNet runtime benchmarks, API pipeline benchmarks, PostgreSQL/Testcontainers benchmark runs, and cold-start agent benchmark boundaries.
 - [AI_RAG_FOUNDATION.md](AI_RAG_FOUNDATION.md) - tenant-safe summary-only boundary for future AI vector/RAG support.
 - [AI_AGENT_CONTRACT_INVENTORY.md](AI_AGENT_CONTRACT_INVENTORY.md) - generated inventory of registry-governed AI agent tool contracts.
