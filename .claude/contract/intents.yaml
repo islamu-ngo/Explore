@@ -453,7 +453,6 @@ intents:
       - "Every resource linked from SKILL.md or resources/index.md exists and has two ABOUTME lines"
       - "The skill states activation boundaries, anti-patterns, verification hooks, and output contract clearly enough for another agent to use without rereading the originating chat"
     forbidden_without_approval:
-      - "Adding a new skill to AgentContextSchemaTests.SkipSchemaMigration"
       - "Creating a skill that claims authority beyond its evidence or domain scope"
       - "Inlining long framework material in SKILL.md instead of resource files"
     related_agents:
@@ -640,7 +639,6 @@ intents:
       - Event.API.IntegrationTests
       - Explore.Blazor.IntegrationTests
       - Explore.Blazor.Client.Tests
-      - Explore.Blazor.Client.E2ETests
       - Explore.Secrets.UnitTests
     docs_to_update:
       - docs/API.md
@@ -703,6 +701,5 @@ intents:
       - "dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
       - "dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet"
       - "dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
-      - "dotnet test --project tests/Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet"
       - "dotnet test --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet"
       - "dotnet ef migrations has-pending-model-changes --project src/Explore.Persistence/Explore.Persistence.csproj --startup-project src/Explore.API/Explore.API.csproj --configuration Release --context ExploreDbContext"

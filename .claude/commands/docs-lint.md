@@ -1,16 +1,15 @@
 ---
 name: docs-lint
-description: Verify documentation link and quality checks through the Event.Architecture.Tests project. Mirrors the agent-context CI check so you catch broken docs before pushing.
+description: Manually inspect documentation links after moving or renaming repository docs.
 type: verification
 priority: high
 ---
-<!-- ABOUTME: Documentation link lint command. Mirrors Event.Architecture.Tests.AgentContextLinkTests. -->
-<!-- ABOUTME: Run before opening a PR to catch broken cross-references between docs, rules, skills, and agents. -->
+<!-- ABOUTME: Manual documentation link review command for repository doc moves and renames. -->
+<!-- ABOUTME: Uses repository search to locate cross-references without involving the code test suite. -->
 
 # /docs-lint — Documentation Quality
 
-> **Enforced by:** `Event.Architecture.Tests` documentation and agent-context tests (in CI).
-> **This command:** a local pre-flight that catches the same class of failures before you push.
+> **This command:** a manual pre-flight for documentation-only changes.
 
 ## When to Run
 
@@ -34,22 +33,12 @@ The link checks treat the following files as link graph roots:
 
 For every Markdown link (bracketed text followed by a parenthesized relative target), the check asserts the target exists on disk.
 
-The documentation quality checks also validate metadata/source anchors for newly canonical docs and block stale VSTest-style filter examples in root docs and custom commands.
-
 ## How to Run It
 
-### Option A — Authoritative (uses the CI check)
+### Search references
 
 ```bash
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
-```
-
-This is the truth. If this passes, your documentation links and docs quality checks are valid for the current CI gate.
-
-### Option B — Quick local grep (not authoritative)
-
-```bash
-grep -r -o -E '\]\([^)]+\)' .claude/ AGENTS.md AGENTS.md docs/index.md 2>/dev/null \
+rg -o '\]\([^)]+\)' .claude/ AGENTS.md docs/index.md \
   | awk -F: '{print $1 ": " $2}'
 ```
 
@@ -71,29 +60,23 @@ ls -la <path>
 
 ## After a Rename / Move
 
-Use grep to find every reference before renaming:
+Use repository search to find every reference before renaming:
 
 ```bash
-grep -r -l "OLD_NAME" .claude/ docs/ AGENTS.md AGENTS.md dev/
+rg -l "OLD_NAME" .claude/ docs/ AGENTS.md dev/
 ```
 
-Update each occurrence, then rerun the link test.
-
-## Enforcement
-
-`AgentContextLinkTests` is a required test in CI. Merging a PR with broken links is impossible once the CI is wired up (Phase 6 of the context system rollout).
+Update each occurrence, then rerun the reference search.
 
 ## Anti-Patterns
 
 - ❌ Adding a link to a file that does not yet exist "it's coming in the next PR" — split or land together.
 - ❌ Using absolute repo-root paths like `/docs/X.md` in markdown (use relative paths).
 - ❌ Updating only one reference after a rename.
-- ❌ Running solution-level `dotnet test` for this check — use the architecture test project command above.
-- ❌ Using VSTest-style `--filter` with TUnit projects — use whole-project runs or TUnit `--treenode-filter` only when locally verified.
 
 ## Related
 
 - [`/check`](check.md)
 - [`/review-pr`](review-pr.md)
-- [`AGENTS.md`](../../AGENTS.md) §11 Enforcement.
+- [`AGENTS.md`](../../AGENTS.md) §10 Tool-Specific Bootloaders.
 - [`.claude/contract/README.md`](../contract/README.md) — why the contract depends on link integrity.

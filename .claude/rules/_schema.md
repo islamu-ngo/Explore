@@ -37,10 +37,6 @@ Path-scoped rules are concise supplements to the intent contract. Claude Code au
 - Source rows from canonical docs and skills.
 - Cross-reference `docs/QUICK_REFERENCE.md`; do not paste large invariant blocks into rule files.
 
-## Validation Rules
-
-`AgentContextSchemaTests` checks that rule files in `.claude/rules/` have the required frontmatter and expected markdown structure. `AgentContextLinkTests` checks every linked doc path. `AgentContextIntentManifestTests` separately validates intent ids and test project names referenced here.
-
 ## Authoring Limits
 
 - Keep each path-scoped rule short and surgical.

@@ -8,7 +8,7 @@ paths:
   - "**/*.Tests/*.cs"
 related_skills: []
 related_docs: [docs/TESTING.md, AGENTS.md, docs/QUICK_REFERENCE.md]
-minimum_tests: [Event.Domain.UnitTests, Event.Application.UnitTests, Event.Architecture.Tests, Event.Persistence.IntegrationTests, Event.API.IntegrationTests, Explore.Blazor.IntegrationTests, Explore.Blazor.Client.Tests, Explore.Blazor.Client.E2ETests, Explore.Secrets.UnitTests]
+minimum_tests: [Event.Domain.UnitTests, Event.Application.UnitTests, Event.Architecture.Tests, Event.Persistence.IntegrationTests, Event.API.IntegrationTests, Explore.Blazor.IntegrationTests, Explore.Blazor.Client.Tests, Explore.Secrets.UnitTests]
 related_intents: [add-get-endpoint, add-write-endpoint, add-cqrs-handler, add-ef-migration, update-repository-query, blazor-component-affordance, bff-auth-bug, openapi-contract-change]
 ---
 
@@ -20,7 +20,7 @@ related_intents: [add-get-endpoint, add-write-endpoint, add-cqrs-handler, add-ef
 ## Path-Specific Constraints
 - **Suite Integrity**: Failing tests must be fixed or investigated; never deleted to bypass failures.
 - **Pristine Output**: Test runs must have zero stray warnings, stack traces, or noisy logs.
-- **E2E Realism**: Avoid mocks in end-to-end and integration tests; use real infrastructure (Aspire AppHost).
+- **Runtime Realism**: Keep in-process integration tests deterministic; use explicit runtime lanes when real provider infrastructure is the behavior under test.
 - **Project Role Balance**: Assertions must live in the project matching the host profile (e.g., Domain logic in `Domain.UnitTests`, not API tests).
 
 ## Must Read

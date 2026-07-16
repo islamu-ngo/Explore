@@ -127,18 +127,7 @@ The final summary must be medium-sized and technically specific. Include the arc
 
 ---
 
-## 10. Enforcement
-
-Context integrity is enforced by `Event.Architecture.Tests/`:
-- `AgentContextSchemaTests` — Validates rule/skill/agent structure.
-- `AgentContextIntentManifestTests` — Validates `intents.yaml`.
-- `AgentContextDuplicationTests` — Prevents rule overlap.
-
-If these fail, the context system is broken. Fix it.
-
----
-
-## 11. Tool-Specific Bootloaders
+## 10. Tool-Specific Bootloaders
 
 | Tool | Entry File |
 |---|---|

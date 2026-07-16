@@ -1,11 +1,9 @@
 <!-- ABOUTME: Canonical schema every subagent file in this repo must satisfy. -->
-<!-- ABOUTME: Enforced by Event.Architecture.Tests.AgentContextSchemaTests and AgentContextDuplicationTests. -->
+<!-- ABOUTME: Defines the required structure and content boundaries for repository subagent files. -->
 
 # Agent Schema (Authoritative)
 
 > Every `.claude/agents/*.md` (excluding `README.md`, `_AGENT_SCHEMA.md`) MUST conform to this schema.
-> `AgentContextSchemaTests` validates structure.
-> `AgentContextDuplicationTests` blocks re-introducing project-context blocks across agents.
 
 ## 1. File Location
 
@@ -51,7 +49,7 @@ Numbered list. Links to the canonical artifacts the agent MUST consult every inv
 - Always include: `docs/QUICK_REFERENCE.md`
 - Plus role-specific files (agent-specific docs, skills, rules).
 
-Every link MUST resolve. `AgentContextLinkTests` verifies.
+Every link MUST resolve.
 
 ### `## Allowed Tools`
 
@@ -94,7 +92,7 @@ Bulleted cross-reference to sibling agents. Minimum 1 entry.
 
 ## 5. Forbidden Content (DUPLICATION GUARD)
 
-`AgentContextDuplicationTests` blocks re-introducing any of the following in `.claude/agents/*.md`:
+Do not re-introduce any of the following in `.claude/agents/*.md`:
 
 - Stack overview ("This repo uses .NET 10 + Blazor ...").
 - Repetition of critical rules from `AGENTS.md` §5.
@@ -106,15 +104,15 @@ Rule: If the content is in `AGENTS.md`, `docs/QUICK_REFERENCE.md`, or `docs/GOVE
 
 Detection strategy: line-hash Jaccard similarity ≥ 0.85 between any two agent files on ≥ 15 consecutive lines triggers failure.
 
-## 6. Enforcement
+## 6. Authoring Checklist
 
-`Event.Architecture.Tests.AgentContextSchemaTests` checks:
+Confirm that each agent file has:
 - YAML frontmatter with all 6 required fields.
 - All 10 required sections present in order.
 - `Mandatory Reads` contains links to at least `AGENTS.md` and `docs/QUICK_REFERENCE.md`.
 - Total line count ≤ 160.
 
-`Event.Architecture.Tests.AgentContextDuplicationTests` checks:
+Confirm that agent files do not contain:
 - Line-hash Jaccard similarity across agent files.
 - Pattern-match against forbidden content (stack overview markers, etc.).
 

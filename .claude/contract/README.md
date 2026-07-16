@@ -21,7 +21,7 @@ The **Contribution Contract** is this repository's operating model for AI-assist
 | File | Purpose |
 |---|---|
 | `intents.yaml` | The canonical intent catalog. Each entry is a machine-readable contract for one category of change. |
-| `schema.json` | JSON Schema validating the structure of `intents.yaml`. Enforced in CI via `AgentContextIntentManifestTests`. |
+| `schema.json` | JSON Schema describing the structure of `intents.yaml` for compatible editors and tools. |
 | `README.md` | This file. Human-facing explanation and usage. |
 
 ## How to use this contract (AI agent or contributor)
@@ -35,7 +35,7 @@ The **Contribution Contract** is this repository's operating model for AI-assist
 ## Adding a new intent
 
 1. Add a new entry to `intents.yaml`.
-2. Run `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --filter FullyQualifiedName~AgentContextIntentManifestTests` locally — the schema and existence checks must pass.
+2. Validate the entry against `schema.json` with a compatible editor or schema tool.
 3. Link the new intent from `docs/GOVERNANCE.md` → "Decision Framework" if it introduces a new decision point.
 4. Exercise the new intent with at least one scenario in `.claude/benchmarks/cold-start-tasks.yaml` before it is considered production-ready.
 
@@ -43,8 +43,7 @@ The **Contribution Contract** is this repository's operating model for AI-assist
 
 1. Update `schema.json` with the new property (`required` if it is mandatory).
 2. Backfill every existing intent in `intents.yaml` with the new field.
-3. Update `AgentContextIntentManifestTests` to assert the new field.
-4. Update this README's table if the field maps to one of the eight contract questions.
+3. Update this README's table if the field maps to one of the eight contract questions.
 
 ## What this contract does **not** do
 

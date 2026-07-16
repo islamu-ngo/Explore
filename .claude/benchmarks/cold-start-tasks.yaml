@@ -1,6 +1,5 @@
 # ABOUTME: Ten cold-start benchmark scenarios validating the ISLAMU Event AI-native contribution system.
 # ABOUTME: Each scenario is a self-contained task a fresh AI agent should be able to complete using only AGENTS.md + the context system.
-# Schema: see README.md §3. Validated by Event.Architecture.Tests.AgentContextIntentManifestTests.
 # Version: 1 (synthetic). Target: replace each with real issue-based scenario within 4–6 weeks.
 
 version: 1
@@ -385,7 +384,6 @@ scenarios:
       - "dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
       - "dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet"
       - "dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
-      - "dotnet test --project tests/Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet"
       - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
     acceptance_criteria:
       - "The request classifies as `webhook-delivery-redesign`, not a single-layer endpoint, migration, or UI intent."

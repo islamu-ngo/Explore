@@ -54,7 +54,6 @@ Run the full list only when the change touches multiple layers or you are about 
 
 ## Skipped by Default
 
-- `Explore.Blazor.Client.E2ETests` — requires running Aspire AppHost. Run manually via [`docs/BLAZOR_DEV_WORKFLOW.md`](../../docs/BLAZOR_DEV_WORKFLOW.md).
 
 ## On Failure
 

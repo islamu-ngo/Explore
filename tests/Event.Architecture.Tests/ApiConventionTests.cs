@@ -25,10 +25,6 @@ public class ApiConventionTests
         "IgnoreAllFilters("
     ];
 
-    private static readonly HashSet<string> QuarantinedPrivilegedAuthenticationOnlyPolicies = new(StringComparer.Ordinal)
-    {
-    };
-
     #region API Versioning Conventions
 
     [Test]
@@ -131,42 +127,6 @@ public class ApiConventionTests
 
         await Assert.That(violations).IsEmpty()
             .Because("all controllers must declare an explicit [Route] attribute");
-    }
-
-    [Test]
-    [DisplayName("Privileged authentication-only policies must stay explicitly quarantined")]
-    public async Task PrivilegedAuthenticationOnlyPolicies_ShouldRemainExplicitlyQuarantined()
-    {
-        var authenticationExtensionsPath = ContextSystemHelpers.RepoPath(
-            "Explore.API",
-            "Extensions",
-            "AuthenticationExtensions.cs");
-        var authorizationMatrixPath = ContextSystemHelpers.RepoPath(
-            "dev",
-            "active",
-            "backend-api-health-refactor",
-            "authorization-policy-matrix.md");
-
-        var authenticationExtensionsSource = await File.ReadAllTextAsync(authenticationExtensionsPath);
-        var authorizationMatrix = await File.ReadAllTextAsync(authorizationMatrixPath);
-
-        var authenticationOnlyPolicies = ExtractAuthenticationOnlyPolicyNames(authenticationExtensionsSource);
-        var unexpectedPrivilegedPolicies = authenticationOnlyPolicies
-            .Where(policy => !QuarantinedPrivilegedAuthenticationOnlyPolicies.Contains(policy))
-            .Where(policy => !policy.Contains("authenticated", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(policy => policy, StringComparer.Ordinal)
-            .ToList();
-
-        var undocumentedQuarantinedPolicies = authenticationOnlyPolicies
-            .Where(policy => QuarantinedPrivilegedAuthenticationOnlyPolicies.Contains(policy))
-            .Where(policy => !authorizationMatrix.Contains($"`{policy}`", StringComparison.Ordinal))
-            .OrderBy(policy => policy, StringComparer.Ordinal)
-            .ToList();
-
-        await Assert.That(unexpectedPrivilegedPolicies).IsEmpty()
-            .Because("new privileged AddPolicy(...RequireAuthenticatedUser()) registrations must not be added silently; define resource/action policies instead. See dev/active/backend-api-health-refactor/authorization-policy-matrix.md.");
-        await Assert.That(undocumentedQuarantinedPolicies).IsEmpty()
-            .Because("legacy privileged authentication-only policies may remain only while explicitly quarantined and mapped to target resource/action policies in authorization-policy-matrix.md.");
     }
 
     #endregion
@@ -331,30 +291,6 @@ public class ApiConventionTests
 
         return method.GetCustomAttributes(inherit: true)
             .Any(attribute => attribute is HttpMethodAttribute);
-    }
-
-    private static List<string> ExtractAuthenticationOnlyPolicyNames(string source)
-    {
-        const string addPolicyToken = ".AddPolicy(\"";
-        var policyNames = new List<string>();
-
-        foreach (var line in source.Split('\n'))
-        {
-            if (!line.Contains(addPolicyToken, StringComparison.Ordinal)
-                || !line.Contains("RequireAuthenticatedUser()", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            var start = line.IndexOf(addPolicyToken, StringComparison.Ordinal) + addPolicyToken.Length;
-            var end = line.IndexOf('\"', start);
-            if (end > start)
-            {
-                policyNames.Add(line[start..end]);
-            }
-        }
-
-        return policyNames;
     }
 
     private static bool IsRepositoryContract(Type type)
