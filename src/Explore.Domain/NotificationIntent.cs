@@ -29,8 +29,11 @@ public class NotificationIntent : ITenantEntity, IAuditableEntity, ISoftDeletabl
     public string? SafePayloadHash { get; set; }
     public string? CorrelationId { get; set; }
 
-    public Guid? UserId { get; set; }
-    public User? User { get; set; }
+    public Guid RecipientUserId { get; set; }
+    public TenantUser? RecipientTenantUser { get; set; }
+
+    public Guid? FanoutOccurrenceId { get; set; }
+    public NotificationFanoutOccurrence? FanoutOccurrence { get; set; }
 
     public Guid? EventId { get; set; }
     public Event? Event { get; set; }

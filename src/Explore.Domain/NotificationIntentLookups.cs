@@ -43,6 +43,14 @@ public class NotificationDeliveryStatus
     public string? Description { get; set; }
 }
 
+public class NotificationDeliveryPolicy
+{
+    public int Id { get; set; }
+    public required string MasterCode { get; set; }
+    public required string FullName { get; set; }
+    public string? Description { get; set; }
+}
+
 public class NotificationExternalDelegationStatus
 {
     public int Id { get; set; }

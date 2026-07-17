@@ -14,6 +14,27 @@ public class NotificationDelivery : ITenantEntity, IAuditableEntity
     public Guid NotificationIntentId { get; set; }
     public NotificationIntent? NotificationIntent { get; set; }
 
+    public int ChannelId { get; set; }
+    public NotificationPreferenceChannel? Channel { get; set; }
+
+    public int DeliveryPolicyId { get; set; }
+    public NotificationDeliveryPolicy? DeliveryPolicy { get; set; }
+
+    public bool IsRequired { get; set; }
+    public int PolicyVersion { get; set; }
+    public string? ConsentPurpose { get; set; }
+    public int? ConsentVersion { get; set; }
+    public string? PreferenceCategoryCode { get; set; }
+    public bool? PreferenceEnabled { get; set; }
+    public RecipientAddressSource? RecipientAddressSource { get; set; }
+    public required string DisclosureLevel { get; set; }
+    public required string TemplateKey { get; set; }
+    public int TemplateVersion { get; set; }
+    public bool LinkAllowed { get; set; }
+
+    public Guid? NotificationId { get; set; }
+    public Notification? Notification { get; set; }
+
     public Guid? EmailDispatchOutboxId { get; set; }
     public EmailDispatchOutbox? EmailDispatchOutbox { get; set; }
 

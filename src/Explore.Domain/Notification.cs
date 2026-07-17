@@ -10,6 +10,9 @@ public class Notification : ITenantEntity, IAuditableEntity, ISoftDeletable
 {
     public Guid Id { get; set; }
 
+    public Guid? NotificationIntentId { get; set; }
+    public NotificationIntent? NotificationIntent { get; set; }
+
     [ForeignKey("User")]
     public Guid UserId { get; set; }
     public required User User { get; set; }

@@ -16,14 +16,21 @@ public class EmailDispatchOutbox : ITenantEntity, IAuditableEntity, ISoftDeletab
     public required string SourceType { get; set; }
     public Guid SourceId { get; set; }
 
+    public Guid NotificationIntentId { get; set; }
+    public NotificationIntent? NotificationIntent { get; set; }
+
     public Guid? EventId { get; set; }
     public Event? Event { get; set; }
 
     public Guid? RegistrationIntentId { get; set; }
     public EventRegistrationIntent? RegistrationIntent { get; set; }
 
-    public Guid? UserId { get; set; }
-    public User? User { get; set; }
+    public Guid RecipientUserId { get; set; }
+    public TenantUser? RecipientTenantUser { get; set; }
+    public RecipientAddressSource RecipientAddressSource { get; set; }
+
+    public Guid? ManagedTenantProvisioningOperationId { get; set; }
+    public ManagedTenantProvisioningOperation? ManagedTenantProvisioningOperation { get; set; }
 
     public required string RecipientEmail { get; set; }
     public required string Subject { get; set; }
@@ -71,7 +78,9 @@ public enum EmailDispatchKind
     EventReminder = 5,
     EventCancelled = 6,
     OrganizerNotification = 7,
-    TenantAdministratorInvitation = 8
+    TenantAdministratorInvitation = 8,
+    RegistrationCancelled = 9,
+    RegistrationRevoked = 10
 }
 
 public enum EmailDispatchStatus
@@ -84,4 +93,10 @@ public enum EmailDispatchStatus
     Parked = 6,
     Unknown = 7,
     Skipped = 8
+}
+
+public enum RecipientAddressSource
+{
+    TenantUserVerifiedEmail = 1,
+    ManagedTenantAdministratorInvitation = 2
 }

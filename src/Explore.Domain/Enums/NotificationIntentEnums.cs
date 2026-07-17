@@ -49,11 +49,38 @@ public enum NotificationRecipientKindEnum
 public enum NotificationDeliveryStatusEnum
 {
     Pending = 1,
-    LinkedToEmailDispatch = 2,
-    Sent = 3,
+    Queued = 2,
+    Delivered = 3,
     Skipped = 4,
     Failed = 5,
-    DeadLettered = 6
+    DeadLettered = 6,
+    Unknown = 7,
+    Parked = 8,
+    Superseded = 9
+}
+
+public enum NotificationDeliveryPolicyEnum
+{
+    RegistrationStatusOptional = 1,
+    CriticalEventUpdateOptional = 2,
+    ReportCaseUpdate = 3,
+    ReportFollowUpContact = 4,
+    ModerationAvailabilityRequired = 5,
+    ModerationContextOptional = 6,
+    ReminderOptional = 7,
+    TenantAdministrationRequired = 8
+}
+
+public static class NotificationDeliveryPolicyCodes
+{
+    public const string RegistrationStatusOptional = "REGISTRATION_STATUS_OPTIONAL";
+    public const string CriticalEventUpdateOptional = "CRITICAL_EVENT_UPDATE_OPTIONAL";
+    public const string ReportCaseUpdate = "REPORT_CASE_UPDATE";
+    public const string ReportFollowUpContact = "REPORT_FOLLOW_UP_CONTACT";
+    public const string ModerationAvailabilityRequired = "MODERATION_AVAILABILITY_REQUIRED";
+    public const string ModerationContextOptional = "MODERATION_CONTEXT_OPTIONAL";
+    public const string ReminderOptional = "REMINDER_OPTIONAL";
+    public const string TenantAdministrationRequired = "TENANT_ADMINISTRATION_REQUIRED";
 }
 
 public enum NotificationExternalDelegationStatusEnum
