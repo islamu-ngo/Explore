@@ -842,6 +842,246 @@ Table "outbox_messages" {
 // Email Dispatch (Basic Dispatch Mode)
 // ============================================================
 
+Table "notification_categories" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null, unique]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+}
+
+Table "notification_ownership_types" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null, unique]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+}
+
+Table "notification_intent_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null, unique]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+}
+
+Table "notification_recipient_kinds" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null, unique]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+}
+
+Table "notification_preference_channels" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null, unique, note: 'Canonical codes include email, in_app, and push']
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+  "sort_order" int [not null]
+}
+
+Table "notification_delivery_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null, unique, note: 'PENDING, QUEUED, DELIVERED, SKIPPED, FAILED, DEAD_LETTERED, UNKNOWN, PARKED, SUPERSEDED']
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+}
+
+Table "notification_external_delegation_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null, unique]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+}
+
+Table "external_workflow_provider_kinds" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null, unique]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+}
+
+Table "account_authority_kinds" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null, unique]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+}
+
+Table "notification_delivery_policies" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null, unique]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  Note: 'Stable channel-policy codes: registration/event optional email, report case update, report follow-up, required moderation availability, optional moderation context, optional reminder, and required tenant administration.'
+}
+
+Table "notification_fanout_occurrences" {
+  "id" uuid [pk, not null, note: 'uuidv7() generated before retryable transaction execution']
+  "tenant_id" uuid [not null]
+  "event_id" uuid [not null]
+  "session_id" uuid
+  "occurred_at" timestamptz [not null]
+  "audience_cutoff_at" timestamptz [not null]
+  "aggregate_version" uuid [not null]
+  "change_set_json" jsonb [not null]
+  "safe_before_snapshot_json" jsonb [not null]
+  "safe_after_snapshot_json" jsonb [not null]
+  "template_key" varchar(160) [not null]
+  "template_version" int [not null]
+  "delivery_policy_id" int [not null]
+  "policy_version" int [not null]
+  "priority" int [not null]
+  "not_before" timestamptz [not null]
+  "source_type" varchar(100) [not null]
+  "source_id" uuid [not null]
+  "coalescing_key" varchar(300) [not null]
+  "coalescing_window_ends_at" timestamptz
+  "state" int [not null, note: '1=pending, 2=superseded']
+  "superseded_by_occurrence_id" uuid
+  "suppression_reason" varchar(100)
+  "superseded_at" timestamptz
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_notification_fanout_occurrences_tenant_id']
+    (tenant_id, state, not_before, occurred_at) [name: 'ix_notification_fanout_occurrences_runnable']
+    (tenant_id, source_type, source_id, aggregate_version) [name: 'ix_notification_fanout_occurrences_source']
+    (tenant_id, coalescing_key, state, occurred_at) [name: 'ix_notification_fanout_occurrences_coalescing']
+  }
+
+  Note: 'Immutable event/session change evidence and frozen audience cutoff for resumable recipient fanout. PostgreSQL checks require positive template/policy versions and complete supersession state; the general outbox carries only tenant_id, occurrence_id, and pointer version.'
+}
+
+Table "notification_intents" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "category_id" int [not null]
+  "ownership_type_id" int [not null]
+  "recipient_kind_id" int [not null]
+  "status_id" int [not null]
+  "template_key" varchar(160) [not null]
+  "deduplication_key" varchar(300) [not null]
+  "safe_payload_reference" varchar(500)
+  "safe_payload_hash" varchar(128)
+  "correlation_id" varchar(200)
+  "recipient_user_id" uuid [not null]
+  "fanout_occurrence_id" uuid
+  "event_id" uuid
+  "report_id" uuid
+  "report_decision_id" uuid
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_notification_intents_tenant_id']
+    (tenant_id, id, recipient_user_id) [unique, name: 'ak_notification_intents_tenant_id_recipient']
+    (tenant_id, deduplication_key) [unique, name: 'ux_notification_intents_tenant_deduplication_key', note: 'filter: is_deleted = false']
+    (tenant_id, recipient_user_id) [name: 'ix_notification_intents_tenant_id_recipient_user_id']
+    (tenant_id, status_id, created_at) [name: 'ix_notification_intents_tenant_status_created']
+    (tenant_id, fanout_occurrence_id, recipient_user_id) [unique, name: 'ux_notification_intents_tenant_occurrence_recipient']
+  }
+
+  Note: 'One logical business occurrence for one required tenant-member recipient. The explicit recipient triple is the principal for email and in-app recipient-equality constraints.'
+}
+
+Table "notification_deliveries" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "notification_intent_id" uuid [not null]
+  "channel_id" int [not null, note: '1=email, 2=in_app']
+  "delivery_policy_id" int [not null]
+  "is_required" boolean [not null]
+  "policy_version" int [not null]
+  "consent_purpose" varchar(100)
+  "consent_version" int
+  "preference_category_code" varchar(100)
+  "preference_enabled" boolean
+  "recipient_address_source" int [note: '1=current verified tenant-user email, 2=managed tenant-administrator invitation; null for in-app or unlinked/skipped email']
+  "disclosure_level" varchar(100) [not null]
+  "template_key" varchar(160) [not null]
+  "template_version" int [not null]
+  "link_allowed" boolean [not null]
+  "notification_id" uuid
+  "email_dispatch_outbox_id" uuid
+  "status_id" int [not null]
+  "provider_message_id" varchar(500)
+  "provider_status" varchar(100)
+  "failure_category" varchar(100)
+  "queued_at" timestamptz
+  "completed_at" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, id, notification_intent_id, channel_id) [unique, name: 'ak_notification_deliveries_tenant_id_intent_channel']
+    (tenant_id, notification_intent_id, channel_id) [unique, name: 'ux_notification_deliveries_tenant_intent_channel']
+    (tenant_id, email_dispatch_outbox_id) [unique, name: 'ux_notification_deliveries_tenant_email_dispatch_outbox', note: 'filter: email_dispatch_outbox_id IS NOT NULL']
+    (tenant_id, email_dispatch_outbox_id, notification_intent_id, recipient_address_source) [name: 'ix_notification_deliveries_tenant_id_email_dispatch_outbox_id_']
+    (tenant_id, notification_id) [unique, name: 'ux_notification_deliveries_tenant_notification', note: 'filter: notification_id IS NOT NULL']
+  }
+
+  Note: 'One channel decision/outcome per intent. ck_notification_deliveries_channel_link forbids dual links, requires linked email source snapshots, and requires null source for in-app and unlinked/skipped email. fk_notification_deliveries_notification_tenant binds a linked notification to the delivery tenant. Migration-authored fk_notification_deliveries_notification_same_intent enforces (tenant_id, notification_id, notification_intent_id) because preserved notifications have a nullable intent principal.'
+}
+
+Table "notification_external_delegations" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "notification_intent_id" uuid [not null]
+  "provider_kind_id" int [not null]
+  "account_authority_kind_id" int
+  "status_id" int [not null]
+  "recipient_kind_id" int [not null]
+  "template_key" varchar(160) [not null]
+  "safe_payload_hash" varchar(128)
+  "external_provider_id" varchar(200)
+  "external_correlation_id" varchar(200)
+  "external_delivery_status" varchar(100)
+  "failure_category" varchar(100)
+  "report_id" uuid
+  "report_decision_id" uuid
+  "requested_at" timestamptz
+  "completed_at" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, notification_intent_id) [name: 'ix_notification_external_delegations_tenant_intent']
+    (tenant_id, provider_kind_id, status_id, created_at) [name: 'ix_notification_external_delegations_tenant_provider_status']
+  }
+
+  Note: 'Provider/account-authority delegation audit. The composite tenant-intent FK prevents cross-tenant delegation.'
+}
+
+Table "managed_tenant_provisioning_operations" {
+  "id" uuid [pk, not null]
+  "tenant_id" uuid [note: 'Nullable until the operation succeeds']
+  "tenant_administrator_user_id" uuid
+  "managed_instance_id" uuid [not null]
+  "external_customer_reference" varchar(200) [not null]
+  "external_request_id" varchar(100) [not null]
+  "request_hash" char(64) [not null]
+  "request_json" jsonb
+  "current_outbox_message_id" uuid [not null]
+  "tenant_slug" varchar(100) [not null]
+  "status" varchar(20) [not null]
+  "completed_at" timestamptz
+  "created_at" timestamptz [not null]
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ux_managed_tenant_provisioning_operations_tenant_id']
+  }
+
+  Note: 'Tenant remains nullable before success. The partial-lifecycle shape is why migration-authored fk_email_dispatch_outbox_managed_operation_tenant enforces (tenant_id, managed_tenant_provisioning_operation_id) rather than using an EF alternate-key relationship.'
+}
+
 Table "email_dispatch_outbox" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "tenant_id" uuid [not null]
@@ -851,7 +1091,10 @@ Table "email_dispatch_outbox" {
   "source_id" uuid [not null]
   "event_id" uuid
   "registration_intent_id" uuid
-  "user_id" uuid
+  "notification_intent_id" uuid [not null]
+  "recipient_user_id" uuid [not null]
+  "recipient_address_source" int [not null, note: 'Only 1=TenantUserVerifiedEmail or 2=ManagedTenantAdministratorInvitation']
+  "managed_tenant_provisioning_operation_id" uuid
   "recipient_email" varchar(320) [not null]
   "subject" varchar(500) [not null]
   "plain_text_body" text
@@ -872,6 +1115,10 @@ Table "email_dispatch_outbox" {
   "last_failure_at" timestamptz
   "provider_message_id" varchar(500)
   "correlation_id" varchar(200)
+  "rabbit_mq_last_published_at" timestamptz
+  "rabbit_mq_last_publish_attempt_at" timestamptz
+  "rabbit_mq_publish_attempt_count" int [not null]
+  "rabbit_mq_last_publish_failure_category" varchar(100)
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -883,14 +1130,20 @@ Table "email_dispatch_outbox" {
   indexes {
     event_id [name: 'ix_email_dispatch_outbox_event_id']
     registration_intent_id [name: 'ix_email_dispatch_outbox_registration_intent_id']
-    user_id [name: 'ix_email_dispatch_outbox_user_id']
+    managed_tenant_provisioning_operation_id [name: 'ix_email_dispatch_outbox_managed_tenant_provisioning_operation']
+    (tenant_id, id) [unique, name: 'ak_email_dispatch_outbox_tenant_id']
+    (tenant_id, id, notification_intent_id) [unique, name: 'ak_email_dispatch_outbox_tenant_id_intent']
+    (tenant_id, id, notification_intent_id, recipient_address_source) [unique, name: 'ak_email_dispatch_outbox_tenant_id_intent_address_source']
+    (tenant_id, id, publish_event_id) [unique, name: 'ak_email_dispatch_outbox_tenant_id_publish_event']
+    (tenant_id, recipient_user_id) [name: 'ix_email_dispatch_outbox_tenant_id_recipient_user_id']
+    (tenant_id, notification_intent_id, recipient_user_id) [name: 'ix_email_dispatch_outbox_tenant_id_notification_intent_id_reci']
     (tenant_id, publish_event_id) [unique, name: 'ux_email_dispatch_outbox_tenant_publish_event']
+    (tenant_id, notification_intent_id) [unique, name: 'ux_email_dispatch_outbox_tenant_intent']
     (status, next_attempt_at, created_at) [name: 'ix_email_dispatch_outbox_worker_poll']
     (tenant_id, status, last_failure_at) [name: 'ix_email_dispatch_outbox_tenant_status']
-    (tenant_id, source_type, source_id, kind) [unique, name: 'ux_email_dispatch_outbox_tenant_source_kind', note: 'filter: is_deleted = false']
   }
 
-  Note: 'Durable email intent/outbox row for Basic Dispatch Mode retries, dead-lettering, parking, and replay.'
+  Note: 'Durable SMTP execution row. One email exists per logical intent. Recipient authority is exactly a current verified tenant member or a same-tenant managed invitation operation; ck_email_dispatch_outbox_recipient_authority rejects every other source.'
 }
 
 Table "email_dispatch_attempts" {
@@ -914,6 +1167,7 @@ Table "email_dispatch_attempts" {
 
   indexes {
     (email_dispatch_outbox_id, attempt_number) [unique, name: 'ux_email_dispatch_attempts_outbox_attempt']
+    (tenant_id, email_dispatch_outbox_id) [name: 'ix_email_dispatch_attempts_tenant_id_email_dispatch_outbox_id']
     (tenant_id, started_at) [name: 'ix_email_dispatch_attempts_tenant_started']
   }
 
@@ -942,6 +1196,8 @@ Table "email_dispatch_receipts" {
   indexes {
     (email_dispatch_outbox_id, status) [name: 'ix_email_dispatch_receipts_outbox_status']
     (tenant_id, publish_event_id) [unique, name: 'ux_email_dispatch_receipts_tenant_publish_event']
+    (tenant_id, email_dispatch_outbox_id) [unique, name: 'ux_email_dispatch_receipts_tenant_outbox']
+    (tenant_id, email_dispatch_outbox_id, publish_event_id) [name: 'ix_email_dispatch_receipts_tenant_id_email_dispatch_outbox_id_']
   }
 
   Note: 'Idempotency receipt shared by current Basic Mode and future queue-backed dispatch modes.'
@@ -3320,6 +3576,7 @@ Table "event_registrations" {
   "event_id" uuid [not null, note: 'denormalized from EventSession for same-event composite FK enforcement']
   "user_id" uuid [not null]
   "event_session_id" uuid [not null]
+  "coverage_established_at" timestamptz [not null, default: `NOW()`]
   "event_registration_intent_id" uuid
   "approval_status_id" int
   "tenant_id" uuid [not null]
@@ -3695,6 +3952,7 @@ Table "notifications" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "tenant_id" uuid [not null]
   "user_id" uuid [not null]
+  "notification_intent_id" uuid [note: 'Nullable for preserved inbox rows created before explicit intent linkage']
   "notification_type_id" int [not null]
   "notification_reason_id" int
   "notification_entity_type_id" int
@@ -3719,6 +3977,10 @@ Table "notifications" {
   "deleted_by" uuid
 
   indexes {
+    (tenant_id, id) [unique, name: 'ak_notifications_tenant_id']
+    (tenant_id, id, notification_intent_id) [unique, name: 'ux_notifications_tenant_id_intent_link']
+    (tenant_id, notification_intent_id) [unique, name: 'ux_notifications_tenant_notification_intent', note: 'filter: notification_intent_id IS NOT NULL AND is_deleted = false']
+    (tenant_id, notification_intent_id, user_id) [name: 'ix_notifications_tenant_id_notification_intent_id_user_id']
     notification_entity_type_id [name: 'ix_notifications_notification_entity_type_id']
     notification_reason_id [name: 'ix_notifications_notification_reason_id']
     notification_scope_id [name: 'ix_notifications_notification_scope_id']
@@ -3733,7 +3995,7 @@ Table "notifications" {
     (tenant_id, user_id, deduplication_key) [unique, name: 'ux_notifications_tenant_user_deduplication_key']
   }
 
-  Note: 'User notification inbox row. Check: ck_notifications_entity_reference_shape keeps polymorphic entity references null/null or Guid-shaped. Deduplication key is required for retry-safe fanout-created notifications.'
+  Note: 'User notification inbox row. New linked rows enforce tenant, intent, and recipient equality; preserved pre-1.0 rows remain valid with a null intent link. Check ck_notifications_entity_reference_shape keeps polymorphic references null/null or Guid-shaped.'
 }
 
 Table "notification_fanout_runs" {
@@ -3745,6 +4007,15 @@ Table "notification_fanout_runs" {
   "source_actor_id" uuid [not null]
   "status" varchar(50) [not null, default: 'pending']
   "cursor_subscriber_tenant_user_id" uuid
+  "cursor_first_eligible_registration_created_at" timestamptz
+  "cursor_user_id" uuid
+  "fanout_occurrence_id" uuid
+  "processing_lease_owner" varchar(200)
+  "processing_lease_token" uuid
+  "processing_lease_expires_at" timestamptz
+  "processing_generation" int [not null]
+  "processing_fence" bigint [not null]
+  "heartbeat_at" timestamptz
   "processed_count" int [not null]
   "created_notification_count" int [not null]
   "started_at" timestamptz
@@ -3758,11 +4029,12 @@ Table "notification_fanout_runs" {
   "concurrency_stamp" uuid [not null]
 
   indexes {
-    (tenant_id, fanout_kind, notification_entity_type_id, entity_id, source_actor_id) [unique, name: 'ux_notification_fanout_runs_source']
-    (status, created_at) [name: 'ix_notification_fanout_runs_worker_poll']
+    (tenant_id, fanout_kind, notification_entity_type_id, entity_id, source_actor_id) [unique, name: 'ux_notification_fanout_runs_source', note: 'filter: fanout_occurrence_id IS NULL']
+    (tenant_id, fanout_occurrence_id) [unique, name: 'ux_notification_fanout_runs_occurrence']
+    (status, processing_lease_expires_at, created_at) [name: 'ix_notification_fanout_runs_worker_poll']
   }
 
-  Note: 'Idempotency guard and progress cursor for asynchronous notification fanout. Checks: processed_count >= 0; created_notification_count >= 0; status IN (pending, processing, completed, failed).'
+  Note: 'Legacy and occurrence fanout progress. Occurrence runs use a fenced renewable lease plus compound timestamp/user checkpoint. Checks enforce nonnegative counts/generation/fence, paired cursor fields, and complete occurrence lease state.'
 }
 
 
@@ -3806,6 +4078,42 @@ Table "idempotency_records" {
   }
 
   Note: 'Ephemeral write-retry replay cache. Request fingerprint columns reject same-key reuse for a different write request or principal fingerprint.'
+}
+
+Table "incoming_webhook_effect_outbox" {
+  "id" uuid [pk, not null, default: `uuidv7()`]
+  "tenant_id" uuid [not null]
+  "incoming_webhook_message_id" uuid [not null]
+  "provider" varchar(100) [not null]
+  "provider_decision_id" varchar(256) [not null]
+  "effect_kind" varchar(200) [not null]
+  "payload_sha256" varchar(71) [not null]
+  "status" int [not null]
+  "processing_generation" int [not null, default: 1]
+  "processing_fence" bigint [not null, default: 0]
+  "attempt_count" int [not null, default: 0]
+  "processing_lease_owner" varchar(200)
+  "processing_lease_token" uuid
+  "processing_lease_expires_at" timestamptz
+  "processing_started_at" timestamptz
+  "next_attempt_at" timestamptz
+  "completed_at" timestamptz
+  "dead_lettered_at" timestamptz
+  "failure_category" varchar(100)
+  "safe_detail" varchar(1024)
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_incoming_webhook_effect_outbox_tenant_id']
+    (tenant_id, provider, provider_decision_id, effect_kind) [unique, name: 'ux_incoming_webhook_effect_outbox_provider_decision']
+    (tenant_id, incoming_webhook_message_id, effect_kind) [unique, name: 'ux_incoming_webhook_effect_outbox_message_effect']
+    (status, next_attempt_at, created_at) [name: 'ix_incoming_webhook_effect_outbox_worker_poll']
+  }
+
+  Note: 'Durable pointer from a verified Coop decision callback to deferred local effect execution. Stores provider identity, SHA-256 evidence, fenced lease/retry state, and bounded safe failure evidence only; raw callback bytes remain on the tenant-matched incoming_webhook_messages row. The composite inbox foreign key and RESTRICT deletion retain those bytes until terminal effect settlement and replay retention permit cleanup. Checks: payload_sha256 matches ^sha256:[0-9a-f]{64}$; processing_generation >= 1; processing_fence and attempt_count >= 0; failure_category is null or lowercase ASCII letters/digits/underscore.'
 }
 
 
@@ -4117,15 +4425,46 @@ Ref: "event_registrations".("tenant_id", "event_id", "event_session_id") > "even
 Ref: "event_registrations"."user_id" > "users"."id" [delete: restrict]
 
 // Email Dispatch
+Ref: "incoming_webhook_effect_outbox"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "incoming_webhook_effect_outbox".("tenant_id", "incoming_webhook_message_id") > "incoming_webhook_messages".("tenant_id", "id") [delete: restrict]
+
 Ref: "email_dispatch_outbox"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "email_dispatch_outbox"."event_id" > "events"."id" [delete: restrict]
 Ref: "email_dispatch_outbox"."registration_intent_id" > "event_registration_intents"."id" [delete: restrict]
-Ref: "email_dispatch_outbox"."user_id" > "users"."id" [delete: restrict]
+Ref: "email_dispatch_outbox".("tenant_id", "recipient_user_id") > "tenant_users".("tenant_id", "user_id") [delete: restrict]
+Ref: "email_dispatch_outbox".("tenant_id", "notification_intent_id", "recipient_user_id") > "notification_intents".("tenant_id", "id", "recipient_user_id") [delete: restrict]
+Ref: "email_dispatch_outbox"."managed_tenant_provisioning_operation_id" > "managed_tenant_provisioning_operations"."id" [delete: restrict]
+Ref: "email_dispatch_outbox".("tenant_id", "managed_tenant_provisioning_operation_id") > "managed_tenant_provisioning_operations".("tenant_id", "id") [delete: restrict]
 Ref: "email_dispatch_attempts"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "email_dispatch_attempts"."email_dispatch_outbox_id" > "email_dispatch_outbox"."id" [delete: cascade]
+Ref: "email_dispatch_attempts".("tenant_id", "email_dispatch_outbox_id") > "email_dispatch_outbox".("tenant_id", "id") [delete: cascade]
 Ref: "email_dispatch_receipts"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "email_dispatch_receipts"."email_dispatch_outbox_id" > "email_dispatch_outbox"."id" [delete: cascade]
+Ref: "email_dispatch_receipts".("tenant_id", "email_dispatch_outbox_id", "publish_event_id") > "email_dispatch_outbox".("tenant_id", "id", "publish_event_id") [delete: cascade]
 Ref: "email_dispatch_tenant_controls"."tenant_id" > "tenants"."id" [delete: restrict]
+
+Ref: "notification_intents"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "notification_intents".("tenant_id", "recipient_user_id") > "tenant_users".("tenant_id", "user_id") [delete: restrict]
+Ref: "notification_intents".("tenant_id", "fanout_occurrence_id") > "notification_fanout_occurrences".("tenant_id", "id") [delete: restrict]
+Ref: "notification_intents"."category_id" > "notification_categories"."id" [delete: restrict]
+Ref: "notification_intents"."ownership_type_id" > "notification_ownership_types"."id" [delete: restrict]
+Ref: "notification_intents"."recipient_kind_id" > "notification_recipient_kinds"."id" [delete: restrict]
+Ref: "notification_intents"."status_id" > "notification_intent_statuses"."id" [delete: restrict]
+Ref: "notification_deliveries".("tenant_id", "notification_intent_id") > "notification_intents".("tenant_id", "id") [delete: restrict]
+Ref: "notification_deliveries"."channel_id" > "notification_preference_channels"."id" [delete: restrict]
+Ref: "notification_deliveries"."delivery_policy_id" > "notification_delivery_policies"."id" [delete: restrict]
+Ref: "notification_deliveries"."status_id" > "notification_delivery_statuses"."id" [delete: restrict]
+Ref: "notification_deliveries".("tenant_id", "email_dispatch_outbox_id", "notification_intent_id", "recipient_address_source") > "email_dispatch_outbox".("tenant_id", "id", "notification_intent_id", "recipient_address_source") [delete: restrict]
+Ref: "notification_deliveries".("tenant_id", "notification_id") > "notifications".("tenant_id", "id") [delete: restrict]
+Ref: "notification_deliveries".("tenant_id", "notification_id", "notification_intent_id") > "notifications".("tenant_id", "id", "notification_intent_id") [delete: restrict]
+Ref: "notification_external_delegations".("tenant_id", "notification_intent_id") > "notification_intents".("tenant_id", "id") [delete: restrict]
+Ref: "notification_external_delegations"."provider_kind_id" > "external_workflow_provider_kinds"."id" [delete: restrict]
+Ref: "notification_external_delegations"."account_authority_kind_id" > "account_authority_kinds"."id" [delete: restrict]
+Ref: "notification_external_delegations"."status_id" > "notification_external_delegation_statuses"."id" [delete: restrict]
+Ref: "notification_external_delegations"."recipient_kind_id" > "notification_recipient_kinds"."id" [delete: restrict]
+Ref: "notification_fanout_occurrences"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "notification_fanout_occurrences".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
+Ref: "notification_fanout_occurrences".("tenant_id", "session_id") > "event_sessions".("tenant_id", "id") [delete: restrict]
+Ref: "notification_fanout_occurrences"."delivery_policy_id" > "notification_delivery_policies"."id" [delete: restrict]
+Ref: "notification_fanout_occurrences".("tenant_id", "superseded_by_occurrence_id") > "notification_fanout_occurrences".("tenant_id", "id") [delete: restrict]
 
 // Contact Share
 Ref: "event_contact_share_consents"."user_id" > "users"."id" [delete: restrict]
@@ -4212,11 +4551,13 @@ Ref: "notifications"."notification_entity_type_id" > "notification_entity_types"
 Ref: "notifications"."notification_scope_id" > "notification_scope_types"."id" [delete: restrict]
 Ref: "notifications"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "notifications"."user_id" > "users"."id" [delete: cascade]
+Ref: "notifications".("tenant_id", "notification_intent_id", "user_id") > "notification_intents".("tenant_id", "id", "recipient_user_id") [delete: restrict]
 Ref: "notifications"."source_actor_id" > "actors"."id" [delete: set null]
 Ref: "notifications"."recipient_context_actor_id" > "actors"."id" [delete: set null]
 Ref: "notification_fanout_runs"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "notification_fanout_runs"."notification_entity_type_id" > "notification_entity_types"."id" [delete: restrict]
 Ref: "notification_fanout_runs".("tenant_id", "source_actor_id") > "actors".("tenant_id", "id") [delete: restrict]
+Ref: "notification_fanout_runs".("tenant_id", "fanout_occurrence_id") > "notification_fanout_occurrences".("tenant_id", "id") [delete: restrict]
 
 // API Keys
 Ref: "external_api_keys"."external_api_key_owner_type_id" > "external_api_key_owner_types"."id" [delete: restrict]
