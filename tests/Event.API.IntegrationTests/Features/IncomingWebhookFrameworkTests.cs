@@ -130,7 +130,7 @@ public sealed class IncomingWebhookFrameworkTests
     }
 
     [Test]
-    public async Task CoopIncomingWebhookVerifier_WithValidTimestampedHmac_ReturnsVerifiedResult()
+    public async Task CoopIncomingWebhookVerifier_WithValidTimestampedHmacAndMissingDecisionId_RejectsWithoutHashFallback()
     {
         const string secret = "coop-secret";
         const string payload = "{\"tenant_id\":\"018f0000-0000-7000-8000-000000000001\"}";
@@ -146,9 +146,31 @@ public sealed class IncomingWebhookFrameworkTests
             new IncomingWebhookContext("coop", payload, Encoding.UTF8.GetBytes(payload), headers, DateTimeOffset.UtcNow),
             CancellationToken.None);
 
+        await Assert.That(result.IsVerified).IsFalse();
+        await Assert.That(result.FailureCategory).IsEqualTo("coop_provider_decision_id_missing");
+        await Assert.That(result.ProviderMessageId).IsNull();
+    }
+
+    [Test]
+    public async Task CoopIncomingWebhookVerifier_WithValidTimestampedHmacAndDecisionId_ReturnsProviderIdentity()
+    {
+        const string secret = "coop-secret";
+        const string payload = "{\"provider_decision_id\":\"coop-decision-verified\"}";
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+        var verifier = CreateCoopVerifier(secret);
+        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["X-Coop-Timestamp"] = timestamp,
+            ["X-Coop-Signature"] = $"sha256={ComputeCoopSignature(secret, timestamp, payload)}"
+        };
+
+        var result = await verifier.VerifyAsync(
+            new IncomingWebhookContext("coop", payload, Encoding.UTF8.GetBytes(payload), headers, DateTimeOffset.UtcNow),
+            CancellationToken.None);
+
         await Assert.That(result.IsVerified).IsTrue();
         await Assert.That(result.EventType).IsEqualTo("moderation.coop.decision");
-        await Assert.That(result.ProviderMessageId).StartsWith("sha256:");
+        await Assert.That(result.ProviderMessageId).IsEqualTo("coop-decision-verified");
     }
 
     [Test]

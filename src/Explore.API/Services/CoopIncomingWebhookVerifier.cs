@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Webhooks;
+using Explore.Domain;
 using Explore.Infrastructure.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -74,10 +75,20 @@ public sealed class CoopIncomingWebhookVerifier(
                 "The authenticated Coop credential is not bound to a tenant."));
         }
 
-        var payloadHash = ComputePayloadHash(context.RawPayloadBytes.Span);
-        var providerMessageId = TryResolveProviderDecisionId(context.RawPayloadBytes, out var decisionId)
-            ? decisionId
-            : payloadHash;
+        if (!TryResolveProviderDecisionId(context.RawPayloadBytes, out var providerMessageId))
+        {
+            return Task.FromResult(IncomingWebhookVerificationResult.Rejected(
+                "coop_provider_decision_id_missing",
+                "A signed Coop callback requires a provider decision identifier."));
+        }
+
+        if (providerMessageId.Length > IncomingWebhookEffectOutbox.MaxProviderDecisionIdLength)
+        {
+            return Task.FromResult(IncomingWebhookVerificationResult.Rejected(
+                "coop_provider_decision_id_invalid",
+                "The provider decision identifier exceeds the allowed size."));
+        }
+
         return Task.FromResult(IncomingWebhookVerificationResult.VerifiedTenantCredential(
             tenantId.Value,
             providerMessageId,
@@ -108,12 +119,6 @@ public sealed class CoopIncomingWebhookVerifier(
         prefix.CopyTo(signedContent, 0);
         rawPayload.CopyTo(signedContent.AsSpan(prefix.Length));
         return hmac.ComputeHash(signedContent);
-    }
-
-    private static string ComputePayloadHash(ReadOnlySpan<byte> rawPayload)
-    {
-        var hash = SHA256.HashData(rawPayload);
-        return "sha256:" + Convert.ToHexString(hash).ToLowerInvariant();
     }
 
     private static bool TryResolveProviderDecisionId(ReadOnlyMemory<byte> rawPayload, out string providerDecisionId)
