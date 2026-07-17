@@ -5,6 +5,15 @@ using Explore.Domain;
 
 namespace Explore.Application.Contracts.Persistence;
 
+public sealed record NotificationFanoutClaim(
+    Guid RunId,
+    Guid TenantId,
+    Guid OccurrenceId,
+    Guid LeaseToken,
+    long Fence,
+    int Generation,
+    NotificationFanoutAudienceCursor? Cursor);
+
 public interface INotificationFanoutRunRepository : IGenericRepository<NotificationFanoutRun, Guid>
 {
     Task<NotificationFanoutRun?> GetBySourceAsync(
@@ -19,4 +28,38 @@ public interface INotificationFanoutRunRepository : IGenericRepository<Notificat
     Task<List<NotificationFanoutRun>> GetPendingBatchAsync(
         int pageSize,
         CancellationToken cancellationToken = default);
+
+    Task<NotificationFanoutRun?> GetByOccurrenceAsync(
+        Guid tenantId,
+        Guid occurrenceId,
+        bool trackChanges = false,
+        CancellationToken cancellationToken = default);
+
+    Task<NotificationFanoutClaim?> TryClaimOccurrenceAsync(
+        Guid tenantId,
+        Guid occurrenceId,
+        string leaseOwner,
+        DateTime claimedAt,
+        TimeSpan leaseDuration,
+        CancellationToken cancellationToken);
+
+    Task<bool> TryRenewClaimAsync(
+        NotificationFanoutClaim claim,
+        DateTime observedAt,
+        DateTime leaseExpiresAt,
+        CancellationToken cancellationToken);
+
+    Task<bool> TryCheckpointAsync(
+        NotificationFanoutClaim claim,
+        NotificationFanoutAudienceCursor? expectedCursor,
+        NotificationFanoutAudienceCursor nextCursor,
+        int processedDelta,
+        int createdDelta,
+        DateTime observedAt,
+        CancellationToken cancellationToken);
+
+    Task<bool> TryCompleteAsync(
+        NotificationFanoutClaim claim,
+        DateTime observedAt,
+        CancellationToken cancellationToken);
 }
