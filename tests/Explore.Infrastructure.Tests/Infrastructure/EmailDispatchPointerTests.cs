@@ -23,7 +23,7 @@ public sealed class EmailDispatchPointerTests
             SourceId = Guid.CreateVersion7(),
             EventId = Guid.CreateVersion7(),
             RegistrationIntentId = Guid.CreateVersion7(),
-            UserId = Guid.CreateVersion7(),
+            RecipientUserId = Guid.CreateVersion7(),
             RecipientEmail = "person@example.test",
             Subject = "Registration confirmed",
             PlainTextBody = "body text",
@@ -38,6 +38,8 @@ public sealed class EmailDispatchPointerTests
         await Assert.That(json).DoesNotContain(dispatch.Subject);
         await Assert.That(json).DoesNotContain(dispatch.PlainTextBody);
         await Assert.That(json).DoesNotContain(dispatch.HtmlBody);
+        await Assert.That(json).DoesNotContain("userId");
+        await Assert.That(json).DoesNotContain("recipientUserId");
         await Assert.That(json).DoesNotContain("recipient");
         await Assert.That(json).DoesNotContain("body");
         await Assert.That(json).DoesNotContain("subject");

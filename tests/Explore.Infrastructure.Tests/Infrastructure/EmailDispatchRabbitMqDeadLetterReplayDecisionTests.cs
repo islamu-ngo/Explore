@@ -91,8 +91,7 @@ public sealed class EmailDispatchRabbitMqDeadLetterReplayDecisionTests
         "event_registration_intent",
         Guid.CreateVersion7(),
         eventId,
-        RegistrationIntentId: Guid.CreateVersion7(),
-        UserId: Guid.CreateVersion7());
+        RegistrationIntentId: Guid.CreateVersion7());
 
     private static EmailDispatchOutbox CreateDispatch(
         EmailDispatchPointer pointer,
@@ -106,7 +105,7 @@ public sealed class EmailDispatchRabbitMqDeadLetterReplayDecisionTests
             SourceId = pointer.SourceId ?? Guid.CreateVersion7(),
             EventId = pointer.EventId,
             RegistrationIntentId = pointer.RegistrationIntentId,
-            UserId = pointer.UserId,
+            RecipientUserId = Guid.CreateVersion7(),
             RecipientEmail = "attendee@example.test",
             Subject = "Registration confirmation",
             Status = status,

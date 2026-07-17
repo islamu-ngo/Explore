@@ -8,5 +8,4 @@ public sealed record ScheduledEmailDispatchPointer(
     Guid PublishEventId,
     string UseCase,
     Guid? EventId,
-    Guid? RegistrationIntentId,
-    Guid? UserId);
+    Guid? RegistrationIntentId);

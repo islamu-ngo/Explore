@@ -12,8 +12,7 @@ public sealed record EmailDispatchPointer(
     string SourceType,
     Guid? SourceId,
     Guid? EventId,
-    Guid? RegistrationIntentId,
-    Guid? UserId)
+    Guid? RegistrationIntentId)
 {
     public static EmailDispatchPointer FromOutbox(EmailDispatchOutbox dispatch)
     {
@@ -26,7 +25,6 @@ public sealed record EmailDispatchPointer(
             dispatch.SourceType,
             dispatch.SourceId,
             dispatch.EventId,
-            dispatch.RegistrationIntentId,
-            dispatch.UserId);
+            dispatch.RegistrationIntentId);
     }
 }

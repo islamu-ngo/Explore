@@ -198,7 +198,7 @@ public sealed class EmailDispatchRabbitMqPointerPublisherTests
         SourceId = Guid.CreateVersion7(),
         EventId = Guid.CreateVersion7(),
         RegistrationIntentId = Guid.CreateVersion7(),
-        UserId = Guid.CreateVersion7(),
+        RecipientUserId = Guid.CreateVersion7(),
         RecipientEmail = "recipient@example.test",
         Subject = "Registration confirmed",
         CreatedAt = DateTime.UtcNow
