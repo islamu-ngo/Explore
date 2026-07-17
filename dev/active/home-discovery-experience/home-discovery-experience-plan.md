@@ -3,7 +3,7 @@
 
 # MangaDex-Inspired `/home` Discovery Experience — Implementation Plan
 
-Last Updated: 2026-07-16 Europe/Brussels
+Last Updated: 2026-07-17 Europe/Brussels
 
 ## 0. Planning Metadata
 
@@ -27,26 +27,23 @@ Last Updated: 2026-07-16 Europe/Brussels
 | Paths in scope | Public-experience setting/config models, composite public-home query/controller/cache, generated contract artifacts, `src/Explore.Blazor.Client/**`, matching Domain/Application/API/Blazor tests, `docs/DESIGN.md`, a planned-proximity ADR plus architecture/domain/self-hosting summaries, API contract docs, and these dev docs. |
 | Minimum tests | `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.API.IntegrationTests`, `Explore.Blazor.Client.Tests`, and `Event.Architecture.Tests`; perform focused manual browser QA for responsive behavior. |
 | Docs to update | `docs/DESIGN.md`, a new planned-proximity ADR, `docs/ARCHITECTURE.md`, `docs/DOMAIN.md`, `docs/SELF_HOSTING.md`, generated API contract/inventory/client artifacts, `docs/API_CHANGELOG.md`, and `docs/BLAZOR.md` for the composite home flow. |
-| Unique acceptance | `/home` has the approved MangaDex-inspired page rhythm, reuses the production three-mode `EventCard`, remains tenant-aware, and passes responsive/accessibility browser QA. |
+| Unique acceptance | `/home` has the approved MangaDex-inspired page rhythm, uses a dedicated compact upcoming-event update list plus production cards for card-shaped sections, remains tenant-aware, and passes responsive/accessibility browser QA. |
 | Forbidden without approval | Exact venue coordinates in generic public DTOs, “near you”/distance claims without event-occurrence geospatial results, IP/third-party geolocation, an in-memory exact-distance fallback, a recommendation/quality-score backend, a new carousel dependency, advertising/ad-shaped filler, or a visual redesign of `/events`. |
 
 ## 1. Executive Summary
 
-Build a discovery-focused `/home` that borrows MangaDex's **information rhythm**, not its brand: an image-led hero carousel, a dense time-sensitive section, curated horizontal shelves, restrained section headers, progressive disclosure, and a compact mobile transformation. Event data and ISLAMU's existing design tokens, shell, tenant configuration, footer, and production event cards remain authoritative.
+Build a discovery-focused `/home` that borrows MangaDex's **information rhythm**, not its brand: an image-led hero carousel, a dense time-sensitive update list, curated horizontal shelves, restrained section headers, progressive disclosure, and a compact mobile transformation. Event data and ISLAMU's existing design tokens, shell, tenant configuration, footer, and production event cards remain authoritative.
 
 The first release will:
 
 1. keep the existing ISLAMU navigation, announcement, tenant shell, footer, render policy, and `/events` catalog;
 2. turn `/home` into the public event-discovery surface for both anonymous and authenticated visitors;
 3. remove the obsolete anonymous marketing/registration page;
-4. render the three existing `LayoutMode` variants deliberately:
-   - `SingleRow` for a short editorial spotlight list;
-   - `DetailedList` in a responsive multi-column “Upcoming in {Area}” grid;
-   - `CompactGrid` inside horizontal shelves;
+4. render the dedicated `UpcomingEventList` for the time-sensitive vertical feed, `SingleRow` cards for an evidence-backed spotlight, and `CompactGrid` cards inside horizontal shelves;
 5. refactor the existing hero/rail prototypes to use CSS isolation, accessible controls, and the production `Pages/Events/Components/EventCard`;
 6. add one cacheable `GET /api/public-experience/home?areaId={id}&mode={mode}` response so initial discovery content requires one API call beyond existing shell/bootstrap reads;
 7. persist stable `home_discovery.area_id` and mode values, never a localized city string;
-8. place a “Browsing events in {Area}” control directly above the carousel with “Use my current location” and “Browse online events” actions;
+8. place a “Browsing events in {Area}” control as the first row inside the carousel inner, above the event poster, with “Use my current location” and “Browse online events” actions;
 9. request browser location only after explicit action, compare it only with coarse public discovery-area centroids, and never expose generic venue coordinates;
 10. use honest labels such as “Upcoming in {Area},” “Most viewed in {Area},” “Most viewed online,” and “Recently added”;
 11. omit MangaDex's ad/content-break region entirely, without a CTA substitute or reserved gap;
@@ -111,7 +108,7 @@ Chrome DevTools MCP inspected the live [MangaDex homepage](https://mangadex.org/
 - Replace manga language flags with event format/type/date/price indicators.
 - Replace “Latest Updates” timestamps with upcoming event dates and organizer/location metadata.
 - Omit the MangaDex ad/content break entirely and let the first event section follow the hero at normal section spacing.
-- Replace MangaDex card components with the production ISLAMU `EventCard` and its three layout modes.
+- Translate MangaDex's latest-update rows into the dedicated `UpcomingEventList`; keep the production ISLAMU `EventCard` for spotlight and shelf card semantics.
 - Preserve ISLAMU's semantic tokens, white-label appearance, tenant isolation, RTL support, and HAL action gating.
 
 ### 2.3 Existing Implementation By Layer
@@ -137,7 +134,7 @@ Chrome DevTools MCP inspected the live [MangaDex homepage](https://mangadex.org/
 
 #### Reusable UI
 
-- The production `Pages/Events/Components/EventCard` is the only card that should power `/home`; it owns fallbacks, the three layouts, past/moderated states, share action, field visibility, and HAL-gated edit/delete actions.
+- The production `Pages/Events/Components/EventCard` remains the only card component on `/home`; the separate `UpcomingEventList` is a compact semantic list of native links, not a card or a fourth layout mode.
 - `Components/Presentation/EventCard.razor` is a second event card with different logic and no tests; keeping it would create behavioral drift.
 - `HeroCarousel`, `FeaturedEventHero`, and `EventHorizontalRail` are useful names/starting points but require refactoring before production use.
 
@@ -171,7 +168,7 @@ Chrome DevTools MCP inspected the live [MangaDex homepage](https://mangadex.org/
 8. **Area context has no contract.** No stable public discovery-area ID, coarse centroid, tenant default, or public-coordinate boundary exists.
 9. **Empty/error behavior is fragmented.** Each landing branch handles loading and failures differently.
 10. **Preset sections are browse links, not hydrated shelves.** First release should hydrate only explicitly curated/supported sections server-side, not infer “community” from `createdat`.
-11. **Client composition would multiply public reads.** Six or seven Blazor/BFF/API calls would fragment caching, deduplication, hydration, and future PostGIS integration.
+11. **Client composition would multiply public reads.** Six or seven Blazor/BFF/API calls would fragment caching, section coordination, hydration, and future PostGIS integration.
 12. **Area selection is not proximity.** City/area filtering cannot support “near you,” radius, closest-event, or distance wording.
 
 ### 2.7 Unknowns After Investigation
@@ -197,10 +194,10 @@ Existing announcement/navigation shell
 └─ Featured events hero carousel
    ├─ blurred/covered event image + readable gradient
    ├─ foreground image, type/format badges, title, date, organizer, summary
-   ├─ event link, previous/next, position
+   ├─ slide-wide event link, previous/next, position
    └─ compact mobile disclosure
 └─ Upcoming in {Area}
-   └─ DetailedList cards in a 1/2/3-column responsive grid
+   └─ compact update rows grouped top-to-bottom in a 1/2/3-column responsive list
 └─ Community spotlight (only with explicit tenant curation or primary-actor scope)
    └─ up to 3 SingleRow cards, one per row
 └─ Most viewed in {Area}
@@ -216,12 +213,12 @@ Existing announcement/navigation shell
 
 ### 3.2 Data Selection Rules
 
-One public composite request returns all bounded sections. The Application handler resolves the tenant, selected active discovery area, mode, and explicit curated scope; calls existing event-list query semantics server-side; deduplicates and backfills in priority order; and returns safe per-section status. Area mode applies the configured area's internal location IDs. Online mode removes area location IDs and applies the online format while retaining the saved area ID for return.
+One public composite request returns all bounded sections. The Application handler resolves the tenant, selected active discovery area, mode, and explicit curated scope; calls existing event-list query semantics server-side; evaluates each semantic section independently; and returns safe per-section status. Area mode applies the configured area's internal location IDs. Online mode removes area location IDs and applies the online format while retaining the saved area ID for return.
 
 | Section | Query | Limit | Notes |
 |---|---|---:|---|
 | Hero | upcoming, `sortBy=views`, descending | 10 | “Featured events” is presentation copy, not a recommendation claim; prefer images only as a secondary deterministic choice. |
-| Upcoming in area | area location IDs, `dateFrom=now`, `dateTo=now+7d`, `sortBy=date`, ascending | 10 | Label with the selected area's display name; never “near you.” |
+| Upcoming in area | area location IDs, `dateFrom=now`, `sortBy=date`, ascending | 10 | Includes all future matching inventory; label with the selected area's display name; never “near you.” |
 | Community spotlight | explicit tenant-curated preset or available primary actor only | 3 | Omit when no evidence exists; never fall back to views. |
 | Most viewed in area | in-person/hybrid format IDs, area location IDs, `sortBy=views`, descending | 10 | “Most viewed” states the actual signal. |
 | Most viewed online | online format ID, upcoming, `sortBy=views`, descending | 10 | No “trending,” trust, or recommendation claim. |
@@ -268,9 +265,9 @@ Inside the composite handler, a simple priority-ordered `HashSet<Guid>` removes 
 
 | Width | Hero | Upcoming in area | Single row | Rails |
 |---|---|---|---|---|
-| 1280+ | 440-520px, full metadata, cover + background | 3 columns | 1 full-width card | 4-5 event cards plus clipped preview |
-| 768-1279 | 400-460px, shortened summary | 2 columns | 1 full-width card | 2-3 cards plus preview |
-| 375-767 | 320-380px, no long summary, retained badges/date/title/control labels | 1 column | existing card container adaptation | 1-1.5 larger event cards plus preview |
+| 1280+ | 25.5rem, full metadata, poster + background, controls in the poster's bottom lane | up to 3 compact vertical columns | 1 full-width card | 4-5 event cards plus clipped preview |
+| 768-1279 | 23rem, shortened summary | up to 2 compact vertical columns | 1 full-width card | 2-3 cards plus preview |
+| 375-767 | 15.75rem, no long summary, retained badge/date/title/controls | 1 compact vertical column | existing card container adaptation | 1-1.5 larger event cards plus preview |
 
 Use CSS container queries for event-card composition and viewport queries only for page-level hero/shell behavior. Use logical properties for RTL.
 
@@ -310,17 +307,17 @@ Use CSS container queries for event-card composition and viewport queries only f
 - **Consequences:** Both legacy landing components, the marketing-only service, route, sitemap/render-policy entries, tests, and orphaned prototype component are removed after caller proof.
 - **Files/layers:** `Home.razor`, `Home.razor.css`, `HomeStart.razor` tests, landing components, routes tests.
 
-### Decision 2: Reuse the production three-mode event card
+### Decision 2: Reuse production cards where the section has card semantics
 
 - **Why:** It already owns field visibility, image fallback, past/moderated state, share, and HAL actions.
-- **Alternatives considered:** Continue the presentation-only card; create separate home cards.
-- **Consequences:** Refactor `EventHorizontalRail` to use `Pages.Events.Components.EventCard`; delete the unused duplicate presentation card.
+- **Alternatives considered:** Continue the presentation-only card; add a fourth compact mode to `EventCard`; force dense updates into `DetailedList` cards.
+- **Consequences:** `EventHorizontalRail` uses `Pages.Events.Components.EventCard`; the unused duplicate presentation card is deleted; upcoming inventory uses a dedicated native-link `UpcomingEventList` without card actions or layout-mode branching.
 - **Files/layers:** Blazor components and tests only.
 
-### Decision 3: Native overflow rails, MudBlazor hero
+### Decision 3: Native overflow rails and a bounded manual Blazor hero
 
-- **Why:** Native `overflow-x` + `scroll-snap` covers shelves; existing `MudCarousel` covers the hero without a dependency.
-- **Alternatives considered:** Swiper package; custom JavaScript track; MudCarousel for every shelf.
+- **Why:** Native `overflow-x` + `scroll-snap` covers shelves; component state plus native buttons/pointer events cover the bounded hero without a JavaScript carousel dependency.
+- **Alternatives considered:** Swiper package; custom JavaScript track; `MudCarousel` for the hero or every shelf.
 - **Consequences:** Less JavaScript and fewer state bugs. Pagination dots are optional and should not be added unless they expose meaningful page state.
 
 ### Decision 4: Transparent deterministic ranking
@@ -349,8 +346,8 @@ Use CSS container queries for event-card composition and viewport queries only f
 
 ### Decision 8: One composite public-home read
 
-- **Why:** One network request centralizes tenant filtering, caching, deduplication, backfilling, section status, and later PostGIS integration.
-- **Alternatives considered:** six or seven Blazor-composed event calls; one oversized generic event query; client-side dedupe.
+- **Why:** One network request centralizes tenant filtering, caching, independent section membership, section status, and later PostGIS integration.
+- **Alternatives considered:** six or seven Blazor-composed event calls; one oversized generic event query; client-side section composition.
 - **Consequences:** `GET /api/public-experience/home?areaId={id}&mode={mode}` returns `HomeDiscoveryDto`, varies cache by tenant/area/mode, and preserves ETag behavior. The Application handler reuses existing event-list query semantics and performs bounded server-side composition.
 
 ### Decision 9: Dedicated `HomeDiscoveryService`
@@ -419,7 +416,7 @@ The task IDs below are canonical and must match the context and checklist exactl
 
 #### Task 2.2: Refactor The Manual Hero (complete)
 - **Files:** `HeroCarousel.razor`, isolated CSS, focused tests; obsolete `FeaturedEventHero.razor` removed after caller proof
-- **Result:** One manual hero renders at most 10 slides with wrapping previous/next controls, counter, pointer swipe with RTL reversal, public slug navigation, local image fallback, and exactly one eager/high-priority active image while the rest are lazy. Unsupported FREE/LIVE NOW claims, autoplay, inline CSS, and the unreferenced child prototype are gone. Four focused tests plus full Blazor Client and Architecture suites passed; responsive browser/network evidence remains grouped under Phase 5.
+- **Result:** One manual hero renders at most 10 slides with wrapping previous/next controls, pointer swipe with RTL reversal, public slug navigation, local image fallback, and one prioritized active image URL rendered as backdrop/poster while inactive images remain lazy. The focused MangaDex comparison set 25.5rem/23rem/15.75rem responsive heights, plain `NO. n` text, and transparent arrow targets in the poster's bottom lane. Unsupported claims, autoplay, inline CSS, and the unreferenced child prototype are gone.
 - **Dependencies/Effort:** 1.1, 2.1 / M
 - **Validation:** Component tests and browser keyboard/image-network smoke.
 
@@ -439,7 +436,7 @@ The task IDs below are canonical and must match the context and checklist exactl
 
 #### Task 3.2: Add The Composite Home-Discovery Query And API (complete)
 - **Files:** `HomeDiscoveryDto`/`EventDiscoveryItemDto`, query/handler, `PublicExperienceController`, `RouteNames`, cache policy, API/Application tests, regenerated OpenAPI/inventory/NSwag client/changelog
-- **Result:** One `GET /api/public-experience/home?areaId={guid}&mode={mode}` returns bounded context/sections/statuses from an Application CQRS orchestrator that delegates to existing public event reads. Tenant area mappings fail closed, area/online/all filters are server-owned, dedupe/backfill follows fixed section priority, failures are isolated, and unsupported curation is omitted. The anonymous route uses tenant/host/query-varying output cache and existing ETag middleware. OpenAPI, API inventory, generated NSwag client, and API changelog were regenerated; five handler and two controller-contract tests passed.
+- **Result:** One `GET /api/public-experience/home?areaId={guid}&mode={mode}` returns bounded context/sections/statuses from an Application CQRS orchestrator that delegates to existing public event reads. Tenant area mappings fail closed, area/online/all filters and independent semantic section membership are server-owned, failures are isolated, and unsupported curation is omitted. The anonymous route uses tenant/host/query-varying output cache and existing ETag middleware. OpenAPI, API inventory, generated NSwag client, and API changelog were regenerated; handler and controller-contract tests cover the contract.
 - **Dependencies/Effort:** 3.1 / L
 - **Validation:** Handler/API tests, deterministic contract regeneration, one-call/payload budgets.
 
@@ -474,8 +471,8 @@ The task IDs below are canonical and must match the context and checklist exactl
 - **Dependencies/Effort:** 4.1 / M
 - **Validation:** bUnit, keyboard, contrast, permission states.
 
-#### Task 4.3: Render All Three Honest Event Layouts (complete)
-- **Acceptance:** `DetailedList` renders “Upcoming in {Area}” at 1/2/3 columns; optional curated/actor `SingleRow` spotlight is omitted without evidence; `CompactGrid` rails use “Most viewed in {Area},” “Most viewed online,” explicit curated labels, and “Recently added.” No “near,” “trending,” “recommended,” or unsupported community/grassroots copy.
+#### Task 4.3: Render Honest Event Layouts (complete)
+- **Acceptance:** `UpcomingEventList` renders compact direct-link rows top-to-bottom in responsive 1/2/3 columns; optional curated/actor `SingleRow` spotlight is omitted without evidence; `CompactGrid` rails use “Most viewed in {Area},” “Most viewed online,” explicit curated labels, and “Recently added.” No “near,” “trending,” “recommended,” or unsupported community/grassroots copy.
 - **Dependencies/Effort:** 4.2 / M
 - **Validation:** Content/layout tests and responsive screenshots.
 
@@ -542,7 +539,7 @@ The task IDs below are canonical and must match the context and checklist exactl
 | Requirement | Test layer | Coverage |
 |---|---|---|
 | Setting registration and area-config validation | Domain/Application unit | Stable/duplicate IDs, country/display fields, exactly one default, inactive/foreign location IDs, centroid bounds, user setting scopes. |
-| Composite section semantics | Application unit | Exact `date`/`views`/`createdat` keys, area/mode filters, honest labels, optional curation, dedupe/backfill, cancellation, partial status. |
+| Composite section semantics | Application unit | Exact `date`/`views`/`createdat` keys, area/mode filters, honest labels, optional curation, independent section membership, cancellation, partial status. |
 | Public API/cache contract | API integration | Anonymous tenant isolation, query validation, one composite response, cache vary by tenant/area/mode, ETag, generated contract. |
 | Location privacy | Domain/API/Blazor/browser | No generic `LocationListDto`, address, or venue coordinate in Home Discovery responses/browser state; no origin in URL, settings, logs, analytics, errors, or requests in area-only mode; geolocation self policy. |
 | Three card modes and keyboard behavior | bUnit | Existing mode coverage plus Enter/Space and nested HAL/share isolation. |
@@ -674,7 +671,7 @@ The future `POST /api/public-experience/home/nearby` accepts a rounded/bounded t
 |---|---:|---|---|
 | Area wording drifts into proximity claims | High | Forbidden-term tests; only Phase 6 enables “near you”/distance | 3.2, 4.3 |
 | Generic venue PII becomes public | High | Dedicated area DTO/config; serialization/API tests prove Home Discovery never consumes `LocationListDto`, Address, or venue coordinates | 3.1, 3.4 |
-| Composite handler is slow | High | Bounded overfetch/dedupe, cache/ETag, explicit p95/payload gates, timing | 3.2, 5.3 |
+| Composite handler is slow | High | Bounded per-section queries, cache/ETag, explicit p95/payload gates, timing | 3.2, 5.3 |
 | Anonymous saved area causes hydration refetch | Medium | Canonical URL and persistent payload are primary; any post-hydration preference correction is one explicit composite reload and tested | 3.3, 3.5 |
 | Invalid/cross-tenant area selection | High | Server validates active area in resolved tenant and falls back safely | 3.1, 3.2 |
 | View count is mistaken for quality | Medium | “Most viewed” only; no trending/recommended label | 4.3 |

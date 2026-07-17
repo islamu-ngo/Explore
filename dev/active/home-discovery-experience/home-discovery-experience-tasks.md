@@ -3,7 +3,7 @@
 
 # MangaDex-Inspired `/home` Discovery Experience — Task Checklist
 
-Last Updated: 2026-07-16 Europe/Brussels
+Last Updated: 2026-07-17 Europe/Brussels
 
 ## Status Summary
 
@@ -66,7 +66,7 @@ Last Updated: 2026-07-16 Europe/Brussels
   - Reuse existing hero prototypes with isolated CSS.
   - Up to 10 slides; previous/next/swipe/counter; no autoplay; active image prioritized, optional next preload, remainder lazy.
   - Cover fallback, mobile, RTL, reduced motion, labels, and navigation.
-  - Consolidated the prototypes into one isolated-CSS component, removed unsupported labels/autoplay and the unreferenced child prototype, used clean public event URLs, capped rendering at 10, and added manual controls, pointer swipe, RTL direction, fallback images, and one eager active image. Four focused tests plus full Blazor Client and Architecture suites passed; responsive browser evidence remains in Phase 5.
+  - Consolidated the prototypes into one isolated-CSS component, removed unsupported labels/autoplay and the unreferenced child prototype, used clean public event URLs, capped rendering at 10, and added manual controls, pointer swipe, RTL direction, fallback images, and one prioritized active image URL. The focused 2026-07-17 MangaDex inspection tightened the responsive hero to the poster's lower edge and placed plain `NO. n` plus transparent arrows in the poster's bottom lane.
   - **Dependencies:** 1.1, 2.1
 
 - [x] **2.3 Refactor the native horizontal rail**
@@ -89,9 +89,9 @@ Last Updated: 2026-07-16 Europe/Brussels
 - [x] **3.2 Add the composite home-discovery query and API**
   - Add `HomeDiscoveryDto`, `EventDiscoveryItemDto`, query/handler, public-experience route/cache, tests, and regenerated contract artifacts.
   - Exactly one `GET /api/public-experience/home?areaId={guid}&mode={mode}`.
-  - Server owns tenant validation, bounded queries, honest sections, deterministic dedupe/backfill, statuses, query-varying cache, ETag.
+  - Server owns tenant validation, bounded independent section queries, honest sections, statuses, query-varying cache, ETag.
   - Omit unsupported curated sections.
-  - Added the bounded CQRS orchestrator over existing public event queries, fail-closed area resolution, priority dedupe/backfill, isolated section statuses, anonymous route and query-varying cache. OpenAPI uses the clean `GetHomeDiscovery` operation ID; API inventory, NSwag client, and changelog were regenerated. Eight focused handler and two controller-contract tests pass.
+  - Added the bounded CQRS orchestrator over existing public event queries, fail-closed area resolution, independent semantic sections, isolated section statuses, anonymous route and query-varying cache. OpenAPI uses the clean `GetHomeDiscovery` operation ID; API inventory, NSwag client, and changelog were regenerated. Focused handler and controller-contract tests cover the composition.
   - **Dependency:** 3.1
 
 - [x] **3.3 Add the frontend discovery context**
@@ -130,12 +130,12 @@ Last Updated: 2026-07-16 Europe/Brussels
   - Added the native labeled area selector, explicit location/online actions, one h1, manual hero, visible status text, and normal section spacing with no ad-shaped region.
   - **Dependency:** 4.1
 
-- [x] **4.3 Render all three honest event layouts**
-  - `DetailedList`: “Upcoming in {Area},” 1/2/3 columns.
+- [x] **4.3 Render honest event layouts**
+  - `UpcomingEventList`: “Upcoming in {Area},” compact direct-link rows grouped vertically in responsive 1/2/3 columns.
   - `SingleRow`: explicit curated/primary-actor spotlight only; omit otherwise.
   - `CompactGrid`: “Most viewed in {Area},” “Most viewed online,” explicit curated labels, “Recently added.”
   - No near/trending/recommended/unsupported community or grassroots labels.
-  - Wired `DetailedList`, evidence-backed `SingleRow`, and `CompactGrid` rails to server section truth. Most-viewed/recent/explicit curated labels are factual; unsupported and deceptive labels are absent. The server caps standard sections at 10 and explicit curated rails at two.
+  - Wired the dedicated MangaDex-inspired update list, evidence-backed `SingleRow`, and `CompactGrid` rails to server section truth. The update list avoids a fourth `EventCard` mode, chunks at six rows per column, uses direct public event links, and retains local image fallbacks. Most-viewed/recent/explicit curated labels are factual; unsupported and deceptive labels are absent.
   - **Dependency:** 4.2
 
 - [x] **4.4 Finish loading, empty, and partial-failure states**

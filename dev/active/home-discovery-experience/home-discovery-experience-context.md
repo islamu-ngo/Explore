@@ -3,7 +3,7 @@
 
 # MangaDex-Inspired `/home` Discovery Experience — Context
 
-Last Updated: 2026-07-16 Europe/Brussels
+Last Updated: 2026-07-17 Europe/Brussels
 
 ## SESSION PROGRESS (2026-07-16 Europe/Brussels)
 
@@ -26,14 +26,14 @@ Last Updated: 2026-07-16 Europe/Brussels
 - **1.1:** Extended `docs/DESIGN.md` with the public-home page order, area context/privacy, reusable hero/card/rail states, three layout mappings, honest-copy and no-ad constraints, responsive/RTL/reduced-motion/accessibility behavior, hydration states, and payload/image/latency budgets. Architecture tests passed with 0 warnings.
 - **1.2:** Added proposed ADR-013 and `ARCHITECTURE.md`/`DOMAIN.md`/`SELF_HOSTING.md` summaries for the separately approved PostGIS phase: governed public points, occurrence-level geography queries, transient private/no-store origin handling, GiST/readiness/backups, and area-only fallback. No schema/runtime/deployment change was made. Architecture tests passed with 0 warnings.
 - **2.1:** Made the production three-layout `EventCard` a labeled keyboard target with visible tokenized focus, Enter/Space activation, and keyboard propagation guards around nested share/management/organizer actions. Every image now has meaningful alt text, lazy loading, async decoding, and intrinsic dimensions. Focused Blazor Client and Architecture suites pass.
-- **2.2:** Replaced the autoplay/unbounded hero prototypes with one manual `HeroCarousel`: at most 10 slides, wrapping previous/next controls, counter, LTR/RTL pointer swipes, public slug links, local image fallback, and exactly one eager/high-priority active image. Styling is isolated, logical-direction, responsive, and reduced-motion safe; the unused `FeaturedEventHero` was deleted after caller proof. Four focused tests plus full Blazor Client and Architecture suites passed.
+- **2.2:** Replaced the autoplay/unbounded hero prototypes with one manual `HeroCarousel`: at most 10 slides, wrapping previous/next controls, counter, LTR/RTL pointer swipes, public slug links, local image fallback, and one high-priority active image URL rendered as backdrop and poster. A 2026-07-17 Chrome DevTools comparison tightened the hero to the poster's lower edge and aligned plain `NO. n` plus transparent arrow controls in the poster's bottom lane. Styling is isolated, logical-direction, responsive, and reduced-motion safe; the unused `FeaturedEventHero` was deleted after caller proof.
 - **2.3:** Rebuilt `EventHorizontalRail` as a semantic, focusable native scroll-snap list using the production `CompactGrid` event card. Loading and empty states are explicit; heading/View-all, touch, keyboard scrolling, RTL, responsive sizing, reduced motion, and click forwarding are covered. The duplicate presentation card was deleted after its two legacy prototype callers moved to the canonical card. Four focused tests plus full Blazor Client and Architecture suites passed.
 - **3.1:** Added `public_experience.discovery_areas`, exact `home_discovery.area_id`/`home_discovery.mode` user preferences, a bounded versioned Application config, and a public coarse-area DTO that excludes location IDs and PII. Pure validation enforces schema/size, stable unique IDs, one active default, paired two-decimal centroids, tenant-owned location references, and one-area-per-location mapping. Focused tests plus full Domain/Application and Architecture suites passed; generic location contracts/entities are unchanged.
-- **3.2:** Added one bounded composite CQRS query over the existing public event-list handler. It resolves tenant-owned area mappings, supports area/online/all context, isolates section failures, deduplicates and backfills in priority order, omits unsupported curation, and exposes reserved proximity fields as null. `GET /api/public-experience/home` is anonymous, output-cached by tenant/host/area/mode, and represented by the clean `GetHomeDiscovery` operation ID in regenerated OpenAPI, API inventory, NSwag client, and API changelog. Eight handler tests and two API contract tests pass.
+- **3.2:** Added one bounded composite CQRS query over the existing public event-list handler. It resolves tenant-owned area mappings, supports area/online/all context, isolates section failures, evaluates each semantic section independently, omits unsupported curation, and exposes reserved proximity fields as null. `GET /api/public-experience/home` is anonymous, output-cached by tenant/host/area/mode, and represented by the clean `GetHomeDiscovery` operation ID in regenerated OpenAPI, API inventory, NSwag client, and API changelog. Handler and API contract tests cover the composition.
 - **3.3:** Added `HomeDiscoveryService` plus a one-shot browser geolocation adapter. URL context precedes saved context, the server retains authority over default/first/all fallback, location is reduced in memory to the closest coarse configured centroid, and only area ID/mode are persisted. Online mode preserves the selected area. Six service and two interop tests passed.
 - **3.4:** Added Application, Blazor, JS-source, generated-client, hydration, and BFF-header privacy guards. Home Discovery never consumes generic location DTOs or exposes addresses/internal mappings/venue coordinates; origin has no URL, setting, persistent-state, API, log, console, analytics, or network sink. The browser BFF permits geolocation to self only and the API remains disabled.
 - **3.5:** Added the cancellation-aware `HomeDiscoveryExperience` around one `[PersistentState]` composite DTO. Hydration restores before service access, authenticated and anonymous visitors share the same discovery branch, and top-level/section failures are bounded without erasing successful sections.
-- **4.1-4.5:** Replaced the legacy authenticated/anonymous Home split with the shared discovery surface while preserving organization-centric remediation/content. The page renders area context, manual hero, all three production card modes, factual server-backed labels, loading/empty/partial states, translation fallbacks, logical RTL CSS, reduced motion, forced colors, and no ad gap. Both obsolete landing components and the standalone marketing route were removed after caller proof. Focused Home/component suites passed.
+- **4.1-4.5:** Replaced the legacy authenticated/anonymous Home split with the shared discovery surface while preserving organization-centric remediation/content. The page renders area context, a manual hero, a dedicated MangaDex-inspired `UpcomingEventList`, production cards for spotlight/rails, factual server-backed labels, loading/empty/partial states, translation fallbacks, logical RTL CSS, reduced motion, forced colors, and no ad gap. The update list uses direct event links, vertical groups of six compact 7:10 rows, and local image fallbacks instead of adding a fourth `EventCard` mode. Both obsolete landing components and the standalone marketing route were removed after caller proof.
 - **5.3 partial:** Added one-second section and three-second composite timeouts, a compact card/hero projection, 10-item standard sections, and at most two explicit curated rails. The maximum-count exact source-generated JSON test passes the 256 KiB uncompressed and 120 KiB Brotli/gzip ceilings; the focused handler suite now contains eight passing tests.
 - **5.1-5.2 partial:** Started Docker Desktop and ran the browser flow through hydration, responsive captures, mobile overlay close, manual hero, keyboard cards/rail scrolling, granted Brussels geolocation, and online mode. Inspected 375 light LTR, 768 dark LTR, and 1280 light RTL/reduced-motion captures; the composition, shell spacing, no-image fallback, themes, and direction were visually sound. The denied branch is now deterministic at the product boundary, screenshot capture resets focus/scroll, and the browser check enforces header/heading separation.
 - **5.3 partial runtime fixes:** Live logs exposed overlong HybridCache keys for compound discovery filters and triple composite reads after each context action. The event-list handler now SHA-256 hashes only its canonical specification suffix, with a regression proving the Home-style key stays within 512 characters. Home context actions retain the already-loaded DTO and update the URL with `history.replaceState`, with component tests proving one reload and coordinate-free URL state. A trace also exposed two 502,894-byte fallback-image transfers because XSRF issuance marked static assets `no-store`; static assets now bypass token issuance, caching and protected-mutation integration regressions pass, and manual browser QA checks one encoded hero transfer within 500 KiB.
@@ -67,11 +67,11 @@ Last Updated: 2026-07-16 Europe/Brussels
 
 ## MangaDex Reference Evidence
 
-Chrome DevTools observations from 2026-07-15:
+Chrome DevTools observations from 2026-07-15 and the focused 2026-07-17 desktop comparison:
 
 - Page order: compact shell → 10-slide hero → ad/content break → dense latest grid → multiple horizontal shelves → footer.
-- Hero: image background/gradient/cover/metadata, previous/next/position, responsive detail reduction.
-- Latest grid: one column narrow and multiple columns wide.
+- Hero: a 440px desktop composition whose 7:10 poster ends near the banner edge; the counter is plain `No. n` text and transparent 40px arrow targets share the poster's bottom lane.
+- Latest grid: six stacked 80px rows per column, 56×80 thumbnails, one column narrow and 2/3/4 columns wide.
 - Shelves: fixed-width auto slides, native-feeling touch/wheel motion, clipped preview.
 - Mobile: compact header/hero, one-column dense list, narrow shelves.
 - ISLAMU translation: hierarchy, density, manual hero controls, and progressive disclosure only.
@@ -103,7 +103,7 @@ Local evidence (untracked):
 | `src/Explore.Application/Models/PublicExperience/PublicDiscoveryAreasConfig.cs` | new | Versioned stable areas, coarse centroids, default/active state, internal location IDs. |
 | `src/Explore.Application/DTOs/PublicExperience/HomeDiscoveryDto.cs` | new | Composite context/sections/statuses and event wrapper contract. |
 | `src/Explore.Application/Models/PublicExperience/HomeDiscoveryEnums.cs` | new | String-enum selection/status contracts registered in OpenAPI outside the DTO namespace. |
-| `src/Explore.Application/Features/PublicExperience/**/GetHomeDiscovery*` | new | Tenant-safe bounded server composition/dedupe/backfill. |
+| `src/Explore.Application/Features/PublicExperience/**/GetHomeDiscovery*` | new | Tenant-safe bounded server composition with independent semantic sections. |
 | `src/Explore.API/Controllers/PublicExperienceController.cs` | existing | Add composite anonymous GET route. |
 | `src/Explore.API/Extensions/CachingExtensions.cs` | existing | Tenant/area/mode cache policy. |
 | `src/Explore.Blazor.Client/Services/HomeDiscoveryService.cs` | new | One generated-client home read; safe UI result mapping. |
@@ -113,6 +113,7 @@ Local evidence (untracked):
 | `src/Explore.Blazor.Client/wwwroot/js/home-discovery.js` | implemented | Explicit one-shot browser origin read only; no persistence/network/logging. |
 | Production `Pages/Events/Components/EventCard.*` | existing | Single card implementation for all three modes. |
 | `src/Explore.Blazor.Client/Components/Presentation/HeroCarousel.*` | implemented | Manual, accessible, isolated hero; at most 10 bounded slides and one eager active image. |
+| `src/Explore.Blazor.Client/Components/Discovery/UpcomingEventList.*` | implemented | Direct-link compact update rows, six vertically ordered items per column, responsive 1/2/3-column layout, and local image fallback. |
 | `src/Explore.Blazor.Client/Components/Collection/EventHorizontalRail.*` | implemented | Native scroll-snap production-card rail with explicit loading/empty state. |
 | `docs/adr/ADR-013-postgis-proximity-discovery.md` | implemented documentation | Planned, not implemented, exact-proximity contract. |
 
@@ -127,14 +128,15 @@ Local evidence (untracked):
 7. Home Discovery uses only its dedicated coarse `PublicDiscoveryAreaDto`; it never consumes generic `LocationListDto`, whose existing `Address`/identifying fields are unsafe for public discovery. Retirement/minimization of the generic contract belongs to Event Location Privacy.
 8. Current labels are “Upcoming in {Area},” “Most viewed in {Area},” “Most viewed online,” explicit curation, and “Recently added.”
 9. “Near you,” closest/radius/distance, trending, recommended, and unsupported community/grassroots labels are forbidden.
-10. One composite GET returns all current home discovery sections; server owns tenant validation, dedupe/backfill, cache, ETag, and status.
+10. One composite GET returns all current home discovery sections; server owns tenant validation, independent section membership, cache, ETag, and status.
 11. `HomeDiscoveryService` owns this use case; the legacy marketing-only service is deleted.
-12. Hero is manual by default; active image is prioritized, optional next preloaded, remainder lazy.
+12. Hero is manual by default; the active backdrop/poster URL is prioritized and all inactive slide images are lazy.
 13. No ad, CTA substitute, or reserved ad gap.
 14. PostGIS is the sole planned exact-proximity engine and measures minimum distance to an eligible future public event-session occurrence.
 15. Phase 6 never starts without separate explicit approval.
 16. Do not add a broad public-Blazor intent for this one workstream; existing intent routes plus the explicit fallback contract are sufficient, and overlap risk outweighs speculative reuse.
 17. The endpoint route name and generated client method are `GetHomeDiscovery` / `GetHomeDiscoveryAsync`; controller-prefixed operation IDs violate the client naming contract.
+18. Upcoming discovery is a semantic update list, not a fourth `EventCard` mode: compact rows flow top-to-bottom in groups of six and link directly to public event routes.
 
 ## Location Privacy By Capability
 
