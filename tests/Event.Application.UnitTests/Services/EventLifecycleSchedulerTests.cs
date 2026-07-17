@@ -1,9 +1,8 @@
 // ABOUTME: Unit tests for delayed Event lifecycle scheduler orchestration.
-// ABOUTME: Proves reminders persist EmailDispatchOutbox state before requesting scheduler wake-ups.
+// ABOUTME: Proves reminder recipient state commits atomically before scheduler wake-ups.
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Notifications;
-using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Notifications;
 using Explore.Application.Services;
@@ -20,7 +19,7 @@ namespace Event.Application.UnitTests.Services;
 public sealed class EventLifecycleSchedulerTests
 {
     [Test]
-    public async Task ScheduleEventReminderCreatesOutboxBeforePointerTrigger()
+    public async Task ScheduleEventReminderMaterializesRecipientBeforePointerTrigger()
     {
         var tenantId = Guid.CreateVersion7();
         var userId = Guid.CreateVersion7();
@@ -28,30 +27,34 @@ public sealed class EventLifecycleSchedulerTests
         var registrationIntentId = Guid.CreateVersion7();
         var outboxId = Guid.CreateVersion7();
         var dispatchAt = DateTimeOffset.UtcNow.AddHours(2);
-        var repository = Substitute.For<IEmailDispatchOutboxRepository>();
+        var materializer = Substitute.For<IRecipientNotificationMaterializer>();
         var trigger = Substitute.For<IScheduledEmailDispatchTrigger>();
         var notificationOrchestrator = Substitute.For<INotificationOrchestrator>();
+        var calls = new List<string>();
         var scheduler = new EventLifecycleScheduler(
-            new EventLifecycleEmailOutboxFactory(notificationOrchestrator),
-            repository,
+            new EventLifecycleEmailOutboxFactory(),
+            materializer,
             trigger);
 
-        repository.Create(Arg.Any<EmailDispatchOutbox>(), Arg.Any<CancellationToken>())
+        materializer.MaterializeAsync(
+                Arg.Any<RecipientNotificationMaterialization>(),
+                Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var outbox = call.Arg<EmailDispatchOutbox>();
-                outbox.Id = outboxId;
-                return outbox;
+                calls.Add("materialize");
+                var request = call.ArgAt<RecipientNotificationMaterialization>(0)!;
+                request.Email!.Id = outboxId;
+                return CreateMaterializationResult(request);
             });
         trigger.ScheduleAsync(
                 Arg.Any<ScheduledEmailDispatchPointer>(),
                 Arg.Any<DateTimeOffset>(),
                 Arg.Any<CancellationToken>())
-            .Returns(ScheduledEmailDispatchTriggerResult.Success(Guid.CreateVersion7()));
-        notificationOrchestrator.EnqueueAsync(
-                Arg.Any<NotificationIntentDraft>(),
-                Arg.Any<CancellationToken>())
-            .Returns(CreateNotificationResult);
+            .Returns(call =>
+            {
+                calls.Add("trigger");
+                return ScheduledEmailDispatchTriggerResult.Success(Guid.CreateVersion7());
+            });
 
         var result = await scheduler.ScheduleEventReminderAsync(
             new EventReminderScheduleInput(
@@ -65,103 +68,132 @@ public sealed class EventLifecycleSchedulerTests
                 dispatchAt),
             CancellationToken.None);
 
-        await repository.Received(1).Create(
-            Arg.Is<EmailDispatchOutbox>(outbox =>
-                outbox.TenantId == tenantId
-                && outbox.Kind == EmailDispatchKind.EventReminder
-                && outbox.Status == EmailDispatchStatus.Pending
-                && outbox.NextAttemptAt == dispatchAt.UtcDateTime
-                && outbox.EventId == eventId
-                && outbox.RegistrationIntentId == registrationIntentId
-                && outbox.UserId == userId),
+        await materializer.Received(1).MaterializeAsync(
+            Arg.Is<RecipientNotificationMaterialization>(request =>
+                request != null
+                && request.IntentId != Guid.Empty
+                && request.Intent.Category == ApplicationNotificationCategory.RegistrationLifecycle
+                && request.Intent.TenantId == tenantId
+                && request.Intent.RecipientKind == "User"
+                && request.Intent.TemplateKey == "event.reminder"
+                && request.Intent.SafePayloadReference == $"event-registration-intent:{registrationIntentId}"
+                && request.Intent.DeduplicationKey == $"event-registration-intent:{registrationIntentId}:event-reminder"
+                && request.Intent.CorrelationId == registrationIntentId.ToString()
+                && request.Intent.UserId == userId
+                && request.Intent.EventId == eventId
+                && request.DeliveryPolicy == NotificationDeliveryPolicyEnum.ReminderOptional
+                && request.DisclosureLevel == "generic"
+                && request.InApp == null
+                && request.IncludeEmailChannel
+                && !request.EmailRequired
+                && request.PreferenceCategoryCode == NotificationPreferenceCategoryCodes.EventUpdates
+                && request.EmailPreferenceEnabled == true
+                && !request.LinkAllowed
+                && request.Email != null
+                && request.Email.TenantId == tenantId
+                && request.Email.Kind == EmailDispatchKind.EventReminder
+                && request.Email.Status == EmailDispatchStatus.Pending
+                && request.Email.NextAttemptAt == dispatchAt.UtcDateTime
+                && request.Email.EventId == eventId
+                && request.Email.RegistrationIntentId == registrationIntentId
+                && request.Email.RecipientUserId == userId
+                && request.Email.RecipientAddressSource == RecipientAddressSource.TenantUserVerifiedEmail),
             Arg.Any<CancellationToken>());
         await trigger.Received(1).ScheduleAsync(
             Arg.Is<ScheduledEmailDispatchPointer>(pointer =>
-                pointer.TenantId == tenantId
+                pointer != null
+                && pointer.TenantId == tenantId
                 && pointer.PublishEventId == result.PublishEventId
                 && pointer.UseCase == EventLifecycleAutomationUseCases.EventReminder
                 && pointer.EventId == eventId
-                && pointer.RegistrationIntentId == registrationIntentId
-                && pointer.UserId == userId),
+                && pointer.RegistrationIntentId == registrationIntentId),
             dispatchAt,
             Arg.Any<CancellationToken>());
-        await notificationOrchestrator.Received(1).EnqueueAsync(
-            Arg.Is<NotificationIntentDraft>(draft =>
-                draft.Category == ApplicationNotificationCategory.RegistrationLifecycle
-                && draft.TenantId == tenantId
-                && draft.RecipientKind == "User"
-                && draft.TemplateKey == "event.reminder"
-                && draft.SafePayloadReference == $"event-registration-intent:{registrationIntentId}"
-                && draft.DeduplicationKey == $"event-registration-intent:{registrationIntentId}:event-reminder"
-                && draft.CorrelationId == registrationIntentId.ToString()
-                && draft.UserId == userId
-                && draft.EventId == eventId),
-            Arg.Any<CancellationToken>());
+        await notificationOrchestrator.DidNotReceiveWithAnyArgs().EnqueueAsync(default!, default);
+        await Assert.That(calls.Count).IsEqualTo(2);
+        await Assert.That(calls[0]).IsEqualTo("materialize");
+        await Assert.That(calls[1]).IsEqualTo("trigger");
         await Assert.That(result.EmailDispatchOutboxId).IsEqualTo(outboxId);
         await Assert.That(result.SchedulerTriggered).IsTrue();
         await Assert.That(result.SchedulerFailureCategory).IsEqualTo("none");
     }
 
     [Test]
+    public async Task ScheduleEventReminderDoesNotTriggerPointerWhenAtomicMaterializationFails()
+    {
+        var materializer = Substitute.For<IRecipientNotificationMaterializer>();
+        var trigger = Substitute.For<IScheduledEmailDispatchTrigger>();
+        var scheduler = new EventLifecycleScheduler(
+            new EventLifecycleEmailOutboxFactory(),
+            materializer,
+            trigger);
+        materializer.MaterializeAsync(
+                Arg.Any<RecipientNotificationMaterialization>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<RecipientNotificationMaterializationResult>(
+                new InvalidOperationException("transaction rolled back")));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => scheduler.ScheduleEventReminderAsync(
+            CreateInput(),
+            CancellationToken.None));
+
+        await trigger.DidNotReceiveWithAnyArgs().ScheduleAsync(default!, default, default);
+    }
+
+    [Test]
     public async Task ScheduleEventReminderStillReturnsDurableOutboxWhenTriggerIsDisabled()
     {
-        var repository = Substitute.For<IEmailDispatchOutboxRepository>();
-        var notificationOrchestrator = Substitute.For<INotificationOrchestrator>();
+        var materializer = Substitute.For<IRecipientNotificationMaterializer>();
         var scheduler = new EventLifecycleScheduler(
-            new EventLifecycleEmailOutboxFactory(notificationOrchestrator),
-            repository,
+            new EventLifecycleEmailOutboxFactory(),
+            materializer,
             new NoOpScheduledEmailDispatchTrigger());
-        repository.Create(Arg.Any<EmailDispatchOutbox>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                var outbox = call.Arg<EmailDispatchOutbox>();
-                outbox.Id = Guid.CreateVersion7();
-                return outbox;
-            });
-        notificationOrchestrator.EnqueueAsync(
-                Arg.Any<NotificationIntentDraft>(),
+        materializer.MaterializeAsync(
+                Arg.Any<RecipientNotificationMaterialization>(),
                 Arg.Any<CancellationToken>())
-            .Returns(CreateNotificationResult);
+            .Returns(CreateMaterializationResult);
 
-        var result = await scheduler.ScheduleEventReminderAsync(
-            new EventReminderScheduleInput(
-                Guid.CreateVersion7(),
-                Guid.CreateVersion7(),
-                Guid.CreateVersion7(),
-                Guid.CreateVersion7(),
-                "attendee@example.test",
-                "Community Dinner",
-                DateTimeOffset.UtcNow.AddDays(3),
-                DateTimeOffset.UtcNow.AddHours(1)),
-            CancellationToken.None);
+        var result = await scheduler.ScheduleEventReminderAsync(CreateInput(), CancellationToken.None);
 
         await Assert.That(result.SchedulerTriggered).IsFalse();
         await Assert.That(result.SchedulerFailureCategory).IsEqualTo("scheduler_disabled");
         await Assert.That(result.PublishEventId).IsNotEqualTo(Guid.Empty);
-        await notificationOrchestrator.Received(1).EnqueueAsync(
-            Arg.Any<NotificationIntentDraft>(),
+        await materializer.Received(1).MaterializeAsync(
+            Arg.Any<RecipientNotificationMaterialization>(),
             Arg.Any<CancellationToken>());
     }
 
-    private static NotificationOrchestrationResult CreateNotificationResult(CallInfo callInfo)
+    private static EventReminderScheduleInput CreateInput() => new(
+        Guid.CreateVersion7(),
+        Guid.CreateVersion7(),
+        Guid.CreateVersion7(),
+        Guid.CreateVersion7(),
+        "attendee@example.test",
+        "Community Dinner",
+        DateTimeOffset.UtcNow.AddDays(3),
+        DateTimeOffset.UtcNow.AddHours(1));
+
+    private static RecipientNotificationMaterializationResult CreateMaterializationResult(CallInfo callInfo) =>
+        CreateMaterializationResult(callInfo.ArgAt<RecipientNotificationMaterialization>(0)!);
+
+    private static RecipientNotificationMaterializationResult CreateMaterializationResult(
+        RecipientNotificationMaterialization request)
     {
-        var draft = callInfo.ArgAt<NotificationIntentDraft>(0);
-        return new NotificationOrchestrationResult(
-            new NotificationIntent
-            {
-                TenantId = draft.TenantId ?? Guid.CreateVersion7(),
-                Tenant = null!,
-                CategoryId = (int)NotificationCategoryEnum.RegistrationLifecycle,
-                Category = null!,
-                OwnershipTypeId = (int)NotificationOwnershipTypeEnum.IslamuEvent,
-                OwnershipType = null!,
-                RecipientKindId = (int)NotificationRecipientKindEnum.User,
-                RecipientKind = null!,
-                StatusId = (int)NotificationIntentStatusEnum.Pending,
-                Status = null!,
-                TemplateKey = draft.TemplateKey ?? string.Empty,
-                DeduplicationKey = draft.DeduplicationKey ?? string.Empty
-            },
-            new NotificationOwnershipDecision(draft.Category, NotificationOwnership.IslamuEvent));
+        var intent = new NotificationIntent
+        {
+            Id = request.IntentId,
+            TenantId = request.Intent.TenantId!.Value,
+            CategoryId = (int)NotificationCategoryEnum.RegistrationLifecycle,
+            OwnershipTypeId = (int)NotificationOwnershipTypeEnum.IslamuEvent,
+            RecipientKindId = (int)NotificationRecipientKindEnum.User,
+            StatusId = (int)NotificationIntentStatusEnum.DispatchQueued,
+            TemplateKey = request.Intent.TemplateKey!,
+            DeduplicationKey = request.Intent.DeduplicationKey!,
+            RecipientUserId = request.Intent.UserId!.Value
+        };
+        EmailDispatchOutbox email = request.Email!;
+        email.Id = email.Id == Guid.Empty ? Guid.CreateVersion7() : email.Id;
+        email.NotificationIntentId = intent.Id;
+        return new RecipientNotificationMaterializationResult(intent, [], null, email);
     }
 }

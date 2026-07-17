@@ -1,16 +1,18 @@
 // ABOUTME: Application scheduler for delayed Event lifecycle email automation.
-// ABOUTME: Writes EmailDispatchOutbox first, then requests a pointer-only scheduler wake-up.
+// ABOUTME: Atomically materializes reminder recipient state before requesting a pointer-only wake-up.
 
 using Explore.Application.Contracts.Infrastructure;
-using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Notifications;
 using Explore.Domain;
+using Explore.Domain.Enums;
 
 namespace Explore.Application.Services;
 
 public sealed class EventLifecycleScheduler(
     IEventLifecycleEmailOutboxFactory emailOutboxFactory,
-    IEmailDispatchOutboxRepository emailDispatchOutboxRepository,
+    IRecipientNotificationMaterializer notificationMaterializer,
     IScheduledEmailDispatchTrigger scheduledEmailDispatchTrigger)
     : IEventLifecycleScheduler
 {
@@ -31,17 +33,20 @@ public sealed class EventLifecycleScheduler(
 
         outbox.Status = EmailDispatchStatus.Pending;
         outbox.NextAttemptAt = request.DispatchAt.UtcDateTime;
+        outbox.RecipientAddressSource = RecipientAddressSource.TenantUserVerifiedEmail;
 
-        var persisted = await emailDispatchOutboxRepository.Create(outbox, cancellationToken);
-        await emailOutboxFactory.EnqueueNotificationIntentAsync(persisted, cancellationToken);
+        var materialized = await notificationMaterializer.MaterializeAsync(
+            CreateReminderMaterialization(request, outbox),
+            cancellationToken);
+        EmailDispatchOutbox persisted = materialized.Email
+            ?? throw new InvalidOperationException("Reminder materialization did not return its email dispatch row.");
 
         var pointer = new ScheduledEmailDispatchPointer(
             persisted.TenantId,
             persisted.PublishEventId,
             EventLifecycleAutomationUseCases.EventReminder,
             persisted.EventId,
-            persisted.RegistrationIntentId,
-            persisted.UserId);
+            persisted.RegistrationIntentId);
 
         var triggerResult = await scheduledEmailDispatchTrigger.ScheduleAsync(
             pointer,
@@ -54,6 +59,36 @@ public sealed class EventLifecycleScheduler(
             triggerResult.Scheduled,
             triggerResult.SchedulerJobId,
             triggerResult.FailureCategory);
+    }
+
+    private static RecipientNotificationMaterialization CreateReminderMaterialization(
+        EventReminderScheduleInput request,
+        EmailDispatchOutbox outbox)
+    {
+        Guid intentId = Guid.CreateVersion7();
+        string sourceReference = $"event-registration-intent:{request.RegistrationIntentId}";
+        return new RecipientNotificationMaterialization(
+            intentId,
+            new NotificationIntentDraft(
+                Explore.Application.Notifications.NotificationCategory.RegistrationLifecycle,
+                TenantId: request.TenantId,
+                RecipientKind: "User",
+                TemplateKey: "event.reminder",
+                SafePayloadReference: sourceReference,
+                IsUserFacing: true,
+                IsIslamuInitiated: true,
+                DeduplicationKey: $"{sourceReference}:event-reminder",
+                CorrelationId: request.RegistrationIntentId.ToString(),
+                UserId: request.UserId,
+                EventId: request.EventId),
+            NotificationDeliveryPolicyEnum.ReminderOptional,
+            "generic",
+            InApp: null,
+            Email: outbox,
+            IncludeEmailChannel: true,
+            EmailRequired: false,
+            PreferenceCategoryCode: NotificationPreferenceCategoryCodes.EventUpdates,
+            EmailPreferenceEnabled: true);
     }
 
     private static void Validate(EventReminderScheduleInput request)
