@@ -56,6 +56,70 @@ public class DatabaseSeederTests(PostgreSqlContainerFixture fixture)
     }
 
     [Test]
+    public async Task LookupSeedAsync_RepairsCanonicalNotificationDeliveryRowsByStableId()
+    {
+        await fixture.ResetAsync();
+
+        await using (var staleContext = fixture.CreateDbContext())
+        {
+            NotificationPreferenceChannel channel = await staleContext.NotificationPreferenceChannels
+                .SingleAsync(row => row.Id == (int)NotificationPreferenceChannelEnum.InApp);
+            channel.MasterCode = "in-app";
+            channel.FullName = "Stale channel";
+            channel.Description = "Stale channel description";
+            channel.SortOrder = 999;
+
+            NotificationDeliveryStatus queued = await staleContext.NotificationDeliveryStatuses
+                .SingleAsync(row => row.Id == (int)NotificationDeliveryStatusEnum.Queued);
+            queued.MasterCode = "LINKED_TO_EMAIL_DISPATCH";
+            queued.FullName = "Stale queued status";
+            queued.Description = "Stale queued description";
+
+            NotificationDeliveryStatus delivered = await staleContext.NotificationDeliveryStatuses
+                .SingleAsync(row => row.Id == (int)NotificationDeliveryStatusEnum.Delivered);
+            delivered.MasterCode = "SENT";
+            delivered.FullName = "Stale delivered status";
+            delivered.Description = "Stale delivered description";
+
+            NotificationDeliveryPolicy policy = await staleContext.Set<NotificationDeliveryPolicy>()
+                .SingleAsync(row => row.Id == (int)NotificationDeliveryPolicyEnum.ReportCaseUpdate);
+            policy.MasterCode = "STALE_REPORT_POLICY";
+            policy.FullName = "Stale report policy";
+            policy.Description = "Stale report policy description";
+            await staleContext.SaveChangesAsync();
+        }
+
+        await using (var repairContext = fixture.CreateDbContext())
+        {
+            await LookupTableSeeder.SeedAsync(repairContext);
+        }
+
+        await using var verifyContext = fixture.CreateDbContext();
+        NotificationPreferenceChannel repairedChannel = await verifyContext.NotificationPreferenceChannels
+            .AsNoTracking()
+            .SingleAsync(row => row.Id == (int)NotificationPreferenceChannelEnum.InApp);
+        NotificationDeliveryStatus repairedQueued = await verifyContext.NotificationDeliveryStatuses
+            .AsNoTracking()
+            .SingleAsync(row => row.Id == (int)NotificationDeliveryStatusEnum.Queued);
+        NotificationDeliveryStatus repairedDelivered = await verifyContext.NotificationDeliveryStatuses
+            .AsNoTracking()
+            .SingleAsync(row => row.Id == (int)NotificationDeliveryStatusEnum.Delivered);
+        NotificationDeliveryPolicy repairedPolicy = await verifyContext.Set<NotificationDeliveryPolicy>()
+            .AsNoTracking()
+            .SingleAsync(row => row.Id == (int)NotificationDeliveryPolicyEnum.ReportCaseUpdate);
+
+        await Assert.That(repairedChannel.MasterCode).IsEqualTo(NotificationPreferenceChannelCodes.InApp);
+        await Assert.That(repairedChannel.FullName).IsEqualTo("In-App");
+        await Assert.That(repairedChannel.SortOrder).IsEqualTo(20);
+        await Assert.That(repairedQueued.MasterCode).IsEqualTo("QUEUED");
+        await Assert.That(repairedQueued.FullName).IsEqualTo("Queued");
+        await Assert.That(repairedDelivered.MasterCode).IsEqualTo("DELIVERED");
+        await Assert.That(repairedDelivered.FullName).IsEqualTo("Delivered");
+        await Assert.That(repairedPolicy.MasterCode).IsEqualTo("REPORT_CASE_UPDATE");
+        await Assert.That(repairedPolicy.FullName).IsEqualTo("Report case update");
+    }
+
+    [Test]
     public async Task SeedAsync_InDevelopment_RepairsLaunchCatalogDiscoveryFieldsAcrossStartups()
     {
         await fixture.ResetAsync();

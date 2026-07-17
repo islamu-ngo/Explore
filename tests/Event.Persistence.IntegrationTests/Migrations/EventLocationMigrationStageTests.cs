@@ -7,7 +7,6 @@ using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 using Explore.Persistence;
 using Explore.Persistence.Schema;
-using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -156,7 +155,7 @@ public sealed class EventLocationMigrationStageTests(PostgreSqlContainerFixture 
         await WithDatabaseAsync(async context =>
         {
             await EventLocationPrivacyMigrationStage.MigrateAsync(context, "Expand");
-            await LookupTableSeeder.SeedAsync(context);
+            await SeedLegacyEventLocationLookupsAsync(context);
             context.EnableTenantFilterBypass("Event Location Privacy migration trigger verification.");
 
             PrivacyGraph graph = await SeedGraphAsync(context);
@@ -253,6 +252,31 @@ public sealed class EventLocationMigrationStageTests(PostgreSqlContainerFixture 
             .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
             .Options;
         return new ExploreDbContext(options);
+    }
+
+    private static Task<int> SeedLegacyEventLocationLookupsAsync(ExploreDbContext context)
+    {
+        return context.Database.ExecuteSqlRawAsync("""
+            INSERT INTO tenant_statuses (id, master_code, full_name, description, is_active_state)
+            VALUES (2, 'ACTIVE', 'Active', 'Tenant is active and operational', true)
+            ON CONFLICT (id) DO NOTHING;
+
+            INSERT INTO actor_types (id, master_code, full_name, description)
+            VALUES (1, 'USER', 'User', 'Individual user actor')
+            ON CONFLICT (id) DO NOTHING;
+
+            INSERT INTO event_statuses (id, master_code, full_name, description)
+            VALUES (1, 'DRAFT', 'Draft', 'Event is in draft state and not visible to the public')
+            ON CONFLICT (id) DO NOTHING;
+
+            INSERT INTO event_formats (id, master_code, full_name, description)
+            VALUES (1, 'LOCAL', 'Local (In-Person)', 'Event takes place at a physical location')
+            ON CONFLICT (id) DO NOTHING;
+
+            INSERT INTO visibility_types (id, master_code, full_name, description)
+            VALUES (1, 'PUBLIC', 'Public', 'Visible to everyone')
+            ON CONFLICT (id) DO NOTHING;
+            """);
     }
 
     private static async Task<PrivacyGraph> SeedGraphAsync(ExploreDbContext context)
