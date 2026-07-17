@@ -171,6 +171,7 @@ public sealed class WebhookRetentionCleanupRepository(ExploreDbContext dbContext
         CancellationToken cancellationToken)
     {
         var messages = TenantRows(dbContext.IncomingWebhookMessages, tenantId);
+        var effectPointers = TenantRows(dbContext.IncomingWebhookEffectOutboxes, tenantId);
         var holds = ActiveHolds(tenantId, utcNow);
         var terminalStatuses = IncomingTerminalStatuses();
         return await messages
@@ -179,6 +180,11 @@ public sealed class WebhookRetentionCleanupRepository(ExploreDbContext dbContext
                 terminalStatuses.Contains(message.StatusId) &&
                 message.PayloadRetentionUntil <= utcNow &&
                 message.ReplayWindowUntil <= utcNow &&
+                !effectPointers.Any(pointer =>
+                    pointer.IncomingWebhookMessageId == message.Id &&
+                    (pointer.Status == OutboxMessageStatus.Pending ||
+                     pointer.Status == OutboxMessageStatus.Failed ||
+                     pointer.Status == OutboxMessageStatus.Processing)) &&
                 !holds.Any(hold =>
                     hold.SubjectKindId == (int)WebhookRetentionSubjectKind.IncomingMessage &&
                     hold.SubjectId == message.Id))
