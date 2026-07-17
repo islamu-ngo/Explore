@@ -1,5 +1,5 @@
-// ABOUTME: MailKit-based email service implementation. Resolves SMTP config per-tenant
-// from the cascading settings engine. Works with any standard SMTP provider.
+// ABOUTME: MailKit-based email service implementation that resolves cascading per-tenant SMTP configuration.
+// ABOUTME: Emits fixed non-PII transport telemetry while returning sanitized provider outcomes to callers.
 
 using System.Diagnostics;
 using Explore.Application.Contracts.Infrastructure;
@@ -19,6 +19,15 @@ namespace Explore.Infrastructure.Mail;
 /// </summary>
 public class SmtpEmailService : IEmailService
 {
+    private static readonly EventId ConnectionTestSucceededEvent = new(4701, "SmtpConnectionTestSucceeded");
+    private static readonly EventId ConnectionTestAuthenticationFailedEvent = new(4702, "SmtpConnectionTestAuthenticationFailed");
+    private static readonly EventId ConnectionTestFailedEvent = new(4703, "SmtpConnectionTestFailed");
+    private static readonly EventId SendAcceptedEvent = new(4710, "SmtpSendAccepted");
+    private static readonly EventId SendCommandFailedEvent = new(4711, "SmtpSendCommandFailed");
+    private static readonly EventId SendProtocolFailedEvent = new(4712, "SmtpSendProtocolFailed");
+    private static readonly EventId SendAuthenticationFailedEvent = new(4713, "SmtpSendAuthenticationFailed");
+    private static readonly EventId SendTransportFailedEvent = new(4714, "SmtpSendTransportFailed");
+
     private readonly ISmtpConfigResolver _configResolver;
     private readonly ILogger<SmtpEmailService> _logger;
     private static readonly ResiliencePipeline<EmailResult> RetryPipeline =
@@ -77,22 +86,32 @@ public class SmtpEmailService : IEmailService
 
             sw.Stop();
             _logger.LogInformation(
-                "SMTP connection test successful: {Host}:{Port} in {Duration}ms",
-                config.Host, config.Port, sw.ElapsedMilliseconds);
+                ConnectionTestSucceededEvent,
+                "SMTP connection test completed with status {Status} in {DurationMs}ms",
+                "succeeded",
+                sw.ElapsedMilliseconds);
 
             return EmailResult.Ok("Connection successful", sw.Elapsed);
         }
-        catch (AuthenticationException ex)
+        catch (AuthenticationException)
         {
             sw.Stop();
-            _logger.LogError(ex, "SMTP authentication failed for {Host}:{Port}", config.Host, config.Port);
-            return EmailResult.Fail($"Authentication failed: {ex.Message}", sw.Elapsed);
+            _logger.LogError(
+                ConnectionTestAuthenticationFailedEvent,
+                "SMTP connection test completed with status {Status} in {DurationMs}ms",
+                "authentication_failed",
+                sw.ElapsedMilliseconds);
+            return EmailResult.Fail("SMTP authentication failed.", sw.Elapsed);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             sw.Stop();
-            _logger.LogError(ex, "SMTP connection test failed for {Host}:{Port}", config.Host, config.Port);
-            return EmailResult.Fail($"Connection test failed: {ex.Message}", sw.Elapsed);
+            _logger.LogError(
+                ConnectionTestFailedEvent,
+                "SMTP connection test completed with status {Status} in {DurationMs}ms",
+                "connection_failed",
+                sw.ElapsedMilliseconds);
+            return EmailResult.Fail("SMTP connection test failed.", sw.Elapsed);
         }
     }
 
@@ -121,49 +140,67 @@ public class SmtpEmailService : IEmailService
                 await client.AuthenticateAsync(config.Username, config.Password, cancellationToken);
             }
 
-            var response = await client.SendAsync(mimeMessage, cancellationToken);
+            await client.SendAsync(mimeMessage, cancellationToken);
             await client.DisconnectAsync(quit: true, cancellationToken);
 
             sw.Stop();
             _logger.LogInformation(
-                "Email sent to {To} via {Host}:{Port} in {Duration}ms",
-                message.To, config.Host, config.Port, sw.ElapsedMilliseconds);
+                SendAcceptedEvent,
+                "SMTP send completed with status {Status} in {DurationMs}ms",
+                "accepted",
+                sw.ElapsedMilliseconds);
 
-            return EmailResult.Ok(response, sw.Elapsed);
+            return EmailResult.Ok("SMTP accepted message.", sw.Elapsed);
         }
         catch (SmtpCommandException ex)
         {
             sw.Stop();
-            _logger.LogError(ex,
-                "SMTP command error sending to {To}: {StatusCode} {Message}",
-                message.To, ex.StatusCode, ex.Message);
-            return EmailResult.Fail($"SMTP error ({ex.StatusCode}): {ex.Message}", sw.Elapsed);
+            var statusCode = (int)ex.StatusCode;
+            _logger.LogError(
+                SendCommandFailedEvent,
+                "SMTP send completed with status {Status}, SMTP status code {StatusCode}, in {DurationMs}ms",
+                "command_failed",
+                statusCode,
+                sw.ElapsedMilliseconds);
+            return EmailResult.Fail($"SMTP command failed ({statusCode}).", sw.Elapsed);
         }
-        catch (SmtpProtocolException ex)
+        catch (SmtpProtocolException)
         {
             sw.Stop();
-            _logger.LogError(ex,
-                "SMTP protocol error sending to {To}: {Message}",
-                message.To, ex.Message);
-            return EmailResult.Fail($"SMTP protocol error: {ex.Message}", sw.Elapsed);
+            _logger.LogError(
+                SendProtocolFailedEvent,
+                "SMTP send completed with status {Status} in {DurationMs}ms",
+                "protocol_failed",
+                sw.ElapsedMilliseconds);
+            return EmailResult.Fail("SMTP connection protocol error.", sw.Elapsed);
         }
-        catch (AuthenticationException ex)
+        catch (AuthenticationException)
         {
             sw.Stop();
-            _logger.LogError(ex,
-                "SMTP authentication failed sending to {To} via {Host}:{Port}",
-                message.To, config.Host, config.Port);
-            return EmailResult.Fail($"Authentication failed: {ex.Message}", sw.Elapsed);
+            _logger.LogError(
+                SendAuthenticationFailedEvent,
+                "SMTP send completed with status {Status} in {DurationMs}ms",
+                "authentication_failed",
+                sw.ElapsedMilliseconds);
+            return EmailResult.Fail("SMTP authentication failed.", sw.Elapsed);
         }
         catch (Exception ex) when (ex is TimeoutException
             or OperationCanceledException
             or System.IO.IOException)
         {
             sw.Stop();
-            _logger.LogError(ex,
-                "Connection error sending to {To} via {Host}:{Port}",
-                message.To, config.Host, config.Port);
-            return EmailResult.Fail($"Connection error: {ex.Message}", sw.Elapsed);
+            var (status, safeFailureMessage) = ex switch
+            {
+                TimeoutException => ("timeout", "SMTP timeout."),
+                OperationCanceledException => ("cancelled", "SMTP operation cancelled."),
+                _ => ("connection_failed", "SMTP connection error.")
+            };
+            _logger.LogError(
+                SendTransportFailedEvent,
+                "SMTP send completed with status {Status} in {DurationMs}ms",
+                status,
+                sw.ElapsedMilliseconds);
+            return EmailResult.Fail(safeFailureMessage, sw.Elapsed);
         }
     }
 

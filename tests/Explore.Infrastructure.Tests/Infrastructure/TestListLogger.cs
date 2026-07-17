@@ -22,7 +22,7 @@ internal sealed class TestListLogger<T> : ILogger<T>
         Exception? exception,
         Func<TState, Exception?, string> formatter)
     {
-        Entries.Add(new TestLogEntry(logLevel, formatter(state, exception), exception));
+        Entries.Add(new TestLogEntry(logLevel, eventId, formatter(state, exception), exception));
     }
 
     private sealed class NoopScope : IDisposable
@@ -35,4 +35,4 @@ internal sealed class TestListLogger<T> : ILogger<T>
     }
 }
 
-internal sealed record TestLogEntry(LogLevel Level, string Message, Exception? Exception);
+internal sealed record TestLogEntry(LogLevel Level, EventId EventId, string Message, Exception? Exception);
