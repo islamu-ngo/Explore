@@ -212,7 +212,47 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
         int batchSize,
         CancellationToken cancellationToken)
     {
-        throw new NotSupportedException();
+        lock (_gate)
+        {
+            if (batchSize <= 0 ||
+                dispatch.Status != EmailDispatchStatus.Processing ||
+                dispatch.ProcessingStartedAt is null ||
+                dispatch.ProcessingStartedAt > processingStartedBefore)
+            {
+                return Task.FromResult(0);
+            }
+
+            dispatch.Status = EmailDispatchStatus.Unknown;
+            dispatch.UnknownAt = recoveredAt;
+            dispatch.NextAttemptAt = null;
+            dispatch.ProcessingStartedAt = null;
+            dispatch.ProcessingLeaseToken = null;
+            dispatch.LastFailureCategory = failureCategory;
+            dispatch.LastError = errorMessage;
+
+            foreach (var attempt in Attempts.Where(value =>
+                         value.EmailDispatchOutboxId == dispatch.Id &&
+                         value.AttemptNumber == dispatch.AttemptCount))
+            {
+                attempt.Outcome = EmailDispatchAttemptOutcome.Unknown;
+                attempt.CompletedAt = recoveredAt;
+                attempt.FailureCategory = failureCategory;
+                attempt.SanitizedErrorMessage = errorMessage;
+                attempt.ProviderMessageId = null;
+            }
+
+            foreach (var receipt in Receipts.Where(value => value.EmailDispatchOutboxId == dispatch.Id))
+            {
+                receipt.Status = EmailDispatchReceiptStatus.Unknown;
+                receipt.CompletedAt = null;
+                receipt.FailedAt = recoveredAt;
+                receipt.FailureCode = failureCategory;
+                receipt.FailureMessage = errorMessage;
+                receipt.ProviderMessageId = null;
+            }
+
+            return Task.FromResult(1);
+        }
     }
 
     public Task MarkAsSent(
@@ -285,11 +325,99 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
     {
         lock (_gate)
         {
-            attempt.Id = attempt.Id == Guid.Empty ? Guid.CreateVersion7() : attempt.Id;
-            Attempts.Add(attempt);
+            var existing = Attempts.SingleOrDefault(value =>
+                value.EmailDispatchOutboxId == attempt.EmailDispatchOutboxId &&
+                value.AttemptNumber == attempt.AttemptNumber);
+            if (existing is null)
+            {
+                attempt.Id = attempt.Id == Guid.Empty ? Guid.CreateVersion7() : attempt.Id;
+                Attempts.Add(attempt);
+            }
+            else
+            {
+                existing.Outcome = attempt.Outcome;
+                existing.CompletedAt = attempt.CompletedAt;
+                existing.FailureCategory = attempt.FailureCategory;
+                existing.SanitizedErrorMessage = attempt.SanitizedErrorMessage;
+                existing.ProviderMessageId = attempt.ProviderMessageId;
+            }
         }
 
         return Task.CompletedTask;
+    }
+
+    public Task SettleProviderAccepted(
+        EmailDispatchAcceptedSettlement settlement,
+        CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            var attempt = Attempts.Single(value =>
+                value.EmailDispatchOutboxId == settlement.OutboxId &&
+                value.AttemptNumber == settlement.AttemptNumber);
+            attempt.Outcome = EmailDispatchAttemptOutcome.Succeeded;
+            attempt.CompletedAt = settlement.SettledAt;
+            attempt.FailureCategory = null;
+            attempt.SanitizedErrorMessage = null;
+            attempt.ProviderMessageId = settlement.ProviderMessageId;
+
+            dispatch.Status = EmailDispatchStatus.Sent;
+            dispatch.SentAt = settlement.SettledAt;
+            dispatch.ProviderMessageId = settlement.ProviderMessageId;
+            dispatch.ProcessingLeaseToken = null;
+            dispatch.ProcessingStartedAt = null;
+
+            var receipt = Receipts.Single(value => value.EmailDispatchOutboxId == settlement.OutboxId);
+            receipt.Status = EmailDispatchReceiptStatus.Completed;
+            receipt.CompletedAt = settlement.SettledAt;
+            receipt.ProviderMessageId = settlement.ProviderMessageId;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task<EmailDispatchAcceptedReconciliationOutcome> ReconcileProviderAccepted(
+        EmailDispatchAcceptedSettlement settlement,
+        CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            if (dispatch.Status == EmailDispatchStatus.Sent &&
+                Attempts.Any(value => value.EmailDispatchOutboxId == settlement.OutboxId &&
+                    value.AttemptNumber == settlement.AttemptNumber &&
+                    value.Outcome == EmailDispatchAttemptOutcome.Succeeded) &&
+                Receipts.Any(value => value.EmailDispatchOutboxId == settlement.OutboxId &&
+                    value.Status == EmailDispatchReceiptStatus.Completed))
+            {
+                return Task.FromResult(EmailDispatchAcceptedReconciliationOutcome.Sent);
+            }
+
+            var attempt = Attempts.Single(value =>
+                value.EmailDispatchOutboxId == settlement.OutboxId &&
+                value.AttemptNumber == settlement.AttemptNumber);
+            attempt.Outcome = EmailDispatchAttemptOutcome.Unknown;
+            attempt.CompletedAt = settlement.SettledAt;
+            attempt.FailureCategory = "accepted_settlement_unknown";
+            attempt.SanitizedErrorMessage = "SMTP accepted the message, but local settlement is uncertain. Automatic resend is disabled pending reconciliation.";
+            attempt.ProviderMessageId = null;
+
+            dispatch.Status = EmailDispatchStatus.Unknown;
+            dispatch.SentAt = null;
+            dispatch.UnknownAt = settlement.SettledAt;
+            dispatch.ProviderMessageId = null;
+            dispatch.NextAttemptAt = null;
+            dispatch.ProcessingLeaseToken = null;
+            dispatch.ProcessingStartedAt = null;
+
+            var receipt = Receipts.Single(value => value.EmailDispatchOutboxId == settlement.OutboxId);
+            receipt.Status = EmailDispatchReceiptStatus.Unknown;
+            receipt.CompletedAt = null;
+            receipt.FailedAt = settlement.SettledAt;
+            receipt.ProviderMessageId = null;
+            receipt.FailureCode = "accepted_settlement_unknown";
+        }
+
+        return Task.FromResult(EmailDispatchAcceptedReconciliationOutcome.Unknown);
     }
 
     public Task<bool> TryClaimReceipt(EmailDispatchReceipt receipt, CancellationToken cancellationToken)

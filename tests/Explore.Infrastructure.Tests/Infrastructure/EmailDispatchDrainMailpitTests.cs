@@ -57,13 +57,13 @@ public sealed class EmailDispatchDrainMailpitTests(MailpitContainerFixture mailp
         await Assert.That(result.SentCount).IsEqualTo(1);
         await Assert.That(dispatch.Status).IsEqualTo(EmailDispatchStatus.Sent);
         await Assert.That(dispatch.SentAt).IsNotNull();
-        await Assert.That(dispatch.ProviderMessageId).IsNotNull();
+        await Assert.That(dispatch.ProviderMessageId).IsNull();
         await Assert.That(repository.Attempts.Count).IsEqualTo(1);
         await Assert.That(repository.Attempts[0].Outcome).IsEqualTo(EmailDispatchAttemptOutcome.Succeeded);
-        await Assert.That(repository.Attempts[0].ProviderMessageId).IsEqualTo(dispatch.ProviderMessageId);
+        await Assert.That(repository.Attempts[0].ProviderMessageId).IsNull();
         await Assert.That(repository.Receipts.Count).IsEqualTo(1);
         await Assert.That(repository.Receipts[0].Status).IsEqualTo(EmailDispatchReceiptStatus.Completed);
-        await Assert.That(repository.Receipts[0].ProviderMessageId).IsEqualTo(dispatch.ProviderMessageId);
+        await Assert.That(repository.Receipts[0].ProviderMessageId).IsNull();
         tenantAccessor.Received(1).SetTenant(dispatch.TenantId);
         tenantAccessor.Received(1).Clear();
 

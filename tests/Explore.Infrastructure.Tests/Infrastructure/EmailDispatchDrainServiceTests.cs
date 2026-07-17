@@ -3,6 +3,7 @@
 
 using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Models;
@@ -14,7 +15,6 @@ using Explore.Infrastructure;
 using Explore.Infrastructure.Tests.Fixtures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -97,27 +97,92 @@ public sealed class EmailDispatchDrainServiceTests
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.TenantPaused);
         await fixture.Repository.DidNotReceiveWithAnyArgs().TryMarkAsProcessing(default, default, default, default);
-        await fixture.PreferenceRepository.DidNotReceiveWithAnyArgs().GetByUserAndCategory(default, default, default!);
+        await fixture.EligibilityEvaluator.DidNotReceiveWithAnyArgs()
+            .EvaluateAndBeginProviderHandoffAsync(default!, default);
         await fixture.EmailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
     }
 
     [Test]
-    public async Task ProcessSingleAsyncSendsAndPersistsOutcomeForPendingRows()
+    public async Task ProcessSingleAsyncUsesEligibilityRefreshedAddressAtProviderHandoff()
     {
         var fixture = new Fixture();
         var dispatch = CreateDispatch(EmailDispatchStatus.Pending);
-        EmailDispatchReceipt? claimedReceipt = null;
+        EmailMessage? sentMessage = null;
         fixture.Repository.GetByTenantAndPublishEventId(dispatch.TenantId, dispatch.PublishEventId, Arg.Any<CancellationToken>())
             .Returns(dispatch);
         fixture.Repository.IsTenantPaused(dispatch.TenantId, Arg.Any<CancellationToken>()).Returns(false);
         fixture.Repository.TryMarkAsProcessing(dispatch.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(true);
-        fixture.Repository.TryClaimReceipt(Arg.Do<EmailDispatchReceipt>(receipt => claimedReceipt = receipt), Arg.Any<CancellationToken>())
-            .Returns(true);
-        fixture.PreferenceRepository.GetByUserAndCategory(dispatch.TenantId, dispatch.UserId!.Value, Arg.Any<string>())
-            .Returns((UserNotificationPreference?)null);
-        fixture.EmailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+        fixture.EligibilityEvaluator.EvaluateAndBeginProviderHandoffAsync(
+                Arg.Any<EmailDispatchEligibilityRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new EmailDispatchEligibilityResult(
+                EmailDispatchEligibilityOutcome.Eligible,
+                "current-verified@example.test",
+                null));
+        fixture.EmailService.SendAsync(Arg.Do<EmailMessage>(message => sentMessage = message), Arg.Any<CancellationToken>())
             .Returns(EmailResult.Ok("provider-message-1"));
+
+        var result = await fixture.Service.ProcessSingleAsync(
+            dispatch.TenantId,
+            dispatch.PublishEventId,
+            "tickerq-drain",
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Sent);
+        await Assert.That(sentMessage).IsNotNull();
+        await Assert.That(sentMessage!.To).IsEqualTo("current-verified@example.test");
+        await fixture.EligibilityEvaluator.Received(1).EvaluateAndBeginProviderHandoffAsync(
+            Arg.Is<EmailDispatchEligibilityRequest>(request =>
+                request.TenantId == dispatch.TenantId &&
+                request.OutboxId == dispatch.Id &&
+                request.AttemptNumber == dispatch.AttemptCount + 1),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessSingleAsyncDoesNotSendWhenEligibilityAtomicallySkipsDelivery()
+    {
+        var fixture = new Fixture();
+        var dispatch = CreateDispatch(EmailDispatchStatus.Pending);
+        fixture.Repository.GetByTenantAndPublishEventId(dispatch.TenantId, dispatch.PublishEventId, Arg.Any<CancellationToken>())
+            .Returns(dispatch);
+        fixture.Repository.IsTenantPaused(dispatch.TenantId, Arg.Any<CancellationToken>()).Returns(false);
+        fixture.Repository.TryMarkAsProcessing(dispatch.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        fixture.EligibilityEvaluator.EvaluateAndBeginProviderHandoffAsync(
+                Arg.Any<EmailDispatchEligibilityRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new EmailDispatchEligibilityResult(
+                EmailDispatchEligibilityOutcome.Skipped,
+                null,
+                "recipient_email_unverified"));
+
+        var result = await fixture.Service.ProcessSingleAsync(
+            dispatch.TenantId,
+            dispatch.PublishEventId,
+            "tickerq-drain",
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Skipped);
+        await fixture.EmailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().RecordAttempt(default!, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().MarkAsSkipped(default, default!, default!, default, default);
+    }
+
+    [Test]
+    public async Task ProcessSingleAsyncSendsAndPersistsOutcomeForPendingRows()
+    {
+        const string providerResponseCanary = "provider-response-canary attendee@example.test body-canary";
+        var fixture = new Fixture();
+        var dispatch = CreateDispatch(EmailDispatchStatus.Pending);
+        fixture.Repository.GetByTenantAndPublishEventId(dispatch.TenantId, dispatch.PublishEventId, Arg.Any<CancellationToken>())
+            .Returns(dispatch);
+        fixture.Repository.IsTenantPaused(dispatch.TenantId, Arg.Any<CancellationToken>()).Returns(false);
+        fixture.Repository.TryMarkAsProcessing(dispatch.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        fixture.EmailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(EmailResult.Ok(providerResponseCanary));
 
         EmailDispatchSingleDrainResult result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
@@ -126,13 +191,108 @@ public sealed class EmailDispatchDrainServiceTests
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Sent);
-        await Assert.That(claimedReceipt).IsNotNull();
-        await Assert.That(claimedReceipt!.ConsumerId).IsEqualTo("rabbit-consumer-1");
-        await fixture.Repository.Received(1).RecordAttempt(Arg.Any<EmailDispatchAttempt>(), Arg.Any<CancellationToken>());
-        await fixture.Repository.Received(1).MarkAsSent(dispatch.Id, Arg.Any<DateTime>(), "provider-message-1", Arg.Any<CancellationToken>());
-        await fixture.Repository.Received(1).MarkReceiptCompleted(Arg.Any<Guid>(), Arg.Any<DateTime>(), "provider-message-1", Arg.Any<CancellationToken>());
+        await fixture.EligibilityEvaluator.Received(1).EvaluateAndBeginProviderHandoffAsync(
+            Arg.Is<EmailDispatchEligibilityRequest>(request =>
+                request.TenantId == dispatch.TenantId &&
+                request.OutboxId == dispatch.Id &&
+                request.ConsumerId == "rabbit-consumer-1"),
+            Arg.Any<CancellationToken>());
+        await fixture.Repository.Received(1).SettleProviderAccepted(
+            Arg.Is<EmailDispatchAcceptedSettlement>(settlement =>
+                settlement.TenantId == dispatch.TenantId &&
+                settlement.OutboxId == dispatch.Id &&
+                settlement.AttemptNumber == dispatch.AttemptCount + 1 &&
+                settlement.ProviderMessageId == null),
+            Arg.Any<CancellationToken>());
+        await Assert.That(fixture.Logger.Entries.All(entry =>
+            !entry.Message.Contains(providerResponseCanary, StringComparison.Ordinal) &&
+            entry.Exception?.Message.Contains(providerResponseCanary, StringComparison.Ordinal) != true)).IsTrue();
         fixture.TenantAccessor.Received(1).SetTenant(dispatch.TenantId);
         fixture.TenantAccessor.Received(1).Clear();
+    }
+
+    [Test]
+    [Arguments("attempt")]
+    [Arguments("receipt")]
+    [Arguments("outbox")]
+    [Arguments("channel-delivery")]
+    public async Task ProcessSingleAsyncReconcilesUnknownWithoutResendWhenAcceptedSettlementFails(string failureStage)
+    {
+        const string canary = "provider-error-canary attendee@example.test body-canary";
+        var fixture = new Fixture();
+        var dispatch = CreateDispatch(EmailDispatchStatus.Pending);
+        ConfigureAcceptedSend(fixture, dispatch);
+        ConfigureAcceptedSettlementFailure(fixture, failureStage, canary);
+        fixture.Repository.ReconcileProviderAccepted(
+                Arg.Any<EmailDispatchAcceptedSettlement>(),
+                Arg.Any<CancellationToken>())
+            .Returns(EmailDispatchAcceptedReconciliationOutcome.Unknown);
+
+        EmailDispatchSingleDrainResult result = await fixture.Service.ProcessSingleAsync(
+            dispatch.TenantId,
+            dispatch.PublishEventId,
+            "tickerq-drain",
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Unknown);
+        await fixture.EmailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        await fixture.Repository.Received(1).ReconcileProviderAccepted(
+            Arg.Any<EmailDispatchAcceptedSettlement>(),
+            Arg.Any<CancellationToken>());
+        await fixture.Repository.DidNotReceiveWithAnyArgs().MarkAsFailed(
+            default, default!, default!, default, default, default, default, default);
+        await Assert.That(fixture.Logger.Entries.All(entry =>
+            !entry.Message.Contains(canary, StringComparison.Ordinal) &&
+            entry.Exception?.Message.Contains(canary, StringComparison.Ordinal) != true)).IsTrue();
+    }
+
+    [Test]
+    public async Task ProcessSingleAsyncReconcilesUnknownAfterCrashImmediatelyFollowingProviderAcceptance()
+    {
+        var fixture = new Fixture();
+        var dispatch = CreateDispatch(EmailDispatchStatus.Pending);
+        ConfigureAcceptedSend(fixture, dispatch);
+        ConfigureAcceptedSettlementFailure(fixture, "before-first-settlement-write", "simulated worker crash");
+        fixture.Repository.ReconcileProviderAccepted(
+                Arg.Any<EmailDispatchAcceptedSettlement>(),
+                Arg.Any<CancellationToken>())
+            .Returns(EmailDispatchAcceptedReconciliationOutcome.Unknown);
+
+        EmailDispatchSingleDrainResult result = await fixture.Service.ProcessSingleAsync(
+            dispatch.TenantId,
+            dispatch.PublishEventId,
+            "tickerq-drain",
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Unknown);
+        await fixture.EmailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        await fixture.EligibilityEvaluator.Received(1).EvaluateAndBeginProviderHandoffAsync(
+            Arg.Is<EmailDispatchEligibilityRequest>(request => request.OutboxId == dispatch.Id),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessSingleAsyncTreatsUnknownCommitAsSentWhenFreshReconciliationFindsAlignedLedgers()
+    {
+        var fixture = new Fixture();
+        var dispatch = CreateDispatch(EmailDispatchStatus.Pending);
+        ConfigureAcceptedSend(fixture, dispatch);
+        ConfigureAcceptedSettlementFailure(fixture, "commit", "commit outcome canary");
+        fixture.Repository.ReconcileProviderAccepted(
+                Arg.Any<EmailDispatchAcceptedSettlement>(),
+                Arg.Any<CancellationToken>())
+            .Returns(EmailDispatchAcceptedReconciliationOutcome.Sent);
+
+        EmailDispatchSingleDrainResult result = await fixture.Service.ProcessSingleAsync(
+            dispatch.TenantId,
+            dispatch.PublishEventId,
+            "tickerq-drain",
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Sent);
+        await fixture.EmailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        await fixture.Repository.DidNotReceiveWithAnyArgs().MarkAsFailed(
+            default, default!, default!, default, default, default, default, default);
     }
 
     [Test]
@@ -147,17 +307,10 @@ public sealed class EmailDispatchDrainServiceTests
         fixture.Repository.IsTenantPaused(dispatch.TenantId, Arg.Any<CancellationToken>()).Returns(false);
         fixture.Repository.TryMarkAsProcessing(dispatch.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(true);
-        fixture.Repository.TryClaimReceipt(Arg.Any<EmailDispatchReceipt>(), Arg.Any<CancellationToken>())
-            .Returns(true);
-        fixture.PreferenceRepository.GetByUserAndCategory(
-                dispatch.TenantId,
-                dispatch.UserId!.Value,
-                NotificationPreferenceCategories.EventReminders)
-            .Returns((UserNotificationPreference?)null);
         fixture.UnsubscribeTokenService.GenerateToken(
                 Arg.Is<EmailUnsubscribeTokenPayload>(payload =>
                     payload.TenantId == dispatch.TenantId &&
-                    payload.UserId == dispatch.UserId &&
+                    payload.UserId == dispatch.RecipientUserId &&
                     payload.Category == NotificationPreferenceCategories.EventReminders),
                 Arg.Any<TimeSpan?>())
             .Returns("token+value");
@@ -191,20 +344,13 @@ public sealed class EmailDispatchDrainServiceTests
         fixture.Repository.IsTenantPaused(dispatch.TenantId, Arg.Any<CancellationToken>()).Returns(false);
         fixture.Repository.TryMarkAsProcessing(dispatch.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(true);
-        fixture.Repository.TryClaimReceipt(Arg.Any<EmailDispatchReceipt>(), Arg.Any<CancellationToken>())
-            .Returns(true);
-        fixture.PreferenceRepository.GetByUserAndCategory(
-                dispatch.TenantId,
-                dispatch.UserId!.Value,
-                NotificationPreferenceCategories.EventReminders)
-            .Returns(new UserNotificationPreference
-            {
-                TenantId = dispatch.TenantId,
-                Tenant = null!,
-                UserId = dispatch.UserId.Value,
-                Category = NotificationPreferenceCategories.EventReminders,
-                IsEnabled = false
-            });
+        fixture.EligibilityEvaluator.EvaluateAndBeginProviderHandoffAsync(
+                Arg.Any<EmailDispatchEligibilityRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new EmailDispatchEligibilityResult(
+                EmailDispatchEligibilityOutcome.Skipped,
+                null,
+                "recipient_unsubscribed"));
 
         var result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
@@ -214,23 +360,8 @@ public sealed class EmailDispatchDrainServiceTests
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Skipped);
         await fixture.EmailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
-        await fixture.Repository.Received(1).RecordAttempt(
-            Arg.Is<EmailDispatchAttempt>(attempt =>
-                attempt.EmailDispatchOutboxId == dispatch.Id &&
-                attempt.Outcome == EmailDispatchAttemptOutcome.Skipped &&
-                attempt.FailureCategory == "recipient_unsubscribed"),
-            Arg.Any<CancellationToken>());
-        await fixture.Repository.Received(1).MarkAsSkipped(
-            dispatch.Id,
-            "recipient_unsubscribed",
-            Arg.Is<string>(message => message.Contains("skipped before provider handoff", StringComparison.OrdinalIgnoreCase)),
-            Arg.Any<DateTime>(),
-            Arg.Any<CancellationToken>());
-        await fixture.Repository.Received(1).MarkReceiptSkipped(
-            Arg.Any<Guid>(),
-            "recipient_unsubscribed",
-            Arg.Is<string>(message => message.Contains("skipped before provider handoff", StringComparison.OrdinalIgnoreCase)),
-            Arg.Any<DateTime>(),
+        await fixture.EligibilityEvaluator.Received(1).EvaluateAndBeginProviderHandoffAsync(
+            Arg.Is<EmailDispatchEligibilityRequest>(request => request.OutboxId == dispatch.Id),
             Arg.Any<CancellationToken>());
     }
 
@@ -245,15 +376,13 @@ public sealed class EmailDispatchDrainServiceTests
         fixture.Repository.IsTenantPaused(dispatch.TenantId, Arg.Any<CancellationToken>()).Returns(false);
         fixture.Repository.TryMarkAsProcessing(dispatch.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(true);
-        fixture.Repository.TryClaimReceipt(Arg.Any<EmailDispatchReceipt>(), Arg.Any<CancellationToken>())
-            .Returns(true);
-        fixture.PreferenceRepository.GetByUserAndCategory(
-                dispatch.TenantId,
-                dispatch.UserId!.Value,
-                NotificationPreferenceCategories.EventReminders)
-            .Returns((UserNotificationPreference?)null);
-        fixture.PreferenceResolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
-            .Returns(call => DisabledDecision(call.Arg<NotificationPreferenceResolveRequest>()));
+        fixture.EligibilityEvaluator.EvaluateAndBeginProviderHandoffAsync(
+                Arg.Any<EmailDispatchEligibilityRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new EmailDispatchEligibilityResult(
+                EmailDispatchEligibilityOutcome.Skipped,
+                null,
+                "recipient_notification_preference_disabled"));
 
         var result = await fixture.Service.ProcessSingleAsync(
             dispatch.TenantId,
@@ -263,48 +392,26 @@ public sealed class EmailDispatchDrainServiceTests
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Skipped);
         await fixture.EmailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
-        await fixture.Repository.Received(1).RecordAttempt(
-            Arg.Is<EmailDispatchAttempt>(attempt =>
-                attempt.EmailDispatchOutboxId == dispatch.Id &&
-                attempt.Outcome == EmailDispatchAttemptOutcome.Skipped &&
-                attempt.FailureCategory == "recipient_notification_preference_disabled"),
-            Arg.Any<CancellationToken>());
-        await fixture.Repository.Received(1).MarkAsSkipped(
-            dispatch.Id,
-            "recipient_notification_preference_disabled",
-            Arg.Is<string>(message => message.Contains("disabled this notification category", StringComparison.OrdinalIgnoreCase)),
-            Arg.Any<DateTime>(),
-            Arg.Any<CancellationToken>());
-        await fixture.Repository.Received(1).MarkReceiptSkipped(
-            Arg.Any<Guid>(),
-            "recipient_notification_preference_disabled",
-            Arg.Is<string>(message => message.Contains("disabled this notification category", StringComparison.OrdinalIgnoreCase)),
-            Arg.Any<DateTime>(),
-            Arg.Any<CancellationToken>());
-        await fixture.PreferenceResolver.Received(1).ResolveAsync(
-            Arg.Is<NotificationPreferenceResolveRequest>(request =>
-                request.TenantId == dispatch.TenantId &&
-                request.UserId == dispatch.UserId &&
-                request.CategoryCode == NotificationPreferenceCategoryCodes.EventUpdates &&
-                request.ChannelCode == NotificationPreferenceChannelCodes.Email),
+        await fixture.EligibilityEvaluator.Received(1).EvaluateAndBeginProviderHandoffAsync(
+            Arg.Is<EmailDispatchEligibilityRequest>(request => request.OutboxId == dispatch.Id),
             Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task ProcessSingleAsyncAppliesPreferencesForEveryProductLifecycleEmailKind()
+    public async Task ProcessSingleAsyncDelegatesEveryProductLifecycleEmailKindToEligibilityEvaluator()
     {
         var cases = new[]
         {
-            (EmailDispatchKind.RegistrationConfirmation, NotificationPreferenceCategories.RegistrationConfirmations),
-            (EmailDispatchKind.RegistrationApproved, NotificationPreferenceCategories.EventUpdates),
-            (EmailDispatchKind.RegistrationRejected, NotificationPreferenceCategories.EventUpdates),
-            (EmailDispatchKind.WaitlistPromoted, NotificationPreferenceCategories.EventUpdates),
-            (EmailDispatchKind.EventReminder, NotificationPreferenceCategories.EventReminders),
-            (EmailDispatchKind.EventCancelled, NotificationPreferenceCategories.EventUpdates),
-            (EmailDispatchKind.OrganizerNotification, NotificationPreferenceCategories.OrganizerAnnouncements)
+            EmailDispatchKind.RegistrationConfirmation,
+            EmailDispatchKind.RegistrationApproved,
+            EmailDispatchKind.RegistrationRejected,
+            EmailDispatchKind.WaitlistPromoted,
+            EmailDispatchKind.EventReminder,
+            EmailDispatchKind.EventCancelled,
+            EmailDispatchKind.OrganizerNotification
         };
 
-        foreach (var (kind, category) in cases)
+        foreach (var kind in cases)
         {
             var fixture = new Fixture();
             var dispatch = CreateDispatch(EmailDispatchStatus.Pending);
@@ -314,20 +421,13 @@ public sealed class EmailDispatchDrainServiceTests
             fixture.Repository.IsTenantPaused(dispatch.TenantId, Arg.Any<CancellationToken>()).Returns(false);
             fixture.Repository.TryMarkAsProcessing(dispatch.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
                 .Returns(true);
-            fixture.Repository.TryClaimReceipt(Arg.Any<EmailDispatchReceipt>(), Arg.Any<CancellationToken>())
-                .Returns(true);
-            fixture.PreferenceRepository.GetByUserAndCategory(
-                    dispatch.TenantId,
-                    dispatch.UserId!.Value,
-                    category)
-                .Returns(new UserNotificationPreference
-                {
-                    TenantId = dispatch.TenantId,
-                    Tenant = null!,
-                    UserId = dispatch.UserId.Value,
-                    Category = category,
-                    IsEnabled = false
-                });
+            fixture.EligibilityEvaluator.EvaluateAndBeginProviderHandoffAsync(
+                    Arg.Any<EmailDispatchEligibilityRequest>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(new EmailDispatchEligibilityResult(
+                    EmailDispatchEligibilityOutcome.Skipped,
+                    null,
+                    "recipient_notification_preference_disabled"));
 
             var result = await fixture.Service.ProcessSingleAsync(
                 dispatch.TenantId,
@@ -336,10 +436,9 @@ public sealed class EmailDispatchDrainServiceTests
                 CancellationToken.None);
 
             await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Skipped);
-            await fixture.PreferenceRepository.Received(1).GetByUserAndCategory(
-                dispatch.TenantId,
-                dispatch.UserId.Value,
-                category);
+            await fixture.EligibilityEvaluator.Received(1).EvaluateAndBeginProviderHandoffAsync(
+                Arg.Is<EmailDispatchEligibilityRequest>(request => request.OutboxId == dispatch.Id),
+                Arg.Any<CancellationToken>());
             await fixture.EmailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
         }
     }
@@ -353,8 +452,6 @@ public sealed class EmailDispatchDrainServiceTests
             .Returns(dispatch);
         fixture.Repository.IsTenantPaused(dispatch.TenantId, Arg.Any<CancellationToken>()).Returns(false);
         fixture.Repository.TryMarkAsProcessing(dispatch.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns(true);
-        fixture.Repository.TryClaimReceipt(Arg.Any<EmailDispatchReceipt>(), Arg.Any<CancellationToken>())
             .Returns(true);
         fixture.EmailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
             .Returns(EmailResult.Fail("Mailbox unavailable"));
@@ -375,7 +472,7 @@ public sealed class EmailDispatchDrainServiceTests
         await fixture.Repository.Received(1).MarkAsFailed(
             dispatch.Id,
             "smtp_send_failed",
-            "Mailbox unavailable",
+            "SMTP send failed before provider acceptance was confirmed.",
             true,
             Arg.Any<TimeSpan>(),
             Arg.Any<int>(),
@@ -384,10 +481,58 @@ public sealed class EmailDispatchDrainServiceTests
         await fixture.Repository.Received(1).MarkReceiptFailed(
             Arg.Any<Guid>(),
             "smtp_retry_scheduled",
-            "Mailbox unavailable",
+            "SMTP send failed before provider acceptance was confirmed.",
             Arg.Any<DateTime>(),
             Arg.Any<CancellationToken>());
         fixture.TenantAccessor.Received(1).Clear();
+    }
+
+    [Test]
+    public async Task ProcessSingleAsyncDoesNotPersistOrLogProviderErrorCanaries()
+    {
+        const string canary = "provider-error-canary attendee@example.test body-canary";
+        var fixture = new Fixture();
+        var dispatch = CreateDispatch(EmailDispatchStatus.Pending);
+        fixture.Repository.GetByTenantAndPublishEventId(
+                dispatch.TenantId,
+                dispatch.PublishEventId,
+                Arg.Any<CancellationToken>())
+            .Returns(dispatch);
+        fixture.Repository.IsTenantPaused(dispatch.TenantId, Arg.Any<CancellationToken>()).Returns(false);
+        fixture.Repository.TryMarkAsProcessing(
+                dispatch.Id,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTime>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        fixture.EmailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(EmailResult.Fail(canary));
+
+        EmailDispatchSingleDrainResult result = await fixture.Service.ProcessSingleAsync(
+            dispatch.TenantId,
+            dispatch.PublishEventId,
+            "tickerq-drain",
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.RetryScheduled);
+        await fixture.Repository.Received(1).RecordAttempt(
+            Arg.Is<EmailDispatchAttempt>(attempt =>
+                attempt.Outcome == EmailDispatchAttemptOutcome.Failed &&
+                attempt.SanitizedErrorMessage == "SMTP send failed before provider acceptance was confirmed." &&
+                !attempt.SanitizedErrorMessage.Contains(canary, StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+        await fixture.Repository.Received(1).MarkAsFailed(
+            dispatch.Id,
+            "smtp_send_failed",
+            Arg.Is<string>(message => !message.Contains(canary, StringComparison.Ordinal)),
+            true,
+            Arg.Any<TimeSpan>(),
+            Arg.Any<int>(),
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
+        await Assert.That(fixture.Logger.Entries.All(entry =>
+            !entry.Message.Contains(canary, StringComparison.Ordinal) &&
+            entry.Exception?.Message.Contains(canary, StringComparison.Ordinal) != true)).IsTrue();
     }
 
     [Test]
@@ -404,8 +549,6 @@ public sealed class EmailDispatchDrainServiceTests
             .Returns(dispatch);
         fixture.Repository.IsTenantPaused(dispatch.TenantId, Arg.Any<CancellationToken>()).Returns(false);
         fixture.Repository.TryMarkAsProcessing(dispatch.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns(true);
-        fixture.Repository.TryClaimReceipt(Arg.Any<EmailDispatchReceipt>(), Arg.Any<CancellationToken>())
             .Returns(true);
         fixture.EmailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
             .Returns(EmailResult.Fail("Mailbox unavailable"));
@@ -427,7 +570,7 @@ public sealed class EmailDispatchDrainServiceTests
         await fixture.Repository.Received(1).MarkAsFailed(
             dispatch.Id,
             "smtp_send_failed",
-            "Mailbox unavailable",
+            "SMTP send failed before provider acceptance was confirmed.",
             true,
             Arg.Any<TimeSpan>(),
             3,
@@ -445,8 +588,6 @@ public sealed class EmailDispatchDrainServiceTests
         fixture.Repository.IsTenantPaused(dispatch.TenantId, Arg.Any<CancellationToken>()).Returns(false);
         fixture.Repository.TryMarkAsProcessing(dispatch.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(true);
-        fixture.Repository.TryClaimReceipt(Arg.Any<EmailDispatchReceipt>(), Arg.Any<CancellationToken>())
-            .Returns(true);
         fixture.EmailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
             .Returns(EmailResult.Fail("SMTP timeout while waiting for provider acknowledgement."));
 
@@ -462,19 +603,14 @@ public sealed class EmailDispatchDrainServiceTests
                 attempt.EmailDispatchOutboxId == dispatch.Id &&
                 attempt.Outcome == EmailDispatchAttemptOutcome.Unknown &&
                 attempt.FailureCategory == "smtp_outcome_unknown" &&
-                attempt.SanitizedErrorMessage == "SMTP timeout while waiting for provider acknowledgement."),
+                attempt.SanitizedErrorMessage == "SMTP provider acceptance is uncertain. Automatic resend is disabled pending reconciliation."),
             Arg.Any<CancellationToken>());
-        await fixture.Repository.Received(1).MarkAsUnknown(
-            dispatch.Id,
-            "smtp_outcome_unknown",
-            "SMTP timeout while waiting for provider acknowledgement.",
-            Arg.Any<DateTime>(),
-            Arg.Any<CancellationToken>());
-        await fixture.Repository.Received(1).MarkReceiptFailed(
-            Arg.Any<Guid>(),
-            "smtp_outcome_unknown",
-            "SMTP timeout while waiting for provider acknowledgement.",
-            Arg.Any<DateTime>(),
+        await fixture.Repository.Received(1).ReconcileProviderAccepted(
+            Arg.Is<EmailDispatchAcceptedSettlement>(settlement =>
+                settlement.TenantId == dispatch.TenantId &&
+                settlement.OutboxId == dispatch.Id &&
+                settlement.AttemptNumber == dispatch.AttemptCount + 1 &&
+                settlement.ProviderMessageId == null),
             Arg.Any<CancellationToken>());
     }
 
@@ -532,6 +668,68 @@ public sealed class EmailDispatchDrainServiceTests
             Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task RecoverStaleProcessingAsyncAlignsFencedAttemptReceiptAndOutboxWithoutSending()
+    {
+        var startedAt = DateTime.UtcNow.AddMinutes(-10);
+        var dispatch = CreateDispatch(EmailDispatchStatus.Processing);
+        dispatch.AttemptCount = 2;
+        dispatch.ProcessingStartedAt = startedAt;
+        dispatch.ProcessingLeaseToken = Guid.CreateVersion7();
+        var repository = new InMemoryEmailDispatchOutboxRepository(dispatch);
+        repository.Attempts.Add(new EmailDispatchAttempt
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = dispatch.TenantId,
+            EmailDispatchOutboxId = dispatch.Id,
+            AttemptNumber = 1,
+            Outcome = EmailDispatchAttemptOutcome.Failed,
+            CompletedAt = startedAt.AddMinutes(-5),
+            StartedAt = startedAt,
+            FailureCategory = "previous_attempt_failed",
+            SanitizedErrorMessage = "Previous attempt failed before provider handoff."
+        });
+        repository.Attempts.Add(new EmailDispatchAttempt
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = dispatch.TenantId,
+            EmailDispatchOutboxId = dispatch.Id,
+            AttemptNumber = 2,
+            Outcome = EmailDispatchAttemptOutcome.Unknown,
+            StartedAt = startedAt,
+            FailureCategory = "provider_handoff_started",
+            SanitizedErrorMessage = "Provider handoff started."
+        });
+        repository.Receipts.Add(new EmailDispatchReceipt
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = dispatch.TenantId,
+            PublishEventId = dispatch.PublishEventId,
+            EmailDispatchOutboxId = dispatch.Id,
+            Status = EmailDispatchReceiptStatus.Processing,
+            FirstSeenAt = startedAt,
+            ProcessingStartedAt = startedAt
+        });
+        var fixture = new Fixture(new EmailDispatchProcessorSettings
+        {
+            ProcessingLeaseTimeoutSeconds = 60
+        }, repository);
+
+        EmailDispatchRecoveryResult result = await fixture.Service.RecoverStaleProcessingAsync(CancellationToken.None);
+
+        await Assert.That(result.RecoveredCount).IsEqualTo(1);
+        await Assert.That(repository.Dispatch.Status).IsEqualTo(EmailDispatchStatus.Unknown);
+        await Assert.That(repository.Dispatch.NextAttemptAt).IsNull();
+        await Assert.That(repository.Attempts).Count().IsEqualTo(2);
+        await Assert.That(repository.Attempts[0].Outcome).IsEqualTo(EmailDispatchAttemptOutcome.Failed);
+        await Assert.That(repository.Attempts[0].FailureCategory).IsEqualTo("previous_attempt_failed");
+        await Assert.That(repository.Attempts[1].Outcome).IsEqualTo(EmailDispatchAttemptOutcome.Unknown);
+        await Assert.That(repository.Attempts[1].CompletedAt).IsNotNull();
+        await Assert.That(repository.Receipts).Count().IsEqualTo(1);
+        await Assert.That(repository.Receipts[0].Status).IsEqualTo(EmailDispatchReceiptStatus.Unknown);
+        await fixture.EmailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+    }
+
     private static EmailDispatchOutbox CreateDispatch(EmailDispatchStatus status)
     {
         return new EmailDispatchOutbox
@@ -539,7 +737,7 @@ public sealed class EmailDispatchDrainServiceTests
             Id = Guid.CreateVersion7(),
             TenantId = Guid.CreateVersion7(),
             PublishEventId = Guid.CreateVersion7(),
-            UserId = Guid.CreateVersion7(),
+            RecipientUserId = Guid.CreateVersion7(),
             Kind = EmailDispatchKind.RegistrationConfirmation,
             SourceType = "event-registration",
             SourceId = Guid.CreateVersion7(),
@@ -550,34 +748,41 @@ public sealed class EmailDispatchDrainServiceTests
         };
     }
 
-    private static NotificationPreferenceDecision EnabledDecision(NotificationPreferenceResolveRequest request) => new(
-        request.CategoryCode,
-        request.ChannelCode,
-        IsEnabled: true,
-        IsRequired: false,
-        IsLocked: false,
-        IsMuted: false,
-        EffectiveSourceScope: "Default",
-        LockReason: null);
+    private static void ConfigureAcceptedSend(Fixture fixture, EmailDispatchOutbox dispatch)
+    {
+        fixture.Repository.GetByTenantAndPublishEventId(
+                dispatch.TenantId,
+                dispatch.PublishEventId,
+                Arg.Any<CancellationToken>())
+            .Returns(dispatch);
+        fixture.Repository.IsTenantPaused(dispatch.TenantId, Arg.Any<CancellationToken>()).Returns(false);
+        fixture.Repository.TryMarkAsProcessing(
+                dispatch.Id,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTime>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        fixture.EmailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(EmailResult.Ok("provider-message-1"));
+    }
 
-    private static NotificationPreferenceDecision DisabledDecision(NotificationPreferenceResolveRequest request) => new(
-        request.CategoryCode,
-        request.ChannelCode,
-        IsEnabled: false,
-        IsRequired: false,
-        IsLocked: false,
-        IsMuted: false,
-        EffectiveSourceScope: "User",
-        LockReason: null);
+    private static void ConfigureAcceptedSettlementFailure(Fixture fixture, string failureStage, string canary)
+    {
+        fixture.Repository.SettleProviderAccepted(
+                Arg.Any<EmailDispatchAcceptedSettlement>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => throw new InvalidOperationException($"{failureStage}: {canary}"));
+    }
 
     private sealed class Fixture
     {
-        public Fixture(EmailDispatchProcessorSettings? settings = null)
+        public Fixture(
+            EmailDispatchProcessorSettings? settings = null,
+            IEmailDispatchOutboxRepository? repository = null)
         {
-            Repository = Substitute.For<IEmailDispatchOutboxRepository>();
+            Repository = repository ?? Substitute.For<IEmailDispatchOutboxRepository>();
             EmailService = Substitute.For<IEmailService>();
-            PreferenceRepository = Substitute.For<IUserNotificationPreferenceRepository>();
-            PreferenceResolver = Substitute.For<INotificationPreferenceResolver>();
+            EligibilityEvaluator = Substitute.For<IEmailDispatchEligibilityEvaluator>();
             UnsubscribeTokenService = Substitute.For<IEmailUnsubscribeTokenService>();
             TenantAccessor = Substitute.For<ITenantContextAccessor>();
             Configuration = new ConfigurationBuilder()
@@ -590,14 +795,25 @@ public sealed class EmailDispatchDrainServiceTests
                     Arg.Any<EmailUnsubscribeTokenPayload>(),
                     Arg.Any<TimeSpan?>())
                 .Returns("unsubscribe-token");
-            PreferenceResolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
-                .Returns(call => EnabledDecision(call.Arg<NotificationPreferenceResolveRequest>()));
+            EligibilityEvaluator.EvaluateAndBeginProviderHandoffAsync(
+                    Arg.Any<EmailDispatchEligibilityRequest>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(call =>
+                {
+                    var request = call.Arg<EmailDispatchEligibilityRequest>();
+                    return new EmailDispatchEligibilityResult(
+                        EmailDispatchEligibilityOutcome.Eligible,
+                        repository is InMemoryEmailDispatchOutboxRepository inMemory
+                            ? inMemory.Dispatch.RecipientEmail
+                            : "attendee@example.test",
+                        null,
+                        Guid.CreateVersion7());
+                });
 
             var services = new ServiceCollection();
             services.AddSingleton(Repository);
             services.AddSingleton(EmailService);
-            services.AddSingleton(PreferenceRepository);
-            services.AddSingleton(PreferenceResolver);
+            services.AddSingleton(EligibilityEvaluator);
             services.AddSingleton(UnsubscribeTokenService);
             services.AddSingleton(TenantAccessor);
             services.AddSingleton<IConfiguration>(Configuration);
@@ -605,27 +821,28 @@ public sealed class EmailDispatchDrainServiceTests
 
             var meterFactory = Substitute.For<IMeterFactory>();
             meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
+            Logger = new TestListLogger<EmailDispatchDrainService>();
 
             Service = new EmailDispatchDrainService(
                 ServiceProvider.GetRequiredService<IServiceScopeFactory>(),
                 Options.Create(settings ?? new EmailDispatchProcessorSettings()),
                 new BusinessMetrics(meterFactory),
-                NullLogger<EmailDispatchDrainService>.Instance);
+                Logger);
         }
 
         public IEmailDispatchOutboxRepository Repository { get; }
 
         public IEmailService EmailService { get; }
 
-        public IUserNotificationPreferenceRepository PreferenceRepository { get; }
-
-        public INotificationPreferenceResolver PreferenceResolver { get; }
+        public IEmailDispatchEligibilityEvaluator EligibilityEvaluator { get; }
 
         public IEmailUnsubscribeTokenService UnsubscribeTokenService { get; }
 
         public ITenantContextAccessor TenantAccessor { get; }
 
         public IConfiguration Configuration { get; }
+
+        public TestListLogger<EmailDispatchDrainService> Logger { get; }
 
         public ServiceProvider ServiceProvider { get; }
 

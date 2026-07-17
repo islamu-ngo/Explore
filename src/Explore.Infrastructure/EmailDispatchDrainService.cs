@@ -3,6 +3,7 @@
 
 using System.Net;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Models;
@@ -25,10 +26,9 @@ public sealed class EmailDispatchDrainService(
 {
     private const string ProcessingLeaseExpiredFailureCategory = "processing_lease_expired";
     private const string ProcessingLeaseExpiredMessage = "Email dispatch processing lease expired before a durable outcome was recorded. Outcome is unknown and requires operator review or replay.";
-    private const string RecipientUnsubscribedFailureCategory = "recipient_unsubscribed";
-    private const string RecipientUnsubscribedMessage = "Recipient is unsubscribed from this email category; SMTP send was skipped before provider handoff.";
-    private const string RecipientPreferenceDisabledFailureCategory = "recipient_notification_preference_disabled";
-    private const string RecipientPreferenceDisabledMessage = "Recipient disabled this notification category and channel; SMTP send was skipped before provider handoff.";
+    private const string AcceptedSettlementUnknownFailureCategory = "accepted_settlement_unknown";
+    private const string SmtpOutcomeUnknownMessage = "SMTP provider acceptance is uncertain. Automatic resend is disabled pending reconciliation.";
+    private const string SmtpSendFailedMessage = "SMTP send failed before provider acceptance was confirmed.";
 
     private readonly EmailDispatchProcessorSettings _settings = settings.Value;
 
@@ -202,8 +202,7 @@ public sealed class EmailDispatchDrainService(
         await using var scope = scopeFactory.CreateAsyncScope();
         var repository = scope.ServiceProvider.GetRequiredService<IEmailDispatchOutboxRepository>();
         var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
-        var preferenceRepository = scope.ServiceProvider.GetRequiredService<IUserNotificationPreferenceRepository>();
-        var notificationPreferenceResolver = scope.ServiceProvider.GetRequiredService<INotificationPreferenceResolver>();
+        var eligibilityEvaluator = scope.ServiceProvider.GetRequiredService<IEmailDispatchEligibilityEvaluator>();
         var unsubscribeTokenService = scope.ServiceProvider.GetRequiredService<IEmailUnsubscribeTokenService>();
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
         var tenantAccessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
@@ -231,139 +230,68 @@ public sealed class EmailDispatchDrainService(
             return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.AlreadyClaimed, dispatch.Id);
         }
 
-        EmailDispatchReceipt? receipt = null;
+        Guid? receiptId = null;
+        var providerHandoffStarted = false;
+        var attemptNumber = dispatch.AttemptCount + 1;
         tenantAccessor.SetTenant(dispatch.TenantId);
 
         try
         {
-            receipt = new EmailDispatchReceipt
+            var eligibility = await eligibilityEvaluator.EvaluateAndBeginProviderHandoffAsync(
+                new EmailDispatchEligibilityRequest(
+                    dispatch.TenantId,
+                    dispatch.Id,
+                    leaseToken,
+                    attemptNumber,
+                    consumerId,
+                    now),
+                cancellationToken);
+            switch (eligibility.Outcome)
             {
-                TenantId = dispatch.TenantId,
-                PublishEventId = dispatch.PublishEventId,
-                EmailDispatchOutboxId = dispatch.Id,
-                Status = EmailDispatchReceiptStatus.Processing,
-                ConsumerId = consumerId,
-                FirstSeenAt = now,
-                ProcessingStartedAt = now
-            };
-            var receiptClaimed = await repository.TryClaimReceipt(receipt, cancellationToken);
-            if (!receiptClaimed)
-            {
-                receipt = null;
-                logger.LogDebug("Email dispatch receipt already exists for publish event {PublishEventId}", dispatch.PublishEventId);
+                case EmailDispatchEligibilityOutcome.Skipped:
+                    metrics.RecordEmailDispatchAttempt(dispatch.TenantId.ToString(), "skipped", eligibility.SkipReason);
+                    logger.LogInformation(
+                        "Email dispatch {Id} skipped before provider handoff with reason {SkipReason}",
+                        dispatch.Id,
+                        eligibility.SkipReason);
+                    return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.Skipped, dispatch.Id);
+                case EmailDispatchEligibilityOutcome.TenantPaused:
+                    return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.TenantPaused, dispatch.Id);
+                case EmailDispatchEligibilityOutcome.LostClaim:
+                    return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.AlreadyClaimed, dispatch.Id);
             }
 
+            dispatch.RecipientEmail = eligibility.RecipientEmail
+                ?? throw new InvalidOperationException("Eligible email dispatch is missing its current authorized destination.");
+            receiptId = eligibility.ReceiptId;
+            providerHandoffStarted = true;
             var preferenceCategory = ResolvePreferenceCategory(dispatch.Kind);
-            if (await ShouldSkipForPreferenceAsync(preferenceRepository, dispatch, preferenceCategory))
-            {
-                var skippedAt = DateTime.UtcNow;
-                await repository.RecordAttempt(new EmailDispatchAttempt
-                {
-                    TenantId = dispatch.TenantId,
-                    EmailDispatchOutboxId = dispatch.Id,
-                    AttemptNumber = dispatch.AttemptCount + 1,
-                    Outcome = EmailDispatchAttemptOutcome.Skipped,
-                    StartedAt = now,
-                    CompletedAt = skippedAt,
-                    FailureCategory = RecipientUnsubscribedFailureCategory,
-                    SanitizedErrorMessage = RecipientUnsubscribedMessage,
-                    CorrelationId = dispatch.CorrelationId
-                }, cancellationToken);
-
-                await repository.MarkAsSkipped(
-                    dispatch.Id,
-                    RecipientUnsubscribedFailureCategory,
-                    RecipientUnsubscribedMessage,
-                    skippedAt,
-                    cancellationToken);
-                if (receipt is not null)
-                {
-                    await repository.MarkReceiptSkipped(
-                        receipt.Id,
-                        RecipientUnsubscribedFailureCategory,
-                        RecipientUnsubscribedMessage,
-                        skippedAt,
-                        cancellationToken);
-                }
-
-                metrics.RecordEmailDispatchAttempt(dispatch.TenantId.ToString(), "skipped", RecipientUnsubscribedFailureCategory);
-                logger.LogInformation(
-                    "Email dispatch {Id} skipped for tenant {TenantId} because recipient is unsubscribed from category {Category}",
-                    dispatch.Id,
-                    dispatch.TenantId,
-                    preferenceCategory);
-                return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.Skipped, dispatch.Id);
-            }
-
-            var matrixPreferenceCategory = ResolveMatrixPreferenceCategory(dispatch.Kind);
-            if (await ShouldSkipForMatrixPreferenceAsync(notificationPreferenceResolver, dispatch, matrixPreferenceCategory, cancellationToken))
-            {
-                var skippedAt = DateTime.UtcNow;
-                await repository.RecordAttempt(new EmailDispatchAttempt
-                {
-                    TenantId = dispatch.TenantId,
-                    EmailDispatchOutboxId = dispatch.Id,
-                    AttemptNumber = dispatch.AttemptCount + 1,
-                    Outcome = EmailDispatchAttemptOutcome.Skipped,
-                    StartedAt = now,
-                    CompletedAt = skippedAt,
-                    FailureCategory = RecipientPreferenceDisabledFailureCategory,
-                    SanitizedErrorMessage = RecipientPreferenceDisabledMessage,
-                    CorrelationId = dispatch.CorrelationId
-                }, cancellationToken);
-
-                await repository.MarkAsSkipped(
-                    dispatch.Id,
-                    RecipientPreferenceDisabledFailureCategory,
-                    RecipientPreferenceDisabledMessage,
-                    skippedAt,
-                    cancellationToken);
-                if (receipt is not null)
-                {
-                    await repository.MarkReceiptSkipped(
-                        receipt.Id,
-                        RecipientPreferenceDisabledFailureCategory,
-                        RecipientPreferenceDisabledMessage,
-                        skippedAt,
-                        cancellationToken);
-                }
-
-                metrics.RecordEmailDispatchAttempt(dispatch.TenantId.ToString(), "skipped", RecipientPreferenceDisabledFailureCategory);
-                logger.LogInformation(
-                    "Email dispatch {Id} skipped for tenant {TenantId} because recipient disabled matrix category {Category}",
-                    dispatch.Id,
-                    dispatch.TenantId,
-                    matrixPreferenceCategory);
-                return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.Skipped, dispatch.Id);
-            }
-
             var message = BuildEmailMessage(dispatch, unsubscribeTokenService, configuration, preferenceCategory, now);
 
             var startedAt = DateTime.UtcNow;
             var result = await emailService.SendAsync(message, cancellationToken);
             var completedAt = DateTime.UtcNow;
 
-            var attempt = new EmailDispatchAttempt
-            {
-                TenantId = dispatch.TenantId,
-                EmailDispatchOutboxId = dispatch.Id,
-                AttemptNumber = dispatch.AttemptCount + 1,
-                Outcome = result.Success ? EmailDispatchAttemptOutcome.Succeeded : ClassifyOutcome(result.ErrorMessage),
-                StartedAt = startedAt,
-                CompletedAt = completedAt,
-                FailureCategory = result.Success ? null : ClassifyFailureCategory(result.ErrorMessage),
-                SanitizedErrorMessage = result.Success ? null : result.ErrorMessage,
-                ProviderMessageId = result.Message,
-                CorrelationId = dispatch.CorrelationId
-            };
-            await repository.RecordAttempt(attempt, cancellationToken);
-
             if (result.Success)
             {
-                await repository.MarkAsSent(dispatch.Id, completedAt, result.Message, cancellationToken);
-                if (receipt is not null)
+                var settlement = new EmailDispatchAcceptedSettlement(
+                    dispatch.TenantId,
+                    dispatch.Id,
+                    attemptNumber,
+                    completedAt,
+                    ProviderMessageId: null);
+
+                try
                 {
-                    await repository.MarkReceiptCompleted(receipt.Id, completedAt, result.Message, cancellationToken);
+                    await repository.SettleProviderAccepted(settlement, cancellationToken);
+                }
+                catch (Exception) when (!cancellationToken.IsCancellationRequested)
+                {
+                    return await ReconcileProviderAcceptedAsync(settlement, dispatch);
+                }
+                catch (OperationCanceledException)
+                {
+                    return await ReconcileProviderAcceptedAsync(settlement, dispatch);
                 }
 
                 metrics.RecordEmailDispatchAttempt(dispatch.TenantId.ToString(), "sent");
@@ -376,24 +304,35 @@ public sealed class EmailDispatchDrainService(
                 return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.Sent, dispatch.Id);
             }
 
-            var error = result.ErrorMessage ?? "Email send failed without provider details.";
-            if (IsUnknownOutcome(error))
+            var providerError = result.ErrorMessage;
+            var outcomeUnknown = IsUnknownOutcome(providerError);
+            var failureCategory = outcomeUnknown ? "smtp_outcome_unknown" : "smtp_send_failed";
+            var safeFailureMessage = outcomeUnknown ? SmtpOutcomeUnknownMessage : SmtpSendFailedMessage;
+            await repository.RecordAttempt(new EmailDispatchAttempt
             {
-                await repository.MarkAsUnknown(dispatch.Id, "smtp_outcome_unknown", error, completedAt, cancellationToken);
-                if (receipt is not null)
-                {
-                    await repository.MarkReceiptFailed(receipt.Id, "smtp_outcome_unknown", error, completedAt, cancellationToken);
-                }
+                TenantId = dispatch.TenantId,
+                EmailDispatchOutboxId = dispatch.Id,
+                AttemptNumber = attemptNumber,
+                Outcome = outcomeUnknown ? EmailDispatchAttemptOutcome.Unknown : EmailDispatchAttemptOutcome.Failed,
+                StartedAt = startedAt,
+                CompletedAt = completedAt,
+                FailureCategory = failureCategory,
+                SanitizedErrorMessage = safeFailureMessage,
+                CorrelationId = dispatch.CorrelationId
+            }, cancellationToken);
 
-                metrics.RecordEmailDispatchAttempt(dispatch.TenantId.ToString(), "unknown", "smtp_outcome_unknown");
-                logger.LogWarning(
-                    "Email dispatch {Id} outcome is unknown with failure category {FailureCategory}",
-                    dispatch.Id,
-                    "smtp_outcome_unknown");
-                return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.Unknown, dispatch.Id);
+            if (outcomeUnknown)
+            {
+                return await ReconcileProviderAcceptedAsync(
+                    new EmailDispatchAcceptedSettlement(
+                        dispatch.TenantId,
+                        dispatch.Id,
+                        attemptNumber,
+                        completedAt,
+                        null),
+                    dispatch);
             }
 
-            var failureCategory = ClassifyFailureCategory(error);
             var failedAttemptCount = dispatch.AttemptCount + 1;
             var isRetryExhausted = IsRetryExhausted(dispatch, failedAttemptCount);
             var failureOutcome = isRetryExhausted ? "dead_lettered" : "retry_scheduled";
@@ -401,15 +340,15 @@ public sealed class EmailDispatchDrainService(
             await repository.MarkAsFailed(
                 dispatch.Id,
                 failureCategory,
-                error,
+                safeFailureMessage,
                 isRetryable: true,
                 delay,
                 _settings.MaxAttemptCount,
                 completedAt,
                 cancellationToken);
-            if (receipt is not null)
+            if (receiptId is Guid failedReceiptId)
             {
-                await repository.MarkReceiptFailed(receipt.Id, "smtp_retry_scheduled", error, completedAt, cancellationToken);
+                await repository.MarkReceiptFailed(failedReceiptId, "smtp_retry_scheduled", safeFailureMessage, completedAt, cancellationToken);
             }
 
             metrics.RecordEmailDispatchAttempt(dispatch.TenantId.ToString(), failureOutcome, failureCategory);
@@ -425,61 +364,24 @@ public sealed class EmailDispatchDrainService(
                 isRetryExhausted ? EmailDispatchDrainOutcome.DeadLettered : EmailDispatchDrainOutcome.RetryScheduled,
                 dispatch.Id);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested && !providerHandoffStarted)
         {
             throw;
         }
-        catch (Exception ex)
+        catch (Exception) when (providerHandoffStarted)
         {
-            var failedAt = DateTime.UtcNow;
-            var error = ex.Message;
-            await repository.RecordAttempt(new EmailDispatchAttempt
-            {
-                TenantId = dispatch.TenantId,
-                EmailDispatchOutboxId = dispatch.Id,
-                AttemptNumber = dispatch.AttemptCount + 1,
-                Outcome = IsUnknownOutcome(error) ? EmailDispatchAttemptOutcome.Unknown : EmailDispatchAttemptOutcome.Failed,
-                StartedAt = now,
-                CompletedAt = failedAt,
-                FailureCategory = ClassifyFailureCategory(error),
-                SanitizedErrorMessage = error,
-                CorrelationId = dispatch.CorrelationId
-            }, cancellationToken);
-
-            EmailDispatchDrainOutcome outcome;
-            if (IsUnknownOutcome(error))
-            {
-                await repository.MarkAsUnknown(dispatch.Id, "smtp_outcome_unknown", error, failedAt, cancellationToken);
-                metrics.RecordEmailDispatchAttempt(dispatch.TenantId.ToString(), "unknown", "smtp_outcome_unknown");
-                outcome = EmailDispatchDrainOutcome.Unknown;
-            }
-            else
-            {
-                var failureCategory = ClassifyFailureCategory(error);
-                var failedAttemptCount = dispatch.AttemptCount + 1;
-                var isRetryExhausted = IsRetryExhausted(dispatch, failedAttemptCount);
-                var failureOutcome = isRetryExhausted ? "dead_lettered" : "retry_scheduled";
-                var delay = TimeSpan.FromSeconds(_settings.CalculateRetryDelay(dispatch.AttemptCount + 1));
-                await repository.MarkAsFailed(
+            return await ReconcileProviderAcceptedAsync(
+                new EmailDispatchAcceptedSettlement(
+                    dispatch.TenantId,
                     dispatch.Id,
-                    failureCategory,
-                    error,
-                    isRetryable: true,
-                    delay,
-                    _settings.MaxAttemptCount,
-                    failedAt,
-                    cancellationToken);
-                metrics.RecordEmailDispatchAttempt(dispatch.TenantId.ToString(), failureOutcome, failureCategory);
-                outcome = isRetryExhausted ? EmailDispatchDrainOutcome.DeadLettered : EmailDispatchDrainOutcome.RetryScheduled;
-            }
-
-            if (receipt is not null)
-            {
-                await repository.MarkReceiptFailed(receipt.Id, ClassifyFailureCategory(error), error, failedAt, cancellationToken);
-            }
-
-            logger.LogError(ex, "Email dispatch {Id} failed with exception", dispatch.Id);
-            return new EmailDispatchSingleDrainResult(outcome, dispatch.Id);
+                    attemptNumber,
+                    DateTime.UtcNow,
+                    null),
+                dispatch);
+        }
+        catch
+        {
+            throw;
         }
         finally
         {
@@ -487,9 +389,41 @@ public sealed class EmailDispatchDrainService(
         }
     }
 
-    private static EmailDispatchAttemptOutcome ClassifyOutcome(string? error)
+    private async Task<EmailDispatchSingleDrainResult> ReconcileProviderAcceptedAsync(
+        EmailDispatchAcceptedSettlement settlement,
+        EmailDispatchOutbox dispatch)
     {
-        return IsUnknownOutcome(error) ? EmailDispatchAttemptOutcome.Unknown : EmailDispatchAttemptOutcome.Failed;
+        try
+        {
+            await using var reconciliationScope = scopeFactory.CreateAsyncScope();
+            var reconciliationRepository = reconciliationScope.ServiceProvider.GetRequiredService<IEmailDispatchOutboxRepository>();
+            var reconciliation = await reconciliationRepository.ReconcileProviderAccepted(
+                settlement,
+                CancellationToken.None);
+            if (reconciliation == EmailDispatchAcceptedReconciliationOutcome.Sent)
+            {
+                metrics.RecordEmailDispatchAttempt(dispatch.TenantId.ToString(), "sent");
+                logger.LogInformation(
+                    "Email dispatch {Id} was already durably settled after an uncertain local commit",
+                    dispatch.Id);
+                return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.Sent, dispatch.Id);
+            }
+        }
+        catch (Exception)
+        {
+            logger.LogCritical(
+                "Email dispatch {Id} accepted-settlement reconciliation failed; the durable provider-handoff fence prevents automatic resend",
+                dispatch.Id);
+        }
+
+        metrics.RecordEmailDispatchAttempt(
+            dispatch.TenantId.ToString(),
+            "unknown",
+            AcceptedSettlementUnknownFailureCategory);
+        logger.LogWarning(
+            "Email dispatch {Id} accepted-settlement outcome is unknown; automatic resend is disabled",
+            dispatch.Id);
+        return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.Unknown, dispatch.Id);
     }
 
     private static string ClassifyFailureCategory(string? error)
@@ -507,48 +441,6 @@ public sealed class EmailDispatchDrainService(
     private bool IsRetryExhausted(EmailDispatchOutbox dispatch, int failedAttemptCount)
     {
         return failedAttemptCount >= Math.Min(dispatch.MaxAttempts, _settings.MaxAttemptCount);
-    }
-
-    private static async Task<bool> ShouldSkipForPreferenceAsync(
-        IUserNotificationPreferenceRepository preferenceRepository,
-        EmailDispatchOutbox dispatch,
-        string? preferenceCategory)
-    {
-        if (preferenceCategory is null || dispatch.UserId is null)
-        {
-            return false;
-        }
-
-        var preference = await preferenceRepository.GetByUserAndCategory(
-            dispatch.TenantId,
-            dispatch.UserId.Value,
-            preferenceCategory);
-
-        return preference is { IsEnabled: false };
-    }
-
-    private static async Task<bool> ShouldSkipForMatrixPreferenceAsync(
-        INotificationPreferenceResolver notificationPreferenceResolver,
-        EmailDispatchOutbox dispatch,
-        string? preferenceCategory,
-        CancellationToken cancellationToken)
-    {
-        if (preferenceCategory is null || dispatch.UserId is null)
-        {
-            return false;
-        }
-
-        var decision = await notificationPreferenceResolver.ResolveAsync(
-            new NotificationPreferenceResolveRequest(
-                dispatch.TenantId,
-                dispatch.UserId.Value,
-                null,
-                null,
-                preferenceCategory,
-                NotificationPreferenceChannelCodes.Email),
-            cancellationToken);
-
-        return !decision.IsEnabled;
     }
 
     private static EmailMessage BuildEmailMessage(
@@ -593,7 +485,7 @@ public sealed class EmailDispatchDrainService(
         IConfiguration configuration,
         DateTime issuedAt)
     {
-        if (preferenceCategory is null || dispatch.UserId is null)
+        if (preferenceCategory is null)
         {
             return null;
         }
@@ -606,7 +498,7 @@ public sealed class EmailDispatchDrainService(
 
         var token = unsubscribeTokenService.GenerateToken(new EmailUnsubscribeTokenPayload(
             dispatch.TenantId,
-            dispatch.UserId.Value,
+            dispatch.RecipientUserId,
             preferenceCategory,
             issuedAt));
         if (string.IsNullOrWhiteSpace(token))
@@ -654,18 +546,6 @@ public sealed class EmailDispatchDrainService(
             or EmailDispatchKind.RegistrationRejected
             or EmailDispatchKind.WaitlistPromoted
             or EmailDispatchKind.EventCancelled => NotificationPreferenceCategories.EventUpdates,
-        _ => null
-    };
-
-    private static string? ResolveMatrixPreferenceCategory(EmailDispatchKind kind) => kind switch
-    {
-        EmailDispatchKind.RegistrationConfirmation
-            or EmailDispatchKind.RegistrationApproved
-            or EmailDispatchKind.RegistrationRejected
-            or EmailDispatchKind.WaitlistPromoted => NotificationPreferenceCategoryCodes.RegistrationStatus,
-        EmailDispatchKind.EventReminder
-            or EmailDispatchKind.EventCancelled
-            or EmailDispatchKind.OrganizerNotification => NotificationPreferenceCategoryCodes.EventUpdates,
         _ => null
     };
 
