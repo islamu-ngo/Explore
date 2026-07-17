@@ -2,12 +2,15 @@
 // ABOUTME: Enforces organizer policy via RegistrationPolicyRules, derives child sessions from scope, writes inside a serializable transaction.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventRegistration.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Application.Telemetry;
 using Explore.Domain;
@@ -29,9 +32,10 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
     private readonly ITenantContext _tenantContext;
     private readonly BusinessMetrics _metrics;
     private readonly IContactShareConsentService _consentService;
-    private readonly IEventLifecycleEmailOutboxFactory _emailOutboxFactory;
     private readonly IListmonkRegistrationSyncOutboxFactory _listmonkOutboxFactory;
     private readonly IRegistrationNotificationDeliveryService _notificationDeliveryService;
+    private readonly IRecipientNotificationMaterializer _recipientNotificationMaterializer;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IWebhookEventPublisher _webhookPublisher;
     private readonly ILogger<CreateEventRegistrationCommandHandler> _logger;
 
@@ -45,9 +49,10 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         ITenantContext tenantContext,
         BusinessMetrics metrics,
         IContactShareConsentService consentService,
-        IEventLifecycleEmailOutboxFactory emailOutboxFactory,
         IListmonkRegistrationSyncOutboxFactory listmonkOutboxFactory,
         IRegistrationNotificationDeliveryService notificationDeliveryService,
+        IRecipientNotificationMaterializer recipientNotificationMaterializer,
+        IUnitOfWork unitOfWork,
         IWebhookEventPublisher webhookPublisher,
         ILogger<CreateEventRegistrationCommandHandler> logger)
     {
@@ -60,9 +65,10 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         _tenantContext = tenantContext;
         _metrics = metrics;
         _consentService = consentService;
-        _emailOutboxFactory = emailOutboxFactory;
         _listmonkOutboxFactory = listmonkOutboxFactory;
         _notificationDeliveryService = notificationDeliveryService;
+        _recipientNotificationMaterializer = recipientNotificationMaterializer;
+        _unitOfWork = unitOfWork;
         _webhookPublisher = webhookPublisher;
         _logger = logger;
     }
@@ -103,8 +109,6 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             response.Message = "User not found.";
             return response;
         }
-
-        var emailResolution = _notificationDeliveryService.ResolveRegistrationConfirmationEmail(user);
 
         // Short-circuit idempotency: if the user already has the same intent, return its id.
         var existing = await _intentRepository.FindExistingAsync(
@@ -147,6 +151,10 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         var initialApprovalStatusId = (int)initialApprovalStatus.Value;
 
         var tenantId = parentEvent.TenantId;
+        var occurrenceId = Guid.CreateVersion7();
+        var occurredAt = DateTimeOffset.UtcNow;
+        var notificationIntentId = Guid.CreateVersion7();
+        var emailDispatchOutboxId = Guid.CreateVersion7();
 
         var intent = new EventRegistrationIntent
         {
@@ -167,6 +175,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         var childRows = childSessions
             .Select(session => new EventRegistration
             {
+                Id = Guid.CreateVersion7(),
                 EventId = dto.EventId,
                 Event = null!,
                 UserId = dto.UserId,
@@ -179,15 +188,6 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             })
             .ToList();
 
-        var emailDispatchOutbox = emailResolution.HasVerifiedEmail
-            ? _emailOutboxFactory.CreateRegistrationConfirmation(
-                tenantId,
-                dto.UserId,
-                dto.EventId,
-                intent.Id,
-                emailResolution.Email!,
-                parentEvent.Title)
-            : null;
         var listmonkSyncOutbox = await _listmonkOutboxFactory.CreateForRegistrationAsync(
             parentEvent,
             user,
@@ -195,14 +195,72 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             intent.Id,
             cancellationToken);
 
-        var creationResult = await _intentRepository.CreateWithChildrenAndCapacityAsync(
-            intent,
-            childRows,
-            initialApprovalStatusId,
-            (int)ApprovalStatusEnum.Waitlisted,
-            cancellationToken,
-            emailDispatchOutbox,
-            listmonkSyncOutbox);
+        EventRegistrationIntentCreationResult creationResult;
+        try
+        {
+            creationResult = await _unitOfWork.ExecuteSerializableAsync(
+                async ct =>
+                {
+                    EventRegistrationIntentCreationResult createdResult =
+                        await _intentRepository.CreateWithChildrenAndCapacityAsync(
+                            intent,
+                            childRows,
+                            initialApprovalStatusId,
+                            (int)ApprovalStatusEnum.Waitlisted,
+                            occurrenceId,
+                            occurredAt,
+                            EventRegistrationActorProvenance.Attendee,
+                            dto.UserId,
+                            ct,
+                            listmonkSyncOutbox);
+                    if (!createdResult.WasExisting)
+                    {
+                        RecipientNotificationMaterialization notificationMaterialization =
+                            _notificationDeliveryService.CreateLifecycleMaterialization(
+                                createdResult.Intent,
+                                parentEvent.Title,
+                                user,
+                                createdResult.Transition,
+                                notificationIntentId,
+                                emailDispatchOutboxId)
+                            ?? throw new InvalidOperationException(
+                                "A newly created registration must produce one lifecycle notification graph.");
+                        await _recipientNotificationMaterializer.MaterializeInCurrentTransactionAsync(
+                            notificationMaterialization,
+                            ct);
+                    }
+                    return createdResult;
+                }, cancellationToken);
+        }
+        catch (EventRegistrationIntentConflictException)
+        {
+            EventRegistrationIntent? winningIntent = await _intentRepository.FindExistingAsync(
+                intent.EventId,
+                intent.UserId,
+                intent.RegistrationScopeId,
+                intent.SelectedEventDayId,
+                cancellationToken);
+            if (winningIntent is null)
+            {
+                throw;
+            }
+
+            creationResult = new EventRegistrationIntentCreationResult(
+                winningIntent,
+                [],
+                new EventRegistrationTransitionResult(
+                    Changed: false,
+                    ParentIntentId: winningIntent.Id,
+                    PreviousStatus: winningIntent.ApprovalStatusId,
+                    FinalStatus: winningIntent.ApprovalStatusId,
+                    TransitionReason: EventRegistrationTransitionReason.NoChange,
+                    OccurrenceId: occurrenceId,
+                    OccurredAt: occurredAt,
+                    ActorProvenance: EventRegistrationActorProvenance.Attendee,
+                    ActorUserId: dto.UserId,
+                    ChildTransitions: []),
+                WasExisting: true);
+        }
         var created = creationResult.Intent;
 
         if (creationResult.WasExisting)
@@ -211,21 +269,6 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             response.Id = created.Id;
             response.Message = "Event Registration already exists.";
             return response;
-        }
-
-        if (emailDispatchOutbox is not null)
-        {
-            await _emailOutboxFactory.EnqueueNotificationIntentAsync(emailDispatchOutbox, cancellationToken);
-        }
-        else
-        {
-            await _notificationDeliveryService.CreateRegistrationConfirmationFallbackAsync(
-                user,
-                tenantId,
-                dto.EventId,
-                created.Id,
-                parentEvent.Title,
-                cancellationToken);
         }
 
         if (dto.ShareEmailWithOrganizer)

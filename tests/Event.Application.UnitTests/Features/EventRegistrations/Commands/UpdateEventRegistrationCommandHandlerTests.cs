@@ -2,12 +2,15 @@
 // ABOUTME: Covers validation, concurrency, relationship checks, one-save updates, and cache invalidation.
 
 using Explore.Application.Caching;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventRegistrations.Handlers.Commands;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
 using Explore.Application.Models.Common;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -22,20 +25,192 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
     private readonly IEventSessionRepository _eventSessionRepository = Substitute.For<IEventSessionRepository>();
     private readonly IApprovalStatusRepository _approvalStatusRepository = Substitute.For<IApprovalStatusRepository>();
     private readonly IEventRegistrationIntentRepository _intentRepository = Substitute.For<IEventRegistrationIntentRepository>();
+    private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
     private readonly IAtprotoRecordRepository _atprotoRecordRepository = Substitute.For<IAtprotoRecordRepository>();
+    private readonly IUnitOfWork _unitOfWork = new ImmediateUnitOfWork();
+    private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
+    private readonly IRecipientNotificationMaterializer _recipientNotificationMaterializer = Substitute.For<IRecipientNotificationMaterializer>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
     private readonly UpdateEventRegistrationCommandHandler _handler;
 
     public UpdateEventRegistrationCommandHandlerTests()
     {
+        _recipientNotificationMaterializer.MaterializeInCurrentTransactionAsync(
+                Arg.Any<RecipientNotificationMaterialization>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                RecipientNotificationMaterialization request = call.ArgAt<RecipientNotificationMaterialization>(0);
+                return new RecipientNotificationMaterializationResult(
+                    new NotificationIntent
+                    {
+                        Id = request.IntentId,
+                        TenantId = request.Intent.TenantId!.Value,
+                        TemplateKey = request.Intent.TemplateKey!,
+                        DeduplicationKey = request.Intent.DeduplicationKey!
+                    },
+                    [],
+                    null,
+                    request.Email);
+            });
+        _eventRegistrationRepository.UpdateAndAdjustCapacityAsync(
+                Arg.Any<EventRegistration>(),
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var registration = call.ArgAt<EventRegistration>(0);
+                return new EventRegistrationTransitionResult(
+                    Changed: true,
+                    ParentIntentId: registration.EventRegistrationIntentId,
+                    PreviousStatus: registration.ApprovalStatusId,
+                    FinalStatus: registration.ApprovalStatusId,
+                    TransitionReason: EventRegistrationTransitionReason.Updated,
+                    OccurrenceId: call.ArgAt<Guid>(1),
+                    OccurredAt: call.ArgAt<DateTimeOffset>(2),
+                    ActorProvenance: call.ArgAt<EventRegistrationActorProvenance>(3),
+                    ActorUserId: call.ArgAt<Guid?>(4),
+                    ChildTransitions: []);
+            });
         _handler = new UpdateEventRegistrationCommandHandler(
             _eventRegistrationRepository,
             _userRepository,
             _eventSessionRepository,
             _approvalStatusRepository,
             _intentRepository,
+            _eventRepository,
             _atprotoRecordRepository,
+            _unitOfWork,
+            _currentUserService,
+            new RegistrationNotificationDeliveryService(new EventLifecycleEmailOutboxFactory()),
+            _recipientNotificationMaterializer,
             _cache);
+    }
+
+    [Test]
+    public async Task HandleWaitlistPromotionMaterializesOneGraphAndReturnsAuthoritativeReplacementId()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        Guid registrationIntentId = Guid.CreateVersion7();
+        Guid replacementRegistrationId = Guid.CreateVersion7();
+        Guid stamp = Guid.CreateVersion7();
+        EventRegistration registration = CreateRegistration(Guid.CreateVersion7(), tenantId, eventId);
+        registration.EventRegistrationIntentId = registrationIntentId;
+        registration.ApprovalStatusId = (int)ApprovalStatusEnum.Waitlisted;
+        registration.ConcurrencyStamp = stamp;
+        EventRegistrationIntent intent = CreateIntent(registrationIntentId, tenantId, eventId, registration.UserId);
+        _eventRegistrationRepository.GetById(registration.Id).Returns(registration);
+        _intentRepository.GetById(registrationIntentId).Returns(intent);
+        _eventRepository.GetById(eventId).Returns(CreateEvent(eventId, tenantId));
+        _userRepository.GetById(registration.UserId).Returns(CreateUser(registration.UserId));
+        _approvalStatusRepository.Exists((int)ApprovalStatusEnum.Approved).Returns(true);
+        _eventRegistrationRepository.UpdateAndAdjustCapacityAsync(
+                registration,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => new EventRegistrationTransitionResult(
+                Changed: true,
+                ParentIntentId: registrationIntentId,
+                PreviousStatus: (int)ApprovalStatusEnum.Waitlisted,
+                FinalStatus: (int)ApprovalStatusEnum.Approved,
+                TransitionReason: EventRegistrationTransitionReason.ApprovalStatusChanged,
+                OccurrenceId: call.ArgAt<Guid>(1),
+                OccurredAt: call.ArgAt<DateTimeOffset>(2),
+                ActorProvenance: call.ArgAt<EventRegistrationActorProvenance>(3),
+                ActorUserId: call.ArgAt<Guid?>(4),
+                ChildTransitions:
+                [
+                    new EventRegistrationChildTransition(
+                        replacementRegistrationId,
+                        registration.EventSessionId,
+                        (int)ApprovalStatusEnum.Waitlisted,
+                        (int)ApprovalStatusEnum.Approved)
+                ]));
+
+        var result = await _handler.Handle(
+            new UpdateEventRegistrationCommand
+            {
+                EventRegistrationId = registration.Id,
+                ExpectedConcurrencyStamp = stamp,
+                EventRegistrationDto = new UpdateEventRegistrationDto
+                {
+                    ApprovalStatus = new UpdateEventRegistrationApprovalStatusDto
+                    {
+                        ApprovalStatusId = OptionalUpdate<int?>.Set((int)ApprovalStatusEnum.Approved)
+                    }
+                }
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id).IsEqualTo(replacementRegistrationId);
+        await _recipientNotificationMaterializer.Received(1).MaterializeInCurrentTransactionAsync(
+            Arg.Is<RecipientNotificationMaterialization>(request =>
+                request.Intent.TemplateKey == "registration.waitlist-promoted"
+                && request.Email != null
+                && request.Email.Kind == EmailDispatchKind.WaitlistPromoted),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task HandleChildOnlyChangeWithUnchangedParentCreatesNoNotificationGraph()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        Guid registrationIntentId = Guid.CreateVersion7();
+        Guid stamp = Guid.CreateVersion7();
+        EventRegistration registration = CreateRegistration(Guid.CreateVersion7(), tenantId, eventId);
+        registration.EventRegistrationIntentId = registrationIntentId;
+        registration.ApprovalStatusId = (int)ApprovalStatusEnum.Approved;
+        registration.ConcurrencyStamp = stamp;
+        _eventRegistrationRepository.GetById(registration.Id).Returns(registration);
+        _intentRepository.GetById(registrationIntentId)
+            .Returns(CreateIntent(registrationIntentId, tenantId, eventId, registration.UserId));
+        _approvalStatusRepository.Exists((int)ApprovalStatusEnum.Approved).Returns(true);
+        _eventRegistrationRepository.UpdateAndAdjustCapacityAsync(
+                registration,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => new EventRegistrationTransitionResult(
+                Changed: true,
+                ParentIntentId: registrationIntentId,
+                PreviousStatus: (int)ApprovalStatusEnum.Approved,
+                FinalStatus: (int)ApprovalStatusEnum.Approved,
+                TransitionReason: EventRegistrationTransitionReason.Updated,
+                OccurrenceId: call.ArgAt<Guid>(1),
+                OccurredAt: call.ArgAt<DateTimeOffset>(2),
+                ActorProvenance: call.ArgAt<EventRegistrationActorProvenance>(3),
+                ActorUserId: call.ArgAt<Guid?>(4),
+                ChildTransitions: []));
+
+        await _handler.Handle(
+            new UpdateEventRegistrationCommand
+            {
+                EventRegistrationId = registration.Id,
+                ExpectedConcurrencyStamp = stamp,
+                EventRegistrationDto = new UpdateEventRegistrationDto
+                {
+                    ApprovalStatus = new UpdateEventRegistrationApprovalStatusDto
+                    {
+                        ApprovalStatusId = OptionalUpdate<int?>.Set((int)ApprovalStatusEnum.Approved)
+                    }
+                }
+            },
+            CancellationToken.None);
+
+        await _recipientNotificationMaterializer.DidNotReceive().MaterializeInCurrentTransactionAsync(
+            Arg.Any<RecipientNotificationMaterialization>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -54,6 +229,10 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
         await Assert.That(result.Errors).Contains("At least one event registration update group must be provided.");
         await _eventRegistrationRepository.DidNotReceive().UpdateAndAdjustCapacityAsync(
             Arg.Any<EventRegistration>(),
+            Arg.Any<Guid>(),
+            Arg.Any<DateTimeOffset>(),
+            Arg.Any<EventRegistrationActorProvenance>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
@@ -83,6 +262,10 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
         await Assert.That(result.Message).IsEqualTo("Event Registration not found.");
         await _eventRegistrationRepository.DidNotReceive().UpdateAndAdjustCapacityAsync(
             Arg.Any<EventRegistration>(),
+            Arg.Any<Guid>(),
+            Arg.Any<DateTimeOffset>(),
+            Arg.Any<EventRegistrationActorProvenance>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
@@ -112,6 +295,10 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
             .Throws<ConcurrencyConflictException>();
         await _eventRegistrationRepository.DidNotReceive().UpdateAndAdjustCapacityAsync(
             Arg.Any<EventRegistration>(),
+            Arg.Any<Guid>(),
+            Arg.Any<DateTimeOffset>(),
+            Arg.Any<EventRegistrationActorProvenance>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
@@ -146,6 +333,10 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
         await Assert.That(registration.ApprovalStatusId).IsNull();
         await _eventRegistrationRepository.Received(1).UpdateAndAdjustCapacityAsync(
             registration,
+            Arg.Any<Guid>(),
+            Arg.Any<DateTimeOffset>(),
+            Arg.Any<EventRegistrationActorProvenance>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
         await _cache.Received(1).RemoveAsync($"event:detail:{eventId}", Arg.Any<CancellationToken>());
         await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), Arg.Any<CancellationToken>());
@@ -183,6 +374,10 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
         await Assert.That(registration.EventId).IsEqualTo(eventId);
         await _eventRegistrationRepository.Received(1).UpdateAndAdjustCapacityAsync(
             registration,
+            Arg.Any<Guid>(),
+            Arg.Any<DateTimeOffset>(),
+            Arg.Any<EventRegistrationActorProvenance>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
         await _cache.Received(1).RemoveAsync($"event:detail:{eventId}", Arg.Any<CancellationToken>());
         await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), Arg.Any<CancellationToken>());
@@ -219,6 +414,10 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
             .Contains("Registration user, event, tenant, and parent intent are immutable.");
         await _eventRegistrationRepository.DidNotReceive().UpdateAndAdjustCapacityAsync(
             Arg.Any<EventRegistration>(),
+            Arg.Any<Guid>(),
+            Arg.Any<DateTimeOffset>(),
+            Arg.Any<EventRegistrationActorProvenance>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
         await _intentRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -262,6 +461,10 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
             .Contains("Registration user, event, tenant, and parent intent are immutable.");
         await _eventRegistrationRepository.DidNotReceive().UpdateAndAdjustCapacityAsync(
             Arg.Any<EventRegistration>(),
+            Arg.Any<Guid>(),
+            Arg.Any<DateTimeOffset>(),
+            Arg.Any<EventRegistrationActorProvenance>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -297,6 +500,10 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
             .Contains("Registration user, event, tenant, and parent intent are immutable.");
         await _eventRegistrationRepository.DidNotReceive().UpdateAndAdjustCapacityAsync(
             Arg.Any<EventRegistration>(),
+            Arg.Any<Guid>(),
+            Arg.Any<DateTimeOffset>(),
+            Arg.Any<EventRegistrationActorProvenance>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -330,6 +537,10 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
         await Assert.That(registration.ApprovalStatusId).IsEqualTo((int)ApprovalStatusEnum.Revoked);
         await _eventRegistrationRepository.Received(1).UpdateAndAdjustCapacityAsync(
             registration,
+            Arg.Any<Guid>(),
+            Arg.Any<DateTimeOffset>(),
+            Arg.Any<EventRegistrationActorProvenance>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -365,6 +576,10 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
         await Assert.That(result.Errors).Contains("Terminal registration approval statuses cannot be changed.");
         await _eventRegistrationRepository.DidNotReceive().UpdateAndAdjustCapacityAsync(
             Arg.Any<EventRegistration>(),
+            Arg.Any<Guid>(),
+            Arg.Any<DateTimeOffset>(),
+            Arg.Any<EventRegistrationActorProvenance>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -395,5 +610,68 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
             TenantId = tenantId,
             Tenant = null!
         };
+    }
+
+    private static EventRegistrationIntent CreateIntent(Guid id, Guid tenantId, Guid eventId, Guid userId)
+    {
+        return new EventRegistrationIntent
+        {
+            Id = id,
+            TenantId = tenantId,
+            Tenant = null!,
+            EventId = eventId,
+            Event = null!,
+            UserId = userId,
+            User = null!,
+            RegistrationScope = null!
+        };
+    }
+
+    private static Explore.Domain.Event CreateEvent(Guid id, Guid tenantId)
+    {
+        return new Explore.Domain.Event
+        {
+            Id = id,
+            TenantId = tenantId,
+            Tenant = null!,
+            Actor = null!,
+            Title = "Community Iftar",
+            VisibilityType = null!,
+            EventStatus = null!,
+            EventFormat = null!
+        };
+    }
+
+    private static User CreateUser(Guid id)
+    {
+        var user = new User
+        {
+            Id = id,
+            EmailVerified = true,
+            Pii = new UserPii
+            {
+                UserId = id,
+                Email = "attendee@example.test",
+                FirstName = "Test",
+                LastName = "Attendee"
+            }
+        };
+        user.Pii.User = user;
+        return user;
+    }
+
+    private sealed class ImmediateUnitOfWork : IUnitOfWork
+    {
+        public Task ExecuteInTransactionAsync(
+            Func<CancellationToken, Task> operation,
+            CancellationToken ct = default) => operation(ct);
+
+        public Task<T> ExecuteInTransactionAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => operation(ct);
+
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => operation(ct);
     }
 }

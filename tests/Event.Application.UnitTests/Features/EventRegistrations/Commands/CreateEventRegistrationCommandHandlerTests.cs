@@ -35,6 +35,8 @@ public sealed class CreateEventRegistrationCommandHandlerTests
     private readonly IContactShareConsentService _consentService = Substitute.For<IContactShareConsentService>();
     private readonly INotificationRepository _notificationRepository = Substitute.For<INotificationRepository>();
     private readonly INotificationOrchestrator _notificationOrchestrator = Substitute.For<INotificationOrchestrator>();
+    private readonly IRecipientNotificationMaterializer _recipientNotificationMaterializer = Substitute.For<IRecipientNotificationMaterializer>();
+    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IListmonkRegistrationSyncOutboxFactory _listmonkFactory = Substitute.For<IListmonkRegistrationSyncOutboxFactory>();
     private readonly IWebhookEventPublisher _webhookPublisher = Substitute.For<IWebhookEventPublisher>();
     private readonly CreateEventRegistrationCommandHandler _handler;
@@ -78,6 +80,29 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Any<WebhookEventBuildContext>(),
                 Arg.Any<CancellationToken>())
             .Returns(WebhookEventPublishResult.SkippedResult("webhooks_disabled"));
+        _unitOfWork.ExecuteSerializableAsync(
+                Arg.Any<Func<CancellationToken, Task<EventRegistrationIntentCreationResult>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<Func<CancellationToken, Task<EventRegistrationIntentCreationResult>>>(0)(
+                call.ArgAt<CancellationToken>(1)));
+        _recipientNotificationMaterializer.MaterializeInCurrentTransactionAsync(
+                Arg.Any<RecipientNotificationMaterialization>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                RecipientNotificationMaterialization request = call.ArgAt<RecipientNotificationMaterialization>(0);
+                return new RecipientNotificationMaterializationResult(
+                    new NotificationIntent
+                    {
+                        Id = request.IntentId,
+                        TenantId = request.Intent.TenantId!.Value,
+                        TemplateKey = request.Intent.TemplateKey!,
+                        DeduplicationKey = request.Intent.DeduplicationKey!
+                    },
+                    [],
+                    null,
+                    request.Email);
+            });
 
         _handler = new CreateEventRegistrationCommandHandler(
             _intentRepository,
@@ -89,29 +114,12 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             _tenantContext,
             CreateBusinessMetrics(),
             _consentService,
-            new EventLifecycleEmailOutboxFactory(_notificationOrchestrator),
             _listmonkFactory,
-            new RegistrationNotificationDeliveryService(
-                _notificationRepository,
-                CreateNotificationPreferenceResolver()),
+            new RegistrationNotificationDeliveryService(new EventLifecycleEmailOutboxFactory()),
+            _recipientNotificationMaterializer,
+            _unitOfWork,
             _webhookPublisher,
             Substitute.For<ILogger<CreateEventRegistrationCommandHandler>>());
-    }
-
-    private static INotificationPreferenceResolver CreateNotificationPreferenceResolver()
-    {
-        var resolver = Substitute.For<INotificationPreferenceResolver>();
-        resolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
-            .Returns(call => new NotificationPreferenceDecision(
-                call.Arg<NotificationPreferenceResolveRequest>().CategoryCode,
-                call.Arg<NotificationPreferenceResolveRequest>().ChannelCode,
-                true,
-                false,
-                false,
-                false,
-                "Default",
-                null));
-        return resolver;
     }
 
     [Test]
@@ -129,32 +137,33 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Any<IReadOnlyList<EventRegistration>>(),
                 (int)ApprovalStatusEnum.Approved,
                 (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>(),
                 Arg.Any<IntegrationSyncOutbox?>())
             .Returns(callInfo =>
             {
                 var intent = callInfo.ArgAt<EventRegistrationIntent>(0);
-                return new EventRegistrationIntentCreationResult(intent, []);
+                return CreationResult(intent, []);
             });
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Event Registration created successfully.");
-        await _notificationOrchestrator.Received(1).EnqueueAsync(
-            Arg.Is<NotificationIntentDraft>(draft =>
-                draft.Category == AppNotificationCategory.RegistrationLifecycle
-                && draft.TenantId == tenantId
-                && draft.RecipientKind == "User"
-                && draft.TemplateKey == "registration.confirmation"
-                && draft.SafePayloadReference == $"event-registration-intent:{result.Id}"
-                && draft.DeduplicationKey == $"event-registration-intent:{result.Id}:registration-confirmation"
-                && draft.CorrelationId == result.Id.ToString()
-                && draft.UserId == userId
-                && draft.EventId == eventId
-                && draft.IsUserFacing
-                && draft.IsIslamuInitiated),
+        await _recipientNotificationMaterializer.Received(1).MaterializeInCurrentTransactionAsync(
+            Arg.Is<RecipientNotificationMaterialization>(request =>
+                request.Intent.Category == AppNotificationCategory.RegistrationLifecycle
+                && request.Intent.TenantId == tenantId
+                && request.Intent.TemplateKey == "registration.confirmation"
+                && request.Intent.UserId == userId
+                && request.Intent.EventId == eventId
+                && request.InApp != null
+                && request.Email != null
+                && request.Email.RecipientEmail == "registrant@example.test"
+                && request.Email.RecipientAddressSource == RecipientAddressSource.TenantUserVerifiedEmail),
             Arg.Any<CancellationToken>());
         await _intentRepository.Received(1).CreateWithChildrenAndCapacityAsync(
             Arg.Is<EventRegistrationIntent>(intent =>
@@ -168,16 +177,11 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 && children[0].ApprovalStatusId == (int)ApprovalStatusEnum.Approved),
             (int)ApprovalStatusEnum.Approved,
             (int)ApprovalStatusEnum.Waitlisted,
+            Arg.Any<Guid>(),
+            Arg.Any<DateTimeOffset>(),
+            Arg.Any<EventRegistrationActorProvenance>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>(),
-            Arg.Is<EmailDispatchOutbox>(outbox =>
-                outbox != null
-                && outbox.TenantId == tenantId
-                && outbox.Kind == EmailDispatchKind.RegistrationConfirmation
-                && outbox.SourceType == "event_registration_intent"
-                && outbox.EventId == eventId
-                && outbox.UserId == userId
-                && outbox.RecipientEmail == "registrant@example.test"
-                && outbox.Status == EmailDispatchStatus.Pending),
             Arg.Is<IntegrationSyncOutbox?>(outbox => outbox == null));
         await _notificationRepository.DidNotReceive().Create(Arg.Any<Notification>());
     }
@@ -220,10 +224,13 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Any<IReadOnlyList<EventRegistration>>(),
                 (int)ApprovalStatusEnum.Approved,
                 (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>(),
                 Arg.Do<IntegrationSyncOutbox?>(outbox => capturedOutbox = outbox))
-            .Returns(callInfo => new EventRegistrationIntentCreationResult(callInfo.ArgAt<EventRegistrationIntent>(0), []));
+            .Returns(callInfo => CreationResult(callInfo.ArgAt<EventRegistrationIntent>(0), []));
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -256,10 +263,13 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Any<IReadOnlyList<EventRegistration>>(),
                 (int)ApprovalStatusEnum.Approved,
                 (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>(),
                 Arg.Any<IntegrationSyncOutbox?>())
-            .Returns(callInfo => new EventRegistrationIntentCreationResult(callInfo.ArgAt<EventRegistrationIntent>(0), []));
+            .Returns(callInfo => CreationResult(callInfo.ArgAt<EventRegistrationIntent>(0), []));
         _webhookPublisher.PublishAsync(
                 Arg.Do<WebhookEventBuildContext>(context => capturedContext = context),
                 Arg.Any<CancellationToken>())
@@ -299,10 +309,13 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Any<IReadOnlyList<EventRegistration>>(),
                 (int)ApprovalStatusEnum.Approved,
                 (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>(),
                 Arg.Any<IntegrationSyncOutbox?>())
-            .Returns(callInfo => new EventRegistrationIntentCreationResult(callInfo.ArgAt<EventRegistrationIntent>(0), []));
+            .Returns(callInfo => CreationResult(callInfo.ArgAt<EventRegistrationIntent>(0), []));
         _webhookPublisher.PublishAsync(
                 Arg.Do<WebhookEventBuildContext>(context => capturedContext = context),
                 Arg.Any<CancellationToken>())
@@ -341,10 +354,13 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Any<IReadOnlyList<EventRegistration>>(),
                 (int)ApprovalStatusEnum.Approved,
                 (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>(),
                 Arg.Any<IntegrationSyncOutbox?>())
-            .Returns(callInfo => new EventRegistrationIntentCreationResult(callInfo.ArgAt<EventRegistrationIntent>(0), []));
+            .Returns(callInfo => CreationResult(callInfo.ArgAt<EventRegistrationIntent>(0), []));
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -354,20 +370,18 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             Arg.Any<IReadOnlyList<EventRegistration>>(),
             (int)ApprovalStatusEnum.Approved,
             (int)ApprovalStatusEnum.Waitlisted,
+            Arg.Any<Guid>(),
+            Arg.Any<DateTimeOffset>(),
+            Arg.Any<EventRegistrationActorProvenance>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>(),
-            Arg.Is<EmailDispatchOutbox?>(outbox => outbox == null),
             Arg.Is<IntegrationSyncOutbox?>(outbox => outbox == null));
-        await _notificationOrchestrator.DidNotReceive().EnqueueAsync(
-            Arg.Any<NotificationIntentDraft>(),
+        await _recipientNotificationMaterializer.Received(1).MaterializeInCurrentTransactionAsync(
+            Arg.Is<RecipientNotificationMaterialization>(request =>
+                request.InApp != null
+                && request.Email == null
+                && request.EmailSkipReason == "recipient_email_unverified"),
             Arg.Any<CancellationToken>());
-        await _notificationRepository.Received(1).Create(Arg.Is<Notification>(notification =>
-            notification.TenantId == tenantId
-            && notification.UserId == userId
-            && notification.NotificationTypeId == (int)NotificationTypeEnum.RegistrationConfirmed
-            && notification.NotificationEntityTypeId == (int)NotificationEntityTypeEnum.EventRegistration
-            && notification.EntityId == result.Id.ToString()
-            && notification.NotificationReasonId == (int)NotificationReasonEnum.System
-            && notification.DeduplicationKey == $"event-registration-intent:{result.Id:N}:registration-confirmation:fallback"));
     }
 
     [Test]
@@ -393,10 +407,13 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Any<IReadOnlyList<EventRegistration>>(),
                 (int)ApprovalStatusEnum.Approved,
                 (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>(),
                 Arg.Any<IntegrationSyncOutbox?>())
-            .Returns(callInfo => new EventRegistrationIntentCreationResult(callInfo.ArgAt<EventRegistrationIntent>(0), []));
+            .Returns(callInfo => CreationResult(callInfo.ArgAt<EventRegistrationIntent>(0), []));
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -406,10 +423,18 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             Arg.Any<IReadOnlyList<EventRegistration>>(),
             (int)ApprovalStatusEnum.Approved,
             (int)ApprovalStatusEnum.Waitlisted,
+            Arg.Any<Guid>(),
+            Arg.Any<DateTimeOffset>(),
+            Arg.Any<EventRegistrationActorProvenance>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>(),
-            Arg.Is<EmailDispatchOutbox?>(outbox => outbox == null),
             Arg.Is<IntegrationSyncOutbox?>(outbox => outbox == null));
-        await _notificationRepository.Received(1).Create(Arg.Any<Notification>());
+        await _recipientNotificationMaterializer.Received(1).MaterializeInCurrentTransactionAsync(
+            Arg.Is<RecipientNotificationMaterialization>(request =>
+                request.InApp != null
+                && request.Email == null
+                && request.EmailSkipReason == "recipient_email_missing"),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -427,14 +452,17 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Any<IReadOnlyList<EventRegistration>>(),
                 (int)ApprovalStatusEnum.Approved,
                 (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>(),
                 Arg.Any<IntegrationSyncOutbox?>())
             .Returns(callInfo =>
             {
                 var intent = callInfo.ArgAt<EventRegistrationIntent>(0);
                 intent.ApprovalStatusId = (int)ApprovalStatusEnum.Waitlisted;
-                return new EventRegistrationIntentCreationResult(intent, [sessionId]);
+                return CreationResult(intent, [sessionId]);
             });
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -477,10 +505,13 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Do<IReadOnlyList<EventRegistration>>(children => capturedChildren = children),
                 Arg.Any<int>(),
                 (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>(),
                 Arg.Any<IntegrationSyncOutbox?>())
-            .Returns(callInfo => new EventRegistrationIntentCreationResult(
+            .Returns(callInfo => CreationResult(
                 callInfo.ArgAt<EventRegistrationIntent>(0),
                 []));
 
@@ -498,8 +529,11 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Any<IReadOnlyList<EventRegistration>>(),
                 expectedApprovalStatusId,
                 (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>(),
                 Arg.Any<IntegrationSyncOutbox?>());
         }
         else
@@ -509,8 +543,11 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Any<IReadOnlyList<EventRegistration>>(),
                 Arg.Any<int>(),
                 Arg.Any<int>(),
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>(),
                 Arg.Any<IntegrationSyncOutbox?>());
         }
     }
@@ -552,10 +589,13 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Any<IReadOnlyList<EventRegistration>>(),
                 (int)ApprovalStatusEnum.Pending,
                 (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>(),
                 Arg.Any<IntegrationSyncOutbox?>())
-            .Returns(callInfo => new EventRegistrationIntentCreationResult(
+            .Returns(callInfo => CreationResult(
                 callInfo.ArgAt<EventRegistrationIntent>(0),
                 []));
         WebhookEventBuildContext? webhookContext = null;
@@ -576,8 +616,11 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 && children.All(child => child.ApprovalStatusId == (int)ApprovalStatusEnum.Pending)),
             (int)ApprovalStatusEnum.Pending,
             (int)ApprovalStatusEnum.Waitlisted,
+            Arg.Any<Guid>(),
+            Arg.Any<DateTimeOffset>(),
+            Arg.Any<EventRegistrationActorProvenance>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>(),
-            Arg.Any<EmailDispatchOutbox?>(),
             Arg.Any<IntegrationSyncOutbox?>());
     }
 
@@ -624,8 +667,11 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             Arg.Any<IReadOnlyList<EventRegistration>>(),
             Arg.Any<int>(),
             Arg.Any<int>(),
+            Arg.Any<Guid>(),
+            Arg.Any<DateTimeOffset>(),
+            Arg.Any<EventRegistrationActorProvenance>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>(),
-            Arg.Any<EmailDispatchOutbox?>(),
             Arg.Any<IntegrationSyncOutbox?>());
     }
 
@@ -648,10 +694,13 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Any<IReadOnlyList<EventRegistration>>(),
                 (int)ApprovalStatusEnum.Approved,
                 (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>(),
                 Arg.Any<IntegrationSyncOutbox?>())
-            .Returns(new EventRegistrationIntentCreationResult(
+            .Returns(CreationResult(
                 new EventRegistrationIntent
                 {
                     Id = existingIntentId,
@@ -726,13 +775,16 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Any<IReadOnlyList<EventRegistration>>(),
                 (int)ApprovalStatusEnum.Approved,
                 (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>(),
                 Arg.Any<IntegrationSyncOutbox?>())
             .Returns(callInfo =>
             {
                 var intent = callInfo.ArgAt<EventRegistrationIntent>(0);
-                return new EventRegistrationIntentCreationResult(intent, []);
+                return CreationResult(intent, []);
             });
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -746,8 +798,11 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 && children.Select(child => child.EventSessionId).ToHashSet().SetEquals(new[] { firstSessionId, secondSessionId })),
             (int)ApprovalStatusEnum.Approved,
             (int)ApprovalStatusEnum.Waitlisted,
+            Arg.Any<Guid>(),
+            Arg.Any<DateTimeOffset>(),
+            Arg.Any<EventRegistrationActorProvenance>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>(),
-            Arg.Any<EmailDispatchOutbox?>(),
             Arg.Any<IntegrationSyncOutbox?>());
     }
 
@@ -821,10 +876,13 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Do<IReadOnlyList<EventRegistration>>(children => capturedChildren = children),
                 (int)ApprovalStatusEnum.Pending,
                 (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<EmailDispatchOutbox?>(),
                 Arg.Any<IntegrationSyncOutbox?>())
-            .Returns(callInfo => new EventRegistrationIntentCreationResult(
+            .Returns(callInfo => CreationResult(
                 callInfo.ArgAt<EventRegistrationIntent>(0),
                 []));
 
@@ -940,6 +998,30 @@ public sealed class CreateEventRegistrationCommandHandlerTests
 
         user.Pii.User = user;
         return user;
+    }
+
+    private static EventRegistrationIntentCreationResult CreationResult(
+        EventRegistrationIntent intent,
+        IReadOnlyList<Guid> waitlistedSessionIds,
+        bool WasExisting = false)
+    {
+        return new EventRegistrationIntentCreationResult(
+            intent,
+            waitlistedSessionIds,
+            new EventRegistrationTransitionResult(
+                Changed: true,
+                ParentIntentId: intent.Id,
+                PreviousStatus: null,
+                FinalStatus: intent.ApprovalStatusId,
+                TransitionReason: waitlistedSessionIds.Count == 0
+                    ? EventRegistrationTransitionReason.Created
+                    : EventRegistrationTransitionReason.CapacityWaitlisted,
+                OccurrenceId: Guid.CreateVersion7(),
+                OccurredAt: DateTimeOffset.UtcNow,
+                ActorProvenance: EventRegistrationActorProvenance.Attendee,
+                ActorUserId: intent.UserId,
+                ChildTransitions: []),
+            WasExisting);
     }
 
     private static BusinessMetrics CreateBusinessMetrics()

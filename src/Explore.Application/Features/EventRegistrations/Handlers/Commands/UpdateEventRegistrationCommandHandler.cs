@@ -2,7 +2,10 @@
 // ABOUTME: Applies explicit groups atomically, saves once, and invalidates affected event caches.
 
 using Explore.Application.Caching;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventRegistration.Validators;
 using Explore.Application.Exceptions;
@@ -22,7 +25,12 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
     private readonly IEventSessionRepository _eventSessionRepository;
     private readonly IApprovalStatusRepository _approvalStatusRepository;
     private readonly IEventRegistrationIntentRepository _intentRepository;
+    private readonly IEventRepository _eventRepository;
     private readonly IAtprotoRecordRepository _atprotoRecordRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IRegistrationNotificationDeliveryService _notificationDeliveryService;
+    private readonly IRecipientNotificationMaterializer _recipientNotificationMaterializer;
     private readonly HybridCache _cache;
 
     public UpdateEventRegistrationCommandHandler(
@@ -31,7 +39,12 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
         IEventSessionRepository eventSessionRepository,
         IApprovalStatusRepository approvalStatusRepository,
         IEventRegistrationIntentRepository intentRepository,
+        IEventRepository eventRepository,
         IAtprotoRecordRepository atprotoRecordRepository,
+        IUnitOfWork unitOfWork,
+        ICurrentUserService currentUserService,
+        IRegistrationNotificationDeliveryService notificationDeliveryService,
+        IRecipientNotificationMaterializer recipientNotificationMaterializer,
         HybridCache cache)
     {
         _eventRegistrationRepository = eventRegistrationRepository;
@@ -39,7 +52,12 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
         _eventSessionRepository = eventSessionRepository;
         _approvalStatusRepository = approvalStatusRepository;
         _intentRepository = intentRepository;
+        _eventRepository = eventRepository;
         _atprotoRecordRepository = atprotoRecordRepository;
+        _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
+        _notificationDeliveryService = notificationDeliveryService;
+        _recipientNotificationMaterializer = recipientNotificationMaterializer;
         _cache = cache;
     }
 
@@ -58,13 +76,51 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
             return response;
         }
 
+        var occurrenceId = Guid.CreateVersion7();
+        var occurredAt = DateTimeOffset.UtcNow;
+        var notificationIntentId = Guid.CreateVersion7();
+        var emailDispatchOutboxId = Guid.CreateVersion7();
+        var outcome = await _unitOfWork.ExecuteSerializableAsync(
+            ct => ExecuteUpdateAsync(
+                request,
+                occurrenceId,
+                occurredAt,
+                notificationIntentId,
+                emailDispatchOutboxId,
+                ct),
+            cancellationToken);
+
+        if (outcome.Transition?.Changed == true)
+        {
+            await InvalidateCachesAsync(
+                outcome.OldEventId,
+                outcome.NewEventId,
+                outcome.TenantId,
+                cancellationToken);
+        }
+
+        return outcome.Response;
+    }
+
+    private async Task<UpdateExecutionOutcome> ExecuteUpdateAsync(
+        UpdateEventRegistrationCommand request,
+        Guid occurrenceId,
+        DateTimeOffset occurredAt,
+        Guid notificationIntentId,
+        Guid emailDispatchOutboxId,
+        CancellationToken cancellationToken)
+    {
+        var response = new BaseCommandResponse<Guid>();
         var eventRegistration = await _eventRegistrationRepository.GetById(request.EventRegistrationId);
 
         if (eventRegistration == null)
         {
-            response.Success = false;
-            response.Message = "Event Registration not found.";
-            return response;
+            return new UpdateExecutionOutcome(
+                new BaseCommandResponse<Guid>
+                {
+                    Success = false,
+                    Message = "Event Registration not found."
+                });
         }
 
         if (eventRegistration.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
@@ -85,7 +141,7 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
             var user = await _userRepository.GetById(update.User.UserId);
             if (user is null)
             {
-                return ValidationFailure("UserId not found.");
+                return new UpdateExecutionOutcome(ValidationFailure("UserId not found."));
             }
 
             effectiveUserId = user.Id;
@@ -99,12 +155,12 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
             var session = await _eventSessionRepository.GetById(update.Session.EventSessionId);
             if (session is null)
             {
-                return ValidationFailure("EventSessionId not found.");
+                return new UpdateExecutionOutcome(ValidationFailure("EventSessionId not found."));
             }
 
             if (session.TenantId != eventRegistration.TenantId)
             {
-                return ValidationFailure("EventSessionId must belong to the registration tenant.");
+                return new UpdateExecutionOutcome(ValidationFailure("EventSessionId must belong to the registration tenant."));
             }
 
             effectiveSessionId = session.Id;
@@ -128,20 +184,21 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
                 eventRegistration.TenantId,
                 effectiveTenantId))
         {
-            return ValidationFailure("Registration user, event, tenant, and parent intent are immutable.");
+            return new UpdateExecutionOutcome(ValidationFailure("Registration user, event, tenant, and parent intent are immutable."));
         }
 
+        EventRegistrationIntent? registrationIntent = null;
         if (effectiveIntentId.HasValue)
         {
-            var intent = await _intentRepository.GetById(effectiveIntentId.Value);
-            if (intent is null)
+            registrationIntent = await _intentRepository.GetById(effectiveIntentId.Value);
+            if (registrationIntent is null)
             {
-                return ValidationFailure("EventRegistrationIntentId not found.");
+                return new UpdateExecutionOutcome(ValidationFailure("EventRegistrationIntentId not found."));
             }
 
-            if (intent.TenantId != effectiveTenantId || intent.EventId != effectiveEventId)
+            if (registrationIntent.TenantId != effectiveTenantId || registrationIntent.EventId != effectiveEventId)
             {
-                return ValidationFailure("EventRegistrationIntentId must belong to the effective registration event and tenant.");
+                return new UpdateExecutionOutcome(ValidationFailure("EventRegistrationIntentId must belong to the effective registration event and tenant."));
             }
         }
 
@@ -150,7 +207,7 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
             var duplicate = await _eventRegistrationRepository.GetRegistrationByUserAndSession(effectiveUserId, effectiveSessionId, cancellationToken);
             if (duplicate is not null && duplicate.Id != eventRegistration.Id)
             {
-                return ValidationFailure("A registration for the selected user and session already exists.");
+                return new UpdateExecutionOutcome(ValidationFailure("A registration for the selected user and session already exists."));
             }
         }
 
@@ -161,13 +218,13 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
                     eventRegistration.ApprovalStatusId,
                     desiredApprovalStatusId))
             {
-                return ValidationFailure("Terminal registration approval statuses cannot be changed.");
+                return new UpdateExecutionOutcome(ValidationFailure("Terminal registration approval statuses cannot be changed."));
             }
 
             if (desiredApprovalStatusId.HasValue
                 && !await _approvalStatusRepository.Exists(desiredApprovalStatusId.Value))
             {
-                return ValidationFailure("ApprovalStatusId not found.");
+                return new UpdateExecutionOutcome(ValidationFailure("ApprovalStatusId not found."));
             }
         }
 
@@ -175,7 +232,7 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
             && update.AtprotoRecord.AtprotoRecordId.Value.HasValue
             && !await _atprotoRecordRepository.Exists(update.AtprotoRecord.AtprotoRecordId.Value.Value))
         {
-            return ValidationFailure("AtprotoRecordId not found.");
+            return new UpdateExecutionOutcome(ValidationFailure("AtprotoRecordId not found."));
         }
 
         ApplyUser(eventRegistration, update.User);
@@ -184,14 +241,55 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
         ApplyApprovalStatus(eventRegistration, update.ApprovalStatus);
         ApplyAtprotoRecord(eventRegistration, update.AtprotoRecord);
 
-        await _eventRegistrationRepository.UpdateAndAdjustCapacityAsync(eventRegistration, cancellationToken);
-        await InvalidateCachesAsync(oldEventId, eventRegistration.EventId, eventRegistration.TenantId, cancellationToken);
+        var actorUserId = _currentUserService.UserId;
+        var actorProvenance = actorUserId switch
+        {
+            null => EventRegistrationActorProvenance.System,
+            var id when id == eventRegistration.UserId => EventRegistrationActorProvenance.Attendee,
+            _ => EventRegistrationActorProvenance.Organizer
+        };
+        var transition = await _eventRegistrationRepository.UpdateAndAdjustCapacityAsync(
+            eventRegistration,
+            occurrenceId,
+            occurredAt,
+            actorProvenance,
+            actorUserId,
+            cancellationToken);
+
+        if (registrationIntent is not null
+            && transition.Changed
+            && transition.PreviousStatus != transition.FinalStatus)
+        {
+            var parentEvent = await _eventRepository.GetById(registrationIntent.EventId)
+                ?? throw new InvalidOperationException("Registration lifecycle notification event was not found.");
+            var recipient = await _userRepository.GetById(registrationIntent.UserId)
+                ?? throw new InvalidOperationException("Registration lifecycle notification recipient was not found.");
+            RecipientNotificationMaterialization? materialization =
+                _notificationDeliveryService.CreateLifecycleMaterialization(
+                    registrationIntent,
+                    parentEvent.Title,
+                    recipient,
+                    transition,
+                    notificationIntentId,
+                    emailDispatchOutboxId);
+            if (materialization is not null)
+            {
+                await _recipientNotificationMaterializer.MaterializeInCurrentTransactionAsync(
+                    materialization,
+                    cancellationToken);
+            }
+        }
 
         response.Success = true;
-        response.Id = eventRegistration.Id;
+        response.Id = transition.ChildTransitions.LastOrDefault()?.RegistrationId ?? eventRegistration.Id;
         response.Message = "Event Registration updated successfully.";
 
-        return response;
+        return new UpdateExecutionOutcome(
+            response,
+            transition,
+            oldEventId,
+            eventRegistration.EventId,
+            eventRegistration.TenantId);
     }
 
     private static void ApplyUser(EventRegistration registration, UpdateEventRegistrationUserDto? group)
@@ -261,4 +359,11 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
             Errors = [error]
         };
     }
+
+    private sealed record UpdateExecutionOutcome(
+        BaseCommandResponse<Guid> Response,
+        EventRegistrationTransitionResult? Transition = null,
+        Guid OldEventId = default,
+        Guid NewEventId = default,
+        Guid TenantId = default);
 }
