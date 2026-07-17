@@ -1,6 +1,7 @@
 // ABOUTME: EF Core implementation of IUnitOfWork using CreateExecutionStrategy for Npgsql retry compatibility.
 // ABOUTME: Clears failed-attempt tracking before retry and preserves original errors during rollback cleanup.
 
+using System.Data;
 using System.Data.Common;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
@@ -43,6 +44,21 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
 
     public async Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default)
     {
+        return await ExecuteCoreAsync(operation, isolationLevel: null, ct);
+    }
+
+    public async Task<T> ExecuteSerializableAsync<T>(
+        Func<CancellationToken, Task<T>> operation,
+        CancellationToken ct = default)
+    {
+        return await ExecuteCoreAsync(operation, IsolationLevel.Serializable, ct);
+    }
+
+    private async Task<T> ExecuteCoreAsync<T>(
+        Func<CancellationToken, Task<T>> operation,
+        IsolationLevel? isolationLevel,
+        CancellationToken ct)
+    {
         // Nested transaction guard — fail fast with a deterministic error
         if (_dbContext.Database.CurrentTransaction != null)
             throw new InvalidOperationException(
@@ -65,7 +81,9 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
         var strategy = _createExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
         {
-            await using var transaction = await _beginTransaction(ct);
+            await using var transaction = isolationLevel.HasValue
+                ? await _dbContext.Database.BeginTransactionAsync(isolationLevel.Value, ct)
+                : await _beginTransaction(ct);
             try
             {
                 var result = await operation(ct);

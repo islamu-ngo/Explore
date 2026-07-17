@@ -878,5 +878,10 @@ public sealed class TenantPlanCqrsHandlerTests
             ExecutionCount++;
             return await operation(ct);
         }
+
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) =>
+            ExecuteInTransactionAsync(operation, ct);
     }
 }

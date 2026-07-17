@@ -801,6 +801,10 @@ public sealed class WebhookDeliveryDrainServiceTests
             Func<CancellationToken, Task<T>> operation,
             CancellationToken ct = default) =>
             await operation(ct);
+
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => ExecuteInTransactionAsync(operation, ct);
     }
 
     private sealed class StaticHttpClientFactory(HttpClient client) : IHttpClientFactory

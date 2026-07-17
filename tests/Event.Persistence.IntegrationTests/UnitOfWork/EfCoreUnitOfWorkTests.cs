@@ -1,6 +1,7 @@
 // ABOUTME: Integration tests for EfCoreUnitOfWork transactional correctness against a real Postgres database.
 // ABOUTME: Covers: rollback on failure, commit on success, nested transaction guard, generic overload.
 
+using System.Data;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
@@ -8,6 +9,7 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -95,6 +97,19 @@ public class EfCoreUnitOfWorkTests
         using var verifyContext = _fixture.CreateDbContext();
         var persisted = await verifyContext.Set<SystemSetting>().FirstOrDefaultAsync(s => s.SettingKey == key);
         await Assert.That(persisted).IsNotNull();
+    }
+
+    [Test]
+    public async Task ExecuteSerializableAsync_UsesSerializableIsolation()
+    {
+        using var context = _fixture.CreateDbContext();
+        var unitOfWork = new EfCoreUnitOfWork(context);
+
+        var isolationLevel = await unitOfWork.ExecuteSerializableAsync(
+            _ => Task.FromResult(
+                context.Database.CurrentTransaction!.GetDbTransaction().IsolationLevel));
+
+        await Assert.That(isolationLevel).IsEqualTo(IsolationLevel.Serializable);
     }
 
     [Test]

@@ -174,5 +174,9 @@ public sealed class ResumeWebhookEndpointCommandHandlerTests
             Func<CancellationToken, Task<T>> operation,
             CancellationToken ct = default) =>
             await operation(ct);
+
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => ExecuteInTransactionAsync(operation, ct);
     }
 }

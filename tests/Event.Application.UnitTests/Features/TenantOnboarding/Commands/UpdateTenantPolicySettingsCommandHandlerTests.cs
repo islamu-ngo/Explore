@@ -304,6 +304,11 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
             return result;
         }
 
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) =>
+            ExecuteInTransactionAsync(operation, ct);
+
         private void ThrowIfRollingBack()
         {
             if (RollbackAfterOperation)

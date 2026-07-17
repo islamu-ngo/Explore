@@ -437,5 +437,10 @@ public sealed class WebhookConsumerHandlersTests
             Func<CancellationToken, Task<T>> operation,
             CancellationToken cancellationToken = default) =>
             operation(cancellationToken);
+
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default) =>
+            ExecuteInTransactionAsync(operation, cancellationToken);
     }
 }

@@ -188,6 +188,10 @@ public sealed class WebhookRetentionCleanupServiceTests
             TransactionCount++;
             return await operation(ct);
         }
+
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => ExecuteInTransactionAsync(operation, ct);
     }
 
     private sealed class StaticOptionsMonitor<T>(T currentValue) : IOptionsMonitor<T>

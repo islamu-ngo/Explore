@@ -286,5 +286,9 @@ public sealed class RepairWebhookProviderBindingCommandHandlerTests
             Func<CancellationToken, Task<T>> operation,
             CancellationToken ct = default) =>
             operation(ct);
+
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => ExecuteInTransactionAsync(operation, ct);
     }
 }

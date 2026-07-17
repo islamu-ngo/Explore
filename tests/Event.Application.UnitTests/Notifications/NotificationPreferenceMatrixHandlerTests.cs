@@ -366,5 +366,10 @@ public sealed class NotificationPreferenceMatrixHandlerTests
             ExecuteCount++;
             return await operation(cancellationToken);
         }
+
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default) =>
+            ExecuteInTransactionAsync(operation, cancellationToken);
     }
 }
