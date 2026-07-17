@@ -498,7 +498,7 @@ Current counters include:
 - `explore.webhooks.retries_scheduled` (`provider`, `operation`) and `explore.webhooks.dead_letters` (`provider`, `operation`) — automatic retry and terminal dead-letter transitions.
 - `explore.webhooks.publication_unknown_age` (`provider`) and `explore.webhooks.manual_reconciliations` (`provider`) — uncertain publication age observations and operator-owned reconciliation transitions.
 - `explore.webhooks.endpoint_auto_pauses` (`provider`) — counts only the transition into automatic pause, not later failures while already paused.
-- `explore.webhooks.provider_health_checks` (`provider`, `outcome`) — independent Local/Svix readiness observations.
+- `explore.webhooks.provider_health_checks` (`provider`, `outcome`) — independent Local, Svix, and Coop-effect readiness observations.
 - `explore.webhooks.retention.cleanup_runs` (`mode`, `outcome`) and `explore.webhooks.retention.cleanup_items` (`mode`, `data_kind`) — cleanup pass and bounded evidence-category counts; unknown input collapses to `unknown`.
 - `explore.ai.provider.health_checks` (`provider`, `status`, `reason`) — AI provider readiness outcomes; labels intentionally exclude endpoint URLs, API keys, model IDs, prompts, responses, provider request IDs, tenant/user IDs, and raw errors.
 - `explore.ai.provider.requests` (`provider`, `outcome`, `failure_category`) — AI provider call outcomes; labels intentionally exclude tenant/user prompt content, selected reference content, raw tool payloads, model IDs, endpoint URLs, API keys, provider request IDs, and raw provider errors.
@@ -517,6 +517,25 @@ Current counters include:
 - `explore.storage.reconciliation_runs` (`mode`, `outcome`, `failure_category`) — storage drift scan outcomes; labels intentionally exclude tenant IDs, storage-object IDs, object keys, filenames, paths, endpoints, bucket names, and raw provider errors.
 - `explore.storage.reconciliation_objects` (`provider`, `category`, `action`, `outcome`, `failure_category`) — aggregate object decisions from reconciliation scans; labels are bounded to provider/category/action/outcome and intentionally exclude identifiers, paths, object keys, filenames, and secrets.
 - `explore.storage.provider_tests` (`provider`, `outcome`, `failure_category`) — admin storage provider test outcomes; labels intentionally exclude local filesystem roots, S3 endpoints, bucket names, access keys, secrets, and raw exception text.
+
+### Incoming Coop Effect Operations
+
+`POST /api/integrations/moderation/coop/callback` acknowledges a valid decision callback only after the retained inbox row and unique effect pointer commit. Execution is asynchronous: the pointer worker uses a fenced renewable lease, loads the retained callback, invokes `ProcessCoopDecisionCallbackCommand`, and completes the pointer with an applied-effect receipt only after command success.
+
+Operator sequence:
+
+1. Check `/health/webhooks/coop-effects`. `Degraded` means processing is disabled, the due backlog reached `EffectBacklogWarningThreshold`, or stale leases reached `EffectStaleLeaseWarningThreshold`; `Unhealthy` means the PostgreSQL readiness query failed. The payload contains aggregate counts and settings only.
+2. Query `GET /api/admin/incoming-webhook-effects/status?tenantId={tenantId}&limit=50` with an authorized operator identity. Inspect status, generation/fence, attempts, next-attempt/lease/terminal timestamps, and bounded failure evidence. Callback bytes, hashes, provider decision IDs, headers, and raw exceptions are deliberately unavailable.
+3. Fix the underlying permanent condition before redrive. Follow the item HAL `redrive` relation only when present, then POST its `expectedProcessingGeneration` and a bounded operator reason. A stale generation, non-dead-lettered row, expired replay window, or missing retained payload fails closed.
+4. Confirm the processing generation advanced, an audit event was appended, and the row later becomes `Completed`. Do not edit pointer status, fences, or receipts directly in PostgreSQL.
+
+Incident controls:
+
+- Set `Webhooks:IncomingProcessing:Enabled=false` and restart API replicas to pause the incoming/effect background loops. Intake remains durable. Re-enable only after checking accumulated backlog and database capacity.
+- A cancelled or crashed worker leaves its active lease for fenced expiry recovery. Never manually clear a token or reuse a stale claim; a recovered claim receives a new token and higher fence.
+- Retention cleanup cannot clear retained callback bytes while an effect is pending, failed, or processing. Completed/dead-lettered pointers permit payload cleanup only after the inbox payload-retention timestamp and replay window have expired. After cleanup, redrive is intentionally unavailable.
+- Alert on `explore.webhooks.processing_outcomes{provider="coop",operation="incoming_effect"}`, `explore.webhooks.retries_scheduled`, `explore.webhooks.dead_letters`, and `explore.webhooks.provider_health_checks`. These labels are closed and PII-free; logs include bounded failure type/category only.
+- Back up the retained inbox, effect pointer, applied-effect receipt, and webhook audit tables together. Restoring only part of this relationship can remove replay evidence or cause a settled command to appear pending.
 
 ### Support Access Operations
 
@@ -622,6 +641,19 @@ The scheduler job catalog is Application-owned through `IScheduledJobRegistry`. 
 | `event-reminder-dispatch` | One-off time trigger | Pointer-only IDs | Pre-persisted `EmailDispatchOutbox` row |
 
 Planned-only jobs are `general-outbox-drain`, `pds-sync-drain`, `dead-letter-summary`, `waitlist-promotion-scan`, and `tenant-maintenance-scan`. Do not migrate general outbox or PDS workers to TickerQ until EmailDispatch has green multi-node duplicate execution and crash-window recovery proof.
+
+### Approved Lifecycle-Email Operations (Planned)
+
+The lifecycle expansion keeps PostgreSQL as the delivery ledger and adds these release requirements:
+
+- redact recipient, reply-to, subject, and body for sent/skipped work after 180 days; attempts/receipts follow the parent and cannot retain PII longer;
+- keep dead-lettered, `Unknown`, and parked replay material until explicit operator resolution, then apply the same 180-day clock; `ContentRedactedAt` permanently removes replay authority;
+- on tenant deletion, suppress pending work, redact content, and retain only governance-required non-PII audit metadata;
+- process bounded batches with fair tenant rounds, configurable global/per-tenant concurrency and SMTP rate limits, required-work priority, and high/low backlog hysteresis that defers optional reminders without consuming SMTP attempt count;
+- expose oldest pending email/fanout age, success/failure and retryable/permanent rates, dead-letter/unknown/parked counts, typed skip counts, fanout progress/lease contention, and bounded tenant backlog without recipient PII;
+- provide authenticated HAL-gated controls to pause/drain, suppress a compromised tenant sender, inspect/reconcile/replay eligible failures, adjust rates, and dry-run cleanup.
+
+Eligibility and the occurrence/version fence are checked in the conditional provider-handoff transition. Before that transition, cancellation, consent withdrawal, preference, deletion, and supersession can skip work. After it, in-flight cancellation is not promised; I/O/protocol/process/persistence uncertainty settles as `Unknown` and is never automatically resent.
 
 ### Optional RabbitMQ Dispatch Operations
 

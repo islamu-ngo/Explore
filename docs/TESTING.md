@@ -151,6 +151,16 @@ Skip reason requirements:
 
 Email tests prove durable state and provider behavior at the lowest layer that can observe each risk. Unit tests can fake SMTP only when the behavior is pure decision logic; integration and runtime tests use real infrastructure such as PostgreSQL, Mailpit, RabbitMQ, and Keycloak.
 
+The approved lifecycle-email workstream retains a stricter reviewed phase gate than the implementation-plan skill default. Each runtime phase runs one Release build and every directly affected full project named in its task ledger. Phases 1 and 7 include `Event.API.IntegrationTests`; they also run the explicit positive `Email` Infrastructure/Mailpit lane and record the exact non-zero test count. A broad OR filter or `--minimum-expected-tests 1` alone is not release evidence for new lifecycle behavior.
+
+| Planned phase | Full project additions beyond the owning lower layers |
+|---|---|
+| Phase 0B Coop | Infrastructure and API integration plus Architecture |
+| Phase 1 recipient delivery | Infrastructure, API integration, Architecture, and explicit Mailpit |
+| Phase 4 event/session triggers | Infrastructure, API integration, and Architecture |
+| Phase 5 reporter communication | Infrastructure, API, Blazor Client, Blazor BFF, and Architecture |
+| Phase 7 reminders | Infrastructure, API integration, Architecture, and explicit Mailpit |
+
 | Scenario | Primary Test Project | Required Evidence |
 |---|---|---|
 | Direct SMTP to local capture service | `Explore.Infrastructure.Tests` | `SmtpEmailServiceMailpitTests` connects to Mailpit and sends one message; `SmtpEmailServiceConfigurationTests` proves missing SMTP config fails before provider handoff without leaking secrets. |

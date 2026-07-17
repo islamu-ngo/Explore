@@ -309,8 +309,21 @@ Checks:
 2. Check `/health`: `smtp` covers configured SMTP/Mailpit connectivity, `email-dispatch` covers Basic Dispatch trigger readiness, and `email-dispatch-rabbitmq` covers optional broker topology only when RabbitMQ mode is enabled. If Mailpit is stopped in FullLocal, API `/health` should return HTTP 503 with `smtp` Unhealthy. The SMTP readiness probe is bounded to five seconds; the 2026-07-04 local proof returned in `5.014s`.
 3. Inspect HAL-gated EmailDispatch admin status before replaying rows. Replay and park actions must be driven by `_links`; do not infer permissions from local roles.
 4. Query `email_dispatch_outbox` by status and tenant. `Unknown` rows are inspectable crash-window outcomes; `DeadLettered` rows require operator review; `Skipped` rows are terminal preference/compliance outcomes.
+   - For planned lifecycle rows, compare linked `NotificationDelivery` and immutable occurrence/policy versions. Do not replay `ContentRedactedAt`, consent-withdrawn, superseded, tenant-deleted, or post-handoff `Unknown` work until the authorized reconciliation surface says it is replayable.
+   - If one tenant dominates the backlog, inspect fair-selection, per-tenant concurrency/rate limits, and high/low watermarks before increasing global throughput. Optional reminders should defer before required cancellation/moderation work.
 5. In RabbitMQ mode, verify broker connectivity, dispatch/DLX/parking topology, and bounded logs. Broker payloads must contain only pointer fields, never recipient, subject, body, SMTP credentials, provider IDs, or raw errors.
 6. Use `docs/EMAIL_NOTIFICATIONS.md` for focused Mailpit and RabbitMQ verification commands.
+
+**Coop callback retained but no moderation decision occurs:**
+
+1. Check `/health/webhooks/coop-effects` for disabled processing, due backlog, stale leases, or a PostgreSQL readiness failure.
+2. Use the authenticated tenant-scoped `GET /api/admin/incoming-webhook-effects/status` surface. Do not query or copy raw callback bytes into tickets or logs.
+3. `Pending`/`Failed` waits for `NextAttemptAt`; `Processing` with an expired lease is recovered by the next claim; `DeadLettered` requires the permanent input/configuration problem to be corrected before operator redrive.
+4. Confirm the retained inbox message still has payload bytes and its replay window has not expired. Cleanup deliberately makes redrive unavailable after that boundary.
+5. Use only the HAL `redrive` action and the row's current processing generation. Generation conflict means another operator/worker already changed the row; reload status instead of retrying stale input.
+6. Do not directly invoke `ProcessCoopDecisionCallbackCommand` or mutate pointer/receipt rows. The durable worker is the authority for fenced execution and command-success settlement.
+
+Duplicate callbacks, duplicate pointers, dispatcher replay, and expired-worker replay should settle idempotently. If a completed report case appears reopened, treat that as a moderation state-machine incident: retain the safe effect/audit identifiers, stop redrive, and investigate the decision command's stale/out-of-order guard without exporting provider payloads or raw errors.
 
 ## Aspire Detached Lifecycle Issues
 

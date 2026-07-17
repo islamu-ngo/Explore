@@ -412,6 +412,10 @@ For explicit `AUTHORIZATION_PROVIDER=cerbos`, PDP reachability alone is not onbo
 
 Basic Email Dispatch readiness is reported by the API `email-dispatch` health check. `Degraded` means dispatch is intentionally disabled. `Unhealthy` means the selected trigger is not usable, for example `EmailDispatchProcessor:Mode=TickerQ` while `Scheduler:TickerQ:Enabled=false`. RabbitMQ is not part of Basic Dispatch Mode readiness.
 
+The approved lifecycle-email expansion remains self-hostable with PostgreSQL plus SMTP; Mailpit remains the local capture service and RabbitMQ remains optional. Before enabling new lifecycle triggers, operators must configure bounded concurrency/rates/backpressure, retention/redaction cleanup, alert thresholds, and tenant/global pause controls, then prove a PostgreSQL -> attempt/receipt -> SMTP -> Mailpit run. Required cancellation/moderation work must not be starved by one tenant or optional reminders.
+
+Coop decision execution uses retained signed callbacks plus a specialized fenced effect pointer. Before enabling Coop reporter-outcome convergence, verify `/health/webhooks/coop-effects`, duplicate/conflict quarantine, replay-window cleanup ordering, command-success receipt/pointer settlement, and authenticated HAL redrive in the target deployment. Set `Webhooks:IncomingProcessing:Enabled=false` and restart API replicas to pause effect draining during an incident without disabling durable callback intake.
+
 Optional RabbitMQ dispatch readiness is reported separately by `email-dispatch-rabbitmq`. With `EmailDispatchRabbitMq:Enabled=false` the check is healthy without requiring a broker. If an operator explicitly enables RabbitMQ mode, broker or topology failures make readiness unhealthy because the selected transport cannot safely publish pointer events.
 
 Expired write-retry replay-cache cleanup is reported by `idempotency-cleanup`. `Healthy` means cleanup is enabled in delete or dry-run mode. `Degraded` means cleanup is intentionally disabled; expired keys remain ineligible for replay, but physical cleanup is paused.
