@@ -1,0 +1,97 @@
+@* ABOUTME: Renders upcoming home-discovery events as MangaDex-inspired compact update rows. *@
+@* ABOUTME: Preserves vertical source order, direct event links, responsive columns, and local image fallbacks. *@
+
+<div class="upcoming-event-list" data-testid="upcoming-event-list">
+    @foreach (var column in EventColumns)
+    {
+        <div class="upcoming-event-list__column" data-testid="upcoming-event-column">
+            @foreach (var eventItem in column)
+            {
+                <a @key="eventItem"
+                   class="upcoming-event-list__row"
+                   data-testid="upcoming-event-row"
+                   href="@GetEventUrl(eventItem)"
+                   aria-label="@GetEventLinkLabel(eventItem)">
+                    <img class="upcoming-event-list__image"
+                         src="@GetImageSource(eventItem)"
+                         alt=""
+                         width="56"
+                         height="80"
+                         loading="lazy"
+                         decoding="async"
+                         @onerror="() => HandleImageError(eventItem)" />
+                    <span class="upcoming-event-list__copy">
+                        <span class="upcoming-event-list__title" title="@eventItem.Title">@eventItem.Title</span>
+                        <span class="upcoming-event-list__metadata">@GetScheduleAndFormat(eventItem)</span>
+                        @if (GetContext(eventItem) is { } context)
+                        {
+                            <span class="upcoming-event-list__context">@context</span>
+                        }
+                    </span>
+                </a>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private const int ItemsPerColumn = 6;
+    private const int MaximumItems = 10;
+    private readonly HashSet<EventListDto> _failedImages = [];
+    private IReadOnlyList<EventListDto> _events = [];
+
+    [Parameter] public IEnumerable<EventListDto> Events { get; set; } = [];
+    [Parameter] public string DateToBeAnnouncedLabel { get; set; } = "Date to be announced";
+    [Parameter] public string ViewEventLabel { get; set; } = "View event";
+
+    private IEnumerable<EventListDto[]> EventColumns => _events.Chunk(ItemsPerColumn);
+
+    protected override void OnParametersSet()
+    {
+        _events = Events.Take(MaximumItems).ToArray();
+        _failedImages.RemoveWhere(eventItem => !_events.Contains(eventItem));
+    }
+
+    private void HandleImageError(EventListDto eventItem) => _failedImages.Add(eventItem);
+
+    private string GetImageSource(EventListDto eventItem)
+    {
+        if (!_failedImages.Contains(eventItem) && !string.IsNullOrWhiteSpace(eventItem.FeaturedImageUri))
+        {
+            return eventItem.FeaturedImageUri;
+        }
+
+        var color = EventColorHelper.GetColorByTypeId(eventItem.EventTypeId);
+        if (color == EventColorHelper.DefaultColor)
+        {
+            color = EventColorHelper.GetColorByHash(eventItem.Title);
+        }
+
+        return ImageHelper.GetEventImageUrl(null, eventItem.Title, color, width: 280, height: 400);
+    }
+
+    private string GetScheduleAndFormat(EventListDto eventItem)
+    {
+        var date = eventItem.FirstSessionDate?.ToString("ddd, MMM d") ?? DateToBeAnnouncedLabel;
+        return string.IsNullOrWhiteSpace(eventItem.EventFormatFullName)
+            ? date
+            : $"{date} · {eventItem.EventFormatFullName}";
+    }
+
+    private static string? GetContext(EventListDto eventItem)
+    {
+        if (!string.IsNullOrWhiteSpace(eventItem.ActorDisplayName))
+        {
+            return eventItem.ActorDisplayName;
+        }
+
+        return string.IsNullOrWhiteSpace(eventItem.EventTypeFullName)
+            ? null
+            : eventItem.EventTypeFullName;
+    }
+
+    private string GetEventLinkLabel(EventListDto eventItem) => $"{ViewEventLabel}: {eventItem.Title}";
+
+    private static string GetEventUrl(EventListDto eventItem) =>
+        EventUrlHelper.BuildPublicPath(eventItem.Slug, eventItem.PublicCode) ?? "/events";
+}

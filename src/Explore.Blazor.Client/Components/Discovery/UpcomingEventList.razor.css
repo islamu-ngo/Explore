@@ -1,0 +1,104 @@
+/* ABOUTME: Scoped MangaDex-inspired update-list layout for upcoming home-discovery events. */
+/* ABOUTME: Uses tokenized flat columns, compact 7:10 thumbnails, and responsive vertical source order. */
+
+.upcoming-event-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--isl-space-6);
+    min-inline-size: 0;
+}
+
+.upcoming-event-list__column {
+    display: grid;
+    gap: var(--isl-space-4);
+    align-content: start;
+    min-inline-size: 0;
+    padding: var(--isl-space-4);
+    background: var(--isl-color-surface);
+}
+
+.upcoming-event-list__row {
+    display: grid;
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+    gap: var(--isl-space-2);
+    min-block-size: 5rem;
+    min-inline-size: 0;
+    color: var(--isl-color-text);
+    text-decoration: none;
+    transition: background-color 150ms ease;
+}
+
+.upcoming-event-list__row:hover {
+    background: var(--isl-state-hover);
+}
+
+.upcoming-event-list__row:focus-visible {
+    outline: var(--isl-focus-ring-width) solid var(--isl-color-primary);
+    outline-offset: var(--isl-focus-ring-offset);
+}
+
+.upcoming-event-list__image {
+    display: block;
+    inline-size: 3.5rem;
+    block-size: 5rem;
+    border-radius: var(--isl-radius-sm);
+    object-fit: cover;
+    box-shadow: var(--isl-shadow-xs);
+}
+
+.upcoming-event-list__copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    min-inline-size: 0;
+}
+
+.upcoming-event-list__title,
+.upcoming-event-list__metadata,
+.upcoming-event-list__context {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.upcoming-event-list__title {
+    font-size: var(--isl-typography-body1-size);
+    font-weight: 700;
+    line-height: var(--isl-typography-body1-line-height);
+}
+
+.upcoming-event-list__metadata {
+    color: var(--isl-color-text);
+    font-size: var(--isl-typography-body2-size);
+    line-height: var(--isl-typography-body2-line-height);
+}
+
+.upcoming-event-list__context {
+    color: var(--isl-color-text-secondary);
+    font-size: var(--isl-typography-caption-size);
+    line-height: var(--isl-typography-caption-line-height);
+}
+
+@container (min-width: 42rem) {
+    .upcoming-event-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@container (min-width: 70rem) {
+    .upcoming-event-list {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .upcoming-event-list__row {
+        transition: none;
+    }
+}
+
+@media (forced-colors: active) {
+    .upcoming-event-list__row:focus-visible {
+        outline-color: CanvasText;
+    }
+}
