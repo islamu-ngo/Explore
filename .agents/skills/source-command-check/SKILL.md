@@ -1,6 +1,6 @@
 ---
 name: "source-command-check"
-description: "Run the canonical build + per-project test suite for the repo. Matches AGENTS.md §7 Verification Policy exactly. Never uses solution-level `dotnet test`."
+description: "Run the canonical build plus all nine per-project test commands from docs/TESTING.md. Never uses solution-level dotnet test."
 ---
 
 # source-command-check
@@ -9,13 +9,13 @@ Use this skill when the user asks to run the migrated source command `check`.
 
 ## Command Template
 
-<!-- ABOUTME: One-shot build + per-project test runner matching AGENTS.md §7 exactly. -->
-<!-- ABOUTME: Run BEFORE editing (baseline) and AFTER editing (verification). -->
+<!-- ABOUTME: One-shot build plus the nine canonical per-project commands from docs/TESTING.md. -->
+<!-- ABOUTME: Keeps verification paths synchronized, including the focused non-runtime Infrastructure lane. -->
 
 # /check — Standard Verification Cycle
 
-> **Source of truth:** [`AGENTS.md`](../../../AGENTS.md) §7 Verification Policy.
-> This command is a convenience wrapper — the command strings themselves live in AGENTS.md and `AGENTS.md` to avoid drift.
+> **Source of truth:** [`docs/TESTING.md`](../../../docs/TESTING.md) “Test Projects” and “Run Commands”.
+> `AGENTS.md` requires a Release build and individual project tests; this skill copies the exact nine canonical project commands.
 
 ## When to Run
 
@@ -36,14 +36,15 @@ If exit code ≠ 0, STOP. Fix build errors before running tests.
 ### 2. Test Each Project Individually
 
 ```bash
-dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
-dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
 ```
 
 ### 3. Scoped Run (intent-driven)
@@ -51,8 +52,8 @@ dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.cs
 Prefer the intent's `minimum_tests` list over running everything. Example, for `add-get-endpoint`:
 
 ```bash
-dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
 ```
 
 Run the full list only when the change touches multiple layers or you are about to open a PR.
@@ -80,8 +81,8 @@ Run the full list only when the change touches multiple layers or you are about 
 
 ## Related
 
-- [`AGENTS.md`](../../../AGENTS.md) §7 — canonical command source.
-- [`AGENTS.md`](../../../AGENTS.md) — Codex-specific notes.
+- [`docs/TESTING.md`](../../../docs/TESTING.md) — canonical project list and command source.
+- [`AGENTS.md`](../../../AGENTS.md) — contribution and verification contract.
 - [`docs/TROUBLESHOOTING.md`](../../../docs/TROUBLESHOOTING.md) — common failure modes.
 - [`AGENTS.md`](../../../AGENTS.md) — full cold-start workflow (includes this step).
 - [`/review-pr`](../../../.claude/commands/review-pr.md) — pre-PR checklist.
