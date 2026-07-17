@@ -1,0 +1,33 @@
+// ABOUTME: Defines the atomic dispatch-time eligibility and provider-handoff boundary for email delivery.
+// ABOUTME: Returns only current authorized destination data and stable non-PII suppression outcomes.
+
+namespace Explore.Application.Contracts.Notifications;
+
+public interface IEmailDispatchEligibilityEvaluator
+{
+    Task<EmailDispatchEligibilityResult> EvaluateAndBeginProviderHandoffAsync(
+        EmailDispatchEligibilityRequest request,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed record EmailDispatchEligibilityRequest(
+    Guid TenantId,
+    Guid OutboxId,
+    Guid ProcessingLeaseToken,
+    int AttemptNumber,
+    string ConsumerId,
+    DateTime EvaluatedAt);
+
+public sealed record EmailDispatchEligibilityResult(
+    EmailDispatchEligibilityOutcome Outcome,
+    string? RecipientEmail,
+    string? SkipReason,
+    Guid? ReceiptId = null);
+
+public enum EmailDispatchEligibilityOutcome
+{
+    Eligible = 1,
+    Skipped = 2,
+    TenantPaused = 3,
+    LostClaim = 4
+}

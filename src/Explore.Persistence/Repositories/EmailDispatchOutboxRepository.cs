@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,6 +13,8 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
 {
     private const int MaxErrorLength = 2000;
     private const int MaxReceiptFailureLength = 1000;
+    private const string AcceptedSettlementUnknownCategory = "accepted_settlement_unknown";
+    private const string AcceptedSettlementUnknownMessage = "SMTP accepted the message, but local settlement is uncertain. Automatic resend is disabled pending reconciliation.";
 
     private readonly ExploreDbContext _dbContext;
 
@@ -315,9 +318,33 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
 
         if (updated > 0)
         {
+            await _dbContext.EmailDispatchAttempts
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                .Where(attempt => _dbContext.EmailDispatchOutbox
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                    .Any(outbox => outboxIds.Contains(outbox.Id)
+                        && outbox.TenantId == attempt.TenantId
+                        && outbox.Id == attempt.EmailDispatchOutboxId
+                        && outbox.Status == EmailDispatchStatus.Unknown
+                        && outbox.UnknownAt == recoveredAt
+                        && outbox.AttemptCount == attempt.AttemptNumber))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(attempt => attempt.Outcome, EmailDispatchAttemptOutcome.Unknown)
+                    .SetProperty(attempt => attempt.CompletedAt, recoveredAt)
+                    .SetProperty(attempt => attempt.FailureCategory, Truncate(failureCategory, 100))
+                    .SetProperty(attempt => attempt.SanitizedErrorMessage, Truncate(errorMessage, MaxErrorLength))
+                    .SetProperty(attempt => attempt.ProviderMessageId, (string?)null)
+                    .SetProperty(attempt => attempt.UpdatedAt, recoveredAt), cancellationToken);
+
             await _dbContext.EmailDispatchReceipts
                 .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
-                .Where(receipt => outboxIds.Contains(receipt.EmailDispatchOutboxId)
+                .Where(receipt => _dbContext.EmailDispatchOutbox
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                    .Any(outbox => outboxIds.Contains(outbox.Id)
+                        && outbox.TenantId == receipt.TenantId
+                        && outbox.Id == receipt.EmailDispatchOutboxId
+                        && outbox.Status == EmailDispatchStatus.Unknown
+                        && outbox.UnknownAt == recoveredAt)
                     && receipt.Status == EmailDispatchReceiptStatus.Processing)
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(receipt => receipt.Status, EmailDispatchReceiptStatus.Unknown)
@@ -325,6 +352,25 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
                     .SetProperty(receipt => receipt.FailureCode, Truncate(failureCategory, 100))
                     .SetProperty(receipt => receipt.FailureMessage, Truncate(errorMessage, MaxReceiptFailureLength))
                     .SetProperty(receipt => receipt.UpdatedAt, recoveredAt), cancellationToken);
+
+            await _dbContext.NotificationDeliveries
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                .Where(delivery => delivery.EmailDispatchOutboxId != null
+                    && _dbContext.EmailDispatchOutbox
+                        .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                        .Any(outbox => outboxIds.Contains(outbox.Id)
+                            && outbox.TenantId == delivery.TenantId
+                            && outbox.Id == delivery.EmailDispatchOutboxId.Value
+                            && outbox.Status == EmailDispatchStatus.Unknown
+                            && outbox.UnknownAt == recoveredAt)
+                    && delivery.ChannelId == (int)NotificationPreferenceChannelEnum.Email)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(delivery => delivery.StatusId, (int)NotificationDeliveryStatusEnum.Unknown)
+                    .SetProperty(delivery => delivery.ProviderMessageId, (string?)null)
+                    .SetProperty(delivery => delivery.ProviderStatus, "unknown")
+                    .SetProperty(delivery => delivery.FailureCategory, Truncate(failureCategory, 100))
+                    .SetProperty(delivery => delivery.CompletedAt, recoveredAt)
+                    .SetProperty(delivery => delivery.UpdatedAt, recoveredAt), cancellationToken);
         }
 
         await transaction.CommitAsync(cancellationToken);
@@ -460,8 +506,207 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
 
     public async Task RecordAttempt(EmailDispatchAttempt attempt, CancellationToken cancellationToken)
     {
+        var updated = await _dbContext.EmailDispatchAttempts
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(existing => existing.TenantId == attempt.TenantId
+                && existing.EmailDispatchOutboxId == attempt.EmailDispatchOutboxId
+                && existing.AttemptNumber == attempt.AttemptNumber)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(existing => existing.Transport, attempt.Transport)
+                .SetProperty(existing => existing.Provider, attempt.Provider)
+                .SetProperty(existing => existing.Outcome, attempt.Outcome)
+                .SetProperty(existing => existing.StartedAt, attempt.StartedAt)
+                .SetProperty(existing => existing.CompletedAt, attempt.CompletedAt)
+                .SetProperty(existing => existing.FailureCategory, Truncate(attempt.FailureCategory, 100))
+                .SetProperty(existing => existing.SanitizedErrorMessage, Truncate(attempt.SanitizedErrorMessage, MaxErrorLength))
+                .SetProperty(existing => existing.ProviderMessageId, Truncate(attempt.ProviderMessageId, 500))
+                .SetProperty(existing => existing.CorrelationId, Truncate(attempt.CorrelationId, 200))
+                .SetProperty(existing => existing.UpdatedAt, DateTime.UtcNow), cancellationToken);
+        if (updated > 0)
+        {
+            return;
+        }
+
         await _dbContext.EmailDispatchAttempts.AddAsync(attempt, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task SettleProviderAccepted(
+        EmailDispatchAcceptedSettlement settlement,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var attemptUpdated = await _dbContext.EmailDispatchAttempts
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(attempt => attempt.TenantId == settlement.TenantId
+                && attempt.EmailDispatchOutboxId == settlement.OutboxId
+                && attempt.AttemptNumber == settlement.AttemptNumber)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(attempt => attempt.Outcome, EmailDispatchAttemptOutcome.Succeeded)
+                .SetProperty(attempt => attempt.CompletedAt, settlement.SettledAt)
+                .SetProperty(attempt => attempt.FailureCategory, (string?)null)
+                .SetProperty(attempt => attempt.SanitizedErrorMessage, (string?)null)
+                .SetProperty(attempt => attempt.ProviderMessageId, Truncate(settlement.ProviderMessageId, 500))
+                .SetProperty(attempt => attempt.UpdatedAt, settlement.SettledAt), cancellationToken);
+        EnsureExactlyOne(attemptUpdated, "email dispatch attempt");
+
+        var receiptUpdated = await _dbContext.EmailDispatchReceipts
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(receipt => receipt.TenantId == settlement.TenantId
+                && receipt.EmailDispatchOutboxId == settlement.OutboxId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(receipt => receipt.Status, EmailDispatchReceiptStatus.Completed)
+                .SetProperty(receipt => receipt.CompletedAt, settlement.SettledAt)
+                .SetProperty(receipt => receipt.FailedAt, (DateTime?)null)
+                .SetProperty(receipt => receipt.FailureCode, (string?)null)
+                .SetProperty(receipt => receipt.FailureMessage, (string?)null)
+                .SetProperty(receipt => receipt.ProviderMessageId, Truncate(settlement.ProviderMessageId, 500))
+                .SetProperty(receipt => receipt.UpdatedAt, settlement.SettledAt), cancellationToken);
+        EnsureExactlyOne(receiptUpdated, "email dispatch receipt");
+
+        var outboxUpdated = await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(outbox => outbox.TenantId == settlement.TenantId
+                && outbox.Id == settlement.OutboxId
+                && outbox.Status == EmailDispatchStatus.Processing)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(outbox => outbox.Status, EmailDispatchStatus.Sent)
+                .SetProperty(outbox => outbox.SentAt, settlement.SettledAt)
+                .SetProperty(outbox => outbox.UnknownAt, (DateTime?)null)
+                .SetProperty(outbox => outbox.ProviderMessageId, Truncate(settlement.ProviderMessageId, 500))
+                .SetProperty(outbox => outbox.ProcessingStartedAt, (DateTime?)null)
+                .SetProperty(outbox => outbox.ProcessingLeaseToken, (Guid?)null)
+                .SetProperty(outbox => outbox.NextAttemptAt, (DateTime?)null)
+                .SetProperty(outbox => outbox.LastFailureCategory, (string?)null)
+                .SetProperty(outbox => outbox.LastError, (string?)null)
+                .SetProperty(outbox => outbox.LastFailureAt, (DateTime?)null)
+                .SetProperty(outbox => outbox.UpdatedAt, settlement.SettledAt), cancellationToken);
+        EnsureExactlyOne(outboxUpdated, "email dispatch outbox");
+
+        var deliveryUpdated = await _dbContext.NotificationDeliveries
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(delivery => delivery.TenantId == settlement.TenantId
+                && delivery.EmailDispatchOutboxId == settlement.OutboxId
+                && delivery.ChannelId == (int)NotificationPreferenceChannelEnum.Email)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(delivery => delivery.StatusId, (int)NotificationDeliveryStatusEnum.Delivered)
+                .SetProperty(delivery => delivery.ProviderMessageId, Truncate(settlement.ProviderMessageId, 500))
+                .SetProperty(delivery => delivery.ProviderStatus, "accepted")
+                .SetProperty(delivery => delivery.FailureCategory, (string?)null)
+                .SetProperty(delivery => delivery.CompletedAt, settlement.SettledAt)
+                .SetProperty(delivery => delivery.UpdatedAt, settlement.SettledAt), cancellationToken);
+        EnsureExactlyOne(deliveryUpdated, "email notification delivery");
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    public async Task<EmailDispatchAcceptedReconciliationOutcome> ReconcileProviderAccepted(
+        EmailDispatchAcceptedSettlement settlement,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var providerMessageId = Truncate(settlement.ProviderMessageId, 500);
+
+        var outboxSent = await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .AnyAsync(outbox => outbox.TenantId == settlement.TenantId
+                && outbox.Id == settlement.OutboxId
+                && outbox.Status == EmailDispatchStatus.Sent
+                && (providerMessageId == null || outbox.ProviderMessageId == providerMessageId), cancellationToken);
+        var attemptSent = await _dbContext.EmailDispatchAttempts
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .AnyAsync(attempt => attempt.TenantId == settlement.TenantId
+                && attempt.EmailDispatchOutboxId == settlement.OutboxId
+                && attempt.AttemptNumber == settlement.AttemptNumber
+                && attempt.Outcome == EmailDispatchAttemptOutcome.Succeeded
+                && (providerMessageId == null || attempt.ProviderMessageId == providerMessageId), cancellationToken);
+        var receiptSent = await _dbContext.EmailDispatchReceipts
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .AnyAsync(receipt => receipt.TenantId == settlement.TenantId
+                && receipt.EmailDispatchOutboxId == settlement.OutboxId
+                && receipt.Status == EmailDispatchReceiptStatus.Completed
+                && (providerMessageId == null || receipt.ProviderMessageId == providerMessageId), cancellationToken);
+        var deliverySent = await _dbContext.NotificationDeliveries
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .AnyAsync(delivery => delivery.TenantId == settlement.TenantId
+                && delivery.EmailDispatchOutboxId == settlement.OutboxId
+                && delivery.ChannelId == (int)NotificationPreferenceChannelEnum.Email
+                && delivery.StatusId == (int)NotificationDeliveryStatusEnum.Delivered
+                && (providerMessageId == null || delivery.ProviderMessageId == providerMessageId), cancellationToken);
+
+        if (outboxSent && attemptSent && receiptSent && deliverySent)
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return EmailDispatchAcceptedReconciliationOutcome.Sent;
+        }
+
+        var attemptUpdated = await _dbContext.EmailDispatchAttempts
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(attempt => attempt.TenantId == settlement.TenantId
+                && attempt.EmailDispatchOutboxId == settlement.OutboxId
+                && attempt.AttemptNumber == settlement.AttemptNumber)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(attempt => attempt.Outcome, EmailDispatchAttemptOutcome.Unknown)
+                .SetProperty(attempt => attempt.CompletedAt, settlement.SettledAt)
+                .SetProperty(attempt => attempt.FailureCategory, AcceptedSettlementUnknownCategory)
+                .SetProperty(attempt => attempt.SanitizedErrorMessage, AcceptedSettlementUnknownMessage)
+                .SetProperty(attempt => attempt.ProviderMessageId, (string?)null)
+                .SetProperty(attempt => attempt.UpdatedAt, settlement.SettledAt), cancellationToken);
+        EnsureExactlyOne(attemptUpdated, "email dispatch attempt");
+
+        var receiptUpdated = await _dbContext.EmailDispatchReceipts
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(receipt => receipt.TenantId == settlement.TenantId
+                && receipt.EmailDispatchOutboxId == settlement.OutboxId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(receipt => receipt.Status, EmailDispatchReceiptStatus.Unknown)
+                .SetProperty(receipt => receipt.CompletedAt, (DateTime?)null)
+                .SetProperty(receipt => receipt.FailedAt, settlement.SettledAt)
+                .SetProperty(receipt => receipt.FailureCode, AcceptedSettlementUnknownCategory)
+                .SetProperty(receipt => receipt.FailureMessage, AcceptedSettlementUnknownMessage)
+                .SetProperty(receipt => receipt.ProviderMessageId, (string?)null)
+                .SetProperty(receipt => receipt.UpdatedAt, settlement.SettledAt), cancellationToken);
+        EnsureExactlyOne(receiptUpdated, "email dispatch receipt");
+
+        var outboxUpdated = await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(outbox => outbox.TenantId == settlement.TenantId
+                && outbox.Id == settlement.OutboxId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(outbox => outbox.Status, EmailDispatchStatus.Unknown)
+                .SetProperty(outbox => outbox.SentAt, (DateTime?)null)
+                .SetProperty(outbox => outbox.UnknownAt, settlement.SettledAt)
+                .SetProperty(outbox => outbox.ProviderMessageId, (string?)null)
+                .SetProperty(outbox => outbox.ProcessingStartedAt, (DateTime?)null)
+                .SetProperty(outbox => outbox.ProcessingLeaseToken, (Guid?)null)
+                .SetProperty(outbox => outbox.NextAttemptAt, (DateTime?)null)
+                .SetProperty(outbox => outbox.LastFailureCategory, AcceptedSettlementUnknownCategory)
+                .SetProperty(outbox => outbox.LastError, AcceptedSettlementUnknownMessage)
+                .SetProperty(outbox => outbox.LastFailureAt, settlement.SettledAt)
+                .SetProperty(outbox => outbox.UpdatedAt, settlement.SettledAt), cancellationToken);
+        EnsureExactlyOne(outboxUpdated, "email dispatch outbox");
+
+        var deliveryUpdated = await _dbContext.NotificationDeliveries
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(delivery => delivery.TenantId == settlement.TenantId
+                && delivery.EmailDispatchOutboxId == settlement.OutboxId
+                && delivery.ChannelId == (int)NotificationPreferenceChannelEnum.Email)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(delivery => delivery.StatusId, (int)NotificationDeliveryStatusEnum.Unknown)
+                .SetProperty(delivery => delivery.ProviderMessageId, (string?)null)
+                .SetProperty(delivery => delivery.ProviderStatus, "unknown")
+                .SetProperty(delivery => delivery.FailureCategory, AcceptedSettlementUnknownCategory)
+                .SetProperty(delivery => delivery.CompletedAt, settlement.SettledAt)
+                .SetProperty(delivery => delivery.UpdatedAt, settlement.SettledAt), cancellationToken);
+        EnsureExactlyOne(deliveryUpdated, "email notification delivery");
+
+        await transaction.CommitAsync(cancellationToken);
+        return EmailDispatchAcceptedReconciliationOutcome.Unknown;
     }
 
     public async Task<bool> TryClaimReceipt(EmailDispatchReceipt receipt, CancellationToken cancellationToken)
@@ -544,5 +789,13 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
     private static string? Truncate(string? value, int maxLength)
     {
         return value is null || value.Length <= maxLength ? value : value[..maxLength];
+    }
+
+    private static void EnsureExactlyOne(int affectedRows, string ledger)
+    {
+        if (affectedRows != 1)
+        {
+            throw new InvalidOperationException($"Accepted SMTP settlement expected one {ledger} row.");
+        }
     }
 }

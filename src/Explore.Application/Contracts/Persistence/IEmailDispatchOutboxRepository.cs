@@ -129,6 +129,14 @@ public interface IEmailDispatchOutboxRepository
 
     Task RecordAttempt(EmailDispatchAttempt attempt, CancellationToken cancellationToken);
 
+    Task SettleProviderAccepted(
+        EmailDispatchAcceptedSettlement settlement,
+        CancellationToken cancellationToken);
+
+    Task<EmailDispatchAcceptedReconciliationOutcome> ReconcileProviderAccepted(
+        EmailDispatchAcceptedSettlement settlement,
+        CancellationToken cancellationToken);
+
     Task<bool> TryClaimReceipt(EmailDispatchReceipt receipt, CancellationToken cancellationToken);
 
     Task MarkReceiptCompleted(
@@ -150,4 +158,17 @@ public interface IEmailDispatchOutboxRepository
         string reasonMessage,
         DateTime skippedAt,
         CancellationToken cancellationToken);
+}
+
+public sealed record EmailDispatchAcceptedSettlement(
+    Guid TenantId,
+    Guid OutboxId,
+    int AttemptNumber,
+    DateTime SettledAt,
+    string? ProviderMessageId);
+
+public enum EmailDispatchAcceptedReconciliationOutcome
+{
+    Sent = 1,
+    Unknown = 2
 }
