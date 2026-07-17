@@ -25,11 +25,13 @@ Outgoing product webhooks use `Local`, `Svix`, `Composite`, `DryRun`, or `Disabl
 
 | Route | Provider | Authentication | Behavior |
 |---|---|---|---|
-| `POST /api/integrations/moderation/coop/callback` | Coop-compatible review queue | API key policy plus timestamped HMAC-SHA256 over raw body | Captures verified decision callbacks idempotently, records local report decisions, then dispatches local moderation execution. |
+| `POST /api/integrations/moderation/coop/callback` | Coop-compatible review queue | API key policy plus timestamped HMAC-SHA256 over raw body | Atomically retains the verified callback and one unique effect pointer. A fenced worker revalidates the retained payload and invokes canonical decision execution; command success is required before receipt/pointer completion. |
 | `POST /api/integrations/moderation/osprey/callback` | Osprey-compatible signal worker | API key policy | Records bounded moderation signals on the local report; it does not directly execute moderation actions. |
 | `POST /api/integrations/svix/operational` | Svix operational webhook | `[AllowAnonymous]` at HTTP edge plus Svix-compatible signature verification | Verifies operational callbacks with `svix-id`, `svix-timestamp`, and `svix-signature`; tenant-addressed payloads are captured in the incoming ledger. |
 
 These routes continue to work when outgoing webhooks are `Disabled`, `Local`, `Svix`, `Composite`, or `DryRun`.
+
+Coop effect inspection and generation-checked dead-letter redrive are authenticated administrative operations under `/api/admin/incoming-webhook-effects`. Clients must use server-authored HAL affordances and must not receive callback bytes, hashes, signed provider decision IDs, or raw provider errors.
 
 ## Verification Rules
 

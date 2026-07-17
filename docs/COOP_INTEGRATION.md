@@ -79,6 +79,8 @@ Instead, it transmits:
 
 ## 4. Webhook Callback Intake & Security
 
+Signed decision callbacks use a durable two-stage intake/effect flow. Intake verifies and retains the exact callback bytes, then atomically creates one specialized effect pointer. A separate fenced worker loads those retained bytes and invokes the existing Coop decision command outside the intake transaction.
+
 When a reviewer makes a decision in Coop (e.g., dismissing a case, warning an organizer, or moderating an event), Coop dispatches a signed HTTP POST callback to the ISLAMU Event endpoint:
 `POST /api/integrations/moderation/coop/callback`
 
@@ -97,15 +99,23 @@ When a reviewer makes a decision in Coop (e.g., dismissing a case, warning an or
          ├─► [ Invalid Signature ] ──► Return 401/403
          │
          ▼
-[ Check Idempotency Table ] (Check incoming_webhook_messages)
+[ Retain Idempotency Record ] (incoming_webhook_messages)
          │
-         ├─► [ Duplicate Message ] ──► Return 200 OK (Skip Side Effects)
-         │
-         ▼
-[ Dispatch ProcessCoopDecisionCallbackCommand ]
+         ├─► [ Duplicate Message ] ──► Return 200 OK
          │
          ▼
-[ Execute local moderation actions via MediatR ]
+[ IncomingWebhookEffectOutbox ] (claim + fenced renewable lease)
+         │
+         ▼
+[ Load retained callback and revalidate pointer identity ]
+         │
+         ▼
+[ ProcessCoopDecisionCallbackCommand ]
+         │
+         ├─► [ Retryable failure ] ──► Schedule bounded retry
+         ├─► [ Poison callback ] ──► Dead-letter for operator review
+         ▼
+[ Commit applied-effect receipt + pointer completion ]
 ```
 
 ### Signature Validation
@@ -116,11 +126,17 @@ When a reviewer makes a decision in Coop (e.g., dismissing a case, warning an or
 5. If the signature matches and the timestamp is within the drift tolerance window (typically 5 minutes), the callback is verified.
 
 ### Idempotency Enforcement
-All verified callbacks are logged in the `incoming_webhook_messages` table using the Coop `ProviderDecisionId` as the primary key. If a duplicate webhook arrives (due to network retries), it is acknowledged with a `200 OK` instantly, preventing duplicate side effects.
+Verified callbacks are retained in `incoming_webhook_messages`. A nonblank signed `ProviderDecisionId` and SHA-256 evidence bind the retained message to a specialized `IncomingWebhookEffectOutbox`. Unique `(TenantId, Provider, ProviderDecisionId, EffectKind)` and `(TenantId, IncomingWebhookMessageId, EffectKind)` constraints make exact replay idempotent; missing IDs and same-ID/different-hash input quarantine instead of running a decision.
+
+The effect worker claims due pointers with a generation, monotonically increasing fence, opaque token, owner, and renewable expiry. Settlement rechecks the complete claim identity. It validates tenant, provider, event kind, payload hash, and decision identity against the retained callback before invoking `ProcessCoopDecisionCallbackCommand`. The applied-effect receipt and pointer completion commit together only after that command succeeds. A crashed or stale worker therefore cannot settle work after a newer claim has recovered the lease, and callback/pointer/dispatcher replay does not repeat an applied decision.
+
+Permanent validation failures are dead-lettered with bounded categories and safe details. Retryable failures use bounded retry scheduling; cancellation leaves the lease for normal expiry recovery. Operators inspect tenant-scoped lifecycle data through `GET /api/admin/incoming-webhook-effects/status` and may follow the HAL `redrive` relation only for dead-lettered rows whose retained payload remains inside its replay window. Redrive requires the expected processing generation and an authenticated actor, creates a safe audit event, and never returns callback bytes, hashes, provider decision IDs, or raw provider errors.
 
 ---
 
 ## 5. Escalation State Machine
+
+The durable callback-to-command route below is implemented. The local report-case state machine remains authoritative: stale or out-of-order decisions are rejected by the existing command path and cannot reopen a completed case.
 
 One of the key requirements of the system is the **Hierarchical Escalation Flow**. Community moderators handle standard violations, but severe violations or escalated reports must bubble up to the Platform Instance Admin.
 
@@ -149,16 +165,19 @@ sequenceDiagram
 ### The Escalation Steps:
 1. **Initial Dispatch:** An event report is submitted. It matches the tenant's scope and is synced to the **Tenant Coop Workspace**.
 2. **Local Escalation Decision:** A local reviewer determines the issue is beyond local policy (e.g. platform safety threat) and flags the case as **Escalate**.
-3. **Status Transition:** The webhook callback hits ISLAMU Event. The `ProcessCoopDecisionCallbackCommandHandler` transitions the local case status to `EventReportStatus.Escalated`.
+3. **Status Transition:** After the durable effect dispatcher successfully invokes `ProcessCoopDecisionCallbackCommandHandler`, the local case may transition to `EventReportStatus.Escalated`.
 4. **Outbox Re-evaluation:** The status change triggers a domain event handler. The handler generates a new sync outbox request.
 5. **Instance Dispatch:** Because the status is now `Escalated`, the `CompositeEventReportProvider` resolves the global **Instance Coop Workspace** target and pushes the case to the super-admin queue.
-6. **Final Resolution:** The Instance Admin makes the final decision (e.g. `HeavyRedact`), which executes locally via `ExecuteReportDecisionCommand` and propagates down, closing the case.
+6. **Final Resolution:** The Instance Admin decision executes locally through the one decision executor before the specialized effect settles; stale/out-of-order callbacks cannot reopen a completed case.
 
 ---
 
 ## 6. Implementation Reference
 
-* **Composite Provider:** [CompositeEventReportProvider.cs](file:///home/amir/ISLAMU/Github/Event/Explore.Infrastructure/Services/Moderation/CompositeEventReportProvider.cs)
-* **Callback Handler:** [ProcessCoopDecisionCallbackCommandHandler.cs](file:///home/amir/ISLAMU/Github/Event/Explore.Application/Features/EventReporting/Handlers/Commands/ProcessCoopDecisionCallbackCommandHandler.cs)
-* **API Controller:** [ModerationIntegrationController.cs](file:///home/amir/ISLAMU/Github/Event/Explore.API/Controllers/ModerationIntegrationController.cs)
-* **Integration Tests:** [IncomingWebhookFrameworkTests.cs](file:///home/amir/ISLAMU/Github/Event/Event.API.IntegrationTests/Features/IncomingWebhookFrameworkTests.cs)
+* **Composite Provider:** `src/Explore.Infrastructure/Services/Moderation/CompositeEventReportProvider.cs`
+* **Callback Command Handler:** `src/Explore.Application/Features/EventReporting/Handlers/Commands/ProcessCoopDecisionCallbackCommandHandler.cs`
+* **Effect Processing:** `src/Explore.Application/Services/Webhooks/IncomingWebhookEffectProcessingService.cs`
+* **Effect Drain:** `src/Explore.Infrastructure/Webhooks/IncomingWebhookEffectDrainService.cs`
+* **Operator API:** `src/Explore.API/Controllers/IncomingWebhookEffectsAdminController.cs`
+* **API Controller:** `src/Explore.API/Controllers/ModerationIntegrationController.cs`
+* **Incoming Framework Tests:** `tests/Event.API.IntegrationTests/Features/IncomingWebhookFrameworkTests.cs`

@@ -371,7 +371,22 @@ Coop adapter keys live under `Reporting:Coop:*`. The adapter is Infrastructure-o
 | `Reporting:Coop:WebhookToleranceSeconds` | `300` | Maximum absolute clock skew for signed callbacks. Must be between 30 and 86400. |
 | `Reporting:Coop:WebhookMaxBodyBytes` | `65536` | Raw callback body size limit before JSON parsing. Must be between 1024 and 1048576. |
 
-Coop decisions are accepted at `POST /api/integrations/moderation/coop/callback`. The endpoint requires both platform API-key authentication (`X-API-Key`) through `ModerationIntegration.CoopCallback` and timestamped HMAC-SHA256 verification over `timestamp + "." + rawBody`. The HMAC check uses fixed-time comparison and validates the raw body before JSON parsing. A valid callback records an `EventReportDecision` with source `CoopReviewer`, marks the report case decision-ready, then dispatches `ExecuteReportDecisionCommand` so local light moderation/heavy redaction keep using the existing audit, outbox, cache, and storage-deletion paths. Provider-backed enforcement creates `EventModerationRecord` rows with nullable `ModeratorUserId` and non-null source report/decision links. The callback body must include tenant, report, event, case, and action metadata and may use the public Coop-style `item`/`action`/`policies`/`rules` shape plus ISLAMU local identifiers.
+Coop callbacks are accepted at `POST /api/integrations/moderation/coop/callback`. The endpoint requires platform API-key authentication plus timestamped HMAC-SHA256 verification over `timestamp + "." + rawBody`. Verified bytes are retained in `incoming_webhook_messages`, and one durable `IncomingWebhookEffectOutbox` pointer is created in the same transaction. A separate worker loads the retained callback and dispatches `ProcessCoopDecisionCallbackCommand`; the pointer completes only after command success and an applied-effect receipt commit together.
+
+The pointer worker shares the bounded incoming-processing options below. Set `Enabled=false` and restart the API to pause both incoming processing loops during an incident; callback intake remains available and durable work accumulates. Increase limits only after checking PostgreSQL and command-handler capacity.
+
+| Key | Default | Description |
+|---|---:|---|
+| `Webhooks:IncomingProcessing:Enabled` | `true` | Enables incoming webhook and Coop effect background processing. Disabling pauses drain work without deleting retained callbacks or pointers. |
+| `Webhooks:IncomingProcessing:BatchSize` | `50` | Maximum effect pointers claimed in one bounded batch. Range `1..1000`. |
+| `Webhooks:IncomingProcessing:MaxConcurrentItems` | `8` | Maximum concurrent claims executed by one process. Range `1..128`. |
+| `Webhooks:IncomingProcessing:LeaseSeconds` | `120` | Fenced claim lease duration. Active workers renew at approximately one third of this duration. Range `5..3600`. |
+| `Webhooks:IncomingProcessing:MaxAttempts` | `8` | Attempt ceiling before terminal dead-letter. Range `1..100`. |
+| `Webhooks:IncomingProcessing:InitialRetryDelaySeconds` | `30` | Initial bounded retry delay. Range `1..86400`. |
+| `Webhooks:IncomingProcessing:MaxRetryDelaySeconds` | `3600` | Maximum bounded retry delay. Range `1..86400`. |
+| `Webhooks:IncomingProcessing:PollIntervalSeconds` | `5` | Background drain polling interval. Range `1..3600`. |
+| `Webhooks:IncomingProcessing:EffectBacklogWarningThreshold` | `500` | `/health/webhooks/coop-effects` degrades when due work reaches this safe aggregate count. |
+| `Webhooks:IncomingProcessing:EffectStaleLeaseWarningThreshold` | `1` | Coop-effect readiness degrades when stale claims reach this safe aggregate count. |
 
 Local report-intake keys are application-layer submission controls:
 
@@ -388,6 +403,12 @@ Local report-intake keys are application-layer submission controls:
 | `Reporting:ReporterFingerprintPepper` | empty | Optional deployment secret used by the API to HMAC tenant-scoped reporter IP and User-Agent fingerprints before they reach the Application layer. Set this in production/self-hosted deployments. |
 
 Reporter text is protected through ASP.NET Core Data Protection before persistence and stored only in `EventReportEvidence.TextBodyEncrypted`. The outbox payload intentionally excludes reporter text, reporter IP hash, and user-agent hash. Reporting metrics use bounded outcome/failure tags and must not include reporter content, event titles, slugs, URLs, provider payloads, or raw errors.
+
+### Approved lifecycle-email settings (planned)
+
+`Reporting:CaseSlaHours` remains the sole report-response SLA input; no minimum/maximum business-day settings are permitted. Receipt materialization snapshots the resolved value and template so later configuration cannot rewrite queued copy. The sole reminder lead setting will be `EmailDispatch:EventReminderLeadTimeHours`, default `24`, inclusive range `1..168`; invalid configuration fails validation. A future session whose due-at is already past becomes due immediately after commit, while a started session creates no reminder.
+
+Retention, SMTP/fanout global and per-tenant concurrency, fair scheduling, token-bucket rate limits, high/low backlog watermarks, and persisted pause controls will be added under their owning options groups in Tasks 1.5, 1.6, and 3.6. Those tasks must document exact keys/defaults with validators when runtime bindings exist; this approved policy does not invent duplicate settings in advance.
 
 Event-report observability uses `Explore.Business` counters with bounded labels only: `explore.event_reports.submissions` (`tenant_id`, `outcome`, `failure_category`), `explore.event_reports.workflow_actions` (`tenant_id`, `action`, `outcome`, `failure_category`), `explore.event_reports.provider_syncs` (`tenant_id`, `provider`, `outcome`, `failure_category`), and `explore.event_reports.provider_callbacks` (`tenant_id`, `provider`, `outcome`, `failure_category`). Controller and dispatcher logs may include tenant/report/event/case IDs, action/provider/outcome/failure codes, and retryability flags, but must not log reporter text, IP/User-Agent values or hashes, event titles, slugs, URLs, provider payload bodies, provider credentials, raw callback signatures, or raw exception text.
 

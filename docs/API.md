@@ -507,16 +507,21 @@ Incoming webhooks are provider callbacks received by ISLAMU Event. They are sepa
 | Verb | Route | Route Name | Auth | Purpose |
 |---|---|---|---|---|
 | `POST` | `/api/integrations/moderation/osprey/callback` | `ModerationIntegrationOspreyCallback` | API-key policy `ModerationIntegration.OspreyCallback` | Records bounded Osprey-compatible moderation signals on the local report without executing moderation actions. |
-| `POST` | `/api/integrations/moderation/coop/callback` | `ModerationIntegrationCoopCallback` | API-key policy `ModerationIntegration.CoopCallback` plus signed raw-body HMAC verification | Captures the verified callback in `incoming_webhook_messages`, then dispatches the Coop decision command idempotently. |
+| `POST` | `/api/integrations/moderation/coop/callback` | `ModerationIntegrationCoopCallback` | API-key policy `ModerationIntegration.CoopCallback` plus signed raw-body HMAC verification | Atomically retains the verified callback and its unique Coop decision-effect pointer. A fenced background worker dispatches the existing decision command and completes the pointer only after command success. |
+| `GET` | `/api/admin/incoming-webhook-effects/status?tenantId={tenantId}&limit={limit}` | `GetIncomingWebhookEffectStatus` | Authenticated plus `Webhooks.ViewDelivery` authorization | Returns tenant-scoped safe effect lifecycle rows and HAL item affordances; limit range is `1..200`. |
+| `POST` | `/api/admin/incoming-webhook-effects/tenants/{tenantId}/{effectOutboxId}/redrive` | `RedriveIncomingWebhookEffect` | Authenticated plus `Webhooks.RedriveIncoming` authorization | Redrives an eligible dead-lettered effect when `expectedProcessingGeneration` still matches and the retained callback remains replayable. |
 | `POST` | `/api/integrations/svix/operational` | `IntegrationSvixOperationalCallback` | `[AllowAnonymous]` with Svix-compatible signature verification as authentication | Accepts Svix operational callbacks without requiring the outgoing provider mode to be Svix. Tenant-addressed payloads are captured in the incoming webhook ledger; instance-level operational payloads are verified and acknowledged without side effects. |
 
 Incoming callback rules:
 
 - Raw request bodies are read before JSON parsing and verified against provider signatures where the provider supplies a signature.
 - Signed callbacks enforce bounded body sizes, timestamp tolerance, and constant-time signature comparison.
-- Verified tenant-scoped callbacks are stored in `incoming_webhook_messages` before Application commands perform side effects.
+- Verified tenant-scoped callbacks are stored in `incoming_webhook_messages` before any Application side effect. Coop decision callbacks create a specialized pointer in the intake transaction; command dispatch occurs later outside that transaction.
 - Duplicate provider message IDs are treated idempotently and do not re-run side effects.
 - The incoming webhook ledger stores the tenant and provider message identifiers needed for idempotency, plus payload hashes, bounded status/failure metadata, and redacted headers only. Logs, metrics, and ProblemDetails use bounded provider/outcome/failure categories and must not include raw payloads, signature headers, secrets, tokens, authorization headers, tenant/user identifiers, provider message IDs, or raw provider errors.
+- Coop effect status exposes only internal lifecycle identifiers/state, bounded failure category/detail, attempts, generation/fence, and timestamps. It excludes callback bytes, callback hash, signed provider decision ID, headers, and raw exceptions. HAL emits `redrive` only for a dead-lettered row and remains the client action authority.
+
+Approved planned reporter communication changes replace `ReporterContactConsent` with independently false-by-default `ReportCaseUpdatesConsent` and `ReportFollowUpContactConsent` across submission/read contracts. A reporter-owned authorized write plus `update-communication-consent` HAL relation will permit withdrawal; clients must regenerate from OpenAPI and render the control only when that relation exists. No compatibility alias is planned before v1.0.
 
 ---
 
