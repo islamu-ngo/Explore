@@ -1,24 +1,14 @@
 // ABOUTME: Unit tests for fixed Event lifecycle email automation outbox rows.
 // ABOUTME: Verifies lifecycle actions create durable EmailDispatchOutbox intent without transport dependencies.
 
-using Explore.Application.Contracts.Notifications;
-using Explore.Application.Notifications;
 using Explore.Application.Services;
 using Explore.Domain;
-using Explore.Domain.Enums;
-using ApplicationNotificationCategory = Explore.Application.Notifications.NotificationCategory;
 
 namespace Event.Application.UnitTests.Services;
 
 public sealed class EventLifecycleEmailOutboxFactoryTests
 {
-    private readonly CapturingNotificationOrchestrator _notificationOrchestrator = new();
-    private readonly EventLifecycleEmailOutboxFactory _factory;
-
-    public EventLifecycleEmailOutboxFactoryTests()
-    {
-        _factory = new EventLifecycleEmailOutboxFactory(_notificationOrchestrator);
-    }
+    private readonly EventLifecycleEmailOutboxFactory _factory = new();
 
     [Test]
     public async Task CreateRegistrationApprovedUsesRegistrationIntentDedupKey()
@@ -42,7 +32,7 @@ public sealed class EventLifecycleEmailOutboxFactoryTests
         await Assert.That(outbox.SourceId).IsEqualTo(registrationIntentId);
         await Assert.That(outbox.EventId).IsEqualTo(eventId);
         await Assert.That(outbox.RegistrationIntentId).IsEqualTo(registrationIntentId);
-        await Assert.That(outbox.UserId).IsEqualTo(userId);
+        await Assert.That(outbox.RecipientUserId).IsEqualTo(userId);
         await Assert.That(outbox.RecipientEmail).IsEqualTo("attendee@example.test");
         await Assert.That(outbox.Status).IsEqualTo(EmailDispatchStatus.Pending);
         await Assert.That(outbox.Subject).IsEqualTo("Registration approved for Community Iftar");
@@ -78,6 +68,20 @@ public sealed class EventLifecycleEmailOutboxFactoryTests
             registrationIntentId,
             "attendee@example.test",
             "Event");
+        var registrationCancelled = _factory.CreateRegistrationCancelled(
+            tenantId,
+            userId,
+            eventId,
+            registrationIntentId,
+            "attendee@example.test",
+            "Event");
+        var registrationRevoked = _factory.CreateRegistrationRevoked(
+            tenantId,
+            userId,
+            eventId,
+            registrationIntentId,
+            "attendee@example.test",
+            "Event");
         var reminder = _factory.CreateEventReminder(
             tenantId,
             userId,
@@ -99,6 +103,8 @@ public sealed class EventLifecycleEmailOutboxFactoryTests
             confirmation.Kind,
             rejected.Kind,
             promoted.Kind,
+            registrationCancelled.Kind,
+            registrationRevoked.Kind,
             reminder.Kind,
             cancelled.Kind
         };
@@ -107,6 +113,8 @@ public sealed class EventLifecycleEmailOutboxFactoryTests
         await Assert.That(kinds).Contains(EmailDispatchKind.RegistrationConfirmation);
         await Assert.That(kinds).Contains(EmailDispatchKind.RegistrationRejected);
         await Assert.That(kinds).Contains(EmailDispatchKind.WaitlistPromoted);
+        await Assert.That(kinds).Contains(EmailDispatchKind.RegistrationCancelled);
+        await Assert.That(kinds).Contains(EmailDispatchKind.RegistrationRevoked);
         await Assert.That(kinds).Contains(EmailDispatchKind.EventReminder);
         await Assert.That(kinds).Contains(EmailDispatchKind.EventCancelled);
     }
@@ -132,7 +140,7 @@ public sealed class EventLifecycleEmailOutboxFactoryTests
         await Assert.That(outbox.SourceType).IsEqualTo(EventLifecycleEmailOutboxFactory.EventSourceType);
         await Assert.That(outbox.SourceId).IsEqualTo(eventId);
         await Assert.That(outbox.EventId).IsEqualTo(eventId);
-        await Assert.That(outbox.UserId).IsEqualTo(organizerUserId);
+        await Assert.That(outbox.RecipientUserId).IsEqualTo(organizerUserId);
         await Assert.That(outbox.RegistrationIntentId).IsNull();
         await Assert.That(outbox.CorrelationId).IsEqualTo($"{eventId}:organizer:{organizerUserId}");
     }
@@ -172,93 +180,4 @@ public sealed class EventLifecycleEmailOutboxFactoryTests
         await Assert.That(outbox.HtmlBody).DoesNotContain("<img src=x onerror=");
     }
 
-    [Test]
-    public async Task EnqueueNotificationIntentAsync_RegistrationLifecycleUsesEmailOutboxDedupKey()
-    {
-        var tenantId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
-        var eventId = Guid.NewGuid();
-        var registrationIntentId = Guid.NewGuid();
-        var outbox = _factory.CreateRegistrationApproved(
-            tenantId,
-            userId,
-            eventId,
-            registrationIntentId,
-            "attendee@example.test",
-            "Community Iftar");
-
-        await _factory.EnqueueNotificationIntentAsync(outbox, CancellationToken.None);
-
-        var draft = _notificationOrchestrator.LastDraft!;
-        await Assert.That(draft.Category).IsEqualTo(ApplicationNotificationCategory.RegistrationLifecycle);
-        await Assert.That(draft.TenantId).IsEqualTo(tenantId);
-        await Assert.That(draft.RecipientKind).IsEqualTo("User");
-        await Assert.That(draft.TemplateKey).IsEqualTo("registration.approved");
-        await Assert.That(draft.SafePayloadReference).IsEqualTo($"event-registration-intent:{registrationIntentId}");
-        await Assert.That(draft.DeduplicationKey).IsEqualTo($"event-registration-intent:{registrationIntentId}:registration-approved");
-        await Assert.That(draft.CorrelationId).IsEqualTo(registrationIntentId.ToString());
-        await Assert.That(draft.UserId).IsEqualTo(userId);
-        await Assert.That(draft.EventId).IsEqualTo(eventId);
-        await Assert.That(draft.IsUserFacing).IsTrue();
-        await Assert.That(draft.IsIslamuInitiated).IsTrue();
-    }
-
-    [Test]
-    public async Task EnqueueNotificationIntentAsync_OrganizerNotificationUsesEventLifecycleOwnership()
-    {
-        var tenantId = Guid.NewGuid();
-        var eventId = Guid.NewGuid();
-        var organizerUserId = Guid.NewGuid();
-        var outbox = _factory.CreateOrganizerNotification(
-            tenantId,
-            eventId,
-            organizerUserId,
-            "organizer@example.test",
-            "Fundraiser",
-            "Capacity warning",
-            "The event is almost full.");
-
-        await _factory.EnqueueNotificationIntentAsync(outbox, CancellationToken.None);
-
-        var draft = _notificationOrchestrator.LastDraft!;
-        await Assert.That(draft.Category).IsEqualTo(ApplicationNotificationCategory.EventLifecycle);
-        await Assert.That(draft.TenantId).IsEqualTo(tenantId);
-        await Assert.That(draft.RecipientKind).IsEqualTo("Organizer");
-        await Assert.That(draft.TemplateKey).IsEqualTo("event.organizer.notification");
-        await Assert.That(draft.SafePayloadReference).IsEqualTo($"event:{eventId}");
-        await Assert.That(draft.DeduplicationKey).IsEqualTo($"event:{eventId}:event-organizer-notification");
-        await Assert.That(draft.CorrelationId).IsEqualTo($"{eventId}:organizer:{organizerUserId}");
-        await Assert.That(draft.UserId).IsEqualTo(organizerUserId);
-        await Assert.That(draft.EventId).IsEqualTo(eventId);
-    }
-
-    private sealed class CapturingNotificationOrchestrator : INotificationOrchestrator
-    {
-        public NotificationIntentDraft? LastDraft { get; private set; }
-
-        public Task<NotificationOrchestrationResult> EnqueueAsync(
-            NotificationIntentDraft draft,
-            CancellationToken cancellationToken = default)
-        {
-            LastDraft = draft;
-
-            return Task.FromResult(new NotificationOrchestrationResult(
-                new NotificationIntent
-                {
-                    TenantId = draft.TenantId ?? Guid.CreateVersion7(),
-                    Tenant = null!,
-                    CategoryId = (int)NotificationCategoryEnum.RegistrationLifecycle,
-                    Category = null!,
-                    OwnershipTypeId = (int)NotificationOwnershipTypeEnum.IslamuEvent,
-                    OwnershipType = null!,
-                    RecipientKindId = (int)NotificationRecipientKindEnum.User,
-                    RecipientKind = null!,
-                    StatusId = (int)NotificationIntentStatusEnum.Pending,
-                    Status = null!,
-                    TemplateKey = draft.TemplateKey ?? string.Empty,
-                    DeduplicationKey = draft.DeduplicationKey ?? string.Empty
-                },
-                new NotificationOwnershipDecision(draft.Category, NotificationOwnership.IslamuEvent)));
-        }
-    }
 }

@@ -1,17 +1,13 @@
 // ABOUTME: Creates fixed Event lifecycle email automation outbox rows.
-// ABOUTME: Centralizes source/kind/dedup fields and matching NotificationIntent audit ownership.
+// ABOUTME: Centralizes source, kind, recipient-authority, and transport snapshot fields.
 
 using System.Net;
-using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Services;
-using Explore.Application.Notifications;
 using Explore.Domain;
-
-using ApplicationNotificationCategory = Explore.Application.Notifications.NotificationCategory;
 
 namespace Explore.Application.Services;
 
-public sealed class EventLifecycleEmailOutboxFactory(INotificationOrchestrator notificationOrchestrator)
+public sealed class EventLifecycleEmailOutboxFactory
     : IEventLifecycleEmailOutboxFactory
 {
     public const string RegistrationIntentSourceType = "event_registration_intent";
@@ -101,6 +97,48 @@ public sealed class EventLifecycleEmailOutboxFactory(INotificationOrchestrator n
             $"A place opened for <strong>{Html(title)}</strong>; your waitlisted registration has been promoted.");
     }
 
+    public EmailDispatchOutbox CreateRegistrationCancelled(
+        Guid tenantId,
+        Guid userId,
+        Guid eventId,
+        Guid registrationIntentId,
+        string recipientEmail,
+        string eventTitle)
+    {
+        var title = NormalizeTitle(eventTitle);
+        return CreateRegistrationLifecycleEmail(
+            tenantId,
+            userId,
+            eventId,
+            registrationIntentId,
+            recipientEmail,
+            EmailDispatchKind.RegistrationCancelled,
+            $"Registration cancelled for {title}",
+            $"Your registration for {title} has been cancelled as requested.",
+            $"Your registration for <strong>{Html(title)}</strong> has been cancelled as requested.");
+    }
+
+    public EmailDispatchOutbox CreateRegistrationRevoked(
+        Guid tenantId,
+        Guid userId,
+        Guid eventId,
+        Guid registrationIntentId,
+        string recipientEmail,
+        string eventTitle)
+    {
+        var title = NormalizeTitle(eventTitle);
+        return CreateRegistrationLifecycleEmail(
+            tenantId,
+            userId,
+            eventId,
+            registrationIntentId,
+            recipientEmail,
+            EmailDispatchKind.RegistrationRevoked,
+            $"Registration update for {title}",
+            $"Your registration for {title} is no longer active. Contact the event organizer if you need more information.",
+            $"Your registration for <strong>{Html(title)}</strong> is no longer active. Contact the event organizer if you need more information.");
+    }
+
     public EmailDispatchOutbox CreateEventReminder(
         Guid tenantId,
         Guid userId,
@@ -169,79 +207,12 @@ public sealed class EventLifecycleEmailOutboxFactory(INotificationOrchestrator n
             SourceType = EventSourceType,
             SourceId = eventId,
             EventId = eventId,
-            UserId = organizerUserId,
+            RecipientUserId = organizerUserId,
             RecipientEmail = NormalizeEmail(recipientEmail),
             Subject = subject,
             PlainTextBody = ComposePlainText(body),
             HtmlBody = ComposeHtmlFromText(body),
             CorrelationId = $"{eventId}:organizer:{organizerUserId}"
-        };
-    }
-
-    public async Task EnqueueNotificationIntentAsync(
-        EmailDispatchOutbox outbox,
-        CancellationToken cancellationToken)
-    {
-        await notificationOrchestrator.EnqueueAsync(CreateNotificationIntentDraft(outbox), cancellationToken);
-    }
-
-    private static NotificationIntentDraft CreateNotificationIntentDraft(EmailDispatchOutbox outbox)
-    {
-        var templateKey = GetTemplateKey(outbox.Kind);
-        var sourceReference = GetSourceReference(outbox);
-
-        return new NotificationIntentDraft(
-            GetCategory(outbox),
-            TenantId: outbox.TenantId,
-            RecipientKind: GetRecipientKind(outbox),
-            TemplateKey: templateKey,
-            SafePayloadReference: sourceReference,
-            IsUserFacing: true,
-            IsIslamuInitiated: true,
-            DeduplicationKey: $"{sourceReference}:{templateKey.Replace('.', '-')}",
-            CorrelationId: string.IsNullOrWhiteSpace(outbox.CorrelationId)
-                ? outbox.PublishEventId.ToString()
-                : outbox.CorrelationId,
-            UserId: outbox.UserId,
-            EventId: outbox.EventId);
-    }
-
-    private static ApplicationNotificationCategory GetCategory(EmailDispatchOutbox outbox)
-    {
-        return outbox.Kind == EmailDispatchKind.OrganizerNotification
-            ? ApplicationNotificationCategory.EventLifecycle
-            : ApplicationNotificationCategory.RegistrationLifecycle;
-    }
-
-    private static string GetRecipientKind(EmailDispatchOutbox outbox)
-    {
-        return outbox.Kind == EmailDispatchKind.OrganizerNotification ? "Organizer" : "User";
-    }
-
-    private static string GetSourceReference(EmailDispatchOutbox outbox)
-    {
-        var sourceType = outbox.SourceType switch
-        {
-            RegistrationIntentSourceType => "event-registration-intent",
-            EventSourceType => "event",
-            _ => outbox.SourceType
-        };
-
-        return $"{sourceType}:{outbox.SourceId}";
-    }
-
-    private static string GetTemplateKey(EmailDispatchKind kind)
-    {
-        return kind switch
-        {
-            EmailDispatchKind.RegistrationConfirmation => "registration.confirmation",
-            EmailDispatchKind.RegistrationApproved => "registration.approved",
-            EmailDispatchKind.RegistrationRejected => "registration.rejected",
-            EmailDispatchKind.WaitlistPromoted => "registration.waitlist.promoted",
-            EmailDispatchKind.EventReminder => "event.reminder",
-            EmailDispatchKind.EventCancelled => "event.cancelled",
-            EmailDispatchKind.OrganizerNotification => "event.organizer.notification",
-            _ => throw new InvalidOperationException($"Unsupported event lifecycle email kind '{kind}'.")
         };
     }
 
@@ -264,7 +235,8 @@ public sealed class EventLifecycleEmailOutboxFactory(INotificationOrchestrator n
             SourceId = registrationIntentId,
             EventId = eventId,
             RegistrationIntentId = registrationIntentId,
-            UserId = userId,
+            RecipientUserId = userId,
+            RecipientAddressSource = RecipientAddressSource.TenantUserVerifiedEmail,
             RecipientEmail = NormalizeEmail(recipientEmail),
             Subject = subject,
             PlainTextBody = ComposePlainText(plainTextBody),

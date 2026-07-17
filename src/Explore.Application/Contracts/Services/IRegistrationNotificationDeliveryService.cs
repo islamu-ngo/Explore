@@ -1,6 +1,8 @@
 // ABOUTME: Application boundary for event registration notification delivery eligibility.
 // ABOUTME: Separates verified product email use from in-app fallback notifications.
 
+using Explore.Application.Contracts.Notifications;
+using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 
 namespace Explore.Application.Contracts.Services;
@@ -9,13 +11,13 @@ public interface IRegistrationNotificationDeliveryService
 {
     RegistrationNotificationEmailResolution ResolveRegistrationConfirmationEmail(User user);
 
-    Task CreateRegistrationConfirmationFallbackAsync(
-        User user,
-        Guid tenantId,
-        Guid eventId,
-        Guid registrationIntentId,
+    RecipientNotificationMaterialization? CreateLifecycleMaterialization(
+        EventRegistrationIntent registrationIntent,
         string eventTitle,
-        CancellationToken cancellationToken);
+        User user,
+        EventRegistrationTransitionResult transition,
+        Guid notificationIntentId,
+        Guid emailDispatchOutboxId);
 }
 
 public sealed record RegistrationNotificationEmailResolution(
