@@ -139,6 +139,26 @@ public sealed class BusinessMetricsWebhookTests
     }
 
     [Test]
+    public async Task CoopIncomingEffectMetricsUseBoundedProviderAndOperationTags()
+    {
+        using var metricsCapture = new MetricsCapture();
+        var metrics = CreateMetrics();
+
+        metrics.RecordWebhookProcessingOutcome(
+            WebhookTelemetryProvider.Coop,
+            WebhookTelemetryOperation.IncomingEffect,
+            WebhookTelemetryOutcome.DeadLettered);
+
+        var measurement = await metricsCapture.SingleAsync("explore.webhooks.processing_outcomes");
+
+        await Assert.That(measurement.Tags.Keys).IsEquivalentTo(["provider", "operation", "outcome"]);
+        await Assert.That(measurement.Tags["provider"]?.ToString()).IsEqualTo("coop");
+        await Assert.That(measurement.Tags["operation"]?.ToString()).IsEqualTo("incoming_effect");
+        await Assert.That(measurement.Tags["outcome"]?.ToString()).IsEqualTo("dead_lettered");
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("tenant_id");
+    }
+
+    [Test]
     public async Task SpecializedOperationalMetricsExposeOnlyBoundedDimensions()
     {
         using var metricsCapture = new MetricsCapture();
