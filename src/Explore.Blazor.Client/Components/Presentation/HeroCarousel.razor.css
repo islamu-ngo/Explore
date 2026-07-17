@@ -3,17 +3,20 @@
 
 .hero-carousel {
     position: relative;
-    block-size: clamp(20rem, 46vw, 32.5rem);
-    min-block-size: 20rem;
     overflow: hidden;
-    border-radius: var(--isl-radius-xl, 1rem);
-    background: var(--isl-color-surface, var(--mud-palette-surface));
-    box-shadow: var(--isl-shadow-md);
-    color: var(--isl-overlay-text, #fff);
+    background: var(--isl-color-background, var(--mud-palette-background));
+    color: var(--isl-overlay-text);
     touch-action: pan-y;
 }
 
-.hero-carousel__viewport,
+.hero-carousel--empty {
+    overflow: visible;
+}
+
+.hero-carousel__viewport {
+    block-size: 25.5rem;
+}
+
 .hero-carousel__slide {
     block-size: 100%;
 }
@@ -27,33 +30,108 @@
     display: none;
 }
 
-.hero-carousel__image,
+.hero-carousel__visual {
+    position: absolute;
+    inset: 0;
+    inline-size: 100%;
+    overflow: hidden;
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        var(--isl-color-text) 0%,
+        var(--isl-color-text) 45%,
+        transparent 100%);
+    mask-image: linear-gradient(
+        to bottom,
+        var(--isl-color-text) 0%,
+        var(--isl-color-text) 45%,
+        transparent 100%);
+}
+
+.hero-carousel__backdrop,
 .hero-carousel__scrim {
     position: absolute;
     inset: 0;
     inline-size: 100%;
-    block-size: 100%;
 }
 
-.hero-carousel__image {
+.hero-carousel__backdrop {
+    block-size: 150%;
     object-fit: cover;
+    object-position: center top;
 }
 
 .hero-carousel__scrim {
-    background: linear-gradient(0deg, rgb(0 0 0 / 0.9), rgb(0 0 0 / 0.08) 78%);
+    block-size: 100%;
+    background: var(--isl-overlay-gradient), var(--isl-overlay-scrim);
+}
+
+.hero-carousel__inner {
+    position: relative;
+    z-index: 3;
+    display: grid;
+    grid-template-columns: 13.5rem minmax(0, 1fr);
+    gap: var(--isl-space-4);
+    align-items: center;
+    block-size: 100%;
+    max-inline-size: 90rem;
+    margin-inline: auto;
+    padding: var(--isl-space-4);
+    pointer-events: none;
+}
+
+.hero-carousel__inner--with-header {
+    grid-template-rows: auto minmax(0, 1fr);
+}
+
+.hero-carousel__inner.hero-carousel__inner--empty {
+    display: block;
+    block-size: auto;
+}
+
+.hero-carousel__inner--empty .hero-carousel__header {
+    color: var(--isl-color-text, var(--mud-palette-text-primary));
+}
+
+.hero-carousel__header {
+    position: relative;
+    z-index: 4;
+    grid-column: 1 / -1;
+    color: var(--isl-overlay-text);
+    pointer-events: auto;
+}
+
+.hero-carousel__slide-link {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    cursor: pointer;
+}
+
+.hero-carousel__poster-frame {
+    inline-size: 100%;
+    aspect-ratio: 7 / 10;
+    overflow: hidden;
+    border-radius: var(--isl-radius-sm);
+    background: var(--isl-color-surface);
+    box-shadow: var(--isl-shadow-md);
+}
+
+.hero-carousel__poster-image {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+    object-position: center;
 }
 
 .hero-carousel__content {
-    position: relative;
-    z-index: 1;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    justify-content: flex-end;
-    block-size: 100%;
+    justify-content: center;
+    min-inline-size: 0;
     max-inline-size: 50rem;
-    padding-block: clamp(1.5rem, 4vw, 4rem) 4.5rem;
-    padding-inline: clamp(1.25rem, 5vw, 4.5rem);
 }
 
 .hero-carousel__format {
@@ -67,10 +145,12 @@
 }
 
 .hero-carousel__title {
-    max-inline-size: 18ch;
+    max-inline-size: 24ch;
     margin: 0;
-    font-size: clamp(1.75rem, 5vw, 3.5rem);
-    line-height: 1.06;
+    overflow: hidden;
+    font-size: var(--isl-typography-h1-size);
+    font-weight: var(--isl-typography-h1-weight);
+    line-height: var(--isl-typography-h1-line-height);
     text-wrap: balance;
 }
 
@@ -90,69 +170,70 @@
     overflow: hidden;
     opacity: 0.92;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-}
-
-.hero-carousel__link {
-    margin-block-start: 1.25rem;
-    padding-block: 0.7rem;
-    padding-inline: 1.15rem;
-    border-radius: var(--isl-radius-md, 0.5rem);
-    background: var(--isl-color-primary, var(--mud-palette-primary));
-    color: var(--isl-color-on-primary, #fff);
-    font-weight: 700;
-    text-decoration: none;
+    -webkit-line-clamp: 3;
 }
 
 .hero-carousel__controls {
     position: absolute;
-    z-index: 2;
-    inset-block-end: 1rem;
-    inset-inline-end: 1rem;
+    z-index: 4;
+    inset-block-end: var(--isl-space-4);
+    inset-inline-end: max(var(--isl-space-4), calc((100% - 90rem) / 2 + var(--isl-space-4)));
     display: flex;
     gap: 0.5rem;
     align-items: center;
 }
 
-.hero-carousel__control,
-.hero-carousel__counter {
-    border: 1px solid rgb(255 255 255 / 0.35);
-    background: rgb(0 0 0 / 0.58);
-    color: inherit;
-    backdrop-filter: blur(0.5rem);
-}
-
 .hero-carousel__control {
     display: grid;
-    inline-size: 2.75rem;
-    block-size: 2.75rem;
+    inline-size: var(--isl-space-10);
+    block-size: var(--isl-space-10);
     padding: 0;
+    border: 0;
     border-radius: 50%;
+    background: transparent;
+    color: inherit;
     cursor: pointer;
     place-items: center;
     font: inherit;
     font-size: 1.75rem;
+    transition: background-color 150ms ease;
 }
 
 .hero-carousel__counter {
-    min-inline-size: 4rem;
-    padding-block: 0.45rem;
-    padding-inline: 0.65rem;
-    border-radius: var(--isl-radius-pill, 999px);
+    border: 0;
+    background: transparent;
+    color: inherit;
     text-align: center;
     font-size: 0.875rem;
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
+    text-transform: uppercase;
+    text-shadow: 0 0.125rem 0.5rem rgb(0 0 0 / 0.55);
 }
 
 .hero-carousel__control:hover,
-.hero-carousel__link:hover {
-    filter: brightness(1.12);
+.hero-carousel__control:active {
+    background: color-mix(in oklch, var(--isl-overlay-text) 10%, transparent);
 }
 
 .hero-carousel__control:focus-visible,
-.hero-carousel__link:focus-visible {
+.hero-carousel__slide-link:focus-visible {
     outline: var(--isl-focus-ring-width, 2px) solid var(--isl-focus-ring-color, currentColor);
     outline-offset: var(--isl-focus-ring-offset, 2px);
+}
+
+.hero-carousel__slide-link:focus-visible {
+    outline-offset: calc(-1 * var(--isl-space-1));
+}
+
+@media (max-width: 64rem) {
+    .hero-carousel__viewport {
+        block-size: 23rem;
+    }
+
+    .hero-carousel__inner {
+        grid-template-columns: 12rem minmax(0, 1fr);
+    }
 }
 
 @media (max-width: 47.99rem) {
@@ -160,9 +241,51 @@
         display: none;
     }
 
-    .hero-carousel__content {
-        padding-block-end: 4.75rem;
+}
+
+@media (max-width: 37.5rem) {
+    .hero-carousel__viewport {
+        block-size: 15.75rem;
     }
+
+    .hero-carousel__inner {
+        grid-template-columns: 7rem minmax(0, 1fr);
+        gap: var(--isl-space-3);
+        align-items: start;
+        padding: var(--isl-space-3);
+        padding-block-start: var(--isl-space-6);
+        padding-block-end: var(--isl-space-3);
+    }
+
+    .hero-carousel__format {
+        margin-block-end: var(--isl-space-2);
+    }
+
+    .hero-carousel__title {
+        display: -webkit-box;
+        font-size: var(--isl-typography-h4-size);
+        line-height: var(--isl-typography-h4-line-height);
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 4;
+    }
+
+    .hero-carousel__metadata {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+
+    .hero-carousel__controls {
+        inset-block-end: var(--isl-space-3);
+        inset-inline-end: var(--isl-space-3);
+    }
+
+    .hero-carousel__control {
+        inline-size: 2.25rem;
+        block-size: 2.25rem;
+    }
+
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,70 +1,105 @@
 @* ABOUTME: Renders a bounded, manual featured-event hero for the public home experience. *@
 @* ABOUTME: Supports keyboard controls, pointer swipes, responsive images, RTL, and reduced motion. *@
 
-@if (_slides.Count > 0)
+@if (_slides.Count > 0 || HeaderContent is not null)
 {
-    <section class="hero-carousel"
+    <section class="hero-carousel @(_slides.Count == 0 ? "hero-carousel--empty" : null)"
              data-testid="hero-carousel"
-             role="region"
-             aria-roledescription="carousel"
+             role="@(_slides.Count > 0 ? "region" : null)"
+             aria-roledescription="@(_slides.Count > 0 ? "carousel" : null)"
              aria-label="@AriaLabel"
              dir="@(RightToLeft ? "rtl" : "ltr")"
              @onpointerdown="HandlePointerDown"
              @onpointerup="HandlePointerUp"
              @onpointercancel="ClearPointer">
-        <div class="hero-carousel__viewport">
+        @if (_slides.Count == 0 && HeaderContent is not null)
+        {
+            <div class="hero-carousel__inner hero-carousel__inner--empty">
+                <div class="hero-carousel__header">
+                    @HeaderContent
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="hero-carousel__viewport">
             @for (var index = 0; index < _slides.Count; index++)
             {
                 var slide = _slides[index];
                 var isActive = index == _selectedIndex;
 
                 <article class="hero-carousel__slide"
-                         data-testid="hero-slide"
-                         role="group"
-                         aria-roledescription="slide"
-                         aria-label="@(index + 1) of @_slides.Count"
-                         hidden="@(!isActive)">
-                    <img class="hero-carousel__image"
-                         src="@GetImageSource(slide, index)"
-                         alt="@slide.Title"
-                         width="1280"
-                         height="520"
-                         loading="@(isActive ? "eager" : "lazy")"
-                         fetchpriority="@(isActive ? "high" : "low")"
-                         decoding="async"
-                         @onerror="() => HandleImageError(index)" />
-                    <div class="hero-carousel__scrim" aria-hidden="true"></div>
-                    <div class="hero-carousel__content">
-                        @if (!string.IsNullOrWhiteSpace(slide.EventFormatFullName))
-                        {
-                            <span class="hero-carousel__format">@slide.EventFormatFullName</span>
-                        }
-                        <h2 class="hero-carousel__title">@slide.Title</h2>
-                        <p class="hero-carousel__metadata">@GetMetadata(slide)</p>
-                        @if (!string.IsNullOrWhiteSpace(slide.Description))
-                        {
-                            <p class="hero-carousel__description">@slide.Description</p>
-                        }
-                        <a class="hero-carousel__link" href="@GetEventUrl(slide)">@ViewEventLabel</a>
-                    </div>
+                             data-testid="hero-slide"
+                             role="group"
+                             aria-roledescription="slide"
+                             aria-label="@(index + 1) of @_slides.Count"
+                             hidden="@(!isActive)">
+                        <div class="hero-carousel__visual" aria-hidden="true">
+                            <img class="hero-carousel__backdrop"
+                                 src="@GetImageSource(slide, index)"
+                                 alt=""
+                                 width="1600"
+                                 height="900"
+                                 loading="@(isActive ? "eager" : "lazy")"
+                                 fetchpriority="@(isActive ? "high" : "low")"
+                                 decoding="async"
+                                 @onerror="() => HandleImageError(index)" />
+                            <div class="hero-carousel__scrim"></div>
+                        </div>
+                        <div class="hero-carousel__inner @(HeaderContent is not null ? "hero-carousel__inner--with-header" : null)">
+                            @if (isActive && HeaderContent is not null)
+                            {
+                                <div class="hero-carousel__header">
+                                    @HeaderContent
+                                </div>
+                            }
+                            <div class="hero-carousel__poster-frame">
+                                <img class="hero-carousel__poster-image"
+                                     src="@GetImageSource(slide, index)"
+                                     alt="@GetPosterAlt(slide)"
+                                     width="350"
+                                     height="500"
+                                     loading="@(isActive ? "eager" : "lazy")"
+                                     fetchpriority="@(isActive ? "high" : "low")"
+                                     decoding="async"
+                                     @onerror="() => HandleImageError(index)" />
+                            </div>
+                            <div class="hero-carousel__content">
+                                @if (!string.IsNullOrWhiteSpace(slide.EventFormatFullName))
+                                {
+                                    <span class="hero-carousel__format">@slide.EventFormatFullName</span>
+                                }
+                                <h2 class="hero-carousel__title">@slide.Title</h2>
+                                <p class="hero-carousel__metadata">@GetMetadata(slide)</p>
+                                @if (!string.IsNullOrWhiteSpace(slide.Description))
+                                {
+                                    <p class="hero-carousel__description">@slide.Description</p>
+                                }
+                            </div>
+                        </div>
+                        <a class="hero-carousel__slide-link"
+                           href="@GetEventUrl(slide)"
+                           aria-label="@GetEventLinkLabel(slide)"></a>
                 </article>
             }
-        </div>
+            </div>
+        }
 
         @if (_slides.Count > 1)
         {
             <div class="hero-carousel__controls">
+                <span class="hero-carousel__counter"
+                      data-testid="hero-counter"
+                      aria-live="polite"
+                      aria-label="@($"{_selectedIndex + 1} of {_slides.Count}")">
+                    NO. @(_selectedIndex + 1)
+                </span>
                 <button class="hero-carousel__control"
                         type="button"
                         aria-label="@PreviousLabel"
                         @onclick="ShowPrevious">
                     <span aria-hidden="true">‹</span>
                 </button>
-                <span class="hero-carousel__counter"
-                      data-testid="hero-counter"
-                      aria-live="polite">
-                    @(_selectedIndex + 1) / @_slides.Count
-                </span>
                 <button class="hero-carousel__control"
                         type="button"
                         aria-label="@NextLabel"
@@ -91,6 +126,7 @@
     [Parameter] public string NextLabel { get; set; } = "Next featured event";
     [Parameter] public string ViewEventLabel { get; set; } = "View event";
     [Parameter] public bool RightToLeft { get; set; }
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
 
     protected override void OnParametersSet()
     {
@@ -147,6 +183,10 @@
             ? date
             : $"{date} · {slide.ActorDisplayName}";
     }
+
+    private static string GetPosterAlt(EventListDto slide) => $"Poster for {slide.Title}";
+
+    private string GetEventLinkLabel(EventListDto slide) => $"{ViewEventLabel}: {slide.Title}";
 
     private static string GetEventUrl(EventListDto slide) =>
         EventUrlHelper.BuildPublicPath(slide.Slug, slide.PublicCode) ?? "/events";
