@@ -1,5 +1,5 @@
 // ABOUTME: Unit coverage for tenant-safe bounded home-discovery query composition.
-// ABOUTME: Verifies area resolution, request filters, dedupe, curation, and partial-failure isolation.
+// ABOUTME: Verifies area resolution, request filters, independent sections, curation, and partial-failure isolation.
 
 using System.IO.Compression;
 using System.Reflection;
@@ -18,6 +18,7 @@ using Explore.Application.Serialization;
 using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -73,7 +74,8 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
         await Assert.That(result.Context.SelectedAreaId).IsEqualTo(areaId);
         await Assert.That(result.Context.AvailableAreas.Single().DisplayName).IsEqualTo("Brussels");
         await Assert.That(requests.Any(request => request.LocationIds?.SequenceEqual([locationId]) == true)).IsTrue();
-        await Assert.That(requests.Any(request => request.FormatIds?.SequenceEqual([2]) == true)).IsTrue();
+        await Assert.That(requests.Any(request => request.FormatIds?.SequenceEqual(
+            [(int)EventFormatEnum.Digital, (int)EventFormatEnum.Hybrid]) == true)).IsTrue();
     }
 
     [Test]
@@ -98,10 +100,42 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
     }
 
     [Test]
-    public async Task PriorityDedupeBackfillsLaterSections()
+    public async Task OnlineModeIncludesHybridInventoryAndScopesContextualQueries()
     {
         ConfigureAreas();
         _locationRepository.GetLocationsByTenant(TenantId, Arg.Any<CancellationToken>()).Returns([]);
+        var hybridEvent = CreateEvent("Hybrid event");
+        hybridEvent.EventFormatId = (int)EventFormatEnum.Hybrid;
+        hybridEvent.EventFormatFullName = "Hybrid";
+        var requests = new List<GetEventListRequest>();
+        _eventListHandler.Handle(Arg.Any<GetEventListRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var request = call.Arg<GetEventListRequest>()!;
+                requests.Add(request);
+                EventListDto[] events = request.SortBy == "views" &&
+                                        request.FormatIds?.Contains((int)EventFormatEnum.Hybrid) == true
+                    ? [hybridEvent]
+                    : [];
+                return Page(events, request.PageSize);
+            });
+
+        var result = await CreateHandler().Handle(
+            new GetHomeDiscoveryQuery(Mode: "online"),
+            CancellationToken.None);
+
+        await Assert.That(result.Hero.Single().Event.Id).IsEqualTo(hybridEvent.Id);
+        await Assert.That(result.Hero.Single().Event.EventFormatId).IsEqualTo((int)EventFormatEnum.Hybrid);
+        await Assert.That(requests.Single(request => request.SortBy == "createdat").FormatIds)
+            .IsEquivalentTo([(int)EventFormatEnum.Digital, (int)EventFormatEnum.Hybrid]);
+    }
+
+    [Test]
+    public async Task MatchingEventsRemainAvailableAcrossSemanticSectionsWithoutUpcomingCutoff()
+    {
+        ConfigureAreas();
+        _locationRepository.GetLocationsByTenant(TenantId, Arg.Any<CancellationToken>()).Returns([]);
+        var requests = new List<GetEventListRequest>();
         var shared = CreateEvent("Shared");
         var heroOnly = CreateEvent("Hero only");
         var upcomingOne = CreateEvent("Upcoming one");
@@ -110,6 +144,7 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
             .Returns(call =>
             {
                 var request = call.Arg<GetEventListRequest>()!;
+                requests.Add(request);
                 var events = request.SortBy == "views"
                     ? new[] { shared, heroOnly }
                     : new[] { shared, upcomingOne, upcomingTwo };
@@ -119,7 +154,9 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
         var result = await CreateHandler().Handle(new GetHomeDiscoveryQuery(Mode: "all"), CancellationToken.None);
 
         await Assert.That(result.Hero.Select(item => item.Event.Id)).IsEquivalentTo(new[] { shared.Id, heroOnly.Id });
-        await Assert.That(result.UpcomingInArea.Select(item => item.Event.Id)).IsEquivalentTo(new[] { upcomingOne.Id, upcomingTwo.Id });
+        await Assert.That(result.UpcomingInArea.Select(item => item.Event.Id))
+            .IsEquivalentTo(new[] { shared.Id, upcomingOne.Id, upcomingTwo.Id });
+        await Assert.That(requests.Single(request => request.SortBy == "date").DateTo).IsNull();
     }
 
     [Test]
@@ -132,7 +169,8 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
             .Returns(call =>
             {
                 var request = call.Arg<GetEventListRequest>()!;
-                if (request.FormatIds?.SequenceEqual([2]) == true)
+                if (request.FormatIds?.SequenceEqual(
+                        [(int)EventFormatEnum.Digital, (int)EventFormatEnum.Hybrid]) == true)
                     throw new InvalidOperationException("Online query unavailable");
 
                 return Page(request.SortBy == "createdat" ? [recent] : [], request.PageSize);
