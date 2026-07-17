@@ -8,6 +8,8 @@ namespace Explore.Domain;
 
 public class NotificationFanoutRun : ITenantEntity, IAuditableEntity, IConcurrencyAware
 {
+    public const int MaxLeaseOwnerLength = 200;
+
     public Guid Id { get; set; }
 
     [ForeignKey("Tenant")]
@@ -28,6 +30,16 @@ public class NotificationFanoutRun : ITenantEntity, IAuditableEntity, IConcurren
 
     public required string Status { get; set; }
     public Guid? CursorSubscriberTenantUserId { get; set; }
+    public DateTime? CursorFirstEligibleRegistrationCreatedAt { get; set; }
+    public Guid? CursorUserId { get; set; }
+    public Guid? FanoutOccurrenceId { get; set; }
+    public NotificationFanoutOccurrence? FanoutOccurrence { get; set; }
+    public string? ProcessingLeaseOwner { get; set; }
+    public Guid? ProcessingLeaseToken { get; set; }
+    public DateTime? ProcessingLeaseExpiresAt { get; set; }
+    public int ProcessingGeneration { get; set; }
+    public long ProcessingFence { get; set; }
+    public DateTime? HeartbeatAt { get; set; }
     public int ProcessedCount { get; set; }
     public int CreatedNotificationCount { get; set; }
     public DateTime? StartedAt { get; set; }
