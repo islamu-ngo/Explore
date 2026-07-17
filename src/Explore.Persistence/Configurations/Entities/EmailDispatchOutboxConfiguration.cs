@@ -35,12 +35,12 @@ public class EmailDispatchOutboxConfiguration : IEntityTypeConfiguration<EmailDi
         builder.HasAlternateKey(e => new { e.TenantId, e.Id, e.NotificationIntentId })
             .HasName("ak_email_dispatch_outbox_tenant_id_intent");
         builder.HasAlternateKey(e => new
-            {
-                e.TenantId,
-                e.Id,
-                e.NotificationIntentId,
-                e.RecipientAddressSource
-            })
+        {
+            e.TenantId,
+            e.Id,
+            e.NotificationIntentId,
+            e.RecipientAddressSource
+        })
             .HasName("ak_email_dispatch_outbox_tenant_id_intent_address_source");
         builder.HasAlternateKey(e => new { e.TenantId, e.Id, e.PublishEventId })
             .HasName("ak_email_dispatch_outbox_tenant_id_publish_event");

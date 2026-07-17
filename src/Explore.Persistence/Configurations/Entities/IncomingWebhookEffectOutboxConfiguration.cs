@@ -65,21 +65,21 @@ public sealed class IncomingWebhookEffectOutboxConfiguration : IEntityTypeConfig
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(pointer => new
-            {
-                pointer.TenantId,
-                pointer.Provider,
-                pointer.ProviderDecisionId,
-                pointer.EffectKind
-            })
+        {
+            pointer.TenantId,
+            pointer.Provider,
+            pointer.ProviderDecisionId,
+            pointer.EffectKind
+        })
             .HasDatabaseName("ux_incoming_webhook_effect_outbox_provider_decision")
             .IsUnique();
 
         builder.HasIndex(pointer => new
-            {
-                pointer.TenantId,
-                pointer.IncomingWebhookMessageId,
-                pointer.EffectKind
-            })
+        {
+            pointer.TenantId,
+            pointer.IncomingWebhookMessageId,
+            pointer.EffectKind
+        })
             .HasDatabaseName("ux_incoming_webhook_effect_outbox_message_effect")
             .IsUnique();
 
