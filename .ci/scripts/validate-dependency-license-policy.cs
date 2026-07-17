@@ -383,6 +383,7 @@ static class LicensePolicy
         ["Bogus"] = new("MIT", "package uses license file metadata", false),
         ["Cerbos.Sdk"] = new("Apache-2.0", "package uses license file metadata", false),
         ["CommandLineParser"] = new("MIT", "package uses license file metadata", false),
+        ["DotNetEnv"] = new("MIT", "package uses license file metadata", false),
         ["Fractions"] = new("BSD-3-Clause", "package uses license file metadata", false),
         ["Infisical.Sdk"] = new("MIT", "package uses license file metadata", false),
         ["Microsoft.DotNet.PlatformAbstractions"] = new("Microsoft-.NET-Library", "Microsoft .NET library package uses license file metadata", false),
@@ -392,7 +393,9 @@ static class LicensePolicy
         ["runtime.win-x86.runtime.native.System.Data.SqlClient.sni"] = new("Microsoft-.NET-Library", "Microsoft native runtime package uses license URL metadata", false),
         ["Microsoft.DotNet.ILCompiler"] = new("MIT", "build-only Native AOT compiler tool; not shipped with runtime artifacts", false),
         ["Microsoft.NET.ILLink.Tasks"] = new("MIT", "build-only linker tool; not shipped with runtime artifacts", false),
+        ["Portable.BouncyCastle"] = new("MIT", "package uses legacy license URL metadata", false),
         ["runtime.linux-x64.Microsoft.DotNet.ILCompiler"] = new("MIT", "build-only Native AOT compiler tool runtime; not shipped with runtime artifacts", false),
+        ["WebPush"] = new("MPL-2.0", "package uses legacy license URL metadata", false),
     };
 }
 

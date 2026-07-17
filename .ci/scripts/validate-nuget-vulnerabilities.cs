@@ -1,5 +1,5 @@
-// ABOUTME: Parses dotnet vulnerable-package JSON output and fails when any advisory is present.
-// ABOUTME: Splits findings by direct/transitive relationship and severity for deterministic CI evidence.
+// ABOUTME: Parses dotnet vulnerable-package JSON output and fails on unapproved advisories.
+// ABOUTME: Splits actionable and explicitly suppressed findings for deterministic CI evidence.
 #:property RestorePackagesWithLockFile=false
 
 using System.Text.Json;
@@ -15,8 +15,9 @@ if (!File.Exists(reportPath))
 
 using var report = JsonDocument.Parse(File.ReadAllText(reportPath));
 var findings = new List<Finding>();
-Visit(report.RootElement, project: string.Empty, framework: string.Empty, relationship: "Unknown", findings);
-WriteSummary(reportPath, findings);
+var suppressedFindings = new List<Finding>();
+Visit(report.RootElement, project: string.Empty, framework: string.Empty, relationship: "Unknown", findings, suppressedFindings);
+WriteSummary(reportPath, findings, suppressedFindings);
 
 if (findings.Count > 0)
 {
@@ -35,10 +36,16 @@ if (findings.Count > 0)
     return 1;
 }
 
-Console.WriteLine("No NuGet vulnerabilities detected.");
+Console.WriteLine($"No unapproved NuGet vulnerabilities detected. Approved suppressed package graphs: {suppressedFindings.Count}.");
 return 0;
 
-static void Visit(JsonElement node, string project, string framework, string relationship, List<Finding> findings)
+static void Visit(
+    JsonElement node,
+    string project,
+    string framework,
+    string relationship,
+    List<Finding> findings,
+    List<Finding> suppressedFindings)
 {
     switch (node.ValueKind)
     {
@@ -46,17 +53,17 @@ static void Visit(JsonElement node, string project, string framework, string rel
             var currentProject = GetStringProperty(node, "path") ?? project;
             var currentFramework = GetStringProperty(node, "framework") ?? framework;
             var packageId = GetStringProperty(node, "id") ?? "<unknown>";
+            var resolvedVersion = GetStringProperty(node, "resolvedVersion") ?? "<unknown>";
 
             if (node.TryGetProperty("vulnerabilities", out var vulnerabilitiesElement)
                 && vulnerabilitiesElement.ValueKind == JsonValueKind.Array
                 && vulnerabilitiesElement.GetArrayLength() > 0)
             {
-                findings.Add(new Finding(
-                    currentProject,
-                    currentFramework,
-                    packageId,
-                    relationship,
-                    vulnerabilitiesElement.EnumerateArray().Select(ReadVulnerability).ToList()));
+                var vulnerabilities = vulnerabilitiesElement.EnumerateArray().Select(ReadVulnerability).ToList();
+                AddFinding(findings, currentProject, currentFramework, packageId, resolvedVersion, relationship,
+                    vulnerabilities.Where(vulnerability => !IsApprovedSuppression(packageId, resolvedVersion, vulnerability.AdvisoryUrl)).ToList());
+                AddFinding(suppressedFindings, currentProject, currentFramework, packageId, resolvedVersion, relationship,
+                    vulnerabilities.Where(vulnerability => IsApprovedSuppression(packageId, resolvedVersion, vulnerability.AdvisoryUrl)).ToList());
             }
 
             foreach (var property in node.EnumerateObject())
@@ -68,7 +75,7 @@ static void Visit(JsonElement node, string project, string framework, string rel
                     _ => relationship
                 };
 
-                Visit(property.Value, currentProject, currentFramework, childRelationship, findings);
+                Visit(property.Value, currentProject, currentFramework, childRelationship, findings, suppressedFindings);
             }
 
             break;
@@ -76,11 +83,33 @@ static void Visit(JsonElement node, string project, string framework, string rel
         case JsonValueKind.Array:
             foreach (var item in node.EnumerateArray())
             {
-                Visit(item, project, framework, relationship, findings);
+                Visit(item, project, framework, relationship, findings, suppressedFindings);
             }
 
             break;
     }
+}
+
+static void AddFinding(
+    ICollection<Finding> findings,
+    string project,
+    string framework,
+    string packageId,
+    string resolvedVersion,
+    string relationship,
+    IReadOnlyList<Vulnerability> vulnerabilities)
+{
+    if (vulnerabilities.Count > 0)
+    {
+        findings.Add(new Finding(project, framework, packageId, resolvedVersion, relationship, vulnerabilities));
+    }
+}
+
+static bool IsApprovedSuppression(string packageId, string resolvedVersion, string advisoryUrl)
+{
+    return packageId.Equals("AutoMapper", StringComparison.OrdinalIgnoreCase)
+        && resolvedVersion.Equals("14.0.0", StringComparison.OrdinalIgnoreCase)
+        && advisoryUrl.Equals("https://github.com/advisories/GHSA-rvv3-g6hj-g44x", StringComparison.OrdinalIgnoreCase);
 }
 
 static Vulnerability ReadVulnerability(JsonElement vulnerability)
@@ -108,7 +137,7 @@ static void WriteConsoleBreakdown(IReadOnlyCollection<Finding> findings)
     }
 }
 
-static void WriteSummary(string reportPath, IReadOnlyList<Finding> findings)
+static void WriteSummary(string reportPath, IReadOnlyList<Finding> findings, IReadOnlyList<Finding> suppressedFindings)
 {
     var summaryPath = Environment.GetEnvironmentVariable("NUGET_VULNERABILITY_SUMMARY_PATH");
     if (string.IsNullOrWhiteSpace(summaryPath))
@@ -121,14 +150,17 @@ static void WriteSummary(string reportPath, IReadOnlyList<Finding> findings)
     var builder = new StringBuilder();
     builder.AppendLine("## NuGet Vulnerability Audit");
     builder.AppendLine();
-    builder.Append("Vulnerable package count: ");
+    builder.Append("Actionable vulnerable package graph count: ");
     builder.AppendLine(findings.Count.ToString(CultureInfo.InvariantCulture));
+    builder.Append("Approved suppressed package graph count: ");
+    builder.AppendLine(suppressedFindings.Count.ToString(CultureInfo.InvariantCulture));
     builder.AppendLine();
 
     if (findings.Count == 0)
     {
-        builder.AppendLine("No vulnerable direct or transitive packages were reported by `dotnet list package --vulnerable`.");
+        builder.AppendLine("No unapproved vulnerable direct or transitive packages were reported by `dotnet list package --vulnerable`.");
     }
+
     else
     {
         builder.AppendLine("### Relationship Summary");
@@ -177,6 +209,14 @@ static void WriteSummary(string reportPath, IReadOnlyList<Finding> findings)
         }
     }
 
+    if (suppressedFindings.Count > 0)
+    {
+        builder.AppendLine();
+        builder.AppendLine("### Approved Suppressions");
+        builder.AppendLine();
+        builder.AppendLine("- `AutoMapper` 14.0.0 / `GHSA-rvv3-g6hj-g44x`: global `MaxDepth(64)` mitigation; see `docs/CI_CD_GOVERNANCE.md`.");
+    }
+
     File.WriteAllText(summaryPath, builder.ToString());
 
     var stepSummaryPath = Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY");
@@ -195,6 +235,6 @@ static string? GetStringProperty(JsonElement element, string propertyName)
             : null;
 }
 
-internal sealed record Finding(string Project, string Framework, string PackageId, string Relationship, IReadOnlyList<Vulnerability> Vulnerabilities);
+internal sealed record Finding(string Project, string Framework, string PackageId, string ResolvedVersion, string Relationship, IReadOnlyList<Vulnerability> Vulnerabilities);
 
 internal sealed record Vulnerability(string Severity, string AdvisoryUrl);

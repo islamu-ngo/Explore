@@ -83,7 +83,7 @@ jobs:
 
       - name: Linting Check
         if: ${{ inputs.run-fast-tests }}
-        run: dotnet format --verify-no-changes --verbosity minimal
+        run: dotnet format whitespace --verify-no-changes --verbosity minimal
 
       - name: Build
         if: ${{ inputs.run-fast-tests }}

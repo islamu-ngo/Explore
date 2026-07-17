@@ -169,6 +169,12 @@ Fast CI runs `dotnet list Explore.sln package --vulnerable --include-transitive 
 
 The current policy is remediation-first. `MailKit` was upgraded from `4.15.1` to `4.16.0` to clear GitHub Advisory `GHSA-9j88-vvj5-vhgr` / `CVE-2026-41319` rather than making the audit advisory.
 
+The one approved advisory suppression is deliberately exact and remains visible in retained CI evidence:
+
+| Owner / review date | Package / relationship | Advisory / severity | Compensating control | Removal condition |
+|---|---|---|---|---|
+| ISLAMU maintainers / 2026-07-17 | `AutoMapper` `14.0.0`, direct and transitive | `GHSA-rvv3-g6hj-g44x` / High | `ApplicationServicesRegistration` applies `MaxDepth(64)` globally, bounding the advisory's uncontrolled-recursion path; production commercial builds use patched `16.1.1`. | Remove when AutoMapper is replaced, the default build moves to a patched version with approved licensing, or the advisory no longer applies. |
+
 ### Dependency License Policy
 
 ISLAMU Event is licensed under AGPL-3.0-or-later, and the ISLAMU CLA grants the ISLAMU project steward broad inbound rights for contributor work. That inbound CLA does not override third-party dependency licenses, so CI must keep runtime, build, and test dependency license risk explicit before alternative-license, commercial, nonprofit, public-sector, procurement-restricted, hosted-service, or special social-impact distribution is offered.
