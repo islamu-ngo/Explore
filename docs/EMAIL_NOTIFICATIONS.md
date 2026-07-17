@@ -11,6 +11,14 @@ ABOUTME: Prevents unsupported claims about notification fanout, queueing, unsubs
 
 Email delivery is implemented as direct SMTP sending. In-app notifications are a separate authenticated inbox feature; actor-subscription fanout and moderation attendee fanout create durable in-app notification rows and are not SMTP/email fanout pipelines.
 
+## Approved Lifecycle Expansion (Planned, Not Implemented)
+
+The approved workstream in `dev/active/email-responsibility-architecture/` retains MailKit, Mailpit, and PostgreSQL `EmailDispatchOutbox`. It adds explicit `NotificationIntent` and per-channel `NotificationDelivery` relationships, atomic recipient materialization, immutable event/session fanout occurrences, reporter consent withdrawal, heavy-moderation availability mail, and safe reminders. Existing behavior below remains the runtime truth until each task ships.
+
+Channel policy is fixed: registration and critical event changes use required in-app plus optional verified/preference-gated email; reporter receipt/outcome and follow-up use separate consent purposes; heavy moderation uses required in-app plus operational email when a current verified address exists; light moderation email stays deferred; reminders remain optional; managed tenant-administrator invitations retain their authorization-bound destination. Dispatch may narrow the snapshotted policy but never broaden it.
+
+The provider-handoff transition is the suppression fence. Consent, preference, cancellation, and supersession can stop work before it; after it, SMTP/persistence uncertainty is `Unknown`, not an automatic retry or a claim that an in-flight message was recalled. Sent/skipped content redacts after 180 days, unresolved replay material waits for operator resolution, and redacted work is never replayable.
+
 ## What Is Implemented
 
 | Area | Implemented Behavior |
@@ -89,6 +97,8 @@ Basic Dispatch uses `EmailDispatchDrainService` as the scheduler-neutral boundar
 | Browser registration email | `RegistrationFlowTests` clears Mailpit, registers through the Aspire-backed API/BFF/browser stack, waits for the durable outbox row to become `Sent`, verifies attempt/receipt rows, finds the Mailpit message for the registrant, and checks semantic body text plus event title. |
 
 Focused commands:
+
+These commands are focused development lanes, not release evidence by themselves. Lifecycle-email release evidence records each named test class and its exact non-zero count, runs the full affected projects, and runs the explicit `Email` Mailpit lane; a broad OR filter plus `--minimum-expected-tests 1` is not accepted as proof of a new behavior.
 
 ```bash
 dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1

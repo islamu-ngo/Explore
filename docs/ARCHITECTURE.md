@@ -141,6 +141,12 @@ Specialized outbox variants exist for specific subsystems:
 - `EmailDispatchOutbox` — Basic Dispatch Mode email delivery state for registration confirmation and future lifecycle email workflows. PostgreSQL owns delivery state; TickerQ schedules drain execution; SMTP/RabbitMQ are transports only.
 - `IntegrationSyncOutbox` — durable external integration sync intent for Listmonk and future providers. Handlers enqueue provider/resource payload snapshots; background drains own external I/O and retry/dead-letter state.
 
+### Approved lifecycle-email target (planned, not implemented)
+
+The approved workstream at `dev/active/email-responsibility-architecture/` separates one recipient occurrence into `NotificationIntent` (business meaning), `NotificationDelivery` (channel authorization/outcome), and `EmailDispatchOutbox` (SMTP execution). PostgreSQL remains the only SMTP ledger; TickerQ and RabbitMQ carry pointers only. Application-owned transactions atomically persist all recipient channel rows, while fanout mutations persist one immutable occurrence and a PII-free pointer for a resumable worker.
+
+The target schema uses tenant-aware composite keys and explicit recipient authority. Dispatch revalidates current eligibility and may narrow the immutable policy/consent/preference/disclosure snapshot, never broaden it. `ProviderHandoff` is the suppression fence; uncertainty after that fence settles as `Unknown` and is never blindly retried. Phase 0B's specialized `IncomingWebhookEffectOutbox` Coop repair is independent of the recipient schema lane and blocks only provider convergence.
+
 See [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) for full entity model, configuration, and monitoring details.
 
 ## Background Services

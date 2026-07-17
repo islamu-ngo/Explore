@@ -11,6 +11,12 @@ ABOUTME: Separates durable in-app notifications, browser Web Push refresh delive
 
 Notifications are authenticated, user-owned, tenant-scoped in-app records. They power the notification bell, notification panel, and full inbox page. Event-published actor-subscription fanout and event-moderation attendee fanout are implemented through the transactional outbox and create durable in-app `Notification` rows. The SSE stream is a one-way refresh hint for unread count/inbox state; it does not replace durable notification rows, list/detail APIs, SMTP email delivery, push delivery, or external delivery receipts.
 
+## Approved Channel Model (Planned, Not Implemented)
+
+The lifecycle-email workstream defines one `NotificationIntent` per business occurrence/recipient and one `NotificationDelivery` per selected channel. In-app notification and email are sibling deliveries, not fallback intents. A failed or unavailable optional email therefore leaves the required in-app delivery on the same logical intent.
+
+The planned policy snapshot records channel requiredness, policy/template version, consent purpose, preference result, disclosure/link authority, and recipient-address source. Dispatch can narrow that ceiling using current state but cannot add a channel, purpose, private location, or link. Reporter case-update and follow-up consent are independent and default false; heavy moderation is generic/linkless; Osprey remains signal-only; Coop may produce an outcome only after its separate durable effect repair and successful local enforcement.
+
 ## Lifecycle
 
 | State Or Action | Implemented Behavior |

@@ -123,7 +123,7 @@ Submit-report writes create the report, primary target, encrypted reporter-text 
 
 Moderation review is CQRS-driven. Triage, assignment, decision capture, and decision execution all require event-management authorization and validate the report/event/case graph plus `EventReportCase.ConcurrencyStamp`. Executable decisions reuse the existing light-moderation and heavy-redaction command paths rather than writing event moderation state directly. When a report decision enforces moderation, the resulting `EventModerationRecord` links back to `SourceReportId` and `SourceReportDecisionId`.
 
-Provider integrations remain metadata-only. Osprey signals and Coop review-queue/callback state are stored as bounded codes and external IDs with idempotency indexes. Coop reviewer callbacks persist an `EventReportDecision` first, then dispatch `ExecuteReportDecisionCommand` so provider-backed light/heavy enforcement uses the same audit, outbox, cache, notification, and storage-deletion behavior as local moderator enforcement.
+Provider integrations remain metadata-only. Osprey signals and Coop review-queue/callback state are stored as bounded codes and external IDs with idempotency indexes. Signed, authenticated Coop callbacks are retained with one unique `IncomingWebhookEffectOutbox` pointer. The pointer's fenced worker loads and revalidates the retained callback, invokes canonical decision execution outside intake, and commits the applied-effect receipt with pointer completion only after command success. Retryable failures reschedule; poison callbacks dead-letter for authenticated, generation-checked operator redrive. Osprey remains signal-only.
 
 ### 5) Event Schedule Source Of Truth
 
