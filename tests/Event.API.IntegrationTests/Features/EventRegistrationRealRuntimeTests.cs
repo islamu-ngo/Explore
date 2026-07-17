@@ -1,5 +1,5 @@
-// ABOUTME: RealRuntime API tests for event-registration create, waitlist, auth, and duplicate submission behavior.
-// ABOUTME: Verifies PostgreSQL-backed registration intent, child row, capacity, and email outbox persistence.
+// ABOUTME: RealRuntime API tests for registration creation, promotion, cancellation, replay, and authorization.
+// ABOUTME: Verifies PostgreSQL-backed parent transitions and atomic recipient-notification delivery graphs.
 
 using System.Net;
 using System.Net.Http.Json;
@@ -7,6 +7,7 @@ using Event.Api.IntegrationTests.Builders;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Seeds;
 using Explore.Application.DTOs.EventRegistration;
+using Explore.Application.Models.Common;
 using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Domain;
@@ -91,7 +92,7 @@ public sealed class EventRegistrationRealRuntimeTests(RealRuntimeApiFixture fixt
         var outboxRows = await verifyContext.EmailDispatchOutbox
             .IgnoreQueryFilters()
             .Where(outbox => outbox.EventId == scenario.EventId
-                && outbox.UserId == scenario.UserId
+                && outbox.RecipientUserId == scenario.UserId
                 && outbox.Kind == EmailDispatchKind.RegistrationConfirmation)
             .ToListAsync();
 
@@ -174,7 +175,7 @@ public sealed class EventRegistrationRealRuntimeTests(RealRuntimeApiFixture fixt
         var outboxCount = await verifyContext.EmailDispatchOutbox
             .IgnoreQueryFilters()
             .CountAsync(outbox => outbox.EventId == scenario.EventId
-                && outbox.UserId == scenario.UserId
+                && outbox.RecipientUserId == scenario.UserId
                 && outbox.Kind == EmailDispatchKind.RegistrationConfirmation);
 
         await Assert.That(persisted.ApprovalStatusId).IsEqualTo((int)ApprovalStatusEnum.Waitlisted);
@@ -226,6 +227,177 @@ public sealed class EventRegistrationRealRuntimeTests(RealRuntimeApiFixture fixt
         await Assert.That(intentCount).IsEqualTo(0);
         await Assert.That(registrationCount).IsEqualTo(0);
         await Assert.That(outboxCount).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task Update_WhenWaitlistedRegistrationIsPromoted_PersistsOnePromotionGraphAndReplayIsSilent()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        RegistrationScenario scenario;
+        await using (var scope = _fixture.Factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            scenario = await SeedSessionSelectionRegistrationScenarioAsync(
+                context,
+                "Waitlist Promotion Event",
+                maxAudienceAttendees: 1,
+                currentAudienceAttendees: 1);
+        }
+
+        using (var createRequest = _fixture.CreateAuthenticatedRequest(
+                   HttpMethod.Post,
+                   "/api/eventregistration",
+                   scenario.UserId))
+        {
+            createRequest.Content = JsonContent.Create(CreateSessionSelectionDto(scenario));
+            var createResponse = await _fixture.Client.SendAsync(createRequest);
+            await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        }
+
+        Guid registrationId;
+        Guid concurrencyStamp;
+        await using (var scope = _fixture.Factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            var registration = await context.EventRegistrations
+                .IgnoreQueryFilters()
+                .SingleAsync(value => value.EventId == scenario.EventId && !value.IsDeleted);
+            registrationId = registration.Id;
+            concurrencyStamp = registration.ConcurrencyStamp;
+            await context.EventSessions
+                .Where(value => value.Id == scenario.SessionId)
+                .ExecuteUpdateAsync(update => update.SetProperty(value => value.CurrentAudienceAttendees, 0));
+        }
+
+        using var promoteRequest = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Patch,
+            $"/api/eventregistration/{registrationId}",
+            scenario.UserId);
+        promoteRequest.Headers.TryAddWithoutValidation("If-Match", $"\"{concurrencyStamp:D}\"");
+        promoteRequest.Content = JsonContent.Create(new UpdateEventRegistrationDto
+        {
+            ApprovalStatus = new UpdateEventRegistrationApprovalStatusDto
+            {
+                ApprovalStatusId = OptionalUpdate<int?>.Set((int)ApprovalStatusEnum.Approved)
+            }
+        });
+        var promoteResponse = await _fixture.Client.SendAsync(promoteRequest);
+        var promoteBody = await promoteResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+
+        await Assert.That(promoteResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(promoteBody).IsNotNull();
+        await Assert.That(promoteBody!.Success).IsTrue();
+        await Assert.That(promoteBody.Id).IsNotEqualTo(Guid.Empty);
+
+        Guid promotedConcurrencyStamp;
+        await using (var scope = _fixture.Factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            promotedConcurrencyStamp = await context.EventRegistrations
+                .IgnoreQueryFilters()
+                .Where(value => value.Id == promoteBody.Id)
+                .Select(value => value.ConcurrencyStamp)
+                .SingleAsync();
+        }
+
+        using var replayRequest = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Patch,
+            $"/api/eventregistration/{promoteBody.Id}",
+            scenario.UserId);
+        replayRequest.Headers.TryAddWithoutValidation("If-Match", $"\"{promotedConcurrencyStamp:D}\"");
+        replayRequest.Content = JsonContent.Create(new UpdateEventRegistrationDto
+        {
+            ApprovalStatus = new UpdateEventRegistrationApprovalStatusDto
+            {
+                ApprovalStatusId = OptionalUpdate<int?>.Set((int)ApprovalStatusEnum.Approved)
+            }
+        });
+        var replayResponse = await _fixture.Client.SendAsync(replayRequest);
+
+        await Assert.That(replayResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        await using var verifyScope = _fixture.Factory.Services.CreateAsyncScope();
+        var verifyContext = verifyScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var promotionOutboxCount = await verifyContext.EmailDispatchOutbox
+            .IgnoreQueryFilters()
+            .CountAsync(value => value.EventId == scenario.EventId
+                && value.RecipientUserId == scenario.UserId
+                && value.Kind == EmailDispatchKind.WaitlistPromoted);
+        var promotionIntentCount = await verifyContext.NotificationIntents
+            .IgnoreQueryFilters()
+            .CountAsync(value => value.EventId == scenario.EventId
+                && value.RecipientUserId == scenario.UserId
+                && value.TemplateKey == "registration.waitlist-promoted");
+
+        await Assert.That(promotionOutboxCount).IsEqualTo(1);
+        await Assert.That(promotionIntentCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task Delete_WhenAttendeeCancels_PersistsOneCancellationGraphAndReplayCreatesNothing()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        RegistrationScenario scenario;
+        await using (var scope = _fixture.Factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            scenario = await SeedSessionSelectionRegistrationScenarioAsync(
+                context,
+                "Registration Cancellation Event");
+        }
+
+        using (var createRequest = _fixture.CreateAuthenticatedRequest(
+                   HttpMethod.Post,
+                   "/api/eventregistration",
+                   scenario.UserId))
+        {
+            createRequest.Content = JsonContent.Create(CreateSessionSelectionDto(scenario));
+            var createResponse = await _fixture.Client.SendAsync(createRequest);
+            await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        }
+
+        Guid registrationId;
+        await using (var scope = _fixture.Factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            registrationId = await context.EventRegistrations
+                .IgnoreQueryFilters()
+                .Where(value => value.EventId == scenario.EventId && !value.IsDeleted)
+                .Select(value => value.Id)
+                .SingleAsync();
+        }
+
+        using var cancelRequest = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Delete,
+            $"/api/eventregistration/{registrationId}",
+            scenario.UserId);
+        var cancelResponse = await _fixture.Client.SendAsync(cancelRequest);
+        using var replayRequest = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Delete,
+            $"/api/eventregistration/{registrationId}",
+            scenario.UserId);
+        var replayResponse = await _fixture.Client.SendAsync(replayRequest);
+
+        await Assert.That(cancelResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+        await Assert.That(replayResponse.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+
+        await using var verifyScope = _fixture.Factory.Services.CreateAsyncScope();
+        var verifyContext = verifyScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var cancellationOutboxCount = await verifyContext.EmailDispatchOutbox
+            .IgnoreQueryFilters()
+            .CountAsync(value => value.EventId == scenario.EventId
+                && value.RecipientUserId == scenario.UserId
+                && value.Kind == EmailDispatchKind.RegistrationCancelled);
+        var cancellationIntentCount = await verifyContext.NotificationIntents
+            .IgnoreQueryFilters()
+            .CountAsync(value => value.EventId == scenario.EventId
+                && value.RecipientUserId == scenario.UserId
+                && value.TemplateKey == "registration.cancelled");
+
+        await Assert.That(cancellationOutboxCount).IsEqualTo(1);
+        await Assert.That(cancellationIntentCount).IsEqualTo(1);
     }
 
     private static CreateEventRegistrationDto CreateSessionSelectionDto(RegistrationScenario scenario) => new()

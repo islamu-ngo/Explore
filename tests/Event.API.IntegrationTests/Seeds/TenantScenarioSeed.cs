@@ -55,6 +55,21 @@ public static class TenantScenarioSeed
         context.Actors.Add(actor);
         await context.SaveChangesAsync();
 
+        context.TenantUsers.Add(new TenantUser
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            UserId = user.Id,
+            User = user,
+            ActorId = actor.Id,
+            Actor = actor,
+            StatusId = (int)TenantUserStatusEnum.Active,
+            JoinedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync();
+
         return new TenantScenarioResult(tenant.Id, user.Id, actor.Id);
     }
 
