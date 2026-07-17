@@ -1,8 +1,8 @@
 // ABOUTME: Verifies retained Coop callbacks execute and settle through the specialized effect pointer.
 // ABOUTME: Covers success ordering, poison quarantine, transient retry, tenant mismatch, and cancellation.
 
-using System.Text;
 using System.Security.Cryptography;
+using System.Text;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.EventReporting.Requests.Commands;

@@ -13,12 +13,12 @@ using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Options;
-using MediatR;
 using Npgsql;
 
 namespace Event.Persistence.IntegrationTests.Repositories;
