@@ -346,6 +346,8 @@ public static class RouteNames
     public const string GetWebhookDeliveryAttemptById = "GetWebhookDeliveryAttemptById";
     public const string RetryWebhookDeliveryAttempt = "RetryWebhookDeliveryAttempt";
     public const string RedriveIncomingWebhook = "RedriveIncomingWebhook";
+    public const string GetIncomingWebhookEffectStatus = "GetIncomingWebhookEffectStatus";
+    public const string RedriveIncomingWebhookEffect = "RedriveIncomingWebhookEffect";
     public const string GetWebhookProviderPublications = "GetWebhookProviderPublications";
     public const string GetWebhookProviderPublicationById = "GetWebhookProviderPublicationById";
     public const string ReconcileWebhookProviderPublication = "ReconcileWebhookProviderPublication";

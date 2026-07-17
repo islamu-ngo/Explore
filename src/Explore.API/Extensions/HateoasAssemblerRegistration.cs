@@ -294,6 +294,9 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<EmailDispatchStatusDto>, EmailDispatchStatusDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<EmailDispatchStatusDto>, EmailDispatchStatusCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<EmailDispatchStatusDto, EmailDispatchStatusDto>, EmailDispatchStatusResourceAssembler>();
+        services.AddScoped<ILinkPolicy<IncomingWebhookEffectStatusDto>, IncomingWebhookEffectStatusDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<IncomingWebhookEffectStatusDto>, IncomingWebhookEffectStatusCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<IncomingWebhookEffectStatusDto, IncomingWebhookEffectStatusDto>, IncomingWebhookEffectStatusResourceAssembler>();
 
         services.AddScoped<ILinkPolicy<WebhookConsumerDto>, WebhookConsumerDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<WebhookConsumerDto>, WebhookConsumerCollectionLinkPolicy>();

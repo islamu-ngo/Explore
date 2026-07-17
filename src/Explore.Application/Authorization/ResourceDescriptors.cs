@@ -496,6 +496,19 @@ public static class ResourceDescriptors
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 
+    public static readonly ResourceDescriptor<IncomingWebhookEffectStatusDto> IncomingWebhookEffectStatus = new(
+        ResourceKinds.Webhook,
+        dto => dto.EffectOutboxId.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["tenantId"] = dto.TenantId.ToString(),
+            ["effectOutboxId"] = dto.EffectOutboxId.ToString(),
+            ["incomingWebhookMessageId"] = dto.IncomingWebhookMessageId.ToString(),
+            ["effectKind"] = dto.EffectKind,
+            ["status"] = dto.Status
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
     public static readonly ResourceDescriptor<IndexedDidDto> IndexedDid = new(
         ResourceKinds.IndexedDid,
         dto => dto.Did);

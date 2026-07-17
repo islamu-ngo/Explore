@@ -85,6 +85,7 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.Webhooks.WebhookProviderPublicationAttemptDto),
         typeof(Explore.Application.DTOs.Webhooks.WebhookBulkReplayOperationDto),
         typeof(Explore.Application.DTOs.Webhooks.WebhookBulkReplayFilterDto),
+        typeof(Explore.Application.DTOs.Webhooks.IncomingWebhookEffectStatusDto),
 
         // EventSessionSpeaker DTOs
         typeof(Explore.Application.DTOs.EventSessionSpeaker.EventSessionSpeakerDto),
@@ -217,6 +218,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfWebhookDeliveryAttemptDto"] = typeof(Explore.Application.DTOs.Webhooks.WebhookDeliveryAttemptDto),
         ["HalResourceOfWebhookProviderPublicationDto"] = typeof(Explore.Application.DTOs.Webhooks.WebhookProviderPublicationDto),
         ["HalResourceOfWebhookBulkReplayOperationDto"] = typeof(Explore.Application.DTOs.Webhooks.WebhookBulkReplayOperationDto),
+        ["HalResourceOfIncomingWebhookEffectStatusDto"] = typeof(Explore.Application.DTOs.Webhooks.IncomingWebhookEffectStatusDto),
         ["HalResourceOfTemplateDiffDto"] = typeof(Explore.Application.DTOs.EventTemplateSync.TemplateDiffDto),
         ["HalResourceOfEmailDispatchStatusDto"] = typeof(Explore.Application.DTOs.EmailDispatch.EmailDispatchStatusDto),
         ["HalResourceOfSupportAccessSessionDto"] = typeof(Explore.Application.DTOs.SupportAccess.SupportAccessSessionDto),
@@ -289,6 +291,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfWebhookDeliveryAttemptDto"] = "HalResourceOfWebhookDeliveryAttemptDto",
         ["HalCollectionEmbeddedOfWebhookProviderPublicationDto"] = "HalResourceOfWebhookProviderPublicationDto",
         ["HalCollectionEmbeddedOfWebhookBulkReplayOperationDto"] = "HalResourceOfWebhookBulkReplayOperationDto",
+        ["HalCollectionEmbeddedOfIncomingWebhookEffectStatusDto"] = "HalResourceOfIncomingWebhookEffectStatusDto",
         ["HalCollectionEmbeddedOfAiConversationSummaryDto"] = "HalResourceOfAiConversationSummaryDto",
         ["HalCollectionEmbeddedOfAiReferenceSearchResultDto"] = "HalResourceOfAiReferenceSearchResultDto",
         ["HalCollectionEmbeddedOfStorageObjectListDto"] = "HalResourceOfStorageObjectListDto",

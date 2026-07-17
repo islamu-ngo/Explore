@@ -34,6 +34,7 @@ using Explore.Application.DTOs.Tenant;
 using Explore.Application.DTOs.TenantSettingsDocuments;
 using Explore.Application.DTOs.TenantUserRoleGrant;
 using Explore.Application.DTOs.User;
+using Explore.Application.DTOs.Webhooks;
 
 /// <summary>
 /// Maps DTO types to their corresponding resource kind identifiers for authorization.
@@ -148,6 +149,7 @@ public static class ResourceDescriptorRegistry
 
         // Email Dispatch
         [typeof(EmailDispatchStatusDto)] = global::Explore.Application.Authorization.ResourceKinds.EmailDispatch,
+        [typeof(IncomingWebhookEffectStatusDto)] = global::Explore.Application.Authorization.ResourceKinds.Webhook,
 
         // Actor
         [typeof(ActorDto)] = global::Explore.Application.Authorization.ResourceKinds.Actor,

@@ -215,6 +215,85 @@ public sealed class IncomingWebhookRedriveCommandHandlerTests
             AuthorizationActions.Webhooks.RedriveIncoming)).IsFalse();
     }
 
+    [Test]
+    public async Task AuthorizedDeadLetteredEffectRedrive_IncrementsGenerationAndWritesSafeAudit()
+    {
+        var now = new DateTime(2026, 7, 17, 12, 0, 0, DateTimeKind.Utc);
+        var message = CreateDeadLetteredMessage(now);
+        var pointer = IncomingWebhookEffectOutbox.CreatePending(
+            message.TenantId,
+            message.Id,
+            "coop",
+            message.ProviderMessageId,
+            "coop.review.decision",
+            message.PayloadHash,
+            now.AddSeconds(2));
+        var leaseToken = Guid.CreateVersion7();
+        pointer.Claim("effect-redrive-test", leaseToken, now.AddMinutes(5), now.AddSeconds(3));
+        pointer.DeadLetter(
+            leaseToken,
+            pointer.ProcessingFence,
+            pointer.ProcessingGeneration,
+            "coop_effect_command_rejected",
+            "The local workflow rejected the callback.",
+            now.AddSeconds(4));
+        var pointerRepository = Substitute.For<IIncomingWebhookEffectOutboxRepository>();
+        pointerRepository.GetByTenantAndIdForUpdateAsync(
+                pointer.TenantId,
+                pointer.Id,
+                Arg.Any<CancellationToken>())
+            .Returns(pointer);
+        var messageRepository = Substitute.For<IIncomingWebhookMessageRepository>();
+        messageRepository.GetByTenantAndIdForUpdateAsync(
+                pointer.TenantId,
+                message.Id,
+                Arg.Any<CancellationToken>())
+            .Returns(message);
+        var auditWriter = Substitute.For<IWebhookAuditEventWriter>();
+        var currentUser = Substitute.For<ICurrentUserService>();
+        currentUser.UserId.Returns(Guid.CreateVersion7());
+        var handler = new RedriveIncomingWebhookEffectCommandHandler(
+            pointerRepository,
+            messageRepository,
+            auditWriter,
+            new InlineUnitOfWork(),
+            currentUser,
+            Substitute.For<IMachinePrincipalAccessor>(),
+            new FixedTimeProvider(now.AddMinutes(1)));
+
+        var response = await handler.Handle(new RedriveIncomingWebhookEffectCommand
+        {
+            TenantId = pointer.TenantId,
+            EffectOutboxId = pointer.Id,
+            ExpectedProcessingGeneration = 1,
+            Reason = "operator-reviewed-effect"
+        }, CancellationToken.None);
+
+        await Assert.That(response.Success).IsTrue();
+        await Assert.That(pointer.Status).IsEqualTo(OutboxMessageStatus.Pending);
+        await Assert.That(pointer.ProcessingGeneration).IsEqualTo(2);
+        await pointerRepository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+        await auditWriter.Received(1).AppendAsync(
+            Arg.Is<WebhookAuditWriteRequest>(audit =>
+                audit.TenantId == pointer.TenantId &&
+                audit.TargetId == message.Id &&
+                audit.Action == WebhookAuditAction.IncomingRedriveScheduled &&
+                audit.SafeAfterJson != null &&
+                !audit.SafeAfterJson.Contains("operator-reviewed-effect", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task EffectCommandAuthorization_UsesIncomingRedrivePermission()
+    {
+        var attribute = typeof(RedriveIncomingWebhookEffectCommand)
+            .GetCustomAttribute<AuthorizeResourceAttribute>();
+
+        await Assert.That(attribute).IsNotNull();
+        await Assert.That(attribute!.Resource).IsEqualTo(ResourceKinds.Webhook);
+        await Assert.That(attribute.Action).IsEqualTo(AuthorizationActions.Webhooks.RedriveIncoming);
+    }
+
     private static RedriveIncomingWebhookCommandHandler CreateHandler(
         IIncomingWebhookMessageRepository repository,
         IWebhookAuditEventWriter auditWriter,
@@ -281,5 +360,9 @@ public sealed class IncomingWebhookRedriveCommandHandlerTests
             Func<CancellationToken, Task<T>> operation,
             CancellationToken ct = default) =>
             operation(ct);
+
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => ExecuteInTransactionAsync(operation, ct);
     }
 }
