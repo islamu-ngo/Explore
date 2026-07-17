@@ -1,13 +1,12 @@
-// ABOUTME: EF implementation of IEventRegistrationIntentRepository - parent + children inserted inside a serializable transaction.
-// ABOUTME: Protects against racing duplicate registrations and keeps the two rows consistent if either write fails.
+// ABOUTME: EF implementation of capacity-aware registration parent and child persistence.
+// ABOUTME: Requires caller-owned serializable coordination and translates only exact registration deduplication conflicts.
 
-using System.Data;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Exceptions;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 
 namespace Explore.Persistence.Repositories;
@@ -43,13 +42,52 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
                 cancellationToken);
     }
 
-    public async Task<EventRegistrationIntent> CreateWithChildrenAsync(
+    public async Task<EventRegistrationIntentCreationResult> CreateWithChildrenAndCapacityAsync(
         EventRegistrationIntent intent,
         IReadOnlyList<EventRegistration> children,
-        CancellationToken cancellationToken)
+        int approvedStatusId,
+        int waitlistedStatusId,
+        Guid occurrenceId,
+        DateTimeOffset occurredAt,
+        EventRegistrationActorProvenance actorProvenance,
+        Guid? actorUserId,
+        CancellationToken cancellationToken,
+        IntegrationSyncOutbox? integrationSyncOutbox = null)
     {
-        return await ExecuteInSerializableTransactionAsync(async () =>
+        if (_dbContext.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory"
+            && _dbContext.Database.CurrentTransaction is null)
         {
+            throw new InvalidOperationException(
+                "Capacity-aware registration creation requires a caller-owned serializable transaction.");
+        }
+
+        try
+        {
+            await ValidateChildrenBelongToIntentAsync(intent, children, cancellationToken);
+
+            var waitlistedSessionIds = new List<Guid>();
+
+            foreach (var child in children)
+            {
+                child.CoverageEstablishedAt = occurredAt.UtcDateTime;
+
+                var reserved = await TryReserveSessionCapacityAsync(
+                    intent.TenantId,
+                    intent.EventId,
+                    child.EventSessionId,
+                    cancellationToken);
+                child.ApprovalStatusId = reserved ? approvedStatusId : waitlistedStatusId;
+
+                if (!reserved)
+                {
+                    waitlistedSessionIds.Add(child.EventSessionId);
+                }
+            }
+
+            intent.ApprovalStatusId = waitlistedSessionIds.Count == 0
+                ? approvedStatusId
+                : waitlistedStatusId;
+
             await _dbContext.EventRegistrationIntents.AddAsync(intent, cancellationToken);
 
             foreach (var child in children)
@@ -59,92 +97,41 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
                 await _dbContext.EventRegistrations.AddAsync(child, cancellationToken);
             }
 
+            if (integrationSyncOutbox is not null)
+            {
+                integrationSyncOutbox.RegistrationIntentId = intent.Id;
+                integrationSyncOutbox.SourceId = intent.Id;
+                await _dbContext.IntegrationSyncOutbox.AddAsync(integrationSyncOutbox, cancellationToken);
+            }
+
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            return intent;
-        }, cancellationToken);
-    }
+            var childTransitions = children
+                .Select(child => new EventRegistrationChildTransition(
+                    child.Id,
+                    child.EventSessionId,
+                    PreviousStatus: null,
+                    child.ApprovalStatusId))
+                .ToArray();
+            var transition = new EventRegistrationTransitionResult(
+                Changed: true,
+                ParentIntentId: intent.Id,
+                PreviousStatus: null,
+                FinalStatus: intent.ApprovalStatusId,
+                TransitionReason: waitlistedSessionIds.Count == 0
+                    ? EventRegistrationTransitionReason.Created
+                    : EventRegistrationTransitionReason.CapacityWaitlisted,
+                OccurrenceId: occurrenceId,
+                OccurredAt: occurredAt,
+                ActorProvenance: actorProvenance,
+                ActorUserId: actorUserId,
+                ChildTransitions: childTransitions);
 
-    public async Task<EventRegistrationIntentCreationResult> CreateWithChildrenAndCapacityAsync(
-        EventRegistrationIntent intent,
-        IReadOnlyList<EventRegistration> children,
-        int approvedStatusId,
-        int waitlistedStatusId,
-        CancellationToken cancellationToken,
-        EmailDispatchOutbox? emailDispatchOutbox = null,
-        IntegrationSyncOutbox? integrationSyncOutbox = null)
-    {
-        try
-        {
-            return await ExecuteInSerializableTransactionAsync(async () =>
-            {
-                await ValidateChildrenBelongToIntentAsync(intent, children, cancellationToken);
-
-                var waitlistedSessionIds = new List<Guid>();
-
-                foreach (var child in children)
-                {
-                    var reserved = await TryReserveSessionCapacityAsync(
-                        intent.TenantId,
-                        intent.EventId,
-                        child.EventSessionId,
-                        cancellationToken);
-                    child.ApprovalStatusId = reserved ? approvedStatusId : waitlistedStatusId;
-
-                    if (!reserved)
-                    {
-                        waitlistedSessionIds.Add(child.EventSessionId);
-                    }
-                }
-
-                intent.ApprovalStatusId = waitlistedSessionIds.Count == 0
-                    ? approvedStatusId
-                    : waitlistedStatusId;
-
-                await _dbContext.EventRegistrationIntents.AddAsync(intent, cancellationToken);
-
-                foreach (var child in children)
-                {
-                    child.EventRegistrationIntentId = intent.Id;
-                    child.EventId = intent.EventId;
-                    await _dbContext.EventRegistrations.AddAsync(child, cancellationToken);
-                }
-
-                if (emailDispatchOutbox is not null)
-                {
-                    emailDispatchOutbox.RegistrationIntentId = intent.Id;
-                    emailDispatchOutbox.SourceId = intent.Id;
-                    await _dbContext.EmailDispatchOutbox.AddAsync(emailDispatchOutbox, cancellationToken);
-                }
-
-                if (integrationSyncOutbox is not null)
-                {
-                    integrationSyncOutbox.RegistrationIntentId = intent.Id;
-                    integrationSyncOutbox.SourceId = intent.Id;
-                    await _dbContext.IntegrationSyncOutbox.AddAsync(integrationSyncOutbox, cancellationToken);
-                }
-
-                await _dbContext.SaveChangesAsync(cancellationToken);
-
-                return new EventRegistrationIntentCreationResult(intent, waitlistedSessionIds);
-            }, cancellationToken);
+            return new EventRegistrationIntentCreationResult(intent, waitlistedSessionIds, transition);
         }
         catch (DbUpdateException ex) when (IsDuplicateIntentViolation(ex))
         {
-            _dbContext.ChangeTracker.Clear();
-            var existing = await FindExistingAsync(
-                intent.EventId,
-                intent.UserId,
-                intent.RegistrationScopeId,
-                intent.SelectedEventDayId,
-                cancellationToken);
-
-            if (existing is not null)
-            {
-                return new EventRegistrationIntentCreationResult(existing, [], WasExisting: true);
-            }
-
-            throw;
+            throw new EventRegistrationIntentConflictException(ex);
         }
     }
 
@@ -178,33 +165,126 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
             .ToListAsync(cancellationToken);
     }
 
-    private async Task<T> ExecuteInSerializableTransactionAsync<T>(
-        Func<Task<T>> operation,
+    public async Task<IReadOnlyList<NotificationFanoutAudienceMember>> GetNotificationFanoutAudienceBatchAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid? sessionId,
+        DateTime audienceCutoffAt,
+        int deliveryPolicyId,
+        NotificationFanoutAudienceCursor? after,
+        int pageSize,
         CancellationToken cancellationToken)
     {
-        if (_dbContext.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+        if (tenantId == Guid.Empty || eventId == Guid.Empty)
         {
-            return await operation();
+            throw new ArgumentException("Tenant and event identifiers are required.");
         }
 
-        var strategy = _dbContext.Database.CreateExecutionStrategy();
-        return await strategy.ExecuteAsync(async () =>
+        if (audienceCutoffAt.Kind != DateTimeKind.Utc)
         {
-            await using var tx = await _dbContext.Database
-                .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+            throw new ArgumentException("Audience cutoff must use UTC kind.", nameof(audienceCutoffAt));
+        }
 
-            try
-            {
-                var result = await operation();
-                await tx.CommitAsync(cancellationToken);
-                return result;
-            }
-            catch
-            {
-                await RollbackIfPendingAsync(tx, cancellationToken);
-                throw;
-            }
-        });
+        if (pageSize is < 1 or > 1000)
+        {
+            throw new ArgumentOutOfRangeException(nameof(pageSize));
+        }
+
+        int[] eligibleStatusIds = deliveryPolicyId switch
+        {
+            (int)NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional or
+            (int)NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired or
+            (int)NotificationDeliveryPolicyEnum.ModerationContextOptional =>
+            [
+                (int)ApprovalStatusEnum.Pending,
+                (int)ApprovalStatusEnum.Approved,
+                (int)ApprovalStatusEnum.Waitlisted
+            ],
+            (int)NotificationDeliveryPolicyEnum.ReminderOptional =>
+                [(int)ApprovalStatusEnum.Approved],
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(deliveryPolicyId),
+                "The delivery policy does not define an attendee fanout audience.")
+        };
+
+        IQueryable<NotificationFanoutAudienceMember> audience;
+        if (sessionId is null)
+        {
+            audience = _dbContext.EventRegistrationIntents
+                .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                .AsNoTracking()
+                .Where(intent => intent.TenantId == tenantId
+                    && intent.EventId == eventId
+                    && intent.CreatedAt <= audienceCutoffAt
+                    && intent.ApprovalStatusId.HasValue
+                    && eligibleStatusIds.Contains(intent.ApprovalStatusId.Value)
+                    && _dbContext.TenantUsers
+                        .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                        .Any(member => member.TenantId == tenantId
+                            && member.UserId == intent.UserId
+                            && member.StatusId == (int)TenantUserStatusEnum.Active)
+                    && _dbContext.Users.Any(user => user.Id == intent.UserId))
+                .GroupBy(intent => intent.UserId)
+                .Select(group => new NotificationFanoutAudienceMember
+                {
+                    UserId = group.Key,
+                    FirstEligibleRegistrationCreatedAt = group.Min(intent => intent.CreatedAt)
+                });
+        }
+        else
+        {
+            audience =
+                from child in _dbContext.EventRegistrations
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                    .AsNoTracking()
+                join intent in _dbContext.EventRegistrationIntents
+                        .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                        .AsNoTracking()
+                    on new { child.TenantId, child.EventId, child.EventRegistrationIntentId }
+                    equals new
+                    {
+                        intent.TenantId,
+                        intent.EventId,
+                        EventRegistrationIntentId = (Guid?)intent.Id
+                    }
+                where child.TenantId == tenantId
+                    && child.EventId == eventId
+                    && child.EventSessionId == sessionId.Value
+                    && child.UserId == intent.UserId
+                    && intent.CreatedAt <= audienceCutoffAt
+                    && child.CoverageEstablishedAt <= audienceCutoffAt
+                    && child.ApprovalStatusId.HasValue
+                    && eligibleStatusIds.Contains(child.ApprovalStatusId.Value)
+                    && intent.ApprovalStatusId.HasValue
+                    && eligibleStatusIds.Contains(intent.ApprovalStatusId.Value)
+                    && _dbContext.TenantUsers
+                        .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                        .Any(member => member.TenantId == tenantId
+                            && member.UserId == intent.UserId
+                            && member.StatusId == (int)TenantUserStatusEnum.Active)
+                    && _dbContext.Users.Any(user => user.Id == intent.UserId)
+                group child by intent.UserId
+                into cohort
+                select new NotificationFanoutAudienceMember
+                {
+                    UserId = cohort.Key,
+                    FirstEligibleRegistrationCreatedAt = cohort.Min(child => child.CoverageEstablishedAt)
+                };
+        }
+
+        if (after is { } cursor)
+        {
+            audience = audience.Where(member =>
+                member.FirstEligibleRegistrationCreatedAt > cursor.FirstEligibleRegistrationCreatedAt
+                || (member.FirstEligibleRegistrationCreatedAt == cursor.FirstEligibleRegistrationCreatedAt
+                    && member.UserId.CompareTo(cursor.UserId) > 0));
+        }
+
+        return await audience
+            .OrderBy(member => member.FirstEligibleRegistrationCreatedAt)
+            .ThenBy(member => member.UserId)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
     }
 
     private async Task ValidateChildrenBelongToIntentAsync(
@@ -251,26 +331,6 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
             $"Event session {invalidSessionId} does not belong to the registration intent tenant and event.");
     }
 
-    private static async Task RollbackIfPendingAsync(
-        IDbContextTransaction transaction,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await transaction.RollbackAsync(cancellationToken);
-        }
-        catch (InvalidOperationException ex) when (IsAlreadyCompletedTransaction(ex))
-        {
-            return;
-        }
-    }
-
-    private static bool IsAlreadyCompletedTransaction(InvalidOperationException ex)
-    {
-        return ex.Message.Contains("has completed", StringComparison.Ordinal)
-            && ex.Message.Contains("no longer usable", StringComparison.Ordinal);
-    }
-
     private async Task<bool> TryReserveSessionCapacityAsync(
         Guid tenantId,
         Guid eventId,
@@ -301,4 +361,5 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
             ConstraintName: EventScopeUniqueIndexName or DayScopeUniqueIndexName or SessionSelectionScopeUniqueIndexName
         };
     }
+
 }

@@ -22,11 +22,19 @@ public interface IEventRegistrationRepository : IGenericRepository<EventRegistra
         int pageNumber,
         int pageSize,
         CancellationToken cancellationToken);
-    Task UpdateAndAdjustCapacityAsync(
+    Task<EventRegistrationTransitionResult> UpdateAndAdjustCapacityAsync(
         EventRegistration registration,
+        Guid occurrenceId,
+        DateTimeOffset occurredAt,
+        EventRegistrationActorProvenance actorProvenance,
+        Guid? actorUserId,
         CancellationToken cancellationToken);
-    Task<bool> CancelAndReleaseCapacityAsync(
+    Task<EventRegistrationTransitionResult> CancelAndReleaseCapacityAsync(
         Guid registrationId,
         Guid expectedOwnerUserId,
+        Guid occurrenceId,
+        DateTimeOffset occurredAt,
+        EventRegistrationActorProvenance actorProvenance,
+        Guid? actorUserId,
         CancellationToken cancellationToken);
 }

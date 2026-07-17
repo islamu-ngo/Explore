@@ -1,17 +1,20 @@
 // ABOUTME: EF Core repository for event registration reads, capacity-aware updates, and cancellation writes.
-// ABOUTME: Keeps status/session capacity transitions and cancellation atomic under Npgsql retry execution strategies.
+// ABOUTME: Requires caller-owned serializable transactions for atomic status, capacity, and cancellation changes.
 
-using System.Data;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Exceptions;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Registration;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Explore.Persistence.Repositories;
 
 public class EventRegistrationRepository : GenericRepository<EventRegistration, Guid>, IEventRegistrationRepository
 {
+    private const string ActiveSessionRegistrationIndexName = "ix_eventregistrations_session_user";
+
     private readonly ExploreDbContext _dbContext;
 
     public EventRegistrationRepository(ExploreDbContext dbContext) : base(dbContext)
@@ -128,10 +131,16 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
         return (items, totalCount);
     }
 
-    public async Task UpdateAndAdjustCapacityAsync(
+    public async Task<EventRegistrationTransitionResult> UpdateAndAdjustCapacityAsync(
         EventRegistration registration,
+        Guid occurrenceId,
+        DateTimeOffset occurredAt,
+        EventRegistrationActorProvenance actorProvenance,
+        Guid? actorUserId,
         CancellationToken cancellationToken)
     {
+        RequireCallerOwnedSerializableTransaction();
+
         var entry = _dbContext.Entry(registration);
         if (entry.State == EntityState.Detached)
         {
@@ -152,6 +161,18 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
         var desiredIntentId = (Guid?)desiredValues[nameof(EventRegistration.EventRegistrationIntentId)];
         var originalUserId = (Guid)originalValues[nameof(EventRegistration.UserId)]!;
         var desiredUserId = (Guid)desiredValues[nameof(EventRegistration.UserId)]!;
+        var originalAtprotoRecordId = (Guid?)originalValues[nameof(EventRegistration.AtprotoRecordId)];
+        var desiredAtprotoRecordId = (Guid?)desiredValues[nameof(EventRegistration.AtprotoRecordId)];
+        var originalCoverageEstablishedAt =
+            (DateTime)originalValues[nameof(EventRegistration.CoverageEstablishedAt)]!;
+
+        var previousParentStatus = originalIntentId.HasValue
+            ? await _dbContext.EventRegistrationIntents
+                .AsNoTracking()
+                .Where(parent => parent.Id == originalIntentId.Value)
+                .Select(parent => parent.ApprovalStatusId)
+                .SingleOrDefaultAsync(cancellationToken)
+            : originalApprovalStatusId;
 
         if (!RegistrationApprovalStatusRules.PreservesRegistrationIdentity(
                 originalIntentId,
@@ -174,142 +195,178 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
             throw new InvalidOperationException("Terminal registration approval statuses cannot be changed.");
         }
 
+        var requestedChange = originalApprovalStatusId != desiredApprovalStatusId
+            || originalSessionId != desiredSessionId
+            || originalAtprotoRecordId != desiredAtprotoRecordId;
+        if (!requestedChange)
+        {
+            return new EventRegistrationTransitionResult(
+                Changed: false,
+                ParentIntentId: originalIntentId,
+                PreviousStatus: previousParentStatus,
+                FinalStatus: previousParentStatus,
+                TransitionReason: EventRegistrationTransitionReason.NoChange,
+                OccurrenceId: occurrenceId,
+                OccurredAt: occurredAt,
+                ActorProvenance: actorProvenance,
+                ActorUserId: actorUserId,
+                ChildTransitions:
+                [
+                    new EventRegistrationChildTransition(
+                        registration.Id,
+                        registration.EventSessionId,
+                        originalApprovalStatusId,
+                        originalApprovalStatusId)
+                ]);
+        }
+
         var releaseOriginalCapacity = RegistrationApprovalStatusRules.IsCapacityBearing(originalApprovalStatusId)
             && (!RegistrationApprovalStatusRules.IsCapacityBearing(desiredApprovalStatusId)
                 || originalSessionId != desiredSessionId);
         var reserveDesiredCapacity = RegistrationApprovalStatusRules.IsCapacityBearing(desiredApprovalStatusId)
             && (!RegistrationApprovalStatusRules.IsCapacityBearing(originalApprovalStatusId)
                 || originalSessionId != desiredSessionId);
-        var approvalStatusChanged = originalApprovalStatusId != desiredApprovalStatusId;
-        var recomputeParentApprovalStatus = approvalStatusChanged || reserveDesiredCapacity;
-
-        if (!releaseOriginalCapacity && !reserveDesiredCapacity && !recomputeParentApprovalStatus)
+        var recomputeParentApprovalStatus = originalApprovalStatusId != desiredApprovalStatusId
+            || reserveDesiredCapacity;
+        var replacement = new EventRegistration
         {
-            entry.State = EntityState.Modified;
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            return;
-        }
+            Id = occurrenceId,
+            EventId = desiredEventId,
+            Event = null!,
+            UserId = desiredUserId,
+            User = null!,
+            EventSessionId = desiredSessionId,
+            EventSession = null!,
+            EventRegistrationIntentId = desiredIntentId,
+            EventRegistrationIntent = null,
+            ApprovalStatusId = desiredApprovalStatusId,
+            ApprovalStatus = null,
+            TenantId = desiredTenantId,
+            Tenant = null!,
+            AtprotoRecordId = desiredAtprotoRecordId,
+            AtprotoRecord = null,
+            CoverageEstablishedAt = originalSessionId == desiredSessionId
+                ? originalCoverageEstablishedAt
+                : occurredAt.UtcDateTime,
+            CreatedBy = actorUserId,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+
+        entry.CurrentValues.SetValues(originalValues);
+        entry.OriginalValues.SetValues(originalValues);
+        entry.State = EntityState.Deleted;
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         if (_dbContext.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
         {
-            entry.State = EntityState.Modified;
-            await _dbContext.SaveChangesAsync(cancellationToken);
             await AdjustInMemoryCapacityAsync(
-                registration,
+                replacement,
                 releaseOriginalCapacity,
                 reserveDesiredCapacity,
                 originalSessionId,
                 desiredSessionId,
                 cancellationToken);
-
-            if (recomputeParentApprovalStatus)
-            {
-                await RecomputeParentApprovalStatusAsync(
-                    registration,
-                    includeCurrentRegistration: true,
-                    noLiveChildStatusId: registration.ApprovalStatusId,
-                    cancellationToken: cancellationToken);
-                await _dbContext.SaveChangesAsync(cancellationToken);
-            }
-
-            return;
         }
-
-        var strategy = _dbContext.Database.CreateExecutionStrategy();
-        await strategy.ExecuteAsync(async () =>
+        else
         {
-            entry.CurrentValues.SetValues(desiredValues);
-            entry.OriginalValues.SetValues(originalValues);
-            entry.State = EntityState.Modified;
-
-            await using var tx = await _dbContext.Database
-                .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
-
-            try
+            if (releaseOriginalCapacity)
             {
-                await _dbContext.SaveChangesAsync(cancellationToken);
-
-                if (releaseOriginalCapacity)
-                {
-                    await ReleaseSessionCapacityAsync(
-                        originalTenantId,
-                        originalEventId,
-                        originalSessionId,
-                        cancellationToken);
-                }
-
-                if (reserveDesiredCapacity
-                    && !await TryReserveSessionCapacityAsync(
-                        desiredTenantId,
-                        desiredEventId,
-                        desiredSessionId,
-                        cancellationToken))
-                {
-                    registration.ApprovalStatusId = (int)ApprovalStatusEnum.Waitlisted;
-                    await _dbContext.SaveChangesAsync(cancellationToken);
-                }
-
-                if (recomputeParentApprovalStatus)
-                {
-                    await RecomputeParentApprovalStatusAsync(
-                        registration,
-                        includeCurrentRegistration: true,
-                        noLiveChildStatusId: registration.ApprovalStatusId,
-                        cancellationToken: cancellationToken);
-                    await _dbContext.SaveChangesAsync(cancellationToken);
-                }
-
-                await tx.CommitAsync(cancellationToken);
-            }
-            catch
-            {
-                await tx.RollbackAsync(CancellationToken.None);
-                throw;
-            }
-        });
-    }
-
-    public async Task<bool> CancelAndReleaseCapacityAsync(
-        Guid registrationId,
-        Guid expectedOwnerUserId,
-        CancellationToken cancellationToken)
-    {
-        if (_dbContext.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
-        {
-            return await CancelAndReleaseCapacityCoreAsync(
-                registrationId,
-                expectedOwnerUserId,
-                cancellationToken);
-        }
-
-        var strategy = _dbContext.Database.CreateExecutionStrategy();
-        return await strategy.ExecuteAsync(async () =>
-        {
-            await using var tx = await _dbContext.Database
-                .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
-
-            try
-            {
-                var result = await CancelAndReleaseCapacityCoreAsync(
-                    registrationId,
-                    expectedOwnerUserId,
+                await ReleaseSessionCapacityAsync(
+                    originalTenantId,
+                    originalEventId,
+                    originalSessionId,
                     cancellationToken);
-                await tx.CommitAsync(cancellationToken);
-                return result;
             }
-            catch
+
+            if (reserveDesiredCapacity
+                && !await TryReserveSessionCapacityAsync(
+                    desiredTenantId,
+                    desiredEventId,
+                    desiredSessionId,
+                    cancellationToken))
             {
-                await tx.RollbackAsync(CancellationToken.None);
-                throw;
+                replacement.ApprovalStatusId = (int)ApprovalStatusEnum.Waitlisted;
             }
-        });
+        }
+
+        await _dbContext.EventRegistrations.AddAsync(replacement, cancellationToken);
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: ActiveSessionRegistrationIndexName
+        })
+        {
+            throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "The registration was modified by another request. Reload and retry.",
+                nameof(EventRegistration),
+                registration.Id.ToString(),
+                exception);
+        }
+
+        EventRegistrationIntent? recomputedParent = null;
+        if (recomputeParentApprovalStatus)
+        {
+            recomputedParent = await RecomputeParentApprovalStatusAsync(
+                replacement,
+                includeCurrentRegistration: true,
+                noLiveChildStatusId: replacement.ApprovalStatusId,
+                cancellationToken: cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        var finalParentStatus = recomputedParent?.ApprovalStatusId ?? previousParentStatus;
+        var changed = originalApprovalStatusId != replacement.ApprovalStatusId
+            || originalSessionId != replacement.EventSessionId
+            || originalAtprotoRecordId != replacement.AtprotoRecordId
+            || previousParentStatus != finalParentStatus;
+        var reason = !changed
+            ? EventRegistrationTransitionReason.NoChange
+            : replacement.ApprovalStatusId == (int)ApprovalStatusEnum.Revoked
+                ? EventRegistrationTransitionReason.Revoked
+                : replacement.ApprovalStatusId == (int)ApprovalStatusEnum.Waitlisted
+                    && desiredApprovalStatusId != (int)ApprovalStatusEnum.Waitlisted
+                    ? EventRegistrationTransitionReason.CapacityWaitlisted
+                    : originalApprovalStatusId != replacement.ApprovalStatusId
+                        || previousParentStatus != finalParentStatus
+                        ? EventRegistrationTransitionReason.ApprovalStatusChanged
+                        : EventRegistrationTransitionReason.Updated;
+
+        return new EventRegistrationTransitionResult(
+            Changed: changed,
+            ParentIntentId: originalIntentId,
+            PreviousStatus: previousParentStatus,
+            FinalStatus: finalParentStatus,
+            TransitionReason: reason,
+            OccurrenceId: occurrenceId,
+            OccurredAt: occurredAt,
+            ActorProvenance: actorProvenance,
+            ActorUserId: actorUserId,
+            ChildTransitions:
+            [
+                new EventRegistrationChildTransition(
+                    replacement.Id,
+                    replacement.EventSessionId,
+                    originalApprovalStatusId,
+                    replacement.ApprovalStatusId)
+            ]);
     }
 
-    private async Task<bool> CancelAndReleaseCapacityCoreAsync(
+    public async Task<EventRegistrationTransitionResult> CancelAndReleaseCapacityAsync(
         Guid registrationId,
         Guid expectedOwnerUserId,
+        Guid occurrenceId,
+        DateTimeOffset occurredAt,
+        EventRegistrationActorProvenance actorProvenance,
+        Guid? actorUserId,
         CancellationToken cancellationToken)
     {
+        RequireCallerOwnedSerializableTransaction();
+
         var registration = await _dbContext.EventRegistrations
             .FirstOrDefaultAsync(
                 r => r.Id == registrationId && r.UserId == expectedOwnerUserId,
@@ -317,11 +374,29 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
 
         if (registration is null)
         {
-            return false;
+            return new EventRegistrationTransitionResult(
+                Changed: false,
+                ParentIntentId: null,
+                PreviousStatus: null,
+                FinalStatus: null,
+                TransitionReason: EventRegistrationTransitionReason.NoChange,
+                OccurrenceId: occurrenceId,
+                OccurredAt: occurredAt,
+                ActorProvenance: actorProvenance,
+                ActorUserId: actorUserId,
+                ChildTransitions: []);
         }
 
+        var previousChildStatus = registration.ApprovalStatusId;
         var shouldReleaseCapacity = RegistrationApprovalStatusRules.IsCapacityBearing(
             registration.ApprovalStatusId);
+        var previousParentStatus = registration.EventRegistrationIntentId.HasValue
+            ? await _dbContext.EventRegistrationIntents
+                .AsNoTracking()
+                .Where(parent => parent.Id == registration.EventRegistrationIntentId.Value)
+                .Select(parent => parent.ApprovalStatusId)
+                .SingleOrDefaultAsync(cancellationToken)
+            : previousChildStatus;
 
         registration.ApprovalStatusId = (int)ApprovalStatusEnum.Cancelled;
         _dbContext.Entry(registration).State = EntityState.Deleted;
@@ -348,7 +423,36 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
                 cancellationToken);
         }
 
-        return true;
+        return new EventRegistrationTransitionResult(
+            Changed: true,
+            ParentIntentId: registration.EventRegistrationIntentId,
+            PreviousStatus: previousParentStatus,
+            FinalStatus: parent?.ApprovalStatusId ?? (int)ApprovalStatusEnum.Cancelled,
+            TransitionReason: actorProvenance == EventRegistrationActorProvenance.Attendee
+                ? EventRegistrationTransitionReason.SelfCancelled
+                : EventRegistrationTransitionReason.Revoked,
+            OccurrenceId: occurrenceId,
+            OccurredAt: occurredAt,
+            ActorProvenance: actorProvenance,
+            ActorUserId: actorUserId,
+            ChildTransitions:
+            [
+                new EventRegistrationChildTransition(
+                    registration.Id,
+                    registration.EventSessionId,
+                    previousChildStatus,
+                    (int)ApprovalStatusEnum.Cancelled)
+            ]);
+    }
+
+    private void RequireCallerOwnedSerializableTransaction()
+    {
+        if (_dbContext.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory"
+            && _dbContext.Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException(
+                "Capacity-aware registration writes require a caller-owned serializable transaction.");
+        }
     }
 
     private async Task<EventRegistrationIntent?> RecomputeParentApprovalStatusAsync(

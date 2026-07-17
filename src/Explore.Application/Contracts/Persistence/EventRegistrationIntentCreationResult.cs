@@ -8,6 +8,7 @@ namespace Explore.Application.Contracts.Persistence;
 public sealed record EventRegistrationIntentCreationResult(
     EventRegistrationIntent Intent,
     IReadOnlyList<Guid> WaitlistedSessionIds,
+    EventRegistrationTransitionResult Transition,
     bool WasExisting = false)
 {
     public bool HasWaitlistedSessions => WaitlistedSessionIds.Count > 0;

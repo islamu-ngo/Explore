@@ -2,11 +2,14 @@
 // ABOUTME: Verifies cancellation remains atomic when Npgsql retry execution strategies are enabled.
 
 using Event.Persistence.IntegrationTests.Fixtures;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Exceptions;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Registration;
 using Explore.Domain.Services.Scheduling;
 using Explore.Persistence;
+using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -27,12 +30,13 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
         await using var cancelContext = CreateRetryingDbContext();
         var repository = new EventRegistrationRepository(cancelContext);
 
-        var cancelled = await repository.CancelAndReleaseCapacityAsync(
+        var cancelled = await ExecuteCancellationAsync(
+            cancelContext,
+            repository,
             scenario.RegistrationId,
-            scenario.UserId,
-            CancellationToken.None);
+            scenario.UserId);
 
-        await Assert.That(cancelled).IsTrue();
+        await Assert.That(cancelled.Changed).IsTrue();
 
         await using var verifyContext = fixture.CreateDbContext();
         var registration = await verifyContext.EventRegistrations
@@ -69,10 +73,11 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
         await using var cancelContext = CreateRetryingDbContext();
         var repository = new EventRegistrationRepository(cancelContext);
 
-        var cancelled = await repository.CancelAndReleaseCapacityAsync(
+        var cancelled = await ExecuteCancellationAsync(
+            cancelContext,
+            repository,
             scenario.RegistrationId,
-            scenario.UserId,
-            CancellationToken.None);
+            scenario.UserId);
 
         await using var verifyContext = fixture.CreateDbContext();
         var childIsDeleted = await verifyContext.EventRegistrations
@@ -95,7 +100,7 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
                 (int)ApprovalStatusEnum.Approved or
                 (int)ApprovalStatusEnum.Waitlisted;
 
-        await Assert.That(cancelled).IsTrue();
+        await Assert.That(cancelled.Changed).IsTrue();
         await Assert.That(childIsDeleted.IsDeleted).IsTrue();
         await Assert.That(childIsDeleted.ApprovalStatusId).IsEqualTo((int)ApprovalStatusEnum.Cancelled);
         await Assert.That(intentState.ApprovalStatusId).IsEqualTo((int)ApprovalStatusEnum.Cancelled);
@@ -124,11 +129,12 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
         await using (var firstCancelContext = CreateRetryingDbContext())
         {
             var repository = new EventRegistrationRepository(firstCancelContext);
-            var cancelled = await repository.CancelAndReleaseCapacityAsync(
+            var cancelled = await ExecuteCancellationAsync(
+                firstCancelContext,
+                repository,
                 scenario.RegistrationId,
-                scenario.UserId,
-                CancellationToken.None);
-            await Assert.That(cancelled).IsTrue();
+                scenario.UserId);
+            await Assert.That(cancelled.Changed).IsTrue();
         }
 
         await using (var partialVerifyContext = fixture.CreateDbContext())
@@ -165,11 +171,12 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
         await using (var lastCancelContext = CreateRetryingDbContext())
         {
             var repository = new EventRegistrationRepository(lastCancelContext);
-            var cancelled = await repository.CancelAndReleaseCapacityAsync(
+            var cancelled = await ExecuteCancellationAsync(
+                lastCancelContext,
+                repository,
                 secondRegistrationId,
-                scenario.UserId,
-                CancellationToken.None);
-            await Assert.That(cancelled).IsTrue();
+                scenario.UserId);
+            await Assert.That(cancelled.Changed).IsTrue();
         }
 
         await using var finalVerifyContext = fixture.CreateDbContext();
@@ -232,10 +239,11 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
         await using var cancelContext = CreateRetryingDbContext();
         var repository = new EventRegistrationRepository(cancelContext);
 
-        var cancelled = await repository.CancelAndReleaseCapacityAsync(
+        var cancelled = await ExecuteCancellationAsync(
+            cancelContext,
+            repository,
             scenario.RegistrationId,
-            scenario.UserId,
-            CancellationToken.None);
+            scenario.UserId);
 
         await using var verifyContext = fixture.CreateDbContext();
         var persistedRegistration = await verifyContext.EventRegistrations
@@ -247,12 +255,150 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
             .Select(item => item.CurrentAudienceAttendees)
             .SingleAsync();
 
-        await Assert.That(cancelled).IsFalse();
+        await Assert.That(cancelled.Changed).IsFalse();
         await Assert.That(persistedRegistration.UserId).IsEqualTo(replacementUser.Id);
         await Assert.That(persistedRegistration.IsDeleted).IsFalse();
         await Assert.That(persistedRegistration.ApprovalStatusId)
             .IsEqualTo((int)ApprovalStatusEnum.Approved);
         await Assert.That(parentIsLive).IsTrue();
+        await Assert.That(currentAttendees).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task CancelAndReleaseCapacityAsyncWithoutCallerTransactionThrows()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+        var scenario = await SeedRegistrationAsync(seedContext);
+        await using var context = CreateRetryingDbContext();
+        var repository = new EventRegistrationRepository(context);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            repository.CancelAndReleaseCapacityAsync(
+                scenario.RegistrationId,
+                scenario.UserId,
+                Guid.CreateVersion7(),
+                DateTimeOffset.UtcNow,
+                EventRegistrationActorProvenance.Attendee,
+                scenario.UserId,
+                CancellationToken.None));
+
+        await Assert.That(exception.Message).IsEqualTo(
+            "Capacity-aware registration writes require a caller-owned serializable transaction.");
+    }
+
+    [Test]
+    public async Task UpdateAndAdjustCapacityAsyncWithoutCallerTransactionThrows()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+        var scenario = await SeedRegistrationAsync(seedContext);
+        await using var context = CreateRetryingDbContext();
+        var repository = new EventRegistrationRepository(context);
+        var registration = await repository.GetById(scenario.RegistrationId);
+        registration!.ApprovalStatusId = (int)ApprovalStatusEnum.Rejected;
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            repository.UpdateAndAdjustCapacityAsync(
+                registration,
+                Guid.CreateVersion7(),
+                DateTimeOffset.UtcNow,
+                EventRegistrationActorProvenance.Organizer,
+                actorUserId: null,
+                cancellationToken: CancellationToken.None));
+
+        await Assert.That(exception.Message).IsEqualTo(
+            "Capacity-aware registration writes require a caller-owned serializable transaction.");
+    }
+
+    [Test]
+    public async Task CancelAndReleaseCapacityAsyncWhenApplicationWorkFailsRollsBackAggregateAndCapacity()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+        var scenario = await SeedRegistrationAsync(seedContext);
+        await using var context = CreateRetryingDbContext();
+        var repository = new EventRegistrationRepository(context);
+        var occurrenceId = Guid.CreateVersion7();
+        var occurredAt = DateTimeOffset.UtcNow;
+
+        await Assert.That(async () => await new EfCoreUnitOfWork(context)
+            .ExecuteSerializableAsync<EventRegistrationTransitionResult>(
+                async ct =>
+                {
+                    await repository.CancelAndReleaseCapacityAsync(
+                        scenario.RegistrationId,
+                        scenario.UserId,
+                        occurrenceId,
+                        occurredAt,
+                        EventRegistrationActorProvenance.Attendee,
+                        scenario.UserId,
+                        ct);
+                    throw new InvalidOperationException("rollback probe");
+                }))
+            .Throws<InvalidOperationException>();
+
+        await using var verifyContext = fixture.CreateDbContext();
+        var registration = await verifyContext.EventRegistrations
+            .SingleAsync(item => item.Id == scenario.RegistrationId);
+        var intent = await verifyContext.EventRegistrationIntents
+            .SingleAsync(item => item.Id == scenario.IntentId);
+        var currentAttendees = await verifyContext.EventSessions
+            .Where(item => item.Id == scenario.SessionId)
+            .Select(item => item.CurrentAudienceAttendees)
+            .SingleAsync();
+
+        await Assert.That(registration.IsDeleted).IsFalse();
+        await Assert.That(registration.ApprovalStatusId)
+            .IsEqualTo((int)ApprovalStatusEnum.Approved);
+        await Assert.That(intent.IsDeleted).IsFalse();
+        await Assert.That(intent.ApprovalStatusId)
+            .IsEqualTo((int)ApprovalStatusEnum.Approved);
+        await Assert.That(currentAttendees).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task UpdateAndAdjustCapacityAsyncWhenApplicationWorkFailsRollsBackAggregateAndCapacity()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+        var scenario = await SeedRegistrationAsync(seedContext, (int)ApprovalStatusEnum.Pending);
+        await using var context = CreateRetryingDbContext();
+        var repository = new EventRegistrationRepository(context);
+        var registration = await repository.GetById(scenario.RegistrationId);
+        registration!.ApprovalStatusId = (int)ApprovalStatusEnum.Rejected;
+        var occurrenceId = Guid.CreateVersion7();
+        var occurredAt = DateTimeOffset.UtcNow;
+
+        await Assert.That(async () => await new EfCoreUnitOfWork(context)
+            .ExecuteSerializableAsync<EventRegistrationTransitionResult>(
+                async ct =>
+                {
+                    await repository.UpdateAndAdjustCapacityAsync(
+                        registration,
+                        occurrenceId,
+                        occurredAt,
+                        EventRegistrationActorProvenance.Organizer,
+                        actorUserId: null,
+                        cancellationToken: ct);
+                    throw new InvalidOperationException("rollback probe");
+                }))
+            .Throws<InvalidOperationException>();
+
+        await using var verifyContext = fixture.CreateDbContext();
+        var persistedRegistration = await verifyContext.EventRegistrations
+            .SingleAsync(item => item.Id == scenario.RegistrationId);
+        var intent = await verifyContext.EventRegistrationIntents
+            .SingleAsync(item => item.Id == scenario.IntentId);
+        var currentAttendees = await verifyContext.EventSessions
+            .Where(item => item.Id == scenario.SessionId)
+            .Select(item => item.CurrentAudienceAttendees)
+            .SingleAsync();
+
+        await Assert.That(persistedRegistration.ApprovalStatusId)
+            .IsEqualTo((int)ApprovalStatusEnum.Pending);
+        await Assert.That(intent.ApprovalStatusId)
+            .IsEqualTo((int)ApprovalStatusEnum.Pending);
         await Assert.That(currentAttendees).IsEqualTo(1);
     }
 
@@ -263,6 +409,7 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
         await fixture.ResetAsync();
         await using var seedContext = fixture.CreateDbContext();
         var scenario = await SeedRegistrationAsync(seedContext, (int)ApprovalStatusEnum.Pending);
+        EventRegistrationTransitionResult firstTransition;
 
         await using (var updateContext = CreateRetryingDbContext())
         {
@@ -270,22 +417,28 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
             var registration = await repository.GetById(scenario.RegistrationId);
             registration!.ApprovalStatusId = (int)ApprovalStatusEnum.Rejected;
 
-            await repository.UpdateAndAdjustCapacityAsync(registration, CancellationToken.None);
+            firstTransition = await ExecuteUpdateAsync(updateContext, repository, registration);
         }
 
+        Guid replacementId = firstTransition.ChildTransitions.Single().RegistrationId;
         await using (var repeatContext = CreateRetryingDbContext())
         {
             var repository = new EventRegistrationRepository(repeatContext);
-            var registration = await repository.GetById(scenario.RegistrationId);
+            var registration = await repository.GetById(replacementId);
             registration!.ApprovalStatusId = (int)ApprovalStatusEnum.Rejected;
 
-            await repository.UpdateAndAdjustCapacityAsync(registration, CancellationToken.None);
+            await ExecuteUpdateAsync(repeatContext, repository, registration);
         }
 
         await using var verifyContext = fixture.CreateDbContext();
         var persistedStatusId = await verifyContext.EventRegistrations
-            .Where(registration => registration.Id == scenario.RegistrationId)
+            .Where(registration => registration.Id == replacementId)
             .Select(registration => registration.ApprovalStatusId)
+            .SingleAsync();
+        var historicalRowIsDeleted = await verifyContext.EventRegistrations
+            .IgnoreAllFilters("Replacement history verification requires the superseded registration row.")
+            .Where(registration => registration.Id == scenario.RegistrationId)
+            .Select(registration => registration.IsDeleted)
             .SingleAsync();
         var currentAttendees = await verifyContext.EventSessions
             .Where(session => session.Id == scenario.SessionId)
@@ -293,6 +446,7 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
             .SingleAsync();
 
         await Assert.That(persistedStatusId).IsEqualTo((int)ApprovalStatusEnum.Rejected);
+        await Assert.That(historicalRowIsDeleted).IsTrue();
         await Assert.That(currentAttendees).IsEqualTo(0);
     }
 
@@ -312,11 +466,12 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
         firstRegistration!.ApprovalStatusId = (int)ApprovalStatusEnum.Rejected;
         secondRegistration!.ApprovalStatusId = (int)ApprovalStatusEnum.Rejected;
 
-        await firstRepository.UpdateAndAdjustCapacityAsync(firstRegistration, CancellationToken.None);
-        await Assert.That(async () => await secondRepository.UpdateAndAdjustCapacityAsync(
-                secondRegistration,
-                CancellationToken.None))
-            .Throws<DbUpdateConcurrencyException>();
+        await ExecuteUpdateAsync(firstContext, firstRepository, firstRegistration);
+        await Assert.That(async () => await ExecuteUpdateAsync(
+                secondContext,
+                secondRepository,
+                secondRegistration))
+            .Throws<ConcurrencyConflictException>();
 
         await using var verifyContext = fixture.CreateDbContext();
         var currentAttendees = await verifyContext.EventSessions
@@ -339,7 +494,7 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
         var registration = await repository.GetById(scenario.RegistrationId);
         registration!.ApprovalStatusId = (int)ApprovalStatusEnum.Pending;
 
-        await repository.UpdateAndAdjustCapacityAsync(registration, CancellationToken.None);
+        await ExecuteUpdateAsync(updateContext, repository, registration);
 
         await using var verifyContext = fixture.CreateDbContext();
         var currentAttendees = await verifyContext.EventSessions
@@ -365,12 +520,19 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
         var registration = await repository.GetById(scenario.RegistrationId);
         registration!.ApprovalStatusId = (int)ApprovalStatusEnum.Approved;
 
-        await repository.UpdateAndAdjustCapacityAsync(registration, CancellationToken.None);
+        EventRegistrationTransitionResult transition =
+            await ExecuteUpdateAsync(updateContext, repository, registration);
+        Guid replacementId = transition.ChildTransitions.Single().RegistrationId;
 
         await using var verifyContext = fixture.CreateDbContext();
         var persistedStatusId = await verifyContext.EventRegistrations
-            .Where(item => item.Id == scenario.RegistrationId)
+            .Where(item => item.Id == replacementId)
             .Select(item => item.ApprovalStatusId)
+            .SingleAsync();
+        var historicalRowIsDeleted = await verifyContext.EventRegistrations
+            .IgnoreAllFilters("Replacement history verification requires the superseded registration row.")
+            .Where(item => item.Id == scenario.RegistrationId)
+            .Select(item => item.IsDeleted)
             .SingleAsync();
         var currentAttendees = await verifyContext.EventSessions
             .Where(session => session.Id == scenario.SessionId)
@@ -378,6 +540,7 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
             .SingleAsync();
 
         await Assert.That(persistedStatusId).IsEqualTo((int)ApprovalStatusEnum.Waitlisted);
+        await Assert.That(historicalRowIsDeleted).IsTrue();
         await Assert.That(currentAttendees).IsEqualTo(1);
     }
 
@@ -397,7 +560,7 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
             var repository = new EventRegistrationRepository(firstUpdateContext);
             var registration = await repository.GetById(scenario.RegistrationId);
             registration!.ApprovalStatusId = (int)ApprovalStatusEnum.Approved;
-            await repository.UpdateAndAdjustCapacityAsync(registration, CancellationToken.None);
+            await ExecuteUpdateAsync(firstUpdateContext, repository, registration);
         }
 
         await using (var mixedVerifyContext = fixture.CreateDbContext())
@@ -414,7 +577,7 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
             var repository = new EventRegistrationRepository(secondUpdateContext);
             var registration = await repository.GetById(scenario.SecondRegistrationId!.Value);
             registration!.ApprovalStatusId = (int)ApprovalStatusEnum.Approved;
-            await repository.UpdateAndAdjustCapacityAsync(registration, CancellationToken.None);
+            await ExecuteUpdateAsync(secondUpdateContext, repository, registration);
         }
 
         await using var finalVerifyContext = fixture.CreateDbContext();
@@ -439,7 +602,7 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
         var registration = await repository.GetById(scenario.RegistrationId);
         registration!.ApprovalStatusId = (int)ApprovalStatusEnum.Approved;
 
-        await repository.UpdateAndAdjustCapacityAsync(registration, CancellationToken.None);
+        await ExecuteUpdateAsync(updateContext, repository, registration);
 
         await using var verifyContext = fixture.CreateDbContext();
         var parentStatusId = await verifyContext.EventRegistrationIntents
@@ -464,13 +627,16 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
             seedContext,
             (int)ApprovalStatusEnum.Approved,
             includeSecondRegistration: true);
+        Guid revokedFirstRegistrationId;
 
         await using (var firstRevokeContext = CreateRetryingDbContext())
         {
             var repository = new EventRegistrationRepository(firstRevokeContext);
             var registration = await repository.GetById(scenario.RegistrationId);
             registration!.ApprovalStatusId = (int)ApprovalStatusEnum.Revoked;
-            await repository.UpdateAndAdjustCapacityAsync(registration, CancellationToken.None);
+            EventRegistrationTransitionResult transition =
+                await ExecuteUpdateAsync(firstRevokeContext, repository, registration);
+            revokedFirstRegistrationId = transition.ChildTransitions.Single().RegistrationId;
         }
 
         await using (var mixedVerifyContext = fixture.CreateDbContext())
@@ -490,11 +656,12 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
         await using (var reopenContext = CreateRetryingDbContext())
         {
             var repository = new EventRegistrationRepository(reopenContext);
-            var registration = await repository.GetById(scenario.RegistrationId);
+            var registration = await repository.GetById(revokedFirstRegistrationId);
             registration!.ApprovalStatusId = (int)ApprovalStatusEnum.Approved;
-            await Assert.That(async () => await repository.UpdateAndAdjustCapacityAsync(
-                    registration,
-                    CancellationToken.None))
+            await Assert.That(async () => await ExecuteUpdateAsync(
+                    reopenContext,
+                    repository,
+                    registration))
                 .Throws<InvalidOperationException>();
         }
 
@@ -503,7 +670,7 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
             var repository = new EventRegistrationRepository(secondRevokeContext);
             var registration = await repository.GetById(scenario.SecondRegistrationId!.Value);
             registration!.ApprovalStatusId = (int)ApprovalStatusEnum.Revoked;
-            await repository.UpdateAndAdjustCapacityAsync(registration, CancellationToken.None);
+            await ExecuteUpdateAsync(secondRevokeContext, repository, registration);
         }
 
         await using var finalVerifyContext = fixture.CreateDbContext();
@@ -569,9 +736,10 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
         var registration = await repository.GetById(scenario.RegistrationId);
         registration!.EventRegistrationIntentId = replacementIntent.Id;
 
-        await Assert.That(async () => await repository.UpdateAndAdjustCapacityAsync(
-                registration,
-                CancellationToken.None))
+        await Assert.That(async () => await ExecuteUpdateAsync(
+                updateContext,
+                repository,
+                registration))
             .Throws<InvalidOperationException>();
 
         await using var verifyContext = fixture.CreateDbContext();
@@ -615,6 +783,42 @@ public sealed class EventRegistrationRepositoryTests(PostgreSqlContainerFixture 
         await Assert.That(items[0].EventId).IsNotEqualTo(secondScenario.EventId);
         await Assert.That(items[0].User?.Pii).IsNotNull();
         await Assert.That(items[0].EventSession?.Event).IsNotNull();
+    }
+
+    private static Task<EventRegistrationTransitionResult> ExecuteCancellationAsync(
+        ExploreDbContext context,
+        EventRegistrationRepository repository,
+        Guid registrationId,
+        Guid expectedOwnerUserId)
+    {
+        var occurrenceId = Guid.CreateVersion7();
+        var occurredAt = DateTimeOffset.UtcNow;
+        return new EfCoreUnitOfWork(context).ExecuteSerializableAsync(
+            ct => repository.CancelAndReleaseCapacityAsync(
+                registrationId,
+                expectedOwnerUserId,
+                occurrenceId,
+                occurredAt,
+                EventRegistrationActorProvenance.Attendee,
+                expectedOwnerUserId,
+                ct));
+    }
+
+    private static Task<EventRegistrationTransitionResult> ExecuteUpdateAsync(
+        ExploreDbContext context,
+        EventRegistrationRepository repository,
+        EventRegistration registration)
+    {
+        var occurrenceId = Guid.CreateVersion7();
+        var occurredAt = DateTimeOffset.UtcNow;
+        return new EfCoreUnitOfWork(context).ExecuteSerializableAsync(
+            ct => repository.UpdateAndAdjustCapacityAsync(
+                registration,
+                occurrenceId,
+                occurredAt,
+                EventRegistrationActorProvenance.Organizer,
+                null,
+                ct));
     }
 
     private ExploreDbContext CreateRetryingDbContext()

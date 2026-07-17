@@ -1,5 +1,5 @@
 // ABOUTME: Repository contract for EventRegistrationIntent - the parent row preserving why a user registered (whole event, whole day, or chosen sessions).
-// ABOUTME: Provides a transactional CreateWithChildrenAsync so parent intent + child session access rows land in a single unit of work.
+// ABOUTME: Exposes caller-coordinated capacity transitions plus stable attendee fanout reads.
 
 using Explore.Domain;
 
@@ -19,31 +19,36 @@ public interface IEventRegistrationIntentRepository : IGenericRepository<EventRe
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// Inserts the parent intent and its child session-access rows in a single serializable transaction.
-    /// Child rows must already carry <see cref="EventRegistration.EventRegistrationIntentId"/> set to the parent id.
-    /// </summary>
-    Task<EventRegistrationIntent> CreateWithChildrenAsync(
-        EventRegistrationIntent intent,
-        IReadOnlyList<EventRegistration> children,
-        CancellationToken cancellationToken);
-
-    /// <summary>
     /// Inserts the parent intent and child session-access rows while atomically reserving session capacity.
     /// Full sessions create waitlisted child rows instead of incrementing the attendee counter.
+    /// The caller must provide the serializable unit-of-work transaction.
     /// </summary>
     Task<EventRegistrationIntentCreationResult> CreateWithChildrenAndCapacityAsync(
         EventRegistrationIntent intent,
         IReadOnlyList<EventRegistration> children,
         int approvedStatusId,
         int waitlistedStatusId,
+        Guid occurrenceId,
+        DateTimeOffset occurredAt,
+        EventRegistrationActorProvenance actorProvenance,
+        Guid? actorUserId,
         CancellationToken cancellationToken,
-        EmailDispatchOutbox? emailDispatchOutbox = null,
         IntegrationSyncOutbox? integrationSyncOutbox = null);
 
     Task<IReadOnlyList<Guid>> GetRegisteredUserFanoutBatchAsync(
         Guid tenantId,
         Guid eventId,
         Guid? afterUserId,
+        int pageSize,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<NotificationFanoutAudienceMember>> GetNotificationFanoutAudienceBatchAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid? sessionId,
+        DateTime audienceCutoffAt,
+        int deliveryPolicyId,
+        NotificationFanoutAudienceCursor? after,
         int pageSize,
         CancellationToken cancellationToken);
 }

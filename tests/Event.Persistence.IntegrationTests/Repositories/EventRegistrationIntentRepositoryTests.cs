@@ -2,7 +2,10 @@
 // ABOUTME: Verifies serializable registration creation keeps session capacity counters correct under concurrency and rollback.
 
 using Event.Persistence.IntegrationTests.Fixtures;
+using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Exceptions;
+using Explore.Application.Notifications;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -89,6 +92,44 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
     }
 
     [Test]
+    public async Task CreateWithChildrenAndCapacityAsync_OverridesSuppliedCoverageWithOccurrenceTime()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+        var scenario = await SeedRegistrationScenarioAsync(seedContext, userCount: 1, sessionCapacity: 10);
+        Guid userId = scenario.UserIds.Single();
+        EventRegistrationIntent intent = NewIntent(
+            scenario,
+            userId,
+            RegistrationScopeEnum.SessionSelection);
+        EventRegistration child = NewRegistrationChild(scenario, userId);
+        child.CoverageEstablishedAt = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        DateTimeOffset occurredAt = new(2026, 8, 5, 14, 30, 0, TimeSpan.Zero);
+
+        await using var context = CreateRetryingDbContext();
+        var repository = new EventRegistrationIntentRepository(context);
+        await new EfCoreUnitOfWork(context).ExecuteSerializableAsync(
+            cancellationToken => repository.CreateWithChildrenAndCapacityAsync(
+                intent,
+                [child],
+                (int)ApprovalStatusEnum.Approved,
+                (int)ApprovalStatusEnum.Waitlisted,
+                Guid.CreateVersion7(),
+                occurredAt,
+                EventRegistrationActorProvenance.Attendee,
+                userId,
+                cancellationToken));
+
+        await using var verifyContext = fixture.CreateDbContext();
+        DateTime persistedCoverage = await verifyContext.EventRegistrations
+            .Where(registration => registration.Id == child.Id)
+            .Select(registration => registration.CoverageEstablishedAt)
+            .SingleAsync();
+
+        await Assert.That(persistedCoverage).IsEqualTo(occurredAt.UtcDateTime);
+    }
+
+    [Test]
     public async Task CreateWithChildrenAndCapacityAsync_DuplicateSessionSelectionIntent_ReturnsExistingIntent()
     {
         await fixture.ResetAsync();
@@ -97,13 +138,11 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
         var userId = scenario.UserIds.Single();
         var first = await CreateRegistrationAsync(scenario, userId);
         await using var duplicateContext = CreateRetryingDbContext();
-        var duplicateRepository = new EventRegistrationIntentRepository(duplicateContext);
 
-        var duplicate = await duplicateRepository.CreateWithChildrenAndCapacityAsync(
+        var duplicate = await ExecuteCapacityCreationAsync(
+            duplicateContext,
             NewIntent(scenario, userId, RegistrationScopeEnum.SessionSelection),
             [NewRegistrationChild(scenario, userId)],
-            (int)ApprovalStatusEnum.Approved,
-            (int)ApprovalStatusEnum.Waitlisted,
             CancellationToken.None);
 
         await using var verifyContext = fixture.CreateDbContext();
@@ -134,34 +173,38 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
         var scenario = await SeedRegistrationScenarioAsync(seedContext, userCount: 1, sessionCapacity: 10);
         var userId = scenario.UserIds.Single();
         var first = await CreateRegistrationWithEmailDispatchAsync(scenario, userId);
-        await using var duplicateContext = CreateRetryingDbContext();
-        var duplicateRepository = new EventRegistrationIntentRepository(duplicateContext);
         var duplicateIntent = NewIntent(scenario, userId, RegistrationScopeEnum.SessionSelection);
-        var duplicateOutbox = NewRegistrationConfirmationDispatch(scenario, userId, duplicateIntent.Id);
 
-        var duplicate = await duplicateRepository.CreateWithChildrenAndCapacityAsync(
-            duplicateIntent,
-            [NewRegistrationChild(scenario, userId)],
-            (int)ApprovalStatusEnum.Approved,
-            (int)ApprovalStatusEnum.Waitlisted,
-            CancellationToken.None,
-            duplicateOutbox);
+        var duplicate = await CreateRegistrationWithEmailDispatchAsync(scenario, userId, duplicateIntent);
 
         await using var verifyContext = fixture.CreateDbContext();
         var outboxRows = await verifyContext.EmailDispatchOutbox
             .IgnoreQueryFilters()
             .Where(dispatch => dispatch.TenantId == scenario.TenantId
                 && dispatch.EventId == scenario.EventId
-                && dispatch.UserId == userId
+                && dispatch.RecipientUserId == userId
                 && dispatch.Kind == EmailDispatchKind.RegistrationConfirmation)
             .Select(dispatch => new
             {
                 dispatch.SourceType,
                 dispatch.SourceId,
                 dispatch.RegistrationIntentId,
+                dispatch.NotificationIntentId,
                 dispatch.Status
             })
             .ToListAsync();
+        var notificationIntents = await verifyContext.NotificationIntents
+            .IgnoreQueryFilters()
+            .Where(intent => intent.TenantId == scenario.TenantId
+                && intent.EventId == scenario.EventId
+                && intent.RecipientUserId == userId
+                && intent.TemplateKey == "registration.confirmation")
+            .Select(intent => intent.Id)
+            .ToListAsync();
+        var emailDeliveryCount = await verifyContext.NotificationDeliveries
+            .CountAsync(delivery => delivery.TenantId == scenario.TenantId
+                && notificationIntents.Contains(delivery.NotificationIntentId)
+                && delivery.ChannelId == (int)NotificationPreferenceChannelEnum.Email);
         var currentAttendees = await verifyContext.EventSessions
             .Where(session => session.Id == scenario.SessionId)
             .Select(session => session.CurrentAudienceAttendees)
@@ -173,11 +216,14 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
         await Assert.That(first.WasExisting).IsFalse();
         await Assert.That(duplicate.WasExisting).IsTrue();
         await Assert.That(duplicate.Intent.Id).IsEqualTo(first.Intent.Id);
+        await Assert.That(notificationIntents.Count).IsEqualTo(1);
+        await Assert.That(emailDeliveryCount).IsEqualTo(1);
         await Assert.That(outboxRows.Count).IsEqualTo(1);
         var outboxRow = outboxRows.Single();
         await Assert.That(outboxRow.SourceType).IsEqualTo(EventLifecycleEmailOutboxFactory.RegistrationIntentSourceType);
         await Assert.That(outboxRow.SourceId).IsEqualTo(first.Intent.Id);
         await Assert.That(outboxRow.RegistrationIntentId).IsEqualTo(first.Intent.Id);
+        await Assert.That(outboxRow.NotificationIntentId).IsEqualTo(notificationIntents.Single());
         await Assert.That(outboxRow.Status).IsEqualTo(EmailDispatchStatus.Pending);
         await Assert.That(outboxRow.SourceId).IsNotEqualTo(duplicateIntent.Id);
         await Assert.That(currentAttendees).IsEqualTo(1);
@@ -193,13 +239,11 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
         var userId = scenario.UserIds.Single();
         var first = await CreateRegistrationAsync(scenario, userId, RegistrationScopeEnum.Event);
         await using var duplicateContext = CreateRetryingDbContext();
-        var duplicateRepository = new EventRegistrationIntentRepository(duplicateContext);
 
-        var duplicate = await duplicateRepository.CreateWithChildrenAndCapacityAsync(
+        var duplicate = await ExecuteCapacityCreationAsync(
+            duplicateContext,
             NewIntent(scenario, userId, RegistrationScopeEnum.Event),
             [NewRegistrationChild(scenario, userId, scenario.SecondarySessionId)],
-            (int)ApprovalStatusEnum.Approved,
-            (int)ApprovalStatusEnum.Waitlisted,
             CancellationToken.None);
 
         await using var verifyContext = fixture.CreateDbContext();
@@ -231,13 +275,11 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
         var userId = scenario.UserIds.Single();
         var first = await CreateRegistrationAsync(scenario, userId, RegistrationScopeEnum.Day);
         await using var duplicateContext = CreateRetryingDbContext();
-        var duplicateRepository = new EventRegistrationIntentRepository(duplicateContext);
 
-        var duplicate = await duplicateRepository.CreateWithChildrenAndCapacityAsync(
+        var duplicate = await ExecuteCapacityCreationAsync(
+            duplicateContext,
             NewIntent(scenario, userId, RegistrationScopeEnum.Day),
             [NewRegistrationChild(scenario, userId, scenario.SecondarySessionId)],
-            (int)ApprovalStatusEnum.Approved,
-            (int)ApprovalStatusEnum.Waitlisted,
             CancellationToken.None);
 
         await using var verifyContext = fixture.CreateDbContext();
@@ -268,7 +310,6 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
         await using var seedContext = fixture.CreateDbContext();
         var scenario = await SeedRegistrationScenarioAsync(seedContext, userCount: 1, sessionCapacity: 10);
         await using var registrationContext = CreateRetryingDbContext();
-        var repository = new EventRegistrationIntentRepository(registrationContext);
         var userId = scenario.UserIds.Single();
         var intent = NewIntent(scenario, userId, RegistrationScopeEnum.SessionSelection);
         var duplicateChildren = new[]
@@ -279,11 +320,10 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
 
         await Assert.ThrowsAsync<DbUpdateException>(async () =>
         {
-            await repository.CreateWithChildrenAndCapacityAsync(
+            await ExecuteCapacityCreationAsync(
+                registrationContext,
                 intent,
                 duplicateChildren,
-                (int)ApprovalStatusEnum.Approved,
-                (int)ApprovalStatusEnum.Waitlisted,
                 CancellationToken.None);
         });
 
@@ -312,18 +352,16 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
         var scenario = await SeedRegistrationScenarioAsync(seedContext, userCount: 1, sessionCapacity: 10);
         var otherScenario = await SeedRegistrationScenarioAsync(seedContext, userCount: 1, sessionCapacity: 10);
         await using var registrationContext = CreateRetryingDbContext();
-        var repository = new EventRegistrationIntentRepository(registrationContext);
         var userId = scenario.UserIds.Single();
         var intent = NewIntent(scenario, userId, RegistrationScopeEnum.SessionSelection);
         var crossEventChild = NewRegistrationChild(scenario, userId, otherScenario.SessionId);
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
-            await repository.CreateWithChildrenAndCapacityAsync(
+            await ExecuteCapacityCreationAsync(
+                registrationContext,
                 intent,
                 [crossEventChild],
-                (int)ApprovalStatusEnum.Approved,
-                (int)ApprovalStatusEnum.Waitlisted,
                 CancellationToken.None);
         });
 
@@ -349,6 +387,34 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
         await Assert.That(otherCurrentAttendees).IsEqualTo(0);
         await Assert.That(registrationCount).IsEqualTo(0);
         await Assert.That(intentCount).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task CreateWithChildrenAndCapacityAsync_WithoutCallerTransaction_Throws()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+        var scenario = await SeedRegistrationScenarioAsync(seedContext, userCount: 1, sessionCapacity: 10);
+        await using var registrationContext = CreateRetryingDbContext();
+        var repository = new EventRegistrationIntentRepository(registrationContext);
+        var userId = scenario.UserIds.Single();
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        {
+            await repository.CreateWithChildrenAndCapacityAsync(
+                NewIntent(scenario, userId, RegistrationScopeEnum.SessionSelection),
+                [NewRegistrationChild(scenario, userId)],
+                (int)ApprovalStatusEnum.Approved,
+                (int)ApprovalStatusEnum.Waitlisted,
+                Guid.CreateVersion7(),
+                DateTimeOffset.UtcNow,
+                EventRegistrationActorProvenance.Attendee,
+                userId,
+                CancellationToken.None);
+        });
+
+        await Assert.That(exception.Message).IsEqualTo(
+            "Capacity-aware registration creation requires a caller-owned serializable transaction.");
     }
 
     [Test]
@@ -400,32 +466,135 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
         RegistrationScopeEnum scope = RegistrationScopeEnum.SessionSelection)
     {
         await using var context = CreateRetryingDbContext();
-        var repository = new EventRegistrationIntentRepository(context);
-
-        return await repository.CreateWithChildrenAndCapacityAsync(
+        return await ExecuteCapacityCreationAsync(
+            context,
             NewIntent(scenario, userId, scope),
             [NewRegistrationChild(scenario, userId)],
-            (int)ApprovalStatusEnum.Approved,
-            (int)ApprovalStatusEnum.Waitlisted,
             CancellationToken.None);
     }
 
     private async Task<EventRegistrationIntentCreationResult> CreateRegistrationWithEmailDispatchAsync(
         RegistrationScenario scenario,
-        Guid userId)
+        Guid userId,
+        EventRegistrationIntent? suppliedIntent = null)
     {
         await using var context = CreateRetryingDbContext();
-        var repository = new EventRegistrationIntentRepository(context);
-        var intent = NewIntent(scenario, userId, RegistrationScopeEnum.SessionSelection);
-        var outbox = NewRegistrationConfirmationDispatch(scenario, userId, intent.Id);
-
-        return await repository.CreateWithChildrenAndCapacityAsync(
+        var registrationRepository = new EventRegistrationIntentRepository(context);
+        var notificationRepository = new NotificationIntentRepository(context);
+        var unitOfWork = new EfCoreUnitOfWork(context);
+        var materializer = new RecipientNotificationMaterializer(notificationRepository, unitOfWork);
+        var intent = suppliedIntent ?? NewIntent(scenario, userId, RegistrationScopeEnum.SessionSelection);
+        EmailDispatchOutbox email = NewRegistrationConfirmationDispatch(
+            scenario,
+            userId,
+            intent.Id);
+        RecipientNotificationMaterialization notification = NewRegistrationNotificationMaterialization(
             intent,
-            [NewRegistrationChild(scenario, userId)],
-            (int)ApprovalStatusEnum.Approved,
-            (int)ApprovalStatusEnum.Waitlisted,
-            CancellationToken.None,
-            outbox);
+            email);
+        var occurrenceId = Guid.CreateVersion7();
+        var occurredAt = DateTimeOffset.UtcNow;
+
+        try
+        {
+            return await unitOfWork.ExecuteSerializableAsync(
+                async ct =>
+                {
+                    EventRegistrationIntentCreationResult result =
+                        await registrationRepository.CreateWithChildrenAndCapacityAsync(
+                            intent,
+                            [NewRegistrationChild(scenario, userId)],
+                            (int)ApprovalStatusEnum.Approved,
+                            (int)ApprovalStatusEnum.Waitlisted,
+                            occurrenceId,
+                            occurredAt,
+                            EventRegistrationActorProvenance.Attendee,
+                            userId,
+                            ct);
+                    await materializer.MaterializeInCurrentTransactionAsync(notification, ct);
+                    return result;
+                },
+                CancellationToken.None);
+        }
+        catch (EventRegistrationIntentConflictException)
+        {
+            EventRegistrationIntent? winningIntent = await registrationRepository.FindExistingAsync(
+                intent.EventId,
+                intent.UserId,
+                intent.RegistrationScopeId,
+                intent.SelectedEventDayId,
+                CancellationToken.None);
+            if (winningIntent is null)
+            {
+                throw;
+            }
+
+            return ExistingCreationResult(winningIntent, occurrenceId, occurredAt);
+        }
+    }
+
+    private static async Task<EventRegistrationIntentCreationResult> ExecuteCapacityCreationAsync(
+        ExploreDbContext context,
+        EventRegistrationIntent intent,
+        IReadOnlyList<EventRegistration> children,
+        CancellationToken cancellationToken)
+    {
+        var repository = new EventRegistrationIntentRepository(context);
+        var unitOfWork = new EfCoreUnitOfWork(context);
+        var occurrenceId = Guid.CreateVersion7();
+        var occurredAt = DateTimeOffset.UtcNow;
+
+        try
+        {
+            return await unitOfWork.ExecuteSerializableAsync(
+                ct => repository.CreateWithChildrenAndCapacityAsync(
+                    intent,
+                    children,
+                    (int)ApprovalStatusEnum.Approved,
+                    (int)ApprovalStatusEnum.Waitlisted,
+                    occurrenceId,
+                    occurredAt,
+                    EventRegistrationActorProvenance.Attendee,
+                    intent.UserId,
+                    ct),
+                cancellationToken);
+        }
+        catch (EventRegistrationIntentConflictException)
+        {
+            EventRegistrationIntent? winningIntent = await repository.FindExistingAsync(
+                intent.EventId,
+                intent.UserId,
+                intent.RegistrationScopeId,
+                intent.SelectedEventDayId,
+                cancellationToken);
+            if (winningIntent is null)
+            {
+                throw;
+            }
+
+            return ExistingCreationResult(winningIntent, occurrenceId, occurredAt);
+        }
+    }
+
+    private static EventRegistrationIntentCreationResult ExistingCreationResult(
+        EventRegistrationIntent intent,
+        Guid occurrenceId,
+        DateTimeOffset occurredAt)
+    {
+        return new EventRegistrationIntentCreationResult(
+            intent,
+            [],
+            new EventRegistrationTransitionResult(
+                Changed: false,
+                ParentIntentId: intent.Id,
+                PreviousStatus: intent.ApprovalStatusId,
+                FinalStatus: intent.ApprovalStatusId,
+                TransitionReason: EventRegistrationTransitionReason.NoChange,
+                OccurrenceId: occurrenceId,
+                OccurredAt: occurredAt,
+                ActorProvenance: EventRegistrationActorProvenance.Attendee,
+                ActorUserId: intent.UserId,
+                ChildTransitions: []),
+            WasExisting: true);
     }
 
     private ExploreDbContext CreateRetryingDbContext()
@@ -460,6 +629,17 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
 
         context.Tenants.Add(tenant);
         context.Users.AddRange(users);
+        context.TenantUsers.AddRange(users.Select(user => new TenantUser
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            UserId = user.Id,
+            User = user,
+            StatusId = (int)TenantUserStatusEnum.Active,
+            JoinedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+        }));
         await context.SaveChangesAsync();
 
         var actor = new Actor
@@ -537,7 +717,8 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
             eventDay.Id,
             session.Id,
             secondarySession.Id,
-            users.Skip(1).Select(user => user.Id).ToList());
+            users.Skip(1).Select(user => user.Id).ToList(),
+            users.Skip(1).ToDictionary(user => user.Id, user => user.Email!));
     }
 
     private static EventSession NewSession(
@@ -577,7 +758,8 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
                 Email = $"{prefix}-{Guid.NewGuid():N}@example.com",
                 FirstName = "Registration",
                 LastName = "Intent"
-            }
+            },
+            EmailVerified = true,
         };
     }
 
@@ -626,26 +808,47 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
         Guid userId,
         Guid registrationIntentId)
     {
-        return new EmailDispatchOutbox
-        {
-            Id = Guid.NewGuid(),
-            TenantId = scenario.TenantId,
-            Tenant = null!,
-            Kind = EmailDispatchKind.RegistrationConfirmation,
-            SourceType = EventLifecycleEmailOutboxFactory.RegistrationIntentSourceType,
-            SourceId = registrationIntentId,
-            EventId = scenario.EventId,
-            Event = null,
-            RegistrationIntentId = registrationIntentId,
-            RegistrationIntent = null,
-            UserId = userId,
-            User = null,
-            RecipientEmail = $"registration-intent-{userId:N}@example.com",
-            Subject = "Registration received",
-            PlainTextBody = "Registration received.",
-            HtmlBody = "<p>Registration received.</p>",
-            CorrelationId = registrationIntentId.ToString()
-        };
+        return new EventLifecycleEmailOutboxFactory().CreateRegistrationConfirmation(
+            scenario.TenantId,
+            userId,
+            scenario.EventId,
+            registrationIntentId,
+            scenario.RecipientEmails[userId],
+            "Registration Intent Event");
+    }
+
+    private static RecipientNotificationMaterialization NewRegistrationNotificationMaterialization(
+        EventRegistrationIntent registrationIntent,
+        EmailDispatchOutbox email)
+    {
+        return new RecipientNotificationMaterialization(
+            Guid.CreateVersion7(),
+            new NotificationIntentDraft(
+                Explore.Application.Notifications.NotificationCategory.RegistrationLifecycle,
+                TenantId: registrationIntent.TenantId,
+                RecipientKind: "User",
+                TemplateKey: "registration.confirmation",
+                SafePayloadReference: $"event-registration-intent:{registrationIntent.Id}",
+                DeduplicationKey:
+                    $"event-registration-intent:{registrationIntent.Id:N}:registration-confirmation",
+                CorrelationId: registrationIntent.Id.ToString("D"),
+                UserId: registrationIntent.UserId,
+                EventId: registrationIntent.EventId),
+            NotificationDeliveryPolicyEnum.RegistrationStatusOptional,
+            "registration_status",
+            new RecipientInAppNotificationDraft(
+                (int)NotificationTypeEnum.RegistrationConfirmed,
+                "Registration created",
+                "Your registration for Registration Intent Event was created.",
+                (int)ActorTypeEnum.User,
+                (int)NotificationReasonEnum.System,
+                (int)NotificationEntityTypeEnum.EventRegistration,
+                registrationIntent.Id.ToString("D")),
+            email,
+            IncludeEmailChannel: true,
+            EmailRequired: false,
+            PreferenceCategoryCode: NotificationPreferenceCategoryCodes.RegistrationStatus,
+            LinkAllowed: false);
     }
 
     private static async Task<Dictionary<Guid, int?>> GetSessionAttendeeCountsAsync(
@@ -664,5 +867,6 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
         Guid EventDayId,
         Guid SessionId,
         Guid SecondarySessionId,
-        IReadOnlyList<Guid> UserIds);
+        IReadOnlyList<Guid> UserIds,
+        IReadOnlyDictionary<Guid, string> RecipientEmails);
 }
