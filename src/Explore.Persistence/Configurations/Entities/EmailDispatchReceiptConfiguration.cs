@@ -26,7 +26,8 @@ public class EmailDispatchReceiptConfiguration : IEntityTypeConfiguration<EmailD
 
         builder.HasOne(e => e.EmailDispatchOutbox)
             .WithMany()
-            .HasForeignKey(e => e.EmailDispatchOutboxId)
+            .HasForeignKey(e => new { e.TenantId, e.EmailDispatchOutboxId, e.PublishEventId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id, e.PublishEventId })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(e => new { e.TenantId, e.PublishEventId })
@@ -35,5 +36,9 @@ public class EmailDispatchReceiptConfiguration : IEntityTypeConfiguration<EmailD
 
         builder.HasIndex(e => new { e.EmailDispatchOutboxId, e.Status })
             .HasDatabaseName("ix_email_dispatch_receipts_outbox_status");
+
+        builder.HasIndex(e => new { e.TenantId, e.EmailDispatchOutboxId })
+            .HasDatabaseName("ux_email_dispatch_receipts_tenant_outbox")
+            .IsUnique();
     }
 }

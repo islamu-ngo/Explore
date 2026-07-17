@@ -34,6 +34,9 @@ public sealed class ManagedTenantProvisioningOperationConfiguration
             .IsUnique();
         builder.HasIndex(operation => new { operation.Status, operation.CreatedAt });
         builder.HasIndex(operation => operation.TenantId);
+        builder.HasIndex(operation => new { operation.TenantId, operation.Id })
+            .HasDatabaseName("ux_managed_tenant_provisioning_operations_tenant_id")
+            .IsUnique();
 
         builder.ToTable(table =>
         {

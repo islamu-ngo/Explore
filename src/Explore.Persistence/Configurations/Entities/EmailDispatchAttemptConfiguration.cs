@@ -27,7 +27,8 @@ public class EmailDispatchAttemptConfiguration : IEntityTypeConfiguration<EmailD
 
         builder.HasOne(e => e.EmailDispatchOutbox)
             .WithMany()
-            .HasForeignKey(e => e.EmailDispatchOutboxId)
+            .HasForeignKey(e => new { e.TenantId, e.EmailDispatchOutboxId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(e => new { e.EmailDispatchOutboxId, e.AttemptNumber })
@@ -36,5 +37,10 @@ public class EmailDispatchAttemptConfiguration : IEntityTypeConfiguration<EmailD
 
         builder.HasIndex(e => new { e.TenantId, e.StartedAt })
             .HasDatabaseName("ix_email_dispatch_attempts_tenant_started");
+
+        builder.ToTable(table => table.HasCheckConstraint(
+            "ck_email_dispatch_attempts_provider_handoff_fence",
+            "failure_category <> 'provider_handoff_started' OR " +
+            "(outcome = 3 AND completed_at IS NULL AND provider_message_id IS NULL)"));
     }
 }

@@ -3,6 +3,7 @@ using System;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    partial class ExploreDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260717104030_AddIncomingWebhookEffectOutbox")]
+    partial class AddIncomingWebhookEffectOutbox
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2495,16 +2498,10 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_email_dispatch_attempts_outbox_attempt");
 
-                    b.HasIndex("TenantId", "EmailDispatchOutboxId")
-                        .HasDatabaseName("ix_email_dispatch_attempts_tenant_id_email_dispatch_outbox_id");
-
                     b.HasIndex("TenantId", "StartedAt")
                         .HasDatabaseName("ix_email_dispatch_attempts_tenant_started");
 
-                    b.ToTable("email_dispatch_attempts", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_email_dispatch_attempts_provider_handoff_fence", "failure_category <> 'provider_handoff_started' OR (outcome = 3 AND completed_at IS NULL AND provider_message_id IS NULL)");
-                        });
+                    b.ToTable("email_dispatch_attempts", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EmailDispatchOutbox", b =>
@@ -2574,10 +2571,6 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("last_failure_category");
 
-                    b.Property<Guid?>("ManagedTenantProvisioningOperationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("managed_tenant_provisioning_operation_id");
-
                     b.Property<int>("MaxAttempts")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -2587,10 +2580,6 @@ namespace Explore.Persistence.Migrations
                     b.Property<DateTime?>("NextAttemptAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("next_attempt_at");
-
-                    b.Property<Guid>("NotificationIntentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("notification_intent_id");
 
                     b.Property<DateTime?>("ParkedAt")
                         .HasColumnType("timestamp with time zone")
@@ -2634,19 +2623,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("rabbit_mq_publish_attempt_count");
 
-                    b.Property<int>("RecipientAddressSource")
-                        .HasColumnType("integer")
-                        .HasColumnName("recipient_address_source");
-
                     b.Property<string>("RecipientEmail")
                         .IsRequired()
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)")
                         .HasColumnName("recipient_email");
-
-                    b.Property<Guid>("RecipientUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("recipient_user_id");
 
                     b.Property<Guid?>("RegistrationIntentId")
                         .HasColumnType("uuid")
@@ -2697,46 +2678,28 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
                     b.HasKey("Id")
                         .HasName("pk_email_dispatch_outbox");
-
-                    b.HasAlternateKey("TenantId", "Id")
-                        .HasName("ak_email_dispatch_outbox_tenant_id");
-
-                    b.HasAlternateKey("TenantId", "Id", "NotificationIntentId")
-                        .HasName("ak_email_dispatch_outbox_tenant_id_intent");
-
-                    b.HasAlternateKey("TenantId", "Id", "PublishEventId")
-                        .HasName("ak_email_dispatch_outbox_tenant_id_publish_event");
-
-                    b.HasAlternateKey("TenantId", "Id", "NotificationIntentId", "RecipientAddressSource")
-                        .HasName("ak_email_dispatch_outbox_tenant_id_intent_address_source");
 
                     b.HasIndex("EventId")
                         .HasDatabaseName("ix_email_dispatch_outbox_event_id");
 
-                    b.HasIndex("ManagedTenantProvisioningOperationId")
-                        .HasDatabaseName("ix_email_dispatch_outbox_managed_tenant_provisioning_operation");
-
                     b.HasIndex("RegistrationIntentId")
                         .HasDatabaseName("ix_email_dispatch_outbox_registration_intent_id");
 
-                    b.HasIndex("TenantId", "NotificationIntentId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_email_dispatch_outbox_tenant_intent");
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_email_dispatch_outbox_user_id");
 
                     b.HasIndex("TenantId", "PublishEventId")
                         .IsUnique()
                         .HasDatabaseName("ux_email_dispatch_outbox_tenant_publish_event");
 
-                    b.HasIndex("TenantId", "RecipientUserId")
-                        .HasDatabaseName("ix_email_dispatch_outbox_tenant_id_recipient_user_id");
-
                     b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
                         .HasDatabaseName("ix_email_dispatch_outbox_worker_poll");
-
-                    b.HasIndex("TenantId", "NotificationIntentId", "RecipientUserId")
-                        .HasDatabaseName("ix_email_dispatch_outbox_tenant_id_notification_intent_id_reci");
 
                     b.HasIndex("TenantId", "Status", "LastFailureAt")
                         .HasDatabaseName("ix_email_dispatch_outbox_tenant_status");
@@ -2744,14 +2707,12 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("Status", "NextAttemptAt", "RabbitMqLastPublishAttemptAt", "CreatedAt")
                         .HasDatabaseName("ix_email_dispatch_outbox_rabbitmq_publish");
 
-                    b.ToTable("email_dispatch_outbox", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_email_dispatch_outbox_processing_fence", "(status = 2) = (processing_started_at IS NOT NULL AND processing_lease_token IS NOT NULL)");
+                    b.HasIndex("TenantId", "SourceType", "SourceId", "Kind")
+                        .IsUnique()
+                        .HasDatabaseName("ux_email_dispatch_outbox_tenant_source_kind")
+                        .HasFilter("is_deleted = false");
 
-                            t.HasCheckConstraint("ck_email_dispatch_outbox_recipient_authority", "(recipient_address_source = 1 AND recipient_user_id IS NOT NULL AND managed_tenant_provisioning_operation_id IS NULL AND kind <> 8) OR (recipient_address_source = 2 AND recipient_user_id IS NOT NULL AND managed_tenant_provisioning_operation_id IS NOT NULL AND kind = 8 AND source_type = 'managed_tenant_provisioning' AND source_id = managed_tenant_provisioning_operation_id)");
-
-                            t.HasCheckConstraint("ck_email_dispatch_outbox_unknown_terminal", "status <> 7 OR (unknown_at IS NOT NULL AND next_attempt_at IS NULL AND processing_started_at IS NULL AND processing_lease_token IS NULL)");
-                        });
+                    b.ToTable("email_dispatch_outbox", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EmailDispatchReceipt", b =>
@@ -2836,16 +2797,9 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("EmailDispatchOutboxId", "Status")
                         .HasDatabaseName("ix_email_dispatch_receipts_outbox_status");
 
-                    b.HasIndex("TenantId", "EmailDispatchOutboxId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_email_dispatch_receipts_tenant_outbox");
-
                     b.HasIndex("TenantId", "PublishEventId")
                         .IsUnique()
                         .HasDatabaseName("ux_email_dispatch_receipts_tenant_publish_event");
-
-                    b.HasIndex("TenantId", "EmailDispatchOutboxId", "PublishEventId")
-                        .HasDatabaseName("ix_email_dispatch_receipts_tenant_id_email_dispatch_outbox_id_");
 
                     b.ToTable("email_dispatch_receipts", (string)null);
                 });
@@ -4791,12 +4745,6 @@ namespace Explore.Persistence.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("uuid")
                         .HasColumnName("concurrency_stamp");
-
-                    b.Property<DateTime>("CoverageEstablishedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("coverage_established_at")
-                        .HasDefaultValueSql("NOW()");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -9293,14 +9241,6 @@ namespace Explore.Persistence.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("uuidv7()");
 
-                    b.Property<int>("AttemptCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("attempt_count");
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("completed_at");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -9309,61 +9249,21 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
-                    b.Property<DateTime?>("DeadLetteredAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("dead_lettered_at");
-
                     b.Property<string>("EffectKind")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("effect_kind");
 
-                    b.Property<string>("FailureCategory")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("failure_category");
-
                     b.Property<Guid>("IncomingWebhookMessageId")
                         .HasColumnType("uuid")
                         .HasColumnName("incoming_webhook_message_id");
-
-                    b.Property<DateTime?>("NextAttemptAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("next_attempt_at");
 
                     b.Property<string>("PayloadSha256")
                         .IsRequired()
                         .HasMaxLength(71)
                         .HasColumnType("character varying(71)")
                         .HasColumnName("payload_sha256");
-
-                    b.Property<long>("ProcessingFence")
-                        .HasColumnType("bigint")
-                        .HasColumnName("processing_fence");
-
-                    b.Property<int>("ProcessingGeneration")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1)
-                        .HasColumnName("processing_generation");
-
-                    b.Property<DateTime?>("ProcessingLeaseExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("processing_lease_expires_at");
-
-                    b.Property<string>("ProcessingLeaseOwner")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("processing_lease_owner");
-
-                    b.Property<Guid?>("ProcessingLeaseToken")
-                        .HasColumnType("uuid")
-                        .HasColumnName("processing_lease_token");
-
-                    b.Property<DateTime?>("ProcessingStartedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("processing_started_at");
 
                     b.Property<string>("Provider")
                         .IsRequired()
@@ -9376,11 +9276,6 @@ namespace Explore.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
                         .HasColumnName("provider_decision_id");
-
-                    b.Property<string>("SafeDetail")
-                        .HasMaxLength(1024)
-                        .HasColumnType("character varying(1024)")
-                        .HasColumnName("safe_detail");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
@@ -9404,7 +9299,7 @@ namespace Explore.Persistence.Migrations
                     b.HasAlternateKey("TenantId", "Id")
                         .HasName("ak_incoming_webhook_effect_outbox_tenant_id");
 
-                    b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
+                    b.HasIndex("Status", "CreatedAt")
                         .HasDatabaseName("ix_incoming_webhook_effect_outbox_worker_poll");
 
                     b.HasIndex("TenantId", "IncomingWebhookMessageId", "EffectKind")
@@ -9417,15 +9312,7 @@ namespace Explore.Persistence.Migrations
 
                     b.ToTable("incoming_webhook_effect_outbox", null, t =>
                         {
-                            t.HasCheckConstraint("ck_incoming_webhook_effect_outbox_attempt_count", "attempt_count >= 0");
-
-                            t.HasCheckConstraint("ck_incoming_webhook_effect_outbox_failure_category", "failure_category IS NULL OR failure_category ~ '^[a-z0-9_]+$'");
-
                             t.HasCheckConstraint("ck_incoming_webhook_effect_outbox_payload_sha256", "payload_sha256 ~ '^sha256:[0-9a-f]{64}$'");
-
-                            t.HasCheckConstraint("ck_incoming_webhook_effect_outbox_processing_fence", "processing_fence >= 0");
-
-                            t.HasCheckConstraint("ck_incoming_webhook_effect_outbox_processing_generation", "processing_generation >= 1");
                         });
                 });
 
@@ -11059,10 +10946,6 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("Status", "CreatedAt")
                         .HasDatabaseName("ix_managed_tenant_provisioning_operations_status_created_at");
 
-                    b.HasIndex("TenantId", "Id")
-                        .IsUnique()
-                        .HasDatabaseName("ux_managed_tenant_provisioning_operations_tenant_id");
-
                     b.ToTable("managed_tenant_provisioning_operations", null, t =>
                         {
                             t.HasCheckConstraint("ck_managed_tenant_provisioning_cancelled", "(status = 'Cancelled') = (cancelled_at IS NOT NULL)");
@@ -11269,10 +11152,6 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("notification_entity_type_id");
 
-                    b.Property<Guid?>("NotificationIntentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("notification_intent_id");
-
                     b.Property<int?>("NotificationReasonId")
                         .HasColumnType("integer")
                         .HasColumnName("notification_reason_id");
@@ -11326,9 +11205,6 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_notifications");
 
-                    b.HasAlternateKey("TenantId", "Id")
-                        .HasName("ak_notifications_tenant_id");
-
                     b.HasIndex("NotificationEntityTypeId")
                         .HasDatabaseName("ix_notifications_notification_entity_type_id");
 
@@ -11347,20 +11223,8 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("SourceActorId")
                         .HasDatabaseName("ix_notifications_source_actor_id");
 
-                    b.HasIndex("TenantId", "NotificationIntentId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_notifications_tenant_notification_intent")
-                        .HasFilter("notification_intent_id IS NOT NULL AND is_deleted = false");
-
                     b.HasIndex("TenantId", "NotificationTypeId")
                         .HasDatabaseName("ix_notifications_tenant_type");
-
-                    b.HasIndex("TenantId", "Id", "NotificationIntentId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_notifications_tenant_id_intent_link");
-
-                    b.HasIndex("TenantId", "NotificationIntentId", "UserId")
-                        .HasDatabaseName("ix_notifications_tenant_id_notification_intent_id_user_id");
 
                     b.HasIndex("TenantId", "UserId", "CreatedAt")
                         .IsDescending(false, false, true)
@@ -11560,22 +11424,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("uuidv7()");
 
-                    b.Property<int>("ChannelId")
-                        .HasColumnType("integer")
-                        .HasColumnName("channel_id");
-
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("completed_at");
-
-                    b.Property<string>("ConsentPurpose")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("consent_purpose");
-
-                    b.Property<int?>("ConsentVersion")
-                        .HasColumnType("integer")
-                        .HasColumnName("consent_version");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -11584,16 +11435,6 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
-
-                    b.Property<int>("DeliveryPolicyId")
-                        .HasColumnType("integer")
-                        .HasColumnName("delivery_policy_id");
-
-                    b.Property<string>("DisclosureLevel")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("disclosure_level");
 
                     b.Property<Guid?>("EmailDispatchOutboxId")
                         .HasColumnType("uuid")
@@ -11604,34 +11445,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("failure_category");
 
-                    b.Property<bool>("IsRequired")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_required");
-
-                    b.Property<bool>("LinkAllowed")
-                        .HasColumnType("boolean")
-                        .HasColumnName("link_allowed");
-
-                    b.Property<Guid?>("NotificationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("notification_id");
-
                     b.Property<Guid>("NotificationIntentId")
                         .HasColumnType("uuid")
                         .HasColumnName("notification_intent_id");
-
-                    b.Property<int>("PolicyVersion")
-                        .HasColumnType("integer")
-                        .HasColumnName("policy_version");
-
-                    b.Property<string>("PreferenceCategoryCode")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("preference_category_code");
-
-                    b.Property<bool?>("PreferenceEnabled")
-                        .HasColumnType("boolean")
-                        .HasColumnName("preference_enabled");
 
                     b.Property<string>("ProviderMessageId")
                         .HasMaxLength(500)
@@ -11647,23 +11463,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("queued_at");
 
-                    b.Property<int?>("RecipientAddressSource")
-                        .HasColumnType("integer")
-                        .HasColumnName("recipient_address_source");
-
                     b.Property<int>("StatusId")
                         .HasColumnType("integer")
                         .HasColumnName("status_id");
-
-                    b.Property<string>("TemplateKey")
-                        .IsRequired()
-                        .HasMaxLength(160)
-                        .HasColumnType("character varying(160)")
-                        .HasColumnName("template_key");
-
-                    b.Property<int>("TemplateVersion")
-                        .HasColumnType("integer")
-                        .HasColumnName("template_version");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
@@ -11680,75 +11482,25 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_notification_deliveries");
 
-                    b.HasAlternateKey("TenantId", "Id", "NotificationIntentId", "ChannelId")
-                        .HasName("ak_notification_deliveries_tenant_id_intent_channel");
+                    b.HasIndex("EmailDispatchOutboxId")
+                        .HasDatabaseName("ix_notification_deliveries_email_dispatch_outbox_id");
 
-                    b.HasIndex("ChannelId")
-                        .HasDatabaseName("ix_notification_deliveries_channel_id");
-
-                    b.HasIndex("DeliveryPolicyId")
-                        .HasDatabaseName("ix_notification_deliveries_delivery_policy_id");
+                    b.HasIndex("NotificationIntentId")
+                        .HasDatabaseName("ix_notification_deliveries_notification_intent_id");
 
                     b.HasIndex("StatusId")
                         .HasDatabaseName("ix_notification_deliveries_status_id");
 
                     b.HasIndex("TenantId", "EmailDispatchOutboxId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_notification_deliveries_tenant_email_dispatch_outbox")
-                        .HasFilter("email_dispatch_outbox_id IS NOT NULL");
+                        .HasDatabaseName("ix_notification_deliveries_tenant_email_dispatch_outbox");
 
-                    b.HasIndex("TenantId", "NotificationId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_notification_deliveries_tenant_notification")
-                        .HasFilter("notification_id IS NOT NULL");
-
-                    b.HasIndex("TenantId", "NotificationIntentId", "ChannelId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_notification_deliveries_tenant_intent_channel");
+                    b.HasIndex("TenantId", "NotificationIntentId")
+                        .HasDatabaseName("ix_notification_deliveries_tenant_intent");
 
                     b.HasIndex("TenantId", "StatusId", "CreatedAt")
                         .HasDatabaseName("ix_notification_deliveries_tenant_status_created");
 
-                    b.HasIndex("TenantId", "EmailDispatchOutboxId", "NotificationIntentId", "RecipientAddressSource")
-                        .HasDatabaseName("ix_notification_deliveries_tenant_id_email_dispatch_outbox_id_");
-
-                    b.ToTable("notification_deliveries", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_notification_deliveries_channel_link", "NOT (email_dispatch_outbox_id IS NOT NULL AND notification_id IS NOT NULL) AND (email_dispatch_outbox_id IS NULL OR (channel_id = 1 AND recipient_address_source IS NOT NULL)) AND (notification_id IS NULL OR channel_id = 2) AND (channel_id <> 2 OR recipient_address_source IS NULL) AND (email_dispatch_outbox_id IS NOT NULL OR recipient_address_source IS NULL)");
-                        });
-                });
-
-            modelBuilder.Entity("Explore.Domain.NotificationDeliveryPolicy", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("full_name");
-
-                    b.Property<string>("MasterCode")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("master_code");
-
-                    b.HasKey("Id")
-                        .HasName("pk_notification_delivery_policies");
-
-                    b.HasIndex("MasterCode")
-                        .IsUnique()
-                        .HasDatabaseName("ux_notification_delivery_policies_master_code");
-
-                    b.ToTable("notification_delivery_policies", (string)null);
+                    b.ToTable("notification_deliveries", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationDeliveryStatus", b =>
@@ -11914,6 +11666,9 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("AccountAuthorityKindId")
                         .HasDatabaseName("ix_notification_external_delegations_account_authority_kind_id");
 
+                    b.HasIndex("NotificationIntentId")
+                        .HasDatabaseName("ix_notification_external_delegations_notification_intent_id");
+
                     b.HasIndex("ProviderKindId")
                         .HasDatabaseName("ix_notification_external_delegations_provider_kind_id");
 
@@ -11977,151 +11732,6 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("notification_external_delegation_statuses", (string)null);
                 });
 
-            modelBuilder.Entity("Explore.Domain.NotificationFanoutOccurrence", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("AggregateVersion")
-                        .HasColumnType("uuid")
-                        .HasColumnName("aggregate_version");
-
-                    b.Property<DateTime>("AudienceCutoffAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("audience_cutoff_at");
-
-                    b.Property<string>("ChangeSetJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("change_set_json");
-
-                    b.Property<string>("CoalescingKey")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
-                        .HasColumnName("coalescing_key");
-
-                    b.Property<DateTime?>("CoalescingWindowEndsAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("coalescing_window_ends_at");
-
-                    b.Property<int>("DeliveryPolicyId")
-                        .HasColumnType("integer")
-                        .HasColumnName("delivery_policy_id");
-
-                    b.Property<Guid>("EventId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_id");
-
-                    b.Property<DateTime>("NotBefore")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("not_before");
-
-                    b.Property<DateTime>("OccurredAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("occurred_at");
-
-                    b.Property<int>("PolicyVersion")
-                        .HasColumnType("integer")
-                        .HasColumnName("policy_version");
-
-                    b.Property<int>("Priority")
-                        .HasColumnType("integer")
-                        .HasColumnName("priority");
-
-                    b.Property<string>("SafeAfterSnapshotJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("safe_after_snapshot_json");
-
-                    b.Property<string>("SafeBeforeSnapshotJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("safe_before_snapshot_json");
-
-                    b.Property<Guid?>("SessionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("session_id");
-
-                    b.Property<Guid>("SourceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("source_id");
-
-                    b.Property<string>("SourceType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("source_type");
-
-                    b.Property<int>("State")
-                        .HasColumnType("integer")
-                        .HasColumnName("state");
-
-                    b.Property<DateTime?>("SupersededAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("superseded_at");
-
-                    b.Property<Guid?>("SupersededByOccurrenceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("superseded_by_occurrence_id");
-
-                    b.Property<string>("SuppressionReason")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("suppression_reason");
-
-                    b.Property<string>("TemplateKey")
-                        .IsRequired()
-                        .HasMaxLength(160)
-                        .HasColumnType("character varying(160)")
-                        .HasColumnName("template_key");
-
-                    b.Property<int>("TemplateVersion")
-                        .HasColumnType("integer")
-                        .HasColumnName("template_version");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_notification_fanout_occurrences");
-
-                    b.HasAlternateKey("TenantId", "Id")
-                        .HasName("ak_notification_fanout_occurrences_tenant_id");
-
-                    b.HasIndex("DeliveryPolicyId")
-                        .HasDatabaseName("ix_notification_fanout_occurrences_delivery_policy_id");
-
-                    b.HasIndex("TenantId", "EventId")
-                        .HasDatabaseName("ix_notification_fanout_occurrences_tenant_id_event_id");
-
-                    b.HasIndex("TenantId", "SessionId")
-                        .HasDatabaseName("ix_notification_fanout_occurrences_tenant_id_session_id");
-
-                    b.HasIndex("TenantId", "SupersededByOccurrenceId")
-                        .HasDatabaseName("ix_notification_fanout_occurrences_tenant_id_superseded_by_occ");
-
-                    b.HasIndex("TenantId", "CoalescingKey", "State", "OccurredAt")
-                        .HasDatabaseName("ix_notification_fanout_occurrences_coalescing");
-
-                    b.HasIndex("TenantId", "SourceType", "SourceId", "AggregateVersion")
-                        .HasDatabaseName("ix_notification_fanout_occurrences_source");
-
-                    b.HasIndex("TenantId", "State", "NotBefore", "OccurredAt")
-                        .HasDatabaseName("ix_notification_fanout_occurrences_runnable");
-
-                    b.ToTable("notification_fanout_occurrences", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_notification_fanout_occurrences_state", "state IN (1, 2)");
-
-                            t.HasCheckConstraint("ck_notification_fanout_occurrences_supersession", "(state = 1 AND superseded_by_occurrence_id IS NULL AND suppression_reason IS NULL AND superseded_at IS NULL) OR (state = 2 AND superseded_by_occurrence_id IS NOT NULL AND suppression_reason IS NOT NULL AND superseded_at IS NOT NULL)");
-
-                            t.HasCheckConstraint("ck_notification_fanout_occurrences_versions", "template_version > 0 AND policy_version > 0");
-                        });
-                });
-
             modelBuilder.Entity("Explore.Domain.NotificationFanoutRun", b =>
                 {
                     b.Property<Guid>("Id")
@@ -12153,17 +11763,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("created_notification_count");
 
-                    b.Property<DateTime?>("CursorFirstEligibleRegistrationCreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("cursor_first_eligible_registration_created_at");
-
                     b.Property<Guid?>("CursorSubscriberTenantUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("cursor_subscriber_tenant_user_id");
-
-                    b.Property<Guid?>("CursorUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("cursor_user_id");
 
                     b.Property<Guid>("EntityId")
                         .HasColumnType("uuid")
@@ -12179,14 +11781,6 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("fanout_kind");
 
-                    b.Property<Guid?>("FanoutOccurrenceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("fanout_occurrence_id");
-
-                    b.Property<DateTime?>("HeartbeatAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("heartbeat_at");
-
                     b.Property<string>("LastError")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")
@@ -12199,27 +11793,6 @@ namespace Explore.Persistence.Migrations
                     b.Property<int>("ProcessedCount")
                         .HasColumnType("integer")
                         .HasColumnName("processed_count");
-
-                    b.Property<long>("ProcessingFence")
-                        .HasColumnType("bigint")
-                        .HasColumnName("processing_fence");
-
-                    b.Property<int>("ProcessingGeneration")
-                        .HasColumnType("integer")
-                        .HasColumnName("processing_generation");
-
-                    b.Property<DateTime?>("ProcessingLeaseExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("processing_lease_expires_at");
-
-                    b.Property<string>("ProcessingLeaseOwner")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("processing_lease_owner");
-
-                    b.Property<Guid?>("ProcessingLeaseToken")
-                        .HasColumnType("uuid")
-                        .HasColumnName("processing_lease_token");
 
                     b.Property<Guid>("SourceActorId")
                         .HasColumnType("uuid")
@@ -12255,30 +11828,19 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("NotificationEntityTypeId")
                         .HasDatabaseName("ix_notification_fanout_runs_notification_entity_type_id");
 
-                    b.HasIndex("TenantId", "FanoutOccurrenceId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_notification_fanout_runs_occurrence");
+                    b.HasIndex("Status", "CreatedAt")
+                        .HasDatabaseName("ix_notification_fanout_runs_worker_poll");
 
                     b.HasIndex("TenantId", "SourceActorId")
                         .HasDatabaseName("ix_notification_fanout_runs_tenant_id_source_actor_id");
 
-                    b.HasIndex("Status", "ProcessingLeaseExpiresAt", "CreatedAt")
-                        .HasDatabaseName("ix_notification_fanout_runs_worker_poll");
-
                     b.HasIndex("TenantId", "FanoutKind", "NotificationEntityTypeId", "EntityId", "SourceActorId")
                         .IsUnique()
-                        .HasDatabaseName("ux_notification_fanout_runs_source")
-                        .HasFilter("fanout_occurrence_id IS NULL");
+                        .HasDatabaseName("ux_notification_fanout_runs_source");
 
                     b.ToTable("notification_fanout_runs", null, t =>
                         {
                             t.HasCheckConstraint("ck_notification_fanout_runs_created_count_nonnegative", "created_notification_count >= 0");
-
-                            t.HasCheckConstraint("ck_notification_fanout_runs_cursor_pair", "(cursor_first_eligible_registration_created_at IS NULL) = (cursor_user_id IS NULL)");
-
-                            t.HasCheckConstraint("ck_notification_fanout_runs_generation_nonnegative", "processing_generation >= 0 AND processing_fence >= 0");
-
-                            t.HasCheckConstraint("ck_notification_fanout_runs_occurrence_lease", "fanout_occurrence_id IS NULL OR (status = 'processing' AND processing_lease_owner IS NOT NULL AND btrim(processing_lease_owner) <> '' AND processing_lease_token IS NOT NULL AND processing_lease_expires_at IS NOT NULL) OR (status <> 'processing' AND processing_lease_owner IS NULL AND processing_lease_token IS NULL AND processing_lease_expires_at IS NULL)");
 
                             t.HasCheckConstraint("ck_notification_fanout_runs_processed_count_nonnegative", "processed_count >= 0");
 
@@ -12329,10 +11891,6 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("event_id");
 
-                    b.Property<Guid?>("FanoutOccurrenceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("fanout_occurrence_id");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
@@ -12344,10 +11902,6 @@ namespace Explore.Persistence.Migrations
                     b.Property<int>("RecipientKindId")
                         .HasColumnType("integer")
                         .HasColumnName("recipient_kind_id");
-
-                    b.Property<Guid>("RecipientUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("recipient_user_id");
 
                     b.Property<Guid?>("ReportDecisionId")
                         .HasColumnType("uuid")
@@ -12389,14 +11943,12 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
                     b.HasKey("Id")
                         .HasName("pk_notification_intents");
-
-                    b.HasAlternateKey("TenantId", "Id")
-                        .HasName("ak_notification_intents_tenant_id");
-
-                    b.HasAlternateKey("TenantId", "Id", "RecipientUserId")
-                        .HasName("ak_notification_intents_tenant_id_recipient");
 
                     b.HasIndex("CategoryId")
                         .HasDatabaseName("ix_notification_intents_category_id");
@@ -12419,20 +11971,16 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("StatusId")
                         .HasDatabaseName("ix_notification_intents_status_id");
 
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_notification_intents_user_id");
+
                     b.HasIndex("TenantId", "DeduplicationKey")
                         .IsUnique()
                         .HasDatabaseName("ux_notification_intents_tenant_deduplication_key")
                         .HasFilter("is_deleted = false");
 
-                    b.HasIndex("TenantId", "RecipientUserId")
-                        .HasDatabaseName("ix_notification_intents_tenant_id_recipient_user_id");
-
                     b.HasIndex("TenantId", "CategoryId", "CreatedAt")
                         .HasDatabaseName("ix_notification_intents_tenant_category_created");
-
-                    b.HasIndex("TenantId", "FanoutOccurrenceId", "RecipientUserId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_notification_intents_tenant_occurrence_recipient");
 
                     b.HasIndex("TenantId", "OwnershipTypeId", "CreatedAt")
                         .HasDatabaseName("ix_notification_intents_tenant_owner_created");
@@ -20924,20 +20472,19 @@ namespace Explore.Persistence.Migrations
 
             modelBuilder.Entity("Explore.Domain.EmailDispatchAttempt", b =>
                 {
+                    b.HasOne("Explore.Domain.EmailDispatchOutbox", "EmailDispatchOutbox")
+                        .WithMany()
+                        .HasForeignKey("EmailDispatchOutboxId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_email_dispatch_attempts_email_dispatch_outbox_email_dispatc");
+
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_email_dispatch_attempts_tenants_tenant_id");
-
-                    b.HasOne("Explore.Domain.EmailDispatchOutbox", "EmailDispatchOutbox")
-                        .WithMany()
-                        .HasForeignKey("TenantId", "EmailDispatchOutboxId")
-                        .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_email_dispatch_attempts_email_dispatch_outbox_tenant_id_ema");
 
                     b.Navigation("EmailDispatchOutbox");
 
@@ -20952,12 +20499,6 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_email_dispatch_outbox_events_event_id");
 
-                    b.HasOne("Explore.Domain.ManagedTenantProvisioningOperation", "ManagedTenantProvisioningOperation")
-                        .WithMany()
-                        .HasForeignKey("ManagedTenantProvisioningOperationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_email_dispatch_outbox_managed_tenant_provisioning_operation");
-
                     b.HasOne("Explore.Domain.EventRegistrationIntent", "RegistrationIntent")
                         .WithMany()
                         .HasForeignKey("RegistrationIntentId")
@@ -20971,51 +20512,36 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_email_dispatch_outbox_tenants_tenant_id");
 
-                    b.HasOne("Explore.Domain.TenantUser", "RecipientTenantUser")
+                    b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
-                        .HasForeignKey("TenantId", "RecipientUserId")
-                        .HasPrincipalKey("TenantId", "UserId")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_email_dispatch_outbox_tenant_users_tenant_id_recipient_user");
-
-                    b.HasOne("Explore.Domain.NotificationIntent", "NotificationIntent")
-                        .WithMany()
-                        .HasForeignKey("TenantId", "NotificationIntentId", "RecipientUserId")
-                        .HasPrincipalKey("TenantId", "Id", "RecipientUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_email_dispatch_outbox_recipient_matches_intent");
+                        .HasConstraintName("fk_email_dispatch_outbox_users_user_id");
 
                     b.Navigation("Event");
-
-                    b.Navigation("ManagedTenantProvisioningOperation");
-
-                    b.Navigation("NotificationIntent");
-
-                    b.Navigation("RecipientTenantUser");
 
                     b.Navigation("RegistrationIntent");
 
                     b.Navigation("Tenant");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Explore.Domain.EmailDispatchReceipt", b =>
                 {
+                    b.HasOne("Explore.Domain.EmailDispatchOutbox", "EmailDispatchOutbox")
+                        .WithMany()
+                        .HasForeignKey("EmailDispatchOutboxId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_email_dispatch_receipts_email_dispatch_outbox_email_dispatc");
+
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_email_dispatch_receipts_tenants_tenant_id");
-
-                    b.HasOne("Explore.Domain.EmailDispatchOutbox", "EmailDispatchOutbox")
-                        .WithMany()
-                        .HasForeignKey("TenantId", "EmailDispatchOutboxId", "PublishEventId")
-                        .HasPrincipalKey("TenantId", "Id", "PublishEventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_email_dispatch_receipts_email_dispatch_outbox_tenant_id_ema");
 
                     b.Navigation("EmailDispatchOutbox");
 
@@ -23398,16 +22924,7 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_notifications_users_user_id");
 
-                    b.HasOne("Explore.Domain.NotificationIntent", "NotificationIntent")
-                        .WithMany()
-                        .HasForeignKey("TenantId", "NotificationIntentId", "UserId")
-                        .HasPrincipalKey("TenantId", "Id", "RecipientUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_notifications_recipient_matches_intent");
-
                     b.Navigation("NotificationEntityType");
-
-                    b.Navigation("NotificationIntent");
 
                     b.Navigation("NotificationReason");
 
@@ -23489,19 +23006,18 @@ namespace Explore.Persistence.Migrations
 
             modelBuilder.Entity("Explore.Domain.NotificationDelivery", b =>
                 {
-                    b.HasOne("Explore.Domain.NotificationPreferenceChannel", "Channel")
+                    b.HasOne("Explore.Domain.EmailDispatchOutbox", "EmailDispatchOutbox")
                         .WithMany()
-                        .HasForeignKey("ChannelId")
+                        .HasForeignKey("EmailDispatchOutboxId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_notification_deliveries_notification_preference_channels_ch");
+                        .HasConstraintName("fk_notification_deliveries_email_dispatch_outbox_email_dispatc");
 
-                    b.HasOne("Explore.Domain.NotificationDeliveryPolicy", "DeliveryPolicy")
-                        .WithMany()
-                        .HasForeignKey("DeliveryPolicyId")
+                    b.HasOne("Explore.Domain.NotificationIntent", "NotificationIntent")
+                        .WithMany("Deliveries")
+                        .HasForeignKey("NotificationIntentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_notification_deliveries_notification_delivery_policy_delive");
+                        .HasConstraintName("fk_notification_deliveries_notification_intents_notification_i");
 
                     b.HasOne("Explore.Domain.NotificationDeliveryStatus", "Status")
                         .WithMany()
@@ -23517,35 +23033,7 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_notification_deliveries_tenants_tenant_id");
 
-                    b.HasOne("Explore.Domain.Notification", "Notification")
-                        .WithMany()
-                        .HasForeignKey("TenantId", "NotificationId")
-                        .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_notification_deliveries_notification_tenant");
-
-                    b.HasOne("Explore.Domain.NotificationIntent", "NotificationIntent")
-                        .WithMany("Deliveries")
-                        .HasForeignKey("TenantId", "NotificationIntentId")
-                        .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_notification_deliveries_notification_intents_tenant_id_noti");
-
-                    b.HasOne("Explore.Domain.EmailDispatchOutbox", "EmailDispatchOutbox")
-                        .WithMany()
-                        .HasForeignKey("TenantId", "EmailDispatchOutboxId", "NotificationIntentId", "RecipientAddressSource")
-                        .HasPrincipalKey("TenantId", "Id", "NotificationIntentId", "RecipientAddressSource")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_notification_deliveries_email_dispatch_outbox_tenant_id_ema");
-
-                    b.Navigation("Channel");
-
-                    b.Navigation("DeliveryPolicy");
-
                     b.Navigation("EmailDispatchOutbox");
-
-                    b.Navigation("Notification");
 
                     b.Navigation("NotificationIntent");
 
@@ -23561,6 +23049,13 @@ namespace Explore.Persistence.Migrations
                         .HasForeignKey("AccountAuthorityKindId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_notification_external_delegations_account_authority_kinds_a");
+
+                    b.HasOne("Explore.Domain.NotificationIntent", "NotificationIntent")
+                        .WithMany("ExternalDelegations")
+                        .HasForeignKey("NotificationIntentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_notification_external_delegations_notification_intents_noti");
 
                     b.HasOne("Explore.Domain.ExternalWorkflowProviderKindLookup", "ProviderKind")
                         .WithMany()
@@ -23602,14 +23097,6 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_notification_external_delegations_tenants_tenant_id");
 
-                    b.HasOne("Explore.Domain.NotificationIntent", "NotificationIntent")
-                        .WithMany("ExternalDelegations")
-                        .HasForeignKey("TenantId", "NotificationIntentId")
-                        .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_notification_external_delegations_tenant_intent");
-
                     b.Navigation("AccountAuthorityKind");
 
                     b.Navigation("NotificationIntent");
@@ -23623,55 +23110,6 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("ReportDecision");
 
                     b.Navigation("Status");
-
-                    b.Navigation("Tenant");
-                });
-
-            modelBuilder.Entity("Explore.Domain.NotificationFanoutOccurrence", b =>
-                {
-                    b.HasOne("Explore.Domain.NotificationDeliveryPolicy", "DeliveryPolicy")
-                        .WithMany()
-                        .HasForeignKey("DeliveryPolicyId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_fanout_occurrences_delivery_policy");
-
-                    b.HasOne("Explore.Domain.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_fanout_occurrences_tenant");
-
-                    b.HasOne("Explore.Domain.Event", "Event")
-                        .WithMany()
-                        .HasForeignKey("TenantId", "EventId")
-                        .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_fanout_occurrences_event_tenant");
-
-                    b.HasOne("Explore.Domain.EventSession", "Session")
-                        .WithMany()
-                        .HasForeignKey("TenantId", "SessionId")
-                        .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_fanout_occurrences_session_tenant");
-
-                    b.HasOne("Explore.Domain.NotificationFanoutOccurrence", "SupersededByOccurrence")
-                        .WithMany()
-                        .HasForeignKey("TenantId", "SupersededByOccurrenceId")
-                        .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_fanout_occurrences_superseded_tenant");
-
-                    b.Navigation("DeliveryPolicy");
-
-                    b.Navigation("Event");
-
-                    b.Navigation("Session");
-
-                    b.Navigation("SupersededByOccurrence");
 
                     b.Navigation("Tenant");
                 });
@@ -23692,13 +23130,6 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_notification_fanout_runs_tenants_tenant_id");
 
-                    b.HasOne("Explore.Domain.NotificationFanoutOccurrence", "FanoutOccurrence")
-                        .WithMany()
-                        .HasForeignKey("TenantId", "FanoutOccurrenceId")
-                        .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_fanout_runs_occurrence_tenant");
-
                     b.HasOne("Explore.Domain.Actor", "SourceActor")
                         .WithMany()
                         .HasForeignKey("TenantId", "SourceActorId")
@@ -23706,8 +23137,6 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_notification_fanout_runs_actors_tenant_id_source_actor_id");
-
-                    b.Navigation("FanoutOccurrence");
 
                     b.Navigation("NotificationEntityType");
 
@@ -23771,32 +23200,19 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_notification_intents_tenants_tenant_id");
 
-                    b.HasOne("Explore.Domain.NotificationFanoutOccurrence", "FanoutOccurrence")
+                    b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
-                        .HasForeignKey("TenantId", "FanoutOccurrenceId")
-                        .HasPrincipalKey("TenantId", "Id")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_notification_intents_fanout_occurrence_tenant");
-
-                    b.HasOne("Explore.Domain.TenantUser", "RecipientTenantUser")
-                        .WithMany()
-                        .HasForeignKey("TenantId", "RecipientUserId")
-                        .HasPrincipalKey("TenantId", "UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_notification_intents_tenant_users_tenant_id_recipient_user_");
+                        .HasConstraintName("fk_notification_intents_users_user_id");
 
                     b.Navigation("Category");
 
                     b.Navigation("Event");
 
-                    b.Navigation("FanoutOccurrence");
-
                     b.Navigation("OwnershipType");
 
                     b.Navigation("RecipientKind");
-
-                    b.Navigation("RecipientTenantUser");
 
                     b.Navigation("Report");
 
@@ -23805,6 +23221,8 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Status");
 
                     b.Navigation("Tenant");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationPreferenceProfile", b =>

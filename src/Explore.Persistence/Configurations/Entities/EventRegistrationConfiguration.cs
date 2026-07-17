@@ -3,6 +3,7 @@
 
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Explore.Persistence.Configurations.Entities;
@@ -13,6 +14,10 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
     {
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
         builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
+        builder.Property(e => e.CoverageEstablishedAt)
+            .HasDefaultValueSql("NOW()")
+            .IsRequired()
+            .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
 
         builder.HasOne(e => e.Event)
             .WithMany()

@@ -24,6 +24,8 @@ public class EventRegistration : ITenantEntity, IAuditableEntity, ISoftDeletable
     public Guid EventSessionId { get; set; }
     public required EventSession EventSession { get; set; }
 
+    public DateTime CoverageEstablishedAt { get; set; }
+
     /// <summary>
     /// Parent registration-intent row. Nullable during rollout so existing session-level rows transition safely;
     /// newly created EventRegistration rows must always link to an <see cref="EventRegistrationIntent"/> once

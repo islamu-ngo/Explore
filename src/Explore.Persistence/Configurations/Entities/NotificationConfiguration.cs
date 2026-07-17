@@ -29,6 +29,16 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
             .HasDefaultValueSql("NOW()")
             .IsRequired();
 
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
+            .HasName("ak_notifications_tenant_id");
+
+        builder.HasOne(e => e.NotificationIntent)
+            .WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.NotificationIntentId, e.UserId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id, e.RecipientUserId })
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_notifications_recipient_matches_intent");
+
         builder.HasOne(e => e.User)
             .WithMany()
             .HasForeignKey(e => e.UserId)
@@ -96,5 +106,14 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
         builder.HasIndex(e => new { e.TenantId, e.UserId, e.DeduplicationKey })
             .IsUnique()
             .HasDatabaseName("ux_notifications_tenant_user_deduplication_key");
+
+        builder.HasIndex(e => new { e.TenantId, e.NotificationIntentId })
+            .IsUnique()
+            .HasFilter("notification_intent_id IS NOT NULL AND is_deleted = false")
+            .HasDatabaseName("ux_notifications_tenant_notification_intent");
+
+        builder.HasIndex(e => new { e.TenantId, e.Id, e.NotificationIntentId })
+            .IsUnique()
+            .HasDatabaseName("ux_notifications_tenant_id_intent_link");
     }
 }

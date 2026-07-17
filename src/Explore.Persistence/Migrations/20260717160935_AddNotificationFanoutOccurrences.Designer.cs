@@ -3,6 +3,7 @@ using System;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    partial class ExploreDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260717160935_AddNotificationFanoutOccurrences")]
+    partial class AddNotificationFanoutOccurrences
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -4791,12 +4794,6 @@ namespace Explore.Persistence.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("uuid")
                         .HasColumnName("concurrency_stamp");
-
-                    b.Property<DateTime>("CoverageEstablishedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("coverage_established_at")
-                        .HasDefaultValueSql("NOW()");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -12153,17 +12150,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("created_notification_count");
 
-                    b.Property<DateTime?>("CursorFirstEligibleRegistrationCreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("cursor_first_eligible_registration_created_at");
-
                     b.Property<Guid?>("CursorSubscriberTenantUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("cursor_subscriber_tenant_user_id");
-
-                    b.Property<Guid?>("CursorUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("cursor_user_id");
 
                     b.Property<Guid>("EntityId")
                         .HasColumnType("uuid")
@@ -12179,14 +12168,6 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("fanout_kind");
 
-                    b.Property<Guid?>("FanoutOccurrenceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("fanout_occurrence_id");
-
-                    b.Property<DateTime?>("HeartbeatAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("heartbeat_at");
-
                     b.Property<string>("LastError")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")
@@ -12199,27 +12180,6 @@ namespace Explore.Persistence.Migrations
                     b.Property<int>("ProcessedCount")
                         .HasColumnType("integer")
                         .HasColumnName("processed_count");
-
-                    b.Property<long>("ProcessingFence")
-                        .HasColumnType("bigint")
-                        .HasColumnName("processing_fence");
-
-                    b.Property<int>("ProcessingGeneration")
-                        .HasColumnType("integer")
-                        .HasColumnName("processing_generation");
-
-                    b.Property<DateTime?>("ProcessingLeaseExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("processing_lease_expires_at");
-
-                    b.Property<string>("ProcessingLeaseOwner")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("processing_lease_owner");
-
-                    b.Property<Guid?>("ProcessingLeaseToken")
-                        .HasColumnType("uuid")
-                        .HasColumnName("processing_lease_token");
 
                     b.Property<Guid>("SourceActorId")
                         .HasColumnType("uuid")
@@ -12255,30 +12215,19 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("NotificationEntityTypeId")
                         .HasDatabaseName("ix_notification_fanout_runs_notification_entity_type_id");
 
-                    b.HasIndex("TenantId", "FanoutOccurrenceId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_notification_fanout_runs_occurrence");
+                    b.HasIndex("Status", "CreatedAt")
+                        .HasDatabaseName("ix_notification_fanout_runs_worker_poll");
 
                     b.HasIndex("TenantId", "SourceActorId")
                         .HasDatabaseName("ix_notification_fanout_runs_tenant_id_source_actor_id");
 
-                    b.HasIndex("Status", "ProcessingLeaseExpiresAt", "CreatedAt")
-                        .HasDatabaseName("ix_notification_fanout_runs_worker_poll");
-
                     b.HasIndex("TenantId", "FanoutKind", "NotificationEntityTypeId", "EntityId", "SourceActorId")
                         .IsUnique()
-                        .HasDatabaseName("ux_notification_fanout_runs_source")
-                        .HasFilter("fanout_occurrence_id IS NULL");
+                        .HasDatabaseName("ux_notification_fanout_runs_source");
 
                     b.ToTable("notification_fanout_runs", null, t =>
                         {
                             t.HasCheckConstraint("ck_notification_fanout_runs_created_count_nonnegative", "created_notification_count >= 0");
-
-                            t.HasCheckConstraint("ck_notification_fanout_runs_cursor_pair", "(cursor_first_eligible_registration_created_at IS NULL) = (cursor_user_id IS NULL)");
-
-                            t.HasCheckConstraint("ck_notification_fanout_runs_generation_nonnegative", "processing_generation >= 0 AND processing_fence >= 0");
-
-                            t.HasCheckConstraint("ck_notification_fanout_runs_occurrence_lease", "fanout_occurrence_id IS NULL OR (status = 'processing' AND processing_lease_owner IS NOT NULL AND btrim(processing_lease_owner) <> '' AND processing_lease_token IS NOT NULL AND processing_lease_expires_at IS NOT NULL) OR (status <> 'processing' AND processing_lease_owner IS NULL AND processing_lease_token IS NULL AND processing_lease_expires_at IS NULL)");
 
                             t.HasCheckConstraint("ck_notification_fanout_runs_processed_count_nonnegative", "processed_count >= 0");
 
@@ -23692,13 +23641,6 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_notification_fanout_runs_tenants_tenant_id");
 
-                    b.HasOne("Explore.Domain.NotificationFanoutOccurrence", "FanoutOccurrence")
-                        .WithMany()
-                        .HasForeignKey("TenantId", "FanoutOccurrenceId")
-                        .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_fanout_runs_occurrence_tenant");
-
                     b.HasOne("Explore.Domain.Actor", "SourceActor")
                         .WithMany()
                         .HasForeignKey("TenantId", "SourceActorId")
@@ -23706,8 +23648,6 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_notification_fanout_runs_actors_tenant_id_source_actor_id");
-
-                    b.Navigation("FanoutOccurrence");
 
                     b.Navigation("NotificationEntityType");
 

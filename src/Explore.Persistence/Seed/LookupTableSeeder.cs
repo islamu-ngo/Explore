@@ -47,6 +47,7 @@ public static class LookupTableSeeder
         await SeedNotificationIntentStatusesAsync(context, cancellationToken);
         await SeedNotificationRecipientKindsAsync(context, cancellationToken);
         await SeedNotificationDeliveryStatusesAsync(context, cancellationToken);
+        await SeedNotificationDeliveryPoliciesAsync(context, cancellationToken);
         await SeedNotificationExternalDelegationStatusesAsync(context, cancellationToken);
         await SeedExternalWorkflowProviderKindsAsync(context, cancellationToken);
         await SeedAccountAuthorityKindsAsync(context, cancellationToken);
@@ -858,7 +859,7 @@ public static class LookupTableSeeder
 
     private static async Task SeedNotificationPreferenceChannelsAsync(ExploreDbContext context, CancellationToken ct)
     {
-        await SeedMissingLookupRowsAsync(
+        await RepairCanonicalLookupRowsAsync(
             context,
             new NotificationPreferenceChannel[]
             {
@@ -867,6 +868,13 @@ public static class LookupTableSeeder
                 new() { Id = (int)NotificationPreferenceChannelEnum.Push, MasterCode = NotificationPreferenceChannelCodes.Push, FullName = "Browser Push", Description = "Browser Web Push delivery through a user-owned subscription", SortOrder = 30 }
             },
             row => row.Id,
+            static (existing, canonical) =>
+            {
+                existing.MasterCode = canonical.MasterCode;
+                existing.FullName = canonical.FullName;
+                existing.Description = canonical.Description;
+                existing.SortOrder = canonical.SortOrder;
+            },
             ct);
     }
 
@@ -923,18 +931,52 @@ public static class LookupTableSeeder
 
     private static async Task SeedNotificationDeliveryStatusesAsync(ExploreDbContext context, CancellationToken ct)
     {
-        await SeedMissingLookupRowsAsync(
+        await RepairCanonicalLookupRowsAsync(
             context,
             new NotificationDeliveryStatus[]
             {
                 new() { Id = (int)NotificationDeliveryStatusEnum.Pending, MasterCode = "PENDING", FullName = "Pending", Description = "Delivery audit row is pending dispatch linkage" },
-                new() { Id = (int)NotificationDeliveryStatusEnum.LinkedToEmailDispatch, MasterCode = "LINKED_TO_EMAIL_DISPATCH", FullName = "Linked to email dispatch", Description = "Delivery has a linked EmailDispatchOutbox row" },
-                new() { Id = (int)NotificationDeliveryStatusEnum.Sent, MasterCode = "SENT", FullName = "Sent", Description = "Delivery was sent successfully" },
+                new() { Id = (int)NotificationDeliveryStatusEnum.Queued, MasterCode = "QUEUED", FullName = "Queued", Description = "Delivery has durable channel work queued" },
+                new() { Id = (int)NotificationDeliveryStatusEnum.Delivered, MasterCode = "DELIVERED", FullName = "Delivered", Description = "Delivery completed successfully" },
                 new() { Id = (int)NotificationDeliveryStatusEnum.Skipped, MasterCode = "SKIPPED", FullName = "Skipped", Description = "Delivery was skipped by policy or preference" },
                 new() { Id = (int)NotificationDeliveryStatusEnum.Failed, MasterCode = "FAILED", FullName = "Failed", Description = "Delivery failed and may be retried or reviewed" },
-                new() { Id = (int)NotificationDeliveryStatusEnum.DeadLettered, MasterCode = "DEAD_LETTERED", FullName = "Dead lettered", Description = "Delivery exhausted retry policy and is retained for operator review" }
+                new() { Id = (int)NotificationDeliveryStatusEnum.DeadLettered, MasterCode = "DEAD_LETTERED", FullName = "Dead lettered", Description = "Delivery exhausted retry policy and is retained for operator review" },
+                new() { Id = (int)NotificationDeliveryStatusEnum.Unknown, MasterCode = "UNKNOWN", FullName = "Unknown", Description = "Provider acceptance is uncertain and automatic retry is disabled" },
+                new() { Id = (int)NotificationDeliveryStatusEnum.Parked, MasterCode = "PARKED", FullName = "Parked", Description = "Operator parked delivery pending review" },
+                new() { Id = (int)NotificationDeliveryStatusEnum.Superseded, MasterCode = "SUPERSEDED", FullName = "Superseded", Description = "Newer authoritative work replaced this unsent delivery" }
             },
             row => row.Id,
+            static (existing, canonical) =>
+            {
+                existing.MasterCode = canonical.MasterCode;
+                existing.FullName = canonical.FullName;
+                existing.Description = canonical.Description;
+            },
+            ct);
+    }
+
+    private static async Task SeedNotificationDeliveryPoliciesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        await RepairCanonicalLookupRowsAsync(
+            context,
+            new NotificationDeliveryPolicy[]
+            {
+                new() { Id = (int)NotificationDeliveryPolicyEnum.RegistrationStatusOptional, MasterCode = "REGISTRATION_STATUS_OPTIONAL", FullName = "Registration status optional", Description = "Required in-app registration status with optional email" },
+                new() { Id = (int)NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional, MasterCode = "CRITICAL_EVENT_UPDATE_OPTIONAL", FullName = "Critical event update optional", Description = "Required in-app event update with optional email" },
+                new() { Id = (int)NotificationDeliveryPolicyEnum.ReportCaseUpdate, MasterCode = "REPORT_CASE_UPDATE", FullName = "Report case update", Description = "Reporter case update gated by case-update consent" },
+                new() { Id = (int)NotificationDeliveryPolicyEnum.ReportFollowUpContact, MasterCode = "REPORT_FOLLOW_UP_CONTACT", FullName = "Report follow-up contact", Description = "Reporter clarification request gated by follow-up consent" },
+                new() { Id = (int)NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired, MasterCode = "MODERATION_AVAILABILITY_REQUIRED", FullName = "Moderation availability required", Description = "Required operational availability and safety notice" },
+                new() { Id = (int)NotificationDeliveryPolicyEnum.ModerationContextOptional, MasterCode = "MODERATION_CONTEXT_OPTIONAL", FullName = "Moderation context optional", Description = "Optional contextual moderation notice" },
+                new() { Id = (int)NotificationDeliveryPolicyEnum.ReminderOptional, MasterCode = "REMINDER_OPTIONAL", FullName = "Reminder optional", Description = "Optional reminder delivery" },
+                new() { Id = (int)NotificationDeliveryPolicyEnum.TenantAdministrationRequired, MasterCode = "TENANT_ADMINISTRATION_REQUIRED", FullName = "Tenant administration required", Description = "Required tenant administration notification" }
+            },
+            row => row.Id,
+            static (existing, canonical) =>
+            {
+                existing.MasterCode = canonical.MasterCode;
+                existing.FullName = canonical.FullName;
+                existing.Description = canonical.Description;
+            },
             ct);
     }
 
@@ -1007,6 +1049,33 @@ public static class LookupTableSeeder
         if (missingRows.Length == 0) return;
 
         context.Set<TLookup>().AddRange(missingRows);
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task RepairCanonicalLookupRowsAsync<TLookup>(
+        ExploreDbContext context,
+        IReadOnlyCollection<TLookup> canonicalRows,
+        Func<TLookup, int> idSelector,
+        Action<TLookup, TLookup> repair,
+        CancellationToken ct)
+        where TLookup : class
+    {
+        var existingRows = await context.Set<TLookup>().ToListAsync(ct);
+        var existingById = existingRows.ToDictionary(idSelector);
+
+        foreach (TLookup canonical in canonicalRows)
+        {
+            int id = idSelector(canonical);
+            if (existingById.TryGetValue(id, out TLookup? existing))
+            {
+                repair(existing, canonical);
+            }
+            else
+            {
+                context.Set<TLookup>().Add(canonical);
+            }
+        }
+
         await context.SaveChangesAsync(ct);
     }
 

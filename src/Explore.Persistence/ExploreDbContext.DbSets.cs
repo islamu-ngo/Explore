@@ -223,6 +223,7 @@ public partial class ExploreDbContext
     public DbSet<NotificationReason> NotificationReasons { get; set; }
     public DbSet<NotificationScopeType> NotificationScopeTypes { get; set; }
     public DbSet<NotificationFanoutRun> NotificationFanoutRuns { get; set; }
+    public DbSet<NotificationFanoutOccurrence> NotificationFanoutOccurrences { get; set; }
     public DbSet<NotificationPreferenceCategory> NotificationPreferenceCategories { get; set; }
     public DbSet<NotificationPreferenceChannel> NotificationPreferenceChannels { get; set; }
     public DbSet<WebPushSubscription> WebPushSubscriptions { get; set; }
@@ -330,6 +331,7 @@ public partial class ExploreDbContext
     public DbSet<WebhookProviderPublication> WebhookProviderPublications { get; set; }
     public DbSet<WebhookProviderPublicationAttempt> WebhookProviderPublicationAttempts { get; set; }
     public DbSet<IncomingWebhookMessage> IncomingWebhookMessages { get; set; }
+    public DbSet<IncomingWebhookEffectOutbox> IncomingWebhookEffectOutboxes { get; set; }
     public DbSet<IncomingWebhookEffectReceipt> IncomingWebhookEffectReceipts { get; set; }
     public DbSet<IncomingWebhookProcessingAttempt> IncomingWebhookProcessingAttempts { get; set; }
     public DbSet<IncomingWebhookRedriveRecord> IncomingWebhookRedriveRecords { get; set; }
