@@ -204,7 +204,7 @@
 /* Element: navbar__login-btn */
 ::deep .navbar__login-btn {
     border-radius: var(--isl-radius-full) !important;
-    padding: 0.625rem var(--isl-space-5) !important;
+    padding: var(--isl-space-1) var(--isl-space-5) !important;
     font-weight: 700 !important;
 }
 

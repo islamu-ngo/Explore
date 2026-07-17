@@ -1,6 +1,9 @@
 // ABOUTME: Component tests for the public Home page shell and public-experience rendering.
 // ABOUTME: Verifies discovery parity, organization-centric projection, and encoded rich text.
 
+using Blazouter.Enums;
+using Blazouter.Extensions;
+using Blazouter.Models;
 using Explore.Blazor.Client.Pages;
 using MudBlazor;
 
@@ -13,6 +16,7 @@ public class HomeTests : IDisposable
     public HomeTests()
     {
         _ctx = new BlazorTestContext();
+        _ctx.Services.AddBlazouter();
     }
 
     public void Dispose()
@@ -31,8 +35,9 @@ public class HomeTests : IDisposable
         var cut = _ctx.RenderMudComponent<Home>();
         cut.WaitForElement("[data-testid='home-discovery-context']", TimeSpan.FromSeconds(2));
 
-        await Assert.That(cut.Markup).Contains("Discover events");
-        await Assert.That(cut.Markup).Contains("Browsing events in Brussels");
+        await Assert.That(cut.Markup).DoesNotContain("Discover events");
+        await Assert.That(cut.Markup).Contains("Browsing events in");
+        await Assert.That(cut.Markup).Contains("Brussels");
     }
 
     [Test]
@@ -44,8 +49,35 @@ public class HomeTests : IDisposable
         var cut = _ctx.RenderMudComponent<Home>();
         cut.WaitForElement("[data-testid='home-discovery-context']", TimeSpan.FromSeconds(2));
 
-        await Assert.That(cut.Markup).Contains("Discover events");
-        await Assert.That(cut.Markup).Contains("Browsing events in Brussels");
+        await Assert.That(cut.Markup).DoesNotContain("Discover events");
+        await Assert.That(cut.Markup).Contains("Browsing events in");
+        await Assert.That(cut.Markup).Contains("Brussels");
+    }
+
+    [Test]
+    public async Task HomeForwardsDiscoveryQueryFromBlazouterUrl()
+    {
+        _ctx.SetAnonymousUser();
+        SetupHomeServices();
+        var discoveryService = _ctx.Services.GetRequiredService<IHomeDiscoveryService>();
+        _ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("/home?mode=online");
+
+        var cut = _ctx.Render<Blazouter.Components.Router>(parameters => parameters
+            .Add(component => component.Routes,
+            [
+                new RouteConfig
+                {
+                    Path = "/home",
+                    Component = typeof(Home),
+                    Transition = RouteTransition.None
+                }
+            ]));
+        cut.WaitForElement("[data-testid='home-discovery-context']", TimeSpan.FromSeconds(2));
+
+        await discoveryService.Received(1).LoadAsync(
+            null,
+            "online",
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -235,7 +267,7 @@ public class HomeTests : IDisposable
     #region Page Title Tests
 
     [Test]
-    public async Task Home_SetsPageTitle()
+    public async Task Home_RendersBrowsingContextTitle()
     {
         // Arrange
         _ctx.SetAnonymousUser();
@@ -245,7 +277,8 @@ public class HomeTests : IDisposable
         var cut = _ctx.RenderMudComponent<Home>();
         cut.WaitForState(() => !cut.Markup.Contains("mud-skeleton", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
 
-        await Assert.That(cut.Markup).Contains("Discover events");
+        await Assert.That(cut.Markup).Contains("Browsing events in");
+        await Assert.That(cut.Markup).DoesNotContain("Discover events");
     }
 
     #endregion
