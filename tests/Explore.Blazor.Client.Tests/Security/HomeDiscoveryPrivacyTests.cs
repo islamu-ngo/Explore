@@ -97,6 +97,48 @@ public sealed class HomeDiscoveryPrivacyTests
         await Assert.That(restoredField.GetValue(component)).IsSameReferenceAs(expected);
     }
 
+    [Test]
+    public async Task PersistedCompositePayloadIsIgnoredWhenUrlModeDiffers()
+    {
+        var persisted = new HomeDiscoveryDto
+        {
+            Context = new HomeDiscoveryContextDto { Mode = HomeDiscoveryMode.All }
+        };
+        var expected = new HomeDiscoveryDto
+        {
+            Context = new HomeDiscoveryContextDto { Mode = HomeDiscoveryMode.Online }
+        };
+        var discoveryService = Substitute.For<IHomeDiscoveryService>();
+        discoveryService.LoadAsync(null, "online", Arg.Any<CancellationToken>()).Returns(expected);
+        var component = new Explore.Blazor.Client.Components.Discovery.HomeDiscoveryExperience
+        {
+            PersistedDiscovery = persisted,
+            UrlMode = "online"
+        };
+        var translation = Substitute.For<ITranslationService>();
+        translation.T(Arg.Any<string>(), Arg.Any<string?>())
+            .Returns(call => call.ArgAt<string?>(1) ?? call.ArgAt<string>(0));
+        component.GetType().GetProperty(
+                "Translation",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!
+            .SetValue(component, translation);
+        component.GetType().GetProperty(
+                "HomeDiscoveryService",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!
+            .SetValue(component, discoveryService);
+        var lifecycleMethod = component.GetType().GetMethod(
+            "OnParametersSetAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        await (Task)lifecycleMethod.Invoke(component, null)!;
+
+        var restoredField = component.GetType().GetField(
+            "_discovery",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        await Assert.That(restoredField.GetValue(component)).IsSameReferenceAs(expected);
+        await discoveryService.Received(1).LoadAsync(null, "online", Arg.Any<CancellationToken>());
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

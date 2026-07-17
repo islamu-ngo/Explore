@@ -11,6 +11,7 @@
 @inject IHomeDiscoveryGeolocation Geolocation
 @inject ITranslationService Translation
 @inject IAccessibilityAnnouncerService Announcer
+@inject IAccessibilityFocusService Focus
 @inject NavigationManager Navigation
 @inject IJSRuntime JsRuntime
 
@@ -18,7 +19,7 @@
     @if (_isLoading)
     {
         <header class="home-discovery__context home-discovery__context--loading">
-            <h1>@T("home.discovery.title", "Discover events")</h1>
+            <h1>@T("home.discovery.context.heading", "Browsing events in")</h1>
             <div class="home-discovery__context-skeleton" aria-hidden="true"></div>
         </header>
         <div class="home-discovery__hero-skeleton" aria-hidden="true"></div>
@@ -34,7 +35,7 @@
     else if (_discovery is null)
     {
         <header class="home-discovery__context">
-            <h1>@T("home.discovery.title", "Discover events")</h1>
+            <h1>@T("home.discovery.context.heading", "Browsing events in")</h1>
         </header>
         <div class="home-discovery__failure" role="alert">
             <h2>@T("home.discovery.failure.title", "Events could not be loaded")</h2>
@@ -47,57 +48,106 @@
     }
     else
     {
-        <header class="home-discovery__context">
-            <h1>@T("home.discovery.title", "Discover events")</h1>
-            <p class="home-discovery__context-label" data-testid="home-discovery-context">@ContextLabel</p>
-
-            @if (AvailableAreas.Count > 0)
-            {
-                <label class="home-discovery__area-picker">
-                    <span>@T("home.discovery.area.label", "Event area")</span>
-                    <select value="@SelectedAreaValue"
-                            disabled="@_isBusy"
-                            @onchange="SelectAreaAsync">
-                        @foreach (var area in AvailableAreas)
-                        {
-                            <option value="@area.Id">@area.DisplayName</option>
-                        }
-                    </select>
-                </label>
-            }
-
-            <div class="home-discovery__actions">
-                @if (HasCentroidAreas)
-                {
-                    <button type="button"
-                            disabled="@_isBusy"
-                            @onclick="UseCurrentLocationAsync">
-                        @T("home.discovery.use_location", "Use my current location")
-                    </button>
-                }
-                <button type="button"
-                        disabled="@(_isBusy || IsOnlineMode)"
-                        @onclick="BrowseOnlineAsync">
-                    @T("home.discovery.browse_online", "Browse online events")
-                </button>
-            </div>
-
-            @if (!string.IsNullOrWhiteSpace(_locationStatus))
-            {
-                <p class="home-discovery__location-status" role="status">@_locationStatus</p>
-            }
-        </header>
-
-        @if (HeroEvents.Count > 0)
-        {
+        <div class="home-discovery__hero">
             <HeroCarousel Events="HeroEvents"
                           RightToLeft="@IsRightToLeft"
                           AriaLabel="@T("home.discovery.hero.label", "Featured events")"
                           PreviousLabel="@T("home.discovery.hero.previous", "Previous featured event")"
                           NextLabel="@T("home.discovery.hero.next", "Next featured event")"
-                          ViewEventLabel="@T("home.discovery.view_event", "View event")" />
+                          ViewEventLabel="@T("home.discovery.view_event", "View event")">
+                <HeaderContent>
+                    <header class="home-discovery__context">
+                        <div class="home-discovery__context-heading" data-testid="home-discovery-context">
+                            <h1>@T("home.discovery.context.heading", "Browsing events in")</h1>
+                            <div class="home-discovery__context-menu" @onkeydown="HandleContextMenuKeyDownAsync">
+                                <button id="home-discovery-context-trigger"
+                                        class="home-discovery__context-trigger"
+                                        data-testid="home-discovery-context-trigger"
+                                        type="button"
+                                        disabled="@_isBusy"
+                                        aria-expanded="@_isContextMenuOpen.ToString().ToLowerInvariant()"
+                                        aria-controls="home-discovery-context-menu"
+                                        aria-label="@ContextTriggerLabel"
+                                        @onclick="ToggleContextMenu">
+                                    <span>@SelectedContextName</span>
+                                    <span class="home-discovery__context-chevron" aria-hidden="true"></span>
+                                </button>
+
+                                @if (_isContextMenuOpen)
+                                {
+                                    <div id="home-discovery-context-menu"
+                                         class="home-discovery__context-options"
+                                         data-testid="home-discovery-context-menu"
+                                         aria-label="@T("home.discovery.context.options", "Choose event browsing context")">
+                                        @if (HasCentroidAreas)
+                                        {
+                                            <button class="home-discovery__context-option"
+                                                    type="button"
+                                                    disabled="@_isBusy"
+                                                    @onclick="UseCurrentLocationFromMenuAsync">
+                                                <span class="home-discovery__context-icon" aria-hidden="true">
+                                                    <MudIcon Icon="@Icons.Material.Outlined.MyLocation" />
+                                                </span>
+                                                <span>@T("home.discovery.use_location", "Use my current location")</span>
+                                            </button>
+                                        }
+                                        <button class="home-discovery__context-option @(IsOnlineMode ? "home-discovery__context-option--active" : null)"
+                                                type="button"
+                                                disabled="@(_isBusy || IsOnlineMode)"
+                                                aria-current="@(IsOnlineMode ? "true" : null)"
+                                                @onclick="BrowseOnlineFromMenuAsync">
+                                            <span class="home-discovery__context-icon" aria-hidden="true">
+                                                <MudIcon Icon="@Icons.Material.Outlined.Language" />
+                                            </span>
+                                            <span>@T("home.discovery.browse_online", "Browse online events")</span>
+                                        </button>
+
+                                        @if (AvailableAreas.Count > 0)
+                                        {
+                                            <div class="home-discovery__context-divider" role="separator"></div>
+                                            @foreach (var area in AvailableAreas)
+                                            {
+                                                var isSelected = IsAreaMode && area.Id == _discovery.Context?.SelectedAreaId;
+                                                <button class="home-discovery__context-option @(isSelected ? "home-discovery__context-option--active" : null)"
+                                                        type="button"
+                                                        disabled="@_isBusy"
+                                                        aria-current="@(isSelected ? "location" : null)"
+                                                        @onclick="() => SelectAreaFromMenuAsync(area.Id!.Value)">
+                                                    <span class="home-discovery__context-icon" aria-hidden="true">
+                                                        <MudIcon Icon="@Icons.Material.Outlined.Schedule" />
+                                                    </span>
+                                                    <span class="home-discovery__context-option-copy">
+                                                        <span>@area.DisplayName</span>
+                                                        @if (AreaSecondaryLabel(area) is { } secondaryLabel)
+                                                        {
+                                                            <span>@secondaryLabel</span>
+                                                        }
+                                                    </span>
+                                                </button>
+                                            }
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(_locationStatus))
+                        {
+                            <p class="home-discovery__location-status" role="status">@_locationStatus</p>
+                        }
+                    </header>
+                </HeaderContent>
+            </HeroCarousel>
+        </div>
+
+        @if (HeroEvents.Count == 0 && SectionStatus("hero") == HomeDiscoverySectionStatus.Empty)
+        {
+            <p class="home-discovery__hero-empty" role="status">
+                @T("home.discovery.hero.empty", "No featured events match this browsing context yet.")
+            </p>
         }
-        else if (SectionStatus("hero") == HomeDiscoverySectionStatus.Failed)
+
+        @if (HeroEvents.Count == 0 && SectionStatus("hero") == HomeDiscoverySectionStatus.Failed)
         {
             <p class="home-discovery__section-failure" role="status">
                 @T("home.discovery.hero.failure", "Featured events are temporarily unavailable.")
@@ -107,19 +157,18 @@
         <section class="home-discovery__section" aria-labelledby="home-upcoming-title">
             <div class="home-discovery__section-heading">
                 <h2 id="home-upcoming-title">@UpcomingTitle</h2>
-                <a href="/events">@T("common.view_all", "View all")</a>
+                <a class="home-discovery__section-link"
+                   href="/events"
+                   aria-label="@T("common.view_all", "View all")"
+                   title="@T("common.view_all", "View all")">
+                    <span aria-hidden="true">→</span>
+                </a>
             </div>
             @if (UpcomingEvents.Count > 0)
             {
-                <div class="home-discovery__detailed-grid">
-                    @foreach (var eventItem in UpcomingEvents)
-                    {
-                        <EventCard @key="eventItem.Id"
-                                   Event="eventItem"
-                                   Layout="LayoutMode.DetailedList"
-                                   OnClick="OpenEvent" />
-                    }
-                </div>
+                <UpcomingEventList Events="UpcomingEvents"
+                                   DateToBeAnnouncedLabel="@T("home.discovery.date_tba", "Date to be announced")"
+                                   ViewEventLabel="@T("home.discovery.view_event", "View event")" />
             }
             else
             {
@@ -195,6 +244,7 @@
     private string? _pendingAnnouncement;
     private bool _isLoading = true;
     private bool _isBusy;
+    private bool _isContextMenuOpen;
 
     [Parameter] public Guid? UrlAreaId { get; set; }
     [Parameter] public string? UrlMode { get; set; }
@@ -215,15 +265,15 @@
     private bool IsOnlineMode => _discovery?.Context?.Mode == HomeDiscoveryMode.Online;
     private bool IsAreaMode => _discovery?.Context?.Mode == HomeDiscoveryMode.Area;
     private bool IsRightToLeft => LanguageContext?.EffectiveIsRtl ?? false;
-    private string SelectedAreaValue => _discovery?.Context?.SelectedAreaId?.ToString() ?? string.Empty;
     private string SelectedAreaName => string.IsNullOrWhiteSpace(_discovery?.Context?.SelectedAreaDisplayName)
         ? T("home.discovery.all_areas", "all areas")
         : _discovery.Context.SelectedAreaDisplayName;
-    private string ContextLabel => IsOnlineMode
-        ? T("home.discovery.context.online", "Browsing online events")
-        : IsAreaMode
-            ? string.Format(T("home.discovery.context.area", "Browsing events in {0}"), SelectedAreaName)
-            : T("home.discovery.context.all", "Browsing events from all areas");
+    private string SelectedContextName => IsOnlineMode
+        ? T("home.discovery.context.online_name", "online events")
+        : SelectedAreaName;
+    private string ContextTriggerLabel => string.Format(
+        T("home.discovery.context.trigger", "Choose event browsing context. Current: {0}"),
+        SelectedContextName);
     private string UpcomingTitle => IsAreaMode
         ? string.Format(T("home.discovery.upcoming.area", "Upcoming in {0}"), SelectedAreaName)
         : IsOnlineMode
@@ -249,7 +299,7 @@
             return;
         }
 
-        if (_loadedRequestKey is null && PersistedDiscovery is not null)
+        if (_loadedRequestKey is null && PersistedDiscoveryMatchesRequest())
         {
             _discovery = PersistedDiscovery;
             _loadedRequestKey = requestKey;
@@ -259,6 +309,27 @@
         }
 
         await LoadAsync(requestKey);
+    }
+
+    private bool PersistedDiscoveryMatchesRequest()
+    {
+        if (PersistedDiscovery?.Context is not { } context)
+        {
+            return false;
+        }
+
+        if (UrlAreaId.HasValue && context.SelectedAreaId != UrlAreaId)
+        {
+            return false;
+        }
+
+        return UrlMode?.Trim().ToLowerInvariant() switch
+        {
+            "area" => context.Mode == HomeDiscoveryMode.Area,
+            "online" => context.Mode == HomeDiscoveryMode.Online,
+            "all" => context.Mode == HomeDiscoveryMode.All,
+            _ => true
+        };
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -316,14 +387,39 @@
 
     private async Task RetryAsync() => await LoadAsync($"{UrlAreaId}:{UrlMode?.Trim().ToLowerInvariant()}");
 
-    private async Task SelectAreaAsync(ChangeEventArgs args)
+    private void ToggleContextMenu() => _isContextMenuOpen = !_isContextMenuOpen;
+
+    private async Task HandleContextMenuKeyDownAsync(KeyboardEventArgs args)
     {
-        if (!Guid.TryParse(args.Value?.ToString(), out var areaId))
+        if (!string.Equals(args.Key, "Escape", StringComparison.Ordinal))
         {
             return;
         }
 
-        await ApplyAreaAsync(areaId);
+        _isContextMenuOpen = false;
+        await Focus.FocusByIdAsync("home-discovery-context-trigger", true);
+    }
+
+    private async Task SelectAreaFromMenuAsync(Guid areaId) =>
+        await RunContextActionAsync(() => ApplyAreaAsync(areaId));
+
+    private async Task BrowseOnlineFromMenuAsync() =>
+        await RunContextActionAsync(BrowseOnlineAsync);
+
+    private async Task UseCurrentLocationFromMenuAsync() =>
+        await RunContextActionAsync(UseCurrentLocationAsync);
+
+    private async Task RunContextActionAsync(Func<Task> action)
+    {
+        _isContextMenuOpen = false;
+        try
+        {
+            await action();
+        }
+        finally
+        {
+            await Focus.FocusByIdAsync("home-discovery-context-trigger", true);
+        }
     }
 
     private async Task ApplyAreaAsync(Guid areaId)
@@ -437,6 +533,17 @@
 
     private static IReadOnlyList<EventListDto> Events(IEnumerable<EventDiscoveryItemDto>? items) =>
         items?.Where(item => item.Event is not null).Select(item => item.Event!).ToArray() ?? [];
+
+    private static string? AreaSecondaryLabel(PublicDiscoveryAreaDto area)
+    {
+        var city = string.Equals(area.City, area.DisplayName, StringComparison.OrdinalIgnoreCase)
+            ? null
+            : area.City;
+        var label = string.Join(" · ", new[] { city, area.CountryCode }
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
+
+        return string.IsNullOrWhiteSpace(label) ? null : label;
+    }
 
     private static string BuildHomeUrl(Guid? areaId, string mode) => areaId.HasValue
         ? $"/home?areaId={areaId.Value}&mode={mode}"

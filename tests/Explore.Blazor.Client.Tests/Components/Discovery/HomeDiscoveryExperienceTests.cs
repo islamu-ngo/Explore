@@ -1,5 +1,5 @@
 // ABOUTME: bUnit coverage for the composed public home discovery experience and coarse-area actions.
-// ABOUTME: Verifies one payload, three layouts, honest states, transient geolocation, and preserved online context.
+// ABOUTME: Verifies one payload, a consolidated browsing disclosure, transient geolocation, and event layouts.
 
 using Explore.Blazor.Client.Components.Discovery;
 using Explore.Blazor.Client.Contracts.Interop;
@@ -13,6 +13,7 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
     private readonly HomeDiscoveryTestContext context = new();
     private readonly IHomeDiscoveryService discoveryService = Substitute.For<IHomeDiscoveryService>();
     private readonly IHomeDiscoveryGeolocation geolocation = Substitute.For<IHomeDiscoveryGeolocation>();
+    private readonly IAccessibilityFocusService focusService = Substitute.For<IAccessibilityFocusService>();
 
     public HomeDiscoveryExperienceTests()
     {
@@ -20,6 +21,7 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
         context.Services.RemoveAll<IHomeDiscoveryGeolocation>();
         context.Services.RemoveAll<ITranslationService>();
         context.Services.RemoveAll<IAccessibilityAnnouncerService>();
+        context.Services.RemoveAll<IAccessibilityFocusService>();
         context.Services.AddSingleton(discoveryService);
         context.Services.AddSingleton(geolocation);
         var translation = Substitute.For<ITranslationService>();
@@ -27,6 +29,7 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
             .Returns(call => call.ArgAt<string?>(1) ?? call.ArgAt<string>(0));
         context.Services.AddSingleton(translation);
         context.Services.AddSingleton(Substitute.For<IAccessibilityAnnouncerService>());
+        context.Services.AddSingleton(focusService);
         context.Interop.SetupVoid("history.replaceState", _ => true).SetVoidResult();
     }
 
@@ -44,7 +47,8 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
 
         await Assert.That(cut.FindAll("h1").Count).IsEqualTo(1);
         await Assert.That(cut.FindAll("[data-testid='hero-carousel']").Count).IsEqualTo(1);
-        await Assert.That(cut.FindAll(".event-card--DetailedList").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-testid='upcoming-event-list']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll(".event-card--DetailedList").Count).IsEqualTo(0);
         await Assert.That(cut.FindAll(".event-card--SingleRow").Count).IsEqualTo(1);
         await Assert.That(cut.FindAll(".event-card--CompactGrid").Count).IsGreaterThanOrEqualTo(2);
         await Assert.That(cut.Markup).Contains("Upcoming in Brussels");
@@ -52,6 +56,31 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
         await Assert.That(cut.Markup).Contains("Most viewed online");
         await Assert.That(cut.Markup).Contains("Recently added");
         await discoveryService.Received(1).LoadAsync(null, null, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ContextUsesOneBrowsingHeadingAndDisclosure()
+    {
+        discoveryService.LoadAsync(null, null, Arg.Any<CancellationToken>())
+            .Returns(CompleteHome(Guid.NewGuid()));
+
+        var cut = context.RenderMudComponent<HomeDiscoveryExperience>();
+        cut.WaitForElement("[data-testid='home-discovery-context']", TimeSpan.FromSeconds(2));
+
+        var heading = cut.Find("h1");
+        var trigger = cut.Find("[data-testid='home-discovery-context-trigger']");
+        await Assert.That(heading.TextContent).Contains("Browsing events in");
+        await Assert.That(cut.Find(".hero-carousel__inner .home-discovery__context-heading")).IsNotNull();
+        await Assert.That(cut.Markup).DoesNotContain("Discover events");
+        await Assert.That(trigger.TextContent).Contains("Brussels");
+        await Assert.That(trigger.GetAttribute("aria-expanded")).IsEqualTo("false");
+
+        trigger.Click();
+
+        await Assert.That(cut.Find("[data-testid='home-discovery-context-trigger']")
+            .GetAttribute("aria-expanded")).IsEqualTo("true");
+        await Assert.That(cut.Markup).Contains("Use my current location");
+        await Assert.That(cut.Markup).Contains("Browse online events");
     }
 
     [Test]
@@ -64,6 +93,7 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
 
         var cut = context.RenderMudComponent<HomeDiscoveryExperience>();
         cut.WaitForElement("[data-testid='home-discovery-context']", TimeSpan.FromSeconds(2));
+        OpenContextMenu(cut);
 
         await Assert.That(cut.Markup).DoesNotContain("Use my current location");
     }
@@ -88,6 +118,7 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
         discoveryService.SelectAreaAsync(areaId, Arg.Any<CancellationToken>()).Returns(selected);
         var cut = context.RenderMudComponent<HomeDiscoveryExperience>();
         cut.WaitForElement("[data-testid='home-discovery-context']", TimeSpan.FromSeconds(2));
+        OpenContextMenu(cut);
 
         cut.FindAll("button").Single(button => button.TextContent.Contains("Use my current location", StringComparison.Ordinal)).Click();
         cut.WaitForAssertion(() =>
@@ -103,6 +134,7 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
         await Assert.That(uri).Contains($"areaId={areaId}");
         await Assert.That(uri).DoesNotContain("50.8466");
         await Assert.That(uri).DoesNotContain("4.3528");
+        await focusService.Received().FocusByIdAsync("home-discovery-context-trigger", true);
     }
 
     [Test]
@@ -114,6 +146,7 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
             .Returns(new HomeDiscoveryGeolocationResult(HomeDiscoveryGeolocationStatus.Denied));
         var cut = context.RenderMudComponent<HomeDiscoveryExperience>();
         cut.WaitForElement("[data-testid='home-discovery-context']", TimeSpan.FromSeconds(2));
+        OpenContextMenu(cut);
 
         cut.FindAll("button").Single(button => button.TextContent.Contains("Use my current location", StringComparison.Ordinal)).Click();
         cut.WaitForAssertion(() => Assert.That(cut.Markup).Contains("Location permission was denied"));
@@ -133,9 +166,11 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
         discoveryService.SelectOnlineAsync(areaId, Arg.Any<CancellationToken>()).Returns(online);
         var cut = context.RenderMudComponent<HomeDiscoveryExperience>();
         cut.WaitForElement("[data-testid='home-discovery-context']", TimeSpan.FromSeconds(2));
+        OpenContextMenu(cut);
 
         cut.FindAll("button").Single(button => button.TextContent.Contains("Browse online events", StringComparison.Ordinal)).Click();
-        cut.WaitForAssertion(() => Assert.That(cut.Markup).Contains("Browsing online events"));
+        cut.WaitForAssertion(() => Assert.That(cut.Find("[data-testid='home-discovery-context-trigger']").TextContent)
+            .Contains("online events"));
 
         await discoveryService.Received(1).SelectOnlineAsync(areaId, Arg.Any<CancellationToken>());
         var uri = context.Interop.Invocations
@@ -144,6 +179,56 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
             ?.ToString() ?? string.Empty;
         await Assert.That(uri).Contains($"areaId={areaId}");
         await Assert.That(uri).Contains("mode=online");
+    }
+
+    [Test]
+    public async Task EmptyHeroKeepsContextAndShowsCompactEmptyState()
+    {
+        var home = CompleteHome(Guid.NewGuid());
+        home.Hero = [];
+        home.SectionStatuses!["hero"] = HomeDiscoverySectionStatus.Empty;
+        discoveryService.LoadAsync(null, null, Arg.Any<CancellationToken>()).Returns(home);
+
+        var cut = context.RenderMudComponent<HomeDiscoveryExperience>();
+        cut.WaitForElement("[data-testid='home-discovery-context']", TimeSpan.FromSeconds(2));
+
+        await Assert.That(cut.Markup).Contains("No featured events match this browsing context yet");
+        await Assert.That(cut.Find("[data-testid='home-discovery-context-trigger']")).IsNotNull();
+    }
+
+    [Test]
+    public async Task AreaChoiceUsesDisclosureAndPreservesStableAreaOnly()
+    {
+        var currentAreaId = Guid.NewGuid();
+        var selectedAreaId = Guid.NewGuid();
+        var initial = CompleteHome(currentAreaId);
+        initial.Context!.AvailableAreas!.Add(new PublicDiscoveryAreaDto
+        {
+            Id = selectedAreaId,
+            DisplayName = "Antwerp",
+            City = "Antwerp",
+            CountryCode = "BE",
+            SortOrder = 2
+        });
+        var selected = CompleteHome(selectedAreaId);
+        selected.Context!.SelectedAreaDisplayName = "Antwerp";
+        discoveryService.LoadAsync(null, null, Arg.Any<CancellationToken>()).Returns(initial);
+        discoveryService.SelectAreaAsync(selectedAreaId, Arg.Any<CancellationToken>()).Returns(selected);
+
+        var cut = context.RenderMudComponent<HomeDiscoveryExperience>();
+        cut.WaitForElement("[data-testid='home-discovery-context']", TimeSpan.FromSeconds(2));
+        OpenContextMenu(cut);
+        cut.FindAll("button").Single(button => button.TextContent.Contains("Antwerp", StringComparison.Ordinal)).Click();
+        cut.WaitForAssertion(() => Assert.That(cut.Find("[data-testid='home-discovery-context-trigger']").TextContent)
+            .Contains("Antwerp"));
+
+        await discoveryService.Received(1).SelectAreaAsync(selectedAreaId, Arg.Any<CancellationToken>());
+        var uri = context.Interop.Invocations
+            .Single(invocation => invocation.Identifier == "history.replaceState")
+            .Arguments[2]
+            ?.ToString() ?? string.Empty;
+        await Assert.That(uri).Contains($"areaId={selectedAreaId}");
+        await Assert.That(uri).DoesNotContain("Antwerp");
     }
 
     [Test]
@@ -232,6 +317,12 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
         EventFormatFullName = "In person",
         FirstSessionDate = new DateTimeOffset(2026, 8, 1, 10, 0, 0, TimeSpan.Zero)
     };
+
+    private static void OpenContextMenu(IRenderedComponent<HomeDiscoveryExperience> cut)
+    {
+        cut.Find("[data-testid='home-discovery-context-trigger']").Click();
+        cut.WaitForElement("[data-testid='home-discovery-context-menu']", TimeSpan.FromSeconds(2));
+    }
 
     private sealed class HomeDiscoveryTestContext : BlazorTestContext
     {
