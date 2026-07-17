@@ -54,7 +54,7 @@ Domain inventory remains an Event-owned read model. The domain page follows its 
 
 Browser geolocation is requested only from the explicit “Use my current location” action. The browser compares the one-shot, low-accuracy result with configured coarse centroids, immediately reduces it to an area ID, and never sends or stores the origin. The BFF `Permissions-Policy` is `geolocation=(self)`; camera, microphone, and payment remain disabled. Online mode preserves the selected area so returning to area discovery does not require another location request.
 
-The composite response owns section truth, ordering, failure status, and deterministic dedupe. The UI reuses the production `EventCard` in `DetailedList`, `SingleRow`, and `CompactGrid` modes, the manual `HeroCarousel`, and native `EventHorizontalRail`; edit/delete affordances remain HAL-gated. Standard sections return at most 10 items, up to two explicit curated rails are included, each section has a one-second budget, and the full composition has a three-second budget.
+The composite response owns section truth, ordering, and failure status. Each semantic section evaluates inventory independently, so an event can correctly appear in the hero and in every matching upcoming, online, curated, or recent section. The UI uses the manual `HeroCarousel`, the dedicated link-based `UpcomingEventList`, the production `EventCard` for spotlight and compact rails, and native `EventHorizontalRail`; edit/delete affordances remain HAL-gated. Standard sections return at most 10 items, up to two explicit curated rails are included, each section has a one-second budget, and the full composition has a three-second budget.
 
 ## BFF Endpoint Families
 

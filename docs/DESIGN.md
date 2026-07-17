@@ -135,20 +135,26 @@ Layout rules:
 - Motion: none.
 
 ### PublicDiscoveryAreaControl
-- Structure: one labeled disclosure directly above the home hero; the trigger summarizes either “Browsing events in {Area}” or “Browsing online events.”
+- Structure: one compact heading row inside the active `HomeDiscoveryHero` inner grid, spanning both columns above the poster and event copy. The only visible heading copy is “Browsing events in” followed by a disclosure trigger that names the active area, “all areas,” or “online events.” The same header-only inner remains when the filtered hero is empty.
 - Variants: active area and online mode.
 - States: loading, selected, locating, location denied/unavailable/no-match, and disabled only while the explicit location action is running.
-- Actions: active tenant areas, “Use my current location,” and “Browse online events.” Browser geolocation is never requested during load.
-- Accessibility: use native labeled controls and buttons, keep status/error text visible, announce context changes politely, and return focus to the trigger after selection.
+- Actions: the disclosed surface contains active tenant areas, “Use my current location,” and “Browse online events.” Browser geolocation is never requested during load.
+- Accessibility: the trigger exposes its expanded state and controlled surface, every choice is a native button, Escape closes the surface, status/error text stays visible, context changes are announced politely, and focus returns to the trigger after selection.
 - Privacy: persist only stable area ID and mode; never render, persist, log, trace, or analyze the browser origin.
 
 ### HomeDiscoveryHero
-- Structure: manual featured-event carousel with one active slide, previous/next buttons, swipe support, and a visible position counter.
-- Variants: image, image-fallback, and empty/absent. A tenant may expose up to ten slides.
+- Reference contract: the composition follows the live MangaDex home banner inspected on 2026-07-17 for layout grammar only; ISLAMU retains its own content, palette tokens, typography, actions, and assets.
+- Structure: manual featured-event carousel with one active slide, a full-bleed backdrop, a separate inset 7:10 event poster, event copy, previous/next buttons, swipe support, and a visible position counter. The active slide surface is one real event link; the context header and carousel controls remain independent interactive regions above it.
+- Variants: image, image-fallback, and compact empty. A tenant may expose up to ten slides; a single slide omits previous/next controls, while zero slides retain the context control and explain that no featured event matches.
 - States: active, previous/next focus and disabled edges, pointer drag/swipe, and reduced-motion.
-- Accessibility: controls are real labeled buttons; slide changes are politely announced; title, schedule, location/online context, and event link remain readable without the image.
+- Accessibility: controls are real labeled buttons; the slide-wide link has an event-specific accessible name and visible focus ring; slide changes are politely announced; title, schedule, and location/online context remain readable without the image.
 - Motion: no autoplay. Slide changes use only tokenized opacity/transform motion and become effectively instant under `prefers-reduced-motion`.
-- Images: the active image is high priority, at most one likely-next image may also load eagerly, and every remaining image is lazy. Media has explicit dimensions or aspect ratio and meaningful alternative text.
+- Geometry: the banner bleeds through the home page gutter to fill the shell's complete main-content width. Its block size is 25.5rem on desktop, 23rem on tablet, and 15.75rem on narrow screens so the composition ends with the inset poster instead of reserving a separate control row; it has no card radius or outer shadow.
+- Backdrop: the active event image fills the banner at 150% of banner block size with `object-fit: cover` and a top-biased focal point so the upper image remains visible as the viewport changes. The backdrop and tokenized readability scrim share a vertical mask that stays opaque through the upper composition and reaches full transparency at the lower edge, revealing the page background without a banner boundary.
+- Poster: the same event image is rendered as meaningful 7:10 cover art inset from the inline edge, capped at 13.5rem wide on tablet/desktop and 7rem on narrow screens. It remains visible at every supported breakpoint.
+- Content: poster and copy form a two-column grid with tokenized spacing. Description progressively collapses on narrow screens, while event title and metadata remain visible. There is no nested “View event” button because the slide surface is the event link. Controls share the poster's lower horizontal lane: the visible counter is plain uppercase `NO. n` text and previous/next buttons are transparent at rest with hover and focus feedback.
+- Images: the active backdrop and poster are high priority (two eager image elements sharing one URL/cache entry); every inactive slide image is lazy. Media has explicit dimensions or aspect ratio, the backdrop is decorative, and the poster has meaningful alternative text.
+- Context filtering: the active area/online selection is the source of truth for the hero and contextual sections. Online-capable inventory includes both Digital and Hybrid events; area inventory uses the selected public area's locations. Curated filters intersect with this context rather than widening it.
 
 ### EventCard
 - Structure: the production event card is the only card used by home discovery and `/events`; card-body navigation is a real link or keyboard-equivalent target, while nested share/edit/delete controls remain independent.
@@ -163,6 +169,13 @@ Layout rules:
 - States: loading, populated, empty (section omitted), and bounded section failure.
 - Accessibility: native scrolling remains available to keyboard, wheel, touch, and assistive technology; content order matches DOM order; no drag-only control is required.
 - Motion: CSS scroll snap may guide resting positions, but no autoplay or JavaScript carousel dependency is allowed.
+
+### UpcomingEventList
+- Structure: a home-discovery-only update list made from columns of at most six compact event links. Each row contains a 7:10 thumbnail, one-line title, schedule/format metadata, and organizer context; it is not an `EventCard` variant.
+- Variants: one column on narrow screens, two on tablet, and three on wide layouts. Columns retain top-to-bottom source order before continuing in the next column.
+- States: image, generated local image fallback, hover, focus-visible, populated, and section-owned empty/failure messaging.
+- Accessibility: every row is one native event link with an event-specific accessible name and visible focus ring. Adjacent text names the event, so its thumbnail is decorative.
+- Motion: no autoplay or repeated animation; hover feedback uses the existing interaction-state tokens.
 
 ### EventImageLightbox
 - Structure: one real button overlays the displayed event image and opens a portal-backed modal containing that image at its largest viewport-safe size.
@@ -180,12 +193,11 @@ Layout rules:
 The page order is:
 
 1. existing public shell and organization remediation/encoding branch;
-2. `PublicDiscoveryAreaControl`;
-3. optional `HomeDiscoveryHero`;
-4. “Upcoming in {Area}” using `DetailedList`;
-5. optional evidence-backed spotlight using `SingleRow`;
-6. compact `EventHorizontalRail` sections;
-7. existing tenant footer.
+2. `HomeDiscoveryHero`, with `PublicDiscoveryAreaControl` as the first row inside its inner grid;
+3. “Upcoming in {Area}” using `UpcomingEventList`;
+4. optional evidence-backed spotlight using `SingleRow`;
+5. compact `EventHorizontalRail` sections;
+6. existing tenant footer.
 
 Current-release labels describe only facts supported by the API. Approved labels are “Upcoming in {Area},” “Most viewed in {Area},” “Most viewed online,” an explicit tenant-curated label, and “Recently added.” Do not use “near you,” distance, “trending,” “recommended,” “free,” or unsupported community/grassroots language.
 
@@ -195,11 +207,11 @@ There is no advertisement, CTA substitute, spacer, or reserved ad gap anywhere i
 
 | Mode | Home use | Responsive behavior |
 |---|---|---|
-| `DetailedList` | “Upcoming in {Area}” | One column at narrow widths, two when space permits, and three on wide layouts. |
+| `UpcomingEventList` | “Upcoming in {Area}” | Compact rows flow top-to-bottom in columns of at most six: one column at narrow widths, two on tablet, and three on wide layouts. |
 | `SingleRow` | Optional spotlight only when the response contains evidence-backed spotlight content. | One readable row; content progressively reduces without hiding the event title or primary link. |
 | `CompactGrid` | “Most viewed in {Area},” “Most viewed online,” explicit curation, and “Recently added.” | Fixed readable card width inside native horizontal overflow with a clipped next-card cue. |
 
-Do not create a fourth card layout for `/home`. Section order and mode come from the composite home response, while card rendering stays in the production `EventCard`.
+Do not add another `EventCard` mode for `/home`. `UpcomingEventList` is a separate semantic update-list primitive; spotlight and horizontal-rail card rendering stay in the production `EventCard`.
 
 ### Responsive, Direction, And Motion
 
