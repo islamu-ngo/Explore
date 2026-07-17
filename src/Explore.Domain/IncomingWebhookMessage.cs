@@ -335,6 +335,26 @@ public class IncomingWebhookMessage : ITenantEntity, IAuditableEntity
         UpdatedAt = settledAt;
     }
 
+    public void SettlePointerPersisted(
+        string effectKind,
+        Guid leaseToken,
+        long processingFence,
+        int processingGeneration,
+        DateTime settledAt)
+    {
+        EnsureActiveClaim(leaseToken, processingFence, processingGeneration, settledAt);
+        Status = IncomingWebhookMessageStatus.Processed;
+        ProcessedAt = settledAt;
+        SettledByEffectReceiptId = null;
+        SettledEffectKind = IncomingWebhookEffectReceipt.NormalizeEffectKind(effectKind);
+        SettlementSource = IncomingWebhookSettlementSource.None;
+        FailureCategory = null;
+        SafeDetail = null;
+        AppendAttempt(IncomingWebhookProcessingAttemptOutcome.Processed, settledAt);
+        ClearLease();
+        UpdatedAt = settledAt;
+    }
+
     public void RecordConcurrentReceiptRecovery(
         IncomingWebhookEffectReceipt receipt,
         string expectedEffectKind,
