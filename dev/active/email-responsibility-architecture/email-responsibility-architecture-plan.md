@@ -3,11 +3,11 @@
 
 # Email Lifecycle Delivery Implementation Plan
 
-> **Status:** Draft — revised after Senior CTO review; do not start runtime implementation until Phase 0 is approved  
-> **Last Updated:** 2026-07-17 Europe/Brussels  
-> **Implementation progress:** 0/43 tasks complete  
-> **Current task:** 0.1 — approve the logical intent, channel-delivery, and transport-work model  
-> **Scope rule:** This planning update changes only the three workstream documents.
+> **Status:** Approved — Phase 0A and Task 0.5 complete; Tasks 0.6–0.7 provisionally ready for independent verification
+> **Last Updated:** 2026-07-17 Europe/Brussels
+> **Implementation progress:** 5/43 tasks complete
+> **Current tasks:** defer 0.6–0.7 independent verification until the shared 1.1–1.3 Stage C migration restores full gates
+> **Approval evidence:** Senior CTO corrections accepted by the user on 2026-07-17; Task 0.5 received independent confirmation after its schema-parity repair.
 
 ## 1. Outcome
 
@@ -75,10 +75,10 @@ The phase gates intentionally run all directly affected test projects, not one n
 | Event/session changes | cancellation and update handlers | Business mutations exist; attendee email does not. Session owns schedule/location truth. |
 | Fanout | `NotificationFanoutRun`, moderation/published fanout services | Resumable cursor patterns exist, but no immutable occurrence, lease, audience cutoff, session cohort, or supersession. |
 | Reporting | `EventReport`, submission DTO/dialog, My Reports API/page | One checkbox currently covers follow-up contact only; receipt/outcome email and withdrawal do not exist. |
-| Decision providers | local decision handlers, Coop inbox, Osprey callback | Local executor is correct. Coop callbacks are retained but ignored because no production handler routes them. Osprey only records signals. |
+| Decision providers | local decision handlers, Coop inbox/effect pointer, Osprey callback | Local executor is correct. Coop intake persists one tenant-safe pointer without claiming an applied effect; a fenced worker now invokes the existing command and settles the receipt/pointer only after success. Osprey only records signals. |
 | Retention | `docs/OPERATIONS.md` data lifecycle matrix | Target is 180 days for resolved email evidence; unresolved dead-letter/unknown/parked rows stay until operator resolution. Automated parent-aware redaction is missing. |
 
-Baseline Release build on 2026-07-17 passed: 25 projects, 0 warnings, 0 errors.
+Fresh isolated-branch Release build on 2026-07-17 passed: 25 projects, 0 errors, and 8,327 emitted pre-existing warnings. This receipt supersedes the earlier stale zero-warning claim. Implementation must add no attributable warnings; the repository is not warning-free.
 
 ## 5. Target Data and Control Model
 
@@ -98,26 +98,36 @@ NotificationIntent
 
 `NotificationIntent` is not an email row. `NotificationDelivery` records whether each configured channel was required, selected, skipped, queued, sent, or failed. `EmailDispatchOutbox` stores durable SMTP execution state only.
 
-### 5.1 Schema relationship
+### 5.1 Schema relationship and recipient authority
 
-Add a reversible migration and explicit model relationships:
+Add the explicit model relationships and a deliberately destructive pre-1.0 ledger-reset migration:
 
-- `NotificationDelivery.ChannelId` -> existing `NotificationPreferenceChannel` lookup;
-- `NotificationDelivery.DeliveryPolicyId` -> new stable `NotificationDeliveryPolicy` lookup;
-- `NotificationDelivery.IsRequired` snapshots the channel decision made by the policy;
+- `NotificationIntent` has alternate key `(TenantId, Id, RecipientUserId)` for every new user-addressed intent;
+- `NotificationDelivery` has alternate key `(TenantId, Id, NotificationIntentId, ChannelId)` and unique `(TenantId, NotificationIntentId, ChannelId)`;
+- `NotificationDelivery.ChannelId` -> existing `NotificationPreferenceChannel` lookup and `DeliveryPolicyId` -> new stable `NotificationDeliveryPolicy` lookup;
+- `NotificationDelivery.IsRequired`, policy code/version, consent purpose/version, preference category/result, address source, disclosure level, template key/version, and link permission form an immutable materialization-time policy snapshot;
 - optional `NotificationDelivery.NotificationId` for in-app delivery;
 - existing `NotificationDelivery.EmailDispatchOutboxId` remains the email-delivery link;
-- `EmailDispatchOutbox.NotificationIntentId` -> `NotificationIntent.Id`;
-- rename/backfill `EmailDispatchOutbox.UserId` to `RecipientUserId` and retain a user FK;
-- composite `(TenantId, NotificationIntentId, RecipientUserId)` FK/alternate-key mapping guarantees the email belongs to the same tenant, intent, and recipient user;
-- composite delivery-to-email mapping includes tenant and intent IDs so a delivery cannot link another intent's outbox row;
-- unique `(TenantId, NotificationIntentId, ChannelId)` on delivery;
-- unique `(TenantId, NotificationIntentId, EmailDispatchKind)` on non-deleted email rows;
+- `EmailDispatchOutbox.NotificationIntentId` -> `NotificationIntent.Id` while the outbox retains its own ID;
+- rename `EmailDispatchOutbox.UserId` to required `RecipientUserId`; composite `(TenantId, RecipientUserId)` references `TenantUser`, never a bare global user;
+- composite `(TenantId, NotificationIntentId, RecipientUserId)` FK guarantees the email belongs to the same tenant, intent, and recipient;
+- composite delivery-to-email `(TenantId, EmailDispatchOutboxId, NotificationIntentId, RecipientAddressSource)` guarantees the address-source snapshot equals its outbox authority;
+- composite delivery-to-notification `(TenantId, NotificationId, NotificationIntentId)` prevents cross-intent links, while notification-to-intent `(TenantId, NotificationIntentId, UserId)` enforces recipient equality;
+- unique `(TenantId, NotificationIntentId)` permits exactly one email execution row per logical intent;
 - unique non-null `(TenantId, EmailDispatchOutboxId)` and `(TenantId, NotificationId)` delivery links.
 
-Existing email rows are backfilled rather than abandoned. A migration may use the existing outbox ID as the explicit legacy intent ID while creating a real FK, delivery row, policy, and deterministic `legacy-email-dispatch:{id}` deduplication key. New rows retain independent IDs. Lookup enum IDs, migration-local inserts, runtime seeder repair, model snapshot, and `schemas/islamu-event.md` must agree.
+`EmailDispatchOutbox.RecipientAddressSource` is a required discriminator:
 
-Normalize delivery outcomes to channel-neutral meanings: `Pending`, `Queued`, `Delivered`, `Skipped`, `Failed`, `DeadLettered`, `Unknown`, `Parked`, and `Superseded`. The authorized pre-1.0 migration deterministically maps existing email-specific statuses and preserves stable numeric IDs/backfill parity.
+- `TenantUserVerifiedEmail` requires the required `RecipientUserId`, the composite `TenantUser` FK, and null managed-provisioning authority;
+- `ManagedTenantAdministratorInvitation` requires the same tenant membership plus non-null composite authority `(TenantId, ManagedTenantProvisioningOperationId)`; its snapshot address must equal the decoded persisted operation-request invitation address;
+
+No third or arbitrary address source is allowed. PostgreSQL constraints enforce tenant, recipient, channel, source-snapshot, authority, and candidate-key integrity. External delegation uses an EF-modeled `(TenantId, NotificationIntentId)` FK. Two relationships are migration-authored SQL because their nullable principals cannot be represented faithfully as EF alternate keys: email-to-managed-operation `(TenantId, ManagedTenantProvisioningOperationId)` while operation tenant is null before success, and delivery-to-notification same-intent while preserved inbox notification intent links are nullable.
+
+Because this is pre-1.0 software, the migration does not synthesize authority or preserve incompatible delivery work. In one PostgreSQL transaction it deletes rows only from `notification_deliveries`, `email_dispatch_receipts`, `email_dispatch_attempts`, `email_dispatch_outbox`, `notification_external_delegations`, and `notification_intents`; then it installs the required schema. Existing `notifications` survive with nullable `NotificationIntentId`, and event, registration, report, audit, settings, tenant, and user data remain untouched. Lookup enum IDs, migration-local upserts, bounded runtime seeder repair, model snapshot, and `schemas/islamu-event.md` must agree.
+
+The isolated migration rehearsal is a populated Up -> Down -> Up cycle against its own Testcontainer. It proves exact ledger-reset scope, preserved notification and unrelated business/audit/settings canaries, realistic pre-target channel/status lookups, required recipient and tenant/source constraints, clean Down lookup/schema restoration, and deterministic second Up. Down resets current delivery ledgers and restores only the old empty schema; it cannot reconstruct rows intentionally deleted by either direction. Reporter-consent migration separately receives its own Up -> Down -> Up proof because it has different data-preservation semantics.
+
+Normalize delivery outcomes to channel-neutral meanings: `Pending`, `Queued`, `Delivered`, `Skipped`, `Failed`, `DeadLettered`, `Unknown`, `Parked`, and `Superseded`. Stable numeric IDs remain authoritative; Down restores the prior codes for IDs 2 and 3 and removes new IDs 7–9, while second Up restores the canonical set.
 
 ### 5.2 Delivery-policy codes
 
@@ -168,6 +178,18 @@ One policy evaluator runs after claim but before SMTP. It must:
 - apply tenant/global pause and provider rate limits;
 - record a terminal, typed skip reason and update the linked delivery outcome.
 
+The immutable policy snapshot is an authorization ceiling. Dispatch may narrow it using current membership, verification, consent, preference, disclosure, tenant pause, deletion, or supersession state; it must never add a channel, purpose, recipient, exact location, or link that was not authorized in the snapshot.
+
+### 5.5 Provider handoff and settlement
+
+The conditional `Pending/Claimed -> ProviderHandoff` transition is the cancellation, consent, preference, and supersession linearization boundary. Eligibility and the occurrence/version fence are rechecked in that same transition. Work suppressed before the fence never reaches SMTP. Work beyond the fence cannot honestly be recalled.
+
+- explicit SMTP rejection before acceptance follows typed retryable/permanent failure policy;
+- cancellation, I/O, protocol, process, or persistence uncertainty after handoff settles as `Unknown`;
+- `Unknown` is terminal for automatic delivery and requires bounded operator reconciliation before replay;
+- an SMTP acceptance followed by attempt, receipt, outbox, or delivery persistence failure must not cause blind resend;
+- attempts, receipts, outbox, and `NotificationDelivery` settle through one idempotent reconciliation state machine.
+
 ## 6. Channel Policy Matrix
 
 “Plus” means one logical intent with separate channel deliveries. A failed or unavailable email does not create a second fallback intent.
@@ -190,6 +212,8 @@ One policy evaluator runs after claim but before SMTP. It must:
 | Tenant administrator invitation | Existing behavior | Required | Existing managed-provisioning transaction |
 
 Reporter receipt copy derives from the sole SLA setting, `Reporting:CaseSlaHours` (default 48), for example: “We normally review reports within 48 hours.” No min/max business-day configuration is added.
+
+The resolved value is validated as one bounded hour value and snapshotted with the receipt template at report submission. A later configuration change cannot rewrite already queued copy. The default receipt therefore retains its 48-hour promise snapshot.
 
 ## 7. Reporter Consent and Withdrawal
 
@@ -236,12 +260,14 @@ Audience rules:
 
 - registration intent existed at or before `AudienceCutoffAt` and is still eligible when processed;
 - event cancellation and important event updates include current `Pending`, `Approved`, and `Waitlisted` parents; exclude `Rejected`, `Cancelled`, `Revoked`, and soft-deleted rows;
-- session occurrences also require a non-deleted target-session child in `Pending`, `Approved`, or `Waitlisted`; partially cancelled target children are excluded;
+- session occurrences also require a non-deleted target-session child in `Pending`, `Approved`, or `Waitlisted` whose immutable `CoverageEstablishedAt <= AudienceCutoffAt`; partially cancelled target children are excluded;
 - reminder audience requires both parent and target child to be `Approved`;
 - whole-event, whole-day, and explicit-session coverage is derived from the persisted child rows;
 - registrations created after the cutoff do not receive an old change because they register against current data;
 - group to one audience member per user and page with `(FirstEligibleRegistrationCreatedAt, UserId)` lexicographic cursor;
 - a unique occurrence/user intent constraint remains the final duplicate guard.
+
+`CoverageEstablishedAt` is set when the user first gains that session coverage. A same-scope child replacement performed atomically copies the original value; a newly added session gets the current timestamp. Parent creation time alone is never enough, so moving or adding a child after an occurrence cannot admit that user to the old cohort.
 
 The run stores occurrence FK, lease owner/expiry, cursor tuple, counts, retry state, and concurrency stamp. A worker crash may replay the last page; atomic recipient dedup makes that safe.
 
@@ -307,9 +333,17 @@ Document and test: Mailpit/test SMTP, tenant sender pause/suppression, global dr
 
 ## 11. Implementation Phases
 
-### Phase 0 — Architecture and policy baseline (Tasks 0.1–0.7)
+### Phase 0A — Approved architecture and policy baseline (Tasks 0.1–0.4)
 
-Approve the channel matrix, consent/withdrawal contract, occurrence/cohort/supersession semantics, retention/fairness/operations policy, and single SLA. Land the Coop callback repair as an independently reviewable prerequisite before reporter-decision convergence.
+The channel matrix, consent/withdrawal contract, occurrence/cohort/supersession semantics, retention/fairness/operations policy, recipient authority, handoff settlement, reminder rules, and single SLA are approved. Tasks 0.1-0.4 are complete. This documentation-only phase uses static path, provenance, JSON, and diff evidence; it does not rerun product tests.
+
+### Phase 0B — Coop callback correctness prerequisite (Tasks 0.5–0.7)
+
+Land the specialized `IncomingWebhookEffectOutbox` repair as an independently reviewable prerequisite. Phase 0B may run in parallel with Phase 1 and blocks only Task 5.9 provider convergence.
+
+Task 0.5 is complete and independently confirmed. The implemented slice requires a signed nonblank bounded provider decision ID, atomically persists a SHA-only `IncomingWebhookEffectOutbox`, settles intake through `PointerPersisted` without creating an applied-effect receipt, protects retained callback bytes, and enforces both deduplication identities plus the tenant-safe inbox FK in PostgreSQL. Migration `20260717104030_AddIncomingWebhookEffectOutbox` passed a fresh Up -> Down -> Up rehearsal and EF reported no pending model changes. Evidence is recorded under `.omo/evidence/email-lifecycle-delivery/task-2/`.
+
+Tasks 0.6 and 0.7 are implemented and provisionally verified but remain open pending independent verification. Runtime now loads and revalidates retained callbacks under a fenced renewable lease, executes `ProcessCoopDecisionCallbackCommand`, atomically settles the applied-effect receipt and pointer after success, retries transient failures, dead-letters poison input, preserves cleanup/replay ordering, emits bounded metrics/health, and exposes authenticated tenant-scoped HAL inspection/redrive. Full Persistence and API gates must be rerun after the concurrent Phase 1 Stage C migration supplies its new recipient-model columns; this dependency is recorded, not waived.
 
 Coop prerequisite acceptance:
 
@@ -336,7 +370,9 @@ dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.cs
 
 ### Phase 1 — Atomic recipient-delivery primitive (Tasks 1.1–1.6)
 
-Add the explicit schema/backfill, atomic channel materializer, clean unique-conflict recovery, dispatch-time eligibility, retention/redaction, metrics/operator controls, and architecture boundary test before adding business triggers.
+Add the explicit schema/reset, atomic channel materializer, clean unique-conflict recovery, dispatch-time eligibility, retention/redaction, metrics/operator controls, and architecture boundary test before adding business triggers.
+
+Approved Tasks 1.1–1.3 dependency checkpoint: Stage A introduces the explicit relationship model and contracts. Stage B implements the atomic materializer and migrates the registration, reminder-scheduler, and managed-invitation writers to it. Stage C lands the transactionally bounded pre-1.0 ledger reset and only then makes the new constraints required. These three tasks share one verification/checkpoint; no intermediate stage may claim the relationship is fully required or leave a writer outside the materializer.
 
 Phase gate:
 
@@ -346,7 +382,9 @@ dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj
 dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build
 dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --no-build
 dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --no-build
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build
 dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build
+dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]"
 ```
 
 ### Phase 2 — Registration transitions (Tasks 2.1–2.5)
@@ -397,6 +435,8 @@ dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.cs
 
 Implement split consent, submission UI, withdrawal HAL affordance, receipt, final outcome, follow-up contact, and source-convergence evidence. Coop is enabled only if the Phase 0 prerequisite is live; otherwise local API remains functional and Coop email stays disabled. Osprey remains signal-only.
 
+`EventReportDecision` remains the sole business-decision authority. A one-to-one `EventReportDecisionExecution` keyed by `DecisionId` stores only operational effect state: `Requested`, `InProgress`, an idempotent enforcement receipt, `CompletionPending`, and `Completed`. Reporter outcome channels materialize only in the completion transaction after successful enforcement. Escalation is nonterminal; stale/out-of-order Coop work cannot reopen a completed decision, and a crash between enforcement and completion resumes without repeating enforcement or email.
+
 Phase gate:
 
 ```bash
@@ -429,6 +469,8 @@ dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.cs
 
 Schedule one reminder for an approved registration’s earliest covered published session, then prove supersession/cancellation, future-row stale-pointer guards, and DST/timezone reprojection before enabling the production caller.
 
+The sole reminder setting is `EmailDispatch:EventReminderLeadTimeHours`, default `24`, inclusive range `1..168`. Dispatch time is `sessionStartUtc - lead`. If that time has passed but the session is still future, persist the reminder due immediately after commit; if the session has started, create none. Nonexistent local wall times are rejected at command validation. An ambiguous overlap uses the persisted event/session offset or UTC instant, never the machine-local timezone.
+
 Phase gate:
 
 ```bash
@@ -436,7 +478,9 @@ dotnet build --configuration Release --verbosity quiet
 dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build
 dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --no-build
 dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --no-build
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build
 dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build
+dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]"
 ```
 
 ## 12. Mandatory Fault, Concurrency, and Privacy Evidence
@@ -456,6 +500,9 @@ Required scenarios:
 - email changed, removed, or unverified before dispatch;
 - whole-event/day/session audience coverage, partially cancelled children, waitlisted/pending parents, and duplicate child rows;
 - callback replay, poison callbacks, and out-of-order Coop decisions;
+- legacy email and reporter-consent Up -> Down -> Up reconciliation;
+- provider-handoff races where cancellation/consent/supersession wins before the fence and cannot claim recall after it;
+- enforcement succeeds but outcome completion persistence fails, then recovers without repeated enforcement or email;
 - immutable 10:00 -> 11:00 occurrence followed by 12:00 update;
 - DST gap/overlap, timezone reprojection, and stale TickerQ pointer for future/superseded reminders;
 - negative location-disclosure and heavy-moderation redaction assertions;
