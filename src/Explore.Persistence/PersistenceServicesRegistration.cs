@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Domain;
@@ -182,6 +183,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IActorKeyStoreRepository, ActorKeyStoreRepository>();
         services.AddScoped<IActorSubscriptionRepository, ActorSubscriptionRepository>();
         services.AddScoped<INotificationFanoutRunRepository, NotificationFanoutRunRepository>();
+        services.AddScoped<INotificationFanoutOccurrenceRepository, NotificationFanoutOccurrenceRepository>();
 
         // Organization Repositories
         services.AddScoped<IOrganizationRepository, OrganizationRepository>();
@@ -293,6 +295,7 @@ public static class PersistenceServicesRegistration
         // Generic Outbox Repositories
         services.AddScoped<IOutboxRepository, OutboxRepository>();
         services.AddScoped<IEmailDispatchOutboxRepository, EmailDispatchOutboxRepository>();
+        services.AddScoped<IEmailDispatchEligibilityEvaluator, EmailDispatchEligibilityEvaluator>();
         services.AddScoped<IWebPushDispatchOutboxRepository, WebPushDispatchOutboxRepository>();
         services.AddScoped<IIntegrationSyncOutboxRepository, IntegrationSyncOutboxRepository>();
 
@@ -308,6 +311,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IWebhookProviderPublicationRepository, WebhookProviderPublicationRepository>();
         services.AddScoped<IWebhookDeliveryPlanMaterializer, WebhookDeliveryPlanMaterializer>();
         services.AddScoped<IIncomingWebhookMessageRepository, IncomingWebhookMessageRepository>();
+        services.AddScoped<IIncomingWebhookEffectOutboxRepository, IncomingWebhookEffectOutboxRepository>();
         services.AddScoped<IIncomingWebhookEffectReceiptRepository, IncomingWebhookEffectReceiptRepository>();
         services.AddScoped<IWebhookRetentionCleanupRepository, WebhookRetentionCleanupRepository>();
 
@@ -331,6 +335,7 @@ public static class PersistenceServicesRegistration
         // Notification Repository
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<INotificationIntentRepository, NotificationIntentRepository>();
+        services.AddScoped<IRecipientNotificationGraphRepository, NotificationIntentRepository>();
 
         // Idempotency Repository
         services.AddScoped<IIdempotencyRepository, IdempotencyRepository>();

@@ -128,6 +128,8 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IContactShareConsentService, ContactShareConsentService>();
         services.AddScoped<INotificationOwnershipResolver, DefaultNotificationOwnershipResolver>();
         services.AddScoped<INotificationOrchestrator, DefaultNotificationOrchestrator>();
+        services.AddScoped<IRecipientNotificationMaterializer, RecipientNotificationMaterializer>();
+        services.AddSingleton<NotificationDeliveryPolicyResolver>();
         services.AddScoped<IEventLifecycleEmailOutboxFactory, EventLifecycleEmailOutboxFactory>();
         services.AddScoped<IListmonkRegistrationSyncOutboxFactory, ListmonkRegistrationSyncOutboxFactory>();
         services.AddScoped<IRegistrationNotificationDeliveryService, RegistrationNotificationDeliveryService>();
