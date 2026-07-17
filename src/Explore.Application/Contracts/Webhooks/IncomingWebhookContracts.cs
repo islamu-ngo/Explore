@@ -65,6 +65,9 @@ public sealed record IncomingWebhookProcessingResult(
     public static IncomingWebhookProcessingResult Processed(string? safeResultReference = null) =>
         new(IncomingWebhookProcessingOutcome.Processed, SafeResultReference: safeResultReference);
 
+    public static IncomingWebhookProcessingResult PointerPersisted(string safeResultReference) =>
+        new(IncomingWebhookProcessingOutcome.PointerPersisted, SafeResultReference: safeResultReference);
+
     public static IncomingWebhookProcessingResult Ignored(string reasonCode, string? safeDetail = null) =>
         new(IncomingWebhookProcessingOutcome.Ignored, reasonCode, safeDetail);
 
@@ -84,7 +87,8 @@ public enum IncomingWebhookProcessingOutcome
     Ignored = 2,
     RejectedPermanent = 3,
     RetryDue = 4,
-    DeadLettered = 5
+    DeadLettered = 5,
+    PointerPersisted = 6
 }
 
 public interface IIncomingWebhookVerifier

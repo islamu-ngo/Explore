@@ -24,6 +24,25 @@ public interface IIncomingWebhookDrainService
     Task<IncomingWebhookDrainResult> ProcessBatchAsync(CancellationToken cancellationToken);
 }
 
+public interface IIncomingWebhookEffectProcessingService
+{
+    Task<IncomingWebhookClaimExecutionResult> ProcessAsync(
+        IncomingWebhookEffectClaim claim,
+        CancellationToken cancellationToken);
+}
+
+public interface IIncomingWebhookEffectClaimExecutor
+{
+    Task<IncomingWebhookClaimExecutionResult> ExecuteAsync(
+        IncomingWebhookEffectClaim claim,
+        CancellationToken cancellationToken);
+}
+
+public interface IIncomingWebhookEffectDrainService
+{
+    Task<IncomingWebhookDrainResult> ProcessBatchAsync(CancellationToken cancellationToken);
+}
+
 public sealed record IncomingWebhookDrainResult(
     int ClaimedCount,
     int CompletedCount,
@@ -35,8 +54,8 @@ public sealed record IncomingWebhookClaimExecutionResult(
     IncomingWebhookClaimExecutionOutcome Outcome,
     string? FailureCategory = null)
 {
-    public static IncomingWebhookClaimExecutionResult Completed() =>
-        new(IncomingWebhookClaimExecutionOutcome.Completed);
+    public static IncomingWebhookClaimExecutionResult Completed(string? outcomeCategory = null) =>
+        new(IncomingWebhookClaimExecutionOutcome.Completed, outcomeCategory);
 
     public static IncomingWebhookClaimExecutionResult LeaseLost() =>
         new(IncomingWebhookClaimExecutionOutcome.LeaseLost);

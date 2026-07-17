@@ -199,6 +199,15 @@ public sealed class IncomingWebhookProcessingService(
                     observedAt);
                 break;
 
+            case IncomingWebhookProcessingOutcome.PointerPersisted:
+                message.SettlePointerPersisted(
+                    effectKind,
+                    claim.LeaseToken,
+                    claim.ProcessingFence,
+                    claim.ProcessingGeneration,
+                    observedAt);
+                break;
+
             default:
                 throw new ArgumentOutOfRangeException(nameof(result), result.Outcome, "Unsupported incoming webhook processing outcome.");
         }
