@@ -48,11 +48,13 @@ public class NotificationIntentRepositoryTests(PostgreSqlContainerFixture fixtur
 
         var tenantA = CreateTenant("intent-a");
         var tenantB = CreateTenant("intent-b");
+        var recipient = CreateTenantRecipient(tenantA, "intent-a");
         context.Tenants.AddRange(tenantA, tenantB);
+        context.TenantUsers.Add(recipient.TenantUser);
         await context.SaveChangesAsync();
 
         var repository = new NotificationIntentRepository(context);
-        var intent = CreateIntent(tenantA.Id, "registration-approved:shared");
+        var intent = CreateIntent(tenantA.Id, recipient.User.Id, "registration-approved:shared");
 
         var created = await repository.CreateIntentAsync(intent, CancellationToken.None);
 
@@ -83,11 +85,14 @@ public class NotificationIntentRepositoryTests(PostgreSqlContainerFixture fixtur
 
         var tenantA = CreateTenant("intent-filter-a");
         var tenantB = CreateTenant("intent-filter-b");
+        var tenantARecipient = CreateTenantRecipient(tenantA, "intent-filter-a");
+        var tenantBRecipient = CreateTenantRecipient(tenantB, "intent-filter-b");
         seedContext.Tenants.AddRange(tenantA, tenantB);
+        seedContext.TenantUsers.AddRange(tenantARecipient.TenantUser, tenantBRecipient.TenantUser);
         await seedContext.SaveChangesAsync();
 
-        var tenantAIntent = CreateIntent(tenantA.Id, "tenant-a:intent");
-        var tenantBIntent = CreateIntent(tenantB.Id, "tenant-b:intent");
+        var tenantAIntent = CreateIntent(tenantA.Id, tenantARecipient.User.Id, "tenant-a:intent");
+        var tenantBIntent = CreateIntent(tenantB.Id, tenantBRecipient.User.Id, "tenant-b:intent");
         seedContext.NotificationIntents.AddRange(tenantAIntent, tenantBIntent);
         await seedContext.SaveChangesAsync();
 
@@ -107,19 +112,28 @@ public class NotificationIntentRepositoryTests(PostgreSqlContainerFixture fixtur
         await using var context = fixture.CreateDbContext();
 
         var tenant = CreateTenant("intent-audit");
+        var recipient = CreateTenantRecipient(tenant, "intent-audit");
         context.Tenants.Add(tenant);
+        context.TenantUsers.Add(recipient.TenantUser);
         await context.SaveChangesAsync();
 
         var repository = new NotificationIntentRepository(context);
         var intent = await repository.CreateIntentAsync(
-            CreateIntent(tenant.Id, "moderation-decision:audit"),
+            CreateIntent(tenant.Id, recipient.User.Id, "moderation-decision:audit"),
             CancellationToken.None);
 
         var delivery = new NotificationDelivery
         {
             TenantId = tenant.Id,
             NotificationIntentId = intent.Id,
-            StatusId = (int)NotificationDeliveryStatusEnum.LinkedToEmailDispatch,
+            ChannelId = (int)NotificationPreferenceChannelEnum.Email,
+            DeliveryPolicyId = (int)NotificationDeliveryPolicyEnum.RegistrationStatusOptional,
+            IsRequired = false,
+            PolicyVersion = 1,
+            DisclosureLevel = "generic",
+            TemplateKey = "registration.approved",
+            TemplateVersion = 1,
+            StatusId = (int)NotificationDeliveryStatusEnum.Queued,
             ProviderMessageId = "smtp-message-id-redacted",
             ProviderStatus = "queued",
             QueuedAt = DateTime.UtcNow,
@@ -149,7 +163,7 @@ public class NotificationIntentRepositoryTests(PostgreSqlContainerFixture fixtur
             .AsNoTracking()
             .SingleAsync(row => row.NotificationIntentId == intent.Id);
 
-        await Assert.That(persistedDelivery.StatusId).IsEqualTo((int)NotificationDeliveryStatusEnum.LinkedToEmailDispatch);
+        await Assert.That(persistedDelivery.StatusId).IsEqualTo((int)NotificationDeliveryStatusEnum.Queued);
         await Assert.That(persistedDelegation.ProviderKindId).IsEqualTo((int)ExternalWorkflowProviderKindEnum.Coop);
         await Assert.That(persistedDelegation.SafePayloadHash).IsEqualTo("sha256:moderation-safe-payload");
     }
@@ -161,12 +175,14 @@ public class NotificationIntentRepositoryTests(PostgreSqlContainerFixture fixtur
         await using var context = fixture.CreateDbContext();
 
         var tenant = CreateTenant("intent-authority");
+        var recipient = CreateTenantRecipient(tenant, "intent-authority");
         context.Tenants.Add(tenant);
+        context.TenantUsers.Add(recipient.TenantUser);
         await context.SaveChangesAsync();
 
         var repository = new NotificationIntentRepository(context);
         var intent = await repository.CreateIntentAsync(
-            CreateIntent(tenant.Id, "identity-lifecycle:authority"),
+            CreateIntent(tenant.Id, recipient.User.Id, "identity-lifecycle:authority"),
             CancellationToken.None);
 
         var delegation = new NotificationExternalDelegation
@@ -207,11 +223,45 @@ public class NotificationIntentRepositoryTests(PostgreSqlContainerFixture fixtur
         };
     }
 
-    private static NotificationIntent CreateIntent(Guid tenantId, string deduplicationKey)
+    private static (User User, TenantUser TenantUser) CreateTenantRecipient(Tenant tenant, string emailPrefix)
+    {
+        DateTime createdAt = DateTime.UtcNow;
+        var user = new User
+        {
+            Id = Guid.CreateVersion7(),
+            Pii = new UserPii
+            {
+                Email = $"{emailPrefix}-{Guid.NewGuid():N}@example.test",
+                FirstName = "Notification",
+                LastName = "Recipient",
+            },
+            EmailVerified = true,
+            CreatedAt = createdAt,
+        };
+        var tenantUser = new TenantUser
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            UserId = user.Id,
+            User = user,
+            StatusId = (int)TenantUserStatusEnum.Active,
+            JoinedAt = createdAt,
+            CreatedAt = createdAt,
+        };
+
+        return (user, tenantUser);
+    }
+
+    private static NotificationIntent CreateIntent(
+        Guid tenantId,
+        Guid recipientUserId,
+        string deduplicationKey)
     {
         return new NotificationIntent
         {
             TenantId = tenantId,
+            RecipientUserId = recipientUserId,
             CategoryId = (int)NotificationCategoryEnum.RegistrationLifecycle,
             OwnershipTypeId = (int)NotificationOwnershipTypeEnum.IslamuEvent,
             RecipientKindId = (int)NotificationRecipientKindEnum.User,

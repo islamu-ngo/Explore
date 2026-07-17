@@ -2,6 +2,7 @@
 // ABOUTME: Uses exact tenant predicates for worker-safe lookup without leaking IQueryable.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Exceptions;
 using Explore.Domain;
 using Explore.Persistence.Extensions;
 using Explore.Persistence.QueryFilters;
@@ -9,8 +10,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
 
-public sealed class NotificationIntentRepository : GenericRepository<NotificationIntent, Guid>, INotificationIntentRepository
+public sealed class NotificationIntentRepository : GenericRepository<NotificationIntent, Guid>,
+    INotificationIntentRepository,
+    IRecipientNotificationGraphRepository
 {
+    private const string UniqueViolationSqlState = "23505";
+    private const string DeduplicationConstraintName = "ux_notification_intents_tenant_deduplication_key";
     private readonly ExploreDbContext _dbContext;
 
     public NotificationIntentRepository(ExploreDbContext dbContext) : base(dbContext)
@@ -20,9 +25,42 @@ public sealed class NotificationIntentRepository : GenericRepository<Notificatio
 
     public async Task<NotificationIntent> CreateIntentAsync(NotificationIntent intent, CancellationToken cancellationToken = default)
     {
-        _dbContext.NotificationIntents.Add(intent);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        return intent;
+        return await CreateGraphAsync(intent, cancellationToken);
+    }
+
+    public async Task<NotificationIntent> CreateGraphAsync(NotificationIntent intent, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _dbContext.NotificationIntents.Add(intent);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            return intent;
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+        {
+            SqlState: UniqueViolationSqlState,
+            ConstraintName: DeduplicationConstraintName
+        })
+        {
+            throw new NotificationIntentDeduplicationConflictException(ex);
+        }
+    }
+
+    public async Task<NotificationIntent?> GetGraphByTenantAndDeduplicationKeyAsync(
+        Guid tenantId,
+        string deduplicationKey,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.NotificationIntents
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .Include(intent => intent.Deliveries)
+                .ThenInclude(delivery => delivery.Notification)
+            .Include(intent => intent.Deliveries)
+                .ThenInclude(delivery => delivery.EmailDispatchOutbox)
+            .SingleOrDefaultAsync(intent => intent.TenantId == tenantId
+                && intent.DeduplicationKey == deduplicationKey,
+                cancellationToken);
     }
 
     public async Task<NotificationIntent?> GetByTenantAndIdAsync(
@@ -54,6 +92,66 @@ public sealed class NotificationIntentRepository : GenericRepository<Notificatio
         _dbContext.NotificationDeliveries.Add(delivery);
         await _dbContext.SaveChangesAsync(cancellationToken);
         return delivery;
+    }
+
+    public async Task RepairMissingRecipientDeliveryRowsAsync(
+        NotificationIntent winningIntent,
+        IReadOnlyList<NotificationDelivery> expectedDeliveries,
+        Notification? expectedNotification,
+        EmailDispatchOutbox? expectedEmail,
+        CancellationToken cancellationToken = default)
+    {
+        var tracked = await _dbContext.NotificationIntents
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .Include(intent => intent.Deliveries)
+                .ThenInclude(delivery => delivery.Notification)
+            .Include(intent => intent.Deliveries)
+                .ThenInclude(delivery => delivery.EmailDispatchOutbox)
+            .SingleAsync(intent => intent.TenantId == winningIntent.TenantId
+                && intent.Id == winningIntent.Id,
+                cancellationToken);
+
+        foreach (NotificationDelivery expected in expectedDeliveries)
+        {
+            NotificationDelivery? existing = tracked.Deliveries.SingleOrDefault(row => row.ChannelId == expected.ChannelId);
+            if (existing is null)
+            {
+                expected.NotificationIntentId = tracked.Id;
+                expected.NotificationIntent = tracked;
+                if (expected.Notification is not null)
+                {
+                    expected.Notification.NotificationIntentId = tracked.Id;
+                    expected.Notification.NotificationIntent = tracked;
+                }
+
+                if (expected.EmailDispatchOutbox is not null)
+                {
+                    expected.EmailDispatchOutbox.NotificationIntentId = tracked.Id;
+                    expected.EmailDispatchOutbox.NotificationIntent = tracked;
+                }
+
+                tracked.Deliveries.Add(expected);
+                continue;
+            }
+
+            if (existing.NotificationId is null && expected.NotificationId is not null && expectedNotification is not null)
+            {
+                expectedNotification.NotificationIntentId = tracked.Id;
+                expectedNotification.NotificationIntent = tracked;
+                existing.NotificationId = expectedNotification.Id;
+                existing.Notification = expectedNotification;
+            }
+
+            if (existing.EmailDispatchOutboxId is null && expected.EmailDispatchOutboxId is not null && expectedEmail is not null)
+            {
+                expectedEmail.NotificationIntentId = tracked.Id;
+                expectedEmail.NotificationIntent = tracked;
+                existing.EmailDispatchOutboxId = expectedEmail.Id;
+                existing.EmailDispatchOutbox = expectedEmail;
+            }
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<NotificationExternalDelegation> AddExternalDelegationAsync(

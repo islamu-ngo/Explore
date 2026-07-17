@@ -26,6 +26,7 @@ public sealed class DefaultNotificationOrchestrator(
         cancellationToken.ThrowIfCancellationRequested();
 
         var tenantId = draft.TenantId ?? throw new InvalidOperationException("Notification tenant id is required.");
+        _ = draft.UserId ?? throw new InvalidOperationException("Notification recipient user id is required.");
         var templateKey = RequireNonEmpty(draft.TemplateKey, "Notification template key is required.");
         var deduplicationKey = RequireNonEmpty(draft.DeduplicationKey, "Notification deduplication key is required.");
 
@@ -88,7 +89,7 @@ public sealed class DefaultNotificationOrchestrator(
             SafePayloadReference = BlankToNull(draft.SafePayloadReference),
             SafePayloadHash = BlankToNull(draft.SafePayloadHash),
             CorrelationId = BlankToNull(draft.CorrelationId),
-            UserId = draft.UserId,
+            RecipientUserId = draft.UserId!.Value,
             EventId = draft.EventId,
             ReportId = draft.ReportId,
             ReportDecisionId = draft.ReportDecisionId,
@@ -102,9 +103,32 @@ public sealed class DefaultNotificationOrchestrator(
         {
             TenantId = tenantId,
             NotificationIntentId = intent.Id,
+            ChannelId = (int)Explore.Domain.Enums.NotificationPreferenceChannelEnum.InApp,
+            DeliveryPolicyId = ResolveDeliveryPolicy(intent.CategoryId),
+            IsRequired = true,
+            PolicyVersion = 1,
+            DisclosureLevel = "generic",
+            TemplateKey = intent.TemplateKey,
+            TemplateVersion = 1,
             StatusId = (int)DomainNotificationDeliveryStatus.Pending,
             QueuedAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow
+        };
+    }
+
+    private static int ResolveDeliveryPolicy(int categoryId)
+    {
+        return categoryId switch
+        {
+            (int)DomainNotificationCategory.RegistrationLifecycle =>
+                (int)Explore.Domain.Enums.NotificationDeliveryPolicyEnum.RegistrationStatusOptional,
+            (int)DomainNotificationCategory.EventLifecycle =>
+                (int)Explore.Domain.Enums.NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional,
+            (int)DomainNotificationCategory.TrustSafetyReporting =>
+                (int)Explore.Domain.Enums.NotificationDeliveryPolicyEnum.ReportCaseUpdate,
+            (int)DomainNotificationCategory.TrustSafetyModeration =>
+                (int)Explore.Domain.Enums.NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired,
+            _ => (int)Explore.Domain.Enums.NotificationDeliveryPolicyEnum.RegistrationStatusOptional
         };
     }
 
