@@ -87,8 +87,7 @@ public sealed class EmailDispatchTickerQJobsTests
                 publishEventId,
                 EventLifecycleAutomationUseCases.EventReminder,
                 EventId: Guid.CreateVersion7(),
-                RegistrationIntentId: Guid.CreateVersion7(),
-                UserId: Guid.CreateVersion7()));
+                RegistrationIntentId: Guid.CreateVersion7()));
 
         await jobs.DispatchEventReminderAsync(context, CancellationToken.None);
 
@@ -113,8 +112,7 @@ public sealed class EmailDispatchTickerQJobsTests
                 Guid.CreateVersion7(),
                 "unsupported",
                 EventId: Guid.CreateVersion7(),
-                RegistrationIntentId: Guid.CreateVersion7(),
-                UserId: Guid.CreateVersion7()));
+                RegistrationIntentId: Guid.CreateVersion7()));
 
         await jobs.DispatchEventReminderAsync(context, CancellationToken.None);
 
