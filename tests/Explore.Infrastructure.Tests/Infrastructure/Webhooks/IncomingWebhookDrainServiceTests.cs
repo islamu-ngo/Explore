@@ -1,9 +1,11 @@
 // ABOUTME: Verifies bounded concurrency and aggregate result reporting for incoming webhook batch drains.
 // ABOUTME: Uses claim-only repository doubles while exercising the real lease-aware drain coordinator.
 
+using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Services.Webhooks;
+using Explore.Application.Telemetry;
 using Explore.Infrastructure.Webhooks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -48,6 +50,50 @@ public sealed class IncomingWebhookDrainServiceTests
             Options.Create(settings),
             TimeProvider.System,
             NullLogger<IncomingWebhookDrainService>.Instance);
+
+        var result = await service.ProcessBatchAsync(CancellationToken.None);
+
+        await Assert.That(result.ClaimedCount).IsEqualTo(claims.Length);
+        await Assert.That(result.CompletedCount).IsEqualTo(claims.Length);
+        await Assert.That(result.LeaseLostCount).IsEqualTo(0);
+        await Assert.That(result.AuthorizationDeniedCount).IsEqualTo(0);
+        await Assert.That(result.FailedCount).IsEqualTo(0);
+        await Assert.That(executor.MaximumConcurrency).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task EffectProcessBatch_EnforcesConfiguredConcurrencyAndReportsEveryOutcome()
+    {
+        var claims = Enumerable.Range(0, 5)
+            .Select(_ => new IncomingWebhookEffectClaim(
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                1,
+                1))
+            .ToArray();
+        var repository = Substitute.For<IIncomingWebhookEffectOutboxRepository>();
+        repository.ClaimDueAsync(
+                Arg.Any<IncomingWebhookEffectClaimRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<IncomingWebhookEffectClaim>>(claims));
+        var executor = new EffectConcurrencyTrackingExecutor(expectedConcurrency: 2);
+
+        var services = new ServiceCollection();
+        services.AddSingleton(repository);
+        await using var provider = services.BuildServiceProvider();
+        var service = new IncomingWebhookEffectDrainService(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            executor,
+            Options.Create(new IncomingWebhookProcessingSettings
+            {
+                BatchSize = claims.Length,
+                MaxConcurrentItems = 2,
+                LeaseSeconds = 30
+            }),
+            TimeProvider.System,
+            CreateMetrics(),
+            NullLogger<IncomingWebhookEffectDrainService>.Instance);
 
         var result = await service.ProcessBatchAsync(CancellationToken.None);
 
@@ -105,5 +151,61 @@ public sealed class IncomingWebhookDrainServiceTests
                 current = observed;
             }
         }
+    }
+
+    private sealed class EffectConcurrencyTrackingExecutor(int expectedConcurrency)
+        : IIncomingWebhookEffectClaimExecutor
+    {
+        private readonly TaskCompletionSource _expectedConcurrencyReached =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _active;
+        private int _maximumConcurrency;
+
+        public int MaximumConcurrency => Volatile.Read(ref _maximumConcurrency);
+
+        public async Task<IncomingWebhookClaimExecutionResult> ExecuteAsync(
+            IncomingWebhookEffectClaim claim,
+            CancellationToken cancellationToken)
+        {
+            var active = Interlocked.Increment(ref _active);
+            UpdateMaximum(active);
+            if (active == expectedConcurrency)
+            {
+                _expectedConcurrencyReached.TrySetResult();
+            }
+
+            try
+            {
+                await _expectedConcurrencyReached.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
+                await Task.Delay(10, cancellationToken);
+                return IncomingWebhookClaimExecutionResult.Completed();
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _active);
+            }
+        }
+
+        private void UpdateMaximum(int candidate)
+        {
+            var current = Volatile.Read(ref _maximumConcurrency);
+            while (candidate > current)
+            {
+                var observed = Interlocked.CompareExchange(ref _maximumConcurrency, candidate, current);
+                if (observed == current)
+                {
+                    return;
+                }
+
+                current = observed;
+            }
+        }
+    }
+
+    private static BusinessMetrics CreateMetrics()
+    {
+        var meterFactory = Substitute.For<IMeterFactory>();
+        meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
+        return new BusinessMetrics(meterFactory);
     }
 }

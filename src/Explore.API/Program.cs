@@ -309,6 +309,7 @@ if (!isOpenApiGeneration)
     if (!builder.Environment.IsEnvironment("Testing") && incomingWebhookProcessingSettings.Enabled)
     {
         builder.Services.AddHostedService<IncomingWebhookProcessor>();
+        builder.Services.AddHostedService<IncomingWebhookEffectProcessor>();
     }
 
     if (!builder.Environment.IsEnvironment("Testing"))
@@ -426,6 +427,10 @@ builder.Services.AddHealthChecks()
         "webhook-local-delivery",
         failureStatus: HealthStatus.Unhealthy,
         tags: ["ready", "webhooks", "local", "infrastructure", "webhook-local-readiness"])
+    .AddCheck<IncomingWebhookEffectHealthCheck>(
+        "webhook-coop-effects",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "webhooks", "coop", "infrastructure", "webhook-coop-effect-readiness"])
     .AddCheck<SvixWebhookProviderHealthCheck>(
         "webhook-svix-provider",
         failureStatus: HealthStatus.Unhealthy,
@@ -691,6 +696,9 @@ app.MapHealthChecks(
 app.MapHealthChecks(
     "/health/webhooks/svix",
     CreateWebhookReadinessOptions("webhook-svix-readiness"));
+app.MapHealthChecks(
+    "/health/webhooks/coop-effects",
+    CreateWebhookReadinessOptions("webhook-coop-effect-readiness"));
 
 app.Run();
 

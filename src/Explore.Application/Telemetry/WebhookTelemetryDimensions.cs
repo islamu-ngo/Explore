@@ -6,7 +6,8 @@ namespace Explore.Application.Telemetry;
 public enum WebhookTelemetryProvider
 {
     Local = 1,
-    Svix = 2
+    Svix = 2,
+    Coop = 3
 }
 
 public enum WebhookTelemetryOperation
@@ -15,7 +16,8 @@ public enum WebhookTelemetryOperation
     Publication = 2,
     Reconciliation = 3,
     Recovery = 4,
-    Readiness = 5
+    Readiness = 5,
+    IncomingEffect = 6
 }
 
 public enum WebhookTelemetryOutcome
@@ -46,6 +48,7 @@ internal static class WebhookTelemetryDimensionCodes
     {
         WebhookTelemetryProvider.Local => "local",
         WebhookTelemetryProvider.Svix => "svix",
+        WebhookTelemetryProvider.Coop => "coop",
         _ => "unknown"
     };
 
@@ -56,6 +59,7 @@ internal static class WebhookTelemetryDimensionCodes
         WebhookTelemetryOperation.Reconciliation => "reconciliation",
         WebhookTelemetryOperation.Recovery => "recovery",
         WebhookTelemetryOperation.Readiness => "readiness",
+        WebhookTelemetryOperation.IncomingEffect => "incoming_effect",
         _ => "unknown"
     };
 

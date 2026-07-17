@@ -3,6 +3,7 @@
 
 using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Services.Webhooks;
 using Explore.Application.Telemetry;
 using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.HealthChecks;
@@ -97,6 +98,44 @@ public sealed class LocalWebhookDeliveryHealthCheckTests
         await Assert.That(result.Data["staleDeliveringTargets"]).IsEqualTo(1);
     }
 
+    [Test]
+    public async Task CoopEffectHealthCheck_WhenBacklogAtThreshold_ReturnsDegradedWithSafeCounts()
+    {
+        var repository = Substitute.For<IIncomingWebhookEffectOutboxRepository>();
+        repository.CountDueAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>()).Returns(10);
+        repository.CountStaleAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>()).Returns(0);
+        var healthCheck = CreateEffectHealthCheck(repository, new IncomingWebhookProcessingSettings
+        {
+            EffectBacklogWarningThreshold = 10,
+            EffectStaleLeaseWarningThreshold = 1
+        });
+
+        var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Degraded);
+        await Assert.That(result.Data["dueEffects"]).IsEqualTo(10);
+        await Assert.That(result.Data["staleLeases"]).IsEqualTo(0);
+        await Assert.That(result.Data.Keys).DoesNotContain("tenantId");
+        await Assert.That(result.Data.Keys).DoesNotContain("providerDecisionId");
+        await Assert.That(result.Data.Keys).DoesNotContain("payload");
+    }
+
+    [Test]
+    public async Task CoopEffectHealthCheck_WhenDisabled_ReturnsDegradedWithoutQueueQuery()
+    {
+        var repository = Substitute.For<IIncomingWebhookEffectOutboxRepository>();
+        var healthCheck = CreateEffectHealthCheck(repository, new IncomingWebhookProcessingSettings
+        {
+            Enabled = false
+        });
+
+        var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Degraded);
+        await repository.DidNotReceiveWithAnyArgs().CountDueAsync(default, default);
+        await repository.DidNotReceiveWithAnyArgs().CountStaleAsync(default, default);
+    }
+
     private static LocalWebhookDeliveryHealthCheck CreateHealthCheck(
         IWebhookLocalTargetRepository targetRepository,
         WebhookOptions webhookOptions,
@@ -110,6 +149,20 @@ public sealed class LocalWebhookDeliveryHealthCheckTests
             new StaticOptionsMonitor<WebhookOptions>(webhookOptions),
             serviceProvider.GetRequiredService<IServiceScopeFactory>(),
             CreateMetrics());
+    }
+
+    private static IncomingWebhookEffectHealthCheck CreateEffectHealthCheck(
+        IIncomingWebhookEffectOutboxRepository repository,
+        IncomingWebhookProcessingSettings settings)
+    {
+        var services = new ServiceCollection();
+        services.AddScoped(_ => repository);
+        var serviceProvider = services.BuildServiceProvider();
+        return new IncomingWebhookEffectHealthCheck(
+            Options.Create(settings),
+            serviceProvider.GetRequiredService<IServiceScopeFactory>(),
+            CreateMetrics(),
+            TimeProvider.System);
     }
 
     private static BusinessMetrics CreateMetrics()

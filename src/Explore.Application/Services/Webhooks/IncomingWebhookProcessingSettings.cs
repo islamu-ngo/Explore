@@ -31,4 +31,10 @@ public sealed class IncomingWebhookProcessingSettings
 
     [Range(1, 3600)]
     public int PollIntervalSeconds { get; set; } = 5;
+
+    [Range(1, 1000000)]
+    public int EffectBacklogWarningThreshold { get; set; } = 500;
+
+    [Range(1, 1000000)]
+    public int EffectStaleLeaseWarningThreshold { get; set; } = 1;
 }

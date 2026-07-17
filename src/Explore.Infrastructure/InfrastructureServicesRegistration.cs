@@ -232,6 +232,10 @@ public static class InfrastructureServicesRegistration
         services.AddSingleton<IIncomingWebhookClaimExecutor, IncomingWebhookTenantExecutor>();
         services.AddSingleton<IIncomingWebhookDrainService, IncomingWebhookDrainService>();
         services.AddScoped<IIncomingWebhookProcessingService, IncomingWebhookProcessingService>();
+        services.AddSingleton<IIncomingWebhookEffectClaimExecutor, IncomingWebhookEffectTenantExecutor>();
+        services.AddSingleton<IIncomingWebhookEffectDrainService, IncomingWebhookEffectDrainService>();
+        services.AddScoped<IIncomingWebhookEffectProcessingService, IncomingWebhookEffectProcessingService>();
+        services.AddScoped<IIncomingWebhookHandler, CoopDecisionIncomingWebhookHandler>();
         services.AddOptions<IncomingWebhookProcessingSettings>()
             .Bind(configuration.GetSection(IncomingWebhookProcessingSettings.SectionName))
             .ValidateDataAnnotations()
