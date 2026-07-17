@@ -185,7 +185,7 @@ public sealed class DefaultAccountAuthorityLifecycleEmailServiceTests
                 SafePayloadReference = draft.SafePayloadReference,
                 SafePayloadHash = draft.SafePayloadHash,
                 CorrelationId = draft.CorrelationId,
-                UserId = draft.UserId
+                RecipientUserId = draft.UserId!.Value
             };
             var delegation = new NotificationExternalDelegation
             {

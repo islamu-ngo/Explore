@@ -269,7 +269,7 @@ public sealed class KeycloakAccountAuthorityLifecycleEmailServiceTests
                 Status = null!,
                 TemplateKey = draft.TemplateKey ?? string.Empty,
                 DeduplicationKey = draft.DeduplicationKey ?? string.Empty,
-                UserId = draft.UserId
+                RecipientUserId = draft.UserId!.Value
             };
             var delegation = new NotificationExternalDelegation
             {
