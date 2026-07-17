@@ -1,7 +1,8 @@
 // ABOUTME: Unit tests for managed provider provisioning command semantics and authority boundaries.
-// ABOUTME: Verifies tenant-scoped admin grants, tenant-scoped actors, and optional organizer creation.
+// ABOUTME: Verifies tenant-scoped grants plus atomic managed-invitation delivery and failure rollback boundaries.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.ManagedProviderProvisioning;
@@ -11,6 +12,7 @@ using Explore.Application.Features.ManagedProviderProvisioning.Handlers.Commands
 using Explore.Application.Features.ManagedProviderProvisioning.Requests.Commands;
 using Explore.Application.Features.Management;
 using Explore.Application.Management;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -38,6 +40,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
     private readonly IGroupMemberRepository _groupMemberRepository;
     private readonly IExternalBindingRepository _externalBindingRepository;
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
+    private readonly IRecipientNotificationMaterializer _recipientNotificationMaterializer;
     private readonly IUnitOfWork _unitOfWork;
     private readonly EnsureManagedProviderClientProvisionedCommandHandler _handler;
 
@@ -57,6 +60,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
         _groupMemberRepository = Substitute.For<IGroupMemberRepository>();
         _externalBindingRepository = Substitute.For<IExternalBindingRepository>();
         _instanceBootstrapStateRepository = Substitute.For<IInstanceBootstrapStateRepository>();
+        _recipientNotificationMaterializer = Substitute.For<IRecipientNotificationMaterializer>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
 
         _unitOfWork
@@ -126,7 +130,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             Substitute.For<ITenantCapabilityRepository>(),
             tenantSettingRepository,
             Substitute.For<ITenantSettingsDocumentRepository>(),
-            Substitute.For<IEmailDispatchOutboxRepository>(),
+            _recipientNotificationMaterializer,
             Substitute.For<IAuditLogRepository>(),
             Substitute.For<ITenantBrandingSettingsDocumentProvisioningService>(),
             Substitute.For<ITypedSettingsDocumentResolver>(),
@@ -490,7 +494,12 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
     }
 
     [Test]
-    public async Task EnsureAsync_WithManagementRequest_AppliesBootstrapInsideLockedProvisionerTransaction()
+    [Arguments(false, false)]
+    [Arguments(true, false)]
+    [Arguments(false, true)]
+    public async Task EnsureAsync_WithManagementInvitation_MaterializesInsideLockedTransactionAndAbortsOnFailure(
+        bool materializationFails,
+        bool persistedAuthorityMismatch)
     {
         Guid operationId = Guid.CreateVersion7();
         Guid outboxMessageId = Guid.CreateVersion7();
@@ -536,7 +545,8 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
         var managedOptions = Microsoft.Extensions.Options.Options.Create(new ManagedControlPlaneOptions
         {
             Enabled = true,
-            MaximumTenantCount = 10
+            MaximumTenantCount = 10,
+            TenantAdministratorSignInUrl = new Uri("https://event.example.test/sign-in")
         });
         var mutationLock = new TrackingSettingMutationLock();
         var operationRepository = Substitute.For<IManagedTenantProvisioningOperationRepository>();
@@ -574,7 +584,6 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             .Returns(call => Task.FromResult(TenantBrandingSettingsDocumentDefaults.Create(
                 call.ArgAt<Guid>(0),
                 call.ArgAt<string?>(1))));
-        var emailRepository = Substitute.For<IEmailDispatchOutboxRepository>();
         var auditRepository = Substitute.For<IAuditLogRepository>();
         auditRepository.Create(Arg.Any<AuditLog>()).Returns(call => call.Arg<AuditLog>());
         var preflight = new ManagedTenantProvisioningPreflight(
@@ -606,7 +615,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             tenantCapabilityRepository,
             tenantSettingRepository,
             tenantSettingsDocumentRepository,
-            emailRepository,
+            _recipientNotificationMaterializer,
             auditRepository,
             brandingService,
             Substitute.For<ITypedSettingsDocumentResolver>(),
@@ -629,14 +638,11 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             TenantSlug = "erp-customer",
             Administrator = new ManagementTenantAdministratorDto
             {
-                ExternalIdentity = new ManagementTenantExternalIdentityDto
+                Invitation = new ManagementTenantAdministratorInvitationDto
                 {
-                    IdentityProvider = "keycloak",
-                    Subject = "external-admin-1",
-                    Email = "admin@example.com",
+                    Email = "admin.invite@example.com",
                     FirstName = "Amina",
-                    LastName = "Admin",
-                    EmailVerified = true
+                    LastName = "Admin"
                 }
             },
             Plan = new ManagementTenantPlanDto
@@ -648,11 +654,18 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             ApprovedModules = [],
             InitialSettings = [new("appearance.language", "\"en\"")]
         };
-        var provisioningDto = CreateValidDto(
-            providerKey: "islamu-event-control-plane",
-            externalSystem: "control-plane");
+        ManagedProviderClientProvisioningDto provisioningDto = CreateInvitationProvisioningDto(operationId);
         ManagementTenantProvisioningRequestDto normalizedRequest =
             ManagedTenantProvisioningRequestCodec.Normalize(managementRequest);
+        string persistedRequestJson = ManagedTenantProvisioningRequestCodec.Serialize(normalizedRequest);
+        if (persistedAuthorityMismatch)
+        {
+            persistedRequestJson = persistedRequestJson.Replace(
+                "admin.invite@example.com",
+                "different-admin@example.com",
+                StringComparison.Ordinal);
+        }
+
         Guid managedInstanceId = Guid.CreateVersion7();
         operationRepository.GetByIdAsNoTrackingAsync(operationId, Arg.Any<CancellationToken>())
             .Returns(new ManagedTenantProvisioningOperation
@@ -662,12 +675,67 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
                 ExternalRequestId = normalizedRequest.ExternalRequestId,
                 ExternalCustomerReference = normalizedRequest.ExternalCustomerReference,
                 RequestHash = ManagedTenantProvisioningRequestCodec.ComputeHash(normalizedRequest),
-                RequestJson = ManagedTenantProvisioningRequestCodec.Serialize(normalizedRequest),
+                RequestJson = persistedRequestJson,
                 TenantSlug = normalizedRequest.TenantSlug,
                 CurrentOutboxMessageId = outboxMessageId,
                 Status = ManagedTenantProvisioningStatus.Processing,
                 CreatedAt = DateTime.UtcNow
             });
+        if (persistedAuthorityMismatch)
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() => handler.EnsureAsync(
+                provisioningDto,
+                managementRequest,
+                operationId,
+                outboxMessageId,
+                CancellationToken.None));
+
+            await operationRepository.DidNotReceive().TryCompleteAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<DateTime>(),
+                Arg.Any<CancellationToken>());
+            await auditRepository.DidNotReceive().Create(Arg.Any<AuditLog>());
+            await _recipientNotificationMaterializer.DidNotReceive().MaterializeInCurrentTransactionAsync(
+                Arg.Any<RecipientNotificationMaterialization>(),
+                Arg.Any<CancellationToken>());
+            return;
+        }
+
+        if (materializationFails)
+        {
+            _recipientNotificationMaterializer
+                .MaterializeInCurrentTransactionAsync(
+                    Arg.Any<RecipientNotificationMaterialization>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<RecipientNotificationMaterializationResult>(
+                    new InvalidOperationException("Injected materialization failure.")));
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => handler.EnsureAsync(
+                provisioningDto,
+                managementRequest,
+                operationId,
+                outboxMessageId,
+                CancellationToken.None));
+
+            await operationRepository.DidNotReceive().TryCompleteAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<DateTime>(),
+                Arg.Any<CancellationToken>());
+            await auditRepository.DidNotReceive().Create(Arg.Any<AuditLog>());
+            await _recipientNotificationMaterializer.Received(1).MaterializeInCurrentTransactionAsync(
+                Arg.Any<RecipientNotificationMaterialization>(),
+                Arg.Any<CancellationToken>());
+            await _recipientNotificationMaterializer.DidNotReceive().MaterializeAsync(
+                Arg.Any<RecipientNotificationMaterialization>(),
+                Arg.Any<CancellationToken>());
+            return;
+        }
 
         BaseCommandResponse<ManagedProviderClientProvisioningResultDto> result = await handler.EnsureAsync(
             provisioningDto,
@@ -700,6 +768,32 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
                 && audit.NewValues != null
                 && audit.NewValues.Contains(operationId.ToString("D"), StringComparison.Ordinal)
                 && audit.NewValues.Contains(managedInstanceId.ToString("D"), StringComparison.Ordinal)));
+        await _recipientNotificationMaterializer.Received(1).MaterializeInCurrentTransactionAsync(
+            Arg.Is<RecipientNotificationMaterialization>(materialization =>
+                materialization.IntentId != Guid.Empty
+                && materialization.Intent.Category == Explore.Application.Notifications.NotificationCategory.ProductLifecycle
+                && materialization.Intent.TenantId == result.Id!.TenantId
+                && materialization.Intent.UserId == result.Id.UserId
+                && materialization.Intent.RecipientKind == "TenantAdmin"
+                && materialization.Intent.TemplateKey == "tenant-administrator-invitation"
+                && materialization.Intent.DeduplicationKey == $"managed-tenant-provisioning:{operationId:D}:tenant-administrator-invitation"
+                && materialization.DeliveryPolicy == NotificationDeliveryPolicyEnum.TenantAdministrationRequired
+                && materialization.IncludeEmailChannel
+                && materialization.EmailRequired
+                && materialization.InApp == null
+                && materialization.Email != null
+                && materialization.Email.TenantId == result.Id.TenantId
+                && materialization.Email.Kind == EmailDispatchKind.TenantAdministratorInvitation
+                && materialization.Email.SourceType == "managed_tenant_provisioning"
+                && materialization.Email.SourceId == operationId
+                && materialization.Email.RecipientUserId == result.Id.UserId
+                && materialization.Email.RecipientAddressSource == RecipientAddressSource.ManagedTenantAdministratorInvitation
+                && materialization.Email.ManagedTenantProvisioningOperationId == operationId
+                && materialization.Email.RecipientEmail == "admin.invite@example.com"),
+            Arg.Any<CancellationToken>());
+        await _recipientNotificationMaterializer.DidNotReceive().MaterializeAsync(
+            Arg.Any<RecipientNotificationMaterialization>(),
+            Arg.Any<CancellationToken>());
         await _externalBindingRepository.Received(1).Create(
             Arg.Is<ExternalBinding>(binding =>
                 binding.ExternalType == ExternalBindingTypes.External.ManagedTenantProvisioningOperation
@@ -709,7 +803,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
     }
 
     [Test]
-    public async Task HandlerConstructor_DoesNotDependOnPlatformRoleRepository()
+    public async Task HandlerConstructor_UsesRecipientMaterializerWithoutPlatformRoleOrDirectEmailRepository()
     {
         var constructorParameterTypes = typeof(EnsureManagedProviderClientProvisionedCommandHandler)
             .GetConstructors()
@@ -719,6 +813,8 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             .ToList();
 
         await Assert.That(constructorParameterTypes).DoesNotContain(typeof(IPlatformUserRoleRepository));
+        await Assert.That(constructorParameterTypes).Contains(typeof(IRecipientNotificationMaterializer));
+        await Assert.That(constructorParameterTypes).DoesNotContain(typeof(IEmailDispatchOutboxRepository));
     }
 
     private static ManagedProviderClientProvisioningDto CreateValidDto(
@@ -744,6 +840,25 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             },
             Organizer = organizer
         };
+
+    private static ManagedProviderClientProvisioningDto CreateInvitationProvisioningDto(Guid operationId) => new()
+    {
+        ProviderKey = "islamu-event-control-plane",
+        ExternalSystem = "control-plane",
+        ExternalCustomerId = "customer-123",
+        TenantFullName = "ERP Customer",
+        TenantSlug = "erp-customer",
+        ActivateTenant = true,
+        ExternalAdmin = new ManagedProviderExternalAdminDto
+        {
+            IdentityProvider = "managed-invitation",
+            Subject = operationId.ToString("D"),
+            Email = "admin.invite@example.com",
+            FirstName = "Amina",
+            LastName = "Admin",
+            EmailVerified = false
+        }
+    };
 
     private sealed class ImmediateSettingMutationLock : ISettingMutationLock
     {

@@ -1,9 +1,10 @@
 // ABOUTME: Application-layer orchestration for provider-provisioned tenant, user actor, and tenant-admin role grant creation.
-// ABOUTME: Uses tenant-scoped role grants and optional organizer actors without granting platform/instance administrator roles.
+// ABOUTME: Keeps tenant roles, optional organizers, and required invitation delivery in one managed-provisioning transaction.
 
 using System.Net;
 using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.ManagedProviderProvisioning;
@@ -14,6 +15,7 @@ using Explore.Application.Features.ManagedProviderProvisioning;
 using Explore.Application.Features.ManagedProviderProvisioning.Requests.Commands;
 using Explore.Application.Features.Management;
 using Explore.Application.Management;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -47,7 +49,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
     ITenantCapabilityRepository tenantCapabilityRepository,
     ITenantSettingRepository tenantSettingRepository,
     ITenantSettingsDocumentRepository tenantSettingsDocumentRepository,
-    IEmailDispatchOutboxRepository emailDispatchOutboxRepository,
+    IRecipientNotificationMaterializer recipientNotificationMaterializer,
     IAuditLogRepository auditLogRepository,
     ITenantBrandingSettingsDocumentProvisioningService brandingProvisioningService,
     ITypedSettingsDocumentResolver typedSettingsDocumentResolver,
@@ -228,6 +230,12 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         var organizerId = dto.Organizer == null ? (Guid?)null : Guid.CreateVersion7();
         var organizerActorId = dto.Organizer == null ? (Guid?)null : Guid.CreateVersion7();
         var organizerMembershipId = dto.Organizer == null ? (Guid?)null : Guid.CreateVersion7();
+        var tenantAdministratorInvitationIntentId = managementRequest?.Administrator.Invitation is null
+            ? (Guid?)null
+            : Guid.CreateVersion7();
+        var tenantAdministratorInvitationEmailId = managementRequest?.Administrator.Invitation is null
+            ? (Guid?)null
+            : Guid.CreateVersion7();
 
         async Task<ManagedProviderClientProvisioningResultDto> ProvisionAsync(CancellationToken ct)
         {
@@ -385,6 +393,9 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
                     resolvedBootstrap,
                     operationId!.Value,
                     managedOperation!.ManagedInstanceId,
+                    tenantAdministratorInvitationIntentId,
+                    tenantAdministratorInvitationEmailId,
+                    ResolvePersistedInvitationEmail(managedOperation),
                     tenant,
                     user,
                     ct);
@@ -880,6 +891,9 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         ManagedTenantProvisioningResolvedBootstrap bootstrap,
         Guid operationId,
         Guid managedInstanceId,
+        Guid? tenantAdministratorInvitationIntentId,
+        Guid? tenantAdministratorInvitationEmailId,
+        string? tenantAdministratorInvitationEmail,
         Tenant tenant,
         User administrator,
         CancellationToken cancellationToken)
@@ -957,23 +971,58 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
             Uri signInUrl = managedControlPlaneOptions.Value.TenantAdministratorSignInUrl
                 ?? throw new InvalidOperationException("Tenant administrator sign-in URL is unavailable after preflight.");
             string encodedUrl = WebUtility.HtmlEncode(signInUrl.AbsoluteUri);
-            await emailDispatchOutboxRepository.Create(
-                new EmailDispatchOutbox
-                {
-                    Id = Guid.CreateVersion7(),
-                    TenantId = tenant.Id,
-                    Kind = EmailDispatchKind.TenantAdministratorInvitation,
-                    SourceType = "managed_tenant_provisioning",
-                    SourceId = operationId,
-                    UserId = administrator.Id,
-                    RecipientEmail = request.Administrator.Invitation.Email,
-                    Subject = $"Administrator invitation for {tenant.FullName}",
-                    PlainTextBody = $"Assalamu alaykum,\n\nYou have been invited to administer {tenant.FullName}. Sign in with this verified email address: {signInUrl.AbsoluteUri}\n\nEvent Platform",
-                    HtmlBody = $"<p>Assalamu alaykum,</p><p>You have been invited to administer {WebUtility.HtmlEncode(tenant.FullName)}.</p><p><a href=\"{encodedUrl}\">Sign in to Event</a> with this verified email address.</p><p>Event Platform</p>",
-                    CorrelationId = operationId.ToString("D"),
-                    CreatedAt = now,
-                    CreatedBy = null
-                },
+            Guid intentId = tenantAdministratorInvitationIntentId
+                ?? throw new InvalidOperationException("Tenant administrator invitation intent identity is missing.");
+            Guid emailId = tenantAdministratorInvitationEmailId
+                ?? throw new InvalidOperationException("Tenant administrator invitation email identity is missing.");
+            string recipientEmail = tenantAdministratorInvitationEmail
+                ?? throw new InvalidOperationException("Persisted tenant administrator invitation authority is missing.");
+            if (!string.Equals(
+                    recipientEmail,
+                    request.Administrator.Invitation.Email,
+                    StringComparison.Ordinal)
+                || !string.Equals(recipientEmail, administrator.Pii.Email, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "Persisted tenant administrator invitation authority does not match the provisioned recipient.");
+            }
+
+            await recipientNotificationMaterializer.MaterializeInCurrentTransactionAsync(
+                new RecipientNotificationMaterialization(
+                    IntentId: intentId,
+                    Intent: new NotificationIntentDraft(
+                        Explore.Application.Notifications.NotificationCategory.ProductLifecycle,
+                        TenantId: tenant.Id,
+                        RecipientKind: nameof(NotificationRecipientKindEnum.TenantAdmin),
+                        TemplateKey: "tenant-administrator-invitation",
+                        SafePayloadReference: operationId.ToString("D"),
+                        DeduplicationKey: $"managed-tenant-provisioning:{operationId:D}:tenant-administrator-invitation",
+                        CorrelationId: operationId.ToString("D"),
+                        UserId: administrator.Id),
+                    DeliveryPolicy: NotificationDeliveryPolicyEnum.TenantAdministrationRequired,
+                    DisclosureLevel: "generic",
+                    InApp: null,
+                    Email: new EmailDispatchOutbox
+                    {
+                        Id = emailId,
+                        TenantId = tenant.Id,
+                        Kind = EmailDispatchKind.TenantAdministratorInvitation,
+                        SourceType = "managed_tenant_provisioning",
+                        SourceId = operationId,
+                        RecipientUserId = administrator.Id,
+                        RecipientAddressSource = RecipientAddressSource.ManagedTenantAdministratorInvitation,
+                        ManagedTenantProvisioningOperationId = operationId,
+                        RecipientEmail = recipientEmail,
+                        Subject = $"Administrator invitation for {tenant.FullName}",
+                        PlainTextBody = $"Assalamu alaykum,\n\nYou have been invited to administer {tenant.FullName}. Sign in with this verified email address: {signInUrl.AbsoluteUri}\n\nEvent Platform",
+                        HtmlBody = $"<p>Assalamu alaykum,</p><p>You have been invited to administer {WebUtility.HtmlEncode(tenant.FullName)}.</p><p><a href=\"{encodedUrl}\">Sign in to Event</a> with this verified email address.</p><p>Event Platform</p>",
+                        CorrelationId = operationId.ToString("D"),
+                        CreatedAt = now,
+                        CreatedBy = null
+                    },
+                    IncludeEmailChannel: true,
+                    EmailRequired: true,
+                    LinkAllowed: true),
                 cancellationToken);
         }
 
@@ -1234,6 +1283,17 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
             expected.ExternalCustomerReference,
             StringComparison.Ordinal)
         && string.Equals(current.TenantSlug, expected.TenantSlug, StringComparison.Ordinal);
+
+    private static string? ResolvePersistedInvitationEmail(ManagedTenantProvisioningOperation operation)
+    {
+        if (string.IsNullOrWhiteSpace(operation.RequestJson))
+        {
+            return null;
+        }
+
+        return ManagedTenantProvisioningRequestCodec.Deserialize(operation.RequestJson)
+            .Administrator.Invitation?.Email;
+    }
 
     private static string ResolveDisplayName(ManagedProviderExternalAdminDto admin)
     {
