@@ -289,15 +289,57 @@ public class EmailDispatchOutboxRepositoryBypassTests(PostgreSqlContainerFixture
         EmailDispatchStatus status,
         DateTime createdAt)
     {
-        return new EmailDispatchOutbox
+        var user = new User
+        {
+            Id = Guid.CreateVersion7(),
+            Pii = new UserPii
+            {
+                Email = $"{key}@example.test",
+                FirstName = "Email",
+                LastName = "Recipient",
+            },
+            EmailVerified = true,
+            CreatedAt = createdAt,
+        };
+        var tenantUser = new TenantUser
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            Tenant = null!,
+            UserId = user.Id,
+            User = user,
+            StatusId = (int)TenantUserStatusEnum.Active,
+            JoinedAt = createdAt,
+            CreatedAt = createdAt,
+        };
+        var intent = new NotificationIntent
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            CategoryId = (int)NotificationCategoryEnum.RegistrationLifecycle,
+            OwnershipTypeId = (int)NotificationOwnershipTypeEnum.IslamuEvent,
+            RecipientKindId = (int)NotificationRecipientKindEnum.User,
+            StatusId = (int)NotificationIntentStatusEnum.DispatchQueued,
+            TemplateKey = "registration.confirmed",
+            DeduplicationKey = $"email-dispatch-bypass:{key}:{Guid.CreateVersion7():N}",
+            RecipientUserId = user.Id,
+            RecipientTenantUser = tenantUser,
+            CreatedAt = createdAt,
+        };
+        var dispatch = new EmailDispatchOutbox
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenantId,
             PublishEventId = Guid.CreateVersion7(),
             Kind = EmailDispatchKind.RegistrationConfirmation,
-            SourceType = "event_registration_intent",
-            SourceId = Guid.CreateVersion7(),
-            RecipientEmail = $"{key}@example.test",
+            SourceType = "notification_intent",
+            SourceId = intent.Id,
+            NotificationIntentId = intent.Id,
+            NotificationIntent = intent,
+            RecipientUserId = user.Id,
+            RecipientTenantUser = tenantUser,
+            RecipientAddressSource = RecipientAddressSource.TenantUserVerifiedEmail,
+            RecipientEmail = user.Email,
             Subject = $"Email dispatch {key}",
             PlainTextBody = "plain body",
             HtmlBody = "<p>html body</p>",
@@ -314,6 +356,40 @@ public class EmailDispatchOutboxRepositoryBypassTests(PostgreSqlContainerFixture
             CreatedAt = createdAt,
             UpdatedAt = createdAt,
         };
+        intent.Deliveries.Add(new NotificationDelivery
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            NotificationIntentId = intent.Id,
+            NotificationIntent = intent,
+            ChannelId = (int)NotificationPreferenceChannelEnum.Email,
+            DeliveryPolicyId = (int)NotificationDeliveryPolicyEnum.RegistrationStatusOptional,
+            IsRequired = false,
+            PolicyVersion = 1,
+            RecipientAddressSource = RecipientAddressSource.TenantUserVerifiedEmail,
+            DisclosureLevel = "standard",
+            TemplateKey = intent.TemplateKey,
+            TemplateVersion = 1,
+            LinkAllowed = false,
+            EmailDispatchOutboxId = dispatch.Id,
+            EmailDispatchOutbox = dispatch,
+            StatusId = status switch
+            {
+                EmailDispatchStatus.Sent => (int)NotificationDeliveryStatusEnum.Delivered,
+                EmailDispatchStatus.DeadLettered => (int)NotificationDeliveryStatusEnum.DeadLettered,
+                EmailDispatchStatus.Parked => (int)NotificationDeliveryStatusEnum.Parked,
+                EmailDispatchStatus.Unknown => (int)NotificationDeliveryStatusEnum.Unknown,
+                EmailDispatchStatus.Skipped => (int)NotificationDeliveryStatusEnum.Skipped,
+                _ => (int)NotificationDeliveryStatusEnum.Queued,
+            },
+            QueuedAt = createdAt,
+            CompletedAt = status is EmailDispatchStatus.Sent or EmailDispatchStatus.Skipped
+                ? createdAt
+                : null,
+            CreatedAt = createdAt,
+        });
+
+        return dispatch;
     }
 
     private static EmailDispatchTenantControl CreateTenantControl(Guid tenantId, bool isPaused, DateTime now)
