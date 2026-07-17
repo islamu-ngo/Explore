@@ -257,6 +257,7 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(EventLightModeratedNotificationFanoutRequested))]
 [JsonSerializable(typeof(EventModerationHistoryDto))]
 [JsonSerializable(typeof(EventPublishedNotificationFanoutRequested))]
+[JsonSerializable(typeof(NotificationFanoutOccurrenceRequested))]
 [JsonSerializable(typeof(EventProgramDayGroupDto))]
 [JsonSerializable(typeof(EventProgramItemDto))]
 [JsonSerializable(typeof(EventProgramReadinessWarningDto))]
