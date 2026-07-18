@@ -42,6 +42,14 @@ public sealed class ParkEmailDispatchCommandHandler : IRequestHandler<ParkEmailD
                 ["Email dispatch outbox row was not found."]);
         }
 
+        if (dispatch.ContentRedactedAt is not null)
+        {
+            return Failure(
+                "Redacted email dispatch rows cannot be parked.",
+                EmailDispatchFailureCodes.InvalidTransition,
+                ["Redacted email dispatch rows cannot be parked."]);
+        }
+
         if (dispatch.Status == EmailDispatchStatus.Sent)
         {
             return Failure(

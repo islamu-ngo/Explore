@@ -1,18 +1,18 @@
 // ABOUTME: API readiness health check for launch-critical SMTP connectivity.
-// ABOUTME: Uses the configured email abstraction so SMTP behavior stays behind Infrastructure contracts.
+// ABOUTME: Uses the narrow diagnostic contract so SMTP transport stays behind Infrastructure.
 
 using Explore.Application.Contracts.Infrastructure;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Explore.API.HealthChecks;
 
-public sealed class SmtpHealthCheck(IEmailService emailService) : IHealthCheck
+public sealed class SmtpHealthCheck(IEmailConnectionTester connectionTester) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
-        var result = await emailService.TestConnectionAsync(cancellationToken).ConfigureAwait(false);
+        var result = await connectionTester.TestConnectionAsync(cancellationToken).ConfigureAwait(false);
         var data = new Dictionary<string, object>
         {
             ["durationMs"] = result.Duration.TotalMilliseconds

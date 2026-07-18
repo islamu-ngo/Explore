@@ -3,11 +3,11 @@
 
 # Email Lifecycle Delivery Context
 
-> **Status:** Approved — Phase 0A and Task 0.5 complete; Tasks 0.6–0.7 provisionally ready for independent verification
-> **Last Updated:** 2026-07-17 Europe/Brussels
-> **Progress:** 5/43 tasks complete
-> **Current phase:** Phase 0B Coop correctness and Phase 1 recipient delivery (independent)
-> **Next tasks:** independently verify 0.6–0.7 after the shared Phase 1 Stage C migration; continue the 1.1–1.3 dependency checkpoint
+> **Status:** Re-baselined in implementation — committed foundations plus preserved main-checkout Task 1.5/1.6 work
+> **Last Updated:** 2026-07-18 Europe/Brussels
+> **Progress:** 20/50 implementation tasks complete; phase verification remains separate
+> **Current phase:** finish Phase 1 operational safety, then Phase 3 fanout execution
+> **Next task:** 1.6a SMTP capability boundary; then 1.6b–1.6d and 3.4a
 
 ## Objective
 
@@ -15,7 +15,11 @@ Finish transactional product email for registration transitions, critical event/
 
 ## Resume Brief
 
-The user accepted the Senior CTO corrections. Tasks 0.1-0.5 are complete. Tasks 0.6-0.7 are implemented and provisionally verified but remain unchecked until an independent verifier can rerun the two full gates currently blocked by the concurrent, intentionally unmigrated Phase 1 recipient model. The unfinished independent confirmation blocks only Task 5.9 provider convergence.
+The user accepted the Senior CTO corrections. Tasks 0.1–0.7, 1.1–1.5, 2.1–2.5, and 3.1–3.3 are implementation-complete. The explicit recipient-delivery migration and fanout foundations are committed. Task 1.5 retention/redaction and partial Task 1.6 fairness/telemetry changes are present only as preserved main-checkout changes. Full build, PostgreSQL retention runtime, and explicit Mailpit verification remain open; this affects phase evidence, not the implementation task checkboxes.
+
+Task 1.4 added cancellation/revocation preference and unsubscribe mapping while keeping `ReportCaseUpdate` deliberately fail-closed until Task 5.1 introduces distinct case-update consent. Task 1.5 added bounded/dry-runnable parent-aware redaction, explicit resolve-without-replay, the single permanent `ContentRedactedAt` fence, immediate purged-tenant suppression, and migration/schema/operator documentation. Task 1.6 is now split into four reviewable slices because the checkout already contains partial fair selection, concurrency, rate, backlog, metrics, health, and architecture-guard work.
+
+All remaining work must be performed in the main repository checkout. Do not create linked worktrees or a `.worktrees` directory for this workstream.
 
 The revised core is:
 
@@ -25,31 +29,30 @@ NotificationDelivery = one channel decision and outcome
 EmailDispatchOutbox = durable SMTP execution state
 ```
 
-Add a real EF relationship and migration. New email rows keep independent IDs and carry `NotificationIntentId` plus `RecipientUserId`. Delivery rows identify channel and explicit delivery policy. One recipient operation atomically creates the intent, configured channel rows, in-app notification, and email outbox row.
+The real EF relationships and migration are committed. New email rows keep independent IDs and carry `NotificationIntentId` plus `RecipientUserId`. Delivery rows identify channel and explicit delivery policy. One recipient operation atomically creates the intent, configured channel rows, in-app notification, and email outbox row.
 
-High fanout uses an immutable `NotificationFanoutOccurrence` with an audience cutoff and before/after snapshot. `NotificationFanoutRun` remains mutable execution/checkpoint state. The worker never recreates an old change from current event/session data.
+High-fanout occurrence, audience, and lease/checkpoint persistence are committed. The remaining worker must consume `NotificationFanoutOccurrence` pointers and must never recreate an old change from current event/session data.
 
 Reporter consent must split into case updates and follow-up contact, with an authenticated HAL-controlled withdrawal endpoint. `Reporting:CaseSlaHours` is the only SLA source; receipt copy says normally within the configured hours, not configurable business days.
 
-Coop’s missing incoming-webhook route is a production defect independent of email. Tasks 0.5–0.7 form a separately reviewed prerequisite and must be complete before Phase 5 source convergence. Osprey remains signal-only.
+Coop’s former incoming-webhook routing defect is repaired by Tasks 0.5–0.7. Fresh full API verification remains required before Phase 5 source convergence. Osprey remains signal-only.
 
 ## Verified Repository Facts
 
 - `SmtpEmailService` uses MailKit; Aspire starts Mailpit in local profiles.
 - `EmailDispatchOutbox` is already the PostgreSQL SMTP ledger with claims, attempts, receipts, retry, unknown, dead-letter, park/replay, and tenant pause.
 - TickerQ and RabbitMQ are pointer/wake-up mechanisms; they are not business authorities.
-- `NotificationIntent` has tenant/dedup uniqueness.
-- `NotificationDelivery` currently links intent to optional email outbox but has no channel, policy, in-app notification link, or unique channel constraint.
-- `EmailDispatchOutbox` currently has `UserId`, no `NotificationIntentId`, and uniqueness on `(TenantId, SourceType, SourceId, Kind)`.
-- `DefaultNotificationOrchestrator` creates intent/delivery audit state but does not atomically create the SMTP row.
-- registration confirmation and tenant-administrator invitation are live email flows.
-- registration intent/registration repositories currently own serializable transactions; `EfCoreUnitOfWork` explicitly rejects nested transactions.
+- `NotificationIntent`, `NotificationDelivery`, and `EmailDispatchOutbox` now have explicit tenant/intent/recipient relationships, stable channel/policy snapshots, and tenant-safe uniqueness/FKs through migration `20260717131038_NormalizeRecipientNotificationDelivery`.
+- `RecipientNotificationMaterializer` atomically creates intent, in-app delivery, email delivery, `Notification`, and SMTP outbox rows; exact deduplication conflicts recover only after rollback in a fresh UoW.
+- `EmailDispatchEligibilityEvaluator` refreshes current verified addresses, validates managed-invitation authority, preferences, supported policy, membership, tenant state, and superseded delivery state, then establishes the provider-handoff fence.
+- registration confirmation, approval, rejection, waitlist promotion, self-cancellation, organizer/system revocation, scheduled reminder materialization, and tenant-administrator invitation all use the atomic primitive.
+- registration create/update/delete handlers own serializable `IUnitOfWork` boundaries and repositories return explicit transition results without owning commits or notification entities.
 - event/session cancellation and schedule/location/timezone handlers do not enqueue attendee email.
-- current event-wide fanout includes parent statuses `Pending`, `Approved`, and `Waitlisted`, but has only a user-ID cursor and no audience cutoff/session coverage lease.
+- `NotificationFanoutOccurrence`, compound audience queries, `CoverageEstablishedAt`, and fenced `NotificationFanoutRun` lease/checkpoint persistence are implemented; the dispatcher/recipient worker, supersession/coalescing, and fair scheduling are not.
 - `EventReport.ReporterContactConsent` and the dialog label cover only contact when more context is needed.
 - My Reports already has authenticated list/detail API, HAL policies, Blazor page, and generated NSwag contracts suitable for consent withdrawal.
 - `ExecuteReportDecisionCommandHandler` is the safe post-enforcement notification seam.
-- Coop callbacks require a signed nonblank `ProviderDecisionId`; `CoopDecisionIncomingWebhookHandler` atomically persists one tenant-safe `IncomingWebhookEffectOutbox` pointer and settles intake without an applied-effect receipt. A fenced, renewable-lease worker now revalidates the retained callback, invokes `ProcessCoopDecisionCallbackCommand` outside intake, and commits the receipt plus pointer completion only after command success.
+- Coop callbacks require a signed nonblank `ProviderDecisionId`; `CoopDecisionIncomingWebhookHandler` atomically persists one tenant-safe `IncomingWebhookEffectOutbox` pointer and settles intake without an applied-effect receipt. The fenced renewable-lease worker, retry/dead-letter path, health/metrics, retention ordering, and authenticated HAL inspection/redrive are implemented.
 - Osprey callbacks record signals and may raise review priority; they do not decide or enforce.
 - `docs/OPERATIONS.md` targets 180-day retention after email evidence is resolved, with unresolved failure evidence kept until operator resolution.
 - All document paths referenced by the revised plan, including `docs/SECURITY-MODEL.md`, `docs/EMAIL_NOTIFICATIONS.md`, provider docs, and `schemas/islamu-event.md`, exist in the current checkout.
@@ -79,7 +82,7 @@ Coop’s missing incoming-webhook route is a production defect independent of em
 21. Receipt copy derives only from `Reporting:CaseSlaHours` (default 48). No business-day settings are introduced.
 22. Local API and enabled Coop decisions converge on `ExecuteReportDecisionCommandHandler`; failed enforcement, escalation, and Osprey signals create no final email.
 23. Heavy moderation creates required in-app and required operational email when a verified address exists. Light-moderation email is deferred.
-24. Sent/skipped content is redacted after 180 days; unresolved rows retain replay material until resolution, then use the same window. Redacted work cannot replay.
+24. Sent/ordinary-skipped content is redacted after 180 days. Dead-lettered/unknown/parked rows retain replay material until successful replay or explicit resolve-without-replay; explicit resolution redacts immediately. `ContentRedactedAt` is the single permanent replay fence.
 25. Multi-tenant fairness, backpressure, SMTP rate limiting, metrics, alerts, cleanup, pause, inspect, and replay controls are release requirements.
 26. New user-addressed relationships use tenant-aware alternate/candidate keys and composite `TenantUser` FKs; no bare global-user relationship is authoritative.
 27. Recipient authority is explicit and limited to `TenantUserVerifiedEmail` or authorization-bound `ManagedTenantAdministratorInvitation`. The pre-1.0 migration resets old delivery ledgers instead of inventing a legacy recipient authority; arbitrary non-user delivery is not added.
@@ -133,55 +136,35 @@ Tasks 0.5–0.7 are an independently reviewed and merged correctness prerequisit
 - callback, pointer, and dispatcher replay remain idempotent;
 - the effect pointer completes only after the Coop command succeeds.
 
-Task 0.5 is complete and independently confirmed. It added the specialized pointer entity/configuration/repository, concrete incoming handler, explicit `PointerPersisted` intake outcome, signed provider-ID requirement, payload-retention guard, reversible migration `20260717104030_AddIncomingWebhookEffectOutbox`, schema parity, and focused API/PostgreSQL tests. Tasks 0.6 and 0.7 now implement the fenced consumer, clean receipt recovery, bounded retry/dead-letter, replay-safe retention, health/metrics, and authenticated HAL inspection/redrive. They remain open only because independent verification and the full Phase 0B gate are deferred until Phase 1 Stage C restores the shared PostgreSQL/API test schema.
+Tasks 0.5–0.7 are implementation-complete. They provide the specialized pointer entity/configuration/repository, concrete incoming handler, explicit `PointerPersisted` intake outcome, signed provider-ID requirement, payload-retention guard, fenced consumer, clean receipt recovery, bounded retry/dead-letter, replay-safe retention, health/metrics, and authenticated HAL inspection/redrive. The recipient-delivery schema blocker has been removed; only the fresh full API phase evidence remains open.
 
 If this prerequisite is disabled or incomplete, local reporting email may proceed, but Coop decision email remains disabled and documentation must say so.
 
-## Approved Phase 1 Dependency Checkpoint
+## Completed Phase 1 Dependency Checkpoint
 
-Tasks 1.1–1.3 are one staged pre-1.0 transition. Stage A adds the explicit recipient-delivery relationship model and contracts. Stage B implements the atomic materializer and migrates all current writers—registration, reminder scheduling, and managed administrator invitations—to the new primitive. Stage C transactionally resets only the six obsolete notification/email delivery ledgers, preserves inbox notifications and unrelated event/registration/report/audit/settings data, and installs the required relationships after every writer is migrated. Down restores the old empty schema and lookup codes but cannot reconstruct intentionally deleted delivery rows. The three tasks share one verification/checkpoint so no partially migrated schema is treated as the final invariant.
+Tasks 1.1–1.3 completed the staged pre-1.0 transition. The relationship model/contracts, atomic materializer, registration/reminder/admin-invitation writer migration, exact fresh-transaction dedup recovery, provider-handoff settlement, and transactionally bounded six-ledger reset are committed. Inbox notifications and unrelated event/registration/report/audit/settings data remain preserved. Down restores the old empty schema and lookup codes but cannot reconstruct intentionally deleted delivery rows.
 
-## Likely File Map
+## Key File Map
 
-Existing areas to modify:
+Implemented foundations:
 
-- `src/Explore.Domain/NotificationIntent.cs`
-- `src/Explore.Domain/NotificationDelivery.cs`
-- `src/Explore.Domain/NotificationIntentLookups.cs`
-- `src/Explore.Domain/EmailDispatchOutbox.cs`
-- `src/Explore.Domain/NotificationFanoutRun.cs`
-- `src/Explore.Domain/EventReport.cs`
-- `src/Explore.Domain/Enums/NotificationIntentEnums.cs`
-- `src/Explore.Persistence/Configurations/Entities/NotificationIntentConfiguration.cs`
-- `src/Explore.Persistence/Configurations/Entities/EmailDispatchOutboxConfiguration.cs`
-- `src/Explore.Persistence/Configurations/Entities/NotificationFanoutRunConfiguration.cs`
-- `src/Explore.Persistence/Configurations/Entities/EventReportConfiguration.cs`
-- `src/Explore.Persistence/Seed/LookupTableSeeder.cs`
-- `src/Explore.Persistence/Repositories/NotificationIntentRepository.cs`
-- `src/Explore.Persistence/Repositories/EmailDispatchOutboxRepository.cs`
-- `src/Explore.Persistence/Repositories/EventRegistrationIntentRepository.cs`
-- `src/Explore.Persistence/Repositories/EventRegistrationRepository.cs`
-- `src/Explore.Persistence/EfCoreUnitOfWork.cs`
-- `src/Explore.Application/Notifications/DefaultNotificationOrchestrator.cs`
-- `src/Explore.Application/Services/RegistrationNotificationDeliveryService.cs`
-- registration, event/session, reporting, moderation, scheduler, serialization, and dispatcher handlers/services
-- `src/Explore.Infrastructure/EmailDispatchDrainService.cs`
-- `src/Explore.API/Controllers/EventReportsController.cs`
-- event-report route names, HAL policies, assemblers, OpenAPI contract, and generated NSwag client
-- report dialog, My Reports page, reporting client service, and related CSS/tests
+- `src/Explore.Application/Notifications/RecipientNotificationMaterializer.cs` — atomic recipient graph and exact conflict recovery.
+- `src/Explore.Persistence/Migrations/20260717131038_NormalizeRecipientNotificationDelivery.cs` — explicit delivery graph and pre-1.0 ledger reset.
+- `src/Explore.Persistence/Services/EmailDispatchEligibilityEvaluator.cs` — current authority checks and provider-handoff fence.
+- `src/Explore.Application/Services/RegistrationNotificationDeliveryService.cs` — lifecycle transition-to-template/materialization mapping.
+- registration create/update/delete handlers plus `EfCoreUnitOfWork` and registration repositories — Application-owned serializable boundaries.
+- `src/Explore.Domain/NotificationFanoutOccurrence.cs`, `NotificationFanoutRun.cs`, and their persistence repositories/migrations — immutable occurrence, audience cutoff, lease, and checkpoint foundation.
+- `src/Explore.Application/Services/Webhooks/IncomingWebhookEffectProcessingService.cs` and `src/Explore.Infrastructure/Webhooks/IncomingWebhookEffectDrainService.cs` — durable Coop command execution.
+- `src/Explore.API/Controllers/IncomingWebhookEffectsAdminController.cs` — authenticated HAL inspection/redrive.
 
-Planned new concepts; final names must be verified before creation:
+Next implementation surfaces:
 
-- `NotificationDeliveryPolicy` lookup and configuration
-- `NotificationFanoutOccurrence` entity/configuration/repository
-- `IRecipientNotificationMaterializer`
-- `IEmailDispatchEligibilityEvaluator`
-- `NotificationFanoutOccurrenceRequested` pointer contract
-- generic lifecycle fanout worker/coordinator
-- email retention/redaction cleanup service
-- reporter consent update command/DTO/validator
-- focused report email template/factory
-- standalone Coop incoming-handler/effect-pointer repair
+- Task 1.6a: keep the strict architecture guard and remove `InstanceSettingsController`/health coupling to `IEmailService` through a narrow Application-owned diagnostic capability.
+- Task 1.6b: reconcile the existing fair pending query, concurrency, global SMTP rate, and backlog patch; add missing per-tenant rate/cross-instance semantics.
+- Tasks 1.6c–1.6d: finish PII-safe health/metrics and authenticated operator controls/runbooks.
+- Tasks 3.4a–3.4c: route the pointer, ensure the durable run, build typed immutable recipient materialization, and prove checkpoint/crash ordering.
+- Tasks 3.5a–3.6b: occurrence supersession/coalescing, pre-handoff suppression, fair claims, processor backpressure, and fanout telemetry.
+- Phases 4–7: event/session handlers, reporter consent/API/UI/email, heavy-moderation occurrence, and safe reminder caller activation.
 
 ## Risks and Controls
 
@@ -198,18 +181,38 @@ Planned new concepts; final names must be verified before creation:
 | Heavy moderation leaks identity | Dedicated generic/linkless policy and negative tests. |
 | Coop defect expands the email PR | Independent Tasks 0.5–0.7 prerequisite with its own acceptance/gate. |
 | A persisted Coop pointer is mistaken for an applied moderation decision | `PointerPersisted` creates no effect receipt; the effect worker executes the retained callback successfully before atomically creating/reusing the receipt and completing the pointer. |
+| New cancellation/revocation kinds bypass legacy preference/footer mapping | Task 1.4 maps both existing switch sites and focused tests cover the behavior. |
+| Persisted fanout pointers have no consumer yet | Tasks 3.4a–3.4c separately own pointer routing/run creation, typed recipient materialization, and checkpoint ordering. |
+| Partial SMTP operations patch hides unfinished cross-instance semantics | Task 1.6b must audit existing query/drain/settings changes before extending them; no duplicate implementation or silent overwrite. |
+| Architecture guard currently fails on a real controller dependency | Task 1.6a keeps the guard strict and replaces the direct `IEmailService` resolution with a CQRS diagnostic seam. |
 
 ## Verification State
 
-- Fresh isolated-branch Release build on 2026-07-17: passed, 25 projects, 0 errors, 8,327 emitted pre-existing warnings. This supersedes the stale zero-warning receipt; implementation must add no attributable warnings and must not call the repository warning-free.
+- Historical implementation evidence on 2026-07-17 records a Release build with 0 errors and full Domain 439, Application 2,449, Persistence 448, Infrastructure 832, and Architecture 240 passed/1 declared skip after the recipient migration landed.
 - Task 0.5 independent verification is confirmed. Focused PostgreSQL pointer/migration coverage passed 7/7; missing-ID and valid-ID verifier tests passed 1/1 each; EF reported no pending model changes.
 - Task 0.5 full directly affected suites passed: Domain 428, Application 2,420, Persistence 401, Infrastructure 818, API 1,830 with 3 declared skips, and Architecture 238 with 1 declared skip; zero failures.
-- Tasks 0.6–0.7 provisional evidence: fresh build 25 projects/0 errors; exact focused counts Domain 5, processing 5, redrive/auth 7, metrics 9, drain 2, health 6, operator API/HAL 2, and real PostgreSQL effect tests 11, all passed. Signed verifier/intake and moderation route probes passed 12 and 6 tests. Full Domain 437, Application 2,428, Infrastructure 821, and Architecture 238 with 1 declared skip passed.
-- Full Persistence and API gates are deferred, not waived: the concurrent Phase 1 Stage A/B model expects `recipient_user_id` and `managed_tenant_provisioning_operation_id` columns that intentionally do not exist until Stage C. The recorded `42703`/registration-500 failure receipts and exact rerun commands are under `.omo/evidence/email-lifecycle-delivery/task-3/`.
-- No SMTP, Mailpit message, outgoing provider call, email materialization, or task checkbox was performed by Tasks 0.6–0.7.
-- Planning validation after edits: `git diff --check -- dev/active/email-responsibility-architecture`.
-- Runtime phases use full directly affected project tests; no weak broad filters or `--minimum-expected-tests 1`.
+- Tasks 0.6–0.7 focused evidence covers fenced claim/recovery, retry/dead-letter, redrive/auth, metrics, health, operator HAL, and real PostgreSQL effect behavior. Their implementation checkboxes are complete.
+- The prior missing-column blocker is resolved by migration `20260717131038_NormalizeRecipientNotificationDelivery`. A fresh full API suite and explicit Mailpit lane remain unrecorded because testing was stopped; no phase requiring those gates is called fully verified.
+- Task 1.5 is present in the main checkout, including migration `20260718203920_AddEmailDispatchContentRetention`; its focused Infrastructure evidence was reported before interruption, but Docker-backed PostgreSQL execution is not recorded.
+- The Task 1.6 architecture guard is present and correctly fails on `InstanceSettingsController` directly resolving `IEmailService`. Fair pending selection, concurrency/rate/backlog settings, metrics, and health also have partial main-checkout changes and remain unchecked.
+- A full compile currently stops in unrelated ATProto federation validator code with two `CS9135` errors; this is not evidence against the email patch, but it blocks a clean phase build until that shared baseline is repaired.
+- This 2026-07-18 re-baseline changes planning docs only and runs no build, test, SMTP, Mailpit, provider, migration, or application command.
+- Planning validation: `git diff --check -- dev/active/email-responsibility-architecture`.
+- Runtime phases use one Release build and one selected non-browser project test; final intent-contract suites remain merge evidence. No gate uses weak broad filters or `--minimum-expected-tests 1`.
 
 ## Handoff Rule
 
-Continue the Tasks 1.1–1.3 shared dependency checkpoint. After Stage C lands, rerun the full Persistence and API commands recorded in Task 3 evidence, then independently verify Tasks 0.6–0.7 before changing their checkboxes or enabling Task 5.9. At every handoff, synchronize progress, current task, evidence, changed files, and risks across context, plan, and tasks.
+Finish Tasks 1.6a–1.6d before Task 3.4a consumes persisted fanout pointers. Keep Task 5.9 disabled until the fresh full API evidence is recorded. The working tree currently contains unrelated ATProto/auth/location-privacy work; do not modify, stage, revert, or include it. Use only the main checkout and never create a linked worktree or `.worktrees` directory. At every handoff, synchronize progress, evidence, risks, and the next task across context, plan, and tasks.
+
+## Handoff Notes
+
+### Handoff — 2026-07-18 Europe/Brussels
+
+- **Current state:** 20/50 implementation tasks are complete. Task 1.5 is implemented but uncommitted; Task 1.6a and 1.6b have partial main-checkout changes and remain unchecked.
+- **Next action:** complete 1.6a without weakening the architecture guard, then reconcile 1.6b, 1.6c, and 1.6d before starting 3.4a.
+- **Blockers:** Docker is unavailable for PostgreSQL retention evidence; a clean Release build is currently blocked by unrelated ATProto `CS9135` errors; fresh API and Mailpit merge evidence remains outstanding.
+- **Modified files:** existing email retention, SMTP operations, health/metrics, admin/HAL, migration/schema/docs/tests, and architecture-guard surfaces are dirty in the main checkout. Unrelated ATProto/auth/location-privacy work is interleaved and must remain untouched.
+- **Validation:** no command was run for this planning re-baseline. Previous focused evidence is retained as historical, not upgraded to a completed phase gate.
+- **Documentation impact:** plan/context/tasks now use 50 independently mergeable slices, single-test phase gates, immediate resolve-without-replay redaction semantics, and explicit partial-work preservation.
+- **Risks:** partial SMTP operations work may have incomplete per-tenant/cross-instance behavior; persisted fanout pointers still have no consumer.
+- **Notes for next contributor/agent:** work only in the main checkout; preserve all current changes; do not create worktrees, stage broadly, revert shared files, or duplicate the partial Task 1.6 implementation.

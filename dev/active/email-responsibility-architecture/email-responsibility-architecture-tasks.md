@@ -3,16 +3,16 @@
 
 # Email Lifecycle Delivery Tasks
 
-> **Status:** Approved — Phase 0A and Task 0.5 complete; Tasks 0.6–0.7 provisionally ready for independent verification
-> **Last Updated:** 2026-07-17 Europe/Brussels
-> **Progress:** 5/43 tasks complete
-> **Current tasks:** finish the shared 1.1–1.3 Stage C migration, then independently verify 0.6–0.7 and rerun their deferred full gates
-> **Completed foundation:** SMTP/Mailpit, EmailDispatch drain/recovery, notification ownership/audit, registration confirmation, and tenant-admin invitation
+> **Status:** Re-baselined in implementation — committed foundations plus preserved main-checkout Task 1.5/1.6 work
+> **Last Updated:** 2026-07-18 Europe/Brussels
+> **Progress:** 20/50 implementation tasks complete; phase verification remains separate
+> **Current task:** 1.6a SMTP capability boundary, then 1.6b–1.6d and 3.4a
+> **Completed foundation:** explicit delivery schema, atomic materializer, dispatch eligibility/provider-handoff fence, Coop effect processing, all registration lifecycle transitions, immutable fanout occurrence/audience/lease persistence
 
 ## Working Rules
 
 - Check a task only after its acceptance and focused failing-first tests are recorded.
-- Run the full unfiltered directly affected project suites at every phase gate; the exact commands are in the plan.
+- Run one Release build and one selected non-browser project test once after all tasks in a phase; final intent-contract suites remain separate merge evidence.
 - Do not use broad OR filters or `--minimum-expected-tests 1` as release evidence.
 - Generate occurrence/dedup IDs before a retryable transaction delegate.
 - Persist intent, channel deliveries, in-app notification, and email row atomically per recipient.
@@ -21,7 +21,9 @@
 - Repositories perform persistence operations but do not own commit/transaction orchestration or create notification/email entities.
 - Use exact tenant predicates and persisted current verified user email.
 - Keep Osprey callbacks signal-only and reporter outcomes on `ExecuteReportDecisionCommandHandler`.
+- Work only in the main repository checkout; do not create linked worktrees or a `.worktrees` directory for this workstream.
 - Synchronize plan, context, and this ledger before handoff, pause, compaction, or completion.
+- Preserve the existing uncommitted email-retention/SMTP-operations patch and unrelated ATProto/auth/location-privacy work; do not stage, revert, overwrite, or re-create either workstream while updating this ledger.
 
 ## Phase 0A — Approved Architecture and Policy Baseline
 
@@ -50,101 +52,171 @@ Phase 0B may run in parallel with Phase 1. It blocks only Task 5.9 source conver
 - [x] **0.5 Persist a unique Coop callback effect pointer.**
   - Files: Coop verifier, incoming-webhook contracts/processing/handler, `IncomingWebhookEffectOutbox` entity/configuration/repository, retention cleanup, migration/model snapshot, schema, focused persistence/API tests.
   - Acceptance: `coop` + `moderation.coop.decision` creates one specialized `IncomingWebhookEffectOutbox` per inbox/effect kind using a nonblank signed `ProviderDecisionId`; exact ID+payload hash replay is idempotent, same ID/different hash and missing IDs quarantine; unique `(TenantId, Provider, ProviderDecisionId, EffectKind)` and `(TenantId, IncomingWebhookMessageId, EffectKind)` plus composite inbox FK enforce identity/retention; no raw callback payload enters the pointer or logs.
-  - Evidence: independently confirmed after DBML composite-FK parity repair; focused PostgreSQL/migration tests 7/7, verifier tests 2/2, EF pending-model check clean, and all six directly affected full suites passed with zero failures. `.omo/evidence/email-lifecycle-delivery/task-2/` contains the receipt.
+  - Evidence: independently confirmed after DBML composite-FK parity repair; focused PostgreSQL/migration tests 7/7, verifier tests 2/2, EF pending-model check clean, and all six directly affected full suites passed with zero failures. Committed coverage lives in `CoopIncomingWebhookEffectOutboxTests` and `IncomingWebhookFrameworkTests`.
 
-- [ ] **0.6 Dispatch Coop effects with correct decision ordering.**
+- [x] **0.6 Dispatch Coop effects with correct decision ordering.**
   - Files: general outbox dispatcher, retained-callback loader, `ProcessCoopDecisionCallbackCommandHandler`, execute-handler integration, focused application/infrastructure/API tests.
   - Acceptance: dispatch occurs outside the incoming-inbox transaction; command success is required before pointer completion; callback/pointer/dispatcher replay is idempotent; stale or out-of-order decisions cannot reopen or overwrite a completed case.
-  - Provisional evidence: implementation and focused verification are complete; fenced claim/recovery, retained-payload identity validation, command-success receipt/pointer settlement, duplicate-worker exclusion, cancellation recovery, and existing closed-case idempotency tests pass. Checkbox remains open pending independent verification after the Phase 1 Stage C migration restores shared full gates.
+  - Evidence: `IncomingWebhookEffectProcessingService`, `IncomingWebhookEffectDrainService`, the effect repository, and focused application/persistence tests implement fenced claim/recovery, retained-payload identity validation, command-success receipt/pointer settlement, duplicate-worker exclusion, cancellation recovery, and closed-case idempotency. Phase verification is tracked separately.
 
-- [ ] **0.7 Quarantine and operate failed Coop callbacks.**
+- [x] **0.7 Quarantine and operate failed Coop callbacks.**
   - Files: incoming-webhook failure state/cleanup, operator controls, Coop/configuration/operations docs, focused failure tests.
   - Acceptance: poison callbacks become quarantined/dead-lettered with sanitized evidence; cleanup respects callback/effect dependency order; operators can inspect/redrive safely; documentation no longer claims unimplemented routing.
-  - Provisional evidence: bounded retry/dead-letter, generation-checked audited redrive, HAL/auth, retention ordering, aggregate health/metrics, runbooks, and API/schema parity are implemented and focused tests pass. Full Persistence/API reruns remain explicitly deferred; see `.omo/evidence/email-lifecycle-delivery/task-3/`.
+  - Evidence: bounded retry/dead-letter, generation-checked audited redrive, HAL/auth, retention ordering, aggregate health/metrics, runbooks, and API/schema parity are implemented. The fresh full API gate remains open; it is not an implementation blocker.
 
-Phase 0 gate: Release build plus full `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.Persistence.IntegrationTests`, `Explore.Infrastructure.Tests`, `Event.API.IntegrationTests`, and `Event.Architecture.Tests`.
+Phase 0 implementation is complete. Historical post-migration evidence covers build, Domain, Application, Persistence, Infrastructure, and Architecture; a fresh full API run remains unrecorded.
+
+### Phase 0B Verification — HISTORICAL EVIDENCE RECORDED; CURRENT GATE NOT RE-RUN
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build`
 
 ## Phase 1 — Atomic Recipient-Delivery Primitive
 
-Tasks 1.1–1.3 share one approved dependency checkpoint: Stage A adds the relationship model/contracts; Stage B implements the atomic materializer and migrates registration, reminder-scheduler, and managed-invitation writers; Stage C transactionally resets only the obsolete pre-1.0 delivery ledgers and installs required constraints. Verification covers the complete transition, and no intermediate stage closes the checkpoint independently.
+Tasks 1.1–1.3 completed the approved dependency checkpoint: relationship model/contracts, atomic materializer and writer migration, then the bounded pre-1.0 delivery-ledger reset with required constraints. Phase verification remains separate from these implementation checkboxes.
 
-- [ ] **1.1 Add explicit intent/delivery/email schema relationships and reset obsolete delivery ledgers.**
+- [x] **1.1 Add explicit intent/delivery/email schema relationships and reset obsolete delivery ledgers.**
   - Files: `NotificationIntent`, `NotificationDelivery`, `EmailDispatchOutbox`, lookup enums/entities, EF configurations, pre-1.0 reset migration, model snapshot, `LookupTableSeeder`, `schemas/islamu-event.md`, domain/persistence tests.
   - Acceptance: delivery has channel/policy/version plus immutable consent/preference/disclosure/template/link/address-source snapshot, channel-neutral outcomes, and optional notification/email links; dispatch may narrow but never broaden the snapshot. Exactly `TenantUserVerifiedEmail` and `ManagedTenantAdministratorInvitation` enforce their tenant/member/authority rules. Recipient/source equality, external-delegation tenant equality, one-channel/one-email uniqueness, tenant-aware attempt/receipt FKs, and the two named raw nullable-principal constraints are proven. Up deletes only intent/delivery/delegation/email/attempt/receipt ledgers; notifications and event/registration/report/audit/settings/tenant/user canaries retain their values. Down restores the old empty schema and lookup codes without claiming it can reconstruct deleted delivery work; second Up is deterministic.
+  - Evidence: migration `20260717131038_NormalizeRecipientNotificationDelivery`, model snapshot, seeder/schema parity, recipient-model contract tests, migration rehearsal, tenant-isolation tests, and outbox transition tests are committed.
 
-- [ ] **1.2 Create the atomic recipient channel materializer.**
+- [x] **1.2 Create the atomic recipient channel materializer.**
   - Files: notification orchestrator/drafts, notification and email repositories, new Application service/contract, delivery-policy resolver, focused unit/integration tests.
   - Acceptance: one UoW operation creates the logical intent, all configured delivery rows, required/selected in-app notification, and eligible email outbox; no partial set can commit; a skipped channel still has a typed delivery outcome; no transport side effect runs.
+  - Evidence: `RecipientNotificationMaterializer`, `IRecipientNotificationGraphRepository`, `NotificationIntentRepository`, policy resolver, DI registration, and focused materializer tests are committed.
 
-- [ ] **1.3 Implement exact unique-conflict recovery and batch insert semantics.**
+- [x] **1.3 Implement exact unique-conflict recovery and provider-handoff settlement.**
   - Files: intent/delivery/email repository contracts and PostgreSQL implementations, UoW recovery coordination, focused fault/concurrency tests.
-  - Acceptance: two workers for one occurrence/user produce one intent and one row per channel; exact conflict rolls back before fresh-transaction load/repair; unrelated DB errors throw; rollback after intent or email insertion commits nothing; fanout batch path uses explicit-target `ON CONFLICT DO NOTHING ... RETURNING` where proven to avoid N+1 checks. SMTP acceptance followed by persistence uncertainty settles once as `Unknown` and never blind-resends.
+  - Acceptance: two workers for one occurrence/user produce one intent and one row per channel; exact conflict rolls back before fresh-transaction load/repair; unrelated DB errors throw; rollback after intent or email insertion commits nothing; SMTP acceptance followed by persistence uncertainty settles once as `Unknown` and never blind-resends.
+  - Evidence: the materializer catches only `NotificationIntentDeduplicationConflictException` outside the failed UoW, reloads/repairs in a fresh UoW, and the drain/repository use the durable provider-handoff fence. Batch SQL is not needed before Task 3.4c proves a bottleneck.
 
-- [ ] **1.4 Centralize dispatch-time eligibility.**
+- [x] **1.4 Centralize dispatch-time eligibility.**
   - Files: new eligibility evaluator, `EmailDispatchDrainService`, user/report/occurrence read contracts, delivery-state updates, infrastructure tests.
   - Acceptance: current tenant/user/email verification, changed address, deletion, optional preference, consent purpose, supersession, and required-policy behavior are rechecked before SMTP; old address is never used; every skip has a stable non-PII reason and updates email plus delivery state.
+  - Evidence: current tenant/membership/address, managed-invitation authority, preference, supported-policy, superseded-delivery, typed skip, and provider-handoff checks are centralized in `EmailDispatchEligibilityEvaluator`; `RegistrationCancelled` and `RegistrationRevoked` now map to `event-updates` in both legacy preference and unsubscribe-footer switches with focused regression coverage. Case-update consent remains fail-closed until Task 5.1 supplies the new field; occurrence fences and rate controls stay in Tasks 3.5 and 1.6. The focused Infrastructure regression passed; PostgreSQL coverage builds but could not execute because Docker was unavailable.
 
-- [ ] **1.5 Add parent-aware email retention and content redaction.**
+- [x] **1.5 Add parent-aware email retention and content redaction.**
   - Files: retention settings/validator, cleanup repository/service/scheduler, email/attempt/receipt state, configuration/operations docs, focused persistence/infrastructure tests.
-  - Acceptance: sent/skipped content redacts after 180 days; unresolved failure material waits for operator resolution then follows 180 days; children follow parent; tenant deletion redacts and suppresses; cleanup is bounded/idempotent/dry-runnable; redacted rows cannot replay.
+  - Acceptance: sent/ordinary-skipped content redacts after 180 days; unresolved failure material waits for replay or explicit resolve-without-replay; explicit resolution redacts immediately with a typed outcome; children follow parent; tenant deletion redacts and suppresses; cleanup is bounded/idempotent/dry-runnable; `ContentRedactedAt` permanently prevents claim/publish/replay.
+  - Evidence: the main-checkout patch adds `EmailDispatchRetentionCleanupProcessor`, a scoped cleanup service, transactional parent/attempt/receipt/delivery redaction, immediate `Purged`-tenant suppression, explicit `operator_resolved_without_replay`, and migration `20260718203920_AddEmailDispatchContentRetention`. Focused Infrastructure tests were reported passing before interruption; Docker-backed PostgreSQL and full phase evidence remain open. The patch is not committed and must be preserved.
 
-- [ ] **1.6 Make the SMTP ledger operationally fair and observable.**
-  - Files: pending-row query, processor settings, rate/backpressure controls, metrics/health/admin surfaces, operator docs, architecture tests.
-  - Acceptance: pending selection cannot let one tenant starve others; batch/global/per-tenant/rate limits are validated; required work outranks optional reminder work; oldest age, outcomes, typed skips, dead letters, and tenant backlog are observable without recipient PII; operators can pause/drain/inspect/replay; architecture tests reject direct SMTP/send-service dependencies from controllers and MediatR handlers.
+- [ ] **1.6a Restore the SMTP capability boundary.** 🟡 IN PROGRESS
+  - Files: `IEmailService`, new narrow connection-test contract/query/handler, `SmtpEmailService`, `InstanceSettingsController`, `SmtpHealthCheck`, DI, `DurableSideEffectBoundaryTests`, focused application/architecture tests.
+  - Acceptance: controllers and MediatR handlers have no `IEmailService`, MailKit, SMTP implementation, or direct-send dependency; SMTP connection testing flows through MediatR and an Application-owned capability; health uses the narrow diagnostic capability; the strict architecture guard passes.
+  - Existing partial work: the guard already rejects controller transport references and correctly exposes the direct `InstanceSettingsController` dependency. Keep the guard and fix the boundary.
+  - Effort: M. Dependencies: 1.5.
 
-Phase 1 gate: Release build plus full `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.Persistence.IntegrationTests`, `Explore.Infrastructure.Tests`, `Event.API.IntegrationTests`, and `Event.Architecture.Tests`, followed by the explicit `[Category=Email]` Infrastructure/Mailpit lane with an exact recorded non-zero test count.
+- [ ] **1.6b Finish fair selection, concurrency, SMTP rate limiting, and optional-work backpressure.** 🟡 IN PROGRESS
+  - Files: pending-row repository contract/query, `EmailDispatchDrainService`, processor settings/validator/appsettings, focused persistence/infrastructure tests.
+  - Acceptance: tenant rounds prevent starvation; paused tenants are excluded; required work outranks non-reminder optional work, which outranks reminders; global/per-tenant concurrency and global/per-tenant token buckets are bounded and validated; high/low-watermark hysteresis suppresses only optional reminder admission.
+  - Existing partial work: fair pending-query, global/per-tenant concurrency, one global SMTP rate, and backlog settings are present in the main checkout; audit and complete per-tenant rate and cross-instance semantics before checking this task.
+  - Effort: L. Dependencies: 1.6a.
+
+- [ ] **1.6c Add bounded SMTP telemetry and health.**
+  - Files: `BusinessMetrics`, `EmailDispatchHealthCheck`, repository aggregate queries, settings/validator, focused infrastructure/API tests.
+  - Acceptance: oldest pending age, due/retry/unknown/parked/dead-letter counts, typed skip outcomes, rate-limit/backpressure outcomes, and bounded tenant backlog samples are visible; no address, subject, body, report evidence, event title, user ID, or provider ID becomes a metric/log dimension.
+  - Effort: M. Dependencies: 1.6b.
+
+- [ ] **1.6d Complete authenticated operator controls and runbooks.**
+  - Files: email-dispatch admin CQRS/API/HAL, configuration/operations/self-hosting/troubleshooting docs, focused application/API tests.
+  - Acceptance: existing tenant pause, park, replay, and resolve-without-replay remain server-authorized; global drain pause/rate override and unknown reconciliation are added only where absent; HAL exposes valid actions only; runbooks cover Mailpit/test SMTP, cleanup dry-run, compromised-tenant suppression, and tenant-vs-instance diagnosis.
+  - Effort: M. Dependencies: 1.6c.
+
+### Phase 1 Verification — RUN ONCE AFTER TASKS 1.1–1.6d
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --no-build`
 
 ## Phase 2 — Registration Transitions
 
-- [ ] **2.1 Move registration creation transaction ownership to Application/UoW.**
+- [x] **2.1 Move registration creation transaction ownership to Application/UoW.**
   - Files: `IUnitOfWork` isolation contract, `EfCoreUnitOfWork`, `IEventRegistrationIntentRepository`, `EventRegistrationIntentRepository`, `CreateEventRegistrationCommandHandler`, focused tests.
   - Acceptance: Application requests a serializable transaction; repository performs capacity/parent/child persistence without `BeginTransaction` or commit and no longer accepts email/notification entities; registration, integration-sync intent, and notification channels commit together.
+  - Evidence: `CreateEventRegistrationCommandHandler` uses `ExecuteSerializableAsync`; repository-owned transaction parameters were removed; architecture and handler tests cover the boundary.
 
-- [ ] **2.2 Move capacity-aware registration updates to Application/UoW.**
+- [x] **2.2 Move capacity-aware registration updates to Application/UoW.**
   - Files: registration repository contract/implementation, update handler, transition result, focused concurrency tests.
   - Acceptance: repository update has no internal retry transaction; explicit result contains `Changed`, `ParentIntentId`, `PreviousStatus`, `FinalStatus`, `TransitionReason`, and pre-generated `OccurrenceId`; capacity and parent recomputation remain serializable and atomic.
+  - Evidence: `EventRegistrationTransitionResult`, `UpdateEventRegistrationCommandHandler`, and repository concurrency/coverage tests are committed.
 
-- [ ] **2.3 Move registration cancellation transaction ownership to Application/UoW.**
+- [x] **2.3 Move registration cancellation transaction ownership to Application/UoW.**
   - Files: cancellation repository method/handler, transition result/provenance, focused capacity/rollback tests.
   - Acceptance: cancellation/release/recompute uses the Application-owned serializable boundary; parent/child soft-delete semantics and capacity release remain correct; actor provenance distinguishes self-cancel from organizer/system revoke without repository notification logic.
+  - Evidence: `DeleteEventRegistrationCommandHandler` owns the serializable UoW and persists attendee/organizer/system provenance in the transition result.
 
-- [ ] **2.4 Migrate receipt, approval, rejection, and waitlist-promotion delivery.**
+- [x] **2.4 Migrate receipt, approval, rejection, and waitlist-promotion delivery.**
   - Files: registration handlers/services/factory and tests.
   - Acceptance: registration receipt preserves current behavior through the new primitive; final parent transitions create required in-app plus optional email exactly once; only an actual `Waitlisted -> Approved` sends promotion copy; multi-session child changes cannot announce contradictory status.
+  - Evidence: `RegistrationNotificationDeliveryService` and create/update handlers select lifecycle templates from the finalized parent transition and materialize them inside the registration UoW.
 
-- [ ] **2.5 Add cancellation/revocation notification with safe provenance.**
+- [x] **2.5 Add cancellation/revocation notification with safe provenance.**
   - Files: update/delete handlers, registration templates/policies, focused tests.
   - Acceptance: self-cancel and organizer/system revoke select safe distinct copy only from persisted actor provenance; one intent follows one changed parent transition; no-op/replay creates nothing; missing/unverified email leaves required in-app and typed skipped email delivery.
+  - Evidence: cancellation and revocation templates/kinds, delete/update handler integration, focused registration notification tests, and Task 1.4 preference/unsubscribe category mapping are committed.
 
-Phase 2 gate: Release build plus full `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.Persistence.IntegrationTests`, and `Event.Architecture.Tests`.
+Phase 2 implementation is complete. Historical post-migration build and full Domain, Application, Persistence, and Architecture suites were green; no command was rerun for this documentation re-baseline.
+
+### Phase 2 Verification — HISTORICAL EVIDENCE RECORDED; CURRENT GATE NOT RE-RUN
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build`
 
 ## Phase 3 — Generic Fanout Engine
 
-- [ ] **3.1 Persist immutable fanout occurrences and pointer serialization.**
-  - Files: new `NotificationFanoutOccurrence` entity/config/repository/migration, pointer contract/factory, JSON source generation, dispatcher registration, domain/application/persistence tests.
-  - Acceptance: all required occurrence fields from the plan persist; ID exists before the retry delegate; mutation and one PII-free pointer can commit together; snapshots are immutable except explicit supersession metadata; worker loads by tenant/occurrence pointer; fanout intent has an occurrence FK and unique `(TenantId, FanoutOccurrenceId, UserId)` guard.
+- [x] **3.1 Persist immutable fanout occurrences and pointer serialization.**
+  - Files: `NotificationFanoutOccurrence` entity/config/repository/migration, pointer contract/factory, JSON source generation, domain/application/persistence tests.
+  - Acceptance: all required occurrence fields from the plan persist; ID exists before the retry delegate; mutation and one PII-free pointer can commit together; snapshots are immutable except explicit supersession metadata; fanout intent has an occurrence FK and unique `(TenantId, FanoutOccurrenceId, UserId)` guard.
+  - Evidence: migrations `20260717160935_AddNotificationFanoutOccurrences` and `20260717165523_AddNotificationFanoutAudienceExecution`, occurrence repository, pointer factory/source generation, and migration/repository tests are committed. Dispatcher/worker ownership moved to Tasks 3.4a–3.4c.
 
-- [ ] **3.2 Implement deterministic event/session audience queries.**
+- [x] **3.2 Implement deterministic event/session audience queries.**
   - Files: registration intent repository contract/implementation, compound cursor model, persistence tests.
   - Acceptance: cutoff/current-status predicates are exact; both parent creation and immutable child `CoverageEstablishedAt` are at/before cutoff; same-scope atomic replacement inherits the old coverage timestamp while a newly added/moved session receives a new timestamp; event-wide and target-session cohorts follow the plan; whole-event/day/session scope, partially cancelled children, pending/waitlisted/approved parents, registrations after cutoff, moved/replaced children, and duplicate children are covered; cursor is `(FirstEligibleRegistrationCreatedAt, UserId)`.
+  - Evidence: `EventRegistrationIntentRepository`, coverage replacement logic, audience migration, and focused PostgreSQL cohort tests are committed.
 
-- [ ] **3.3 Add lease, checkpoint, and stale-run recovery.**
+- [x] **3.3 Add lease, checkpoint, and stale-run recovery.**
   - Files: `NotificationFanoutRun` entity/config/repository/service, scheduler/worker tests.
   - Acceptance: occurrence has at most one active lease; concurrent claims are safe; checkpoint stores compound cursor/counts; crash may replay but not skip the last page; lease expiry resumes; stale cursor replay remains idempotent.
+  - Evidence: `NotificationFanoutRunRepository` implements advisory-lock claim creation, renewable token/fence/generation leases, monotonic compound checkpoints, completion, and expiry recovery with focused PostgreSQL tests.
 
-- [ ] **3.4 Materialize one recipient atomically from fanout.**
-  - Files: generic fanout worker and atomic materializer integration, persistence/application tests.
-  - Acceptance: one occurrence/user creates one intent and policy channels; location decision is recipient-specific but values come from immutable snapshot; batch checkpoint advances only after durable recipient outcomes; crash mid-batch creates no duplicates or lost recipients.
+- [ ] **3.4a Route fanout pointers and ensure durable runs.**
+  - Files: `CompositeOutboxMessageDispatcher`, occurrence pointer factory/repository, fanout-run repository, new Application worker, focused application/persistence tests.
+  - Acceptance: the PII-free pointer is version-validated, tenant/occurrence is authoritatively loaded, and one pending run is created idempotently; the general outbox pointer completes after run creation and never holds its lease through recipient fanout.
+  - Effort: M. Dependencies: 1.6d, 3.3.
 
-- [ ] **3.5 Implement coalescing and supersession state transitions.**
-  - Files: occurrence repository/service, email/delivery suppression updates, scheduler integration, tests.
-  - Acceptance: fixed precedence is enforced; cancellation/heavy work is immediate; five-minute default update coalescing retains earliest before/latest after; newer unsent updates supersede old work; already-materialized unsent rows are skipped; sent evidence is unchanged.
+- [ ] **3.4b Build typed recipient materialization from immutable occurrences.**
+  - Files: `NotificationIntentDraft`, `RecipientNotificationMaterializer`, new typed template/version factory, location-disclosure integration, focused application/persistence tests.
+  - Acceptance: `FanoutOccurrenceId` is persisted; one occurrence/user creates one logical intent and configured channels; current verified address is used; location authorization is recipient-specific but selects only immutable snapshot values; unknown template/version fails closed.
+  - Effort: L. Dependencies: 3.4a.
 
-- [ ] **3.6 Add fair tenant scheduling, backpressure, and fanout telemetry.**
-  - Files: runnable-occurrence query/worker settings, health/metrics, operations/configuration docs, tests.
-  - Acceptance: one active tenant lease by default, fair tenant rounds, bounded global throughput, configurable limits, required work priority, optional-work backpressure, oldest-age/processed/remaining/lease-contention metrics, and no recipient PII.
+- [ ] **3.4c Process pages with crash-safe checkpoint ordering.**
+  - Files: fanout worker, audience query/run repositories, lease/checkpoint coordination, focused application/persistence concurrency tests.
+  - Acceptance: every recipient outcome commits before the page checkpoint; a crash before checkpoint safely replays through exact dedup; stale lease/fence stops work; a partially processed page yields no duplicates or skipped recipients. Add batch SQL only if measured bounded-worker evidence justifies it.
+  - Effort: L. Dependencies: 3.4b.
 
-Phase 3 gate: Release build plus full `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.Persistence.IntegrationTests`, `Explore.Infrastructure.Tests`, and `Event.Architecture.Tests`.
+- [ ] **3.5a Coordinate occurrence precedence, coalescing, and supersession.**
+  - Files: new Application coordinator, occurrence repository conditional transitions, existing occurrence state fields, focused application/persistence tests.
+  - Acceptance: heavy moderation > event cancellation > session cancellation > important update > reminder; cancellation/heavy work is immediate; five-minute important-update replacement retains earliest before/latest after; concurrent edits produce one active winner.
+  - Effort: L. Dependencies: 3.4c.
+
+- [ ] **3.5b Suppress materialized work at the provider-handoff fence.**
+  - Files: notification delivery/email suppression repository operations, `EmailDispatchEligibilityEvaluator`, scheduler integration, focused persistence/infrastructure tests.
+  - Acceptance: unsent pre-handoff rows become typed skipped/superseded; sent, unknown, and post-handoff evidence remains immutable; event/session precedence suppresses the correct scope; a race cannot escape after authoritative occurrence recheck.
+  - Effort: M. Dependencies: 3.5a.
+
+- [ ] **3.6a Add fair runnable selection and cross-instance tenant claim limits.**
+  - Files: occurrence/run repositories, claim query/index migration only if proven necessary, scheduler tests.
+  - Acceptance: one due occurrence per tenant per round; deterministic priority/time/ID order; tenant advisory lock enforces the configured active-claim ceiling across replicas; expired leases resume from the compound cursor.
+  - Effort: L. Dependencies: 3.5b.
+
+- [ ] **3.6b Add fanout processor settings, backpressure, telemetry, and health.**
+  - Files: new processor/settings/validator/hosted service, `BusinessMetrics`, health check, operations/configuration docs, focused infrastructure tests.
+  - Acceptance: each claim runs in a fresh scope; global/per-tenant work is bounded; optional reminders are suppressed above backlog threshold while required work proceeds; oldest age, processed/remaining, lease contention, supersession, and backpressure are observable without PII.
+  - Effort: M. Dependencies: 3.6a.
+
+### Phase 3 Verification — RUN ONCE AFTER TASKS 3.1–3.6b
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build`
 
 ## Phase 4 — Event and Session Triggers
 
@@ -168,7 +240,10 @@ Phase 3 gate: Release build plus full `Event.Domain.UnitTests`, `Event.Applicati
   - Files: `UpdateEventCommandHandler.ApplyTimezone`, occurrence snapshots/templates, focused application/API tests.
   - Acceptance: only a published timezone change that changes displayed session times creates one event-wide occurrence; snapshot identifies affected sessions without mutable reconstruction; session/cancellation precedence applies; DST gap/overlap cases are retained for Phase 7 reminder proof.
 
-Phase 4 gate: Release build plus full `Event.Application.UnitTests`, `Event.Persistence.IntegrationTests`, `Explore.Infrastructure.Tests`, `Event.API.IntegrationTests`, and `Event.Architecture.Tests`.
+### Phase 4 Verification — RUN ONCE AFTER TASKS 4.1–4.5
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build`
 
 ## Phase 5 — Reporting Email and Provider Convergence
 
@@ -208,7 +283,10 @@ Phase 4 gate: Release build plus full `Event.Application.UnitTests`, `Event.Pers
   - Files: local report-decision API integration tests, Coop callback/effect integration tests, Osprey regression tests, provider docs.
   - Acceptance: a successful local API decision creates the same executor-owned outcome intent; enabled Coop creates it only after callback command/enforcement success; duplicate/out-of-order callbacks do not duplicate; Osprey callback alone creates no decision email and a later local execution does.
 
-Phase 5 gate: Release build plus full `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.Persistence.IntegrationTests`, `Explore.Infrastructure.Tests`, `Event.API.IntegrationTests`, `Explore.Blazor.Client.Tests`, `Explore.Blazor.IntegrationTests`, and `Event.Architecture.Tests`.
+### Phase 5 Verification — RUN ONCE AFTER TASKS 5.1–5.9
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build`
 
 ## Phase 6 — Heavy Moderation Attendee Email
 
@@ -220,7 +298,10 @@ Phase 5 gate: Release build plus full `Event.Domain.UnitTests`, `Event.Applicati
   - Files: dedicated template/payload, disclosure/supersession integration, metrics/docs/tests.
   - Acceptance: subject/body/pointer contain no title, slug, URL, description, image, organizer, evidence, decision note, provider, storage path/key, or raw error; no event link is emitted; all pending lower-priority event work is suppressed; negative privacy tests inspect serialized payload and rendered bodies. Light-moderation email remains absent.
 
-Phase 6 gate: Release build plus full `Event.Application.UnitTests`, `Event.Persistence.IntegrationTests`, `Explore.Infrastructure.Tests`, and `Event.Architecture.Tests`.
+### Phase 6 Verification — RUN ONCE AFTER TASKS 6.1–6.2
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build`
 
 ## Phase 7 — Safe Reminder Activation
 
@@ -236,26 +317,31 @@ Phase 6 gate: Release build plus full `Event.Application.UnitTests`, `Event.Pers
   - Files: reminder projection/calculation, timezone update integration, tests/docs.
   - Acceptance: UTC scheduling remains correct across DST gap/overlap, event timezone change, and local display reprojection; nonexistent local wall times fail validation; ambiguous overlaps use the persisted offset/UTC instant rather than machine-local choice; old pointer remains harmless; one live replacement reminder exists; tests record exact Europe/Brussels zones/instants.
 
-Phase 7 gate: Release build plus full `Event.Application.UnitTests`, `Event.Persistence.IntegrationTests`, `Explore.Infrastructure.Tests`, `Event.API.IntegrationTests`, and `Event.Architecture.Tests`, followed by the explicit `[Category=Email]` Infrastructure/Mailpit lane with an exact recorded non-zero test count.
+### Phase 7 Verification — RUN ONCE AFTER TASKS 7.1–7.3
 
-## Mandatory Phase Verification Matrix
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --no-build`
 
-Every phase runs `dotnet build --configuration Release --verbosity quiet`, followed by each listed project with `dotnet test --project <path> --configuration Release --no-build`.
+## Phase Verification Matrix
 
-| Phase | Full test projects |
+Each phase runs one Release build plus one selected deterministic non-browser project test after all phase tasks. Repetition is intentional: Application tests own handler-heavy phases, while Infrastructure tests own SMTP processing/reminder phases.
+
+| Phase | Selected project test |
 |---|---|
-| 0 | `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.Persistence.IntegrationTests`, `Explore.Infrastructure.Tests`, `Event.API.IntegrationTests`, `Event.Architecture.Tests` |
-| 1 | `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.Persistence.IntegrationTests`, `Explore.Infrastructure.Tests`, `Event.API.IntegrationTests`, `Event.Architecture.Tests` + explicit Infrastructure `Email`/Mailpit lane |
-| 2 | `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.Persistence.IntegrationTests`, `Event.Architecture.Tests` |
-| 3 | `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.Persistence.IntegrationTests`, `Explore.Infrastructure.Tests`, `Event.Architecture.Tests` |
-| 4 | `Event.Application.UnitTests`, `Event.Persistence.IntegrationTests`, `Explore.Infrastructure.Tests`, `Event.API.IntegrationTests`, `Event.Architecture.Tests` |
-| 5 | `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.Persistence.IntegrationTests`, `Explore.Infrastructure.Tests`, `Event.API.IntegrationTests`, `Explore.Blazor.Client.Tests`, `Explore.Blazor.IntegrationTests`, `Event.Architecture.Tests` |
-| 6 | `Event.Application.UnitTests`, `Event.Persistence.IntegrationTests`, `Explore.Infrastructure.Tests`, `Event.Architecture.Tests` |
-| 7 | `Event.Application.UnitTests`, `Event.Persistence.IntegrationTests`, `Explore.Infrastructure.Tests`, `Event.API.IntegrationTests`, `Event.Architecture.Tests` + explicit Infrastructure `Email`/Mailpit lane |
+| 0B | `Event.Application.UnitTests` |
+| 1 | `Explore.Infrastructure.Tests` |
+| 2 | `Event.Application.UnitTests` |
+| 3 | `Event.Application.UnitTests` |
+| 4 | `Event.Application.UnitTests` |
+| 5 | `Event.Application.UnitTests` |
+| 6 | `Event.Application.UnitTests` |
+| 7 | `Explore.Infrastructure.Tests` |
+
+The registered intents still require Domain, Application, Persistence, Infrastructure, API, Architecture, Blazor Client, and Blazor Integration coverage where their surfaces change. Those suites, the exact Mailpit category lane, EF pending-model check, OpenAPI/client parity, and canonical `source-command-check` remain final merge evidence; they are not additional per-phase gates.
 
 ## Final Contract Evidence Before Merge
 
-- [ ] All 43 tasks and all required channel-matrix rows are complete.
+- [ ] All 50 tasks and all required channel-matrix rows are complete.
 - [ ] Coop routing prerequisite has independent acceptance/verification evidence.
 - [ ] Architecture tests forbid direct SMTP/send dependencies from controllers and handlers.
 - [ ] Fault/concurrency/privacy scenarios listed in the plan are covered.

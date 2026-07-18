@@ -1,7 +1,9 @@
 // ABOUTME: Drains durable EmailDispatchOutbox rows into SMTP attempts for Basic Dispatch Mode.
 // ABOUTME: Preserves PostgreSQL-owned delivery state while exposing a scheduler-friendly execution boundary.
 
+using System.Collections.Concurrent;
 using System.Net;
+using System.Threading.RateLimiting;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
@@ -22,21 +24,76 @@ public sealed class EmailDispatchDrainService(
     IServiceScopeFactory scopeFactory,
     IOptions<EmailDispatchProcessorSettings> settings,
     BusinessMetrics metrics,
-    ILogger<EmailDispatchDrainService> logger) : IEmailDispatchDrainService
+    ILogger<EmailDispatchDrainService> logger) : IEmailDispatchDrainService, IDisposable
 {
     private const string ProcessingLeaseExpiredFailureCategory = "processing_lease_expired";
     private const string ProcessingLeaseExpiredMessage = "Email dispatch processing lease expired before a durable outcome was recorded. Outcome is unknown and requires operator review or replay.";
     private const string AcceptedSettlementUnknownFailureCategory = "accepted_settlement_unknown";
     private const string SmtpOutcomeUnknownMessage = "SMTP provider acceptance is uncertain. Automatic resend is disabled pending reconciliation.";
     private const string SmtpSendFailedMessage = "SMTP send failed before provider acceptance was confirmed.";
+    private const string SmtpRateLimitedFailureCategory = "smtp_rate_limited";
 
     private readonly EmailDispatchProcessorSettings _settings = settings.Value;
+    private readonly SemaphoreSlim _batchGate = new(1, 1);
+    private readonly TokenBucketRateLimiter _smtpRateLimiter = new(new TokenBucketRateLimiterOptions
+    {
+        TokenLimit = settings.Value.SmtpRateLimitPerMinute,
+        TokensPerPeriod = settings.Value.SmtpRateLimitPerMinute,
+        ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+        QueueLimit = settings.Value.BatchSize,
+        AutoReplenishment = true
+    });
+    private bool _optionalRemindersDeferred;
 
     public async Task<EmailDispatchDrainResult> ProcessBatchAsync(CancellationToken cancellationToken)
     {
+        if (!await _batchGate.WaitAsync(0, cancellationToken))
+        {
+            logger.LogDebug("Email dispatch batch skipped because another batch is active");
+            return new EmailDispatchDrainResult(0, 0, 0, 0, 0, 0, 0, 0, 0);
+        }
+
+        try
+        {
+            return await ProcessBatchCoreAsync(cancellationToken);
+        }
+        finally
+        {
+            _batchGate.Release();
+        }
+    }
+
+    private async Task<EmailDispatchDrainResult> ProcessBatchCoreAsync(CancellationToken cancellationToken)
+    {
         await using var scope = scopeFactory.CreateAsyncScope();
         var repository = scope.ServiceProvider.GetRequiredService<IEmailDispatchOutboxRepository>();
-        var pending = await repository.GetPendingBatch(_settings.BatchSize, DateTime.UtcNow, cancellationToken);
+        var now = DateTime.UtcNow;
+        var dueCount = await repository.CountDueDispatchAsync(now, cancellationToken);
+        var previouslyDeferred = _optionalRemindersDeferred;
+        if (dueCount >= _settings.OptionalBacklogHighWatermark)
+        {
+            _optionalRemindersDeferred = true;
+        }
+        else if (dueCount <= _settings.OptionalBacklogLowWatermark)
+        {
+            _optionalRemindersDeferred = false;
+        }
+
+        if (previouslyDeferred != _optionalRemindersDeferred)
+        {
+            logger.LogInformation(
+                "Email dispatch optional-reminder backpressure changed to {Deferred}. DueCount={DueCount}",
+                _optionalRemindersDeferred,
+                dueCount);
+        }
+
+        var pending = await repository.GetPendingBatch(
+            _settings.BatchSize,
+            _settings.MaxRowsPerTenantPerBatch,
+            includeOptionalReminders: !_optionalRemindersDeferred,
+            now,
+            cancellationToken);
 
         if (pending.Count == 0)
         {
@@ -59,44 +116,66 @@ public sealed class EmailDispatchDrainService(
         var alreadyClaimed = 0;
         var processed = 0;
 
-        foreach (var dispatch in pending)
-        {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
+        var tenantGates = pending
+            .Select(dispatch => dispatch.TenantId)
+            .Distinct()
+            .ToDictionary(
+                tenantId => tenantId,
+                _ => new SemaphoreSlim(_settings.MaxConcurrentDispatchesPerTenant));
 
-            var result = await ProcessDispatchAsync(dispatch, _settings.ConsumerId, cancellationToken);
-            var outcome = result.Outcome;
-            switch (outcome)
+        await Parallel.ForEachAsync(
+            pending,
+            new ParallelOptions
             {
-                case EmailDispatchDrainOutcome.Sent:
-                    sent++;
-                    processed++;
-                    break;
-                case EmailDispatchDrainOutcome.RetryScheduled:
-                    retryScheduled++;
-                    processed++;
-                    break;
-                case EmailDispatchDrainOutcome.DeadLettered:
-                    deadLettered++;
-                    processed++;
-                    break;
-                case EmailDispatchDrainOutcome.Unknown:
-                    unknown++;
-                    processed++;
-                    break;
-                case EmailDispatchDrainOutcome.Skipped:
-                    skipped++;
-                    processed++;
-                    break;
-                case EmailDispatchDrainOutcome.TenantPaused:
-                    tenantPaused++;
-                    break;
-                case EmailDispatchDrainOutcome.AlreadyClaimed:
-                    alreadyClaimed++;
-                    break;
-            }
+                CancellationToken = cancellationToken,
+                MaxDegreeOfParallelism = _settings.MaxConcurrentDispatches
+            },
+            async (dispatch, itemCancellationToken) =>
+            {
+                var tenantGate = tenantGates[dispatch.TenantId];
+                await tenantGate.WaitAsync(itemCancellationToken);
+                try
+                {
+                    var result = await ProcessDispatchAsync(dispatch, _settings.ConsumerId, itemCancellationToken);
+                    switch (result.Outcome)
+                    {
+                        case EmailDispatchDrainOutcome.Sent:
+                            Interlocked.Increment(ref sent);
+                            Interlocked.Increment(ref processed);
+                            break;
+                        case EmailDispatchDrainOutcome.RetryScheduled:
+                            Interlocked.Increment(ref retryScheduled);
+                            Interlocked.Increment(ref processed);
+                            break;
+                        case EmailDispatchDrainOutcome.DeadLettered:
+                            Interlocked.Increment(ref deadLettered);
+                            Interlocked.Increment(ref processed);
+                            break;
+                        case EmailDispatchDrainOutcome.Unknown:
+                            Interlocked.Increment(ref unknown);
+                            Interlocked.Increment(ref processed);
+                            break;
+                        case EmailDispatchDrainOutcome.Skipped:
+                            Interlocked.Increment(ref skipped);
+                            Interlocked.Increment(ref processed);
+                            break;
+                        case EmailDispatchDrainOutcome.TenantPaused:
+                            Interlocked.Increment(ref tenantPaused);
+                            break;
+                        case EmailDispatchDrainOutcome.AlreadyClaimed:
+                            Interlocked.Increment(ref alreadyClaimed);
+                            break;
+                    }
+                }
+                finally
+                {
+                    tenantGate.Release();
+                }
+            });
+
+        foreach (var tenantGate in tenantGates.Values)
+        {
+            tenantGate.Dispose();
         }
 
         return new EmailDispatchDrainResult(
@@ -237,6 +316,26 @@ public sealed class EmailDispatchDrainService(
 
         try
         {
+            using var rateLease = await _smtpRateLimiter.AcquireAsync(1, cancellationToken);
+            if (!rateLease.IsAcquired)
+            {
+                var retryDelay = TimeSpan.FromMinutes(1);
+                await repository.MarkAsFailed(
+                    dispatch.Id,
+                    SmtpRateLimitedFailureCategory,
+                    SmtpSendFailedMessage,
+                    isRetryable: true,
+                    retryDelay,
+                    dispatch.MaxAttempts,
+                    now,
+                    cancellationToken);
+                metrics.RecordEmailDispatchAttempt(
+                    dispatch.TenantId.ToString(),
+                    "retry_scheduled",
+                    SmtpRateLimitedFailureCategory);
+                return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.RetryScheduled, dispatch.Id);
+            }
+
             var eligibility = await eligibilityEvaluator.EvaluateAndBeginProviderHandoffAsync(
                 new EmailDispatchEligibilityRequest(
                     dispatch.TenantId,
@@ -387,6 +486,12 @@ public sealed class EmailDispatchDrainService(
         {
             tenantAccessor.Clear();
         }
+    }
+
+    public void Dispose()
+    {
+        _smtpRateLimiter.Dispose();
+        _batchGate.Dispose();
     }
 
     private async Task<EmailDispatchSingleDrainResult> ReconcileProviderAcceptedAsync(
@@ -545,6 +650,8 @@ public sealed class EmailDispatchDrainService(
         EmailDispatchKind.RegistrationApproved
             or EmailDispatchKind.RegistrationRejected
             or EmailDispatchKind.WaitlistPromoted
+            or EmailDispatchKind.RegistrationCancelled
+            or EmailDispatchKind.RegistrationRevoked
             or EmailDispatchKind.EventCancelled => NotificationPreferenceCategories.EventUpdates,
         _ => null
     };

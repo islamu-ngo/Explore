@@ -38,7 +38,7 @@ public sealed class EmailDispatchStatusCollectionLinkPolicy : ICollectionLinkPol
     {
         var routeValues = new { tenantId = dto.TenantId, outboxId = dto.OutboxId };
 
-        if (IsReplayable(dto.DeliveryStatus))
+        if (dto.ContentRedactedAt is null && IsReplayable(dto.DeliveryStatus))
         {
             yield return new LinkDefinition(
                 "replay",
@@ -52,7 +52,7 @@ public sealed class EmailDispatchStatusCollectionLinkPolicy : ICollectionLinkPol
                     dto);
         }
 
-        if (CanPark(dto.DeliveryStatus))
+        if (dto.ContentRedactedAt is null && CanPark(dto.DeliveryStatus))
         {
             yield return new LinkDefinition(
                 "park",
@@ -62,6 +62,20 @@ public sealed class EmailDispatchStatusCollectionLinkPolicy : ICollectionLinkPol
                 "Park email dispatch",
                 RequiresAuth: true)
                 .RequirePermission(AuthorizationActions.EmailDispatches.Park,
+                    ResourceDescriptors.EmailDispatchStatus,
+                    dto);
+        }
+
+        if (dto.ContentRedactedAt is null && CanResolve(dto.DeliveryStatus))
+        {
+            yield return new LinkDefinition(
+                "resolve-without-replay",
+                RouteNames.ResolveEmailDispatchWithoutReplay,
+                routeValues,
+                "POST",
+                "Resolve email dispatch without replay",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.EmailDispatches.Resolve,
                     ResourceDescriptors.EmailDispatchStatus,
                     dto);
         }
@@ -76,4 +90,9 @@ public sealed class EmailDispatchStatusCollectionLinkPolicy : ICollectionLinkPol
         => !string.Equals(deliveryStatus, "Sent", StringComparison.Ordinal) &&
            !string.Equals(deliveryStatus, "Skipped", StringComparison.Ordinal) &&
            !string.Equals(deliveryStatus, "Parked", StringComparison.Ordinal);
+
+    private static bool CanResolve(string deliveryStatus)
+        => string.Equals(deliveryStatus, "DeadLettered", StringComparison.Ordinal)
+           || string.Equals(deliveryStatus, "Parked", StringComparison.Ordinal)
+           || string.Equals(deliveryStatus, "Unknown", StringComparison.Ordinal);
 }

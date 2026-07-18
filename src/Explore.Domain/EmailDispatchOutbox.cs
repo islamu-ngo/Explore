@@ -48,6 +48,7 @@ public class EmailDispatchOutbox : ITenantEntity, IAuditableEntity, ISoftDeletab
     public DateTime? DeadLetteredAt { get; set; }
     public DateTime? ParkedAt { get; set; }
     public DateTime? UnknownAt { get; set; }
+    public DateTime? ContentRedactedAt { get; set; }
 
     public string? LastFailureCategory { get; set; }
     public string? LastError { get; set; }

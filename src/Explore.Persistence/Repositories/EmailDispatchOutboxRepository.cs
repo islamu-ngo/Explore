@@ -35,13 +35,59 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         DateTime now,
         CancellationToken cancellationToken)
     {
+        return await GetPendingBatch(batchSize, batchSize, true, now, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<EmailDispatchOutbox>> GetPendingBatch(
+        int batchSize,
+        int maxRowsPerTenant,
+        bool includeOptionalReminders,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
         return await _dbContext.EmailDispatchOutbox
+            .FromSqlInterpolated($"""
+                WITH ranked AS (
+                    SELECT outbox.id,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY outbox.tenant_id
+                               ORDER BY
+                                   CASE
+                                       WHEN delivery.is_required = TRUE THEN 0
+                                       WHEN outbox.kind = {(int)EmailDispatchKind.EventReminder} THEN 2
+                                       ELSE 1
+                                   END,
+                                   outbox.created_at,
+                                   outbox.id) AS tenant_rank,
+                           CASE
+                               WHEN delivery.is_required = TRUE THEN 0
+                               WHEN outbox.kind = {(int)EmailDispatchKind.EventReminder} THEN 2
+                               ELSE 1
+                           END AS priority
+                    FROM email_dispatch_outbox AS outbox
+                    LEFT JOIN notification_deliveries AS delivery
+                      ON delivery.tenant_id = outbox.tenant_id
+                     AND delivery.email_dispatch_outbox_id = outbox.id
+                    WHERE outbox.content_redacted_at IS NULL
+                      AND outbox.is_deleted = FALSE
+                      AND outbox.status IN ({(int)EmailDispatchStatus.Pending}, {(int)EmailDispatchStatus.RetryScheduled})
+                      AND (outbox.next_attempt_at IS NULL OR outbox.next_attempt_at <= {now})
+                      AND ({includeOptionalReminders} OR outbox.kind <> {(int)EmailDispatchKind.EventReminder})
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM email_dispatch_tenant_controls AS control
+                          WHERE control.tenant_id = outbox.tenant_id
+                            AND control.is_paused = TRUE)
+                )
+                SELECT outbox.*
+                FROM email_dispatch_outbox AS outbox
+                INNER JOIN ranked ON ranked.id = outbox.id
+                WHERE ranked.tenant_rank <= {maxRowsPerTenant}
+                ORDER BY ranked.priority, ranked.tenant_rank, outbox.created_at, outbox.id
+                LIMIT {batchSize}
+                """)
             .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
             .AsNoTracking()
-            .Where(e => (e.Status == EmailDispatchStatus.Pending || e.Status == EmailDispatchStatus.RetryScheduled)
-                && (e.NextAttemptAt == null || e.NextAttemptAt <= now))
-            .OrderBy(e => e.CreatedAt)
-            .Take(batchSize)
             .ToListAsync(cancellationToken);
     }
 
@@ -59,7 +105,8 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         return await _dbContext.EmailDispatchOutbox
             .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
             .AsNoTracking()
-            .Where(e => (e.Status == EmailDispatchStatus.Pending || e.Status == EmailDispatchStatus.RetryScheduled)
+            .Where(e => e.ContentRedactedAt == null
+                && (e.Status == EmailDispatchStatus.Pending || e.Status == EmailDispatchStatus.RetryScheduled)
                 && (e.NextAttemptAt == null || e.NextAttemptAt <= now)
                 && (e.RabbitMqLastPublishAttemptAt == null || e.RabbitMqLastPublishAttemptAt <= retryAttemptsBefore)
                 && !pausedTenantIds.Contains(e.TenantId))
@@ -75,8 +122,43 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         return _dbContext.EmailDispatchOutbox
             .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
             .AsNoTracking()
-            .CountAsync(e => (e.Status == EmailDispatchStatus.Pending || e.Status == EmailDispatchStatus.RetryScheduled)
+            .CountAsync(e => e.ContentRedactedAt == null
+                && (e.Status == EmailDispatchStatus.Pending || e.Status == EmailDispatchStatus.RetryScheduled)
                 && (e.NextAttemptAt == null || e.NextAttemptAt <= now), cancellationToken);
+    }
+
+    public Task<DateTime?> GetOldestDueCreatedAtAsync(
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        return _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .Where(e => e.ContentRedactedAt == null
+                && (e.Status == EmailDispatchStatus.Pending || e.Status == EmailDispatchStatus.RetryScheduled)
+                && (e.NextAttemptAt == null || e.NextAttemptAt <= now))
+            .MinAsync(e => (DateTime?)e.CreatedAt, cancellationToken);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, int>> CountDueDispatchByTenantAsync(
+        DateTime now,
+        int tenantLimit,
+        CancellationToken cancellationToken)
+    {
+        var rows = await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .Where(e => e.ContentRedactedAt == null
+                && (e.Status == EmailDispatchStatus.Pending || e.Status == EmailDispatchStatus.RetryScheduled)
+                && (e.NextAttemptAt == null || e.NextAttemptAt <= now))
+            .GroupBy(e => e.TenantId)
+            .Select(group => new { TenantId = group.Key, Count = group.Count() })
+            .OrderByDescending(row => row.Count)
+            .ThenBy(row => row.TenantId)
+            .Take(tenantLimit)
+            .ToListAsync(cancellationToken);
+
+        return rows.ToDictionary(row => row.TenantId, row => row.Count);
     }
 
     public Task<int> CountRetryScheduledAsync(CancellationToken cancellationToken)
@@ -199,6 +281,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
             .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
             .Where(e => e.TenantId == tenantId
                 && e.Id == outboxId
+                && e.ContentRedactedAt == null
                 && e.Status != EmailDispatchStatus.Sent
                 && e.Status != EmailDispatchStatus.Skipped
                 && e.Status != EmailDispatchStatus.Parked)
@@ -228,6 +311,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
             .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
             .Where(e => e.TenantId == tenantId
                 && e.Id == outboxId
+                && e.ContentRedactedAt == null
                 && (e.Status == EmailDispatchStatus.DeadLettered
                     || e.Status == EmailDispatchStatus.Parked
                     || e.Status == EmailDispatchStatus.Unknown
@@ -253,6 +337,274 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         return updated > 0;
     }
 
+    public async Task<bool> TryResolveWithoutReplay(
+        Guid tenantId,
+        Guid outboxId,
+        string reason,
+        Guid? changedBy,
+        DateTime resolvedAt,
+        CancellationToken cancellationToken)
+    {
+        var updated = await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+            .Where(e => e.TenantId == tenantId
+                && e.Id == outboxId
+                && e.ContentRedactedAt == null
+                && (e.Status == EmailDispatchStatus.DeadLettered
+                    || e.Status == EmailDispatchStatus.Parked
+                    || e.Status == EmailDispatchStatus.Unknown))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(e => e.Status, EmailDispatchStatus.Skipped)
+                .SetProperty(e => e.NextAttemptAt, (DateTime?)null)
+                .SetProperty(e => e.ProcessingStartedAt, (DateTime?)null)
+                .SetProperty(e => e.ProcessingLeaseToken, (Guid?)null)
+                .SetProperty(e => e.LastFailureCategory, "operator_resolved_without_replay")
+                .SetProperty(e => e.LastError, Truncate(reason, MaxErrorLength))
+                .SetProperty(e => e.LastFailureAt, resolvedAt)
+                .SetProperty(e => e.UpdatedAt, resolvedAt)
+                .SetProperty(e => e.UpdatedBy, changedBy), cancellationToken);
+
+        if (updated == 0)
+        {
+            return false;
+        }
+
+        await _dbContext.EmailDispatchReceipts
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+            .Where(receipt => receipt.TenantId == tenantId
+                && receipt.EmailDispatchOutboxId == outboxId
+                && receipt.Status != EmailDispatchReceiptStatus.Completed)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(receipt => receipt.Status, EmailDispatchReceiptStatus.Skipped)
+                .SetProperty(receipt => receipt.CompletedAt, (DateTime?)null)
+                .SetProperty(receipt => receipt.FailedAt, resolvedAt)
+                .SetProperty(receipt => receipt.FailureCode, "operator_resolved_without_replay")
+                .SetProperty(receipt => receipt.FailureMessage, Truncate(reason, MaxReceiptFailureLength))
+                .SetProperty(receipt => receipt.UpdatedAt, resolvedAt)
+                .SetProperty(receipt => receipt.UpdatedBy, changedBy), cancellationToken);
+
+        await _dbContext.NotificationDeliveries
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+            .Where(delivery => delivery.TenantId == tenantId
+                && delivery.EmailDispatchOutboxId == outboxId
+                && delivery.StatusId != (int)NotificationDeliveryStatusEnum.Delivered)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(delivery => delivery.StatusId, (int)NotificationDeliveryStatusEnum.Skipped)
+                .SetProperty(delivery => delivery.ProviderStatus, "skipped")
+                .SetProperty(delivery => delivery.FailureCategory, "operator_resolved_without_replay")
+                .SetProperty(delivery => delivery.CompletedAt, resolvedAt)
+                .SetProperty(delivery => delivery.UpdatedAt, resolvedAt)
+                .SetProperty(delivery => delivery.UpdatedBy, changedBy), cancellationToken);
+
+        return true;
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetRetentionTenantIds(
+        DateTime cutoffUtc,
+        int maxTenants,
+        CancellationToken cancellationToken)
+    {
+        return await RetentionRedactionEligible(cutoffUtc)
+            .GroupBy(outbox => outbox.TenantId)
+            .Select(group => new
+            {
+                TenantId = group.Key,
+                OldestCreatedAt = group.Min(outbox => outbox.CreatedAt)
+            })
+            .OrderBy(row => row.OldestCreatedAt)
+            .ThenBy(row => row.TenantId)
+            .Take(maxTenants)
+            .Select(row => row.TenantId)
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<int> CountRetentionRedactionEligible(
+        Guid tenantId,
+        DateTime cutoffUtc,
+        int batchSize,
+        CancellationToken cancellationToken)
+    {
+        return RetentionRedactionEligible(cutoffUtc)
+            .Where(outbox => outbox.TenantId == tenantId)
+            .OrderBy(e => e.CreatedAt)
+            .Take(batchSize)
+            .CountAsync(cancellationToken);
+    }
+
+    public async Task<int> RedactRetentionEligible(
+        Guid tenantId,
+        DateTime cutoffUtc,
+        DateTime redactedAt,
+        int batchSize,
+        CancellationToken cancellationToken)
+    {
+        var rows = await RetentionRedactionEligible(cutoffUtc)
+            .Where(outbox => outbox.TenantId == tenantId)
+            .OrderBy(e => e.CreatedAt)
+            .Take(batchSize)
+            .Select(e => e.Id)
+            .ToListAsync(cancellationToken);
+
+        if (rows.Count == 0)
+        {
+            return 0;
+        }
+
+        var ids = rows.ToArray();
+        await _dbContext.EmailDispatchAttempts
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(attempt => ids.Contains(attempt.EmailDispatchOutboxId))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(attempt => attempt.Provider, (string?)null)
+                .SetProperty(attempt => attempt.SanitizedErrorMessage, (string?)null)
+                .SetProperty(attempt => attempt.ProviderMessageId, (string?)null)
+                .SetProperty(attempt => attempt.CorrelationId, (string?)null)
+                .SetProperty(attempt => attempt.UpdatedAt, redactedAt), cancellationToken);
+
+        await _dbContext.EmailDispatchReceipts
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(receipt => ids.Contains(receipt.EmailDispatchOutboxId))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(receipt => receipt.ConsumerId, (string?)null)
+                .SetProperty(receipt => receipt.FailureMessage, (string?)null)
+                .SetProperty(receipt => receipt.ProviderMessageId, (string?)null)
+                .SetProperty(receipt => receipt.UpdatedAt, redactedAt), cancellationToken);
+
+        await _dbContext.NotificationDeliveries
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(delivery => delivery.TenantId == tenantId
+                && delivery.EmailDispatchOutboxId != null
+                && ids.Contains(delivery.EmailDispatchOutboxId.Value))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(delivery => delivery.ProviderMessageId, (string?)null)
+                .SetProperty(delivery => delivery.ProviderStatus, (string?)null)
+                .SetProperty(delivery => delivery.UpdatedAt, redactedAt), cancellationToken);
+
+        var redactedCount = await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(outbox => ids.Contains(outbox.Id) && outbox.ContentRedactedAt == null)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(outbox => outbox.RecipientEmail, string.Empty)
+                .SetProperty(outbox => outbox.Subject, string.Empty)
+                .SetProperty(outbox => outbox.PlainTextBody, (string?)null)
+                .SetProperty(outbox => outbox.HtmlBody, (string?)null)
+                .SetProperty(outbox => outbox.ReplyTo, (string?)null)
+                .SetProperty(outbox => outbox.LastError, (string?)null)
+                .SetProperty(outbox => outbox.ProviderMessageId, (string?)null)
+                .SetProperty(outbox => outbox.CorrelationId, (string?)null)
+                .SetProperty(outbox => outbox.NextAttemptAt, (DateTime?)null)
+                .SetProperty(outbox => outbox.ProcessingStartedAt, (DateTime?)null)
+                .SetProperty(outbox => outbox.ProcessingLeaseToken, (Guid?)null)
+                .SetProperty(outbox => outbox.ContentRedactedAt, redactedAt)
+                .SetProperty(outbox => outbox.UpdatedAt, redactedAt), cancellationToken);
+        return redactedCount;
+    }
+
+    public async Task<int> SuppressAndRedactTenant(
+        Guid tenantId,
+        Guid? changedBy,
+        DateTime redactedAt,
+        CancellationToken cancellationToken)
+    {
+        var ids = await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+            .AsNoTracking()
+            .Where(outbox => outbox.TenantId == tenantId && outbox.ContentRedactedAt == null)
+            .Select(outbox => outbox.Id)
+            .ToListAsync(cancellationToken);
+
+        if (ids.Count == 0)
+        {
+            return 0;
+        }
+
+        await _dbContext.EmailDispatchAttempts
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+            .Where(attempt => attempt.TenantId == tenantId && ids.Contains(attempt.EmailDispatchOutboxId))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(attempt => attempt.Provider, (string?)null)
+                .SetProperty(attempt => attempt.SanitizedErrorMessage, (string?)null)
+                .SetProperty(attempt => attempt.ProviderMessageId, (string?)null)
+                .SetProperty(attempt => attempt.CorrelationId, (string?)null)
+                .SetProperty(attempt => attempt.UpdatedAt, redactedAt)
+                .SetProperty(attempt => attempt.UpdatedBy, changedBy), cancellationToken);
+
+        await _dbContext.EmailDispatchReceipts
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+            .Where(receipt => receipt.TenantId == tenantId && ids.Contains(receipt.EmailDispatchOutboxId))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(receipt => receipt.Status, receipt => receipt.Status == EmailDispatchReceiptStatus.Completed
+                    ? EmailDispatchReceiptStatus.Completed
+                    : EmailDispatchReceiptStatus.Skipped)
+                .SetProperty(receipt => receipt.ConsumerId, (string?)null)
+                .SetProperty(receipt => receipt.FailedAt, receipt => receipt.Status == EmailDispatchReceiptStatus.Completed
+                    ? receipt.FailedAt
+                    : redactedAt)
+                .SetProperty(receipt => receipt.FailureCode, receipt => receipt.Status == EmailDispatchReceiptStatus.Completed
+                    ? receipt.FailureCode
+                    : "tenant_deleted")
+                .SetProperty(receipt => receipt.FailureMessage, (string?)null)
+                .SetProperty(receipt => receipt.ProviderMessageId, (string?)null)
+                .SetProperty(receipt => receipt.UpdatedAt, redactedAt)
+                .SetProperty(receipt => receipt.UpdatedBy, changedBy), cancellationToken);
+
+        await _dbContext.NotificationDeliveries
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+            .Where(delivery => delivery.TenantId == tenantId
+                && delivery.EmailDispatchOutboxId != null
+                && ids.Contains(delivery.EmailDispatchOutboxId.Value))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(delivery => delivery.StatusId, delivery => delivery.StatusId == (int)NotificationDeliveryStatusEnum.Delivered
+                    ? (int)NotificationDeliveryStatusEnum.Delivered
+                    : (int)NotificationDeliveryStatusEnum.Skipped)
+                .SetProperty(delivery => delivery.ProviderMessageId, (string?)null)
+                .SetProperty(delivery => delivery.ProviderStatus, (string?)null)
+                .SetProperty(delivery => delivery.FailureCategory, delivery => delivery.StatusId == (int)NotificationDeliveryStatusEnum.Delivered
+                    ? delivery.FailureCategory
+                    : "tenant_deleted")
+                .SetProperty(delivery => delivery.CompletedAt, delivery => delivery.StatusId == (int)NotificationDeliveryStatusEnum.Delivered
+                    ? delivery.CompletedAt
+                    : redactedAt)
+                .SetProperty(delivery => delivery.UpdatedAt, redactedAt)
+                .SetProperty(delivery => delivery.UpdatedBy, changedBy), cancellationToken);
+
+        return await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+            .Where(outbox => outbox.TenantId == tenantId
+                && ids.Contains(outbox.Id)
+                && outbox.ContentRedactedAt == null)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(outbox => outbox.Status, outbox => outbox.Status == EmailDispatchStatus.Pending
+                    || outbox.Status == EmailDispatchStatus.RetryScheduled
+                    || outbox.Status == EmailDispatchStatus.Processing
+                        ? EmailDispatchStatus.Skipped
+                        : outbox.Status)
+                .SetProperty(outbox => outbox.RecipientEmail, string.Empty)
+                .SetProperty(outbox => outbox.Subject, string.Empty)
+                .SetProperty(outbox => outbox.PlainTextBody, (string?)null)
+                .SetProperty(outbox => outbox.HtmlBody, (string?)null)
+                .SetProperty(outbox => outbox.ReplyTo, (string?)null)
+                .SetProperty(outbox => outbox.LastFailureCategory, outbox => outbox.Status == EmailDispatchStatus.Pending
+                    || outbox.Status == EmailDispatchStatus.RetryScheduled
+                    || outbox.Status == EmailDispatchStatus.Processing
+                        ? "tenant_deleted"
+                        : outbox.LastFailureCategory)
+                .SetProperty(outbox => outbox.LastError, (string?)null)
+                .SetProperty(outbox => outbox.LastFailureAt, outbox => outbox.Status == EmailDispatchStatus.Pending
+                    || outbox.Status == EmailDispatchStatus.RetryScheduled
+                    || outbox.Status == EmailDispatchStatus.Processing
+                        ? redactedAt
+                        : outbox.LastFailureAt)
+                .SetProperty(outbox => outbox.ProviderMessageId, (string?)null)
+                .SetProperty(outbox => outbox.CorrelationId, (string?)null)
+                .SetProperty(outbox => outbox.NextAttemptAt, (DateTime?)null)
+                .SetProperty(outbox => outbox.ProcessingStartedAt, (DateTime?)null)
+                .SetProperty(outbox => outbox.ProcessingLeaseToken, (Guid?)null)
+                .SetProperty(outbox => outbox.ContentRedactedAt, redactedAt)
+                .SetProperty(outbox => outbox.UpdatedAt, redactedAt)
+                .SetProperty(outbox => outbox.UpdatedBy, changedBy), cancellationToken);
+    }
+
     public async Task<bool> TryMarkAsProcessing(
         Guid id,
         Guid leaseToken,
@@ -262,6 +614,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         var updated = await _dbContext.EmailDispatchOutbox
             .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
             .Where(e => e.Id == id
+                && e.ContentRedactedAt == null
                 && (e.Status == EmailDispatchStatus.Pending || e.Status == EmailDispatchStatus.RetryScheduled)
                 && (e.NextAttemptAt == null || e.NextAttemptAt <= startedAt))
             .ExecuteUpdateAsync(setters => setters
@@ -789,6 +1142,16 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
     private static string? Truncate(string? value, int maxLength)
     {
         return value is null || value.Length <= maxLength ? value : value[..maxLength];
+    }
+
+    private IQueryable<EmailDispatchOutbox> RetentionRedactionEligible(DateTime cutoffUtc)
+    {
+        return _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .Where(outbox => outbox.ContentRedactedAt == null
+                && ((outbox.Status == EmailDispatchStatus.Sent && outbox.SentAt <= cutoffUtc)
+                    || (outbox.Status == EmailDispatchStatus.Skipped && outbox.LastFailureAt <= cutoffUtc)));
     }
 
     private static void EnsureExactlyOne(int affectedRows, string ledger)

@@ -3,6 +3,7 @@
 
 using Explore.API.Configuration;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Telemetry;
 using Explore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -13,7 +14,8 @@ namespace Explore.API.HealthChecks;
 public sealed class EmailDispatchHealthCheck(
     IOptions<EmailDispatchProcessorSettings> options,
     IOptions<TickerQSchedulerOptions> schedulerOptions,
-    IServiceScopeFactory scopeFactory) : IHealthCheck
+    IServiceScopeFactory scopeFactory,
+    BusinessMetrics metrics) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
@@ -32,6 +34,8 @@ public sealed class EmailDispatchHealthCheck(
             ["dueDispatchWarningThreshold"] = settings.HealthDueDispatchWarningThreshold,
             ["staleProcessingWarningThreshold"] = settings.HealthStaleProcessingWarningThreshold,
             ["deadLetterWarningThreshold"] = settings.HealthDeadLetterWarningThreshold,
+            ["oldestPendingWarningSeconds"] = settings.HealthOldestPendingWarningSeconds,
+            ["tenantBacklogWarningThreshold"] = settings.HealthTenantBacklogWarningThreshold,
             ["consumerId"] = settings.ConsumerId,
             ["tickerQEnabled"] = scheduler.Enabled,
             ["tickerQDashboardEnabled"] = scheduler.DashboardEnabled
@@ -68,12 +72,27 @@ public sealed class EmailDispatchHealthCheck(
             processingStartedBefore,
             cancellationToken);
         var deadLetteredCount = await repository.CountDeadLetteredAsync(cancellationToken);
+        var oldestDueCreatedAt = await repository.GetOldestDueCreatedAtAsync(now, cancellationToken);
+        var tenantBacklog = await repository.CountDueDispatchByTenantAsync(
+            now,
+            settings.HealthTenantSampleLimit,
+            cancellationToken);
+        var oldestPendingAgeSeconds = oldestDueCreatedAt is null
+            ? 0d
+            : Math.Max(0d, (now - oldestDueCreatedAt.Value).TotalSeconds);
 
         data["dueDispatchCount"] = dueDispatchCount;
         data["retryScheduledCount"] = retryScheduledCount;
         data["staleProcessingCount"] = staleProcessingCount;
         data["deadLetteredCount"] = deadLetteredCount;
         data["processingStartedBefore"] = processingStartedBefore;
+        data["oldestPendingAgeSeconds"] = oldestPendingAgeSeconds;
+        data["tenantBacklogSample"] = tenantBacklog;
+        metrics.RecordEmailDispatchOldestPendingAge(oldestPendingAgeSeconds);
+        foreach (var (tenantId, count) in tenantBacklog)
+        {
+            metrics.RecordEmailDispatchTenantBacklog(tenantId.ToString(), count);
+        }
 
         if (staleProcessingCount >= settings.HealthStaleProcessingWarningThreshold)
         {
@@ -93,6 +112,20 @@ public sealed class EmailDispatchHealthCheck(
         {
             return HealthCheckResult.Degraded(
                 "Basic email dispatch due backlog is above the configured threshold.",
+                data: data);
+        }
+
+        if (oldestPendingAgeSeconds >= settings.HealthOldestPendingWarningSeconds)
+        {
+            return HealthCheckResult.Degraded(
+                "Basic email dispatch oldest pending row is above the configured age threshold.",
+                data: data);
+        }
+
+        if (tenantBacklog.Values.Any(count => count >= settings.HealthTenantBacklogWarningThreshold))
+        {
+            return HealthCheckResult.Degraded(
+                "Basic email dispatch tenant backlog is above the configured threshold.",
                 data: data);
         }
 

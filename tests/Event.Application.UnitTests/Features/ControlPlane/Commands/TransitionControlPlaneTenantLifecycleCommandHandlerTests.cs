@@ -148,6 +148,7 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
         var tenant = CreateTenant(TenantStatusEnum.Archived);
         var tenantRepository = Substitute.For<ITenantRepository>();
         var lifecycleLogRepository = Substitute.For<ITenantLifecycleLogRepository>();
+        var emailDispatchOutboxRepository = Substitute.For<IEmailDispatchOutboxRepository>();
         TenantLifecycleLog? capturedLog = null;
         tenantRepository.GetByIdAsNoTrackingAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
         tenantRepository.TryTransitionStatusAsync(
@@ -160,7 +161,11 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
             .Returns(true);
         lifecycleLogRepository.CreateAsync(Arg.Do<TenantLifecycleLog>(log => capturedLog = log), Arg.Any<CancellationToken>())
             .Returns(callInfo => Task.FromResult(callInfo.Arg<TenantLifecycleLog>()));
-        var handler = CreateSut(tenantRepository, lifecycleLogRepository, operatorId);
+        var handler = CreateSut(
+            tenantRepository,
+            lifecycleLogRepository,
+            operatorId,
+            emailDispatchOutboxRepository);
 
         var result = await handler.Handle(
             new TransitionControlPlaneTenantLifecycleCommand(
@@ -185,6 +190,11 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
             Arg.Any<CancellationToken>());
         await tenantRepository.DidNotReceiveWithAnyArgs().Update(default!);
         await lifecycleLogRepository.Received(1).CreateAsync(Arg.Any<TenantLifecycleLog>(), Arg.Any<CancellationToken>());
+        await emailDispatchOutboxRepository.Received(1).SuppressAndRedactTenant(
+            tenant.Id,
+            operatorId,
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
         await Assert.That(capturedLog).IsNotNull();
         await Assert.That(capturedLog!.OldStatusId).IsEqualTo((int)TenantStatusEnum.Archived);
         await Assert.That(capturedLog.NewStatusId).IsEqualTo((int)TenantStatusEnum.Purged);
@@ -297,7 +307,8 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
     private static TransitionControlPlaneTenantLifecycleCommandHandler CreateSut(
         ITenantRepository tenantRepository,
         ITenantLifecycleLogRepository lifecycleLogRepository,
-        Guid? operatorId = null)
+        Guid? operatorId = null,
+        IEmailDispatchOutboxRepository? emailDispatchOutboxRepository = null)
     {
         var currentUserService = Substitute.For<ICurrentUserService>();
         currentUserService.UserId.Returns(operatorId ?? Guid.NewGuid());
@@ -314,6 +325,7 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
         return new TransitionControlPlaneTenantLifecycleCommandHandler(
             tenantRepository,
             lifecycleLogRepository,
+            emailDispatchOutboxRepository ?? Substitute.For<IEmailDispatchOutboxRepository>(),
             currentUserService,
             unitOfWork,
             Substitute.For<ISettingMutationLock>(),

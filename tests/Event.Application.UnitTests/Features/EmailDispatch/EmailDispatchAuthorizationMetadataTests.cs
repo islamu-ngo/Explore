@@ -19,6 +19,7 @@ public sealed class EmailDispatchAuthorizationMetadataTests
         yield return (typeof(SetEmailDispatchTenantPauseStateCommand), AuthorizationActions.EmailDispatches.ManageTenant);
         yield return (typeof(ParkEmailDispatchCommand), AuthorizationActions.EmailDispatches.Park);
         yield return (typeof(ReplayEmailDispatchCommand), AuthorizationActions.EmailDispatches.Replay);
+        yield return (typeof(ResolveEmailDispatchWithoutReplayCommand), AuthorizationActions.EmailDispatches.Resolve);
     }
 
     [Test]
@@ -41,6 +42,7 @@ public sealed class EmailDispatchAuthorizationMetadataTests
         yield return (new SetEmailDispatchTenantPauseStateCommand { TenantId = TenantId, IsPaused = false }, TenantId.ToString("D"), "resume");
         yield return (new ParkEmailDispatchCommand { TenantId = TenantId, OutboxId = OutboxId, Reason = "unsafe" }, OutboxId.ToString("D"), null);
         yield return (new ReplayEmailDispatchCommand { TenantId = TenantId, OutboxId = OutboxId }, OutboxId.ToString("D"), null);
+        yield return (new ResolveEmailDispatchWithoutReplayCommand { TenantId = TenantId, OutboxId = OutboxId, Reason = "reviewed" }, OutboxId.ToString("D"), null);
     }
 
     [Test]
@@ -52,7 +54,7 @@ public sealed class EmailDispatchAuthorizationMetadataTests
         await Assert.That(testCase.Request.ResourceAttributes).IsNotNull();
         await Assert.That(testCase.Request.ResourceAttributes!["tenantId"]).IsEqualTo(TenantId.ToString("D"));
 
-        if (testCase.Request is ParkEmailDispatchCommand or ReplayEmailDispatchCommand)
+        if (testCase.Request is ParkEmailDispatchCommand or ReplayEmailDispatchCommand or ResolveEmailDispatchWithoutReplayCommand)
         {
             await Assert.That(testCase.Request.ResourceAttributes["outboxId"]).IsEqualTo(OutboxId.ToString("D"));
         }

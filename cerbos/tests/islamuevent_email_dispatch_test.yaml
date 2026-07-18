@@ -53,7 +53,7 @@ tests:
     input:
       principals: ["islamuevent_instance_admin"]
       resources: ["dispatch_in_tenant1"]
-      actions: ["view", "manage_tenant", "park", "replay"]
+      actions: ["view", "manage_tenant", "park", "replay", "resolve"]
     expected:
       - principal: "islamuevent_instance_admin"
         resource: "dispatch_in_tenant1"
@@ -62,12 +62,13 @@ tests:
           manage_tenant: EFFECT_ALLOW
           park: EFFECT_ALLOW
           replay: EFFECT_ALLOW
+          resolve: EFFECT_ALLOW
 
   - name: "Tenant admin can operate email dispatch in their tenant"
     input:
       principals: ["islamuevent_tenant_admin"]
       resources: ["dispatch_in_tenant1"]
-      actions: ["view", "manage_tenant", "park", "replay"]
+      actions: ["view", "manage_tenant", "park", "replay", "resolve"]
     expected:
       - principal: "islamuevent_tenant_admin"
         resource: "dispatch_in_tenant1"
@@ -76,12 +77,13 @@ tests:
           manage_tenant: EFFECT_ALLOW
           park: EFFECT_ALLOW
           replay: EFFECT_ALLOW
+          resolve: EFFECT_ALLOW
 
   - name: "Other tenant admin cannot operate email dispatch outside their tenant"
     input:
       principals: ["other_tenant_admin"]
       resources: ["dispatch_in_tenant1"]
-      actions: ["view", "manage_tenant", "park", "replay"]
+      actions: ["view", "manage_tenant", "park", "replay", "resolve"]
     expected:
       - principal: "other_tenant_admin"
         resource: "dispatch_in_tenant1"
@@ -90,12 +92,13 @@ tests:
           manage_tenant: EFFECT_DENY
           park: EFFECT_DENY
           replay: EFFECT_DENY
+          resolve: EFFECT_DENY
 
   - name: "Regular user cannot access email dispatch operator actions"
     input:
       principals: ["regular_user"]
       resources: ["dispatch_in_tenant1"]
-      actions: ["view", "manage_tenant", "park", "replay"]
+      actions: ["view", "manage_tenant", "park", "replay", "resolve"]
     expected:
       - principal: "regular_user"
         resource: "dispatch_in_tenant1"
@@ -104,3 +107,4 @@ tests:
           manage_tenant: EFFECT_DENY
           park: EFFECT_DENY
           replay: EFFECT_DENY
+          resolve: EFFECT_DENY

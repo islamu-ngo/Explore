@@ -48,6 +48,12 @@ public sealed class EmailDispatchAdminHateoasTests
         await AssertPermissionAttributes(park, tenantId, outboxId, dto);
         await Assert.That(GetRouteValue<Guid>(park.RouteValues, "tenantId")).IsEqualTo(tenantId);
         await Assert.That(GetRouteValue<Guid>(park.RouteValues, "outboxId")).IsEqualTo(outboxId);
+
+        var resolve = links.Single(link => link.Rel == "resolve-without-replay");
+        await Assert.That(resolve.RouteName).IsEqualTo(RouteNames.ResolveEmailDispatchWithoutReplay);
+        await Assert.That(resolve.Method).IsEqualTo("POST");
+        await Assert.That(resolve.PermissionAction).IsEqualTo(AuthorizationActions.EmailDispatches.Resolve);
+        await AssertPermissionAttributes(resolve, tenantId, outboxId, dto);
     }
 
     [Test]
@@ -59,6 +65,7 @@ public sealed class EmailDispatchAdminHateoasTests
 
         await Assert.That(links.Any(link => link.Rel == "replay")).IsFalse();
         await Assert.That(links.Any(link => link.Rel == "park")).IsFalse();
+        await Assert.That(links.Any(link => link.Rel == "resolve-without-replay")).IsFalse();
     }
 
     [Test]
@@ -70,6 +77,7 @@ public sealed class EmailDispatchAdminHateoasTests
 
         await Assert.That(links.Any(link => link.Rel == "replay")).IsTrue();
         await Assert.That(links.Any(link => link.Rel == "park")).IsFalse();
+        await Assert.That(links.Any(link => link.Rel == "resolve-without-replay")).IsTrue();
     }
 
     [Test]
@@ -81,6 +89,19 @@ public sealed class EmailDispatchAdminHateoasTests
 
         await Assert.That(links.Any(link => link.Rel == "replay")).IsFalse();
         await Assert.That(links.Any(link => link.Rel == "park")).IsTrue();
+        await Assert.That(links.Any(link => link.Rel == "resolve-without-replay")).IsFalse();
+    }
+
+    [Test]
+    public async Task RedactedStatusRowsExposeNoMutationLinks()
+    {
+        var policy = new EmailDispatchStatusCollectionLinkPolicy();
+        var dto = CreateStatus(Guid.NewGuid(), Guid.NewGuid(), "DeadLettered");
+        dto.ContentRedactedAt = DateTime.UtcNow;
+
+        var links = policy.GetItemLinks(dto, user: null).ToList();
+
+        await Assert.That(links).IsEmpty();
     }
 
     private static EmailDispatchStatusDto CreateStatus(Guid tenantId, Guid outboxId, string deliveryStatus) => new()

@@ -18,7 +18,7 @@ resourcePolicy:
       derivedRoles:
         - islamuevent_instance_admin
 
-    - actions: ["view", "manage_tenant", "park", "replay"]
+    - actions: ["view", "manage_tenant", "park", "replay", "resolve"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_tenant_admin

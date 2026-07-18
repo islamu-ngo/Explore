@@ -391,6 +391,7 @@ public static class AuthorizationActions
         public const string ManageTenant = "manage_tenant";
         public const string Park = "park";
         public const string Replay = "replay";
+        public const string Resolve = "resolve";
     }
 
     public static class Webhooks

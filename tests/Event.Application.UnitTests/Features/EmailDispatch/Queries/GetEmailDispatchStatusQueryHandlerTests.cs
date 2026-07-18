@@ -44,6 +44,7 @@ public sealed class GetEmailDispatchStatusQueryHandlerTests
         var outboxId = Guid.NewGuid();
         var sourceId = Guid.NewGuid();
         var deliveredAt = DateTime.UtcNow;
+        var contentRedactedAt = deliveredAt.AddDays(180);
 
         _repository.GetStatusRows(tenantId, 50, Arg.Any<CancellationToken>())
             .Returns([
@@ -64,6 +65,7 @@ public sealed class GetEmailDispatchStatusQueryHandlerTests
                     Status = EmailDispatchStatus.Sent,
                     AttemptCount = 2,
                     SentAt = deliveredAt,
+                    ContentRedactedAt = contentRedactedAt,
                     CorrelationId = "registration-correlation"
                 }
             ]);
@@ -84,6 +86,7 @@ public sealed class GetEmailDispatchStatusQueryHandlerTests
         await Assert.That(dto.DeliveryStatus).IsEqualTo(nameof(EmailDispatchStatus.Sent));
         await Assert.That(dto.AttemptCount).IsEqualTo(2);
         await Assert.That(dto.DeliveredAt).IsEqualTo(deliveredAt);
+        await Assert.That(dto.ContentRedactedAt).IsEqualTo(contentRedactedAt);
         await Assert.That(dto.CorrelationId).IsEqualTo("registration-correlation");
 
         var dtoPropertyNames = typeof(Explore.Application.DTOs.EmailDispatch.EmailDispatchStatusDto)

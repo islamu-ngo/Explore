@@ -188,4 +188,35 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
 
         return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
     }
+
+    /// <summary>
+    /// Resolve one deferred EmailDispatch row without replaying its content.
+    /// </summary>
+    [HttpPost("tenants/{tenantId:guid}/outbox/{outboxId:guid}/resolve-without-replay", Name = RouteNames.ResolveEmailDispatchWithoutReplay)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> ResolveWithoutReplay(
+        Guid tenantId,
+        Guid outboxId,
+        [FromQuery] EmailDispatchResolveQueryRequest query,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(
+            new ResolveEmailDispatchWithoutReplayCommand
+            {
+                TenantId = tenantId,
+                OutboxId = outboxId,
+                Reason = query.GetNormalizedReason(),
+                ChangedBy = CurrentUserId
+            },
+            cancellationToken);
+
+        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
+    }
 }

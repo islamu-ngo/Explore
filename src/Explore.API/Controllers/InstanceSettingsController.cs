@@ -483,8 +483,7 @@ public class InstanceSettingsController : ExploreControllerBase
     {
         if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return this.ToForbiddenProblem(detail: "Instance administrator or active setup secret authority is required for this operation.");
 
-        var emailService = HttpContext.RequestServices.GetRequiredService<Explore.Application.Contracts.Infrastructure.IEmailService>();
-        var result = await emailService.TestConnectionAsync(cancellationToken);
+        var result = await _mediator.Send(new TestInstanceSmtpConnectionQuery(), cancellationToken);
 
         var message = result.Success
             ? (string.IsNullOrWhiteSpace(result.Message) ? "Connection successful." : result.Message)

@@ -214,6 +214,43 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
     }
 
     [Test]
+    public async Task EligibilitySkipsRegistrationCancellationKindsWhenRecipientDisabledEventUpdates()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var tenant = await SeedTenantAsync(context, "eligibility-registration-cancellation");
+
+        foreach (var kind in new[] { EmailDispatchKind.RegistrationCancelled, EmailDispatchKind.RegistrationRevoked })
+        {
+            var dispatch = await SeedDispatchAsync(context, tenant.Id, EmailDispatchStatus.Pending);
+            dispatch.Kind = kind;
+            context.UserNotificationPreferences.Add(new UserNotificationPreference
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = tenant.Id,
+                Tenant = tenant,
+                UserId = dispatch.RecipientUserId,
+                Category = NotificationPreferenceCategories.EventUpdates,
+                IsEnabled = false,
+                CreatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var repository = new EmailDispatchOutboxRepository(context);
+            var leaseToken = Guid.CreateVersion7();
+            await Assert.That(await repository.TryMarkAsProcessing(dispatch.Id, leaseToken, DateTime.UtcNow, CancellationToken.None)).IsTrue();
+            context.ChangeTracker.Clear();
+
+            var result = await CreateEligibilityEvaluator(context).EvaluateAndBeginProviderHandoffAsync(
+                new EmailDispatchEligibilityRequest(tenant.Id, dispatch.Id, leaseToken, 1, "test-worker", DateTime.UtcNow),
+                CancellationToken.None);
+
+            await Assert.That(result.Outcome).IsEqualTo(EmailDispatchEligibilityOutcome.Skipped);
+            await Assert.That(result.SkipReason).IsEqualTo("recipient_unsubscribed");
+        }
+    }
+
+    [Test]
     public async Task EligibilityPreservesAuthorizationBoundManagedInvitationDestination()
     {
         await fixture.ResetAsync();
@@ -237,6 +274,182 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
 
         await Assert.That(result.Outcome).IsEqualTo(EmailDispatchEligibilityOutcome.Eligible);
         await Assert.That(result.RecipientEmail).IsEqualTo(invitedAddress);
+    }
+
+    [Test]
+    public async Task RetentionRedactionClearsParentAndChildContentAfterSentCutoff()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var utcNow = DateTime.UtcNow;
+        var settledAt = utcNow.AddDays(-181);
+        var graph = await SeedAcceptedSettlementGraphAsync(context, "retention-sent", settledAt);
+        var repository = new EmailDispatchOutboxRepository(context);
+        await repository.SettleProviderAccepted(
+            new EmailDispatchAcceptedSettlement(
+                graph.Dispatch.TenantId,
+                graph.Dispatch.Id,
+                graph.Attempt.AttemptNumber,
+                settledAt,
+                "provider-message-retained"),
+            CancellationToken.None);
+
+        var dispatch = await context.EmailDispatchOutbox.IgnoreQueryFilters().SingleAsync(row => row.Id == graph.Dispatch.Id);
+        var attempt = await context.EmailDispatchAttempts.IgnoreQueryFilters().SingleAsync(row => row.Id == graph.Attempt.Id);
+        var receipt = await context.EmailDispatchReceipts.IgnoreQueryFilters().SingleAsync(row => row.Id == graph.Receipt.Id);
+        dispatch.ReplyTo = "reply@example.test";
+        dispatch.PlainTextBody = "private plain content";
+        dispatch.HtmlBody = "<p>private html content</p>";
+        attempt.SanitizedErrorMessage = "retained attempt detail";
+        receipt.FailureMessage = "retained receipt detail";
+        await context.SaveChangesAsync();
+
+        var redacted = await repository.RedactRetentionEligible(
+            graph.Dispatch.TenantId,
+            utcNow.AddDays(-180),
+            utcNow,
+            10,
+            CancellationToken.None);
+
+        context.ChangeTracker.Clear();
+        dispatch = await context.EmailDispatchOutbox.IgnoreQueryFilters().AsNoTracking().SingleAsync(row => row.Id == graph.Dispatch.Id);
+        attempt = await context.EmailDispatchAttempts.IgnoreQueryFilters().AsNoTracking().SingleAsync(row => row.Id == graph.Attempt.Id);
+        receipt = await context.EmailDispatchReceipts.IgnoreQueryFilters().AsNoTracking().SingleAsync(row => row.Id == graph.Receipt.Id);
+        await Assert.That(redacted).IsEqualTo(1);
+        await Assert.That(dispatch.RecipientEmail).IsEmpty();
+        await Assert.That(dispatch.Subject).IsEmpty();
+        await Assert.That(dispatch.PlainTextBody).IsNull();
+        await Assert.That(dispatch.HtmlBody).IsNull();
+        await Assert.That(dispatch.ReplyTo).IsNull();
+        await Assert.That(dispatch.ContentRedactedAt).IsEqualTo(utcNow);
+        await Assert.That(attempt.SanitizedErrorMessage).IsNull();
+        await Assert.That(attempt.ProviderMessageId).IsNull();
+        await Assert.That(receipt.FailureMessage).IsNull();
+        await Assert.That(receipt.ProviderMessageId).IsNull();
+    }
+
+    [Test]
+    public async Task RetentionRedactionWaitsForExplicitResolutionAndThenBlocksReplay()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var tenant = await SeedTenantAsync(context, "retention-resolution");
+        var dispatch = await SeedDispatchAsync(context, tenant.Id, EmailDispatchStatus.DeadLettered);
+        var repository = new EmailDispatchOutboxRepository(context);
+        var utcNow = DateTime.UtcNow;
+
+        var unresolvedCount = await repository.CountRetentionRedactionEligible(
+            tenant.Id,
+            utcNow.AddDays(-180),
+            10,
+            CancellationToken.None);
+        var resolved = await repository.TryResolveWithoutReplay(
+            tenant.Id,
+            dispatch.Id,
+            "No replay required after operator review.",
+            Guid.CreateVersion7(),
+            utcNow.AddDays(-181),
+            CancellationToken.None);
+        var redacted = await repository.RedactRetentionEligible(
+            tenant.Id,
+            utcNow.AddDays(-180),
+            utcNow,
+            10,
+            CancellationToken.None);
+        var replayed = await repository.TryReplayForOperator(
+            tenant.Id,
+            dispatch.Id,
+            Guid.CreateVersion7(),
+            utcNow,
+            CancellationToken.None);
+
+        context.ChangeTracker.Clear();
+        var persisted = await context.EmailDispatchOutbox.IgnoreQueryFilters().AsNoTracking().SingleAsync(row => row.Id == dispatch.Id);
+        await Assert.That(unresolvedCount).IsEqualTo(0);
+        await Assert.That(resolved).IsTrue();
+        await Assert.That(redacted).IsEqualTo(1);
+        await Assert.That(replayed).IsFalse();
+        await Assert.That(persisted.Status).IsEqualTo(EmailDispatchStatus.Skipped);
+        await Assert.That(persisted.LastFailureCategory).IsEqualTo("operator_resolved_without_replay");
+        await Assert.That(persisted.ContentRedactedAt).IsEqualTo(utcNow);
+    }
+
+    [Test]
+    public async Task RetentionRedactionImmediatelySuppressesPurgedTenantWork()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var tenant = await SeedTenantAsync(context, "retention-purged");
+        var dispatch = await SeedDispatchAsync(context, tenant.Id, EmailDispatchStatus.Pending);
+        tenant.TenantStatusId = (int)TenantStatusEnum.Purged;
+        await context.SaveChangesAsync();
+        var repository = new EmailDispatchOutboxRepository(context);
+        var utcNow = DateTime.UtcNow;
+
+        var redacted = await repository.SuppressAndRedactTenant(
+            tenant.Id,
+            Guid.CreateVersion7(),
+            utcNow,
+            CancellationToken.None);
+
+        context.ChangeTracker.Clear();
+        var persisted = await context.EmailDispatchOutbox.IgnoreQueryFilters().AsNoTracking().SingleAsync(row => row.Id == dispatch.Id);
+        var delivery = await context.NotificationDeliveries.IgnoreQueryFilters().AsNoTracking().SingleAsync(row => row.EmailDispatchOutboxId == dispatch.Id);
+        await Assert.That(redacted).IsEqualTo(1);
+        await Assert.That(persisted.Status).IsEqualTo(EmailDispatchStatus.Skipped);
+        await Assert.That(persisted.LastFailureCategory).IsEqualTo("tenant_deleted");
+        await Assert.That(persisted.ContentRedactedAt).IsEqualTo(utcNow);
+        await Assert.That(delivery.StatusId).IsEqualTo((int)NotificationDeliveryStatusEnum.Skipped);
+        await Assert.That(delivery.FailureCategory).IsEqualTo("tenant_deleted");
+    }
+
+    [Test]
+    public async Task PendingBatchIsTenantFairAndPrioritizesRequiredWorkOverOptionalReminders()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var now = DateTime.UtcNow;
+        var tenantA = await SeedTenantAsync(context, "fair-a");
+        var tenantB = await SeedTenantAsync(context, "fair-b");
+        var tenantC = await SeedTenantAsync(context, "fair-c");
+        var tenantAOldest = await SeedDispatchAsync(context, tenantA.Id, EmailDispatchStatus.Pending);
+        var tenantASecond = await SeedDispatchAsync(context, tenantA.Id, EmailDispatchStatus.Pending);
+        var tenantBOnly = await SeedDispatchAsync(context, tenantB.Id, EmailDispatchStatus.Pending);
+        var reminder = await SeedDispatchAsync(context, tenantC.Id, EmailDispatchStatus.Pending);
+        var required = await SeedDispatchAsync(context, tenantC.Id, EmailDispatchStatus.Pending);
+
+        tenantAOldest.CreatedAt = now.AddHours(-5);
+        tenantASecond.CreatedAt = now.AddHours(-4);
+        tenantBOnly.CreatedAt = now.AddHours(-1);
+        reminder.Kind = EmailDispatchKind.EventReminder;
+        reminder.CreatedAt = now.AddHours(-6);
+        required.Kind = EmailDispatchKind.OrganizerNotification;
+        required.CreatedAt = now.AddMinutes(-30);
+        var requiredDelivery = await context.NotificationDeliveries
+            .SingleAsync(row => row.EmailDispatchOutboxId == required.Id);
+        requiredDelivery.IsRequired = true;
+        requiredDelivery.DeliveryPolicyId = (int)NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired;
+        await context.SaveChangesAsync();
+
+        var repository = new EmailDispatchOutboxRepository(context);
+        var batch = await repository.GetPendingBatch(
+            batchSize: 3,
+            maxRowsPerTenant: 1,
+            includeOptionalReminders: true,
+            now,
+            CancellationToken.None);
+        var withoutReminders = await repository.GetPendingBatch(
+            batchSize: 10,
+            maxRowsPerTenant: 2,
+            includeOptionalReminders: false,
+            now,
+            CancellationToken.None);
+
+        await Assert.That(batch.Select(row => row.TenantId).Distinct().Count()).IsEqualTo(3);
+        await Assert.That(batch.Count(row => row.TenantId == tenantA.Id)).IsEqualTo(1);
+        await Assert.That(batch.Single(row => row.TenantId == tenantA.Id).Id).IsEqualTo(tenantAOldest.Id);
+        await Assert.That(batch.Single(row => row.TenantId == tenantC.Id).Id).IsEqualTo(required.Id);
+        await Assert.That(withoutReminders.Select(row => row.Id)).DoesNotContain(reminder.Id);
     }
 
     [Test]

@@ -319,6 +319,7 @@ public static class RouteNames
     public const string ResumeEmailDispatchTenant = "ResumeEmailDispatchTenant";
     public const string ParkEmailDispatch = "ParkEmailDispatch";
     public const string ReplayEmailDispatch = "ReplayEmailDispatch";
+    public const string ResolveEmailDispatchWithoutReplay = "ResolveEmailDispatchWithoutReplay";
 
     #endregion
 
@@ -529,9 +530,6 @@ public static class RouteNames
 
     public const string GetAtprotoRecordEntries = "GetAtprotoRecordEntries";
     public const string GetAtprotoRecordEntryById = "GetAtprotoRecordEntryById";
-    public const string CreateAtprotoRecordEntry = "CreateAtprotoRecordEntry";
-    public const string UpdateAtprotoRecordEntry = "UpdateAtprotoRecordEntry";
-    public const string DeleteAtprotoRecordEntry = "DeleteAtprotoRecordEntry";
 
     public const string GetIndexedDids = "GetIndexedDids";
     public const string GetIndexedDidByDid = "GetIndexedDidByDid";
@@ -739,8 +737,6 @@ public static class RouteNames
 
     public const string GetUserAuthenticationTokens = "GetUserAuthenticationTokens";
     public const string GetUserAuthenticationTokenById = "GetUserAuthenticationTokenById";
-    public const string CreateUserAuthenticationToken = "CreateUserAuthenticationToken";
-    public const string UpdateUserAuthenticationToken = "UpdateUserAuthenticationToken";
     public const string DeleteUserAuthenticationToken = "DeleteUserAuthenticationToken";
 
     #endregion
@@ -817,6 +813,10 @@ public static class RouteNames
     public const string ApplyControlPlaneTenantPlanAssignment = "ApplyControlPlaneTenantPlanAssignment";
     public const string RollbackControlPlaneTenantPlanAssignment = "RollbackControlPlaneTenantPlanAssignment";
     public const string GetInstanceModuleSettings = "GetInstanceModuleSettings";
+    public const string GetInstanceAtprotoFederationSettings = "GetInstanceAtprotoFederationSettings";
+    public const string UpdateInstanceAtprotoFederationSetting = "UpdateInstanceAtprotoFederationSetting";
+    public const string LockInstanceAtprotoFederationSetting = "LockInstanceAtprotoFederationSetting";
+    public const string UnlockInstanceAtprotoFederationSetting = "UnlockInstanceAtprotoFederationSetting";
     public const string UpdateInstanceModuleSettings = "UpdateInstanceModuleSettings";
     public const string GetInstanceEventPolicy = "GetInstanceEventPolicy";
     public const string UpdateInstanceEventPolicy = "UpdateInstanceEventPolicy";

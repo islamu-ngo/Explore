@@ -17,5 +17,6 @@ public sealed class EmailDispatchStatusDto
     public DateTime? UnknownAt { get; set; }
     public DateTime? DeliveredAt { get; set; }
     public DateTime? ParkedAt { get; set; }
+    public DateTime? ContentRedactedAt { get; set; }
     public string? CorrelationId { get; set; }
 }

@@ -170,6 +170,7 @@ public static class MachineScopeMapping
         AuthorizationActions.EmailDispatches.ManageTenant => true,
         AuthorizationActions.EmailDispatches.Park => true,
         AuthorizationActions.EmailDispatches.Replay => true,
+        AuthorizationActions.EmailDispatches.Resolve => true,
         _ => false
     };
 

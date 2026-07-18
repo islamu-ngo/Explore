@@ -85,6 +85,7 @@ Commonly consumed sections in code:
 - `SecretRefresh:*`
 - `EmailDispatchProcessor:*` (Basic Dispatch Mode background worker)
 - `EmailDispatchRabbitMq:*` (optional RabbitMQ Dispatch Mode transport foundation)
+- `EmailDispatchRetention:*` (bounded email content redaction worker)
 - `IdempotencyCleanup:*` (expired write-retry replay-cache cleanup)
 - `AiRetentionCleanup:*` (scheduled tenant-scoped AI conversation retention cleanup)
 - `AiProvider:*` (AI provider readiness/egress validation foundation)
@@ -509,6 +510,20 @@ SMTP settings still come from the `email.*` governance/secret keys resolved by `
 
 The `email-dispatch` readiness payload reports `dueDispatchCount`, `retryScheduledCount`, `staleProcessingCount`, and `deadLetteredCount`. Future `RetryScheduled` rows are visible for operator context, but only due rows count toward `HealthDueDispatchWarningThreshold`; scheduled future retries are normal backoff state.
 
+Email content retention binds from `EmailDispatchRetention` and is validated at startup:
+
+| Key | Default | Description |
+|---|---:|---|
+| `Enabled` | `true` | Enables the API-hosted retention processor. Disabling it stops new redaction passes without restoring already-redacted content. |
+| `DryRun` | `false` | Counts one bounded eligible batch without changing rows. Enable this before changing retention policy in an existing deployment. |
+| `InitialDelaySeconds` | `60` | Delay after API startup before the first cleanup pass. Must be zero or greater. |
+| `PollingIntervalMinutes` | `60` | Delay between cleanup passes. Must be greater than zero. |
+| `MaxTenantsPerPass` | `100` | Maximum tenant cohorts examined per pass. Oldest eligible cohorts are selected first. |
+| `BatchSize` | `500` | Maximum parent dispatch rows processed per tenant. Attempts, receipts, and notification delivery metadata follow each selected parent in the same transaction. |
+| `RetentionDays` | `180` | Age after `Sent` or `Skipped` before content is redacted. Must be greater than zero. `DeadLettered`, `Unknown`, and `Parked` rows remain unredacted until replay succeeds or an operator explicitly resolves them to `Skipped`; purged tenants are redacted immediately. |
+
+Redaction clears recipient, subject, plain/HTML body, reply-to, provider/correlation identifiers, and content-bearing attempt/receipt/delivery fields while retaining typed, non-PII identifiers, categories, state, and timestamps. `ContentRedactedAt` is a permanent replay and provider-handoff fence; changing these settings cannot reconstruct redacted material.
+
 TickerQ host settings bind from `Scheduler:TickerQ`:
 
 | Key | Default | Description |
@@ -666,7 +681,9 @@ Important behavior:
 - `Keycloak:ClientSecret` is explicitly overridden when `KEYCLOAK_BLAZOR_CLIENT_SECRET` (Infisical) is present.
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` map to `Google:ClientId` and `Google:ClientSecret`.
 
-Compose-managed Keycloak adds one bootstrap-specific rule: `docker/keycloak/keycloak-init.sh` writes `KEYCLOAK_BLAZOR_CLIENT_SECRET` into the imported `islamu-event-blazor` client before API/Blazor startup is allowed to complete. `KEYCLOAK_API_CLIENT_SECRET` is a legacy/future optional sync input only; the checked-in realm export treats `islamu-event-api` as a bearer-only audience target with no static client secret, and the current API bearer-token validation path does not consume an API client secret. The Keycloak admin username/password are used only by the one-shot Compose init job and must not be stored as runtime application settings.
+Compose-managed Keycloak adds one bootstrap-specific rule: `docker/keycloak/keycloak-init.sh` writes `KEYCLOAK_BLAZOR_CLIENT_SECRET` into the imported `islamu-event-blazor` client before API/Blazor startup is allowed to complete. Neither checked-in realm export contains a production client secret. Compose fails closed when the BFF secret is absent; local Aspire instead creates a persisted secret parameter when no deployment value is configured and injects it consistently into Keycloak, API, and Blazor. `KEYCLOAK_API_CLIENT_SECRET` is a legacy/future optional sync input only; the checked-in realm export treats `islamu-event-api` as a bearer-only audience target with no static client secret, and the current API bearer-token validation path does not consume an API client secret. The Keycloak admin username/password are used only by the one-shot Compose init job and must not be stored as runtime application settings.
+
+The managed-realm synchronizer replaces the BFF client callback allow-list with exact login, logout, and web-origin values. Its localhost defaults cover Compose (`http://localhost:7002` and `http://admin.localhost:7002`) and Aspire (`https://localhost:7177`). Reverse-proxied deployments must set `KEYCLOAK_BLAZOR_REDIRECT_URIS` and `KEYCLOAK_BLAZOR_WEB_ORIGINS` as JSON arrays and `KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS` as Keycloak `##`-separated exact URIs. Wildcards and the `+` web-origin shortcut are not repository defaults.
 - `Keycloak:RequireHttpsMetadata` is set to `true` when Keycloak input is mapped.
 
 External-Keycloak onboarding uses a different secret boundary. The setup UI can send a one-time Keycloak bootstrap username/password to `POST /api/InstanceOnboarding/auth-provider-configuration/keycloak-bootstrap` through the BFF. That credential is request-scoped input for the Infrastructure Keycloak Admin API adapter; it is not a configuration key, not a governance setting, not a secret-provider key, and not persisted by ISLAMU. Successful bootstrap persists only the normal runtime Keycloak auth-provider configuration: authority, Blazor client ID, and Blazor client secret.

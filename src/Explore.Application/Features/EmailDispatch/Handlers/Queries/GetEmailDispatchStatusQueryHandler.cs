@@ -57,6 +57,7 @@ public sealed class GetEmailDispatchStatusQueryHandler
             UnknownAt = row.UnknownAt,
             DeliveredAt = row.SentAt,
             ParkedAt = row.ParkedAt,
+            ContentRedactedAt = row.ContentRedactedAt,
             CorrelationId = row.CorrelationId
         }).ToList();
 

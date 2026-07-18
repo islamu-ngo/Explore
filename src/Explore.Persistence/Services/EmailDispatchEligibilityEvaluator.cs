@@ -38,6 +38,7 @@ public sealed class EmailDispatchEligibilityEvaluator(
                 cancellationToken);
 
         if (dispatch is null
+            || dispatch.ContentRedactedAt is not null
             || dispatch.Status != EmailDispatchStatus.Processing
             || dispatch.ProcessingLeaseToken != request.ProcessingLeaseToken
             || dispatch.AttemptCount != request.AttemptNumber)
@@ -394,6 +395,8 @@ public sealed class EmailDispatchEligibilityEvaluator(
         EmailDispatchKind.RegistrationApproved
             or EmailDispatchKind.RegistrationRejected
             or EmailDispatchKind.WaitlistPromoted
+            or EmailDispatchKind.RegistrationCancelled
+            or EmailDispatchKind.RegistrationRevoked
             or EmailDispatchKind.EventCancelled => NotificationPreferenceCategories.EventUpdates,
         _ => null
     };

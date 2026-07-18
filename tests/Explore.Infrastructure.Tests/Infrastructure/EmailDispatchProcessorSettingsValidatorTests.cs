@@ -42,6 +42,34 @@ public sealed class EmailDispatchProcessorSettingsValidatorTests
     }
 
     [Test]
+    public async Task ValidateUnsafeFairnessRateAndBackpressureLimitsReturnsFailure()
+    {
+        var result = _validator.Validate(null, new EmailDispatchProcessorSettings
+        {
+            BatchSize = 10,
+            MaxRowsPerTenantPerBatch = 11,
+            MaxConcurrentDispatches = 0,
+            MaxConcurrentDispatchesPerTenant = 2,
+            SmtpRateLimitPerMinute = 0,
+            OptionalBacklogHighWatermark = 10,
+            OptionalBacklogLowWatermark = 10,
+            HealthOldestPendingWarningSeconds = 0,
+            HealthTenantBacklogWarningThreshold = 0,
+            HealthTenantSampleLimit = 0
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("MaxRowsPerTenantPerBatch");
+        await Assert.That(result.FailureMessage).Contains("MaxConcurrentDispatches");
+        await Assert.That(result.FailureMessage).Contains("MaxConcurrentDispatchesPerTenant");
+        await Assert.That(result.FailureMessage).Contains("SmtpRateLimitPerMinute");
+        await Assert.That(result.FailureMessage).Contains("OptionalBacklogLowWatermark");
+        await Assert.That(result.FailureMessage).Contains("HealthOldestPendingWarningSeconds");
+        await Assert.That(result.FailureMessage).Contains("HealthTenantBacklogWarningThreshold");
+        await Assert.That(result.FailureMessage).Contains("HealthTenantSampleLimit");
+    }
+
+    [Test]
     public async Task ValidateInvalidModeReturnsFailure()
     {
         var result = _validator.Validate(null, new EmailDispatchProcessorSettings

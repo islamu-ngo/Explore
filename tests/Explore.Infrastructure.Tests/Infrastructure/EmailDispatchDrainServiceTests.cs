@@ -24,6 +24,44 @@ namespace Explore.Infrastructure.Tests.Infrastructure;
 public sealed class EmailDispatchDrainServiceTests
 {
     [Test]
+    public async Task ProcessBatchAsyncUsesHysteresisToDeferAndResumeOptionalReminders()
+    {
+        var settings = new EmailDispatchProcessorSettings
+        {
+            BatchSize = 10,
+            MaxRowsPerTenantPerBatch = 2,
+            OptionalBacklogHighWatermark = 5,
+            OptionalBacklogLowWatermark = 2
+        };
+        var fixture = new Fixture(settings);
+        fixture.Repository.CountDueDispatchAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(5, 2);
+        fixture.Repository.GetPendingBatch(
+                10,
+                2,
+                Arg.Any<bool>(),
+                Arg.Any<DateTime>(),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        await fixture.Service.ProcessBatchAsync(CancellationToken.None);
+        await fixture.Service.ProcessBatchAsync(CancellationToken.None);
+
+        await fixture.Repository.Received(1).GetPendingBatch(
+            10,
+            2,
+            false,
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
+        await fixture.Repository.Received(1).GetPendingBatch(
+            10,
+            2,
+            true,
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task ProcessSingleAsyncReturnsMissingWithoutSendingWhenOutboxRowDoesNotExist()
     {
         var fixture = new Fixture();
@@ -334,6 +372,42 @@ public sealed class EmailDispatchDrainServiceTests
     }
 
     [Test]
+    public async Task ProcessSingleAsyncUsesEventUpdatesUnsubscribeCategoryForRegistrationCancellationKinds()
+    {
+        foreach (var kind in new[] { EmailDispatchKind.RegistrationCancelled, EmailDispatchKind.RegistrationRevoked })
+        {
+            var fixture = new Fixture();
+            var dispatch = CreateDispatch(EmailDispatchStatus.Pending);
+            dispatch.Kind = kind;
+            fixture.Repository.GetByTenantAndPublishEventId(dispatch.TenantId, dispatch.PublishEventId, Arg.Any<CancellationToken>())
+                .Returns(dispatch);
+            fixture.Repository.IsTenantPaused(dispatch.TenantId, Arg.Any<CancellationToken>()).Returns(false);
+            fixture.Repository.TryMarkAsProcessing(dispatch.Id, Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+                .Returns(true);
+            fixture.UnsubscribeTokenService.GenerateToken(
+                    Arg.Is<EmailUnsubscribeTokenPayload>(payload =>
+                        payload.TenantId == dispatch.TenantId &&
+                        payload.UserId == dispatch.RecipientUserId &&
+                        payload.Category == NotificationPreferenceCategories.EventUpdates),
+                    Arg.Any<TimeSpan?>())
+                .Returns("event-updates-token");
+            fixture.EmailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+                .Returns(EmailResult.Ok($"provider-{kind}"));
+
+            var result = await fixture.Service.ProcessSingleAsync(
+                dispatch.TenantId,
+                dispatch.PublishEventId,
+                "tickerq-drain",
+                CancellationToken.None);
+
+            await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Sent);
+            fixture.UnsubscribeTokenService.Received(1).GenerateToken(
+                Arg.Is<EmailUnsubscribeTokenPayload>(payload => payload.Category == NotificationPreferenceCategories.EventUpdates),
+                Arg.Any<TimeSpan?>());
+        }
+    }
+
+    [Test]
     public async Task ProcessSingleAsyncSkipsWithoutSendingWhenRecipientOptedOut()
     {
         var fixture = new Fixture();
@@ -406,6 +480,8 @@ public sealed class EmailDispatchDrainServiceTests
             EmailDispatchKind.RegistrationApproved,
             EmailDispatchKind.RegistrationRejected,
             EmailDispatchKind.WaitlistPromoted,
+            EmailDispatchKind.RegistrationCancelled,
+            EmailDispatchKind.RegistrationRevoked,
             EmailDispatchKind.EventReminder,
             EmailDispatchKind.EventCancelled,
             EmailDispatchKind.OrganizerNotification

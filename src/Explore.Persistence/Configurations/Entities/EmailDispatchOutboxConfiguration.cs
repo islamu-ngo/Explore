@@ -101,6 +101,9 @@ public class EmailDispatchOutboxConfiguration : IEntityTypeConfiguration<EmailDi
         builder.HasIndex(e => new { e.TenantId, e.Status, e.LastFailureAt })
             .HasDatabaseName("ix_email_dispatch_outbox_tenant_status");
 
+        builder.HasIndex(e => new { e.TenantId, e.ContentRedactedAt, e.Status, e.SentAt, e.LastFailureAt, e.CreatedAt })
+            .HasDatabaseName("ix_email_dispatch_outbox_retention");
+
         builder.ToTable(table =>
         {
             table.HasCheckConstraint(
@@ -115,6 +118,12 @@ public class EmailDispatchOutboxConfiguration : IEntityTypeConfiguration<EmailDi
                 "ck_email_dispatch_outbox_unknown_terminal",
                 "status <> 7 OR (unknown_at IS NOT NULL AND next_attempt_at IS NULL " +
                 "AND processing_started_at IS NULL AND processing_lease_token IS NULL)");
+            table.HasCheckConstraint(
+                "ck_email_dispatch_outbox_redaction_fence",
+                "content_redacted_at IS NULL OR (recipient_email = '' AND subject = '' " +
+                "AND plain_text_body IS NULL AND html_body IS NULL AND reply_to IS NULL " +
+                "AND last_error IS NULL AND provider_message_id IS NULL AND correlation_id IS NULL " +
+                "AND next_attempt_at IS NULL AND processing_started_at IS NULL AND processing_lease_token IS NULL)");
         });
     }
 }

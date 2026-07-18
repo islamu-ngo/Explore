@@ -92,6 +92,25 @@ public sealed class BusinessMetricsEmailDispatchTests
         await Assert.That(measurement.Tags.Keys).DoesNotContain("error");
     }
 
+    [Test]
+    public async Task RecordEmailDispatchOperationalSignalsUsesOnlyBoundedSafeTags()
+    {
+        using var metricsCapture = new MetricsCapture();
+        var metrics = CreateMetrics();
+        var tenantId = Guid.CreateVersion7().ToString();
+
+        metrics.RecordEmailDispatchTenantBacklog(tenantId, 17);
+        metrics.RecordEmailDispatchOldestPendingAge(125.5);
+
+        var backlog = await metricsCapture.SingleByTenantAsync("explore.email_dispatch.tenant_backlog", tenantId);
+        var oldest = await metricsCapture.SingleAsync("explore.email_dispatch.oldest_pending_age");
+
+        await Assert.That(backlog.Value).IsEqualTo(17);
+        await Assert.That(backlog.Tags.Keys).IsEquivalentTo(["tenant_id"]);
+        await Assert.That(oldest.DoubleValue).IsEqualTo(125.5);
+        await Assert.That(oldest.Tags).IsEmpty();
+    }
+
     private static BusinessMetrics CreateMetrics()
     {
         var meterFactory = Substitute.For<IMeterFactory>();
@@ -124,6 +143,17 @@ public sealed class BusinessMetricsEmailDispatchTests
                         instrument.Name,
                         measurement,
                         tags.ToArray().ToDictionary(tag => tag.Key, tag => tag.Value)));
+                }
+            });
+            _listener.SetMeasurementEventCallback<double>((instrument, measurement, tags, _) =>
+            {
+                lock (_measurementsLock)
+                {
+                    _measurements.Add(new Measurement(
+                        instrument.Name,
+                        0,
+                        tags.ToArray().ToDictionary(tag => tag.Key, tag => tag.Value),
+                        measurement));
                 }
             });
 
@@ -164,11 +194,37 @@ public sealed class BusinessMetricsEmailDispatchTests
             }
         }
 
+        public async Task<Measurement> SingleAsync(string instrumentName)
+        {
+            for (var attempt = 0; attempt < 20; attempt++)
+            {
+                lock (_measurementsLock)
+                {
+                    var match = _measurements.SingleOrDefault(value => value.InstrumentName == instrumentName);
+                    if (match is not null)
+                    {
+                        return match;
+                    }
+                }
+
+                await Task.Delay(10);
+            }
+
+            lock (_measurementsLock)
+            {
+                return _measurements.Single(value => value.InstrumentName == instrumentName);
+            }
+        }
+
         public void Dispose()
         {
             _listener.Dispose();
         }
     }
 
-    private sealed record Measurement(string InstrumentName, long Value, IReadOnlyDictionary<string, object?> Tags);
+    private sealed record Measurement(
+        string InstrumentName,
+        long Value,
+        IReadOnlyDictionary<string, object?> Tags,
+        double? DoubleValue = null);
 }

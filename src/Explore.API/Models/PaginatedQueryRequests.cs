@@ -223,6 +223,31 @@ public sealed class EmailDispatchParkQueryRequest : IValidatableObject
     }
 }
 
+public sealed class EmailDispatchResolveQueryRequest : IValidatableObject
+{
+    public const int MaxReasonLength = 500;
+
+    public string? Reason { get; set; }
+
+    public string GetNormalizedReason() => Reason?.Trim() ?? string.Empty;
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (string.IsNullOrWhiteSpace(Reason))
+        {
+            yield return new ValidationResult(
+                $"{nameof(Reason)} is required.",
+                [nameof(Reason)]);
+            yield break;
+        }
+
+        foreach (var result in QueryValidationRules.ValidateBoundedText(Reason, nameof(Reason), MaxReasonLength))
+        {
+            yield return result;
+        }
+    }
+}
+
 public sealed class CustomPropertyGovernanceReportQueryRequest : PaginationQueryRequest
 {
     public Guid TenantId { get; set; }

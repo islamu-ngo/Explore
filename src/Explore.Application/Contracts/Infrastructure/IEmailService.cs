@@ -1,5 +1,5 @@
-// ABOUTME: Contract for sending emails with provider-agnostic SMTP abstraction.
-// Supports multi-tenant configuration via the cascading settings engine.
+// ABOUTME: Contract for sending emails through a provider-agnostic transport boundary.
+// ABOUTME: Supports multi-tenant configuration via the cascading settings engine.
 
 using Explore.Application.Models;
 
@@ -22,12 +22,4 @@ public interface IEmailService
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Result indicating success or failure with diagnostics.</returns>
     Task<EmailResult> SendAsync(EmailMessage message, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Tests the current tenant's SMTP connection without sending an email.
-    /// Used by admin UI to validate configuration before saving.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Result indicating connection success or failure with timing.</returns>
-    Task<EmailResult> TestConnectionAsync(CancellationToken cancellationToken = default);
 }

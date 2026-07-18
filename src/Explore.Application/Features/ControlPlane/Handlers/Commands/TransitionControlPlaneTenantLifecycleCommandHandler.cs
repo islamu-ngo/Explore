@@ -18,6 +18,7 @@ namespace Explore.Application.Features.ControlPlane.Handlers.Commands;
 public sealed class TransitionControlPlaneTenantLifecycleCommandHandler(
     ITenantRepository tenantRepository,
     ITenantLifecycleLogRepository lifecycleLogRepository,
+    IEmailDispatchOutboxRepository emailDispatchOutboxRepository,
     ICurrentUserService currentUserService,
     IUnitOfWork unitOfWork,
     ISettingMutationLock mutationLock,
@@ -100,6 +101,15 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandler(
                     "Tenant lifecycle status changed since it was loaded. Reload and retry the transition.",
                     nameof(Tenant),
                     tenant.Id.ToString());
+            }
+
+            if (request.TargetStatus == TenantStatusEnum.Purged)
+            {
+                await emailDispatchOutboxRepository.SuppressAndRedactTenant(
+                    tenant.Id,
+                    userId.Value,
+                    transitionedAt,
+                    ct);
             }
 
             await lifecycleLogRepository.CreateAsync(new TenantLifecycleLog

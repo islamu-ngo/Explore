@@ -14,6 +14,13 @@ public interface IEmailDispatchOutboxRepository
         DateTime now,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<EmailDispatchOutbox>> GetPendingBatch(
+        int batchSize,
+        int maxRowsPerTenant,
+        bool includeOptionalReminders,
+        DateTime now,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<EmailDispatchOutbox>> GetRabbitMqPublishBatch(
         int batchSize,
         DateTime now,
@@ -22,6 +29,15 @@ public interface IEmailDispatchOutboxRepository
 
     Task<int> CountDueDispatchAsync(
         DateTime now,
+        CancellationToken cancellationToken);
+
+    Task<DateTime?> GetOldestDueCreatedAtAsync(
+        DateTime now,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyDictionary<Guid, int>> CountDueDispatchByTenantAsync(
+        DateTime now,
+        int tenantLimit,
         CancellationToken cancellationToken);
 
     Task<int> CountRetryScheduledAsync(CancellationToken cancellationToken);
@@ -70,6 +86,38 @@ public interface IEmailDispatchOutboxRepository
         Guid outboxId,
         Guid? changedBy,
         DateTime replayAt,
+        CancellationToken cancellationToken);
+
+    Task<bool> TryResolveWithoutReplay(
+        Guid tenantId,
+        Guid outboxId,
+        string reason,
+        Guid? changedBy,
+        DateTime resolvedAt,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<Guid>> GetRetentionTenantIds(
+        DateTime cutoffUtc,
+        int maxTenants,
+        CancellationToken cancellationToken);
+
+    Task<int> CountRetentionRedactionEligible(
+        Guid tenantId,
+        DateTime cutoffUtc,
+        int batchSize,
+        CancellationToken cancellationToken);
+
+    Task<int> RedactRetentionEligible(
+        Guid tenantId,
+        DateTime cutoffUtc,
+        DateTime redactedAt,
+        int batchSize,
+        CancellationToken cancellationToken);
+
+    Task<int> SuppressAndRedactTenant(
+        Guid tenantId,
+        Guid? changedBy,
+        DateTime redactedAt,
         CancellationToken cancellationToken);
 
     Task<bool> TryMarkAsProcessing(

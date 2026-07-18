@@ -63,7 +63,8 @@ public sealed class EmailDispatchAdminControllerTests
             CreateAuthenticatedRequest(HttpMethod.Put, $"/api/admin/email-dispatch/tenants/{tenantId:D}/pause?reason=maintenance"),
             CreateAuthenticatedRequest(HttpMethod.Delete, $"/api/admin/email-dispatch/tenants/{tenantId:D}/pause"),
             CreateAuthenticatedRequest(HttpMethod.Put, $"/api/admin/email-dispatch/tenants/{tenantId:D}/outbox/{outboxId:D}/park?reason=unsafe"),
-            CreateAuthenticatedRequest(HttpMethod.Post, $"/api/admin/email-dispatch/tenants/{tenantId:D}/outbox/{outboxId:D}/replay")
+            CreateAuthenticatedRequest(HttpMethod.Post, $"/api/admin/email-dispatch/tenants/{tenantId:D}/outbox/{outboxId:D}/replay"),
+            CreateAuthenticatedRequest(HttpMethod.Post, $"/api/admin/email-dispatch/tenants/{tenantId:D}/outbox/{outboxId:D}/resolve-without-replay?reason=reviewed")
         };
 
         foreach (var request in requests)
@@ -102,6 +103,16 @@ public sealed class EmailDispatchAdminControllerTests
         var results = Validate(request);
 
         await Assert.That(results.Any(result => HasMember(result, nameof(EmailDispatchParkQueryRequest.Reason)))).IsTrue();
+    }
+
+    [Test]
+    public async Task EmailDispatchResolveQueryRequestWhenReasonIsMissingIsInvalid()
+    {
+        var request = new EmailDispatchResolveQueryRequest { Reason = "   " };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(EmailDispatchResolveQueryRequest.Reason)))).IsTrue();
     }
 
     [Test]
@@ -297,22 +308,30 @@ public sealed class EmailDispatchAdminControllerTests
     {
         MethodInfo park = typeof(EmailDispatchAdminController).GetMethod(nameof(EmailDispatchAdminController.ParkDispatch))!;
         MethodInfo replay = typeof(EmailDispatchAdminController).GetMethod(nameof(EmailDispatchAdminController.ReplayDispatch))!;
+        MethodInfo resolve = typeof(EmailDispatchAdminController).GetMethod(nameof(EmailDispatchAdminController.ResolveWithoutReplay))!;
 
         var parkRoute = park.GetCustomAttribute<HttpPutAttribute>();
         var replayRoute = replay.GetCustomAttribute<HttpPostAttribute>();
+        var resolveRoute = resolve.GetCustomAttribute<HttpPostAttribute>();
         await Assert.That(parkRoute).IsNotNull();
         await Assert.That(parkRoute!.Name).IsEqualTo(RouteNames.ParkEmailDispatch);
         await Assert.That(parkRoute.Template).IsEqualTo("tenants/{tenantId:guid}/outbox/{outboxId:guid}/park");
         await Assert.That(replayRoute).IsNotNull();
         await Assert.That(replayRoute!.Name).IsEqualTo(RouteNames.ReplayEmailDispatch);
         await Assert.That(replayRoute.Template).IsEqualTo("tenants/{tenantId:guid}/outbox/{outboxId:guid}/replay");
+        await Assert.That(resolveRoute).IsNotNull();
+        await Assert.That(resolveRoute!.Name).IsEqualTo(RouteNames.ResolveEmailDispatchWithoutReplay);
+        await Assert.That(resolveRoute.Template).IsEqualTo("tenants/{tenantId:guid}/outbox/{outboxId:guid}/resolve-without-replay");
 
         await Assert.That(GetRateLimitPolicy(park)).IsEqualTo(RateLimitingExtensions.WritePolicy);
         await Assert.That(GetRateLimitPolicy(replay)).IsEqualTo(RateLimitingExtensions.WritePolicy);
+        await Assert.That(GetRateLimitPolicy(resolve)).IsEqualTo(RateLimitingExtensions.WritePolicy);
         await AssertProducesProblem(park, StatusCodes.Status401Unauthorized);
         await AssertProducesProblem(park, StatusCodes.Status403Forbidden);
         await AssertProducesProblem(replay, StatusCodes.Status401Unauthorized);
         await AssertProducesProblem(replay, StatusCodes.Status403Forbidden);
+        await AssertProducesProblem(resolve, StatusCodes.Status401Unauthorized);
+        await AssertProducesProblem(resolve, StatusCodes.Status403Forbidden);
     }
 
     [Test]

@@ -38,6 +38,23 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
         }
     }
 
+    public Task<IReadOnlyList<EmailDispatchOutbox>> GetPendingBatch(
+        int batchSize,
+        int maxRowsPerTenant,
+        bool includeOptionalReminders,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            IReadOnlyList<EmailDispatchOutbox> rows = dispatch.Status == EmailDispatchStatus.Pending &&
+                (includeOptionalReminders || dispatch.Kind != EmailDispatchKind.EventReminder)
+                    ? [dispatch]
+                    : [];
+            return Task.FromResult(rows);
+        }
+    }
+
     public Task<IReadOnlyList<EmailDispatchOutbox>> GetRabbitMqPublishBatch(
         int batchSize,
         DateTime now,
@@ -86,6 +103,34 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
                 && (dispatch.NextAttemptAt is null || dispatch.NextAttemptAt <= now);
 
             return Task.FromResult(isDue ? 1 : 0);
+        }
+    }
+
+    public Task<DateTime?> GetOldestDueCreatedAtAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            DateTime? createdAt = dispatch.Status is EmailDispatchStatus.Pending or EmailDispatchStatus.RetryScheduled
+                && (dispatch.NextAttemptAt is null || dispatch.NextAttemptAt <= now)
+                    ? dispatch.CreatedAt
+                    : null;
+            return Task.FromResult(createdAt);
+        }
+    }
+
+    public Task<IReadOnlyDictionary<Guid, int>> CountDueDispatchByTenantAsync(
+        DateTime now,
+        int tenantLimit,
+        CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            var isDue = dispatch.Status is EmailDispatchStatus.Pending or EmailDispatchStatus.RetryScheduled
+                && (dispatch.NextAttemptAt is null || dispatch.NextAttemptAt <= now);
+            IReadOnlyDictionary<Guid, int> result = isDue
+                ? new Dictionary<Guid, int> { [dispatch.TenantId] = 1 }
+                : new Dictionary<Guid, int>();
+            return Task.FromResult(result);
         }
     }
 
@@ -155,7 +200,9 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
     {
         lock (_gate)
         {
-            if (dispatch.TenantId != tenantId || dispatch.Id != outboxId)
+            if (dispatch.TenantId != tenantId ||
+                dispatch.Id != outboxId ||
+                dispatch.ContentRedactedAt is not null)
             {
                 return Task.FromResult(false);
             }
@@ -181,6 +228,165 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
             dispatch.UpdatedBy = changedBy;
             ReplayCount++;
             return Task.FromResult(true);
+        }
+    }
+
+    public Task<bool> TryResolveWithoutReplay(
+        Guid tenantId,
+        Guid outboxId,
+        string reason,
+        Guid? changedBy,
+        DateTime resolvedAt,
+        CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            if (dispatch.TenantId != tenantId ||
+                dispatch.Id != outboxId ||
+                dispatch.ContentRedactedAt is not null ||
+                dispatch.Status is not (EmailDispatchStatus.DeadLettered
+                    or EmailDispatchStatus.Parked
+                    or EmailDispatchStatus.Unknown))
+            {
+                return Task.FromResult(false);
+            }
+
+            dispatch.Status = EmailDispatchStatus.Skipped;
+            dispatch.LastFailureCategory = "operator_resolved_without_replay";
+            dispatch.LastError = reason;
+            dispatch.LastFailureAt = resolvedAt;
+            dispatch.UpdatedAt = resolvedAt;
+            dispatch.UpdatedBy = changedBy;
+            return Task.FromResult(true);
+        }
+    }
+
+    public Task<IReadOnlyList<Guid>> GetRetentionTenantIds(
+        DateTime cutoffUtc,
+        int maxTenants,
+        CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            IReadOnlyList<Guid> tenantIds = maxTenants > 0 && IsRetentionEligible(cutoffUtc)
+                ? [dispatch.TenantId]
+                : [];
+            return Task.FromResult(tenantIds);
+        }
+    }
+
+    public Task<int> CountRetentionRedactionEligible(
+        Guid tenantId,
+        DateTime cutoffUtc,
+        int batchSize,
+        CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            var isEligible = dispatch.TenantId == tenantId && batchSize > 0 && IsRetentionEligible(cutoffUtc);
+            return Task.FromResult(isEligible ? 1 : 0);
+        }
+    }
+
+    public Task<int> RedactRetentionEligible(
+        Guid tenantId,
+        DateTime cutoffUtc,
+        DateTime redactedAt,
+        int batchSize,
+        CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            var isEligible = dispatch.TenantId == tenantId && batchSize > 0 && IsRetentionEligible(cutoffUtc);
+            if (!isEligible)
+            {
+                return Task.FromResult(0);
+            }
+
+            dispatch.RecipientEmail = string.Empty;
+            dispatch.Subject = string.Empty;
+            dispatch.PlainTextBody = null;
+            dispatch.HtmlBody = null;
+            dispatch.ReplyTo = null;
+            dispatch.LastError = null;
+            dispatch.ProviderMessageId = null;
+            dispatch.CorrelationId = null;
+            dispatch.ContentRedactedAt = redactedAt;
+            dispatch.UpdatedAt = redactedAt;
+
+            foreach (var attempt in Attempts)
+            {
+                attempt.Provider = null;
+                attempt.SanitizedErrorMessage = null;
+                attempt.ProviderMessageId = null;
+                attempt.CorrelationId = null;
+            }
+
+            foreach (var receipt in Receipts)
+            {
+                receipt.ConsumerId = null;
+                receipt.FailureMessage = null;
+                receipt.ProviderMessageId = null;
+            }
+
+            return Task.FromResult(1);
+        }
+    }
+
+    public Task<int> SuppressAndRedactTenant(
+        Guid tenantId,
+        Guid? changedBy,
+        DateTime redactedAt,
+        CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            if (dispatch.TenantId != tenantId || dispatch.ContentRedactedAt is not null)
+            {
+                return Task.FromResult(0);
+            }
+
+            if (dispatch.Status is EmailDispatchStatus.Pending or EmailDispatchStatus.RetryScheduled or EmailDispatchStatus.Processing)
+            {
+                dispatch.Status = EmailDispatchStatus.Skipped;
+                dispatch.LastFailureCategory = "tenant_deleted";
+                dispatch.LastFailureAt = redactedAt;
+            }
+
+            dispatch.RecipientEmail = string.Empty;
+            dispatch.Subject = string.Empty;
+            dispatch.PlainTextBody = null;
+            dispatch.HtmlBody = null;
+            dispatch.ReplyTo = null;
+            dispatch.LastError = null;
+            dispatch.ProviderMessageId = null;
+            dispatch.CorrelationId = null;
+            dispatch.NextAttemptAt = null;
+            dispatch.ProcessingStartedAt = null;
+            dispatch.ProcessingLeaseToken = null;
+            dispatch.ContentRedactedAt = redactedAt;
+            dispatch.UpdatedAt = redactedAt;
+            dispatch.UpdatedBy = changedBy;
+
+            foreach (var attempt in Attempts)
+            {
+                attempt.Provider = null;
+                attempt.SanitizedErrorMessage = null;
+                attempt.ProviderMessageId = null;
+                attempt.CorrelationId = null;
+            }
+
+            foreach (var receipt in Receipts)
+            {
+                receipt.Status = receipt.Status == EmailDispatchReceiptStatus.Completed
+                    ? EmailDispatchReceiptStatus.Completed
+                    : EmailDispatchReceiptStatus.Skipped;
+                receipt.ConsumerId = null;
+                receipt.FailureMessage = null;
+                receipt.ProviderMessageId = null;
+            }
+
+            return Task.FromResult(1);
         }
     }
 
@@ -471,4 +677,9 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
     {
         throw new NotSupportedException();
     }
+
+    private bool IsRetentionEligible(DateTime cutoffUtc) =>
+        dispatch.ContentRedactedAt is null &&
+        (dispatch.Status == EmailDispatchStatus.Sent && dispatch.SentAt <= cutoffUtc ||
+         dispatch.Status == EmailDispatchStatus.Skipped && dispatch.LastFailureAt <= cutoffUtc);
 }

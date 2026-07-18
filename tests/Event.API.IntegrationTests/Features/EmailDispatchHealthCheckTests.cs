@@ -1,10 +1,12 @@
 // ABOUTME: Unit-style tests for the API EmailDispatchHealthCheck.
 // ABOUTME: Verifies Basic Dispatch Mode health reports enabled and intentionally disabled states safely.
 
+using System.Diagnostics.Metrics;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Configuration;
 using Explore.API.HealthChecks;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Telemetry;
 using Explore.Infrastructure;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +34,9 @@ public sealed class EmailDispatchHealthCheckTests
             HealthDueDispatchWarningThreshold = 10,
             HealthStaleProcessingWarningThreshold = 2,
             HealthDeadLetterWarningThreshold = 2,
+            HealthOldestPendingWarningSeconds = 3600,
+            HealthTenantBacklogWarningThreshold = 5,
+            HealthTenantSampleLimit = 3,
             ConsumerId = "test-consumer"
         };
         var schedulerOptions = new TickerQSchedulerOptions
@@ -43,7 +48,9 @@ public sealed class EmailDispatchHealthCheckTests
             settings,
             schedulerOptions,
             dueDispatchCount: 1,
-            retryScheduledCount: 1);
+            retryScheduledCount: 1,
+            oldestDueCreatedAt: DateTime.UtcNow.AddMinutes(-5),
+            dueDispatchByTenant: new Dictionary<Guid, int> { [Guid.CreateVersion7()] = 1 });
         using var services = setup.Services;
 
         var result = await setup.HealthCheck.CheckHealthAsync(new HealthCheckContext());
@@ -64,6 +71,8 @@ public sealed class EmailDispatchHealthCheckTests
         result.Data.Should().ContainKey("staleProcessingCount").WhoseValue.Should().Be(0);
         result.Data.Should().ContainKey("deadLetteredCount").WhoseValue.Should().Be(0);
         result.Data.Should().ContainKey("processingStartedBefore").WhoseValue.Should().BeOfType<DateTime>();
+        result.Data.Should().ContainKey("oldestPendingAgeSeconds");
+        result.Data.Should().ContainKey("tenantBacklogSample");
         result.Data.Should().ContainKey("consumerId").WhoseValue.Should().Be("test-consumer");
         result.Data.Should().ContainKey("tickerQEnabled").WhoseValue.Should().Be(true);
         result.Data.Should().ContainKey("tickerQDashboardEnabled").WhoseValue.Should().Be(false);
@@ -243,6 +252,36 @@ public sealed class EmailDispatchHealthCheckTests
         result.Data.Should().ContainKey("retryScheduledCount").WhoseValue.Should().Be(1);
     }
 
+    [Test]
+    public async Task CheckHealthAsyncWhenOldestOrTenantBacklogCrossesThresholdReturnsDegradedWithBoundedData()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var setup = CreateHealthCheck(
+            new EmailDispatchProcessorSettings
+            {
+                Enabled = true,
+                Mode = EmailDispatchProcessorMode.TickerQ,
+                HealthDueDispatchWarningThreshold = 100,
+                HealthOldestPendingWarningSeconds = 60,
+                HealthTenantBacklogWarningThreshold = 3,
+                HealthTenantSampleLimit = 1,
+                ConsumerId = "fairness-health"
+            },
+            new TickerQSchedulerOptions { Enabled = true },
+            dueDispatchCount: 3,
+            oldestDueCreatedAt: DateTime.UtcNow.AddMinutes(-5),
+            dueDispatchByTenant: new Dictionary<Guid, int> { [tenantId] = 3, [Guid.CreateVersion7()] = 2 });
+        using var services = setup.Services;
+
+        var result = await setup.HealthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        result.Status.Should().Be(HealthStatus.Degraded);
+        result.Description.Should().Contain("oldest pending");
+        result.Data["oldestPendingAgeSeconds"].Should().BeOfType<double>().Which.Should().BeGreaterThan(60);
+        result.Data["tenantBacklogSample"].Should().BeAssignableTo<IReadOnlyDictionary<Guid, int>>()
+            .Which.Should().ContainSingle().Which.Key.Should().Be(tenantId);
+    }
+
     private static (
         EmailDispatchHealthCheck HealthCheck,
         ServiceProvider Services,
@@ -252,7 +291,9 @@ public sealed class EmailDispatchHealthCheckTests
             int dueDispatchCount = 0,
             int retryScheduledCount = 0,
             int staleProcessingCount = 0,
-            int deadLetteredCount = 0)
+            int deadLetteredCount = 0,
+            DateTime? oldestDueCreatedAt = null,
+            IReadOnlyDictionary<Guid, int>? dueDispatchByTenant = null)
     {
         var repository = Substitute.For<IEmailDispatchOutboxRepository>();
         repository.CountDueDispatchAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
@@ -263,6 +304,13 @@ public sealed class EmailDispatchHealthCheckTests
             .Returns(Task.FromResult(staleProcessingCount));
         repository.CountDeadLetteredAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(deadLetteredCount));
+        repository.GetOldestDueCreatedAtAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(oldestDueCreatedAt));
+        repository.CountDueDispatchByTenantAsync(
+                Arg.Any<DateTime>(),
+                Arg.Any<int>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(dueDispatchByTenant ?? (IReadOnlyDictionary<Guid, int>)new Dictionary<Guid, int>()));
 
         var services = new ServiceCollection()
             .AddSingleton(repository)
@@ -270,8 +318,16 @@ public sealed class EmailDispatchHealthCheckTests
         var healthCheck = new EmailDispatchHealthCheck(
             Options.Create(settings),
             Options.Create(schedulerOptions ?? new TickerQSchedulerOptions()),
-            services.GetRequiredService<IServiceScopeFactory>());
+            services.GetRequiredService<IServiceScopeFactory>(),
+            CreateMetrics());
 
         return (healthCheck, services, repository);
+    }
+
+    private static BusinessMetrics CreateMetrics()
+    {
+        var meterFactory = Substitute.For<IMeterFactory>();
+        meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
+        return new BusinessMetrics(meterFactory);
     }
 }

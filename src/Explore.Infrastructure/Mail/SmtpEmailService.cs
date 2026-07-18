@@ -17,7 +17,7 @@ namespace Explore.Infrastructure.Mail;
 /// Configuration is resolved per-tenant from the cascading settings engine.
 /// Creates a new SmtpClient per send (MailKit is not thread-safe).
 /// </summary>
-public class SmtpEmailService : IEmailService
+public class SmtpEmailService : IEmailService, IEmailConnectionTester
 {
     private static readonly EventId ConnectionTestSucceededEvent = new(4701, "SmtpConnectionTestSucceeded");
     private static readonly EventId ConnectionTestAuthenticationFailedEvent = new(4702, "SmtpConnectionTestAuthenticationFailed");

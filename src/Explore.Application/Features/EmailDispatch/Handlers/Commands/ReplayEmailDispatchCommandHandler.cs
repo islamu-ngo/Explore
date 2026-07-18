@@ -50,6 +50,14 @@ public sealed class ReplayEmailDispatchCommandHandler : IRequestHandler<ReplayEm
                 ["Email dispatch outbox row was not found."]);
         }
 
+        if (dispatch.ContentRedactedAt is not null)
+        {
+            return Failure(
+                "Redacted email dispatch rows cannot be replayed.",
+                EmailDispatchFailureCodes.InvalidTransition,
+                ["Redacted email dispatch rows cannot be replayed."]);
+        }
+
         if (dispatch.Status == EmailDispatchStatus.Sent)
         {
             return Failure(

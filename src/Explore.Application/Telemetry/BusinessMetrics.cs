@@ -42,6 +42,8 @@ public sealed class BusinessMetrics : IDisposable
     private readonly Counter<long> _emailDispatchAttempts;
     private readonly Counter<long> _emailDispatchRabbitMqPublishes;
     private readonly Counter<long> _emailDispatchRabbitMqConsumes;
+    private readonly Histogram<long> _emailDispatchTenantBacklog;
+    private readonly Histogram<double> _emailDispatchOldestPendingAge;
     private readonly Counter<long> _notificationFanoutRuns;
     private readonly Counter<long> _notificationFanoutSubscribers;
     private readonly Counter<long> _webhookMessagesCreated;
@@ -206,6 +208,16 @@ public sealed class BusinessMetrics : IDisposable
             "explore.email_dispatch.rabbitmq.consumes",
             unit: "{delivery}",
             description: "Total RabbitMQ Dispatch Mode pointer deliveries by durable consumer outcome");
+
+        _emailDispatchTenantBacklog = meter.CreateHistogram<long>(
+            "explore.email_dispatch.tenant_backlog",
+            unit: "{dispatch}",
+            description: "Bounded observations of due email dispatch rows by tenant");
+
+        _emailDispatchOldestPendingAge = meter.CreateHistogram<double>(
+            "explore.email_dispatch.oldest_pending_age",
+            unit: "s",
+            description: "Observed age in seconds of the oldest due email dispatch row");
 
         _notificationFanoutRuns = meter.CreateCounter<long>(
             "explore.notifications.fanout_runs",
@@ -619,6 +631,17 @@ public sealed class BusinessMetrics : IDisposable
             new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
             new KeyValuePair<string, object?>("outcome", outcome ?? "unknown"),
             new KeyValuePair<string, object?>("failure_category", failureCategory ?? "none"));
+    }
+
+    public void RecordEmailDispatchTenantBacklog(string tenantId, long count)
+    {
+        _emailDispatchTenantBacklog.Record(Math.Max(0, count),
+            new KeyValuePair<string, object?>("tenant_id", tenantId));
+    }
+
+    public void RecordEmailDispatchOldestPendingAge(double seconds)
+    {
+        _emailDispatchOldestPendingAge.Record(Math.Max(0, seconds));
     }
 
     public void RecordNotificationFanoutRun(string? tenantId, string? fanoutKind, string? outcome)

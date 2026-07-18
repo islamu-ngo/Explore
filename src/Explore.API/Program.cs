@@ -284,6 +284,7 @@ if (!isOpenApiGeneration)
     if (!builder.Environment.IsEnvironment("Testing"))
     {
         builder.Services.AddHostedService<IdempotencyCleanupProcessor>();
+        builder.Services.AddHostedService<EmailDispatchRetentionCleanupProcessor>();
         builder.Services.AddHostedService<AiRetentionCleanupProcessor>();
         builder.Services.AddHostedService<WebhookRetentionCleanupProcessor>();
         builder.Services.AddHostedService<WebhookBulkReplayProcessor>();
@@ -395,6 +396,10 @@ builder.Services.AddHealthChecks()
         "email-dispatch",
         failureStatus: HealthStatus.Unhealthy,
         tags: ["ready", "email", "dispatch", "infrastructure"])
+    .AddCheck<EmailDispatchRetentionCleanupHealthCheck>(
+        "email-dispatch-retention-cleanup",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "email", "retention", "cleanup", "infrastructure"])
     .AddCheck<EmailDispatchRabbitMqHealthCheck>(
         "email-dispatch-rabbitmq",
         failureStatus: HealthStatus.Unhealthy,
