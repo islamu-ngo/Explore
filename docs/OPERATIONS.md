@@ -102,13 +102,13 @@ curl -sSL https://aspire.dev/install.sh | bash
 
 `AspireRunModeExtensions.Parse` defaults a missing `ISLAMU_ASPIRE_MODE` to `DefaultLocal`, so the contributor path does not require a launch-profile name. `aspire run` is interactive and exits when you press `Ctrl+C`.
 
-Foreground isolated run for repeatable local launch proof:
+Foreground isolated run for repeatable infrastructure launch proof:
 
 ```bash
 aspire run --apphost src/Explore.AppHost/Explore.AppHost.csproj --isolated
 ```
 
-For concurrent worktrees or repeated local proofs, isolate the Aspire run and discover ports from Aspire resource metadata in another shell while the foreground run is alive:
+For concurrent worktrees or repeated infrastructure proofs, isolate the Aspire run and discover ports from Aspire resource metadata in another shell while the foreground run is alive. Interactive Keycloak OIDC login is intentionally unsupported in `--isolated` runs: isolation randomizes the BFF port, while the realm uses exact callback URIs. Use one of the named non-isolated profiles for authentication testing.
 
 ```bash
 aspire ps --format Json
@@ -129,15 +129,13 @@ ISLAMU_ASPIRE_MODE=ExternalInfra aspire run --apphost src/Explore.AppHost/Explor
 Launch profiles remain available through `dotnet run` for IDEs and compatibility:
 
 ```bash
-dotnet run --project src/Explore.AppHost/Explore.AppHost.csproj --launch-profile https
 dotnet run --project src/Explore.AppHost/Explore.AppHost.csproj --launch-profile local-full
+dotnet run --project src/Explore.AppHost/Explore.AppHost.csproj --launch-profile local-default
 dotnet run --project src/Explore.AppHost/Explore.AppHost.csproj --launch-profile local-core
 dotnet run --project src/Explore.AppHost/Explore.AppHost.csproj --launch-profile local-lite
 ```
 
-The `https` profile is the intuitive full-local alias for contributors who are used to the standard ASP.NET launch profile name.
-
-`local-full` uses persistent container lifetimes and named volumes for heavy stateful resources so local database, Keycloak, MinIO, RabbitMQ, PgAdmin, and observability state survive AppHost restarts. Non-isolated local runs use the configured development host ports where present. Isolated runs publish dynamic localhost ports, so use `aspire describe <resource> --format Json` instead of hardcoding Mailpit, Keycloak, MinIO, PgAdmin, API, or Blazor ports.
+`local-full` uses persistent container lifetimes and named volumes for heavy stateful resources so local database, Keycloak, MinIO, RabbitMQ, PgAdmin, and observability state survive AppHost restarts. Every non-isolated named profile publishes API HTTPS on `https://localhost:7039` and Blazor HTTPS on `https://localhost:7177`; internal HTTP endpoints remain dynamically allocated for Aspire service discovery. Isolated runs publish dynamic localhost ports, so use `aspire describe <resource> --format Json` instead of hardcoding resource endpoints. Because Keycloak callback allow-lists remain exact, use a named non-isolated profile—not `--isolated`—for OIDC login/logout verification.
 
 PgAdmin is available as the `pgadmin` browser resource in `local-full` with development credentials `admin@openislamu.org` / `admin`. It imports the PostgreSQL servers from `Explore.AppHost/Config/pgadmin/servers.json`; inside PgAdmin, use container-network hosts `postgres`, `cerbos-db`, `svix-postgres`, and `coop-postgres` on port `5432`, not Aspire dashboard endpoint strings such as `tcp://localhost:35305`. The fixed-password Cerbos, Svix, and Coop databases are covered by `Explore.AppHost/Config/pgadmin/pgpass`; the app `postgres` server may still prompt for the Aspire-generated local database password.
 
@@ -152,7 +150,7 @@ Secret and connection priority:
 - When no connection string is supplied, `BootstrapSecretLoader` resolves PostgreSQL fields from Infisical `/postgresql`, then `POSTGRESQL_*` environment variables, then `Postgresql:*` configuration.
 - `local-core` and `local-lite` are maintainer modes. If Infisical bootstrap credentials are present in user secrets or environment variables, raw Infisical bootstrap values can outrank local `POSTGRESQL_*` fallback values. Blank the Infisical bootstrap keys for env-only local debugging.
 
-Keycloak local infrastructure imports the repository realm export from `docker/keycloak/realm-export.json`. Aspire mounts that file into `/opt/keycloak/data/import/realm-export.json` and starts Keycloak with `--import-realm`; Docker Compose mounts the same file and then runs `keycloak-init` to synchronize the configured public Blazor client secret. Aspire sets `KC_HTTP_RELATIVE_PATH=/auth`, so its management readiness probe is `/auth/health/ready`. Keycloak skips startup import when the realm already exists in the persistent database, so reset the Keycloak database volume before expecting changes in the JSON export to reapply automatically.
+Keycloak local infrastructure imports the repository realm export from `docker/keycloak/realm-export.json`. Aspire mounts that file into `/opt/keycloak/data/import/realm-export.json` and starts Keycloak with `--import-realm`; Docker Compose mounts the same file and then runs `keycloak-init` to synchronize the confidential Blazor client secret plus managed realm/client security settings. The export contains no client secret. Aspire sets `KC_HTTP_RELATIVE_PATH=/auth`, so its management readiness probe is `/auth/health/ready`. Keycloak skips startup import when the realm already exists in the persistent database; `keycloak-init` repairs the managed policy/client fields, while a disposable database reset is still required for unrelated export-only changes.
 
 Startup dependencies are explicit:
 
@@ -254,6 +252,7 @@ Readiness interpretation:
 | `oidc-discovery` | API, Blazor, Control Plane BFF | OIDC metadata valid, or OIDC is not configured | Not used | Configured OIDC metadata endpoint is unreachable or invalid |
 | `smtp` | API | SMTP connection/auth succeeds | SMTP is not configured | Configured SMTP is unreachable or authentication fails |
 | `email-dispatch` | API | Selected Basic Dispatch trigger is enabled (`TickerQ` scheduler or hosted-service fallback) and outbox counts are below warning thresholds | Dispatch is intentionally disabled, due dispatch backlog crosses threshold, stale `Processing` rows cross threshold, or `DeadLettered` rows cross threshold | TickerQ mode selected while scheduler is disabled; invalid dispatch/scheduler options fail startup; RabbitMQ is not checked in Basic mode |
+| `email-dispatch-retention-cleanup` | API | Retention cleanup is enabled in redaction or dry-run mode | Cleanup is intentionally disabled | Invalid retention options fail startup |
 | `email-dispatch-rabbitmq` | API | RabbitMQ Dispatch Mode is disabled, or enabled and topology can be declared | Not used | RabbitMQ mode is enabled but the broker/topology is unreachable or invalid |
 | `web-push-dispatch` | API | Web Push is disabled, or enabled with bounded backlog/retry/lease/failure counts | Due, stale-processing, or terminal-failure counts crossed configured warning thresholds | Invalid VAPID/worker settings fail startup |
 | `idempotency-cleanup` | API | Expired idempotency cleanup is enabled in delete or dry-run mode | Cleanup is intentionally disabled | Invalid cleanup options fail startup |
@@ -642,13 +641,17 @@ The scheduler job catalog is Application-owned through `IScheduledJobRegistry`. 
 
 Planned-only jobs are `general-outbox-drain`, `pds-sync-drain`, `dead-letter-summary`, `waitlist-promotion-scan`, and `tenant-maintenance-scan`. Do not migrate general outbox or PDS workers to TickerQ until EmailDispatch has green multi-node duplicate execution and crash-window recovery proof.
 
-### Approved Lifecycle-Email Operations (Planned)
+### Lifecycle-Email Operations
 
-The lifecycle expansion keeps PostgreSQL as the delivery ledger and adds these release requirements:
+PostgreSQL remains the email delivery ledger. Parent-aware content retention is implemented by `EmailDispatchRetentionCleanupProcessor`: it runs bounded transactional passes, supports dry-run, and records only counts and cutoff timestamps in logs.
 
-- redact recipient, reply-to, subject, and body for sent/skipped work after 180 days; attempts/receipts follow the parent and cannot retain PII longer;
-- keep dead-lettered, `Unknown`, and parked replay material until explicit operator resolution, then apply the same 180-day clock; `ContentRedactedAt` permanently removes replay authority;
-- on tenant deletion, suppress pending work, redact content, and retain only governance-required non-PII audit metadata;
+- Sent and skipped content redacts after the configured 180-day default; attempt and receipt free text/provider IDs follow the selected parent in the same transaction.
+- Dead-lettered, `Unknown`, and parked replay material remains until its explicit resolution timestamp, then follows the same retention clock. `ContentRedactedAt` permanently removes replay authority.
+- A `Purged` tenant is eligible immediately. Non-sent work and related delivery/receipt state become typed `tenant_deleted` skips before only non-PII ledger metadata remains.
+- Run with `EmailDispatchRetention:DryRun=true` first when changing retention policy. Compare the bounded eligible count, then restore mutating mode. Repeated passes are idempotent because already-redacted parents are excluded.
+
+The remaining lifecycle release requirements are:
+
 - process bounded batches with fair tenant rounds, configurable global/per-tenant concurrency and SMTP rate limits, required-work priority, and high/low backlog hysteresis that defers optional reminders without consuming SMTP attempt count;
 - expose oldest pending email/fanout age, success/failure and retryable/permanent rates, dead-letter/unknown/parked counts, typed skip counts, fanout progress/lease contention, and bounded tenant backlog without recipient PII;
 - provide authenticated HAL-gated controls to pause/drain, suppress a compromised tenant sender, inspect/reconcile/replay eligible failures, adjust rates, and dry-run cleanup.
@@ -1053,8 +1056,8 @@ Lifecycle classes:
 | `event_contact_share_exports`, `event_contact_share_export_items` | Compliance evidence with PII snapshots | Contact-share export workflow | No automated cleanup | 3 years by default, or longer where operator policy requires consent/export evidence | Consider monthly `CreatedAt` range partitions if export volume becomes large; item rows must stay co-located by export lifecycle | Add policy-controlled purge that preserves aggregate counts/audit evidence while deleting email snapshots when retention expires |
 | `notifications` | User-facing operational state | Notification handlers/repository | Soft delete/archive only through user workflows; no age cleanup | Keep unread/unsnoozed rows; retain read or archived rows for 365 days by default after last update | Consider monthly `CreatedAt` range partitions when inbox queries exceed index-only performance or table exceeds 50M rows | Add tenant/user-scoped notification retention job with opt-out for compliance notification types |
 | `outbox_messages`, `pds_sync_outbox`, `policy_change_outbox` | Durable side-effect ledger | Transactional outbox processors | Processors update status; no completed-row cleanup | Completed rows: 30 days. Failed/dead-lettered rows: retain until operator resolution, then 90 days | Consider monthly `CreatedAt` range partitions when completed rows dominate scans; worker indexes must keep pending/retry rows hot | Add cleanup that deletes only completed/resolved rows and never deletes pending, processing, retry, failed, or dead-letter rows |
-| `email_dispatch_outbox` | Durable side-effect ledger with email PII snapshots | Registration/email dispatch state machine | Delivery state changes, soft delete fields, parking/replay; no age cleanup | Sent rows: 180 days. Dead-lettered/unknown/parked rows: retain until operator resolution, then 180 days | Consider monthly `CreatedAt` range partitions when dispatch history exceeds 25M rows or status polling slows | Add PII-aware retention that redacts body/recipient snapshots before or instead of deleting unresolved evidence |
-| `email_dispatch_attempts`, `email_dispatch_receipts` | Durable side-effect ledger | Email dispatch drain/consumer idempotency | No automated cleanup; child rows cascade only if parent is physically deleted | Attempts/receipts follow parent retention; failed/unknown evidence stays while parent is unresolved | Partition only with parent strategy; independent partitioning risks expensive parent/child maintenance | Add parent-aware cleanup/redaction tests so child evidence cannot outlive or disappear before parent policy |
+| `email_dispatch_outbox` | Durable side-effect ledger with email PII snapshots | Registration/email dispatch state machine | Implemented: bounded/dry-runnable redaction after sent/skipped or explicitly resolved retention cutoff; purged tenants are immediate; `ContentRedactedAt` blocks replay | Sent rows: 180 days. Dead-lettered/unknown/parked rows: retain until operator resolution, then 180 days | Consider monthly `CreatedAt` range partitions when dispatch history exceeds 25M rows or status polling slows | Monitor bounded cleanup duration/counts and add a dedicated readiness signal if operational evidence requires one |
+| `email_dispatch_attempts`, `email_dispatch_receipts` | Durable side-effect ledger | Email dispatch drain/consumer idempotency | Implemented: free-text errors and provider IDs redact transactionally with the selected parent; typed outcomes and timestamps remain | Attempts/receipts follow parent retention; failed/unknown evidence stays while parent is unresolved | Partition only with parent strategy; independent partitioning risks expensive parent/child maintenance | Keep parent-aware regression coverage in the persistence gate |
 | `ai_conversations`, `ai_messages`, `ai_runs`, `ai_conversation_references`, `ai_proposed_actions`, `ai_tool_executions` | User-facing operational state with provider/prompt sensitivity | AI assistant conversation, proposal, and confirmed-tool audit flows | Implemented: `AiRetentionCleanupProcessor` iterates active tenants, binds tenant context, resolves each tenant's `ai_assistant.retention_days`, supports `AiRetentionCleanup:DryRun`, redacts message content/action payload/reference summaries/failure messages/tool failure messages, and soft-deletes expired conversation shells through tenant-filtered repository cleanup. | 30 days by default via `ai_assistant.retention_days`, tenant-configurable through governance settings | Do not partition initially; cleanup predicates use tenant plus conversation age and should stay index-backed until AI history volume proves otherwise | Monitor `ai-retention-cleanup` readiness and `explore.ai.retention.*` metrics before broad history enablement; never log prompt content, action payloads, provider responses, or model secrets |
 | `idempotency_records` | Ephemeral safety cache | `IdempotencyMiddleware` / `IIdempotencyRepository` | Implemented: reads ignore expired rows, and `IdempotencyCleanupProcessor` deletes rows older than `ExpiresAt + IdempotencyCleanup:ExpirationGraceHours` in bounded batches; dry-run is available | Delete after `ExpiresAt + 24h` safety buffer by default | Do not partition initially; TTL delete by `ExpiresAt` should be enough unless write volume is extreme | Monitor `idempotency-cleanup` readiness and cleanup metrics; revisit only if delete volume or index bloat threatens SLOs |
 | `custom_property_projection_dirty_scope` | Rebuildable projection/cache backlog | Projection rebuild/drain coordination | Drained rows remain; pending rows are quota-bounded | Pending rows stay until drained; drained rows retained 7 days for diagnostics | No partitioning initially; the table is quota-bounded per tenant | Add drained-row cleanup and metrics for deleted/drained/pending counts |

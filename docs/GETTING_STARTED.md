@@ -113,13 +113,13 @@ ISLAMU_ASPIRE_MODE=ExternalInfra aspire run --apphost Explore.AppHost/Explore.Ap
 Launch profiles remain available for IDEs or older workflows:
 
 ```bash
-dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile https
 dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-full
+dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-default
 dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-core
 dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-lite
 ```
 
-The `https` launch profile is a compatibility alias for the full local topology. Prefer `aspire run --apphost Explore.AppHost/Explore.AppHost.csproj` for the contributor path because it is shorter and works from a clean checkout.
+All four launch profiles expose API at `https://localhost:7039` and Blazor at `https://localhost:7177`. Prefer `aspire run --apphost Explore.AppHost/Explore.AppHost.csproj` for the contributor path because it is shorter and works from a clean checkout.
 
 Priority rule: `ConnectionStrings:DefaultConnection` wins first, so Aspire `WithReference` owns the local database connection in `FullLocal` and `LocalDataExternalPlatform`. When no connection string is supplied, the bootstrap chain is Infisical `/postgresql` first, then `POSTGRESQL_*` environment variables, then `Postgresql:*` configuration. If Infisical bootstrap credentials exist and you want env-only local behavior, remove or blank those credentials for that shell/profile.
 

@@ -11,7 +11,6 @@ KEYCLOAK_ADMIN="${KEYCLOAK_ADMIN:-}"
 KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-}"
 KEYCLOAK_BLAZOR_CLIENT_ID="${KEYCLOAK_BLAZOR_CLIENT_ID:-islamu-event-blazor}"
 KEYCLOAK_API_CLIENT_ID="${KEYCLOAK_API_CLIENT_ID:-islamu-event-api}"
-KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET="${KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET:-false}"
 KEYCLOAK_SMTP_HOST="${KEYCLOAK_SMTP_HOST:-}"
 KEYCLOAK_SMTP_PORT="${KEYCLOAK_SMTP_PORT:-}"
 KEYCLOAK_SMTP_FROM="${KEYCLOAK_SMTP_FROM:-}"
@@ -24,10 +23,10 @@ KEYCLOAK_SMTP_REPLY_TO_DISPLAY_NAME="${KEYCLOAK_SMTP_REPLY_TO_DISPLAY_NAME:-}"
 KEYCLOAK_SMTP_ENVELOPE_FROM="${KEYCLOAK_SMTP_ENVELOPE_FROM:-}"
 KEYCLOAK_SMTP_USER="${KEYCLOAK_SMTP_USER:-}"
 KEYCLOAK_SMTP_PASSWORD="${KEYCLOAK_SMTP_PASSWORD:-}"
-DEFAULT_LOCAL_BLAZOR_SECRET="islamu-event-blazor-secret"
 KCADM="${KCADM:-/opt/keycloak/bin/kcadm.sh}"
-BLAZOR_REDIRECT_URIS='["http://localhost:7002/*","https://localhost:7177/*","https://100.64.0.2:7177/*","http://localhost/*","https://localhost/*","http://127.0.0.1/*","https://100.64.0.2/*","http://100.64.0.2/*","http://admin.localhost:7002/*","http://admin.localhost/*","https://admin.localhost/*","http://host.docker.internal/*"]'
-BLAZOR_LOGOUT_REDIRECT_URIS='http://localhost:7002/*##https://localhost:7177/*##http://localhost/*##https://localhost/*##https://100.64.0.2:7177/*##https://100.64.0.2/*##http://100.64.0.2:7177/*##http://100.64.0.2/*##http://admin.localhost:7002/*##http://admin.localhost/*##https://admin.localhost/*'
+BLAZOR_REDIRECT_URIS="${KEYCLOAK_BLAZOR_REDIRECT_URIS:-[\"http://localhost:7002/signin-oidc\",\"http://admin.localhost:7002/signin-oidc\",\"https://localhost:7177/signin-oidc\",\"https://admin.localhost:7177/signin-oidc\"]}"
+BLAZOR_WEB_ORIGINS="${KEYCLOAK_BLAZOR_WEB_ORIGINS:-[\"http://localhost:7002\",\"http://admin.localhost:7002\",\"https://localhost:7177\",\"https://admin.localhost:7177\"]}"
+BLAZOR_LOGOUT_REDIRECT_URIS="${KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS:-http://localhost:7002/signout-callback-oidc##http://admin.localhost:7002/signout-callback-oidc##https://localhost:7177/signout-callback-oidc##https://admin.localhost:7177/signout-callback-oidc}"
 
 log() {
   printf '[keycloak-init] %s\n' "$1" >&2
@@ -54,18 +53,8 @@ json_escape() {
 }
 
 resolve_blazor_secret() {
-  if [ -n "${KEYCLOAK_BLAZOR_CLIENT_SECRET:-}" ]; then
-    printf '%s' "$KEYCLOAK_BLAZOR_CLIENT_SECRET"
-    return 0
-  fi
-
-  if [ "$KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET" = "true" ]; then
-    log "Using the opt-in local development default for ${KEYCLOAK_BLAZOR_CLIENT_ID}. Do not use this in production."
-    printf '%s' "$DEFAULT_LOCAL_BLAZOR_SECRET"
-    return 0
-  fi
-
-  fail "KEYCLOAK_BLAZOR_CLIENT_SECRET is required for the confidential Blazor BFF client. Set KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET=true only for throwaway local development."
+  require_non_empty "KEYCLOAK_BLAZOR_CLIENT_SECRET" "${KEYCLOAK_BLAZOR_CLIENT_SECRET:-}"
+  printf '%s' "$KEYCLOAK_BLAZOR_CLIENT_SECRET"
 }
 
 client_uuid() {
@@ -89,9 +78,21 @@ set_client_secret() {
   log "Synchronized secret for client '$client_id' (value redacted)."
 }
 
-enable_realm_registration() {
-  "$KCADM" update "realms/$KEYCLOAK_REALM" -s registrationAllowed=true >/dev/null
-  log "Enabled self-registration for realm '$KEYCLOAK_REALM'."
+sync_realm_security_settings() {
+  "$KCADM" update "realms/$KEYCLOAK_REALM" \
+    -s sslRequired=external \
+    -s registrationAllowed=true \
+    -s verifyEmail=true \
+    -s 'passwordPolicy=length(12) and notUsername and notEmail and passwordHistory(5)' \
+    -s ssoSessionIdleTimeout=1800 \
+    -s ssoSessionMaxLifespan=36000 \
+    -s ssoSessionIdleTimeoutRememberMe=2592000 \
+    -s ssoSessionMaxLifespanRememberMe=7776000 \
+    -s offlineSessionIdleTimeout=2592000 \
+    -s offlineSessionMaxLifespan=7776000 \
+    -s offlineSessionMaxLifespanEnabled=true >/dev/null
+
+  log "Synchronized TLS, registration, password, and session policies for realm '$KEYCLOAK_REALM'."
 }
 
 sync_realm_smtp_settings() {
@@ -139,14 +140,22 @@ sync_blazor_client_settings() {
     fail "Keycloak client '$KEYCLOAK_BLAZOR_CLIENT_ID' was not found in realm '$KEYCLOAK_REALM'. Confirm realm import completed successfully."
   fi
 
-  attributes="{\"pkce.code.challenge.method\":\"S256\",\"post.logout.redirect.uris\":\"$BLAZOR_LOGOUT_REDIRECT_URIS\",\"backchannel.logout.session.required\":\"true\",\"backchannel.logout.revoke.offline.tokens\":\"false\",\"use.refresh.tokens\":\"true\",\"oauth2.device.authorization.grant.enabled\":\"false\",\"oidc.ciba.grant.enabled\":\"false\"}"
+  require_non_empty "KEYCLOAK_BLAZOR_REDIRECT_URIS" "$BLAZOR_REDIRECT_URIS"
+  require_non_empty "KEYCLOAK_BLAZOR_WEB_ORIGINS" "$BLAZOR_WEB_ORIGINS"
+  require_non_empty "KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS" "$BLAZOR_LOGOUT_REDIRECT_URIS"
 
   "$KCADM" update "clients/$uuid" -r "$KEYCLOAK_REALM" \
     -s "redirectUris=$BLAZOR_REDIRECT_URIS" \
-    -s 'webOrigins=["+"]' \
-    -s "attributes=$attributes" >/dev/null
+    -s "webOrigins=$BLAZOR_WEB_ORIGINS" \
+    -s 'attributes."pkce.code.challenge.method"="S256"' \
+    -s "attributes.\"post.logout.redirect.uris\"=\"$BLAZOR_LOGOUT_REDIRECT_URIS\"" \
+    -s 'attributes."backchannel.logout.session.required"="true"' \
+    -s 'attributes."backchannel.logout.revoke.offline.tokens"="false"' \
+    -s 'attributes."use.refresh.tokens"="true"' \
+    -s 'attributes."oauth2.device.authorization.grant.enabled"="false"' \
+    -s 'attributes."oidc.ciba.grant.enabled"="false"' >/dev/null
 
-  log "Synchronized redirect URIs for client '$KEYCLOAK_BLAZOR_CLIENT_ID'."
+  log "Synchronized exact redirect URIs and web origins for client '$KEYCLOAK_BLAZOR_CLIENT_ID'."
 }
 
 main() {
@@ -166,7 +175,7 @@ main() {
     --user "$KEYCLOAK_ADMIN" \
     --password "$KEYCLOAK_ADMIN_PASSWORD" >/dev/null
 
-  enable_realm_registration
+  sync_realm_security_settings
   sync_realm_smtp_settings
   sync_blazor_client_settings
 

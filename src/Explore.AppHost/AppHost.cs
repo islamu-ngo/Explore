@@ -114,7 +114,8 @@ var exploreAPI = WithProfileSecretMode(
         builder.AddProject<Projects.Explore_API>(
                 "explore-api",
                 ExcludeProjectLaunchProfile)
-            .WithHttpEndpoint(name: "http"),
+            .WithHttpEndpoint(name: "http")
+            .WithHttpsEndpoint(port: 7039, name: "https"),
         runMode,
         builder.Configuration)
     .WithEnvironment("HttpsRedirection__Enabled", "false")
@@ -191,7 +192,8 @@ var exploreBlazor = WithProfileSecretMode(
         builder.AddProject<Projects.Explore_Blazor>(
                 "explore-blazor",
                 ExcludeProjectLaunchProfile)
-            .WithHttpEndpoint(name: "http"),
+            .WithHttpEndpoint(name: "http")
+            .WithHttpsEndpoint(port: 7177, name: "https"),
         runMode,
         builder.Configuration)
     .WithReference(exploreAPI)
@@ -244,6 +246,22 @@ static LocalPlatformResources AddLocalPlatform(
     IResourceBuilder<RedisResource>? cache)
 {
     var configuration = builder.Configuration;
+    var configuredKeycloakBlazorClientSecret = configuration["KEYCLOAK_BLAZOR_CLIENT_SECRET"];
+    var keycloakBlazorClientSecret = string.IsNullOrWhiteSpace(configuredKeycloakBlazorClientSecret)
+        ? builder.AddParameter(
+            "keycloak-blazor-client-secret",
+            new GenerateParameterDefault
+            {
+                MinLength = 32,
+                Special = false
+            },
+            secret: true,
+            persist: true)
+        : builder.AddParameter(
+            "keycloak-blazor-client-secret",
+            () => configuredKeycloakBlazorClientSecret,
+            publishValueAsDefault: false,
+            secret: true);
     var cerbosAdminUsername = ConfiguredValue(configuration, "CERBOS_ADMIN_USERNAME", "cerbos");
     var cerbosAdminPasswordHash = ConfiguredValue(
         configuration,
@@ -306,9 +324,11 @@ static LocalPlatformResources AddLocalPlatform(
         .WithEnvironment("KEYCLOAK_ADMIN", configuration["KEYCLOAK_ADMIN"] ?? "admin")
         .WithEnvironment("KEYCLOAK_ADMIN_PASSWORD", configuration["KEYCLOAK_ADMIN_PASSWORD"] ?? "admin")
         .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_ID", configuration["KEYCLOAK_BLAZOR_CLIENT_ID"] ?? "islamu-event-blazor")
-        .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_SECRET", configuration["KEYCLOAK_BLAZOR_CLIENT_SECRET"] ?? "islamu-event-blazor-secret")
+        .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_SECRET", keycloakBlazorClientSecret)
         .WithEnvironment("KEYCLOAK_API_CLIENT_ID", configuration["KEYCLOAK_API_CLIENT_ID"] ?? "islamu-event-api")
-        .WithEnvironment("KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET", configuration["KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET"] ?? "true")
+        .WithEnvironment("KEYCLOAK_BLAZOR_REDIRECT_URIS", configuration["KEYCLOAK_BLAZOR_REDIRECT_URIS"] ?? string.Empty)
+        .WithEnvironment("KEYCLOAK_BLAZOR_WEB_ORIGINS", configuration["KEYCLOAK_BLAZOR_WEB_ORIGINS"] ?? string.Empty)
+        .WithEnvironment("KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS", configuration["KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS"] ?? string.Empty)
         .WithEnvironment("KEYCLOAK_SMTP_HOST", "mailpit")
         .WithEnvironment("KEYCLOAK_SMTP_PORT", "1025")
         .WithEnvironment("KEYCLOAK_SMTP_FROM", configuration["KEYCLOAK_SMTP_FROM"] ?? "noreply@openislamu.org")
@@ -600,6 +620,7 @@ static LocalPlatformResources AddLocalPlatform(
     return new LocalPlatformResources(
         Keycloak: keycloak,
         KeycloakInit: keycloakInit,
+        KeycloakBlazorClientSecret: keycloakBlazorClientSecret,
         Cerbos: cerbos,
         Minio: minio,
         MinioBootstrap: minioBootstrap,
@@ -670,7 +691,6 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
     var keycloakRealm = configuration["KEYCLOAK_REALM"] ?? "ISLAMU";
     var keycloakApiClientId = configuration["KEYCLOAK_API_CLIENT_ID"] ?? "islamu-event-api";
     var keycloakBlazorClientId = configuration["KEYCLOAK_BLAZOR_CLIENT_ID"] ?? "islamu-event-blazor";
-    var keycloakBlazorClientSecret = configuration["KEYCLOAK_BLAZOR_CLIENT_SECRET"] ?? "islamu-event-blazor-secret";
     var authorizationProvider = configuration["AUTHORIZATION_PROVIDER"] ?? "cerbos";
     var cerbosAdminUsername = ConfiguredValue(configuration, "CERBOS_ADMIN_USERNAME", "cerbos");
     var cerbosAdminPassword = ConfiguredValue(configuration, "CERBOS_ADMIN_PASSWORD", "cerbos");
@@ -693,7 +713,7 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
         .WithEnvironment("KEYCLOAK_REALM", keycloakRealm)
         .WithEnvironment("KEYCLOAK_ENDPOINT", keycloakBaseUrl)
         .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_ID", keycloakBlazorClientId)
-        .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_SECRET", keycloakBlazorClientSecret)
+        .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_SECRET", resources.KeycloakBlazorClientSecret)
         .WithEnvironment("Keycloak__Realm", keycloakRealm)
         .WithEnvironment("Keycloak__Authority", keycloakAuthority)
         .WithEnvironment("Keycloak__MetadataAddress", keycloakMetadataAddress)
@@ -782,7 +802,6 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformBlazor(
 {
     var keycloakRealm = configuration["KEYCLOAK_REALM"] ?? "ISLAMU";
     var keycloakClientId = configuration["KEYCLOAK_BLAZOR_CLIENT_ID"] ?? "islamu-event-blazor";
-    var keycloakClientSecret = configuration["KEYCLOAK_BLAZOR_CLIENT_SECRET"] ?? "islamu-event-blazor-secret";
     var keycloakBaseUrl = EndpointUrl(resources.Keycloak, "http", "/auth");
     var keycloakAuthority = EndpointUrl(resources.Keycloak, "http", $"/auth/realms/{keycloakRealm}");
     var keycloakMetadataAddress = EndpointUrl(
@@ -794,12 +813,12 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformBlazor(
         .WithEnvironment("KEYCLOAK_REALM", keycloakRealm)
         .WithEnvironment("KEYCLOAK_ENDPOINT", keycloakBaseUrl)
         .WithEnvironment("KEYCLOAK_CLIENT_ID", keycloakClientId)
-        .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_SECRET", keycloakClientSecret)
+        .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_SECRET", resources.KeycloakBlazorClientSecret)
         .WithEnvironment("Keycloak__Realm", keycloakRealm)
         .WithEnvironment("Keycloak__Authority", keycloakAuthority)
         .WithEnvironment("Keycloak__MetadataAddress", keycloakMetadataAddress)
         .WithEnvironment("Keycloak__ClientId", keycloakClientId)
-        .WithEnvironment("Keycloak__ClientSecret", keycloakClientSecret)
+        .WithEnvironment("Keycloak__ClientSecret", resources.KeycloakBlazorClientSecret)
         .WithEnvironment("Keycloak__RequireHttpsMetadata", "false")
         .WaitFor(resources.Keycloak)
         .WaitForCompletion(resources.KeycloakInit);
@@ -994,6 +1013,7 @@ internal static class AspireRunModeExtensions
 internal sealed record LocalPlatformResources(
     IResourceBuilder<ContainerResource> Keycloak,
     IResourceBuilder<ContainerResource> KeycloakInit,
+    IResourceBuilder<ParameterResource> KeycloakBlazorClientSecret,
     IResourceBuilder<ContainerResource> Cerbos,
     IResourceBuilder<ContainerResource> Minio,
     IResourceBuilder<ContainerResource> MinioBootstrap,

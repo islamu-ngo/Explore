@@ -48,10 +48,10 @@ Run:
 This starts full local infrastructure, migration, API, and Blazor with local development wiring.
 
 Fallback for IDE/older workflows:
-- `dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile https`
+- `dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile local-full`
 
 Expected local URLs:
-- Use the Aspire dashboard output for exact dynamic Blazor and API endpoints.
+- API is available at `https://localhost:7039` and Blazor at `https://localhost:7177` in every non-isolated named launch profile.
 - Keycloak local full mode uses `http://localhost:8080/auth`.
 - Mailpit starts in every Aspire profile with SMTP on `localhost:1025` and UI on `http://localhost:8025`.
 
