@@ -12,6 +12,7 @@ public static class AtprotoRsvpPublicationSnapshotFactory
 
     public static AtprotoRsvpPublicationPlan PlanActiveRegistration(
         EventRegistrationIntent intent,
+        AtprotoRsvpPublicationContext context,
         string ownerDid,
         AtprotoSettledEventReference? settledEvent)
     {
@@ -19,6 +20,25 @@ public static class AtprotoRsvpPublicationSnapshotFactory
         if (intent.IsDeleted)
         {
             return Invalid("A deleted registration intent cannot create an RSVP.");
+        }
+
+        if (intent.Id == Guid.Empty
+            || intent.TenantId == Guid.Empty
+            || intent.UserId == Guid.Empty
+            || intent.EventId == Guid.Empty
+            || intent.CreatedAt == default)
+        {
+            return Invalid("Only a persisted committed registration intent can create an RSVP.");
+        }
+
+        if (context.TenantId == Guid.Empty
+            || context.UserId == Guid.Empty
+            || context.EventId == Guid.Empty
+            || intent.TenantId != context.TenantId
+            || intent.UserId != context.UserId
+            || intent.EventId != context.EventId)
+        {
+            return Invalid("The registration intent does not match the requested tenant, user, and event scope.");
         }
 
         if (!IsDid(ownerDid))

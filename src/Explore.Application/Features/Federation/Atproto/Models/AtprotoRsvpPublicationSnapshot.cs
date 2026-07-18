@@ -7,6 +7,8 @@ namespace Explore.Application.Features.Federation.Atproto.Models;
 
 public sealed record AtprotoSettledEventReference(string Uri, string Cid);
 
+public sealed record AtprotoRsvpPublicationContext(Guid TenantId, Guid UserId, Guid EventId);
+
 public sealed record AtprotoRsvpPublicationSnapshot(
     string OwnerDid,
     string SubjectUri,

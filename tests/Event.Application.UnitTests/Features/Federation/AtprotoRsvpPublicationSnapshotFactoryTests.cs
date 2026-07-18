@@ -27,6 +27,7 @@ public sealed class AtprotoRsvpPublicationSnapshotFactoryTests
 
         AtprotoRsvpPublicationPlan result = AtprotoRsvpPublicationSnapshotFactory.PlanActiveRegistration(
             intent,
+            ContextFor(intent),
             "did:plc:owner",
             subject);
 
@@ -44,11 +45,13 @@ public sealed class AtprotoRsvpPublicationSnapshotFactoryTests
         EventRegistrationIntent intent = CreateIntent(ApprovalStatusEnum.Approved);
         AtprotoRsvpPublicationPlan missing = AtprotoRsvpPublicationSnapshotFactory.PlanActiveRegistration(
             intent,
+            ContextFor(intent),
             "did:plc:owner",
             settledEvent: null);
         intent.IsDeleted = true;
         AtprotoRsvpPublicationPlan deleted = AtprotoRsvpPublicationSnapshotFactory.PlanActiveRegistration(
             intent,
+            ContextFor(intent),
             "did:plc:owner",
             new("at://did:plc:owner/community.lexicon.calendar.event/key", "cid"));
 
@@ -70,6 +73,29 @@ public sealed class AtprotoRsvpPublicationSnapshotFactoryTests
         await Assert.That(noRemoteRecord.Operation).IsEqualTo(AtprotoRsvpPublicationOperation.None);
     }
 
+    [Test]
+    public async Task UnpersistedOrScopeMismatchedIntent_IsRejected()
+    {
+        EventRegistrationIntent intent = CreateIntent(ApprovalStatusEnum.Approved);
+        AtprotoSettledEventReference subject = new(
+            "at://did:plc:owner/community.lexicon.calendar.event/key",
+            "cid");
+        AtprotoRsvpPublicationPlan wrongTenant = AtprotoRsvpPublicationSnapshotFactory.PlanActiveRegistration(
+            intent,
+            ContextFor(intent) with { TenantId = Guid.CreateVersion7() },
+            "did:plc:owner",
+            subject);
+        intent.Id = Guid.Empty;
+        AtprotoRsvpPublicationPlan unpersisted = AtprotoRsvpPublicationSnapshotFactory.PlanActiveRegistration(
+            intent,
+            ContextFor(intent),
+            "did:plc:owner",
+            subject);
+
+        await Assert.That(wrongTenant.IsValid).IsFalse();
+        await Assert.That(unpersisted.IsValid).IsFalse();
+    }
+
     private static EventRegistrationIntent CreateIntent(ApprovalStatusEnum approvalStatus)
         => new()
         {
@@ -86,4 +112,7 @@ public sealed class AtprotoRsvpPublicationSnapshotFactoryTests
             CreatedAt = DateTime.UtcNow,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
+
+    private static AtprotoRsvpPublicationContext ContextFor(EventRegistrationIntent intent)
+        => new(intent.TenantId, intent.UserId, intent.EventId);
 }
