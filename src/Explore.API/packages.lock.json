@@ -1031,6 +1031,11 @@
           "NCrontab": "3.3.0"
         }
       },
+      "ZstdSharp.Port": {
+        "type": "Transitive",
+        "resolved": "0.8.7",
+        "contentHash": "+4VpxvzEKaHpfTjsLRMhQHx6brqGBkIA+fjUM3wUW8ZoWpPFAeKrO2Nf4uZDeBjjzNDNxSRvLQH4b3S9Ku4JJQ=="
+      },
       "explore.application": {
         "type": "Project",
         "dependencies": {
@@ -1042,6 +1047,9 @@
           "Microsoft.Extensions.Caching.Hybrid": "[10.2.0, )",
           "OpenFeature": "[2.11.1, )"
         }
+      },
+      "explore.atproto.transport": {
+        "type": "Project"
       },
       "explore.domain": {
         "type": "Project",
@@ -1055,8 +1063,12 @@
           "AWSSDK.S3": "[4.0.16.1, )",
           "Azure.AI.OpenAI": "[2.1.0, )",
           "Azure.Identity": "[1.21.0, )",
+          "CarpaNet": "[1.0.2, )",
+          "CarpaNet.Jetstream": "[1.0.2, )",
+          "CarpaNet.OAuth": "[1.0.2, )",
           "Cerbos.Sdk": "[1.9.1, )",
           "Explore.Application": "[1.0.0, )",
+          "Explore.Atproto.Transport": "[1.0.0, )",
           "Google.Protobuf": "[3.34.1, )",
           "Grpc.Net.Client": "[2.76.0, )",
           "MailKit": "[4.16.0, )",
@@ -1139,6 +1151,31 @@
         "contentHash": "GeFv8sGwRKvDKwI2WFy8r0mhmlxEVZg24Sit2NogTjiSO8RVjllWM65OT6e1sKjOvG8V74y7hAbaELUUPjZQSw==",
         "dependencies": {
           "Azure.Core": "1.53.0"
+        }
+      },
+      "CarpaNet": {
+        "type": "CentralTransitive",
+        "requested": "[1.0.2, )",
+        "resolved": "1.0.2",
+        "contentHash": "Nxya4ndGDrTErE+WTcxlM+tzJYiXrklNURcdi34N90EQnaivqXUpSZlqUotUHXWKK7+m/7ysg9QW+CNWc7FAgg=="
+      },
+      "CarpaNet.Jetstream": {
+        "type": "CentralTransitive",
+        "requested": "[1.0.2, )",
+        "resolved": "1.0.2",
+        "contentHash": "80vhf7LwNU9BRiqumQP6yllhbNjmnBL90UBp5mpJFhfwC39EnPi7x0iPIhHGJ6tA///QADQ3dQkrWCznsu8a3w==",
+        "dependencies": {
+          "CarpaNet": "1.0.2",
+          "ZstdSharp.Port": "0.8.7"
+        }
+      },
+      "CarpaNet.OAuth": {
+        "type": "CentralTransitive",
+        "requested": "[1.0.2, )",
+        "resolved": "1.0.2",
+        "contentHash": "MQf22dudoh6uou77XzxF6SWpAceCGOfFvpSDeuq3YqlhpTcvdLa2BKiRmJD6V0aKPdHjhwh8D1HuASRnm1SV2A==",
+        "dependencies": {
+          "CarpaNet": "1.0.2"
         }
       },
       "Cerbos.Sdk": {

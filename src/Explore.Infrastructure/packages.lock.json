@@ -30,6 +30,31 @@
           "Azure.Core": "1.53.0"
         }
       },
+      "CarpaNet": {
+        "type": "Direct",
+        "requested": "[1.0.2, )",
+        "resolved": "1.0.2",
+        "contentHash": "Nxya4ndGDrTErE+WTcxlM+tzJYiXrklNURcdi34N90EQnaivqXUpSZlqUotUHXWKK7+m/7ysg9QW+CNWc7FAgg=="
+      },
+      "CarpaNet.Jetstream": {
+        "type": "Direct",
+        "requested": "[1.0.2, )",
+        "resolved": "1.0.2",
+        "contentHash": "80vhf7LwNU9BRiqumQP6yllhbNjmnBL90UBp5mpJFhfwC39EnPi7x0iPIhHGJ6tA///QADQ3dQkrWCznsu8a3w==",
+        "dependencies": {
+          "CarpaNet": "1.0.2",
+          "ZstdSharp.Port": "0.8.7"
+        }
+      },
+      "CarpaNet.OAuth": {
+        "type": "Direct",
+        "requested": "[1.0.2, )",
+        "resolved": "1.0.2",
+        "contentHash": "MQf22dudoh6uou77XzxF6SWpAceCGOfFvpSDeuq3YqlhpTcvdLa2BKiRmJD6V0aKPdHjhwh8D1HuASRnm1SV2A==",
+        "dependencies": {
+          "CarpaNet": "1.0.2"
+        }
+      },
       "Cerbos.Sdk": {
         "type": "Direct",
         "requested": "[1.9.1, )",
@@ -455,6 +480,11 @@
           "System.Drawing.Common": "6.0.0"
         }
       },
+      "ZstdSharp.Port": {
+        "type": "Transitive",
+        "resolved": "0.8.7",
+        "contentHash": "+4VpxvzEKaHpfTjsLRMhQHx6brqGBkIA+fjUM3wUW8ZoWpPFAeKrO2Nf4uZDeBjjzNDNxSRvLQH4b3S9Ku4JJQ=="
+      },
       "explore.application": {
         "type": "Project",
         "dependencies": {
@@ -466,6 +496,9 @@
           "Microsoft.Extensions.Caching.Hybrid": "[10.2.0, )",
           "OpenFeature": "[2.11.1, )"
         }
+      },
+      "explore.atproto.transport": {
+        "type": "Project"
       },
       "explore.domain": {
         "type": "Project",

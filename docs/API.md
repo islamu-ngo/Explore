@@ -119,8 +119,9 @@ EmailDispatch admin routes live under `/api/admin/email-dispatch` and are authen
 - `PUT /api/admin/email-dispatch/tenants/{tenantId}/pause` and `DELETE /api/admin/email-dispatch/tenants/{tenantId}/pause` authorize `islamuevent_email_dispatch:manage_tenant`.
 - `PUT /api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/park` authorizes `islamuevent_email_dispatch:park`.
 - `POST /api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/replay` authorizes `islamuevent_email_dispatch:replay`.
-- HAL item links for `replay` and `park` use the same resource/action metadata; clients must render these controls only when the server includes the link.
-- `Skipped` is a terminal dispatch status for preference/compliance skips. Sent and skipped rows are not replayable or parkable; replay links are limited to `DeadLettered`, `Parked`, `Unknown`, and `RetryScheduled`.
+- `POST /api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/resolve-without-replay?reason=...` authorizes `islamuevent_email_dispatch:resolve` and transitions only `DeadLettered`, `Parked`, or `Unknown` rows to terminal `Skipped` state.
+- HAL item links for `replay`, `park`, and `resolve-without-replay` use the same resource/action metadata; clients must render these controls only when the server includes the link.
+- `Skipped` is terminal. Sent, skipped, and `ContentRedactedAt` rows are not replayable or parkable; redacted rows permanently omit all delivery-control affordances.
 
 ### Notification Preference Endpoints
 
