@@ -85,9 +85,10 @@ Current limitation: Task 1.3 is independently scoped-confirmed, but the latest r
 - [ ] dotnet build --configuration Release --verbosity quiet
 - [ ] dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
 
-## Phase 2: Encrypted DID-Keyed Session Persistence — NOT STARTED
+## Phase 2: Encrypted DID-Keyed Session Persistence — IMPLEMENTED; INDEPENDENT REVERIFICATION IN PROGRESS
 
 - [ ] **2.1 Replace plaintext token persistence with a DID-keyed encrypted session envelope**
+  - **Status:** Implementation, focused non-container tests, migration guards, and Release build are green. Independent verification is active; Docker-backed PostgreSQL execution remains unavailable.
   - **Files:** UserAuthenticationToken.cs; UserAuthenticationTokenConfiguration.cs; IUserAuthenticationTokenRepository.cs; UserAuthenticationTokenRepository.cs; generated ProtectAtprotoOAuthSessions EF migration/snapshot; schemas/islamu-event.md; UserAuthenticationTokenRepositoryTests.cs (new).
   - **Acceptance:**
     - [ ] No plaintext credential property/column remains in the runtime model.
@@ -99,6 +100,7 @@ Current limitation: Task 1.3 is independently scoped-confirmed, but the latest r
   - **Dependencies:** Phase 1.
 
 - [ ] **2.2 Implement the repository-backed CarpaNet session store**
+  - **Status:** Implementation and focused crypto/store tests are green. Reopened for fail-closed nested-null envelope validation before independent acceptance.
   - **Files:** AtprotoSessionEnvelopeProtector.cs (new); RepositoryBackedOAuthSessionStore.cs (new); InfrastructureServicesRegistration.cs; IUserAuthenticationTokenRepository.cs; RepositoryBackedOAuthSessionStoreTests.cs (new); docs/SECRETS.md.
   - **Acceptance:**
     - [ ] Store/Get round-trips DPoP JWK, token set, auth method, client ID, redirect URI, scope, and PDS metadata.
@@ -293,9 +295,10 @@ Current limitation: Task 1.3 is independently scoped-confirmed, but the latest r
 - [x] dotnet build --configuration Release --verbosity quiet
 - [x] dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
 
-## Phase 8: Canonical Publication Snapshot And Exhaustive Description — NOT STARTED
+## Phase 8: Canonical Publication Snapshot And Exhaustive Description — REOPENED AFTER INDEPENDENT REVIEW
 
 - [ ] **8.1 Load and build the canonical public/federatable event snapshot**
+  - **Status:** Bounded graph/snapshot implementation exists, but independent review reopened maximal-fixture, exhaustive-source-contract, raw-location association consistency, private-series, standalone-placement, and complete public EAV definition/option coverage.
   - **Files:** IEventRepository.cs; EventRepository.cs; AtprotoEventPublicationSnapshot.cs (new); AtprotoEventPublicationSnapshotFactory.cs (new); snapshot factory tests (new).
   - **Acceptance:**
     - [ ] Tenant-filtered entity loading covers all public scalars, every session/day/agenda/location/room, actors/groups/organizations, categories/tags, lookups, aspects, speakers/languages, and event/session EAV values without N+1.
@@ -307,6 +310,7 @@ Current limitation: Task 1.3 is independently scoped-confirmed, but the latest r
   - **Dependencies:** 7.2.
 
 - [ ] **8.2 Map the community record and render every additional field**
+  - **Status:** CarpaNet event/RSVP mapping, validators, deterministic description, and size checks exist; independent review is verifying the rebuilt complete manifest, unique ordering tie-breakers, lookup display-only behavior, and exact lexicon-required validation.
   - **Files:** Infrastructure csproj; existing community event/RSVP lexicons; AtprotoCalendarEventRecordData.cs and AtprotoCalendarRsvpRecordData.cs (new); event/RSVP mappers, validators, independently maintained source-field manifests; description formatter tests (new).
   - **Acceptance:**
     - [ ] Native name/description/createdAt/startsAt/endsAt/mode/status/locations/uris/rsvpExpected fields are mapped when available.
@@ -323,9 +327,10 @@ Current limitation: Task 1.3 is independently scoped-confirmed, but the latest r
 - [ ] dotnet build --configuration Release --verbosity quiet
 - [ ] dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
 
-## Phase 9: Transactional Outbound Event And RSVP Publication — NOT STARTED
+## Phase 9: Transactional Outbound Event And RSVP Publication — PERSISTENCE FOUNDATION IN REVERIFICATION
 
 - [ ] **9.1 Record ADR-015 and harden federation persistence**
+  - **Status:** Implementation, two focused fail-closed migrations, fenced repositories, atomic Jetstream state, and Release build are green; independent verification and Docker-backed PostgreSQL execution remain pending.
   - **Files:** ADR-015 (new); AtprotoRecord.cs/config; PdsSyncOutbox.cs/config/repository/contract; generated migration/snapshot; schemas/islamu-event.md.
   - **Acceptance:**
     - [ ] ADR/schema define outbound tenant/user ownership, global canonical inbound ownership, tenant presentation/visibility joins, direction/provenance, DID/collection/rkey identity, source entity/version, immutable payload/hash, stable idempotency, CID expectations, URI/CID settlement, cursor/checkpoint policy, and user consent.

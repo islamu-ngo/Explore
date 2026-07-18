@@ -137,7 +137,9 @@ The API and browser BFF use the same deployment client identity. `KEYCLOAK_BLAZO
 | `KEYCLOAK_BLAZOR_CLIENT_ID` | Browser/BFF OIDC client ID shared with the API onboarding producer. Defaults to `islamu-event-blazor`. |
 | `KEYCLOAK_BLAZOR_CLIENT_SECRET` | Required Blazor confidential client secret. `keycloak-init` writes this into the `islamu-event-blazor` Keycloak client after realm import. |
 | `KEYCLOAK_API_CLIENT_SECRET` | Optional legacy/future API resource-server client secret. Current bearer-token validation does not require it, and the checked-in realm export does not include a static API client secret. Set it only if a deployment intentionally makes the API client confidential. |
-| `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET` | Optional local-development escape hatch. Set to `true` only for throwaway local stacks that intentionally use the static realm-export default secret. |
+| `KEYCLOAK_BLAZOR_REDIRECT_URIS` | Optional JSON array of exact BFF login callbacks. Blank uses exact Compose/Aspire localhost callbacks. |
+| `KEYCLOAK_BLAZOR_WEB_ORIGINS` | Optional JSON array of exact BFF origins. Blank uses exact Compose/Aspire localhost origins. |
+| `KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS` | Optional Keycloak `##`-separated list of exact BFF logout callbacks. Blank uses exact Compose/Aspire localhost callbacks. |
 
 ### Cerbos
 
@@ -206,6 +208,27 @@ Enable destructive cleanup only after reviewing dry-run output, confirming backu
 | `API_ENDPOINT` | Blazor | API base URL fallback for BFF proxying outside Aspire. |
 
 `docker-compose.yml` sets Blazor `API_ENDPOINT` with a default of `http://islamu-event-api:8080/`, matching the Compose API service name. Operators only need to override `API_ENDPOINT` when routing the BFF to a different API host.
+
+### AT Protocol OAuth And Constrained Egress
+
+AT Protocol sign-in and PDS access use a confidential OAuth client in the Blazor BFF and Infrastructure. Configure the same canonical values on both hosts:
+
+| Canonical key | Requirement |
+|---|---|
+| `Atproto:PublicUrl` | Browser-facing origin only, normally `https://events.example.org/`. It must have no path, credentials, query, fragment, Unicode host spelling, or trailing-dot alias. |
+| `Atproto:CallbackPath` | Canonical root-relative callback such as `/signin-atproto`; only ASCII unreserved path characters are accepted. |
+| `Atproto:AllowDevelopmentLoopback` | Keep `false` outside Development. When explicitly enabled in Development, only exact `localhost` or loopback IP hosts are allowed. |
+| `ATPROTO_OAUTH_CLIENT_PRIVATE_JWKS` | Instance-scoped private P-256/ES256 signing ring. Store it in the configured secret provider under `/atproto`; never place it in browser configuration or logs. |
+
+The signing ring is a bounded JSON object with `keys`. Every key has `kty=EC`, `crv=P-256`, `use=sig`, `alg=ES256`, canonical 32-byte base64url `x`, `y`, and `d`, a unique bounded `kid`, and `status` equal to `active` or `retired`. Exactly one key must be active. For rotation, deploy the new active key while retaining the previous key as retired. New sessions pin the active `kid`; restored, refreshed, and revoked sessions continue using their persisted retired `kid`. Remove a retired key only after every session pinned to it has expired or been revoked.
+
+Production egress must allow DNS and outbound TLS to user PDS hosts and their discovered authorization-server endpoints. The application disables redirects, cookies, and decompression; resolves DNS for every connection; rejects loopback, private, link-local, unspecified, multicast, documentation, benchmark, and mixed public/private answers; and connects only to a validated resolved address. Do not work around a rejection with a private-network allowlist or an open redirect. Correct public DNS and authorization-server metadata instead.
+
+Authorization-server endpoint trust expires after five minutes and is repopulated only by strict metadata discovery. PAR, code exchange, refresh, and revocation require exact form shapes, the configured client ID and callback, a fresh issuer-bound `private_key_jwt`, one DPoP proof, and a bounded successful-response DPoP nonce. Expired or unknown endpoint mappings fail closed; they never fall back to unauthenticated public-client behavior.
+
+CarpaNet diagnostic logging remains disabled because the library can log OAuth inputs, DPoP material, form bodies, and provider error bodies. PDS XRPC, including `com.atproto.server.getSession`, is created through the Infrastructure hardened core-client factory with an injected HTTP client. Do not use CarpaNet's returned OAuth client for PDS calls because that type creates its own unconstrained HTTP client.
+
+AT Protocol readiness stays false until the public identity, signing ring, and durable OAuth state and session stores are all available. The transport boundary can be deployed before those persistence adapters; the provider must remain unavailable rather than using an in-memory production fallback.
 
 ### Multi-Tenant Hostnames And Reverse Proxy
 
@@ -297,7 +320,7 @@ Managed hosting operators that provision through the authorized managed-provider
 
 ## Keycloak Realm
 
-The Compose file imports `./docker/keycloak/realm-export.json` into Keycloak, then runs the one-shot `keycloak-init` service. Aspire `local-full` imports the same checked-in realm export. The init job authenticates with the Compose Keycloak admin account, locates clients by `clientId`, and synchronizes the confidential public Blazor BFF client secret from `KEYCLOAK_BLAZOR_CLIENT_SECRET`. Operators should set the BFF client secret once in environment variables or the configured secret provider; they should not manually edit the Keycloak UI to match it. The API client is a bearer-only audience target in the checked-in realm export and has no static client secret by default.
+The Compose file imports `./docker/keycloak/realm-export.json` into Keycloak, then runs the one-shot `keycloak-init` service. Aspire `local-full` imports the same checked-in realm export. The init job authenticates with the local Keycloak admin account, locates clients by `clientId`, and synchronizes the confidential Blazor BFF client secret from `KEYCLOAK_BLAZOR_CLIENT_SECRET`. The export contains no confidential client secret. Compose requires the operator-provided value; local Aspire generates a persisted secret parameter when no deployment value exists and shares it only with the trusted server resources. Operators should not manually edit the Keycloak UI to match it. The API client is a bearer-only audience target and has no static client secret by default.
 
 The core realm export intentionally contains only `islamu-event-blazor` and `islamu-event-api`. The optional commercial Event Control Plane is deployed from its private repository and applies its own additive realm extension; do not add its clients, scopes, roles, or secrets to this export.
 
@@ -307,10 +330,14 @@ For production, verify:
 
 - realm name matches `KEYCLOAK_REALM`;
 - Blazor client ID matches the configured client (`islamu-event-blazor` in Compose);
-- redirect URIs and web origins match the public reverse-proxy host;
+- login callbacks are exact `<public-origin>/signin-oidc` URIs;
+- logout callbacks are exact `<public-origin>/signout-callback-oidc` URIs;
+- web origins are exact public origins, with no `+` or wildcard entries;
 - API audience and metadata address match the Keycloak endpoint exposed to the API.
 
-`KEYCLOAK_BLAZOR_CLIENT_SECRET` is fail-closed for Compose startup: `keycloak-init` exits non-zero when it is missing. To use the repository's static local default in disposable development, set `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET=true`. Do not enable that flag in production or shared environments. Rerun `docker compose run --rm keycloak-init` after rotating `KEYCLOAK_BLAZOR_CLIENT_SECRET`. If a deployment intentionally sets `KEYCLOAK_API_CLIENT_SECRET` for a non-bearer-only API client, rerun the init job after rotating that value too.
+The realm contract requires TLS for external addresses, verified email for self-registration, a 12-character password minimum with username/email/history checks, a 30-minute ordinary idle session, a 10-hour ordinary maximum session, 30/90-day remember-me bounds, and 30/90-day offline-session bounds with the absolute maximum enabled. `keycloak-init` reapplies those managed-realm policies because startup import does not update an existing realm. Configure Keycloak SMTP before exposing registration; local Aspire and the example Compose environment route identity mail to Mailpit.
+
+`KEYCLOAK_BLAZOR_CLIENT_SECRET` is fail-closed for Compose startup: `keycloak-init` exits non-zero when it is missing. Generate a development value with `openssl rand -hex 32`; there is no checked-in default or fallback flag. Rerun `docker compose run --rm keycloak-init` after rotating the secret or changing callback/origin overrides. If a deployment intentionally sets `KEYCLOAK_API_CLIENT_SECRET` for a non-bearer-only API client, rerun the init job after rotating that value too.
 
 ### External Keycloak Bootstrap
 

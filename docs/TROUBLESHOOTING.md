@@ -95,16 +95,39 @@ Check:
 - forwarded headers middleware is active in Blazor server pipeline.
 - API forwarded-header trust is configured for the reverse proxy; see [CONFIGURATION.md](CONFIGURATION.md) and [SELF_HOSTING.md](SELF_HOSTING.md).
 
+### AT Protocol provider is unavailable or OAuth fails closed
+
+Symptoms:
+
+- AT Protocol is omitted or reported not ready by the BFF provider endpoint.
+- authorization fails before redirect, PAR, code exchange, refresh, revocation, or `getSession`.
+- logs contain a bounded reason such as `provider_not_configured`, `invalid_public_url_or_callback`, `key_ring_unavailable`, `state_store_unavailable`, `session_store_unavailable`, or `secret_resolver_unavailable`.
+
+Checks:
+
+1. Confirm `Atproto:PublicUrl` is the exact browser-facing HTTPS origin and `Atproto:CallbackPath` matches the published client metadata. Remove credentials, non-root paths, queries, fragments, trailing-dot or Unicode host aliases, and ambiguous callback segments. Do not change the callback for an in-flight flow.
+2. Confirm the instance secret provider can resolve `/atproto/ATPROTO_OAUTH_CLIENT_PRIVATE_JWKS`. Do not print the value. Validate only that the ring has bounded canonical P-256/ES256 keys, unique `kid` values, one active key, and any still-needed older keys marked retired.
+3. `state_store_unavailable` or `session_store_unavailable` means the durable OAuth persistence adapters are not registered or healthy. Restore those dependencies; never enable an in-memory production fallback. Caller cancellation should remain a cancellation, not be reported as a provider or network failure.
+4. Verify public DNS for the PDS and authorization server from the BFF and Infrastructure network namespaces. Every answer must be public; a mixed public/private response is rejected. Production rejects loopback, RFC1918, link-local, unspecified, multicast, documentation, and benchmark ranges. Development loopback requires both Development environment and the explicit option.
+5. Verify authorization-server metadata is HTTP 200 JSON, bounded, has the exact canonical issuer, and advertises PAR, `private_key_jwt`, ES256 assertion and DPoP algorithms, S256 PKCE, code and refresh grants, code response, issuer response parameter, URL client metadata, and `atproto` scope. Authorization, PAR, token, and optional revocation endpoints may retain their declared query, but redirects and unsafe endpoint hosts are rejected.
+6. If a previously working flow fails after about five minutes, start a new discovery/login flow. Endpoint trust is deliberately short-lived. An expired mapping rejects OAuth-shaped POSTs instead of sending them without confidential authentication.
+7. For `client_id_mismatch`, callback mismatch, ambiguous-form, invalid-DPoP, or missing-nonce failures, verify the remote server is preserving the published client ID/callback and AT Protocol DPoP contract. Do not relax form, assertion, proof, or nonce validation.
+8. During key rotation, keep the previous key as retired until all sessions pinned to its `kid` are expired or revoked. An unknown pinned key must not be silently replaced with the new active key.
+9. Do not enable CarpaNet logging or attach raw OAuth bodies to tickets. Never capture authorization codes, refresh/access tokens, assertions, DPoP proofs/nonces, private JWK material, provider response bodies, or user PDS identifiers. Report only the bounded failure category and redacted endpoint class.
+10. PDS calls must go through the Infrastructure hardened core-client factory. If `getSession` appears to bypass DNS/redirect controls, check for accidental use of CarpaNet's returned OAuth client and replace it with the application-owned core client.
+
+Recovery is configuration- and dependency-first: restore the secret resolver or durable stores, correct canonical public URLs/DNS/metadata, retain required retired keys, and start a new flow. Do not bypass endpoint discovery, private-client assertions, DPoP, response limits, or SSRF checks.
+
 ### Keycloak `unauthorized_client` during login
 
 Cause:
 - the Blazor BFF confidential client secret does not match the `islamu-event-blazor` client secret stored in Keycloak.
 
 Checks:
-1. Confirm `KEYCLOAK_BLAZOR_CLIENT_SECRET` is set for the Compose environment. Production/self-hosted deployments should not rely on the realm export's static default.
+1. Confirm `KEYCLOAK_BLAZOR_CLIENT_SECRET` is set for the Compose environment. The realm export intentionally contains no confidential client secret.
 2. Check `docker compose logs keycloak-init` for successful redacted sync messages. The log must not include raw secret values.
 3. Rerun `docker compose run --rm keycloak-init` after changing or rotating `KEYCLOAK_BLAZOR_CLIENT_SECRET`.
-4. If this is a disposable local stack and no secret is configured, set `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET=true` intentionally, then rerun `keycloak-init`. Do not use that flag in production.
+4. For disposable Compose development, generate a value with `openssl rand -hex 32`; no default-secret escape hatch exists. Local Aspire generates its own persisted secret parameter when deployment configuration is absent.
 5. If the client is missing, verify `docker/keycloak/realm-export.json` imported successfully and that `KEYCLOAK_REALM` matches the imported realm name. Existing Keycloak realms are not overwritten by startup import; reset the disposable Keycloak database volume before expecting realm-export changes to apply.
 6. For external Keycloak setup, rerun `/onboarding/auth-provider` bootstrap mode with the same Blazor client ID and the intended runtime client secret. The setup flow updates existing clients by `clientId`; it does not require manually editing the Keycloak UI when the bootstrap credential has client-secret update permission.
 
@@ -306,8 +329,8 @@ Checks:
 
 Checks:
 1. For local development, open Mailpit at the Aspire-discovered UI endpoint or Compose default `http://localhost:8025`. Non-isolated Aspire normally uses SMTP `localhost:1025`; isolated Aspire assigns dynamic ports, so run `aspire describe mailpit --apphost Explore.AppHost/Explore.AppHost.csproj --format Json` and verify API `email.smtp_port` matches the current Mailpit SMTP endpoint. Compose uses `mailpit:1025` from API containers.
-2. Check `/health`: `smtp` covers configured SMTP/Mailpit connectivity, `email-dispatch` covers Basic Dispatch trigger readiness, and `email-dispatch-rabbitmq` covers optional broker topology only when RabbitMQ mode is enabled. If Mailpit is stopped in FullLocal, API `/health` should return HTTP 503 with `smtp` Unhealthy. The SMTP readiness probe is bounded to five seconds; the 2026-07-04 local proof returned in `5.014s`.
-3. Inspect HAL-gated EmailDispatch admin status before replaying rows. Replay and park actions must be driven by `_links`; do not infer permissions from local roles.
+2. Check `/health`: `smtp` covers configured SMTP/Mailpit connectivity, `email-dispatch` covers Basic Dispatch trigger readiness, `email-dispatch-retention-cleanup` covers the retention worker posture, and `email-dispatch-rabbitmq` covers optional broker topology only when RabbitMQ mode is enabled. If Mailpit is stopped in FullLocal, API `/health` should return HTTP 503 with `smtp` Unhealthy. The SMTP readiness probe is bounded to five seconds; the 2026-07-04 local proof returned in `5.014s`.
+3. Inspect HAL-gated EmailDispatch admin status before replaying rows. Replay and park actions must be driven by `_links`; use `resolve-without-replay` with a bounded audit reason only when `DeadLettered`, `Unknown`, or `Parked` work should become terminal without SMTP delivery. Redacted rows expose no mutation affordances.
 4. Query `email_dispatch_outbox` by status and tenant. `Unknown` rows are inspectable crash-window outcomes; `DeadLettered` rows require operator review; `Skipped` rows are terminal preference/compliance outcomes.
    - For planned lifecycle rows, compare linked `NotificationDelivery` and immutable occurrence/policy versions. Do not replay `ContentRedactedAt`, consent-withdrawn, superseded, tenant-deleted, or post-handoff `Unknown` work until the authorized reconciliation surface says it is replayable.
    - If one tenant dominates the backlog, inspect fair-selection, per-tenant concurrency/rate limits, and high/low watermarks before increasing global throughput. Optional reminders should defer before required cancellation/moderation work.

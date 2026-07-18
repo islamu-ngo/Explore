@@ -3,12 +3,12 @@
 
 # Email Lifecycle Delivery Implementation Plan
 
-> **Status:** Re-baselined in implementation — committed foundations plus preserved main-checkout Task 1.5/1.6 work
+> **Status:** Re-baselined in implementation — committed foundations plus preserved main-checkout SMTP and unrelated work
 > **Last Updated:** 2026-07-18 Europe/Brussels
-> **Implementation progress:** 20/50 tasks complete; phase verification remains tracked separately
-> **Current task:** 1.6a — remove presentation-layer SMTP coupling, then complete SMTP fairness, telemetry, and controls
+> **Implementation progress:** 21/51 tasks complete; phase verification remains tracked separately
+> **Current task:** 1.6b — replace select-then-claim SMTP polling with atomic fair claims and durable optional-work backpressure
 > **Execution location:** main repository checkout only; do not create linked worktrees or a `.worktrees` directory for this workstream
-> **Repository baseline:** committed implementation through `aefa7797` plus preserved uncommitted email-retention, SMTP-operations, and architecture-guard changes in the main checkout.
+> **Repository baseline:** current `develop` HEAD `18556b29`; email retention, the SMTP diagnostic boundary, and partial SMTP operations work are committed in `9bfaf1e0`, while the strict controller architecture-guard change remains preserved in the main checkout alongside unrelated ATProto/auth/location-privacy work.
 
 ## 1. Outcome
 
@@ -77,9 +77,11 @@ Each phase has one Release build and one fastest relevant non-browser project te
 | Fanout | `NotificationFanoutOccurrence`, `NotificationFanoutRun`, registration audience repository | Immutable occurrences, audience cutoff, coverage timestamps, compound cursor queries, and fenced lease/checkpoint persistence are implemented. The pointer dispatcher, recipient worker, coalescing/supersession, and fair scheduler are not. |
 | Reporting | `EventReport`, submission DTO/dialog, My Reports API/page | One checkbox currently covers follow-up contact only; receipt/outcome email and withdrawal do not exist. |
 | Decision providers | local decision handlers, Coop inbox/effect pointer/worker/admin API, Osprey callback | Coop now uses signed provider identity, retained callback validation, fenced processing, command-success settlement, bounded retry/dead-letter, and audited HAL redrive. Osprey remains signal-only. Reporter outcome email is still absent. |
-| Retention | `EmailDispatchOutbox`, retention cleanup service/processor/migration, operator docs | A main-checkout patch adds bounded parent-aware redaction and explicit resolve-without-replay. It is not committed and its PostgreSQL phase evidence is incomplete. |
+| Retention | `EmailDispatchOutbox`, retention cleanup service/processor/migration, operator docs | Commit `9bfaf1e0` adds bounded parent-aware redaction and explicit resolve-without-replay. Its Docker-backed PostgreSQL phase evidence remains incomplete. |
+| SMTP boundary | `IEmailService`, `IEmailConnectionTester`, SMTP test query/handler, controller, health check, architecture guard | Product send capability is separate from diagnostic connection testing. The controller uses MediatR, health uses the narrow diagnostic contract, and `SmtpEmailService` remains the Infrastructure implementation. |
+| SMTP scheduling | pending-row repository, drain service, settings, health/metrics | Tenant-ranked selection, local concurrency, a process-local global token bucket, backlog thresholds, and aggregate health exist, but the current flow selects before claim, is not cross-instance authoritative, and charges an SMTP attempt before rate admission. |
 
-Historical implementation evidence from 2026-07-17 records a Release build with 0 errors and full Domain (439), Application (2,449), Persistence (448), Infrastructure (832), and Architecture (240 passed, 1 declared skip) suites after the delivery migration landed. The Task 1.5/1.6 main-checkout patch was interrupted before a complete phase gate: Docker-backed PostgreSQL coverage is unrecorded, the current full build is blocked by unrelated ATProto validator errors, and the new architecture guard correctly exposes `InstanceSettingsController` resolving `IEmailService` directly. This planning update runs no build or tests.
+Historical implementation evidence from 2026-07-17 records a Release build with 0 errors and full Domain (439), Application (2,449), Persistence (448), Infrastructure (832), and Architecture (240 passed, 1 declared skip) suites after the delivery migration landed. Task 1.6a later recorded 2/2 handler tests, 1/1 handler boundary test, 1/1 controller boundary test, 3/3 SMTP configuration tests, and an API Release build with zero errors. Mailpit remained unavailable because neither Docker socket was reachable. A later Application source rebuild stopped in unrelated ATProto test code; no current phase gate was rerun after `HEAD` advanced. This planning update runs no build or product tests.
 
 ## 5. Target Data and Control Model
 
@@ -306,10 +308,14 @@ Rules:
 - bounded batches for fanout and SMTP;
 - at most one active fanout lease per tenant by default;
 - fair tenant selection (one runnable item per tenant per round before a tenant receives another slot);
-- configurable global concurrency and per-tenant concurrency;
-- configurable instance/tenant SMTP token-bucket rate limits;
-- backlog thresholds that stop accepting/scheduling optional reminder work before required lifecycle work;
+- atomically claim SMTP work in PostgreSQL under deterministic tenant rounds, enforcing global and per-tenant active-processing ceilings across replicas before rows leave the repository;
+- use process-local semaphores only as an optimization; batch, TickerQ, hosted-service, and RabbitMQ single-row drainage share the same authoritative admission path;
+- persist global and per-tenant SMTP token-bucket state so configured rate limits are cross-instance rather than process-local;
+- reserve rate capacity before incrementing SMTP attempt count or writing the provider-handoff fence; rate deferral consumes neither attempt budget nor provider evidence;
+- compute optional-work pressure from active, eligible core backlog while excluding paused tenants and optional reminders themselves; store or centrally coordinate hysteresis so restart/replica behavior cannot disagree;
+- backlog thresholds stop accepting/scheduling only optional reminder work before required lifecycle work;
 - required cancellation/moderation work remains higher priority than optional mail.
+- stale processing without a `provider_handoff_started` fence returns safely to retryable work; only fenced uncertainty becomes `Unknown`.
 
 ### Metrics and alerts
 
@@ -359,22 +365,22 @@ dotnet build --configuration Release --verbosity quiet
 dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build
 ```
 
-### Phase 1 — Atomic recipient-delivery primitive (Tasks 1.1–1.6d)
+### Phase 1 — Atomic recipient-delivery primitive (Tasks 1.1–1.6e)
 
-Tasks 1.1–1.4 are committed. Task 1.5 is implementation-complete in the main checkout but remains uncommitted and lacks the Docker-backed phase evidence. Task 1.6 is split into four independently mergeable slices so the existing partial fairness work and failing architecture guard are reconciled instead of hidden inside one oversized task.
+Tasks 1.1–1.6a are implementation-complete. Commit `9bfaf1e0` contains Task 1.5 and the Task 1.6a production boundary; the strict controller guard remains a preserved main-checkout change. Task 1.5 still lacks Docker-backed PostgreSQL phase evidence. The remaining SMTP operations work is split into four independently mergeable slices so cross-instance admission, transport-attempt accounting, observability, and operator controls are not hidden inside one oversized task.
 
 Task 1.5 uses a validated API-hosted timer over a scoped Infrastructure cleanup service and one specialized PostgreSQL repository transaction. `ContentRedactedAt` is the single permanent claim/publish/replay fence. Dead-lettered, parked, and unknown work remains intact until replay or explicit resolve-without-replay; explicit resolution redacts immediately and stores the stable `operator_resolved_without_replay` outcome. Purged-tenant rows are suppressed and redacted immediately. Parent and child free text/provider identifiers redact together while typed non-PII outcomes remain.
 
 Remaining Phase 1 slices:
 
-- **1.6a — Restore the SMTP capability boundary** (`M`, depends on 1.5): introduce a narrow Application-owned connection-test contract/query, make `SmtpEmailService` implement transport and diagnostic capabilities behind Infrastructure DI, route `InstanceSettingsController` through MediatR, update `SmtpHealthCheck`, and keep the architecture guard strict. Acceptance: controllers and handlers have no `IEmailService`, MailKit, SMTP implementation, or direct-send dependency.
-- **1.6b — Finish fair selection, concurrency, rate limiting, and optional-work backpressure** (`L`, depends on 1.6a): reconcile the existing pending-query/drain/settings patch; enforce tenant rounds, required-before-reminder priority, bounded global/per-tenant concurrency, global and per-tenant SMTP token buckets, paused-tenant exclusion, and hysteresis for optional reminder admission.
-- **1.6c — Add bounded SMTP telemetry and health** (`M`, depends on 1.6b): expose oldest pending age, due/retry/unknown/parked/dead-letter counts, tenant backlog samples, rate-limit/backpressure outcomes, and alert thresholds without recipient or message PII.
-- **1.6d — Complete operator controls and runbooks** (`M`, depends on 1.6c): retain tenant pause/park/replay, add authenticated global drain pause/rate override and unknown reconciliation where absent, expose only server-authorized HAL affordances, and document Mailpit/test SMTP, cleanup dry-run, compromised-tenant suppression, and tenant-vs-instance diagnosis.
+- **1.6b — Atomically claim fair work and coordinate optional-work backpressure** (`L`, depends on 1.6a): replace select-then-claim with one PostgreSQL fair-claim operation under the repository's advisory-lock pattern; enforce global/per-tenant active-processing ceilings across replicas; preserve required > optional non-reminder > optional reminder ordering; exclude paused tenants; and base centrally coordinated high/low-watermark hysteresis only on active core backlog so an optional-reminder or paused-tenant backlog cannot deadlock admission.
+- **1.6c — Persist cross-instance SMTP rate admission and correct pre-handoff recovery** (`L`, depends on 1.6b): add durable global/per-tenant token-bucket authority, safe bounded settings, and one admission path for batch and RabbitMQ/TickerQ single-row work. Rate deferral occurs before attempt increment and provider-handoff evidence. Cancellation or lease expiry before the fence releases/defer-retries safely; only fenced uncertainty becomes `Unknown`.
+- **1.6d — Add bounded SMTP telemetry and health** (`M`, depends on 1.6c): expose oldest active pending age, due/retry/unknown/parked/dead-letter counts, tenant backlog samples, typed skip/rate/backpressure outcomes, and alert thresholds without recipient or message PII. Paused work must not make active readiness unhealthy, and public health output must not expose tenant identifiers.
+- **1.6e — Complete operator controls and runbooks** (`M`, depends on 1.6d): retain tenant pause/park/replay/resolve-without-replay, add authenticated global drain pause/rate override and unknown reconciliation where absent, expose only server-authorized HAL affordances, and document Mailpit/test SMTP, cleanup dry-run, compromised-tenant suppression, and tenant-vs-instance diagnosis.
 
 The completed Tasks 1.1–1.3 checkpoint introduced the relationship model, migrated registration/reminder/admin-invitation writers to the materializer, and landed the bounded pre-1.0 ledger reset with required constraints. The final full API and explicit Mailpit phase evidence is still open.
 
-Phase-end verification (run once after 1.6a–1.6d):
+Phase-end verification (run once after 1.6a–1.6e):
 
 ```bash
 dotnet build --configuration Release --verbosity quiet
@@ -396,7 +402,7 @@ dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTe
 
 Tasks 3.1–3.3 are implemented: immutable occurrence persistence/pointers, deterministic audience paging with `CoverageEstablishedAt`, and fenced lease/checkpoint recovery are committed. The remaining work is split into seven bounded slices:
 
-- **3.4a — Route pointers and ensure runs** (`M`, depends on 1.6d): add the `CompositeOutboxMessageDispatcher` route, authoritatively reload tenant/occurrence, and idempotently create the durable fanout run. The general outbox pointer completes after run creation; it never holds a lease through recipient fanout.
+- **3.4a — Route pointers and ensure runs** (`M`, depends on 1.6e): add the `CompositeOutboxMessageDispatcher` route, authoritatively reload tenant/occurrence, and idempotently create the durable fanout run. The general outbox pointer completes after run creation; it never holds a lease through recipient fanout.
 - **3.4b — Build typed recipient materialization** (`L`, depends on 3.4a): add an exhaustive template/version factory, set `NotificationIntent.FanoutOccurrenceId`, resolve the current verified address, preserve the immutable snapshot ceiling, and make recipient-specific location disclosure select only snapshot values. Unknown template/version fails closed.
 - **3.4c — Process pages with crash-safe checkpoint ordering** (`L`, depends on 3.4b): materialize recipients durably, checkpoint only after every page outcome commits, stop on stale lease/fence, and prove replay of a partially processed page creates neither duplicates nor gaps.
 - **3.5a — Coordinate precedence, coalescing, and occurrence supersession** (`L`, depends on 3.4c): use an Application-owned coordinator plus repository conditional transitions under tenant/scope locks; cancellation and heavy moderation are immediate; important updates preserve earliest-before/latest-after across the five-minute window.
@@ -509,17 +515,19 @@ Before merge, satisfy the registered intents across the directly changed surface
 
 | Risk | Likelihood | Impact | Mitigation / detection | Owner |
 |---|---:|---:|---|---|
-| Partial SMTP operations patch is mistaken for complete | High | High | Keep 1.6a/1.6b unchecked; audit existing diff before extension; phase gate must pass. | 1.6a–1.6b |
-| One tenant starves others or exceeds provider limits | Medium | High | Tenant rounds, cross-instance claim ceiling, global/per-tenant token buckets, backlog metrics. | 1.6b, 3.6a–3.6b |
+| Partial SMTP operations patch is mistaken for complete | High | High | Keep 1.6b–1.6d unchecked; replace process-local authority instead of extending it; phase gate must pass. | 1.6b–1.6d |
+| One tenant starves others or exceeds provider limits | Medium | High | Atomic tenant-round claims, cross-instance processing ceilings, persisted global/per-tenant token buckets, backlog metrics. | 1.6b–1.6c, 3.6a–3.6b |
+| Rate deferral exhausts retries without SMTP | High | High | Reserve durable rate capacity before attempt/fence; record typed deferral without attempt/receipt/provider evidence. | 1.6c |
+| Unfenced crash is mislabeled provider uncertainty | Medium | High | Stale recovery branches on provider-handoff evidence: unfenced returns retryable, fenced becomes `Unknown`. | 1.6c |
 | Old occurrence sends mutable current data | Medium | High | Immutable snapshots, typed template versions, snapshot-only disclosure, crash/replay tests. | 3.4b–3.4c |
 | Cancellation loses a race to SMTP | Medium | High | Supersession transition plus authoritative pre-handoff fence; post-handoff becomes Unknown, never recalled. | 3.5b |
 | Reporter consent is over-broadened | Medium | High | Separate purposes, false-safe backfill, withdrawal at dispatch, no anonymous reporter email. | 5.1–5.8 |
 | Dirty shared checkout causes accidental overwrite | High | High | Main checkout only, preserve unrelated ATProto/auth/location changes, narrow staging/diffs, no worktrees. | Every task |
-| Current baseline prevents clean verification | High | Medium | Record unrelated ATProto `CS9135` and Docker gaps without misattributing them; rerun phase gate when baseline is repaired. | 1.6d / phase gate |
+| Current baseline prevents clean verification | High | Medium | Record the latest unrelated ATProto compile failure and Docker gaps without misattributing them; rerun the phase gate from the then-current `HEAD`. | 1.6e / phase gate |
 
 ## 16. Definition of Done
 
-The workstream is complete only when all 50 tasks are checked, the Phase 0 Coop prerequisite is independently proven, every required channel policy and trigger is implemented, all phase gates and the canonical repository verification pass, Mailpit-backed delivery remains green, consent/preference/address/supersession checks are dispatch-time safe, retention/redaction and operator controls are usable, and `docs/ARCHITECTURE.md`, `docs/DOMAIN.md`, `docs/API.md`, `docs/API_CHANGELOG.md`, `docs/BLAZOR.md`, `docs/EMAIL_NOTIFICATIONS.md`, `docs/NOTIFICATIONS.md`, `docs/OUTBOX_PATTERN.md`, `docs/CONFIGURATION.md`, `docs/COOP_INTEGRATION.md`, `docs/OSPREY_INTEGRATION.md`, `docs/OPERATIONS.md`, `docs/SELF_HOSTING.md`, `docs/TROUBLESHOOTING.md`, and `schemas/islamu-event.md` match runtime behavior.
+The workstream is complete only when all 51 tasks are checked, the Phase 0 Coop prerequisite is independently proven, every required channel policy and trigger is implemented, all phase gates and the canonical repository verification pass, Mailpit-backed delivery remains green, consent/preference/address/supersession checks are dispatch-time safe, retention/redaction and operator controls are usable, and `docs/ARCHITECTURE.md`, `docs/DOMAIN.md`, `docs/API.md`, `docs/API_CHANGELOG.md`, `docs/BLAZOR.md`, `docs/EMAIL_NOTIFICATIONS.md`, `docs/NOTIFICATIONS.md`, `docs/OUTBOX_PATTERN.md`, `docs/CONFIGURATION.md`, `docs/COOP_INTEGRATION.md`, `docs/OSPREY_INTEGRATION.md`, `docs/OPERATIONS.md`, `docs/SELF_HOSTING.md`, `docs/TROUBLESHOOTING.md`, and `schemas/islamu-event.md` match runtime behavior.
 
 Implementation agents must synchronize this plan, the context, and the task ledger before handoff, pause, compaction, or completion.
 
@@ -537,4 +545,4 @@ Implementation slice summaries must state: implemented architecture and control 
 
 ## 18. Potential Risks and Unknowns
 
-The highest-risk near-term area is the interleaved Task 1.6 patch: fair SQL selection, in-process concurrency, rate limiting, health, and admin behavior already exist in partial form, while cross-instance per-tenant enforcement and the controller SMTP boundary remain incomplete. The next implementer must audit and finish that patch in place before starting fanout; duplicating it would create conflicting schedulers and misleading operator controls.
+The highest-risk near-term area is SMTP admission across replicas. The committed partial patch ranks rows fairly but selects before claiming, relies on process-local concurrency/rate state, lets the single-row path bypass those gates, and consumes attempt budget before rate admission. Tasks 1.6b–1.6c must replace those correctness authorities in place before fanout starts; adding another scheduler or another local limiter would create conflicting behavior rather than enterprise fairness.
