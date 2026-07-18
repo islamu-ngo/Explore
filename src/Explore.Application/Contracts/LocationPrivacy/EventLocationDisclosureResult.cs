@@ -93,6 +93,17 @@ public sealed record EventLocationDisclosureResult
         return new(eventLocationId, purpose, state, null, null, []);
     }
 
+    internal static EventLocationDisclosureResult HiddenForInvalidRequest(
+        Guid eventLocationId,
+        EventLocationDisclosurePurpose purpose)
+        => new(
+            eventLocationId,
+            purpose,
+            EventLocationDisclosureState.Hidden,
+            locationId: null,
+            values: null,
+            disclosedFields: []);
+
     public static EventLocationDisclosureResult Public(
         Guid eventLocationId,
         EventLocationDisclosureState state,

@@ -55,7 +55,7 @@ public class PublishEventCommandHandler(
             }
 
             EventLifecyclePolicy policy = await policyProvider.GetEffectivePolicyAsync(@event.TenantId, ValidationProfile.EventPublish, token);
-            LifecycleReadinessResult readiness = readinessEvaluator.Evaluate(@event, ValidationProfile.EventPublish, policy);
+            LifecycleReadinessResult readiness = readinessEvaluator.Evaluate(@event, policy.Profile, policy);
             if (!readiness.IsReady)
                 return Failure(request.Id, "Event is not ready to publish.", readiness.Errors.Select(error => error.Message), ReadinessFailedCode);
 

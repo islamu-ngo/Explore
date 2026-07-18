@@ -23,7 +23,7 @@ public class GetEventPublishReadinessRequestHandler(
         }
 
         EventLifecyclePolicy policy = await policyProvider.GetEffectivePolicyAsync(@event.TenantId, ValidationProfile.EventPublish, cancellationToken);
-        LifecycleReadinessResult result = readinessEvaluator.Evaluate(@event, ValidationProfile.EventPublish, policy);
+        LifecycleReadinessResult result = readinessEvaluator.Evaluate(@event, policy.Profile, policy);
 
         return MapToDto(@event.Id, result);
     }

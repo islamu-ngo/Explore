@@ -8,7 +8,7 @@ namespace Explore.Application.Services.Lifecycle;
 /// <summary>
 /// Evaluates event lifecycle readiness by checking each required field in the
 /// <see cref="EventLifecyclePolicy.RequiredEventFields"/> set against the supplied <see cref="Event"/>.
-/// Hard invariants (cancelled/archived status blocks) are always evaluated regardless of profile.
+/// Hard invariants (cancelled/moderated/archived status blocks) are always evaluated regardless of profile.
 /// </summary>
 public sealed class EventLifecycleReadinessEvaluator : IEventLifecycleReadinessEvaluator
 {
@@ -46,7 +46,7 @@ public sealed class EventLifecycleReadinessEvaluator : IEventLifecycleReadinessE
     }
 
     /// <summary>
-    /// Hard invariants that apply to every profile: an event in Cancelled or Archived
+    /// Hard invariants that apply to every profile: an event in Cancelled, Moderated, or Archived
     /// status can never transition to a publish-ready state.
     /// </summary>
     private static void AddHardInvariantErrors(Event @event, ValidationProfile profile, List<LifecycleReadinessError> errors)
@@ -58,6 +58,18 @@ public sealed class EventLifecycleReadinessEvaluator : IEventLifecycleReadinessE
                 FieldKey: EventFieldKey.Status,
                 FieldPath: "status",
                 Message: "Event is cancelled and cannot be published or transitioned to a ready state.",
+                Severity: ReadinessErrorSeverity.Error,
+                Source: ReadinessErrorSource.HardInvariant,
+                Profile: profile));
+        }
+
+        if (@event.EventStatusId == (int)EventStatusEnum.Moderated)
+        {
+            errors.Add(new LifecycleReadinessError(
+                Code: "event_moderated",
+                FieldKey: EventFieldKey.Status,
+                FieldPath: "status",
+                Message: "Event is moderated and cannot be published or transitioned to a ready state.",
                 Severity: ReadinessErrorSeverity.Error,
                 Source: ReadinessErrorSource.HardInvariant,
                 Profile: profile));

@@ -370,6 +370,96 @@ public class CreateEventCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WithCommunityProfile_PersistsMinimumPublishedEventWithServerOwnedFields()
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var command = new CreateEventCommand
+        {
+            Request = new CreateEventRequest
+            {
+                Title = "Community event",
+                EventStatusId = (int)EventStatusEnum.Published,
+                Sessions = []
+            }
+        };
+
+        _userContext.GetRequiredUserId().Returns(userId);
+        _tenantContext.TenantId.Returns(tenantId);
+        _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
+            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+        _eventRepository.Create(Arg.Any<Explore.Domain.Event>())
+            .Returns(callInfo =>
+            {
+                var entity = callInfo.Arg<Explore.Domain.Event>();
+                entity.Id = Guid.NewGuid();
+                return entity;
+            });
+        _lifecyclePolicyProvider.GetEffectivePolicyAsync(
+                tenantId,
+                ValidationProfile.EventPublish,
+                Arg.Any<CancellationToken>())
+            .Returns(new EventLifecyclePolicy
+            {
+                Profile = ValidationProfile.EventPublishCommunityLexicon,
+                RequiredEventFields = new HashSet<Enum>
+                {
+                    EventFieldKey.Title,
+                    EventFieldKey.Tenant,
+                    EventFieldKey.Owner,
+                    EventFieldKey.Status
+                },
+                RequiredSessionFields = new HashSet<Enum>()
+            });
+        _lifecycleReadinessEvaluator.Evaluate(
+                Arg.Any<Explore.Domain.Event>(),
+                ValidationProfile.EventPublishCommunityLexicon,
+                Arg.Any<EventLifecyclePolicy>())
+            .Returns(LifecycleReadinessResult.Success(ValidationProfile.EventPublishCommunityLexicon));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(entity =>
+            entity.Title == "Community event"
+            && entity.TenantId == tenantId
+            && entity.ActorId == actorId
+            && entity.EventStatusId == (int)EventStatusEnum.Published
+            && entity.CreatedBy == userId
+            && entity.CreatedAt != default
+            && !entity.IsDeleted));
+        _lifecycleReadinessEvaluator.Received(1).Evaluate(
+            Arg.Any<Explore.Domain.Event>(),
+            ValidationProfile.EventPublishCommunityLexicon,
+            Arg.Any<EventLifecyclePolicy>());
+    }
+
+    [Test]
+    public async Task Handle_WithCommunityProfileAndInvalidSuppliedValue_RejectsBeforePolicyResolution()
+    {
+        var command = new CreateEventCommand
+        {
+            Request = new CreateEventRequest
+            {
+                Title = "Invalid community event",
+                Price = -1,
+                EventStatusId = (int)EventStatusEnum.Published
+            }
+        };
+
+        _userContext.GetRequiredUserId().Returns(Guid.NewGuid());
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains(error => error.Contains("greater than or equal to '0'", StringComparison.Ordinal));
+        await _lifecyclePolicyProvider.DidNotReceiveWithAnyArgs()
+            .GetEffectivePolicyAsync(default, default, default);
+        await _eventRepository.DidNotReceiveWithAnyArgs().Create(default!);
+    }
+
+    [Test]
     public async Task Handle_WithPublishedLocationAndNoExplicitSessions_LinksDefaultSessionToPrimaryRoom()
     {
         var userId = Guid.NewGuid();

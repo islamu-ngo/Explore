@@ -3,8 +3,8 @@
 
 # Event Location Privacy Context
 
-**Status:** Stage A plus EventLocation lifecycle, disclosure contracts, persistence, and retained erasure authority complete; W6 expand work next
-**Last Updated:** 2026-07-16 Europe/Brussels
+**Status:** Stage A and W1-W5 complete; W6 ELP-230A implementation present with disposable PostgreSQL verification pending
+**Last Updated:** 2026-07-18 Europe/Brussels
 **Plan:** `dev/active/event-location-privacy/event-location-privacy-plan.md`  
 **Tasks:** `dev/active/event-location-privacy/event-location-privacy-tasks.md`
 
@@ -32,19 +32,22 @@
 - Completed ELP-130/140/150/210/300 on 2026-07-16. A single executable 16-field contract classifies baseline, contextual, management-only, exact, derivative, and operational-secret fields for Public/Attendee/Management purposes; derived values require source authority and timezone remains unavailable pending explicit policy. Purpose-specific requests, results, and DTO factories reject contradictory disclosure states; public output exposes `EventLocationId`, never physical `LocationId`, and Private Homes permit only `Private venue`. Immutable typed policy/exact-read audits, authority intents, and replay checkpoints are structurally PII-free. The pure registration-access resolver maps scope/lifecycle/mode facts to a sealed fail-closed entitlement, including Approved-as-Confirmed, broad-only Pending/Waitlisted, and terminal/deleted/expired denial. Registration access passed 42/42, disclosure contracts 17/17, Domain EventLocationPrivacy 62/62, and final security/quality reviews passed with no high/medium finding.
 - Completed ELP-240/260 on 2026-07-16. Entity-returning repositories provide tracked mutation, bounded ordered no-tracking reads, tenant/soft-delete filters, initial `0→1` and contiguous aggregate-bound policy audit persistence, exact-read audit persistence, local replay checkpoints, and stable `concurrent_update` handling. SaveChanges validation fails closed on tenant/event/location/room/parent-session carrier mismatches; ELP-230A still owns the corresponding database constraints/triggers. The separate PostgreSQL erasure authority uses fixed-search-path `SECURITY DEFINER` append/read functions, a dedicated NOLOGIN owner, runtime execute-only grants, a transactional globally serialized counter, RFC-variant UUIDv7 validation, normalized idempotency, mismatch rejection, server UTC metadata, and bounded sequence reads. Root verification passed Domain EventLocationPrivacy 63/63, persistence repository 12/12, relational model 1/1, authority PostgreSQL 16/16, and Clean Architecture 15/15; final independent persistence and authority reviews passed with no high/medium findings.
 - Canonical Stage-A OpenAPI/inventory/client generation was retained as the narrow compatibility exception needed for managed editors: current SHA-256 values are `71313ca44c33e137d84117e0c7fde200a0cbf877774f87f3f23de254e2bea33c` (OpenAPI), `dba2bbbe1792f512ac6472fafbe037a6e262edc5f28cbac0d1263306679a4785` (inventory), and `d263f0ce4271898f89f2f6a7adb54f58b966175349f97b87ad4931a20c2e9687` (generated client). The prior ELP-030 hashes remain below for byte comparison; ELP-420A/B remain open.
+- Resumed ELP-230A verification on 2026-07-18 without touching the concurrent email-responsibility workstream. Committed source already contains `20260716132239_AddEventLocationPrivacyExpand`, `EventLocationPrivacyMigrationStage`, both migration hosts, global `SeedLocationPrivacyLookupsAsync` activation, and four PostgreSQL migration-stage tests. `dotnet ef migrations script 20260715172404_AddTypedWebhookOwnership 20260716132239_AddEventLocationPrivacyExpand ... --idempotent --no-build` generated 783 lines successfully; review found migration-local lookup inserts before dependent tables, additive nullable carrier columns, constant fail-closed lookup defaults, filtered uniqueness, tenant-safe foreign keys, UUIDv7/check/tombstone/append-only/carrier triggers, and a pre-activation `Down`. `dotnet ef migrations has-pending-model-changes ... --no-build` reported no changes. `schemas/islamu-event.md` now documents the ELP expand schema while preserving concurrent ATProto and email hunks.
+- ELP-230A PostgreSQL execution is not yet green. The focused four-test command compiled the Persistence test project, then all four tests failed before test logic because Testcontainers could not connect to Docker. Starting the local `docker-desktop` user service was attempted; the backend exited successfully without leaving `~/.docker/desktop/docker.sock`. The architecture suite ran from the existing Release binary with 252 passed, one skipped, and two unrelated failures in the concurrent email/controller and authentication-token validator workstreams; a fresh architecture build is independently blocked by the unrelated missing `ApiNotFoundProblemDescriptor` symbol.
 
 ### In Progress
 
-- W6: ELP-230A expand migration, then ELP-250 and ELP-500; ELP-310 may proceed independently. Stage-A browser evidence remains blocked until ELP-230A makes the disposable runtime schema match the model.
+- W6: finish ELP-230A disposable PostgreSQL verification, then ELP-250 and ELP-500; ELP-310 may proceed independently. Stage-A browser evidence remains blocked until the expand schema is proven against PostgreSQL.
 
 ### Next
 
-1. Complete and verify ELP-230A, including lookup insertion/seeder activation, operator-selected expand targeting, database constraints/triggers, snapshot parity, and a valid pre-activation `Down`.
+1. Re-run the four `EventLocationMigrationStageTests` after Docker is available; do not check ELP-230A complete until fresh expand, legacy upgrade/Down, selector rejection, and adversarial triggers all execute.
 2. Implement only the OwnerUserId + Private Home tenant-filter bypass in ELP-250, then land ELP-500 adversarial erasure tests; implement the pure ELP-310 evaluator independently.
 3. Resume Stage-A visual capture after the expand schema is installed, and keep first/new venue selection fail-closed for non-admins until ELP-405/610 provide EventLocation-scoped management and HAL affordances.
 
 ### Blockers
 
+- ELP-230A disposable PostgreSQL execution is blocked by the unavailable Docker/Testcontainers endpoint; static SQL generation and model parity are green but do not replace the required database evidence.
 - Home Discovery may continue only through its dedicated coarse area DTO; it must never consume generic LocationListDto or treat ShowCoordinates as discovery-index consent.
 - Public or attendee disclosure activation is blocked until migration ELP-230B proves zero missing/orphan/duplicate/tenant-mismatch EventLocation data; ELP-230C remains the final contraction after every consumer has migrated.
 - External correction is blocked from release until every new outbox event type has a concrete route in `CompositeOutboxMessageDispatcher`, idempotency tests, and dead-letter operations.

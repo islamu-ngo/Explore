@@ -208,6 +208,8 @@ public sealed class EventLocationDisclosureEvaluatorTests
             valid with { Governance = valid.Governance with { IsResolved = false } },
             valid with { Request = valid.Request with { Purpose = (EventLocationDisclosurePurpose)999 } },
             valid with { Governance = valid.Governance with { MinimumHomeAudience = (LocationDisclosureAudienceEnum)999 } },
+            valid with { Governance = valid.Governance with { DefaultRevealOffset = TimeSpan.FromTicks(-1) } },
+            valid with { Governance = valid.Governance with { DefaultRevealOffset = TimeSpan.FromDays(31) } },
             valid with { ServerNowUtc = default }
         ];
 
@@ -216,6 +218,45 @@ public sealed class EventLocationDisclosureEvaluatorTests
             var result = _evaluator.Evaluate(facts);
             await Assert.That(result.State).IsEqualTo(EventLocationDisclosureState.Hidden);
             await Assert.That(result.Values).IsNull();
+        }
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task Evaluate_InvalidCreatedAtOrGovernedRevealOverflow_NeverMaterializesExactValues()
+    {
+        EventLocationDisclosureEvaluationFacts valid = CreateFacts(
+            defaultRevealOffset: TimeSpan.FromDays(30));
+        EventLocation[] invalidPlacements =
+        [
+            CreatePlacement(locationId: valid.Location!.Id),
+            CreatePlacement(locationId: valid.Location.Id),
+            CreatePlacement(locationId: valid.Location.Id)
+        ];
+        invalidPlacements[0].CreatedAt = default;
+        invalidPlacements[1].CreatedAt = DateTime.SpecifyKind(Now.UtcDateTime, DateTimeKind.Unspecified);
+        invalidPlacements[2].CreatedAt = DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Utc);
+
+        foreach (EventLocation placement in invalidPlacements)
+        {
+            EventLocationDisclosureResult result = _evaluator.Evaluate(valid with
+            {
+                Request = valid.Request with { EventLocationId = placement.Id },
+                EventLocation = placement,
+                Authority = CreateAuthority(
+                    EventLocationDisclosureAuthorityKind.Public,
+                    EventLocationDisclosurePurpose.Public,
+                    requesterUserId: null,
+                    TenantId,
+                    EventId,
+                    placement.Id,
+                    registrationAccess: null)
+            });
+
+            await Assert.That(result.Values!.StreetAddress).IsNull();
+            await Assert.That(result.Values.Postcode).IsNull();
+            await Assert.That(result.Values.Latitude).IsNull();
+            await Assert.That(result.Values.Longitude).IsNull();
         }
     }
 
@@ -701,6 +742,7 @@ public sealed class EventLocationDisclosureEvaluatorTests
         bool allowPublicExactAddress = true,
         bool allowPublicCoordinates = true,
         LocationDisclosureAudienceEnum minimumHomeAudience = LocationDisclosureAudienceEnum.ConfirmedParticipant,
+        TimeSpan? defaultRevealOffset = null,
         EventLocationDisclosureDerivativeValues? derivatives = null)
     {
         location ??= CreateLocation();
@@ -760,7 +802,8 @@ public sealed class EventLocationDisclosureEvaluatorTests
                 allowHomeLocations,
                 allowPublicExactAddress,
                 allowPublicCoordinates,
-                minimumHomeAudience),
+                minimumHomeAudience,
+                defaultRevealOffset ?? TimeSpan.Zero),
             authority,
             serverNowUtc ?? Now,
             derivatives);

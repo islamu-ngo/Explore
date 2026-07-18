@@ -353,6 +353,11 @@ public sealed class EventLocationDisclosureContractTests
         await Assert.That(hidden.LocationId).IsNull();
         await Assert.That(hidden.Values).IsNull();
         await Assert.That(hidden.DisclosedFields).IsEmpty();
+        await Assert.That(() => EventLocationDisclosureResult.Suppressed(
+            Guid.Empty,
+            EventLocationDisclosurePurpose.Public,
+            EventLocationDisclosureState.Hidden))
+            .Throws<ArgumentException>();
         await Assert.That(() => EventLocationDisclosureResult.Public(
             eventLocationId,
             EventLocationDisclosureState.Hidden,

@@ -65,6 +65,25 @@ public class GetEventPublishReadinessRequestHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenCommunityProfileEventIsModerated_ReturnsHardInvariantError()
+    {
+        var @event = CreateReadyEvent();
+        @event.EventStatusId = (int)EventStatusEnum.Moderated;
+        _eventRepository.GetById(@event.Id).Returns(@event);
+        _policyProvider
+            .GetEffectivePolicyAsync(@event.TenantId, ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
+            .Returns(CreateCommunityPublishPolicy());
+
+        var result = await _handler.Handle(
+            new GetEventPublishReadinessRequest { Id = @event.Id },
+            CancellationToken.None);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.IsReady).IsFalse();
+        await Assert.That(result.Errors.Select(error => error.Code)).Contains("event_moderated");
+    }
+
+    [Test]
     public async Task Handle_WhenEventDoesNotExist_ReturnsNull()
     {
         var eventId = Guid.NewGuid();
@@ -118,6 +137,19 @@ public class GetEventPublishReadinessRequestHandlerTests
             EventFieldKey.Format,
             EventFieldKey.ScheduleSessions,
             EventFieldKey.ScheduleFirstStart
+        },
+        RequiredSessionFields = new HashSet<Enum>()
+    };
+
+    private static EventLifecyclePolicy CreateCommunityPublishPolicy() => new()
+    {
+        Profile = ValidationProfile.EventPublishCommunityLexicon,
+        RequiredEventFields = new HashSet<Enum>
+        {
+            EventFieldKey.Title,
+            EventFieldKey.Tenant,
+            EventFieldKey.Owner,
+            EventFieldKey.Status
         },
         RequiredSessionFields = new HashSet<Enum>()
     };

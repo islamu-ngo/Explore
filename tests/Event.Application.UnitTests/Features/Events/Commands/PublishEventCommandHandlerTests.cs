@@ -139,6 +139,54 @@ public class PublishEventCommandHandlerTests
         await _eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
     }
 
+    [Test]
+    public async Task Handle_WhenCommunityProfileAndScheduleIsMissing_PublishesUsingInternalSafetyFields()
+    {
+        var concurrencyStamp = Guid.NewGuid();
+        var @event = CreateReadyEvent(concurrencyStamp);
+        @event.FirstSessionStartUtc = null;
+        @event.LastSessionStartUtc = null;
+        _eventRepository.GetById(@event.Id).Returns(@event);
+        _policyProvider
+            .GetEffectivePolicyAsync(@event.TenantId, ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
+            .Returns(CreateCommunityPublishPolicy());
+
+        var result = await _handler.Handle(new PublishEventCommand
+        {
+            Id = @event.Id,
+            Request = new() { ExpectedConcurrencyStamp = concurrencyStamp }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(@event.EventStatusId).IsEqualTo((int)EventStatusEnum.Published);
+        await _eventRepository.Received(1).Update(@event);
+    }
+
+    [Test]
+    public async Task Handle_WhenCommunityProfileEventIsModerated_ReturnsReadinessFailureWithoutMutation()
+    {
+        var concurrencyStamp = Guid.NewGuid();
+        var @event = CreateReadyEvent(concurrencyStamp);
+        @event.EventStatusId = (int)EventStatusEnum.Moderated;
+        _eventRepository.GetById(@event.Id).Returns(@event);
+        _policyProvider
+            .GetEffectivePolicyAsync(@event.TenantId, ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
+            .Returns(CreateCommunityPublishPolicy());
+
+        var result = await _handler.Handle(new PublishEventCommand
+        {
+            Id = @event.Id,
+            Request = new() { ExpectedConcurrencyStamp = concurrencyStamp }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("event_publish_readiness_failed");
+        await Assert.That(result.Errors).Contains(error => error.Contains("moderated", StringComparison.OrdinalIgnoreCase));
+        await Assert.That(@event.EventStatusId).IsEqualTo((int)EventStatusEnum.Moderated);
+        await _eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
+        await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+    }
+
     private static Explore.Domain.Event CreateReadyEvent(Guid concurrencyStamp) => new()
     {
         Id = Guid.NewGuid(),
@@ -183,6 +231,19 @@ public class PublishEventCommandHandlerTests
             EventFieldKey.Format,
             EventFieldKey.ScheduleSessions,
             EventFieldKey.ScheduleFirstStart
+        },
+        RequiredSessionFields = new HashSet<Enum>()
+    };
+
+    private static EventLifecyclePolicy CreateCommunityPublishPolicy() => new()
+    {
+        Profile = ValidationProfile.EventPublishCommunityLexicon,
+        RequiredEventFields = new HashSet<Enum>
+        {
+            EventFieldKey.Title,
+            EventFieldKey.Tenant,
+            EventFieldKey.Owner,
+            EventFieldKey.Status
         },
         RequiredSessionFields = new HashSet<Enum>()
     };

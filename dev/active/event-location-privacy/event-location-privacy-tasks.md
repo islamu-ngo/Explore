@@ -3,8 +3,8 @@
 
 # Event Location Privacy Tasks
 
-**Status:** W1-W5 complete through ELP-240/260 persistence and retained authority; W6 ELP-230A/250/500 plus ELP-310 next
-**Last Updated:** 2026-07-16 Europe/Brussels
+**Status:** W1-W5 complete; W6 ELP-230A implementation present with PostgreSQL verification pending
+**Last Updated:** 2026-07-18 Europe/Brussels
 **Plan:** `dev/active/event-location-privacy/event-location-privacy-plan.md`  
 **Context:** `dev/active/event-location-privacy/event-location-privacy-context.md`
 
@@ -184,6 +184,7 @@ The following ELP-200/210 tables are authoritative and synchronized with plan Se
   - Change: lookup seeds, Location lifecycle columns, optional PII, EventLocation/audit/local replay-checkpoint tables, nullable EventLocationId references, TBA/location XOR, filtered uniqueness, indexes/checks/tenant-safe consistency FKs. The separate authority database is provisioned/backed up independently and is not created by application EF migration.
   - Result: additive schema supports fail-closed dual-write with valid Down before irreversible activation.
   - Verify: generated SQL reviewed for locks, defaults, tenant keys, UUIDv7, concurrency, local checkpoint, and rollback; `Database:Migrations:EventLocationPrivacyStage=Expand|Backfill|Contract` is required while ELP migrations are pending, and a missing/invalid selector cannot auto-apply backfill/contract.
+  - Current evidence: committed implementation includes the generated expand migration, selector, both migration hosts, seeder activation, and four focused PostgreSQL tests. On 2026-07-18 idempotent SQL generation produced 783 lines, snapshot/model parity was clean, and the DBML schema was synchronized. The checkbox remains open because all four PostgreSQL tests stopped at Testcontainers fixture creation while Docker Desktop was unavailable; architecture verification also has only unrelated concurrent-worktree failures.
 
 - [ ] **ELP-230B — Implement idempotent Unclassified and EventLocation backfill**
   - Paths: generated `src/Explore.Persistence/Migrations/*_BackfillUnclassifiedEventLocations.cs`, EF snapshot, and planned `tests/Event.Persistence.IntegrationTests/Migrations/EventLocationBackfillTests.cs`.

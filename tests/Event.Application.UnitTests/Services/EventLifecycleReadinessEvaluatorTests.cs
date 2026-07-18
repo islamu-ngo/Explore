@@ -29,6 +29,23 @@ public sealed class EventLifecycleReadinessEvaluatorTests
     }
 
     [Test]
+    public async Task EvaluateCommunityPublishWhenEventIsModeratedReturnsHardInvariantError()
+    {
+        var eventEntity = CreateReadyEvent();
+        eventEntity.EventStatusId = (int)EventStatusEnum.Moderated;
+
+        LifecycleReadinessResult result = _evaluator.Evaluate(
+            eventEntity,
+            ValidationProfile.EventPublishCommunityLexicon,
+            CreateCommunityPublishPolicy());
+
+        await Assert.That(result.IsReady).IsFalse();
+        await Assert.That(result.Errors.Select(error => error.Code)).Contains("event_moderated");
+        await Assert.That(result.Errors.Single(error => error.Code == "event_moderated").Source)
+            .IsEqualTo(ReadinessErrorSource.HardInvariant);
+    }
+
+    [Test]
     public async Task EvaluateSessionDraftCreateWhenMinimalDraftFieldsExistReturnsReady()
     {
         var session = CreateDraftSession();
@@ -99,6 +116,19 @@ public sealed class EventLifecycleReadinessEvaluatorTests
             EventFieldKey.Format,
             EventFieldKey.ScheduleSessions,
             EventFieldKey.ScheduleFirstStart
+        },
+        RequiredSessionFields = new HashSet<Enum>()
+    };
+
+    private static EventLifecyclePolicy CreateCommunityPublishPolicy() => new()
+    {
+        Profile = ValidationProfile.EventPublishCommunityLexicon,
+        RequiredEventFields = new HashSet<Enum>
+        {
+            EventFieldKey.Title,
+            EventFieldKey.Tenant,
+            EventFieldKey.Owner,
+            EventFieldKey.Status
         },
         RequiredSessionFields = new HashSet<Enum>()
     };

@@ -13,7 +13,8 @@ public sealed record EventLocationDisclosureGovernanceFact(
     bool AllowHomeLocations,
     bool AllowPublicExactAddress,
     bool AllowPublicCoordinates,
-    LocationDisclosureAudienceEnum MinimumHomeAudience);
+    LocationDisclosureAudienceEnum MinimumHomeAudience,
+    TimeSpan DefaultRevealOffset);
 
 public sealed record EventLocationDisclosureDerivativeValues(
     string? FormattedAddress,
@@ -322,7 +323,9 @@ public sealed class EventLocationDisclosureEvaluator
 
     private static bool HasValidGovernance(EventLocationDisclosureGovernanceFact governance)
         => governance.IsResolved
-            && Enum.IsDefined(governance.MinimumHomeAudience);
+            && Enum.IsDefined(governance.MinimumHomeAudience)
+            && governance.DefaultRevealOffset >= TimeSpan.Zero
+            && governance.DefaultRevealOffset <= TimeSpan.FromDays(30);
 
     private static bool HasPurposeAuthority(
         EventLocationDisclosureRequest request,
@@ -384,7 +387,11 @@ public sealed class EventLocationDisclosureEvaluator
             return true;
         }
 
-        if (!RevealGateIsOpen(eventLocation.RevealFullDetailsFromUtc, facts.ServerNowUtc))
+        if (!TryResolveEffectiveRevealTime(
+                eventLocation,
+                facts.Governance.DefaultRevealOffset,
+                out DateTime effectiveRevealFromUtc)
+            || !RevealGateIsOpen(effectiveRevealFromUtc, facts.ServerNowUtc))
         {
             return false;
         }
@@ -412,16 +419,49 @@ public sealed class EventLocationDisclosureEvaluator
         return registrationAccess.AllowsAudience(requiredAudience);
     }
 
-    private static bool RevealGateIsOpen(DateTime? revealFromUtc, DateTimeOffset serverNowUtc)
+    private static bool TryResolveEffectiveRevealTime(
+        EventLocation eventLocation,
+        TimeSpan defaultRevealOffset,
+        out DateTime effectiveRevealFromUtc)
     {
-        if (!revealFromUtc.HasValue)
+        effectiveRevealFromUtc = default;
+        if (eventLocation.CreatedAt == default
+            || eventLocation.CreatedAt.Kind != DateTimeKind.Utc
+            || defaultRevealOffset < TimeSpan.Zero
+            || defaultRevealOffset > TimeSpan.FromDays(30))
         {
+            return false;
+        }
+
+        DateTime governedRevealFromUtc;
+        try
+        {
+            governedRevealFromUtc = eventLocation.CreatedAt.Add(defaultRevealOffset);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
+
+        if (eventLocation.RevealFullDetailsFromUtc is { } explicitRevealFromUtc)
+        {
+            if (explicitRevealFromUtc.Kind != DateTimeKind.Utc)
+            {
+                return false;
+            }
+
+            effectiveRevealFromUtc = explicitRevealFromUtc > governedRevealFromUtc
+                ? explicitRevealFromUtc
+                : governedRevealFromUtc;
             return true;
         }
 
-        return revealFromUtc.Value.Kind == DateTimeKind.Utc
-            && new DateTimeOffset(revealFromUtc.Value) <= serverNowUtc;
+        effectiveRevealFromUtc = governedRevealFromUtc;
+        return true;
     }
+
+    private static bool RevealGateIsOpen(DateTime revealFromUtc, DateTimeOffset serverNowUtc)
+        => new DateTimeOffset(revealFromUtc) <= serverNowUtc;
 
     private static LocationDisclosureAudienceEnum MoreRestrictive(
         LocationDisclosureAudienceEnum first,
@@ -545,10 +585,14 @@ public sealed class EventLocationDisclosureEvaluator
     private static string? TextOrNull(string? value) => HasText(value) ? value : null;
 
     private static EventLocationDisclosureResult Hidden(EventLocationDisclosureRequest request)
-        => EventLocationDisclosureResult.Suppressed(
-            RequireResultId(request.EventLocationId),
-            request.Purpose,
-            EventLocationDisclosureState.Hidden);
+        => request.EventLocationId == Guid.Empty
+            ? EventLocationDisclosureResult.HiddenForInvalidRequest(
+                request.EventLocationId,
+                request.Purpose)
+            : EventLocationDisclosureResult.Suppressed(
+                request.EventLocationId,
+                request.Purpose,
+                EventLocationDisclosureState.Hidden);
 
     private static EventLocationDisclosureResult Unavailable(EventLocationDisclosureRequest request)
         => EventLocationDisclosureResult.Suppressed(

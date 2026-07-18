@@ -39,6 +39,8 @@ public enum ValidationProfile
     /// </summary>
     EventPublish,
 
+    EventPublishCommunityLexicon,
+
     /// <summary>
     /// Draft/proposal session under an event.
     /// Minimal: parent event, tenant, title or placeholder label, status.

@@ -201,12 +201,12 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
         var timezoneId = ResolveTimezoneId(dto);
         var createdAt = DateTimeOffset.UtcNow;
-        var eventEntity = BuildEventEntity(dto, actorResult, timezoneId);
+        var eventEntity = BuildEventEntity(dto, actorResult, timezoneId, currentUserId, createdAt);
 
         if (eventEntity.EventStatusId == (int)EventStatusEnum.Published)
         {
             EventLifecyclePolicy policy = await _lifecyclePolicyProvider.GetEffectivePolicyAsync(eventEntity.TenantId, ValidationProfile.EventPublish, cancellationToken);
-            LifecycleReadinessResult readiness = _lifecycleReadinessEvaluator.Evaluate(eventEntity, ValidationProfile.EventPublish, policy);
+            LifecycleReadinessResult readiness = _lifecycleReadinessEvaluator.Evaluate(eventEntity, policy.Profile, policy);
             if (!readiness.IsReady)
             {
                 response.Success = false;
@@ -293,7 +293,12 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private Task<EventActorResult> ResolvePublisherActorAsync(CreateEventRequest request, Guid currentUserId, CancellationToken cancellationToken) =>
         _actorResolver.ResolveAsync(currentUserId, request.OrganizationId, request.GroupId, cancellationToken);
 
-    private Event BuildEventEntity(CreateEventRequest dto, EventActorResult actorResult, string timezoneId)
+    private Event BuildEventEntity(
+        CreateEventRequest dto,
+        EventActorResult actorResult,
+        string timezoneId,
+        Guid currentUserId,
+        DateTimeOffset createdAt)
     {
         var eventStatusId = dto.EventStatusId == 0 ? (int)EventStatusEnum.Draft : dto.EventStatusId;
         var publicSessionRequests = eventStatusId == (int)EventStatusEnum.Published
@@ -350,7 +355,10 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             IsUserReported = actorResult.IsUserReported,
             VisibilityType = null!,
             EventStatus = null!,
-            EventFormat = null!
+            EventFormat = null!,
+            CreatedAt = createdAt.UtcDateTime,
+            CreatedBy = currentUserId,
+            IsDeleted = false
         };
     }
 

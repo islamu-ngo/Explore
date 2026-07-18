@@ -1,27 +1,32 @@
-// ABOUTME: Default implementation composing hard invariants and tenant/instance policy overrides.
-// ABOUTME: Hard invariants are non-negotiable; tenant overrides can only tighten, never loosen them.
+// ABOUTME: Composes lifecycle hard invariants with governed tenant and instance publication policy.
+// ABOUTME: Community validation may relax publication fields but never ownership, tenancy, status, or persistence safety.
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Services.Federation;
+using Explore.Application.Settings.Groups;
 
 namespace Explore.Application.Services.Lifecycle;
 
 /// <summary>
 /// Default implementation of <see cref="IEventLifecyclePolicyProvider"/>.
-/// Composes hard invariants (always required for a profile) with optional
-/// tenant/instance policy overrides via <see cref="ITenantPolicySettingService"/>.
-/// Tenant overrides may only tighten requirements, never loosen hard invariants.
+/// Composes hard invariants with optional tenant/instance policy overrides via
+/// <see cref="ITenantPolicySettingService"/> and the governed ATProto publication profile.
 /// </summary>
 public sealed class EventLifecyclePolicyProvider : IEventLifecyclePolicyProvider
 {
     private readonly ITenantPolicySettingService _tenantPolicySettingService;
+    private readonly AtprotoEventGovernanceResolver _atprotoGovernanceResolver;
 
-    public EventLifecyclePolicyProvider(ITenantPolicySettingService tenantPolicySettingService)
+    public EventLifecyclePolicyProvider(
+        ITenantPolicySettingService tenantPolicySettingService,
+        AtprotoEventGovernanceResolver atprotoGovernanceResolver)
     {
         _tenantPolicySettingService = tenantPolicySettingService;
+        _atprotoGovernanceResolver = atprotoGovernanceResolver;
     }
 
     /// <inheritdoc />
@@ -30,12 +35,28 @@ public sealed class EventLifecyclePolicyProvider : IEventLifecyclePolicyProvider
         ValidationProfile profile,
         CancellationToken cancellationToken)
     {
-        EventLifecyclePolicy basePolicy = BuildHardInvariantPolicy(profile);
-
         if (tenantId is null)
         {
-            return basePolicy;
+            var unscopedProfile = profile == ValidationProfile.EventPublishCommunityLexicon
+                ? ValidationProfile.EventPublish
+                : profile;
+            return BuildHardInvariantPolicy(unscopedProfile);
         }
+
+        var effectiveProfile = profile;
+        if (profile is ValidationProfile.EventPublish or ValidationProfile.EventPublishCommunityLexicon)
+        {
+            AtprotoEventGovernance governance = await _atprotoGovernanceResolver.ResolveAsync(
+                tenantId.Value,
+                userId: null,
+                cancellationToken);
+            effectiveProfile = governance.EventsEnabled
+                && governance.ValidationProfile == AtprotoFederationSettingGroup.CommunityLexiconProfile
+                ? ValidationProfile.EventPublishCommunityLexicon
+                : ValidationProfile.EventPublish;
+        }
+
+        EventLifecyclePolicy basePolicy = BuildHardInvariantPolicy(effectiveProfile);
 
         // Tenant composition hook: future work can merge tenant policy settings
         // (e.g., stricter hosted-instance publication requirements) on top of the
@@ -118,6 +139,18 @@ public sealed class EventLifecyclePolicyProvider : IEventLifecyclePolicyProvider
                     EventFieldKey.Format,
                     EventFieldKey.ScheduleSessions,
                     EventFieldKey.ScheduleFirstStart
+                },
+                RequiredSessionFields = new HashSet<Enum>()
+            },
+            ValidationProfile.EventPublishCommunityLexicon => new EventLifecyclePolicy
+            {
+                Profile = profile,
+                RequiredEventFields = new HashSet<Enum>
+                {
+                    EventFieldKey.Title,
+                    EventFieldKey.Tenant,
+                    EventFieldKey.Owner,
+                    EventFieldKey.Status
                 },
                 RequiredSessionFields = new HashSet<Enum>()
             },

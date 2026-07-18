@@ -234,6 +234,20 @@ public static class GovernanceSettingKeys
     public static class Federation
     {
         public const string DecentralizationEnabled = "federation.decentralization_enabled";
+        public const string AtprotoEventsEnabled = "federation.atproto_events_enabled";
+        public const string AtprotoEventValidationProfile = "federation.atproto_event_validation_profile";
+        public const string AtprotoPublishMyEvents = "federation.atproto_publish_my_events";
+    }
+
+    public static class LocationPrivacy
+    {
+        private const string Base = "location_privacy";
+
+        public const string AllowHomeLocations = Base + ".allow_home_locations";
+        public const string AllowPublicExactAddress = Base + ".allow_public_exact_address";
+        public const string AllowPublicCoordinates = Base + ".allow_public_coordinates";
+        public const string MinimumHomeAudience = Base + ".minimum_home_audience";
+        public const string DefaultRevealOffset = Base + ".default_reveal_offset";
     }
 
     public static class Reporting
