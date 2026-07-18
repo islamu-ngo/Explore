@@ -1,7 +1,12 @@
 // ABOUTME: Tests encrypted repository-backed persistence of complete CarpaNet OAuth sessions.
 // ABOUTME: Verifies binding, rotation, corruption handling, ciphertext privacy, and scoped deletion.
 
+using System.Buffers;
+using System.Buffers.Binary;
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using CarpaNet.OAuth;
 using CarpaNet.OAuth.Crypto;
 using CarpaNet.OAuth.Storage;
@@ -91,6 +96,36 @@ public sealed class RepositoryBackedOAuthSessionStoreTests
             .Throws<AtprotoOAuthSessionUnavailableException>();
         await Assert.That(tampered!.FailureCode).IsEqualTo("invalid_envelope");
         await Assert.That(tampered.Message).DoesNotContain(RefreshToken);
+    }
+
+    [Test]
+    public async Task AuthenticatedEnvelopeWithNullOrMissingNestedMembersFailsAsInvalidSession()
+    {
+        var ring = CreateRing(("active-key", "active", 7));
+        var (store, _, getRow) = CreateStore(() => ring);
+        var mutations = new Action<JsonObject>[]
+        {
+            root => root[JsonName(nameof(OAuthSessionData.TokenSet))] = null,
+            root => root[JsonName(nameof(OAuthSessionData.DPoPKey))] = null,
+            root => root[JsonName(nameof(OAuthSessionData.TokenSet))]!.AsObject()
+                .Remove(JsonName(nameof(TokenSet.Audience))),
+            root => root[JsonName(nameof(OAuthSessionData.DPoPKey))]!.AsObject().Remove("x")
+        };
+
+        foreach (var mutate in mutations)
+        {
+            var session = CreateSession();
+            await store.StoreAsync(Did, session);
+            var serialized = JsonSerializer.SerializeToNode(
+                session,
+                AtprotoOAuthSessionJsonContext.Default.OAuthSessionData)!.AsObject();
+            mutate(serialized);
+            getRow()!.SessionCiphertext = CreateAuthenticatedEnvelope(serialized, 7);
+
+            var failure = await Assert.That(async () => await store.GetAsync(Did))
+                .Throws<AtprotoOAuthSessionUnavailableException>();
+            await Assert.That(failure!.FailureCode).IsEqualTo("invalid_session");
+        }
     }
 
     [Test]
@@ -211,6 +246,57 @@ public sealed class RepositoryBackedOAuthSessionStoreTests
             Scope = "atproto transition:generic"
         };
     }
+
+    private static byte[] CreateAuthenticatedEnvelope(JsonObject session, byte keyFill)
+    {
+        var plaintext = Encoding.UTF8.GetBytes(session.ToJsonString());
+        var key = Enumerable.Repeat(keyFill, 32).ToArray();
+        var nonce = RandomNumberGenerator.GetBytes(12);
+        var ciphertext = new byte[plaintext.Length];
+        var tag = new byte[16];
+        var associatedData = CreateAssociatedData();
+        using (var aes = new AesGcm(key, tag.Length))
+        {
+            aes.Encrypt(nonce, plaintext, ciphertext, tag, associatedData);
+        }
+
+        var envelope = new byte[nonce.Length + ciphertext.Length + tag.Length];
+        nonce.CopyTo(envelope, 0);
+        ciphertext.CopyTo(envelope, nonce.Length);
+        tag.CopyTo(envelope, nonce.Length + ciphertext.Length);
+        return envelope;
+    }
+
+    private static byte[] CreateAssociatedData()
+    {
+        var writer = new ArrayBufferWriter<byte>();
+        WriteInt32(writer, AtprotoSessionEnvelopeProtector.CurrentEnvelopeVersion);
+        WriteString(writer, TenantId.ToString("D"));
+        WriteString(writer, UserId.ToString("D"));
+        WriteString(writer, RepositoryBackedOAuthSessionStore.Provider);
+        WriteString(writer, Did);
+        WriteString(writer, "https://pds.example/");
+        WriteString(writer, "oauth-client-key");
+        return writer.WrittenSpan.ToArray();
+    }
+
+    private static void WriteString(ArrayBufferWriter<byte> writer, string value)
+    {
+        var byteCount = Encoding.UTF8.GetByteCount(value);
+        WriteInt32(writer, byteCount);
+        Encoding.UTF8.GetBytes(value, writer.GetSpan(byteCount));
+        writer.Advance(byteCount);
+    }
+
+    private static void WriteInt32(ArrayBufferWriter<byte> writer, int value)
+    {
+        BinaryPrimitives.WriteInt32BigEndian(writer.GetSpan(sizeof(int)), value);
+        writer.Advance(sizeof(int));
+    }
+
+    private static string JsonName(string propertyName) =>
+        AtprotoOAuthSessionJsonContext.Default.Options.PropertyNamingPolicy?.ConvertName(propertyName)
+        ?? propertyName;
 
     private static string CreateRing(params (string KeyId, string Status, byte Fill)[] keys) =>
         "{\"keys\":[" + string.Join(',', keys.Select(key =>
