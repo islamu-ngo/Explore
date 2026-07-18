@@ -7,6 +7,8 @@ namespace Explore.Blazor.Client.Services;
 
 public static class ImageUploadClientPolicy
 {
+    private static readonly byte[] PngSignature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+
     public const long DefaultMaxImageFileSizeBytes = 5 * 1024 * 1024;
     public const string DefaultAcceptedImageFormats = ".jpg,.jpeg,.png,.gif,.webp";
 
@@ -62,6 +64,30 @@ public static class ImageUploadClientPolicy
     };
 
     public static string[] AllowedImageContentTypes => DefaultAllowedImageContentTypes.ToArray();
+
+    public static string? DetectImageContentType(ReadOnlySpan<byte> content)
+    {
+        if (content.Length >= 3 && content[0] == 0xFF && content[1] == 0xD8 && content[2] == 0xFF)
+        {
+            return "image/jpeg";
+        }
+
+        if (content.StartsWith(PngSignature))
+        {
+            return "image/png";
+        }
+
+        if (content.StartsWith("GIF87a"u8) || content.StartsWith("GIF89a"u8))
+        {
+            return "image/gif";
+        }
+
+        return content.Length >= 12 &&
+               content[..4].SequenceEqual("RIFF"u8) &&
+               content[8..12].SequenceEqual("WEBP"u8)
+            ? "image/webp"
+            : null;
+    }
 
     public static bool IsAllowedImageContentType(string? contentType)
     {

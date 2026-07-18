@@ -41,7 +41,8 @@ public sealed class ImageFileReaderService(ILogger<ImageFileReaderService> logge
             using var memoryStream = new MemoryStream();
             await stream.CopyToAsync(memoryStream);
             var bytes = memoryStream.ToArray();
-            var safeFileName = ImageUploadClientPolicy.BuildSafeFileName(file.Name, file.ContentType);
+            var contentType = ImageUploadClientPolicy.DetectImageContentType(bytes) ?? file.ContentType;
+            var safeFileName = ImageUploadClientPolicy.BuildSafeFileName(file.Name, contentType);
 
             logger.LogDebug(
                 "Successfully read selected image into memory. SizeBucket={SizeBucket}",
@@ -51,7 +52,7 @@ public sealed class ImageFileReaderService(ILogger<ImageFileReaderService> logge
             {
                 Content = bytes,
                 FileName = safeFileName,
-                ContentType = file.ContentType
+                ContentType = contentType
             };
         }
         catch (Exception ex)

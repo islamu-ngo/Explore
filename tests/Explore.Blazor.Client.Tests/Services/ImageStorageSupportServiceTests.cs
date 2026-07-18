@@ -29,6 +29,26 @@ public class ImageStorageSupportServiceTests
     }
 
     [Test]
+    public async Task ImageFileReaderService_ReadFileAsync_NormalizesBrowserContentTypeFromImageBytes()
+    {
+        var bytes = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
+        var file = Substitute.For<IBrowserFile>();
+        file.Name.Returns("event-image.png");
+        file.Size.Returns(bytes.Length);
+        file.ContentType.Returns("image/png");
+        file.OpenReadStream(Arg.Any<long>()).Returns(_ => new MemoryStream(bytes));
+
+        var service = new ImageFileReaderService(NullLogger<ImageFileReaderService>.Instance);
+
+        var result = await service.ReadFileAsync(file, 1024);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.ContentType).IsEqualTo("image/jpeg");
+        await Assert.That(result.FileName).IsEqualTo("event-image.jpg");
+        await Assert.That(result.Content).IsEquivalentTo(bytes);
+    }
+
+    [Test]
     public async Task ImageFileReaderService_ReadFileAsync_SanitizesDangerousBrowserFileNameAndDoesNotLogIt()
     {
         var dangerousFileName = @"..\..\secret<script>.png";
