@@ -509,6 +509,65 @@ public class EventServiceTests
     }
 
     [Test]
+    public async Task CreateEventAsync_NormalizesNullableCollectionsBeforeCallingApi()
+    {
+        // Arrange
+        var createDto = ComponentDataBuilder.CreateEventRequest.Generate();
+        CreateEventDraftRequestDto? capturedRequest = null;
+        _apiClient.CreateEventAsync(
+                Arg.Do<CreateEventDraftRequestDto>(request => capturedRequest = request),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(ComponentDataBuilder.SuccessResponse());
+
+        // Act
+        await _service.CreateEventAsync(createDto);
+
+        // Assert
+        await Assert.That(capturedRequest).IsNotNull();
+        await Assert.That(capturedRequest!.CategoryIds).IsNotNull();
+        await Assert.That(capturedRequest.TagIds).IsNotNull();
+        await Assert.That(capturedRequest.Locations).IsNotNull();
+        await Assert.That(capturedRequest.Sessions).IsNotNull();
+        await Assert.That(capturedRequest.Days).IsNotNull();
+        await Assert.That(capturedRequest.Rooms).IsNotNull();
+        await Assert.That(capturedRequest.AgendaItems).IsNotNull();
+    }
+
+    [Test]
+    public async Task CreateEventAsync_PropagatesValidationProblemDetailsForFieldMapping()
+    {
+        // Arrange
+        var createDto = ComponentDataBuilder.CreateEventRequest.Generate();
+        var exception = new ApiException<ValidationProblemDetails>(
+            "Bad Request",
+            400,
+            string.Empty,
+            new Dictionary<string, IEnumerable<string>>(),
+            new ValidationProblemDetails
+            {
+                Errors = new Dictionary<string, ICollection<string>>
+                {
+                    ["Title"] = ["The Title field is required."]
+                }
+            },
+            null);
+        _apiClient.CreateEventAsync(
+                Arg.Any<CreateEventDraftRequestDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(exception);
+
+        // Act
+        var action = async () => await _service.CreateEventAsync(createDto);
+
+        // Assert
+        await Assert.That(action).Throws<ApiException<ValidationProblemDetails>>();
+    }
+
+    [Test]
     public async Task CreateEventAsync_WithConcreteGeneratedClient_SendsIdempotencyKey()
     {
         // Arrange

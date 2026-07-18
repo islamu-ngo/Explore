@@ -594,6 +594,14 @@ public partial class EventService : IEventService
     {
         try
         {
+            request.CategoryIds ??= [];
+            request.TagIds ??= [];
+            request.Locations ??= [];
+            request.Sessions ??= [];
+            request.Days ??= [];
+            request.Rooms ??= [];
+            request.AgendaItems ??= [];
+
             if (_apiClient is EventApiClient generatedClient)
             {
                 return await generatedClient.CreateEventWithIdempotencyKeyAsync(
@@ -616,6 +624,10 @@ public partial class EventService : IEventService
                 Success = false,
                 Message = ex.Result?.Detail ?? ex.Result?.Title ?? "Event could not be created."
             };
+        }
+        catch (ApiException<ValidationProblemDetails>)
+        {
+            throw;
         }
         catch (Exception ex)
         {
