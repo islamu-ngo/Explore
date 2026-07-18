@@ -1,5 +1,5 @@
 // ABOUTME: Authoritative catalog of every secret-backed setting the platform understands.
-// ABOUTME: Encodes the user-specified Infisical layout (api, storage, keycloak, cerbos, postgresql, smtp, analytics, ai).
+// ABOUTME: Encodes the canonical Infisical layout for platform, provider, integration, and ATProto secrets.
 
 using System.Collections.Frozen;
 using Explore.Domain.Constants;
@@ -21,6 +21,7 @@ namespace Explore.Domain.Secrets;
 ///   <item><c>/api</c> — SETUP_SECRET</item>
 ///   <item><c>/storage</c> — STORAGE_S3_*</item>
 ///   <item><c>/keycloak</c> — KEYCLOAK_*</item>
+///   <item><c>/atproto</c> — ATPROTO_*</item>
 ///   <item><c>/cerbos</c> — CERBOS_GRPC_ENDPOINT</item>
 ///   <item><c>/postgresql</c> — POSTGRESQL_*</item>
 ///   <item><c>/smtp</c> — MAIL_SMTP_*</item>
@@ -74,6 +75,13 @@ public static class SecretDefinitionRegistry
             public const string AdminUsername = "keycloak.admin_username";
             public const string AdminPassword = "keycloak.admin_password";
             public const string DbPassword = "keycloak.db_password";
+        }
+
+        public static class Atproto
+        {
+            public const string OAuthClientPrivateJwks = "auth.atproto.oauth_client_private_jwks";
+            public const string SessionEncryptionKeyRing = "auth.atproto.session_encryption_keyring";
+            public const string SessionJwtPrivateJwks = "auth.atproto.session_jwt_private_jwks";
         }
 
         public static class Postgresql
@@ -330,6 +338,40 @@ public static class SecretDefinitionRegistry
                 DefaultEnvironmentVariableName = "KEYCLOAK_DB_PASSWORD",
                 IsBootstrapSecret = false,
                 Description = "Keycloak backing database password (read by Keycloak itself).",
+            },
+
+            new()
+            {
+                Key = Keys.Atproto.OAuthClientPrivateJwks,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/atproto",
+                DefaultInfisicalKey = "ATPROTO_OAUTH_CLIENT_PRIVATE_JWKS",
+                DefaultEnvironmentVariableName = "ATPROTO_OAUTH_CLIENT_PRIVATE_JWKS",
+                IsBootstrapSecret = false,
+                Description = "Rotation-capable ES256 private JWK ring for ATProto OAuth client assertions.",
+            },
+            new()
+            {
+                Key = Keys.Atproto.SessionEncryptionKeyRing,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/atproto",
+                DefaultInfisicalKey = "ATPROTO_SESSION_ENCRYPTION_KEYRING",
+                DefaultEnvironmentVariableName = "ATPROTO_SESSION_ENCRYPTION_KEYRING",
+                IsBootstrapSecret = false,
+                Description = "Key ring for encrypting persisted ATProto OAuth session envelopes.",
+            },
+            new()
+            {
+                Key = Keys.Atproto.SessionJwtPrivateJwks,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/atproto",
+                DefaultInfisicalKey = "ATPROTO_SESSION_JWT_PRIVATE_JWKS",
+                DefaultEnvironmentVariableName = "ATPROTO_SESSION_JWT_PRIVATE_JWKS",
+                IsBootstrapSecret = false,
+                Description = "Rotation-capable ES256 private JWK ring for first-party ATProto session JWTs.",
             },
 
             // --- cerbos/CERBOS_GRPC_ENDPOINT ---

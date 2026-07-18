@@ -41,6 +41,8 @@ public static class SettingRegistry
         all.AddRange(IntegrationSettingDefinitions.All);
         all.AddRange(AnalyticsSettingDefinitions.All);
         all.AddRange(McpSettingDefinitions.All);
+        all.AddRange(AtprotoFederationSettingDefinitions.All);
+        all.AddRange(LocationPrivacySettingDefinitions.All);
         all.AddRange(AiAssistantSettingDefinitions.All);
         all.AddRange(AiAssistantPreferenceSettingDefinitions.All);
         all.AddRange(TenantDelegationSettingDefinitions.All);
