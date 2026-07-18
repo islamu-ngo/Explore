@@ -3,6 +3,8 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Domain.Enums;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -47,6 +49,24 @@ public class LocationRepository : GenericRepository<Location, Guid>, ILocationRe
             .AsNoTracking()
             .Include(l => l.Pii)
             .Where(l => l.Country == country)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<Location>> GetOwnedPrivateHomesForGlobalErasureAsync(
+        Guid ownerUserId,
+        CancellationToken cancellationToken = default)
+    {
+        if (ownerUserId == Guid.Empty)
+        {
+            throw new ArgumentException("Owner user id is required.", nameof(ownerUserId));
+        }
+
+        return await _dbContext.Locations
+            .IgnoreTenantFilter(TenantFilterBypassReasons.GlobalLocationPrivacyErasure)
+            .Where(location => location.OwnerUserId == ownerUserId
+                && location.LocationKindId == (int)LocationKindEnum.PrivateHome)
+            .OrderBy(location => location.TenantId)
+            .ThenBy(location => location.Id)
             .ToListAsync(cancellationToken);
     }
 

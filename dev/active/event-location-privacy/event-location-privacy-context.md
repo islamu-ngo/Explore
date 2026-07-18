@@ -3,7 +3,7 @@
 
 # Event Location Privacy Context
 
-**Status:** Stage A and W1-W5 complete; W6 ELP-230A implementation present with disposable PostgreSQL verification pending
+**Status:** Stage A and W1-W5 complete; W6 ELP-230A/250 implementation present with PostgreSQL verification pending
 **Last Updated:** 2026-07-18 Europe/Brussels
 **Plan:** `dev/active/event-location-privacy/event-location-privacy-plan.md`  
 **Tasks:** `dev/active/event-location-privacy/event-location-privacy-tasks.md`
@@ -34,15 +34,16 @@
 - Canonical Stage-A OpenAPI/inventory/client generation was retained as the narrow compatibility exception needed for managed editors: current SHA-256 values are `71313ca44c33e137d84117e0c7fde200a0cbf877774f87f3f23de254e2bea33c` (OpenAPI), `dba2bbbe1792f512ac6472fafbe037a6e262edc5f28cbac0d1263306679a4785` (inventory), and `d263f0ce4271898f89f2f6a7adb54f58b966175349f97b87ad4931a20c2e9687` (generated client). The prior ELP-030 hashes remain below for byte comparison; ELP-420A/B remain open.
 - Resumed ELP-230A verification on 2026-07-18 without touching the concurrent email-responsibility workstream. Committed source already contains `20260716132239_AddEventLocationPrivacyExpand`, `EventLocationPrivacyMigrationStage`, both migration hosts, global `SeedLocationPrivacyLookupsAsync` activation, and four PostgreSQL migration-stage tests. `dotnet ef migrations script 20260715172404_AddTypedWebhookOwnership 20260716132239_AddEventLocationPrivacyExpand ... --idempotent --no-build` generated 783 lines successfully; review found migration-local lookup inserts before dependent tables, additive nullable carrier columns, constant fail-closed lookup defaults, filtered uniqueness, tenant-safe foreign keys, UUIDv7/check/tombstone/append-only/carrier triggers, and a pre-activation `Down`. `dotnet ef migrations has-pending-model-changes ... --no-build` reported no changes. `schemas/islamu-event.md` now documents the ELP expand schema while preserving concurrent ATProto and email hunks.
 - ELP-230A PostgreSQL execution is not yet green. The focused four-test command compiled the Persistence test project, then all four tests failed before test logic because Testcontainers could not connect to Docker. Starting the local `docker-desktop` user service was attempted; the backend exited successfully without leaving `~/.docker/desktop/docker.sock`. The architecture suite ran from the existing Release binary with 252 passed, one skipped, and two unrelated failures in the concurrent email/controller and authentication-token validator workstreams; a fresh architecture build is independently blocked by the unrelated missing `ApiNotFoundProblemDescriptor` symbol.
+- Implemented the ELP-250 repository boundary on 2026-07-18. `ILocationRepository.GetOwnedPrivateHomesForGlobalErasureAsync` uses the named `Tenant`-filter bypass with the approved `GlobalLocationPrivacyErasure` reason, rejects an empty owner id, and remains strictly bounded by exact `OwnerUserId` plus `LocationKindEnum.PrivateHome`; it returns tracked entities in deterministic tenant/id order for the later atomic erasure transaction. `dotnet build src/Explore.Persistence/Explore.Persistence.csproj --configuration Release --no-restore --verbosity quiet` passed. PostgreSQL and architecture tests were explicitly deferred for this implementation pass.
 
 ### In Progress
 
-- W6: finish ELP-230A disposable PostgreSQL verification, then ELP-250 and ELP-500; ELP-310 may proceed independently. Stage-A browser evidence remains blocked until the expand schema is proven against PostgreSQL.
+- W6: ELP-230A and ELP-250 code are present; their PostgreSQL gates and ELP-500 remain open. ELP-310 may proceed independently. Stage-A browser evidence remains blocked until the expand schema is proven against PostgreSQL.
 
 ### Next
 
 1. Re-run the four `EventLocationMigrationStageTests` after Docker is available; do not check ELP-230A complete until fresh expand, legacy upgrade/Down, selector rejection, and adversarial triggers all execute.
-2. Implement only the OwnerUserId + Private Home tenant-filter bypass in ELP-250, then land ELP-500 adversarial erasure tests; implement the pure ELP-310 evaluator independently.
+2. Run the deferred ELP-250 cross-tenant PostgreSQL/architecture verification when requested, then land ELP-500 adversarial erasure tests; implement the pure ELP-310 evaluator independently.
 3. Resume Stage-A visual capture after the expand schema is installed, and keep first/new venue selection fail-closed for non-admins until ELP-405/610 provide EventLocation-scoped management and HAL affordances.
 
 ### Blockers

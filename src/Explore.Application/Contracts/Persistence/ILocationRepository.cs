@@ -10,6 +10,9 @@ public interface ILocationRepository : IGenericRepository<Location, Guid>
     Task<List<Location>> GetLocationsByTenant(Guid tenantId, CancellationToken cancellationToken = default);
     Task<List<Location>> GetLocationsByCity(string city, CancellationToken cancellationToken = default);
     Task<List<Location>> GetLocationsByCountry(string country, CancellationToken cancellationToken = default);
+    Task<List<Location>> GetOwnedPrivateHomesForGlobalErasureAsync(
+        Guid ownerUserId,
+        CancellationToken cancellationToken = default);
     Task<(List<Location> Items, int TotalCount)> GetLocationsWithDetailsPaged(
         int pageNumber,
         int pageSize,

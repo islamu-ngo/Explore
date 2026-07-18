@@ -3,7 +3,7 @@
 
 # Event Location Privacy Tasks
 
-**Status:** W1-W5 complete; W6 ELP-230A implementation present with PostgreSQL verification pending
+**Status:** W1-W5 complete; W6 ELP-230A/250 implementation present with PostgreSQL verification pending
 **Last Updated:** 2026-07-18 Europe/Brussels
 **Plan:** `dev/active/event-location-privacy/event-location-privacy-plan.md`  
 **Context:** `dev/active/event-location-privacy/event-location-privacy-context.md`
@@ -207,6 +207,7 @@ The following ELP-200/210 tables are authoritative and synchronized with plan Se
   - Paths: `ILocationRepository.cs`, `LocationRepository.cs`, `ExploreDbContext.QueryFilters.cs`, architecture and PostgreSQL tests.
   - Rule: explicit tenant-filter bypass strictly bounded by OwnerUserId and PrivateHome; no general unrestricted query.
   - Result: all current/former-tenant owned Homes found without cross-user leakage.
+  - Implementation evidence: `GetOwnedPrivateHomesForGlobalErasureAsync` selectively bypasses only the named tenant filter with an approved reason, rejects an empty owner id, filters by exact `OwnerUserId` and `PrivateHome`, and returns tracked entities ordered by tenant/id. The focused Persistence Release build passed; PostgreSQL and architecture verification remain deferred, so the task stays unchecked.
 
 - [x] **ELP-260 — Persist policy audit, authority client/checkpoint, and concurrency**
   - Paths: EventLocation audit/exact-read/checkpoint repositories and configurations; `src/Explore.Application/Contracts/LocationPrivacy/`; `src/Explore.Infrastructure/Privacy/ErasureAuthority/`; two-database integration tests.

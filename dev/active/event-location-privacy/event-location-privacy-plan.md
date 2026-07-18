@@ -3,7 +3,7 @@
 
 # Event Location Privacy Implementation Plan
 
-**Status:** Approved architecture; W1-W5 complete; W6 ELP-230A implementation present with PostgreSQL verification pending
+**Status:** Approved architecture; W1-W5 complete; W6 ELP-230A/250 implementation present with PostgreSQL verification pending
 **Last Updated:** 2026-07-18 Europe/Brussels
 **Intent:** Cross-cutting fallback contract composed from `add-cqrs-handler`, `update-repository-query`, `add-ef-migration`, `add-get-endpoint`, `add-write-endpoint`, `openapi-contract-change`, `add-hal-link`, `cerbos-policy-change`, and `blazor-component-affordance`  
 **Review:** Senior CTO amendments and repository re-audit incorporated; product changes follow the execution waves in Section 16
@@ -26,9 +26,11 @@ The system must:
 
 Completed foundation on 2026-07-16: ELP-010/015/400 make known public Location/session/group/agenda/program/calendar/JSON-LD/filter/HAL/MCP paths fail closed, eligibility-gated, cache-safe, and principal-invariant. Separate authorized `private, no-store` management routes preserve draft editing but expose only locations/rooms already associated with the event; first/new venue selection stays fail-closed for non-admins until ELP-405/610. ELP-200 adds stable `Cancelled=5`/`CANCELLED` and `Revoked=6`/`REVOKED`, null-mode resolution, capacity-aware transitions, synchronized parent lifecycle, immutable registration identity, and own-cancellation authorization with transaction-time ownership revalidation. ELP-060/100/110 add the three normalized privacy lookup families; ELP-230A now creates them with migration-local inserts and activates their idempotent global repair seeder.
 
-Completed W3-W5 on 2026-07-16: ELP-120/125 add optional PII, consent-backed Private Home ownership, irreversible label/room tombstones, and the UUIDv7 physical-XOR-TBA EventLocation aggregate with fail-closed policy/version/concurrency state and carrier references. ELP-130/140/150/210/300 provide the executable 16-field matrix, typed PII-free audits/authority/checkpoint facts, explicit TBA publication behavior, immutable registration access, and purpose-specific constrained contracts. ELP-240/260 persist tenant-filtered bounded entity reads, tracked mutations, initial/contiguous policy audits, exact-read audits, replay checkpoints, stable concurrency conflicts, and a separately retained PostgreSQL authority with transactional monotonic UUIDv7-idempotent append. ELP-230A/250/500 and independent ELP-310 remain open.
+Completed W3-W5 on 2026-07-16: ELP-120/125 add optional PII, consent-backed Private Home ownership, irreversible label/room tombstones, and the UUIDv7 physical-XOR-TBA EventLocation aggregate with fail-closed policy/version/concurrency state and carrier references. ELP-130/140/150/210/300 provide the executable 16-field matrix, typed PII-free audits/authority/checkpoint facts, explicit TBA publication behavior, immutable registration access, and purpose-specific constrained contracts. ELP-240/260 persist tenant-filtered bounded entity reads, tracked mutations, initial/contiguous policy audits, exact-read audits, replay checkpoints, stable concurrency conflicts, and a separately retained PostgreSQL authority with transactional monotonic UUIDv7-idempotent append. ELP-230A/250 verification, ELP-500, and independent ELP-310 remain open.
 
 ELP-230A implementation landed before the 2026-07-18 resume: the generated expand migration, operator-selected migration ceiling, application and migration-service entrypoints, lookup seeder activation, database guards, and focused PostgreSQL tests are present. On 2026-07-18 the idempotent 783-line SQL generated successfully and EF reported no pending model changes; the canonical DBML was synchronized. Completion remains open until the four disposable PostgreSQL tests execute because Docker Desktop exits before exposing its socket in the current environment.
+
+ELP-250 implementation now adds the single named cross-tenant query needed by global erasure. It selectively disables the `Tenant` filter and immediately constrains the tracked query by exact owner plus `PrivateHome`, with deterministic tenant/id ordering. Its focused Persistence Release build passes; PostgreSQL and architecture verification remain deferred.
 
 ## 2. Non-Goals and Forbidden Shortcuts
 
