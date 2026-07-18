@@ -28,8 +28,6 @@ public class UserMappingProfile : Profile
 
         CreateMap<Domain.UserAuthenticationToken, UserAuthenticationTokenDto>();
         CreateMap<Domain.UserAuthenticationToken, UserAuthenticationTokenListDto>();
-        CreateMap<CreateUserAuthenticationTokenDto, Domain.UserAuthenticationToken>();
-        CreateMap<UpdateUserAuthenticationTokenDto, Domain.UserAuthenticationToken>();
 
         CreateMap<Domain.UserExternalLogin, UserExternalLoginDto>()
             .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))

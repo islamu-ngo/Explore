@@ -61,7 +61,5 @@ public class ActorFederationMappingProfile : Profile
 
         CreateMap<Domain.AtprotoRecord, AtprotoRecordDto>().ReverseMap();
         CreateMap<Domain.AtprotoRecord, AtprotoRecordListDto>();
-        CreateMap<CreateAtprotoRecordDto, Domain.AtprotoRecord>();
-        CreateMap<UpdateAtprotoRecordDto, Domain.AtprotoRecord>();
     }
 }
