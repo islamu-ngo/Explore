@@ -19,14 +19,19 @@ public interface IBffProviderReadinessService
 
     Task<bool> IsProviderReadyAsync(string scheme, CancellationToken cancellationToken);
 
+    Task<BffProviderReadiness> GetProviderReadinessAsync(string scheme, CancellationToken cancellationToken);
+
     bool HasMinimalProviderConfig(string scheme);
 }
+
+public sealed record BffProviderReadiness(bool IsReady, string? FailureCode);
 
 public sealed class BffProviderReadinessService(
     IDynamicAuthSchemeManager schemeManager,
     IOptionsMonitor<OpenIdConnectOptions> optionsMonitor,
     IWebHostEnvironment environment,
-    ILogger<BffProviderReadinessService> logger)
+    ILogger<BffProviderReadinessService> logger,
+    AtprotoOAuthClientFactory? atprotoFactory = null)
     : IBffProviderReadinessService
 {
     private static readonly Regex GoogleClientIdPattern = new(
@@ -91,9 +96,16 @@ public sealed class BffProviderReadinessService(
 
     public async Task<bool> IsProviderReadyAsync(string scheme, CancellationToken cancellationToken)
     {
+        var readiness = await GetProviderReadinessAsync(scheme, cancellationToken);
+        return readiness.IsReady;
+    }
+
+    public async Task<BffProviderReadiness> GetProviderReadinessAsync(string scheme, CancellationToken cancellationToken)
+    {
         if (scheme == AuthSchemeNames.Atproto)
         {
-            return true;
+            var readiness = atprotoFactory?.GetReadiness() ?? new AtprotoOAuthReadiness(false, "provider_not_configured");
+            return new(readiness.IsReady, readiness.FailureCode);
         }
 
         OpenIdConnectOptions options;
@@ -105,50 +117,52 @@ public sealed class BffProviderReadinessService(
         catch (Exception ex)
         {
             logger.LogDebug(ex, "Could not load OIDC options for scheme {Scheme}", scheme);
-            return false;
+            return new(false, "options_unavailable");
         }
 
         if (scheme == AuthSchemeNames.Keycloak)
         {
             if (string.IsNullOrWhiteSpace(options.Authority) || string.IsNullOrWhiteSpace(options.ClientId))
             {
-                return false;
+                return new(false, "configuration_incomplete");
             }
 
             var metadataAddress = string.IsNullOrWhiteSpace(options.MetadataAddress)
                 ? $"{options.Authority.TrimEnd('/')}/.well-known/openid-configuration"
                 : options.MetadataAddress;
 
-            return await HasRequiredOidcMetadataAsync(metadataAddress, "keycloak", requireGoogleIssuer: false, cancellationToken);
+            var ready = await HasRequiredOidcMetadataAsync(metadataAddress, "keycloak", requireGoogleIssuer: false, cancellationToken);
+            return new(ready, ready ? null : "metadata_unavailable");
         }
 
         if (scheme == AuthSchemeNames.Google)
         {
             if (string.IsNullOrWhiteSpace(options.ClientId) || !GoogleClientIdPattern.IsMatch(options.ClientId))
             {
-                return false;
+                return new(false, "invalid_client_id");
             }
 
             if (string.IsNullOrWhiteSpace(options.ClientSecret))
             {
-                return false;
+                return new(false, "client_secret_unavailable");
             }
 
-            return await HasRequiredOidcMetadataAsync(
+            var ready = await HasRequiredOidcMetadataAsync(
                 "https://accounts.google.com/.well-known/openid-configuration",
                 "google",
                 requireGoogleIssuer: true,
                 cancellationToken);
+            return new(ready, ready ? null : "metadata_unavailable");
         }
 
-        return true;
+        return new(true, null);
     }
 
     public bool HasMinimalProviderConfig(string scheme)
     {
         if (scheme == AuthSchemeNames.Atproto)
         {
-            return true;
+            return atprotoFactory?.GetReadiness().IsReady == true;
         }
 
         try

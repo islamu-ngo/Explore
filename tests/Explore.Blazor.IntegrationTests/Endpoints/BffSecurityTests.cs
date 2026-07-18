@@ -1,6 +1,7 @@
 // ABOUTME: Blazor BFF security integration tests verifying real OIDC against containerized Keycloak.
 // ABOUTME: Tests challenge redirects, provider discovery, auth status, and signout behavior.
 
+using System.Text.RegularExpressions;
 using Explore.Blazor.IntegrationTests.Fixtures;
 using FluentAssertions;
 using TUnit.Core;
@@ -37,7 +38,8 @@ public class BffSecurityTests : IAsyncDisposable
         _client = _factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
-            HandleCookies = true
+            HandleCookies = true,
+            BaseAddress = new Uri("https://localhost")
         });
     }
 
@@ -118,6 +120,61 @@ public class BffSecurityTests : IAsyncDisposable
             "PKCE must be enabled — the challenge must include a code_challenge parameter");
         location.Should().Contain("code_challenge_method=S256",
             "PKCE must use S256 code challenge method");
+    }
+
+    [Test]
+    public async Task AuthorizationCodeLogin_ReturnsThroughCallback_WithAuthenticatedBffSession()
+    {
+        var challenge = await _client.GetAsync("/auth/challenge?provider=keycloak&returnUrl=/dashboard");
+        var authorizationUri = challenge.Headers.Location;
+        authorizationUri.Should().NotBeNull();
+
+        using var keycloakHandler = new HttpClientHandler
+        {
+            AllowAutoRedirect = false,
+            CookieContainer = new CookieContainer()
+        };
+        using var keycloakClient = new HttpClient(keycloakHandler);
+
+        var loginPage = await keycloakClient.GetAsync(authorizationUri);
+        loginPage.StatusCode.Should().Be(HttpStatusCode.OK);
+        var loginHtml = await loginPage.Content.ReadAsStringAsync();
+        var loginAction = Regex.Match(
+            loginHtml,
+            "<form(?=[^>]*id=\"kc-form-login\")(?=[^>]*action=\"(?<action>[^\"]+)\")[^>]*>",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+            .Groups["action"].Value;
+        loginAction.Should().NotBeNullOrWhiteSpace();
+        var loginUri = new Uri(WebUtility.HtmlDecode(loginAction));
+
+        using var credentials = new FormUrlEncodedContent(
+        [
+            new KeyValuePair<string, string>("username", "test-user"),
+            new KeyValuePair<string, string>("password", "test-user-password"),
+            new KeyValuePair<string, string>("credentialId", string.Empty),
+            new KeyValuePair<string, string>("login", "Sign In")
+        ]);
+        using var loginRequest = new HttpRequestMessage(HttpMethod.Post, loginUri)
+        {
+            Content = credentials
+        };
+        var authSessionCookies = keycloakHandler.CookieContainer
+            .GetAllCookies()
+            .Cast<Cookie>()
+            .Select(cookie => $"{cookie.Name}={cookie.Value}");
+        loginRequest.Headers.TryAddWithoutValidation("Cookie", string.Join("; ", authSessionCookies));
+
+        var login = await keycloakClient.SendAsync(loginRequest);
+        login.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        login.Headers.Location.Should().NotBeNull();
+
+        var callback = await _client.GetAsync(login.Headers.Location);
+        callback.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        callback.Headers.Location?.ToString().Should().EndWith("/dashboard");
+
+        var status = await _client.GetFromJsonAsync<AuthStatusPayload>("/auth/status");
+        status.Should().NotBeNull();
+        status!.IsAuthenticated.Should().BeTrue();
     }
 
     #endregion

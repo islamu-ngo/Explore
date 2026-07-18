@@ -112,6 +112,10 @@ public class UserAuthenticationTokenSelfReadHandlerTests
             TenantId = Guid.NewGuid(),
             Tenant = null!,
             Provider = "atproto",
+            SubjectDid = "did:plc:test",
+            SessionCiphertext = [1],
+            EncryptionKeyId = "encryption-key",
+            OAuthClientKeyId = "oauth-client-key",
             PdsHost = "https://pds.example.test",
             ExpiresAt = DateTime.UtcNow.AddHours(1)
         };

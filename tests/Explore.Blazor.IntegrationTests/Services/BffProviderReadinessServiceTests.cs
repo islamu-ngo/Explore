@@ -1,12 +1,17 @@
 // ABOUTME: Focused tests for BFF auth provider readiness and scheme mapping behavior.
 // ABOUTME: Keeps provider-selection logic covered after extraction from auth endpoints.
 
+using System.Security.Cryptography;
+using System.Text.Json;
+using CarpaNet.OAuth.Storage;
+using Explore.Blazor.Authentication;
 using Explore.Blazor.Constants;
 using Explore.Blazor.Services;
 using Explore.Blazor.Services.Auth;
 using FluentAssertions;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -37,14 +42,49 @@ public sealed class BffProviderReadinessServiceTests
     }
 
     [Test]
-    public async Task IsProviderReadyAsync_WithAtproto_ReturnsTrueWithoutOidcOptions()
+    public async Task IsProviderReadyAsyncWithOmittedAtprotoFactoryFailsClosedWithoutOidcOptions()
     {
         var optionsMonitor = Substitute.For<IOptionsMonitor<OpenIdConnectOptions>>();
         var service = CreateService(optionsMonitor: optionsMonitor);
 
         var ready = await service.IsProviderReadyAsync(AuthSchemeNames.Atproto, CancellationToken.None);
 
-        await Assert.That(ready).IsTrue();
+        await Assert.That(ready).IsFalse();
+        var result = await service.GetProviderReadinessAsync(AuthSchemeNames.Atproto, CancellationToken.None);
+        await Assert.That(result.FailureCode).IsEqualTo("provider_not_configured");
+        optionsMonitor.DidNotReceiveWithAnyArgs().Get(default!);
+    }
+
+    [Test]
+    public async Task IsProviderReadyAsyncWithConfiguredAtprotoFactoryReturnsReadyWithoutOidcDiscovery()
+    {
+        var optionsMonitor = Substitute.For<IOptionsMonitor<OpenIdConnectOptions>>();
+        var environment = Substitute.For<IWebHostEnvironment>();
+        environment.EnvironmentName.Returns(Environments.Production);
+        var availability = Substitute.For<IServiceProviderIsService>();
+        availability.IsService(typeof(IOAuthStateStore)).Returns(true);
+        availability.IsService(typeof(IOAuthSessionStore)).Returns(true);
+        var factory = new AtprotoOAuthClientFactory(
+            new AtprotoClientKeyProvider(Options.Create(new AtprotoClientKeyOptions
+            {
+                OAuthClientPrivateJwks = CreatePrivateJwks()
+            })),
+            Options.Create(new AtprotoAuthenticationOptions
+            {
+                PublicUrl = "https://events.example.com/",
+                CallbackPath = "/signin-atproto"
+            }),
+            environment,
+            availability);
+        var service = CreateService(optionsMonitor: optionsMonitor, atprotoFactory: factory);
+
+        var readiness = await service.GetProviderReadinessAsync(
+            AuthSchemeNames.Atproto,
+            CancellationToken.None);
+
+        await Assert.That(readiness.IsReady).IsTrue();
+        await Assert.That(readiness.FailureCode).IsNull();
+        await Assert.That(service.HasMinimalProviderConfig(AuthSchemeNames.Atproto)).IsTrue();
         optionsMonitor.DidNotReceiveWithAnyArgs().Get(default!);
     }
 
@@ -94,7 +134,8 @@ public sealed class BffProviderReadinessServiceTests
 
     private static BffProviderReadinessService CreateService(
         IDynamicAuthSchemeManager? schemeManager = null,
-        IOptionsMonitor<OpenIdConnectOptions>? optionsMonitor = null)
+        IOptionsMonitor<OpenIdConnectOptions>? optionsMonitor = null,
+        AtprotoOAuthClientFactory? atprotoFactory = null)
     {
         schemeManager ??= Substitute.For<IDynamicAuthSchemeManager>();
         optionsMonitor ??= Substitute.For<IOptionsMonitor<OpenIdConnectOptions>>();
@@ -105,6 +146,34 @@ public sealed class BffProviderReadinessServiceTests
             schemeManager,
             optionsMonitor,
             environment,
-            NullLogger<BffProviderReadinessService>.Instance);
+            NullLogger<BffProviderReadinessService>.Instance,
+            atprotoFactory);
     }
+
+    private static string CreatePrivateJwks()
+    {
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var parameters = key.ExportParameters(true);
+        return JsonSerializer.Serialize(new
+        {
+            keys = new[]
+            {
+                new
+                {
+                    kty = "EC",
+                    crv = "P-256",
+                    x = Encode(parameters.Q.X!),
+                    y = Encode(parameters.Q.Y!),
+                    d = Encode(parameters.D!),
+                    kid = "active",
+                    use = "sig",
+                    alg = "ES256",
+                    status = "active"
+                }
+            }
+        });
+    }
+
+    private static string Encode(byte[] bytes) =>
+        Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 }

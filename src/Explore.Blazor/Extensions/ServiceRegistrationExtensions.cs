@@ -1,6 +1,7 @@
 // ABOUTME: Registers server-specific services on top of the shared application services.
 // ABOUTME: Shared services live in Explore.Blazor.Client.Extensions.ServiceCollectionExtensions.
 
+using Explore.Blazor.Authentication;
 using Explore.Blazor.Client.Configuration;
 using Explore.Blazor.Client.Contracts.Interop;
 using Explore.Blazor.Client.Contracts.Services.Events;
@@ -10,6 +11,7 @@ using Explore.Blazor.Client.Routing.Guards;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Http;
 using Explore.Blazor.Services;
+using Explore.Blazor.Services.Auth;
 using Explore.Blazor.Services.Preferences;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Server.Circuits;
@@ -105,6 +107,10 @@ public static class ServiceRegistrationExtensions
         services.AddScoped<CircuitHandler, TenantCircuitHandler>();
         services.AddScoped<CircuitHandler, TokenCircuitHandler>();
         services.AddSingleton<AdminHostControlPlaneShellSelector>();
+        services.Configure<AtprotoAuthenticationOptions>(configuration.GetSection("Atproto"));
+        services.Configure<AtprotoClientKeyOptions>(configuration.GetSection("Atproto"));
+        services.AddSingleton<AtprotoClientKeyProvider>();
+        services.AddSingleton<AtprotoOAuthClientFactory>();
 
         // BFF admin claims enrichment — invoked at cookie/session boundaries, not per request.
         services.AddScoped<BffAdminClaimsTransformation>();

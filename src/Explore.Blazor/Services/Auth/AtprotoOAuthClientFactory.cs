@@ -1,0 +1,139 @@
+// ABOUTME: Creates confidential CarpaNet OAuth sessions over the hardened AT Protocol transport pipeline.
+// ABOUTME: Makes the rotation-pinned signing key and durable state/session prerequisites explicit and fail-closed.
+
+using System.Text.Json;
+using CarpaNet.OAuth;
+using CarpaNet.OAuth.Storage;
+using Explore.Atproto.Transport;
+using Explore.Blazor.Authentication;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+
+namespace Explore.Blazor.Services.Auth;
+
+public sealed record AtprotoOAuthReadiness(bool IsReady, string? FailureCode)
+{
+    public static AtprotoOAuthReadiness Ready { get; } = new(true, null);
+}
+
+public sealed class AtprotoOAuthClientFactory(
+    AtprotoClientKeyProvider keyProvider,
+    IOptions<AtprotoAuthenticationOptions> configuredOptions,
+    IWebHostEnvironment environment,
+    IServiceProviderIsService serviceAvailability)
+{
+    private const string RequiredScope = "atproto transition:generic";
+    private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(15);
+    private const int MaximumResponseBytes = 1024 * 1024;
+
+    public AtprotoOAuthReadiness GetReadiness()
+    {
+        var options = configuredOptions.Value;
+        if (!TryGetClientIdentity(options, environment, out _))
+        {
+            return new(false, "invalid_public_url_or_callback");
+        }
+
+        if (!keyProvider.IsReady)
+        {
+            return new(false, keyProvider.FailureCode is null ? "invalid_key_ring" : "key_ring_unavailable");
+        }
+
+        if (!serviceAvailability.IsService(typeof(IOAuthStateStore)))
+        {
+            return new(false, "state_store_unavailable");
+        }
+
+        if (!serviceAvailability.IsService(typeof(IOAuthSessionStore)))
+        {
+            return new(false, "session_store_unavailable");
+        }
+
+        return AtprotoOAuthReadiness.Ready;
+    }
+
+    public AtprotoOAuthSessionLease CreateForNewFlow(
+        IOAuthStateStore stateStore,
+        IOAuthSessionStore sessionStore) =>
+        CreateForPinnedKey(keyProvider.ActiveKeyId ?? string.Empty, stateStore, sessionStore);
+
+    public AtprotoOAuthSessionLease CreateForPinnedKey(
+        string pinnedKeyId,
+        IOAuthStateStore stateStore,
+        IOAuthSessionStore sessionStore)
+    {
+        ArgumentNullException.ThrowIfNull(stateStore);
+        ArgumentNullException.ThrowIfNull(sessionStore);
+        var readiness = GetReadiness();
+        if (!readiness.IsReady)
+        {
+            throw new InvalidOperationException("ATProto OAuth is not ready.");
+        }
+
+        if (!keyProvider.HasKey(pinnedKeyId))
+        {
+            throw new InvalidOperationException("ATProto OAuth session signing key is unavailable.");
+        }
+
+        var options = configuredOptions.Value;
+        _ = TryGetClientIdentity(options, environment, out var identity);
+        var policy = CreatePolicy(environment, options);
+        var registry = new AtprotoAuthorizationServerRegistry();
+        var primary = AtprotoHardenedHttpClient.CreatePrimaryHandler(policy, ConnectTimeout);
+        var bounded = new AtprotoBoundedResponseHandler(MaximumResponseBytes, primary);
+        var metadata = new AtprotoAuthorizationServerMetadataHandler(registry, policy, bounded);
+        var assertions = new AtprotoPrivateKeyJwtHandler(
+            registry,
+            keyProvider,
+            identity.ClientId,
+            identity.CallbackUri,
+            RequiredScope,
+            pinnedKeyId,
+            metadata);
+        var httpClient = new HttpClient(assertions, disposeHandler: true) { Timeout = RequestTimeout };
+        var config = new OAuthClientConfig
+        {
+            ClientId = identity.ClientId,
+            RedirectUri = identity.CallbackUri,
+            Scope = RequiredScope,
+            HttpClient = httpClient,
+            StateStore = stateStore,
+            SessionStore = sessionStore,
+            JsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        };
+
+        return new(new OAuthSession(config), httpClient, pinnedKeyId);
+    }
+
+    private static bool TryGetClientIdentity(
+        AtprotoAuthenticationOptions options,
+        IWebHostEnvironment environment,
+        out AtprotoClientIdentity identity)
+    {
+        return AtprotoClientIdentityFactory.TryCreate(
+            options.PublicUrl,
+            options.CallbackPath,
+            CreatePolicy(environment, options),
+            out identity);
+    }
+
+    private static AtprotoOutboundPolicy CreatePolicy(
+        IWebHostEnvironment environment,
+        AtprotoAuthenticationOptions options) => new(
+        string.Equals(environment.EnvironmentName, Environments.Development, StringComparison.Ordinal)
+        && options.AllowDevelopmentLoopback);
+}
+
+public sealed class AtprotoOAuthSessionLease(OAuthSession session, HttpClient httpClient, string pinnedKeyId) : IDisposable
+{
+    public OAuthSession Session { get; } = session;
+    public string PinnedKeyId { get; } = pinnedKeyId;
+
+    public void Dispose()
+    {
+        Session.Dispose();
+        httpClient.Dispose();
+    }
+}

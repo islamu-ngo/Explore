@@ -1,12 +1,12 @@
-using System;
-using System.Collections.Generic;
+// ABOUTME: Stores tenant-scoped metadata and an encrypted ATProto OAuth session envelope.
+// ABOUTME: Keeps OAuth tokens and the private DPoP key out of plaintext database columns.
+
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class UserAuthenticationToken : ITenantEntity, IAuditableEntity
+public class UserAuthenticationToken : ITenantEntity, IAuditableEntity, IConcurrencyAware
 {
     public Guid Id { get; set; }
 
@@ -19,11 +19,13 @@ public class UserAuthenticationToken : ITenantEntity, IAuditableEntity
     public required Tenant Tenant { get; set; }
 
     public required string Provider { get; set; }
-    public string? AccessToken { get; set; }
-    public string? RefreshToken { get; set; }
+    public required string SubjectDid { get; set; }
+    public required byte[] SessionCiphertext { get; set; }
+    public required string EncryptionKeyId { get; set; }
+    public required string OAuthClientKeyId { get; set; }
+    public int EnvelopeVersion { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
     public string? PdsHost { get; set; }
-    public string? DpopKey { get; set; }
-    public string? IdToken { get; set; }
     public DateTime? ExpiresAt { get; set; }
 
     // Audit fields

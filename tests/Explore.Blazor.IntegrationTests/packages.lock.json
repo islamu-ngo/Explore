@@ -814,6 +814,11 @@
           "Microsoft.Win32.SystemEvents": "6.0.0"
         }
       },
+      "System.Formats.Cbor": {
+        "type": "Transitive",
+        "resolved": "10.0.5",
+        "contentHash": "9Zk1wBawwHQ8uRTJPhlksc8hrY7ho4F/4GKSA/0v3iRJ0zQDpCHbZGlPl06kv0raPtBuy1dO14Yz1yrNXNZv/Q=="
+      },
       "System.IO.Hashing": {
         "type": "Transitive",
         "resolved": "10.0.8",
@@ -888,13 +893,18 @@
           "Yarp.ReverseProxy": "[2.3.0, )"
         }
       },
+      "explore.atproto.transport": {
+        "type": "Project"
+      },
       "explore.blazor": {
         "type": "Project",
         "dependencies": {
           "Aspire.StackExchange.Redis.DistributedCaching": "[13.4.6, )",
           "Blazouter": "[1.0.13, )",
           "Blazouter.Server": "[1.0.13, )",
+          "CarpaNet.OAuth": "[1.0.2, )",
           "Event.Web.BffHosting": "[1.0.0, )",
+          "Explore.Atproto.Transport": "[1.0.0, )",
           "Explore.Blazor.Client": "[1.0.0, )",
           "Explore.ServiceDefaults": "[1.0.0, )",
           "Microsoft.AspNetCore.Authentication.OpenIdConnect": "[10.0.8, )",
@@ -999,6 +1009,27 @@
         "contentHash": "QDYwJByrr3XDHEKg/uRj95gdgLP+34iFzvpewXuUdZdfW0b4DXERvk16IhS5lVBhc5RDsSOetune5XAgsoECbA==",
         "dependencies": {
           "Blazouter": "1.0.13"
+        }
+      },
+      "CarpaNet": {
+        "type": "CentralTransitive",
+        "requested": "[1.0.2, )",
+        "resolved": "1.0.2",
+        "contentHash": "Nxya4ndGDrTErE+WTcxlM+tzJYiXrklNURcdi34N90EQnaivqXUpSZlqUotUHXWKK7+m/7ysg9QW+CNWc7FAgg==",
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.5",
+          "System.Formats.Cbor": "10.0.5"
+        }
+      },
+      "CarpaNet.OAuth": {
+        "type": "CentralTransitive",
+        "requested": "[1.0.2, )",
+        "resolved": "1.0.2",
+        "contentHash": "MQf22dudoh6uou77XzxF6SWpAceCGOfFvpSDeuq3YqlhpTcvdLa2BKiRmJD6V0aKPdHjhwh8D1HuASRnm1SV2A==",
+        "dependencies": {
+          "CarpaNet": "1.0.2",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.5",
+          "System.Formats.Cbor": "10.0.5"
         }
       },
       "DiffPlex": {

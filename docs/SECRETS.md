@@ -101,6 +101,18 @@ Backoff formula: `BaseBackoffDelay × 2^(failures - 1)`, capped at `MaxBackoffDe
 
 Encryption uses AES-256-GCM with 12-byte nonce and 16-byte authentication tag.
 
+### ATProto OAuth Session Envelopes
+
+`auth.atproto.session_encryption_keyring` is an instance-only secret used exclusively for durable CarpaNet OAuth sessions. Its value is strict JSON with one active AES-256 key and zero or more retired read keys:
+
+```json
+{"keys":[{"kid":"2026-07","k":"<base64url-encoded-32-byte-key>","status":"active"},{"kid":"2026-06","k":"<base64url-encoded-32-byte-key>","status":"retired"}]}
+```
+
+Key IDs are persisted as metadata; key material is never stored in the application database. The encrypted envelope contains the complete token set and private DPoP JWK. AES-GCM associated data binds the ciphertext to the tenant, user, provider, subject DID, normalized PDS URI, OAuth client signing-key ID, and envelope version, so copying a row across any of those boundaries fails authentication.
+
+To rotate, publish a new active key and mark the previous active key retired. A successfully restored session is rewritten under the active key. Keep each retired key available until no session row references its key ID; removing it earlier forces affected users to authenticate again. Unknown keys, malformed key rings, ciphertext tampering, or binding mismatches fail closed as reauthentication and must never be repaired by inventing session data or restoring plaintext credential columns.
+
 ### Rotation Section
 
 | Key | Default | Purpose |
@@ -149,6 +161,8 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 Environment variable format uses double-underscore separators for .NET keys, for example `S3Settings__Endpoint`. Storage also accepts raw `STORAGE_S3_*` variables for deployment compatibility. PostgreSQL bootstrap intentionally uses discrete `POSTGRESQL_*` values rather than a single URL-form connection string. SMTP secret-provider defaults use the user-facing `MAIL_SMTP_*` names; local Compose also exports older `SMTP_*` aliases for compatibility with development seeding.
 
 Compose Keycloak bootstrap consumes `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` only inside the one-shot `keycloak-init` container. Those credentials are not application runtime secrets and must not be stored in governance settings or copied into support artifacts. The init logs redact client secret values.
+
+The checked-in Keycloak realm exports never contain the confidential Blazor BFF client secret. Compose requires `KEYCLOAK_BLAZOR_CLIENT_SECRET` and fails closed when it is absent. Local Aspire generates a secret parameter when that deployment value is absent, persists it in the AppHost user-secrets store, and injects the same value into `keycloak-init`, the API, and the BFF without rendering it as ordinary resource configuration.
 
 External-Keycloak setup bootstrap accepts a one-time Keycloak admin or service-account username/password through the setup UI. Treat that credential as operator input for a single setup request, not as an ISLAMU-managed secret. ISLAMU must not save it to appsettings, environment variables, Infisical paths, database governance settings, logs, traces, screenshots, or support bundles. After a successful bootstrap, only the runtime Keycloak OIDC values and BFF client secrets are stored according to the normal authentication secret ownership model.
 

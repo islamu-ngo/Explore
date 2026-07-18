@@ -2,6 +2,7 @@
 // ABOUTME: Adds Infisical as configuration source and maps Infisical secret names to .NET config keys.
 
 using Explore.Blazor.Configuration;
+using Explore.Blazor.Services.Auth;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Extensions;
@@ -74,7 +75,7 @@ public static class ConfigurationExtensions
         configBuilder.AddInfisical(bootstrapConfig, source =>
         {
             source.Paths.Clear();
-            source.Paths.AddRange(["/keycloak", "/blazor"]);
+            source.Paths.AddRange(["/keycloak", "/blazor", "/atproto"]);
             source.ThrowOnFirstLoadFailure = false;
         });
 
@@ -98,6 +99,8 @@ public static class ConfigurationExtensions
         var rawGoogleClientId = config["GOOGLE_CLIENT_ID"] ?? config["Google:ClientId"];
         var rawGoogleClientSecret = config["GOOGLE_CLIENT_SECRET"] ?? config["Google:ClientSecret"];
         var rawApiUrl = config["API_ENDPOINT"] ?? config["ExploreApi:BaseUrl"];
+        var rawAtprotoOAuthClientPrivateJwks = config["ATPROTO_OAUTH_CLIENT_PRIVATE_JWKS"]
+            ?? config[AtprotoClientKeyProvider.ConfigurationKey];
         var hasAspireApiReference =
             !string.IsNullOrWhiteSpace(GetAspireApiReference(config, "https"))
             || !string.IsNullOrWhiteSpace(GetAspireApiReference(config, "http"));
@@ -178,6 +181,11 @@ public static class ConfigurationExtensions
         if (!hasAspireApiReference && !string.IsNullOrEmpty(rawApiUrl))
         {
             TrySet(mappedConfig, config, "ExploreApi:BaseUrl", rawApiUrl);
+        }
+
+        if (!string.IsNullOrWhiteSpace(rawAtprotoOAuthClientPrivateJwks))
+        {
+            mappedConfig[AtprotoClientKeyProvider.ConfigurationKey] = rawAtprotoOAuthClientPrivateJwks;
         }
 
         configBuilder.AddInMemoryCollection(

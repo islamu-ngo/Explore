@@ -16,6 +16,55 @@ public class UserAuthenticationTokenRepository : GenericRepository<UserAuthentic
         _dbContext = dbContext;
     }
 
+    public Task<UserAuthenticationToken?> GetAtprotoSessionForReadAsync(
+        Guid tenantId,
+        Guid userId,
+        string provider,
+        string subjectDid,
+        CancellationToken cancellationToken = default) =>
+        QueryAtprotoSession(tenantId, userId, provider, subjectDid)
+            .AsNoTracking()
+            .SingleOrDefaultAsync(cancellationToken);
+
+    public Task<UserAuthenticationToken?> GetAtprotoSessionForUpdateAsync(
+        Guid tenantId,
+        Guid userId,
+        string provider,
+        string subjectDid,
+        CancellationToken cancellationToken = default) =>
+        QueryAtprotoSession(tenantId, userId, provider, subjectDid)
+            .SingleOrDefaultAsync(cancellationToken);
+
+    public Task DeleteAtprotoSessionAsync(
+        Guid tenantId,
+        Guid userId,
+        string provider,
+        string subjectDid,
+        CancellationToken cancellationToken = default) =>
+        QueryAtprotoSession(tenantId, userId, provider, subjectDid)
+            .ExecuteDeleteAsync(cancellationToken);
+
+    public async Task<UserAuthenticationToken> CreateAtprotoSessionAsync(
+        UserAuthenticationToken session,
+        CancellationToken cancellationToken = default)
+    {
+        await _dbContext.UserAuthenticationTokens.AddAsync(session, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return session;
+    }
+
+    public async Task UpdateAtprotoSessionAsync(
+        UserAuthenticationToken session,
+        CancellationToken cancellationToken = default)
+    {
+        if (_dbContext.Entry(session).State == EntityState.Detached)
+        {
+            throw new InvalidOperationException("ATProto OAuth session update requires a tracked entity.");
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<UserAuthenticationToken?> GetByUserAndProvider(
         Guid userId,
         string provider,
@@ -62,4 +111,15 @@ public class UserAuthenticationTokenRepository : GenericRepository<UserAuthentic
             .Where(t => t.UserId == userId)
             .ToListAsync(cancellationToken);
     }
+
+    private IQueryable<UserAuthenticationToken> QueryAtprotoSession(
+        Guid tenantId,
+        Guid userId,
+        string provider,
+        string subjectDid) =>
+        _dbContext.UserAuthenticationTokens.Where(token =>
+            token.TenantId == tenantId
+            && token.UserId == userId
+            && token.Provider == provider
+            && token.SubjectDid == subjectDid);
 }

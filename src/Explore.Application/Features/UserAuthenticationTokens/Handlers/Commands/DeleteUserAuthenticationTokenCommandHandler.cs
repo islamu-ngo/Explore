@@ -1,5 +1,5 @@
-// ABOUTME: Handler for revoking/deleting a user authentication token.
-// ABOUTME: Fetches token by ID and delegates deletion.
+// ABOUTME: Idempotently revokes the current user's local authentication session.
+// ABOUTME: Uses the user-scoped repository lookup so absent and non-owned IDs are indistinguishable.
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
@@ -9,7 +9,7 @@ using MediatR;
 
 namespace Explore.Application.Features.UserAuthenticationTokens.Handlers.Commands;
 
-public class DeleteUserAuthenticationTokenCommandHandler : IRequestHandler<DeleteUserAuthenticationTokenCommand, bool>
+public class DeleteUserAuthenticationTokenCommandHandler : IRequestHandler<DeleteUserAuthenticationTokenCommand>
 {
     private readonly IUserAuthenticationTokenRepository _userAuthenticationTokenRepository;
     private readonly ICurrentUserService _currentUserService;
@@ -22,7 +22,7 @@ public class DeleteUserAuthenticationTokenCommandHandler : IRequestHandler<Delet
         _currentUserService = currentUserService;
     }
 
-    public async Task<bool> Handle(DeleteUserAuthenticationTokenCommand request, CancellationToken cancellationToken)
+    public async Task Handle(DeleteUserAuthenticationTokenCommand request, CancellationToken cancellationToken)
     {
         var currentUserId = _currentUserService.UserId
             ?? throw new AuthorizationException(ResourceKinds.User, AuthorizationActions.Users.Update);
@@ -33,10 +33,9 @@ public class DeleteUserAuthenticationTokenCommandHandler : IRequestHandler<Delet
             cancellationToken);
         if (token == null)
         {
-            return false;
+            return;
         }
 
         await _userAuthenticationTokenRepository.Delete(token);
-        return true;
     }
 }
