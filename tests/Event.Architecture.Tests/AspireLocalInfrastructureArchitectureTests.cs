@@ -55,6 +55,30 @@ public sealed class AspireLocalInfrastructureArchitectureTests
         await Assert.That(localDatabaseWiringIndex).IsGreaterThan(registrationIndex);
     }
 
+    [Test]
+    public async Task WebApplications_MustExposeStableHttpsEndpoints()
+    {
+        var appHost = await File.ReadAllTextAsync(Path.Combine(RepoRoot, "src", "Explore.AppHost", "AppHost.cs"));
+
+        await Assert.That(appHost).Contains(".WithHttpsEndpoint(port: 7039, name: \"https\")");
+        await Assert.That(appHost).Contains(".WithHttpsEndpoint(port: 7177, name: \"https\")");
+    }
+
+    [Test]
+    public async Task AppHost_MustUseOnlyNamedLocalProfiles()
+    {
+        var launchSettings = await File.ReadAllTextAsync(
+            Path.Combine(RepoRoot, "src", "Explore.AppHost", "Properties", "launchSettings.json"));
+        using var document = System.Text.Json.JsonDocument.Parse(launchSettings);
+        var profiles = document.RootElement.GetProperty("profiles");
+
+        await Assert.That(profiles.TryGetProperty("local-lite", out _)).IsTrue();
+        await Assert.That(profiles.TryGetProperty("local-core", out _)).IsTrue();
+        await Assert.That(profiles.TryGetProperty("local-default", out _)).IsTrue();
+        await Assert.That(profiles.TryGetProperty("local-full", out _)).IsTrue();
+        await Assert.That(profiles.TryGetProperty("https", out _)).IsFalse();
+    }
+
     private static string ResolveRepoRoot()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

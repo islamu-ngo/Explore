@@ -12,6 +12,10 @@ public interface IEventRepository : IGenericRepository<Event, Guid>
     Task<Event?> GetPublicEventWithDetailsByCodeAsync(string publicCode, CancellationToken cancellationToken);
     Task<Event?> GetScheduleGraphForUpdateAsync(Guid id, CancellationToken cancellationToken);
     Task<Event?> GetAuthorizationTargetByIdAsync(Guid id, CancellationToken cancellationToken);
+    Task<AtprotoEventPublicationEntityGraph?> GetAtprotoPublicationGraphAsync(
+        Guid tenantId,
+        Guid eventId,
+        CancellationToken cancellationToken);
     Task<List<Event>> GetEventsWithDetails();
     Task<List<Event>> GetMyEventsWithDetails(string userId);
     Task<IReadOnlyList<Event>> GetEventsByActorWithDetails(Guid actorId, CancellationToken cancellationToken = default);

@@ -1,237 +1,47 @@
-using System.Net;
-using System.Text.Json;
-using Event.Api.IntegrationTests.Fixtures;
-using TUnit.Assertions;
-using TUnit.Core;
+// ABOUTME: Focused HAL policy tests for read-only AT Protocol record discovery.
+// ABOUTME: Ensures navigation remains available without create, update, or delete affordances.
+
+using Explore.API.Hateoas;
+using Explore.API.Hateoas.Policies;
+using Explore.Application.DTOs.AtprotoRecord;
+using Explore.Application.Hateoas;
 
 namespace Event.Api.IntegrationTests.Features.Hateoas;
 
-/// <summary>
-/// HATEOAS-specific tests for AtprotoRecordController.
-/// Validates ATProto record links including DID references for federation support.
-/// </summary>
-[NotInParallel("ApiTestFixture")]
-[ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
-public class AtprotoRecordHateoasTests
+public sealed class AtprotoRecordHateoasTests
 {
-    private readonly ApiTestFixture _fixture;
-    private const string BaseUrl = "/api/atprotorecord";
-
-    public AtprotoRecordHateoasTests(ApiTestFixture fixture)
+    [Test]
+    public async Task DetailPolicy_EmitsOnlyReadNavigation()
     {
-        _fixture = fixture;
+        var links = new AtprotoRecordDetailLinkPolicy().GetLinks(new AtprotoRecordDto
+        {
+            Id = Guid.NewGuid(),
+            Did = "did:plc:read-only",
+            Collection = "community.lexicon.calendar.event",
+            RecordKey = "record-key"
+        }, user: null).ToList();
+
+        await Assert.That(links.Select(link => link.Rel))
+            .IsEquivalentTo([LinkRelations.Self, LinkRelations.Collection, "did"]);
+        await Assert.That(links.All(link => link.Method == "GET")).IsTrue();
     }
 
     [Test]
-    public async Task GetAll_ShouldIncludeHalStructure()
+    public async Task CollectionPolicy_EmitsNoMutationAffordance()
     {
-        // Act
-        var response = await _fixture.Client.GetAsync(BaseUrl);
-
-        // Assert
-        if (response.StatusCode != HttpStatusCode.OK)
-            return; // Endpoint requires authentication
-
-        var content = await response.Content.ReadAsStringAsync();
-        var json = JsonDocument.Parse(content);
-
-        // Verify HAL structure
-        await Assert.That(json.RootElement.TryGetProperty("_links", out _)).IsTrue();
-    }
-
-    [Test]
-    public async Task GetAll_ShouldIncludeSelfLink()
-    {
-        // Act
-        var response = await _fixture.Client.GetAsync(BaseUrl);
-
-        // Assert
-        if (response.StatusCode != HttpStatusCode.OK)
-            return; // Endpoint requires authentication
-
-        var content = await response.Content.ReadAsStringAsync();
-        var json = JsonDocument.Parse(content);
-
-        if (json.RootElement.TryGetProperty("_links", out var links))
+        var policy = new AtprotoRecordCollectionLinkPolicy();
+        var collectionLinks = policy.GetCollectionLinks(user: null).ToList();
+        var itemLinks = policy.GetItemLinks(new AtprotoRecordListDto
         {
-            await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
-            var href = selfLink.GetProperty("href").GetString();
-            await Assert.That(href).Contains("/api/atprotorecord");
-        }
-    }
+            Id = Guid.NewGuid(),
+            Did = "did:plc:read-only",
+            Collection = "community.lexicon.calendar.event",
+            RecordKey = "record-key"
+        }, user: null).ToList();
 
-    [Test]
-    public async Task GetAll_WithoutAuth_ShouldNotIncludeCreateLink()
-    {
-        // Arrange - No authentication
-        var request = new HttpRequestMessage(HttpMethod.Get, BaseUrl);
-
-        // Act
-        var response = await _fixture.Client.SendAsync(request);
-
-        // Assert
-        if (response.StatusCode != HttpStatusCode.OK)
-            return; // Endpoint requires authentication
-
-        var content = await response.Content.ReadAsStringAsync();
-        var json = JsonDocument.Parse(content);
-
-        if (json.RootElement.TryGetProperty("_links", out var links))
-        {
-            // Create link requires authentication
-            var hasCreateLink = links.TryGetProperty("create", out _);
-            await Assert.That(hasCreateLink).IsFalse();
-        }
-    }
-
-    [Test]
-    public async Task GetAll_ItemLinks_ShouldIncludeSelfLink()
-    {
-        // Act
-        var response = await _fixture.Client.GetAsync(BaseUrl);
-
-        // Assert
-        if (response.StatusCode != HttpStatusCode.OK)
-            return; // Endpoint requires authentication
-
-        var content = await response.Content.ReadAsStringAsync();
-        var json = JsonDocument.Parse(content);
-
-        if (json.RootElement.TryGetProperty("_embedded", out var embedded) &&
-            embedded.TryGetProperty("items", out var items) &&
-            items.GetArrayLength() > 0)
-        {
-            var firstItem = items[0];
-
-            if (firstItem.TryGetProperty("_links", out var itemLinks))
-            {
-                await Assert.That(itemLinks.TryGetProperty("self", out var selfLink)).IsTrue();
-                var href = selfLink.GetProperty("href").GetString();
-                await Assert.That(href).Contains("/api/atprotorecord/");
-            }
-        }
-    }
-
-    [Test]
-    public async Task GetAll_ItemLinks_ShouldIncludeDidLink()
-    {
-        // Act
-        var response = await _fixture.Client.GetAsync(BaseUrl);
-
-        // Assert
-        if (response.StatusCode != HttpStatusCode.OK)
-            return; // Endpoint requires authentication
-
-        var content = await response.Content.ReadAsStringAsync();
-        var json = JsonDocument.Parse(content);
-
-        if (json.RootElement.TryGetProperty("_embedded", out var embedded) &&
-            embedded.TryGetProperty("items", out var items) &&
-            items.GetArrayLength() > 0)
-        {
-            var firstItem = items[0];
-
-            if (firstItem.TryGetProperty("_links", out var itemLinks))
-            {
-                // ATProto record items should have DID link
-                if (itemLinks.TryGetProperty("did", out var didLink))
-                {
-                    var href = didLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/indexeddid/");
-                }
-            }
-        }
-    }
-
-    [Test]
-    public async Task GetById_Links_ShouldIncludeByUriLink()
-    {
-        // Arrange - First get list to find a record
-        var listResponse = await _fixture.Client.GetAsync(BaseUrl);
-        if (listResponse.StatusCode != HttpStatusCode.OK)
-            return; // Endpoint requires authentication
-
-        var listContent = await listResponse.Content.ReadAsStringAsync();
-        var listJson = JsonDocument.Parse(listContent);
-
-        if (!listJson.RootElement.TryGetProperty("_embedded", out var embedded) ||
-            !embedded.TryGetProperty("items", out var items) ||
-            items.GetArrayLength() == 0)
-        {
-            return; // No data to test with
-        }
-
-        var firstItem = items[0];
-        if (!TryGetId(firstItem, out var recordId))
-        {
-            return;
-        }
-
-        // Act - Get record by ID
-        var response = await _fixture.Client.GetAsync($"{BaseUrl}/{recordId}");
-
-        // Assert
-        if (response.StatusCode == HttpStatusCode.OK)
-        {
-            var content = await response.Content.ReadAsStringAsync();
-            var json = JsonDocument.Parse(content);
-
-            if (json.RootElement.TryGetProperty("_links", out var links))
-            {
-                // Detail view should have collection link
-                await Assert.That(links.TryGetProperty("collection", out _)).IsTrue();
-
-                // And DID link
-                if (links.TryGetProperty("did", out var didLink))
-                {
-                    var href = didLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/indexeddid/");
-                }
-
-                // May have by-uri link if URI is set
-                if (links.TryGetProperty("by-uri", out var byUriLink))
-                {
-                    var href = byUriLink.GetProperty("href").GetString();
-                    await Assert.That(href).Contains("/api/atprotorecord/by-uri");
-                }
-            }
-        }
-    }
-
-    [Test]
-    public async Task GetAll_SelfLink_ShouldHaveGetMethod()
-    {
-        // Act
-        var response = await _fixture.Client.GetAsync(BaseUrl);
-
-        // Assert
-        if (response.StatusCode != HttpStatusCode.OK)
-            return; // Endpoint requires authentication
-
-        var content = await response.Content.ReadAsStringAsync();
-        var json = JsonDocument.Parse(content);
-
-        if (json.RootElement.TryGetProperty("_links", out var links) &&
-            links.TryGetProperty("self", out var selfLink) &&
-            selfLink.TryGetProperty("method", out var method))
-        {
-            await Assert.That(method.GetString()).IsEqualTo("GET");
-        }
-    }
-
-    private static bool TryGetId(JsonElement item, out Guid id)
-    {
-        id = Guid.Empty;
-        if (item.TryGetProperty("data", out var data) && data.TryGetProperty("id", out var idProp))
-        {
-            id = idProp.GetGuid();
-            return true;
-        }
-        if (item.TryGetProperty("id", out idProp))
-        {
-            id = idProp.GetGuid();
-            return true;
-        }
-        return false;
+        await Assert.That(collectionLinks).IsEmpty();
+        await Assert.That(itemLinks.Select(link => link.Rel))
+            .IsEquivalentTo([LinkRelations.Self, "did"]);
+        await Assert.That(itemLinks.All(link => link.Method == "GET")).IsTrue();
     }
 }

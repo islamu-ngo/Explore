@@ -9,6 +9,27 @@ public sealed class KeycloakRealmOwnershipTests
 {
     private static readonly string RepoRoot = ResolveRepoRoot();
     private static readonly string[] ExpectedClientIds = ["islamu-event-blazor", "islamu-event-api"];
+    private static readonly string[] ExpectedProductionRedirectUris =
+    [
+        "http://localhost:7002/signin-oidc",
+        "http://admin.localhost:7002/signin-oidc",
+        "https://localhost:7177/signin-oidc",
+        "https://admin.localhost:7177/signin-oidc"
+    ];
+    private static readonly string[] ExpectedProductionWebOrigins =
+    [
+        "http://localhost:7002",
+        "http://admin.localhost:7002",
+        "https://localhost:7177",
+        "https://admin.localhost:7177"
+    ];
+    private static readonly string[] ExpectedProductionLogoutRedirectUris =
+    [
+        "http://localhost:7002/signout-callback-oidc",
+        "http://admin.localhost:7002/signout-callback-oidc",
+        "https://localhost:7177/signout-callback-oidc",
+        "https://admin.localhost:7177/signout-callback-oidc"
+    ];
     private static readonly string[] ReservedIdentifiers =
     [
         "islamu-event-control-plane",
@@ -39,6 +60,94 @@ public sealed class KeycloakRealmOwnershipTests
         var violations = CollectReservedIdentifierViolations(root);
         await Assert.That(violations).IsEmpty()
             .Because(string.Join('\n', violations));
+    }
+
+    [Test]
+    [Arguments("docker/keycloak/realm-export.json")]
+    [Arguments("docker/keycloak/ISLAMU-realm.test.json")]
+    public async Task EventRealmExportsMustUseHardenedRealmSecurityDefaults(string relativePath)
+    {
+        using var document = JsonDocument.Parse(
+            await File.ReadAllTextAsync(Path.Combine(RepoRoot, relativePath)));
+        var root = document.RootElement;
+
+        await Assert.That(root.GetProperty("sslRequired").GetString()).IsEqualTo("external");
+        await Assert.That(root.GetProperty("registrationAllowed").GetBoolean()).IsTrue();
+        await Assert.That(root.GetProperty("verifyEmail").GetBoolean()).IsTrue();
+        await Assert.That(root.GetProperty("passwordPolicy").GetString())
+            .IsEqualTo("length(12) and notUsername and notEmail and passwordHistory(5)");
+        await Assert.That(root.GetProperty("ssoSessionIdleTimeout").GetInt32()).IsEqualTo(1800);
+        await Assert.That(root.GetProperty("ssoSessionMaxLifespan").GetInt32()).IsEqualTo(36000);
+        await Assert.That(root.GetProperty("ssoSessionIdleTimeoutRememberMe").GetInt32()).IsEqualTo(2592000);
+        await Assert.That(root.GetProperty("ssoSessionMaxLifespanRememberMe").GetInt32()).IsEqualTo(7776000);
+        await Assert.That(root.GetProperty("offlineSessionIdleTimeout").GetInt32()).IsEqualTo(2592000);
+        await Assert.That(root.GetProperty("offlineSessionMaxLifespan").GetInt32()).IsEqualTo(7776000);
+        await Assert.That(root.GetProperty("offlineSessionMaxLifespanEnabled").GetBoolean()).IsTrue();
+    }
+
+    [Test]
+    public async Task ProductionRealmExportMustUseExactBffCallbacksAndNoEmbeddedClientSecret()
+    {
+        using var document = JsonDocument.Parse(
+            await File.ReadAllTextAsync(Path.Combine(RepoRoot, "docker/keycloak/realm-export.json")));
+        var blazorClient = document.RootElement.GetProperty("clients")
+            .EnumerateArray()
+            .Single(client => client.GetProperty("clientId").GetString() == "islamu-event-blazor");
+
+        var redirectUris = blazorClient.GetProperty("redirectUris")
+            .EnumerateArray()
+            .Select(value => value.GetString() ?? string.Empty)
+            .ToArray();
+        var webOrigins = blazorClient.GetProperty("webOrigins")
+            .EnumerateArray()
+            .Select(value => value.GetString() ?? string.Empty)
+            .ToArray();
+        var logoutRedirectUris = blazorClient.GetProperty("attributes")
+            .GetProperty("post.logout.redirect.uris")
+            .GetString()!
+            .Split("##", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        await Assert.That(blazorClient.TryGetProperty("secret", out _)).IsFalse();
+        await Assert.That(redirectUris).IsEquivalentTo(ExpectedProductionRedirectUris);
+        await Assert.That(webOrigins).IsEquivalentTo(ExpectedProductionWebOrigins);
+        await Assert.That(logoutRedirectUris).IsEquivalentTo(ExpectedProductionLogoutRedirectUris);
+        await Assert.That(redirectUris.Any(value => value.Contains('*', StringComparison.Ordinal))).IsFalse();
+        await Assert.That(webOrigins).DoesNotContain("+");
+        await Assert.That(logoutRedirectUris.Any(value => value.Contains('*', StringComparison.Ordinal))).IsFalse();
+    }
+
+    [Test]
+    public async Task KeycloakInitMustReconcileHardenedRealmAndClientSettingsWithoutStaticSecretFallback()
+    {
+        var script = await File.ReadAllTextAsync(
+            Path.Combine(RepoRoot, "docker/keycloak/keycloak-init.sh"));
+        var appHost = await File.ReadAllTextAsync(
+            Path.Combine(RepoRoot, "src/Explore.AppHost/AppHost.cs"));
+
+        await Assert.That(script).Contains("-s sslRequired=external");
+        await Assert.That(script).Contains("-s verifyEmail=true");
+        await Assert.That(script).Contains("-s 'passwordPolicy=length(12) and notUsername and notEmail and passwordHistory(5)'");
+        await Assert.That(script).Contains("-s ssoSessionIdleTimeout=1800");
+        await Assert.That(script).Contains("-s offlineSessionMaxLifespanEnabled=true");
+        await Assert.That(script).Contains("-s \"webOrigins=$BLAZOR_WEB_ORIGINS\"");
+        await Assert.That(script).Contains("attributes.\"pkce.code.challenge.method\"");
+        await Assert.That(script).Contains(
+            JsonSerializer.Serialize(ExpectedProductionRedirectUris)
+                .Replace("\"", "\\\"", StringComparison.Ordinal));
+        await Assert.That(script).Contains(
+            JsonSerializer.Serialize(ExpectedProductionWebOrigins)
+                .Replace("\"", "\\\"", StringComparison.Ordinal));
+        await Assert.That(script).Contains(string.Join("##", ExpectedProductionLogoutRedirectUris));
+        await Assert.That(script).DoesNotContain("attributes=$attributes");
+        await Assert.That(script).DoesNotContain("DEFAULT_LOCAL_BLAZOR_SECRET");
+        await Assert.That(script).DoesNotContain("KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET");
+        await Assert.That(script).DoesNotContain("webOrigins=[\"+\"]");
+        await Assert.That(script).DoesNotContain("/*");
+        await Assert.That(appHost).DoesNotContain("islamu-event-blazor-secret");
+        await Assert.That(appHost).Contains("new GenerateParameterDefault");
+        await Assert.That(appHost).Contains(".WithEnvironment(\"KEYCLOAK_BLAZOR_REDIRECT_URIS\"");
+        await Assert.That(appHost).Contains(".WithEnvironment(\"KEYCLOAK_BLAZOR_WEB_ORIGINS\"");
+        await Assert.That(appHost).Contains(".WithEnvironment(\"KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS\"");
     }
 
     [Test]

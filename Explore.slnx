@@ -13,6 +13,7 @@
     <Project Path="src/Explore.Domain/Explore.Domain.csproj" />
   </Folder>
   <Folder Name="/Infrastructure/">
+    <Project Path="src/Explore.Atproto.Transport/Explore.Atproto.Transport.csproj" />
     <Project Path="src/Explore.Infrastructure/Explore.Infrastructure.csproj" />
     <Project Path="src/Explore.Persistence/Explore.Persistence.csproj" />
     <Project Path="src/Explore.Secrets/Explore.Secrets.csproj" />

@@ -236,6 +236,88 @@ public class HierarchicalSettingsResolverTests : IDisposable
         await Assert.That(metadata!.Source).IsEqualTo(SettingSource.SystemDefault);
     }
 
+    [Test]
+    [Arguments(false, true, true, false)]
+    [Arguments(false, false, true, true)]
+    [Arguments(true, true, false, true)]
+    [Arguments(true, false, false, false)]
+    public async Task ResolveGroupAsync_AtprotoCapabilityHonorsInstanceLock(
+        bool instanceValue,
+        bool instanceLocked,
+        bool tenantValue,
+        bool expected)
+    {
+        var tenantId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        SetupSystemSettings(
+            new SystemSetting
+            {
+                SettingKey = GovernanceSettingKeys.Federation.AtprotoEventsEnabled,
+                Value = instanceValue ? "true" : "false",
+                ValueType = SettingValueType.Boolean,
+                IsLocked = instanceLocked
+            },
+            new SystemSetting
+            {
+                SettingKey = GovernanceSettingKeys.Federation.AtprotoEventValidationProfile,
+                Value = "\"platform\"",
+                ValueType = SettingValueType.String,
+                IsLocked = instanceLocked
+            });
+        SetupTenantSettings(tenantId, new TenantSetting
+        {
+            TenantId = tenantId,
+            Tenant = null!,
+            SettingKey = GovernanceSettingKeys.Federation.AtprotoEventsEnabled,
+            Value = tenantValue ? "true" : "false"
+        });
+
+        var group = await _resolver.ResolveGroupAsync<AtprotoFederationSettingGroup>(
+            new SettingContext(TenantId: tenantId));
+
+        await Assert.That(group.EventsEnabled).IsEqualTo(expected);
+    }
+
+    [Test]
+    [Arguments("platform", true, "community_lexicon", "platform")]
+    [Arguments("platform", false, "community_lexicon", "community_lexicon")]
+    [Arguments("community_lexicon", true, "platform", "community_lexicon")]
+    [Arguments("community_lexicon", false, "platform", "platform")]
+    public async Task ResolveGroupAsync_AtprotoProfileHonorsInstanceLock(
+        string instanceProfile,
+        bool instanceLocked,
+        string tenantProfile,
+        string expected)
+    {
+        var tenantId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        SetupSystemSettings(
+            new SystemSetting
+            {
+                SettingKey = GovernanceSettingKeys.Federation.AtprotoEventsEnabled,
+                Value = "true",
+                ValueType = SettingValueType.Boolean,
+                IsLocked = true
+            },
+            new SystemSetting
+            {
+                SettingKey = GovernanceSettingKeys.Federation.AtprotoEventValidationProfile,
+                Value = $"\"{instanceProfile}\"",
+                ValueType = SettingValueType.String,
+                IsLocked = instanceLocked
+            });
+        SetupTenantSettings(tenantId, new TenantSetting
+        {
+            TenantId = tenantId,
+            Tenant = null!,
+            SettingKey = GovernanceSettingKeys.Federation.AtprotoEventValidationProfile,
+            Value = $"\"{tenantProfile}\""
+        });
+
+        var group = await _resolver.ResolveGroupAsync<AtprotoFederationSettingGroup>(
+            new SettingContext(TenantId: tenantId));
+
+        await Assert.That(group.EventValidationProfile).IsEqualTo(expected);
+    }
+
     // --- Batch resolution ---
 
     [Test]

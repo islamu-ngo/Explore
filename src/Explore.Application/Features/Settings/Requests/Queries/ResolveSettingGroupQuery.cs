@@ -23,4 +23,6 @@ public class ResolveSettingGroupQuery : IRequest<SettingGroupResponseDto>
     /// User = full cascade; Tenant = instance+tenant; Instance = instance only.
     /// </summary>
     public required SettingScope Scope { get; init; }
+
+    public IReadOnlySet<string>? IncludedKeys { get; init; }
 }

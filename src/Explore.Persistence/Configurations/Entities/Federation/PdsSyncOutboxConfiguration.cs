@@ -1,5 +1,5 @@
-// ABOUTME: EF Core configuration for PdsSyncOutbox entity with optimized indexes for background worker queries.
-// ABOUTME: Configures UUID v7 generation, string constraints, and filtered indexes for efficient polling.
+// ABOUTME: Maps tenant-owned immutable PDS delivery intent with fenced leases and deterministic idempotency.
+// ABOUTME: Enforces source-version, dependency, supersession, and URI/CID settlement constraints.
 
 using Explore.Domain.Federation;
 using Microsoft.EntityFrameworkCore;
@@ -7,48 +7,97 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Explore.Persistence.Configurations.Entities.Federation;
 
-public class PdsSyncOutboxConfiguration : IEntityTypeConfiguration<PdsSyncOutbox>
+public sealed class PdsSyncOutboxConfiguration : IEntityTypeConfiguration<PdsSyncOutbox>
 {
     public void Configure(EntityTypeBuilder<PdsSyncOutbox> builder)
     {
-        // Primary key with UUID v7 for time-ordering
-        builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
+        builder.ToTable("pds_sync_outbox", table =>
+        {
+            table.HasCheckConstraint("ck_pds_sync_outbox_operation", "operation BETWEEN 1 AND 3");
+            table.HasCheckConstraint("ck_pds_sync_outbox_status", "status BETWEEN 1 AND 6");
+            table.HasCheckConstraint("ck_pds_sync_outbox_retry_count", "retry_count >= 0 AND max_retries > 0");
+            table.HasCheckConstraint("ck_pds_sync_outbox_lease_fence", "lease_fence >= 0");
+            table.HasCheckConstraint("ck_pds_sync_outbox_payload_hash", "payload_hash ~ '^[0-9a-f]{64}$'");
+            table.HasCheckConstraint(
+                "ck_pds_sync_outbox_payload_shape",
+                "(operation = 3 AND payload IS NULL) OR (operation IN (1, 2) AND payload IS NOT NULL)");
+            table.HasCheckConstraint(
+                "ck_pds_sync_outbox_lease_shape",
+                "(status = 2 AND lease_owner IS NOT NULL AND btrim(lease_owner) <> '' AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL) OR " +
+                "(status <> 2 AND lease_owner IS NULL AND lease_token IS NULL AND lease_expires_at IS NULL)");
+            table.HasCheckConstraint(
+                "ck_pds_sync_outbox_completion_shape",
+                "status <> 3 OR (processed_at IS NOT NULL AND settled_uri IS NOT NULL AND settled_cid IS NOT NULL)");
+            table.HasCheckConstraint(
+                "ck_pds_sync_outbox_supersession_shape",
+                "(status = 6 AND superseded_by_id IS NOT NULL AND superseded_at IS NOT NULL) OR " +
+                "(status <> 6 AND superseded_by_id IS NULL AND superseded_at IS NULL)");
+        });
 
-        // AT Protocol identifiers
-        builder.Property(e => e.Did).HasMaxLength(255).IsRequired();
-        builder.Property(e => e.Collection).HasMaxLength(255).IsRequired();
-        builder.Property(e => e.RecordKey).HasMaxLength(255).IsRequired();
+        builder.Property(value => value.Id).HasDefaultValueSql("uuidv7()");
+        builder.Property(value => value.Did).HasMaxLength(255).IsRequired();
+        builder.Property(value => value.Collection).HasMaxLength(255).IsRequired();
+        builder.Property(value => value.RecordKey).HasMaxLength(255).IsRequired();
+        builder.Property(value => value.Payload).HasColumnType("jsonb");
+        builder.Property(value => value.PayloadHash).HasMaxLength(64).IsRequired();
+        builder.Property(value => value.IdempotencyKey).HasMaxLength(255).IsRequired();
+        builder.Property(value => value.PdsHost).HasMaxLength(500).IsRequired();
+        builder.Property(value => value.SourceEntityType).HasMaxLength(100).IsRequired();
+        builder.Property(value => value.ExpectedCid).HasMaxLength(255);
+        builder.Property(value => value.LastError).HasMaxLength(500);
+        builder.Property(value => value.LeaseOwner).HasMaxLength(200);
+        builder.Property(value => value.SettledUri).HasMaxLength(500);
+        builder.Property(value => value.SettledCid).HasMaxLength(255);
+        builder.Property(value => value.MaxRetries).HasDefaultValue(10);
+        builder.Property(value => value.LeaseFence).IsConcurrencyToken();
 
-        // Operation and status (stored as integers)
-        builder.Property(e => e.Operation).IsRequired();
-        builder.Property(e => e.Status).IsRequired();
+        builder.HasOne(value => value.Tenant)
+            .WithMany()
+            .HasForeignKey(value => value.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(value => value.User)
+            .WithMany()
+            .HasForeignKey(value => value.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(value => value.TenantUser)
+            .WithMany()
+            .HasForeignKey(value => new { value.TenantId, value.UserId })
+            .HasPrincipalKey(value => new { value.TenantId, value.UserId })
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(value => value.AtprotoRecord)
+            .WithMany()
+            .HasForeignKey(value => value.AtprotoRecordId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(value => value.DependsOnAtprotoRecord)
+            .WithMany()
+            .HasForeignKey(value => value.DependsOnAtprotoRecordId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(value => value.SupersededBy)
+            .WithMany()
+            .HasForeignKey(value => value.SupersededById)
+            .OnDelete(DeleteBehavior.Restrict);
 
-        // Payload stored as JSONB for PostgreSQL efficiency
-        builder.Property(e => e.Payload).HasColumnType("jsonb");
-
-        // Optional fields
-        builder.Property(e => e.PdsHost).HasMaxLength(255);
-        builder.Property(e => e.LastError).HasMaxLength(2000);
-        builder.Property(e => e.SourceEntityType).HasMaxLength(100);
-
-        // Dead-letter: default 10 retries before quarantine
-        builder.Property(e => e.MaxRetries).HasDefaultValue(10);
-
-        // Primary index for background worker polling: pending items ordered by creation time
-        builder.HasIndex(e => new { e.Status, e.NextRetryAt, e.CreatedAt })
-            .HasDatabaseName("IX_PdsSyncOutbox_WorkerPoll");
-
-        // Index for DID-based queries (e.g., finding all pending syncs for an actor)
-        builder.HasIndex(e => e.Did)
-            .HasDatabaseName("IX_PdsSyncOutbox_Did");
-
-        // Index for source entity correlation (debugging and reconciliation)
-        builder.HasIndex(e => new { e.SourceEntityType, e.SourceEntityId })
-            .HasDatabaseName("IX_PdsSyncOutbox_SourceEntity");
-
-        // Composite unique constraint to prevent duplicate outbox entries
-        builder.HasIndex(e => new { e.Did, e.Collection, e.RecordKey, e.Operation, e.CreatedAt })
+        builder.HasIndex(value => new { value.TenantId, value.IdempotencyKey })
             .IsUnique()
-            .HasDatabaseName("IX_PdsSyncOutbox_Unique");
+            .HasDatabaseName("ux_pds_sync_outbox_idempotency");
+        builder.HasIndex(value => new
+        {
+            value.TenantId,
+            value.SourceEntityType,
+            value.SourceEntityId,
+            value.SourceVersion,
+            value.Operation
+        })
+            .IsUnique()
+            .HasDatabaseName("ux_pds_sync_outbox_source_version");
+        builder.HasIndex(value => new { value.Status, value.NextRetryAt, value.LeaseExpiresAt, value.CreatedAt })
+            .HasDatabaseName("ix_pds_sync_outbox_worker_poll");
+        builder.HasIndex(value => new { value.TenantId, value.UserId, value.Status })
+            .HasDatabaseName("ix_pds_sync_outbox_owner");
+        builder.HasIndex(value => new { value.Did, value.Collection, value.RecordKey })
+            .HasDatabaseName("ix_pds_sync_outbox_record_identity");
+        builder.HasIndex(value => value.DependsOnAtprotoRecordId)
+            .HasFilter("depends_on_atproto_record_id IS NOT NULL")
+            .HasDatabaseName("ix_pds_sync_outbox_dependency");
     }
 }

@@ -68,6 +68,7 @@ public sealed class DurableSideEffectBoundaryTests
             if (ReferencesEmailTransport(content))
             {
                 AddForbiddenMatches(violations, file, content, DirectSmtpSendPattern, "direct SMTP send");
+                violations.Add($"{GetRelativePath(repoRoot, file)} references an email transport contract; create durable intent instead.");
             }
 
             AddForbiddenMatches(violations, file, content, DirectBrokerOperationPattern, "direct broker operation");

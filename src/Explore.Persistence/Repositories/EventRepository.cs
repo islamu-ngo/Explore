@@ -64,6 +64,183 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
     }
 
+    public async Task<AtprotoEventPublicationEntityGraph?> GetAtprotoPublicationGraphAsync(
+        Guid tenantId,
+        Guid eventId,
+        CancellationToken cancellationToken)
+    {
+        if (tenantId == Guid.Empty || eventId == Guid.Empty)
+        {
+            return null;
+        }
+
+        Event? eventEntity = await TenantScoped(_dbContext.Events, tenantId)
+            .AsNoTrackingWithIdentityResolution()
+            .AsSplitQuery()
+            .IncludeStandardDetails()
+            .Include(e => e.BackgroundImage)
+            .Include(e => e.EventSeries)
+                .ThenInclude(series => series!.FeaturedImage)
+            .Include(e => e.EventSeries)
+                .ThenInclude(series => series!.VisibilityType)
+            .Include(e => e.EventSeries)
+                .ThenInclude(series => series!.Actor)
+                    .ThenInclude(actor => actor.Pii)
+            .Include(e => e.Actor)
+                .ThenInclude(actor => actor.Organization)
+                    .ThenInclude(organization => organization!.Pii)
+            .Include(e => e.Actor)
+                .ThenInclude(actor => actor.Group)
+                    .ThenInclude(group => group!.ProfilePicture)
+            .Include(e => e.Actor)
+                .ThenInclude(actor => actor.BannerPicture)
+            .Include(e => e.Actor)
+                .ThenInclude(actor => actor.BackgroundImage)
+            .FirstOrDefaultAsync(e => e.Id == eventId, cancellationToken);
+
+        if (eventEntity is null)
+        {
+            return null;
+        }
+
+        List<EventLocation> eventLocations = await TenantScoped(_dbContext.EventLocations, tenantId)
+            .AsNoTrackingWithIdentityResolution()
+            .AsSplitQuery()
+            .Include(placement => placement.Location)
+                .ThenInclude(location => location!.Pii)
+            .Include(placement => placement.Location)
+                .ThenInclude(location => location!.Rooms)
+            .Where(placement => placement.EventId == eventId)
+            .ToListAsync(cancellationToken);
+
+        List<EventSession> sessions = await TenantScoped(_dbContext.EventSessions, tenantId)
+            .AsNoTracking()
+            .Include(session => session.EventSessionKind)
+            .Include(session => session.EventSessionStatus)
+            .Include(session => session.RegistrationMode)
+            .Include(session => session.FeaturedImage)
+            .Include(session => session.IslamicAspect)
+            .Where(session => session.EventId == eventId)
+            .ToListAsync(cancellationToken);
+
+        List<EventDay> days = await TenantScoped(_dbContext.EventDays, tenantId)
+            .AsNoTracking()
+            .Include(day => day.BannerImage)
+            .Where(day => day.EventId == eventId)
+            .ToListAsync(cancellationToken);
+
+        List<EventSessionGroup> sessionGroups = await TenantScoped(_dbContext.EventSessionGroups, tenantId)
+            .AsNoTracking()
+            .Where(group => group.EventId == eventId)
+            .ToListAsync(cancellationToken);
+
+        List<EventSessionGroupSession> sessionGroupSessions = await TenantScoped(_dbContext.EventSessionGroupSessions, tenantId)
+            .AsNoTracking()
+            .Where(link => link.EventId == eventId)
+            .ToListAsync(cancellationToken);
+
+        List<EventAgendaItem> agendaItems = await TenantScoped(_dbContext.EventAgendaItems, tenantId)
+            .AsNoTracking()
+            .Include(item => item.Kind)
+            .Where(item => item.EventId == eventId)
+            .ToListAsync(cancellationToken);
+
+        Guid[] sessionIds = sessions.Select(session => session.Id).ToArray();
+        List<EventSessionAgendaItem> sessionAgendaItems = await TenantScoped(_dbContext.EventSessionAgendaItems, tenantId)
+            .AsNoTracking()
+            .Where(item => sessionIds.Contains(item.EventSessionId))
+            .ToListAsync(cancellationToken);
+
+        List<EventCategories> categories = await TenantScoped(_dbContext.EventCategories, tenantId)
+            .AsNoTracking()
+            .Include(link => link.Category)
+                .ThenInclude(category => category.Parent)
+            .Where(link => link.EventId == eventId)
+            .ToListAsync(cancellationToken);
+
+        List<EventTags> tags = await TenantScoped(_dbContext.EventTags, tenantId)
+            .AsNoTracking()
+            .Include(link => link.Tag)
+            .Where(link => link.EventId == eventId)
+            .ToListAsync(cancellationToken);
+
+        List<EventSessionCategory> sessionCategories = await TenantScoped(_dbContext.EventSessionCategories, tenantId)
+            .AsNoTracking()
+            .Include(link => link.Category)
+                .ThenInclude(category => category.Parent)
+            .Where(link => sessionIds.Contains(link.EventSessionId))
+            .ToListAsync(cancellationToken);
+
+        List<EventSessionTag> sessionTags = await TenantScoped(_dbContext.EventSessionTags, tenantId)
+            .AsNoTracking()
+            .Include(link => link.Tag)
+            .Where(link => sessionIds.Contains(link.EventSessionId))
+            .ToListAsync(cancellationToken);
+
+        List<EventSessionLanguage> sessionLanguages = await TenantScoped(_dbContext.EventSessionLanguages, tenantId)
+            .AsNoTracking()
+            .Include(link => link.Language)
+            .Where(link => sessionIds.Contains(link.EventSessionId))
+            .ToListAsync(cancellationToken);
+
+        List<EventSessionSpeaker> sessionSpeakers = await TenantScoped(_dbContext.EventSessionSpeakers, tenantId)
+            .AsNoTrackingWithIdentityResolution()
+            .Include(link => link.Actor)
+                .ThenInclude(actor => actor.Pii)
+            .Include(link => link.Actor)
+                .ThenInclude(actor => actor.ProfilePicture)
+            .Where(link => sessionIds.Contains(link.EventSessionId))
+            .ToListAsync(cancellationToken);
+
+        List<EventCustomPropertyDefinition> customPropertyDefinitions = await TenantScoped(
+                _dbContext.EventCustomPropertyDefinitions,
+                tenantId)
+            .AsNoTrackingWithIdentityResolution()
+            .AsSplitQuery()
+            .Include(definition => definition.Options)
+            .Include(definition => definition.Values)
+                .ThenInclude(value => value.Option)
+            .Where(definition => definition.EventId == eventId)
+            .ToListAsync(cancellationToken);
+
+        List<EventSessionCustomPropertyDefinition> sessionCustomPropertyDefinitions = await TenantScoped(
+                _dbContext.EventSessionCustomPropertyDefinitions,
+                tenantId)
+            .AsNoTrackingWithIdentityResolution()
+            .AsSplitQuery()
+            .Include(definition => definition.Options)
+            .Include(definition => definition.Values)
+                .ThenInclude(value => value.Option)
+            .Where(definition => sessionIds.Contains(definition.EventSessionId))
+            .ToListAsync(cancellationToken);
+
+        return new(
+            eventEntity,
+            eventLocations,
+            sessions,
+            days,
+            sessionGroups,
+            sessionGroupSessions,
+            agendaItems,
+            sessionAgendaItems,
+            categories,
+            tags,
+            sessionCategories,
+            sessionTags,
+            sessionLanguages,
+            sessionSpeakers,
+            customPropertyDefinitions,
+            sessionCustomPropertyDefinitions);
+    }
+
+    private static IQueryable<TEntity> TenantScoped<TEntity>(
+        DbSet<TEntity> set,
+        Guid tenantId)
+        where TEntity : class, Explore.Domain.Interfaces.ITenantEntity
+        => set
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .Where(entity => entity.TenantId == tenantId);
+
     public async Task<Event?> GetScheduleGraphForUpdateAsync(Guid id, CancellationToken cancellationToken)
     {
         return await _dbContext.Events

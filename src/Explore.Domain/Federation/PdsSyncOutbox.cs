@@ -1,132 +1,67 @@
-// ABOUTME: PDS synchronization outbox entity for reliable AT Protocol record publishing.
-// ABOUTME: Implements transactional outbox pattern for eventual consistency with remote PDS.
+// ABOUTME: Stores immutable tenant-owned AT Protocol delivery intent after the local lifecycle transaction commits.
+// ABOUTME: Carries fenced lease, supersession, dependency, and URI/CID settlement state for safe PDS retries.
+
+using Explore.Domain.Interfaces;
 
 namespace Explore.Domain.Federation;
 
-/// <summary>
-/// Outbox entry for PDS synchronization. Created atomically with domain entity changes
-/// and processed asynchronously by background worker for AT Protocol publishing.
-/// </summary>
-public class PdsSyncOutbox
+public sealed class PdsSyncOutbox : ITenantEntity
 {
-    /// <summary>
-    /// Unique identifier (UUID v7 for time-ordering).
-    /// </summary>
     public Guid Id { get; set; }
-
-    /// <summary>
-    /// Actor DID that owns the record (e.g., "did:plc:xxx").
-    /// </summary>
-    public required string Did { get; set; }
-
-    /// <summary>
-    /// AT Protocol collection NSID (e.g., "app.islamu.event").
-    /// </summary>
-    public required string Collection { get; set; }
-
-    /// <summary>
-    /// Record key within the collection (TID format).
-    /// </summary>
-    public required string RecordKey { get; set; }
-
-    /// <summary>
-    /// Operation type: create, update, or delete.
-    /// </summary>
-    public PdsSyncOperation Operation { get; set; }
-
-    /// <summary>
-    /// JSON-serialized AT Protocol record payload. Null for delete operations.
-    /// </summary>
-    public string? Payload { get; set; }
-
-    /// <summary>
-    /// Target PDS host URL. Null means use Islamu-hosted PDS.
-    /// </summary>
-    public string? PdsHost { get; set; }
-
-    /// <summary>
-    /// Current processing status.
-    /// </summary>
+    public Guid TenantId { get; set; }
+    public Guid UserId { get; init; }
+    public required string Did { get; init; }
+    public required string Collection { get; init; }
+    public required string RecordKey { get; init; }
+    public PdsSyncOperation Operation { get; init; }
+    public string? Payload { get; init; }
+    public required string PayloadHash { get; init; }
+    public required string IdempotencyKey { get; init; }
+    public required string PdsHost { get; init; }
+    public required string SourceEntityType { get; init; }
+    public Guid SourceEntityId { get; init; }
+    public Guid SourceVersion { get; init; }
+    public Guid? AtprotoRecordId { get; set; }
+    public Guid? DependsOnAtprotoRecordId { get; init; }
+    public string? ExpectedCid { get; init; }
     public PdsSyncStatus Status { get; set; }
-
-    /// <summary>
-    /// When the outbox entry was created.
-    /// </summary>
-    public DateTime CreatedAt { get; set; }
-
-    /// <summary>
-    /// When the entry was successfully processed. Null if pending or failed.
-    /// </summary>
+    public DateTime CreatedAt { get; init; }
     public DateTime? ProcessedAt { get; set; }
-
-    /// <summary>
-    /// Number of failed sync attempts.
-    /// </summary>
     public int RetryCount { get; set; }
-
-    /// <summary>
-    /// Error message from the last failed attempt.
-    /// </summary>
     public string? LastError { get; set; }
-
-    /// <summary>
-    /// Next retry timestamp for exponential backoff. Null if not scheduled.
-    /// </summary>
     public DateTime? NextRetryAt { get; set; }
-
-    /// <summary>
-    /// Source entity type (e.g., "Event", "EventSession") for debugging.
-    /// </summary>
-    public string? SourceEntityType { get; set; }
-
-    /// <summary>
-    /// Source entity ID for correlation and debugging.
-    /// </summary>
-    public Guid? SourceEntityId { get; set; }
-
-    /// <summary>
-    /// Maximum number of retry attempts before dead-lettering. Worker should stop retrying when RetryCount >= MaxRetries.
-    /// </summary>
-    public int MaxRetries { get; set; }
-
-    /// <summary>
-    /// When the entry was moved to dead-letter state after exhausting retries. Null if still active.
-    /// </summary>
+    public int MaxRetries { get; init; }
     public DateTime? DeadLetteredAt { get; set; }
+    public string? LeaseOwner { get; set; }
+    public Guid? LeaseToken { get; set; }
+    public DateTime? LeaseExpiresAt { get; set; }
+    public long LeaseFence { get; set; }
+    public Guid? SupersededById { get; set; }
+    public DateTime? SupersededAt { get; set; }
+    public string? SettledUri { get; set; }
+    public string? SettledCid { get; set; }
+
+    public Tenant? Tenant { get; set; }
+    public User? User { get; set; }
+    public TenantUser? TenantUser { get; set; }
+    public AtprotoRecord? AtprotoRecord { get; set; }
+    public AtprotoRecord? DependsOnAtprotoRecord { get; set; }
+    public PdsSyncOutbox? SupersededBy { get; set; }
 }
 
-/// <summary>
-/// PDS synchronization operation types.
-/// </summary>
 public enum PdsSyncOperation
 {
-    /// <summary>Create a new record in PDS.</summary>
     Create = 1,
-
-    /// <summary>Update an existing record in PDS.</summary>
     Update = 2,
-
-    /// <summary>Delete a record from PDS.</summary>
     Delete = 3
 }
 
-/// <summary>
-/// PDS synchronization processing status.
-/// </summary>
 public enum PdsSyncStatus
 {
-    /// <summary>Awaiting processing by background worker.</summary>
     Pending = 1,
-
-    /// <summary>Currently being processed.</summary>
     Processing = 2,
-
-    /// <summary>Successfully synchronized with PDS.</summary>
     Completed = 3,
-
-    /// <summary>Failed after maximum retry attempts.</summary>
     Failed = 4,
-
-    /// <summary>Quarantined after exhausting all retries.</summary>
-    DeadLettered = 5
+    DeadLettered = 5,
+    Superseded = 6
 }

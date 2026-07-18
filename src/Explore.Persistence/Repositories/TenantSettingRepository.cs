@@ -83,13 +83,33 @@ public class TenantSettingRepository : ITenantSettingRepository
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<List<TenantSetting>> GetAllForTenant(Guid tenantId)
+    public async Task<List<TenantSetting>> GetAllForTenant(
+        Guid tenantId,
+        CancellationToken cancellationToken = default)
     {
         return await _dbContext.TenantSettingOverrides
             .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .AsNoTracking()
             .Where(s => s.TenantId == tenantId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<TenantSetting>> GetByTenantAndKeys(
+        Guid tenantId,
+        IReadOnlyCollection<string> keys,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(keys);
+        if (keys.Count == 0)
+        {
+            return [];
+        }
+
+        return await _dbContext.TenantSettingOverrides
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .Where(setting => setting.TenantId == tenantId && keys.Contains(setting.SettingKey))
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<bool> RemoveOverrideAsync(

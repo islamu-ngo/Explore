@@ -11,6 +11,9 @@ public static class TenantFilterBypassReasons
     public const string UserTenantMembershipEnumeration =
         "Repository enumerates all tenant memberships for one global user using an explicit user predicate.";
 
+    public const string GlobalLocationPrivacyErasure =
+        "Global location privacy erasure enumerates only Private Homes owned by one exact global user across tenants.";
+
     public const string UserExternalLoginAuthentication =
         "External-login authentication must locate a provider subject before tenant binding.";
 
@@ -52,6 +55,15 @@ public static class TenantFilterBypassReasons
 
     public const string IntegrationSyncWorkerCrossTenantQueue =
         "Integration sync worker polls and updates durable integration outbox rows across tenants using explicit id/status predicates.";
+
+    public const string AtprotoPdsWorkerCrossTenantQueue =
+        "AT Protocol PDS worker polls and settles tenant-owned outbox rows across tenants using explicit id/status/fence predicates.";
+
+    public const string AtprotoTenantOperation =
+        "AT Protocol tenant operation bypasses ambient filtering only after applying an exact tenant predicate.";
+
+    public const string AtprotoJetstreamGlobalMaterialization =
+        "The single fenced Jetstream consumer materializes global records and explicit tenant presentation rows atomically.";
 
     public const string EmailDispatchTenantOperation =
         "Email dispatch tenant operation bypasses ambient context only after applying an explicit tenant predicate.";

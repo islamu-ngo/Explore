@@ -3,6 +3,7 @@
 
 using Explore.Domain;
 using Explore.Domain.Ai;
+using Explore.Domain.Federation;
 using Explore.Domain.Modules;
 using Explore.Domain.Settings.Documents;
 using Explore.Domain.Views;
@@ -123,6 +124,15 @@ public partial class ExploreDbContext
         modelBuilder.Entity<IntegrationSyncOutbox>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<AtprotoRecordTenantPresentation>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<AtprotoOutboundRecordOwnership>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<PdsSyncOutbox>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
         modelBuilder.Entity<EmailDispatchAttempt>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);

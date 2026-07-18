@@ -248,6 +248,10 @@ public partial class ExploreDbContext
     public DbSet<IndexedDid> IndexedDids { get; set; }
     public DbSet<SyncState> SyncStates { get; set; }
     public DbSet<AtprotoRecord> AtprotoRecords { get; set; }
+    public DbSet<AtprotoRecordTenantPresentation> AtprotoRecordTenantPresentations { get; set; }
+    public DbSet<AtprotoOutboundRecordOwnership> AtprotoOutboundRecordOwnerships { get; set; }
+    public DbSet<AtprotoJetstreamConsumerState> AtprotoJetstreamConsumerStates { get; set; }
+    public DbSet<AtprotoJetstreamQuarantine> AtprotoJetstreamQuarantines { get; set; }
 
     // ===== PDS Synchronization (Outbox Pattern) =====
     public DbSet<PdsSyncOutbox> PdsSyncOutbox { get; set; }

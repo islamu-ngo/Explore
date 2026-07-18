@@ -34,7 +34,14 @@ public interface ITenantSettingRepository
     /// <summary>
     /// Gets all overrides for a tenant.
     /// </summary>
-    Task<List<TenantSetting>> GetAllForTenant(Guid tenantId);
+    Task<List<TenantSetting>> GetAllForTenant(
+        Guid tenantId,
+        CancellationToken cancellationToken = default);
+
+    Task<List<TenantSetting>> GetByTenantAndKeys(
+        Guid tenantId,
+        IReadOnlyCollection<string> keys,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes a tenant's override for a specific setting key.

@@ -21,7 +21,7 @@ public static class EventPublishedOutboxMessageFactory
             EventId = @event.Id,
             EventTitle = @event.Title,
             SourceActorId = @event.ActorId,
-            StartDate = @event.FirstSessionStartUtc!.Value,
+            StartDate = @event.FirstSessionStartUtc ?? publishedAt,
             EndDate = @event.LastSessionStartUtc,
             PublishedAt = publishedAt
         };

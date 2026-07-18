@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <CarpaNet_LexiconAutoResolve>false</CarpaNet_LexiconAutoResolve>
   </PropertyGroup>
 
   <!-- Allow API and test projects to access internal startup-only methods (e.g., GetSecretForLogging) -->
@@ -20,6 +21,9 @@
     <PackageReference Include="AWSSDK.S3" />
     <PackageReference Include="Azure.AI.OpenAI" />
     <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="CarpaNet" />
+    <PackageReference Include="CarpaNet.Jetstream" />
+    <PackageReference Include="CarpaNet.OAuth" />
     <PackageReference Include="Cerbos.Sdk" />
     <PackageReference Include="Google.Protobuf" />
     <PackageReference Include="Grpc.Net.Client" />
@@ -39,7 +43,19 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Explore.Atproto.Transport\Explore.Atproto.Transport.csproj" />
     <ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <LexiconFiles Include="../../schemas/lexicons/com.atproto.server.getSession.json" />
+    <LexiconFiles Include="../../schemas/lexicons/com.atproto.repo.strongRef.json" />
+    <LexiconFiles Include="../../schemas/lexicons/community.lexicon.location.address.json" />
+    <LexiconFiles Include="../../schemas/lexicons/community.lexicon.location.fsq.json" />
+    <LexiconFiles Include="../../schemas/lexicons/community.lexicon.location.geo.json" />
+    <LexiconFiles Include="../../schemas/lexicons/community.lexicon.location.hthree.json" />
+    <LexiconFiles Include="../../schemas/lexicons/lexicon-community-calendar-events.json" />
+    <LexiconFiles Include="../../schemas/lexicons/lexicon-community-calendar-rsvp.json" />
   </ItemGroup>
 
   <ItemGroup>

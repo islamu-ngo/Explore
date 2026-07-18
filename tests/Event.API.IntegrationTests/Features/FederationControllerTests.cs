@@ -99,21 +99,21 @@ public class FederationControllerTests
     #region AtprotoRecord Controller
 
     [Test]
-    public async Task AtprotoRecord_GetAll_ShouldReturnUnauthorized()
+    public async Task AtprotoRecord_GetAll_WhenAnonymous_ShouldReturnOk()
     {
         var response = await _fixture.Client.GetAsync("/api/atprotorecord");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
     [Test]
-    public async Task AtprotoRecord_GetById_WithRandomId_ShouldNotReturnServerError()
+    public async Task AtprotoRecord_GetById_WithRandomId_WhenAnonymous_ShouldReturnNotFound()
     {
         var response = await _fixture.Client.GetAsync($"/api/atprotorecord/{Guid.NewGuid()}");
-        await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     [Test]
-    public async Task AtprotoRecord_Create_WithoutAuth_ShouldReturnUnauthorized()
+    public async Task AtprotoRecord_Post_WhenMutationRouteIsAbsent_ShouldReturnMethodNotAllowed()
     {
         var response = await _fixture.Client.PostAsJsonAsync("/api/atprotorecord", new
         {
@@ -121,14 +121,14 @@ public class FederationControllerTests
             Collection = "app.bsky.feed.post",
             RecordKey = "test-key"
         });
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
     }
 
     [Test]
-    public async Task AtprotoRecord_Delete_WithoutAuth_ShouldReturnUnauthorized()
+    public async Task AtprotoRecord_Delete_WhenMutationRouteIsAbsent_ShouldReturnMethodNotAllowed()
     {
         var response = await _fixture.Client.DeleteAsync($"/api/atprotorecord/{Guid.NewGuid()}");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
     }
 
     #endregion

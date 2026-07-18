@@ -272,7 +272,6 @@ builder.Services.AddOpenApi("islamu-event", options =>
 // Register PDS sync background worker for AT Protocol federation
 if (!isOpenApiGeneration)
 {
-    builder.Services.AddHostedService<PdsSyncWorker>();
 }
 
 // Register generic outbox processor for reliable side-effect delivery

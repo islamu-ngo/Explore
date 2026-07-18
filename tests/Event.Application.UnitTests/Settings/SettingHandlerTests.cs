@@ -19,6 +19,7 @@ using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Settings;
+using Explore.Domain.Settings.Definitions;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -88,6 +89,44 @@ public class SettingHandlerTests
 
         await Assert.That(result.Category).IsEqualTo("EventList");
         await Assert.That(result.Settings.Count).IsGreaterThanOrEqualTo(12);
+    }
+
+    [Test]
+    public async Task ResolveGroup_WithIncludedKeys_ReturnsOnlyAllowlistedDefinitions()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        _resolver.ResolveBatchAsync(
+                Arg.Any<IEnumerable<string>>(),
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo => callInfo.Arg<IEnumerable<string>>()
+                .Select(key => SettingRegistry.Get(key)!)
+                .Select(definition => new ResolvedSetting
+                {
+                    Key = definition.Key,
+                    Value = definition.DefaultValue,
+                    ValueType = definition.ValueType,
+                    Source = SettingSource.SystemDefault,
+                    Description = definition.Description,
+                    Category = definition.Category
+                })
+                .ToList());
+        var handler = CreateResolveHandler();
+        var query = new ResolveSettingGroupQuery
+        {
+            Category = AtprotoFederationSettingDefinitions.Category,
+            Scope = SettingScope.Instance,
+            IncludedKeys = AtprotoFederationSettingDefinitions.AdministratorKeys.ToHashSet(StringComparer.Ordinal)
+        };
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        await Assert.That(result.Settings.Select(setting => setting.Key).ToHashSet(StringComparer.Ordinal)
+                .SetEquals(AtprotoFederationSettingDefinitions.AdministratorKeys))
+            .IsTrue();
+        await Assert.That(result.Settings.Any(setting =>
+                setting.Key == GovernanceSettingKeys.Federation.AtprotoPublishMyEvents))
+            .IsFalse();
     }
 
     [Test]

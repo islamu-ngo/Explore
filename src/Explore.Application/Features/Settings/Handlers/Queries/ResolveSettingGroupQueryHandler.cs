@@ -50,6 +50,13 @@ public class ResolveSettingGroupQueryHandler
             };
         }
 
+        if (request.IncludedKeys is not null)
+        {
+            definitions = definitions
+                .Where(definition => request.IncludedKeys.Contains(definition.Key))
+                .ToList();
+        }
+
         Guid? resolvedUserId = await SettingCommandHelper.ResolveCurrentUserIdAsync(
             _adminContext, _currentUserService, cancellationToken);
 
@@ -79,6 +86,7 @@ public class ResolveSettingGroupQueryHandler
                 SettingValueTypeName = NormalizedLookupMetadata.SettingValueType((int)setting.ValueType).Name,
                 Source = setting.Source,
                 IsLocked = setting.IsLocked,
+                IsLockable = definition.IsLockable,
                 CanEdit = canEdit,
                 Reason = reason,
                 Description = setting.Description ?? definition.Description,

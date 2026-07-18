@@ -41,6 +41,7 @@ using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.OrganizationReview;
+using Explore.Application.DTOs.Settings;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.SupportAccess;
 using Explore.Application.DTOs.Tag;
@@ -250,6 +251,9 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<InstanceStorageSettingsDto>, InstanceStorageSettingsLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<InstanceStorageSettingsDto>, InstanceStorageSettingsCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto>, InstanceStorageSettingsResourceAssembler>();
+        services.AddScoped<ILinkPolicy<SettingGroupResponseDto>, AtprotoInstanceSettingGroupLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<SettingGroupResponseDto>, AtprotoInstanceSettingGroupCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<SettingGroupResponseDto, SettingGroupResponseDto>, AtprotoInstanceSettingGroupResourceAssembler>();
         services.AddScoped<ILinkPolicy<TenantStorageSettingsDto>, TenantStorageSettingsLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<TenantStorageSettingsDto>, TenantStorageSettingsCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<TenantStorageSettingsDto, TenantStorageSettingsDto>, TenantStorageSettingsResourceAssembler>();

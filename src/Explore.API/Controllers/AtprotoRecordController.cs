@@ -1,14 +1,13 @@
-// ABOUTME: API controller for ATProto record management and federation operations.
-// ABOUTME: Handles creation, updates, and deletion of ATProto records for federation support.
+// ABOUTME: Public read-only API for discovering globally indexed AT Protocol records.
+// ABOUTME: Returns public AT identity metadata as HAL without exposing mutation authority.
 
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.AtprotoRecord;
-using Explore.Application.Features.AtprotoRecords.Requests.Commands;
 using Explore.Application.Features.AtprotoRecords.Requests.Queries;
-using Explore.Application.Responses;
+using Explore.Application.Hateoas;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,87 +18,58 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
-[EndpointClassification(EndpointClass.Authenticated)]
+[EndpointClassification(EndpointClass.Public)]
+[Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class AtprotoRecordController : ControllerBase
 {
-    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
-        "atprotoRecord",
-        "AT Protocol record validation failed",
-        "AT Protocol record update failed.");
+    private static readonly ApiNotFoundProblemDescriptor NotFoundProblem = new(
+        "AT Protocol record not found",
+        "AT Protocol record not found.");
 
     private readonly IMediator _mediator;
-    private readonly ILogger<AtprotoRecordController> _logger;
+    private readonly IResourceAssembler<AtprotoRecordDto, AtprotoRecordListDto> _resourceAssembler;
 
     public AtprotoRecordController(
         IMediator mediator,
-        ILogger<AtprotoRecordController> logger)
+        IResourceAssembler<AtprotoRecordDto, AtprotoRecordListDto> resourceAssembler)
     {
         _mediator = mediator;
-        _logger = logger;
+        _resourceAssembler = resourceAssembler;
     }
 
     // GET: api/atprotoRecord
     [HttpGet(Name = RouteNames.GetAtprotoRecordEntries)]
-    [Authorize]
+    [AllowAnonymous]
     [OutputCache(PolicyName = "ListData")]
-    public async Task<ActionResult<List<AtprotoRecordListDto>>> GetAll(CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(HalCollectionResource<AtprotoRecordListDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<HalCollectionResource<AtprotoRecordListDto>>> GetAll(
+        CancellationToken cancellationToken = default)
     {
         var atprotoRecords = await _mediator.Send(new GetAtprotoRecordListRequest(), cancellationToken);
-        return Ok(atprotoRecords);
+        var resource = await _resourceAssembler.ToCollectionResource(
+            atprotoRecords,
+            RouteNames.GetAtprotoRecordEntries,
+            HttpContext);
+        return Ok(resource);
     }
 
     // GET: api/atprotoRecord/{id}
     [HttpGet("{id}", Name = RouteNames.GetAtprotoRecordEntryById)]
-    [Authorize]
+    [AllowAnonymous]
     [OutputCache(PolicyName = "DetailData")]
-    public async Task<ActionResult<AtprotoRecordDto>> GetById(Guid id, CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(HalResource<AtprotoRecordDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<AtprotoRecordDto>>> GetById(
+        Guid id,
+        CancellationToken cancellationToken = default)
     {
         var atprotoRecord = await _mediator.Send(new GetAtprotoRecordDetailsRequest { Id = id }, cancellationToken);
-
-        return Ok(atprotoRecord);
-    }
-
-    // POST: api/atprotoRecord
-    [HttpPost(Name = RouteNames.CreateAtprotoRecordEntry)]
-    [Authorize]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateAtprotoRecordDto dto, CancellationToken cancellationToken = default)
-    {
-        var command = new CreateAtprotoRecordCommand { AtprotoRecordDto = dto };
-        var response = await _mediator.Send(command, cancellationToken);
-        return Ok(response);
-    }
-
-    // PUT: api/atprotoRecord/{id}
-    [HttpPut("{id}", Name = RouteNames.UpdateAtprotoRecordEntry)]
-    [Authorize]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateAtprotoRecordDto dto, CancellationToken cancellationToken = default)
-    {
-        if (id != dto.Id)
+        if (atprotoRecord is null)
         {
-            return this.ToValidationProblem(UpdateValidationProblem, "AT Protocol record ID mismatch.");
+            return this.ToNotFoundProblem(NotFoundProblem);
         }
 
-        var command = new UpdateAtprotoRecordCommand { AtprotoRecordDto = dto };
-        var response = await _mediator.Send(command, cancellationToken);
-
-        if (!response.Success)
-        {
-            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
-        }
-
-        return Ok(response);
-    }
-
-    // DELETE: api/atprotoRecord/{id}
-    [HttpDelete("{id}", Name = RouteNames.DeleteAtprotoRecordEntry)]
-    [Authorize]
-    public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
-    {
-        var command = new DeleteAtprotoRecordCommand { Id = id };
-        await _mediator.Send(command, cancellationToken);
-
-        return NoContent();
+        var resource = await _resourceAssembler.ToResource(atprotoRecord, HttpContext);
+        return Ok(resource);
     }
 }

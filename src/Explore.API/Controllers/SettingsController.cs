@@ -1,18 +1,23 @@
-// ABOUTME: Unified REST controller for hierarchical settings management at user and tenant scopes.
-// ABOUTME: Exposes generic CRUD + lock/unlock endpoints consumed by any settings UI (EventList is first consumer).
+// ABOUTME: Unified REST controller for hierarchical settings management at user, tenant, and instance scopes.
+// ABOUTME: Exposes generic CRUD, lock, and unlock endpoints with instance-admin HAL affordances.
 
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
+using Explore.API.Extensions;
 using Explore.API.Hateoas;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.DTOs.Settings;
 using Explore.Application.Features.Settings.Requests.Commands;
 using Explore.Application.Features.Settings.Requests.Queries;
+using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using Explore.Domain.Settings;
+using Explore.Domain.Settings.Definitions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Explore.API.Controllers;
 
@@ -28,11 +33,22 @@ public class SettingsController : ControllerBase
         "Settings validation failed",
         "Settings update failed.");
 
-    private readonly IMediator _mediator;
+    private static readonly ApiNotFoundProblemDescriptor AtprotoAdministratorSettingNotFoundProblem = new(
+        "ATProto administrator setting not found",
+        "The requested ATProto administrator setting is not available.");
 
-    public SettingsController(IMediator mediator)
+    private readonly IMediator _mediator;
+    private readonly IAdminContext _adminContext;
+    private readonly IResourceAssembler<SettingGroupResponseDto, SettingGroupResponseDto> _instanceSettingGroupAssembler;
+
+    public SettingsController(
+        IMediator mediator,
+        IAdminContext adminContext,
+        IResourceAssembler<SettingGroupResponseDto, SettingGroupResponseDto> instanceSettingGroupAssembler)
     {
         _mediator = mediator;
+        _adminContext = adminContext;
+        _instanceSettingGroupAssembler = instanceSettingGroupAssembler;
     }
 
     // ── User Scope Endpoints ────────────────────────────────────────────
@@ -225,6 +241,112 @@ public class SettingsController : ControllerBase
         {
             Key = key,
             Scope = SettingScope.Tenant
+        }, cancellationToken);
+
+        return HandleCommandResponse(response);
+    }
+
+    [HttpGet("instance/atproto-federation", Name = RouteNames.GetInstanceAtprotoFederationSettings)]
+    [EndpointSummary("Get Instance ATProto Federation Settings")]
+    [EndpointDescription("Returns ATProto federation capability and validation profile at instance scope. Requires instance administrator.")]
+    [EndpointClassification(EndpointClass.Admin)]
+    [ProducesResponseType(typeof(HalResource<SettingGroupResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<HalResource<SettingGroupResponseDto>>> GetInstanceSettings(
+        CancellationToken cancellationToken = default)
+    {
+        if (!await _adminContext.IsInstanceAdminAsync(cancellationToken))
+        {
+            return this.ToForbiddenProblem(detail: "Instance administrator authority is required to view instance settings.");
+        }
+
+        var result = await _mediator.Send(new ResolveSettingGroupQuery
+        {
+            Category = AtprotoFederationSettingDefinitions.Category,
+            Scope = SettingScope.Instance,
+            IncludedKeys = AtprotoFederationSettingDefinitions.AdministratorKeys.ToHashSet(StringComparer.Ordinal)
+        }, cancellationToken);
+
+        return Ok(await _instanceSettingGroupAssembler.ToResource(result, HttpContext));
+    }
+
+    [HttpPut("instance/atproto-federation/{key}", Name = RouteNames.UpdateInstanceAtprotoFederationSetting)]
+    [EndpointSummary("Update Instance ATProto Federation Setting")]
+    [EndpointDescription("Updates the ATProto capability or validation profile at instance scope. Requires instance administrator.")]
+    [EndpointClassification(EndpointClass.Admin)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateInstanceSetting(
+        string key,
+        [FromBody] UpdateSettingValueDto body,
+        CancellationToken cancellationToken = default)
+    {
+        if (!AtprotoFederationSettingDefinitions.IsAdministratorKey(key))
+        {
+            return this.ToNotFoundProblem(AtprotoAdministratorSettingNotFoundProblem);
+        }
+
+        var response = await _mediator.Send(new UpdateSettingCommand
+        {
+            Key = key,
+            Value = body.Value,
+            Scope = SettingScope.Instance
+        }, cancellationToken);
+
+        return HandleCommandResponse(response);
+    }
+
+    [HttpPost("instance/atproto-federation/{key}/lock", Name = RouteNames.LockInstanceAtprotoFederationSetting)]
+    [EndpointSummary("Lock Instance ATProto Federation Setting")]
+    [EndpointDescription("Locks the ATProto capability or validation profile at instance scope. Requires instance administrator.")]
+    [EndpointClassification(EndpointClass.Admin)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> LockInstanceSetting(
+        string key, CancellationToken cancellationToken = default)
+    {
+        if (!AtprotoFederationSettingDefinitions.IsAdministratorKey(key))
+        {
+            return this.ToNotFoundProblem(AtprotoAdministratorSettingNotFoundProblem);
+        }
+
+        var response = await _mediator.Send(new LockSettingCommand
+        {
+            Key = key,
+            Scope = SettingScope.Instance
+        }, cancellationToken);
+
+        return HandleCommandResponse(response);
+    }
+
+    [HttpDelete("instance/atproto-federation/{key}/lock", Name = RouteNames.UnlockInstanceAtprotoFederationSetting)]
+    [EndpointSummary("Unlock Instance ATProto Federation Setting")]
+    [EndpointDescription("Unlocks the ATProto capability or validation profile at instance scope. Requires instance administrator.")]
+    [EndpointClassification(EndpointClass.Admin)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UnlockInstanceSetting(
+        string key, CancellationToken cancellationToken = default)
+    {
+        if (!AtprotoFederationSettingDefinitions.IsAdministratorKey(key))
+        {
+            return this.ToNotFoundProblem(AtprotoAdministratorSettingNotFoundProblem);
+        }
+
+        var response = await _mediator.Send(new UnlockSettingCommand
+        {
+            Key = key,
+            Scope = SettingScope.Instance
         }, cancellationToken);
 
         return HandleCommandResponse(response);

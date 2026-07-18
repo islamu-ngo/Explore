@@ -265,6 +265,7 @@ public static class PersistenceServicesRegistration
 
         // ATProto/Federation Repositories
         services.AddScoped<IAtprotoRecordRepository, AtprotoRecordRepository>();
+        services.AddScoped<IAtprotoJetstreamRepository, AtprotoJetstreamRepository>();
         services.AddScoped<IIndexedDidRepository, IndexedDidRepository>();
         services.AddScoped<ISyncStateRepository, SyncStateRepository>();
 

@@ -1,0 +1,16 @@
+<!-- ABOUTME: Builds the package-free shared ATProto OAuth transport security boundary. -->
+<!-- ABOUTME: Lets BFF and Infrastructure consume one registry, parser, metadata, and SSRF policy. -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Explore.Blazor.IntegrationTests" />
+    <InternalsVisibleTo Include="Explore.Infrastructure.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -58,6 +58,12 @@ public static class InfrastructureServicesRegistration
 {
     public static IServiceCollection ConfigureInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddOptions<AtprotoInfrastructureOptions>()
+            .Bind(configuration.GetSection(AtprotoInfrastructureOptions.SectionName));
+        services.AddScoped<AtprotoOAuthClientFactory>();
+        services.AddScoped<AtprotoCoreClientFactory>();
+        services.AddScoped<AtprotoSessionEnvelopeProtector>();
+
         services.AddOptions<LocationPrivacyErasureAuthorityOptions>()
             .Bind(configuration.GetSection(LocationPrivacyErasureAuthorityOptions.SectionName));
         services.AddSingleton<ILocationPrivacyErasureAuthority, PostgreSqlLocationPrivacyErasureAuthority>();
@@ -81,7 +87,9 @@ public static class InfrastructureServicesRegistration
         // Config resolved per-tenant from cascading settings engine (SystemSetting → TenantSetting)
         // Instance admin can lock settings to enforce SaaS-wide SMTP or let tenants override
         services.AddScoped<ISmtpConfigResolver, SmtpConfigResolver>();
-        services.AddScoped<IEmailService, SmtpEmailService>();
+        services.AddScoped<SmtpEmailService>();
+        services.AddScoped<IEmailService>(provider => provider.GetRequiredService<SmtpEmailService>());
+        services.AddScoped<IEmailConnectionTester>(provider => provider.GetRequiredService<SmtpEmailService>());
         services.AddSingleton<IEmailDispatchDrainService, EmailDispatchDrainService>();
         services.AddScoped<IEmailUnsubscribeTokenService, EmailUnsubscribeTokenService>();
 
@@ -485,6 +493,11 @@ public static class InfrastructureServicesRegistration
             .Bind(configuration.GetSection(EmailDispatchProcessorSettings.SectionName))
             .ValidateOnStart();
         services.AddSingleton<IValidateOptions<EmailDispatchProcessorSettings>, EmailDispatchProcessorSettingsValidator>();
+        services.AddOptions<EmailDispatchRetentionSettings>()
+            .Bind(configuration.GetSection(EmailDispatchRetentionSettings.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<EmailDispatchRetentionSettings>, EmailDispatchRetentionSettingsValidator>();
+        services.AddScoped<IEmailDispatchRetentionCleanupService, EmailDispatchRetentionCleanupService>();
         services.AddOptions<EmailDispatchRabbitMqSettings>()
             .Bind(configuration.GetSection(EmailDispatchRabbitMqSettings.SectionName))
             .ValidateOnStart();
@@ -511,9 +524,6 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IStorageReconciliationService, StorageReconciliationService>();
 
         // PDS Synchronization services
-        services.Configure<PdsSyncSettings>(configuration.GetSection(PdsSyncSettings.SectionName));
-        services.AddHttpClient("PdsService");
-        services.AddScoped<IPdsService, PdsService>();
 
         // Feature flag service: wraps OpenFeature IFeatureClient for Application layer consumption
         services.AddScoped<IFeatureFlagService, OpenFeatureFlagService>();

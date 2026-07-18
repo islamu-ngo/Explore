@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Explore.Infrastructure\Explore.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Explore.Persistence\Explore.Persistence.csproj" />
     <ProjectReference Include="..\..\src\Explore.Domain\Explore.Domain.csproj" />
   </ItemGroup>

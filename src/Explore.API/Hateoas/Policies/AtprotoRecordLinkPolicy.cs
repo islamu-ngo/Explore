@@ -1,7 +1,9 @@
+// ABOUTME: Read-only HAL link policies for public globally indexed AT Protocol records.
+// ABOUTME: Exposes public navigation while withholding all direct mutation affordances.
+
 namespace Explore.API.Hateoas.Policies;
 
 using System.Security.Claims;
-using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.Hateoas;
@@ -39,15 +41,6 @@ public sealed class AtprotoRecordDetailLinkPolicy : ILinkPolicy<AtprotoRecordDto
             "GET",
             $"DID: {dto.Did}");
 
-        // Delete link - requires authentication
-        yield return new LinkDefinition(
-            "delete",
-            RouteNames.DeleteAtprotoRecordEntry,
-            new { id = dto.Id },
-            "DELETE",
-            "Delete record",
-            RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.AtprotoRecord, dto);
     }
 }
 
@@ -79,14 +72,6 @@ public sealed class AtprotoRecordCollectionLinkPolicy : ICollectionLinkPolicy<At
     /// <inheritdoc />
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
     {
-        // Create link - requires authentication
-        yield return new LinkDefinition(
-            "create",
-            RouteNames.CreateAtprotoRecordEntry,
-            null,
-            "POST",
-            "Create ATProto record",
-            RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Create, typeof(AtprotoRecordDto), "atproto_record");
+        yield break;
     }
 }

@@ -18,6 +18,7 @@ public class EffectiveSettingDto
     public required string SettingValueTypeName { get; init; }
     public SettingSource Source { get; init; }
     public bool IsLocked { get; init; }
+    public bool IsLockable { get; init; }
     public bool CanEdit { get; init; }
     public string? Reason { get; init; }
     public string? Description { get; init; }

@@ -191,6 +191,8 @@ public static class SeedIds
     public static readonly Guid SystemSettingSupportAccessAllowWriteModeId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000573");
     public static readonly Guid SystemSettingSupportAccessRequireTicketReferenceId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000574");
     public static readonly Guid SystemSettingSupportAccessOneActiveSessionPerActorId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000575");
+    public static readonly Guid SystemSettingAtprotoEventsEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000580");
+    public static readonly Guid SystemSettingAtprotoEventValidationProfileId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000581");
 
     // ===== Module Definitions =====
     public static readonly Guid ModuleCoreId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000600");

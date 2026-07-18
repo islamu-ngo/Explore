@@ -303,6 +303,38 @@ public class SettingRegistryTests
     }
 
     [Test]
+    public async Task Registry_AtprotoFederationRegistersExactlyCapabilityProfileAndSelfConsent()
+    {
+        var definitions = SettingRegistry.GetByCategory("AtprotoFederation");
+
+        await Assert.That(definitions.Select(definition => definition.Key)).IsEquivalentTo(new[]
+        {
+            GovernanceSettingKeys.Federation.AtprotoEventsEnabled,
+            GovernanceSettingKeys.Federation.AtprotoEventValidationProfile,
+            GovernanceSettingKeys.Federation.AtprotoPublishMyEvents,
+        });
+
+        var capability = SettingRegistry.Get(GovernanceSettingKeys.Federation.AtprotoEventsEnabled)!;
+        await Assert.That(capability.DefaultValue).IsEqualTo("false");
+        await Assert.That(capability.MinScope).IsEqualTo(SettingScope.Instance);
+        await Assert.That(capability.MaxScope).IsEqualTo(SettingScope.Tenant);
+        await Assert.That(capability.IsLockable).IsTrue();
+
+        var profile = SettingRegistry.Get(GovernanceSettingKeys.Federation.AtprotoEventValidationProfile)!;
+        await Assert.That(profile.DefaultValue).IsEqualTo("\"platform\"");
+        await Assert.That(profile.MinScope).IsEqualTo(SettingScope.Instance);
+        await Assert.That(profile.MaxScope).IsEqualTo(SettingScope.Tenant);
+        await Assert.That(profile.IsLockable).IsTrue();
+        await Assert.That(profile.AllowedValues).IsEquivalentTo(new[] { "platform", "community_lexicon" });
+
+        var consent = SettingRegistry.Get(GovernanceSettingKeys.Federation.AtprotoPublishMyEvents)!;
+        await Assert.That(consent.DefaultValue).IsEqualTo("false");
+        await Assert.That(consent.MinScope).IsEqualTo(SettingScope.User);
+        await Assert.That(consent.MaxScope).IsEqualTo(SettingScope.User);
+        await Assert.That(consent.IsLockable).IsFalse();
+    }
+
+    [Test]
     public async Task Registry_PublicExperienceKeysAreRegistered()
     {
         var keys = PublicExperienceSettingDefinitions.All.Select(d => d.Key).ToArray();

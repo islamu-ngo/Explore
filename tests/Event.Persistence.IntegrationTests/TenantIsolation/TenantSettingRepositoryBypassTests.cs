@@ -130,6 +130,35 @@ public class TenantSettingRepositoryBypassTests(PostgreSqlContainerFixture fixtu
         await Assert.That(tenantBContext.ChangeTracker.Entries<TenantSetting>()).IsEmpty();
     }
 
+    [Test]
+    public async Task GetByTenantAndKeys_WithAmbientTenant_ReturnsOnlyExactTenantKeySetWithoutTracking()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+
+        var tenantA = CreateTenant("settings-exact-a");
+        var tenantB = CreateTenant("settings-exact-b");
+        seedContext.Tenants.AddRange(tenantA, tenantB);
+        await seedContext.SaveChangesAsync();
+        seedContext.TenantSettingOverrides.AddRange(
+            CreateSetting(tenantA.Id, "location_privacy.allow_home_locations", "tenant-a-home", isLocked: false),
+            CreateSetting(tenantA.Id, "location_privacy.unrequested", "tenant-a-unrequested", isLocked: false),
+            CreateSetting(tenantB.Id, "location_privacy.allow_home_locations", "tenant-b-home", isLocked: false));
+        await seedContext.SaveChangesAsync();
+
+        await using var tenantBContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantB.Id));
+        var repository = new TenantSettingRepository(tenantBContext);
+
+        List<TenantSetting> settings = await repository.GetByTenantAndKeys(
+            tenantA.Id,
+            ["location_privacy.allow_home_locations", "location_privacy.missing"]);
+
+        await Assert.That(settings.Select(setting => setting.TenantId)).IsEquivalentTo([tenantA.Id]);
+        await Assert.That(settings.Select(setting => setting.SettingKey))
+            .IsEquivalentTo(["location_privacy.allow_home_locations"]);
+        await Assert.That(tenantBContext.ChangeTracker.Entries<TenantSetting>()).IsEmpty();
+    }
+
     private static Tenant CreateTenant(string slugPrefix)
     {
         return new Tenant
