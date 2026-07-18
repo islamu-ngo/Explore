@@ -80,19 +80,52 @@ public sealed class AtprotoEventDescriptionFormatterTests
         AtprotoSourceFieldManifestEntry[] eventEntries = AtprotoEventSourceFieldManifest.Entries.ToArray();
         AtprotoSourceFieldManifestEntry[] rsvpEntries = AtprotoRsvpSourceFieldManifest.Entries.ToArray();
 
-        string[] expectedSourcePaths = AtprotoEventProjectionSourceContract.SourcePaths
+        string[] sourcePaths = AtprotoEventProjectionSourceContract.SourcePaths.ToArray();
+        string[] uncovered = sourcePaths
+            .Where(path => !eventEntries.Any(entry => Matches(entry.SourcePath, path)))
             .Order(StringComparer.Ordinal)
             .ToArray();
-        string[] manifestedSourcePaths = eventEntries
+        string[] staleManifestRules = eventEntries
+            .Where(entry => !sourcePaths.Any(path => Matches(entry.SourcePath, path)))
             .Select(entry => entry.SourcePath)
             .Order(StringComparer.Ordinal)
             .ToArray();
+        string[] ambiguous = sourcePaths
+            .Where(path => MostSpecificMatches(eventEntries, path) != 1)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
 
-        await Assert.That(manifestedSourcePaths).IsEquivalentTo(expectedSourcePaths);
-        await Assert.That(manifestedSourcePaths.Length).IsEqualTo(expectedSourcePaths.Length);
+        await Assert.That(uncovered).IsEmpty();
+        await Assert.That(staleManifestRules).IsEmpty();
+        await Assert.That(ambiguous).IsEmpty();
         await Assert.That(eventEntries.All(entry => !string.IsNullOrWhiteSpace(entry.Reason))).IsTrue();
         await Assert.That(rsvpEntries).Contains(entry => entry.SourcePath == "EventRegistrationIntent.ApprovalStatus"
             && entry.Disposition == AtprotoSourceFieldDisposition.Excluded);
+    }
+
+    private static int MostSpecificMatches(
+        IReadOnlyCollection<AtprotoSourceFieldManifestEntry> entries,
+        string sourcePath)
+    {
+        AtprotoSourceFieldManifestEntry[] matches = entries
+            .Where(entry => Matches(entry.SourcePath, sourcePath))
+            .ToArray();
+        int maximumSpecificity = matches.Max(entry => entry.SourcePath.Count(character => character != '*'));
+        return matches.Count(entry => entry.SourcePath.Count(character => character != '*') == maximumSpecificity);
+    }
+
+    private static bool Matches(string pattern, string sourcePath)
+    {
+        int wildcard = pattern.IndexOf('*', StringComparison.Ordinal);
+        if (wildcard < 0)
+        {
+            return string.Equals(pattern, sourcePath, StringComparison.Ordinal);
+        }
+
+        string prefix = pattern[..wildcard];
+        string suffix = pattern[(wildcard + 1)..];
+        return sourcePath.StartsWith(prefix, StringComparison.Ordinal)
+            && sourcePath.EndsWith(suffix, StringComparison.Ordinal);
     }
 
     private static AtprotoEventPublicationSnapshot CreateSnapshot()
