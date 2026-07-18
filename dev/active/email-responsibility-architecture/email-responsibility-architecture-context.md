@@ -3,11 +3,11 @@
 
 # Email Lifecycle Delivery Context
 
-> **Status:** Re-baselined in implementation — committed foundations plus preserved main-checkout Task 1.5/1.6 work
+> **Status:** Re-baselined in implementation — committed foundations plus preserved main-checkout SMTP and unrelated work
 > **Last Updated:** 2026-07-18 Europe/Brussels
-> **Progress:** 20/50 implementation tasks complete; phase verification remains separate
+> **Progress:** 21/51 implementation tasks complete; phase verification remains separate
 > **Current phase:** finish Phase 1 operational safety, then Phase 3 fanout execution
-> **Next task:** 1.6a SMTP capability boundary; then 1.6b–1.6d and 3.4a
+> **Next task:** 1.6b atomic fair claims/backpressure; then 1.6c–1.6e and 3.4a
 
 ## Objective
 
@@ -15,9 +15,11 @@ Finish transactional product email for registration transitions, critical event/
 
 ## Resume Brief
 
-The user accepted the Senior CTO corrections. Tasks 0.1–0.7, 1.1–1.5, 2.1–2.5, and 3.1–3.3 are implementation-complete. The explicit recipient-delivery migration and fanout foundations are committed. Task 1.5 retention/redaction and partial Task 1.6 fairness/telemetry changes are present only as preserved main-checkout changes. Full build, PostgreSQL retention runtime, and explicit Mailpit verification remain open; this affects phase evidence, not the implementation task checkboxes.
+The user accepted the Senior CTO corrections. Tasks 0.1–0.7, 1.1–1.6a, 2.1–2.5, and 3.1–3.3 are implementation-complete. The explicit recipient-delivery migration and fanout foundations are committed. Commit `9bfaf1e0` contains Task 1.5 retention/redaction, the Task 1.6a production boundary, and partial SMTP fairness/telemetry work; the strict controller architecture-guard change remains preserved in the main checkout. Full phase build, PostgreSQL retention runtime, and explicit Mailpit verification remain open; this affects phase evidence, not the implementation task checkboxes.
 
-Task 1.4 added cancellation/revocation preference and unsubscribe mapping while keeping `ReportCaseUpdate` deliberately fail-closed until Task 5.1 introduces distinct case-update consent. Task 1.5 added bounded/dry-runnable parent-aware redaction, explicit resolve-without-replay, the single permanent `ContentRedactedAt` fence, immediate purged-tenant suppression, and migration/schema/operator documentation. Task 1.6 is now split into four reviewable slices because the checkout already contains partial fair selection, concurrency, rate, backlog, metrics, health, and architecture-guard work.
+Task 1.4 added cancellation/revocation preference and unsubscribe mapping while keeping `ReportCaseUpdate` deliberately fail-closed until Task 5.1 introduces distinct case-update consent. Task 1.5 added bounded/dry-runnable parent-aware redaction, explicit resolve-without-replay, the single permanent `ContentRedactedAt` fence, immediate purged-tenant suppression, and migration/schema/operator documentation. Task 1.6a separates the send contract from connection testing: `InstanceSettingsController` uses MediatR, `SmtpHealthCheck` uses `IEmailConnectionTester`, and only Infrastructure owns `SmtpEmailService`.
+
+The remaining SMTP work is split into Tasks 1.6b–1.6e. The committed partial patch provides tenant-ranked selection, local concurrency, one process-local global token bucket, backlog thresholds, aggregate metrics, and health. It is not correctness-complete: selection precedes claim, replicas have no shared processing/rate authority, the RabbitMQ single-row path bypasses concurrency gates, rate deferral increments attempt count before admission, total backlog can deadlock optional reminders, and stale unfenced claims are mislabeled `Unknown`.
 
 All remaining work must be performed in the main repository checkout. Do not create linked worktrees or a `.worktrees` directory for this workstream.
 
@@ -91,6 +93,10 @@ Coop’s former incoming-webhook routing defect is repaired by Tasks 0.5–0.7. 
 30. `ProviderHandoff` is the suppression linearization fence. Pre-fence work can skip; post-fence I/O/protocol/persistence uncertainty is `Unknown`, never automatic resend or a claim that SMTP was recalled.
 31. `EventReportDecision` remains the sole decision. One-to-one `EventReportDecisionExecution` records operational enforcement/completion state so a crash after enforcement resumes without duplicate enforcement or email.
 32. `EmailDispatch:EventReminderLeadTimeHours` is the sole reminder lead setting: default 24, inclusive range 1..168. Past-due future sessions are due immediately; started sessions get no reminder. DST gaps reject and overlaps use the persisted offset/instant.
+33. SMTP fair selection and claim are one PostgreSQL operation. Deterministic tenant rounds and global/per-tenant active-processing ceilings are enforced across replicas; process-local semaphores are scheduling optimizations only.
+34. Global and per-tenant SMTP token buckets have persisted cross-instance authority. Rate admission occurs before attempt count or `provider_handoff_started`; rate deferral creates no SMTP attempt/receipt evidence and cannot dead-letter a row.
+35. Optional-reminder hysteresis uses active core backlog that excludes paused tenants and optional reminders. Its authority is persisted or centrally coordinated so restart/replica behavior cannot disagree.
+36. Stale processing recovery checks provider-handoff evidence. An unfenced claim returns safely to retryable work; only a fenced claim becomes `Unknown`.
 
 ## Channel Summary
 
@@ -159,9 +165,9 @@ Implemented foundations:
 
 Next implementation surfaces:
 
-- Task 1.6a: keep the strict architecture guard and remove `InstanceSettingsController`/health coupling to `IEmailService` through a narrow Application-owned diagnostic capability.
-- Task 1.6b: reconcile the existing fair pending query, concurrency, global SMTP rate, and backlog patch; add missing per-tenant rate/cross-instance semantics.
-- Tasks 1.6c–1.6d: finish PII-safe health/metrics and authenticated operator controls/runbooks.
+- Task 1.6b: replace select-then-claim with atomic PostgreSQL tenant-round claims, cross-replica processing ceilings, paused-tenant exclusion, and core-backlog hysteresis that cannot deadlock on optional reminders.
+- Task 1.6c: add persisted global/per-tenant rate admission, route batch and single-row drainage through it, preserve attempt budget on deferral, and distinguish unfenced retry recovery from fenced `Unknown`.
+- Tasks 1.6d–1.6e: finish PII-safe health/metrics and authenticated operator controls/runbooks.
 - Tasks 3.4a–3.4c: route the pointer, ensure the durable run, build typed immutable recipient materialization, and prove checkpoint/crash ordering.
 - Tasks 3.5a–3.6b: occurrence supersession/coalescing, pre-handoff suppression, fair claims, processor backpressure, and fanout telemetry.
 - Phases 4–7: event/session handlers, reporter consent/API/UI/email, heavy-moderation occurrence, and safe reminder caller activation.
@@ -183,8 +189,9 @@ Next implementation surfaces:
 | A persisted Coop pointer is mistaken for an applied moderation decision | `PointerPersisted` creates no effect receipt; the effect worker executes the retained callback successfully before atomically creating/reusing the receipt and completing the pointer. |
 | New cancellation/revocation kinds bypass legacy preference/footer mapping | Task 1.4 maps both existing switch sites and focused tests cover the behavior. |
 | Persisted fanout pointers have no consumer yet | Tasks 3.4a–3.4c separately own pointer routing/run creation, typed recipient materialization, and checkpoint ordering. |
-| Partial SMTP operations patch hides unfinished cross-instance semantics | Task 1.6b must audit existing query/drain/settings changes before extending them; no duplicate implementation or silent overwrite. |
-| Architecture guard currently fails on a real controller dependency | Task 1.6a keeps the guard strict and replaces the direct `IEmailService` resolution with a CQRS diagnostic seam. |
+| Partial SMTP operations patch hides unfinished cross-instance semantics | Tasks 1.6b–1.6c replace select-before-claim, process-local authority, attempt-consuming rate deferral, and unfenced `Unknown` recovery in place; no duplicate scheduler/limiter. |
+| Optional backlog permanently suppresses reminders | Count only active core backlog, exclude paused tenants and optional reminders from the hysteresis authority, and coordinate the latch durably. |
+| Architecture guard regresses after the boundary repair | Keep the preserved strict controller/handler transport-reference guard and the MediatR diagnostic seam; do not restore controller access to `IEmailService`. |
 
 ## Verification State
 
@@ -193,26 +200,27 @@ Next implementation surfaces:
 - Task 0.5 full directly affected suites passed: Domain 428, Application 2,420, Persistence 401, Infrastructure 818, API 1,830 with 3 declared skips, and Architecture 238 with 1 declared skip; zero failures.
 - Tasks 0.6–0.7 focused evidence covers fenced claim/recovery, retry/dead-letter, redrive/auth, metrics, health, operator HAL, and real PostgreSQL effect behavior. Their implementation checkboxes are complete.
 - The prior missing-column blocker is resolved by migration `20260717131038_NormalizeRecipientNotificationDelivery`. A fresh full API suite and explicit Mailpit lane remain unrecorded because testing was stopped; no phase requiring those gates is called fully verified.
-- Task 1.5 is present in the main checkout, including migration `20260718203920_AddEmailDispatchContentRetention`; its focused Infrastructure evidence was reported before interruption, but Docker-backed PostgreSQL execution is not recorded.
-- The Task 1.6 architecture guard is present and correctly fails on `InstanceSettingsController` directly resolving `IEmailService`. Fair pending selection, concurrency/rate/backlog settings, metrics, and health also have partial main-checkout changes and remain unchecked.
-- A full compile currently stops in unrelated ATProto federation validator code with two `CS9135` errors; this is not evidence against the email patch, but it blocks a clean phase build until that shared baseline is repaired.
+- Task 1.5 and migration `20260718203920_AddEmailDispatchContentRetention` are committed in `9bfaf1e0`; focused Infrastructure evidence was reported before interruption, but Docker-backed PostgreSQL execution is not recorded.
+- Task 1.6a recorded 2/2 handler tests, 1/1 handler boundary test, 1/1 controller boundary test, 3/3 SMTP configuration tests, an API Release build with zero errors, and clean focused diagnostics. Its production files are committed in `9bfaf1e0`; the strict controller guard remains a preserved main-checkout change.
+- Mailpit selected 2 tests but could not execute because neither Docker socket was available. A later Application source rebuild stopped in unrelated `AtprotoEventDescriptionFormatterTests.cs` because `AtprotoEventProjectionSourceContract` was unavailable at that point. `HEAD` has since advanced to `18556b29`, so neither result is promoted to a current Phase 1 gate.
+- Fair pending selection, local concurrency/global-rate/backlog settings, metrics, and health are committed partial work. They remain unchecked because the audit identified cross-instance, attempt-accounting, backpressure, single-row, and stale-recovery correctness gaps.
 - This 2026-07-18 re-baseline changes planning docs only and runs no build, test, SMTP, Mailpit, provider, migration, or application command.
 - Planning validation: `git diff --check -- dev/active/email-responsibility-architecture`.
 - Runtime phases use one Release build and one selected non-browser project test; final intent-contract suites remain merge evidence. No gate uses weak broad filters or `--minimum-expected-tests 1`.
 
 ## Handoff Rule
 
-Finish Tasks 1.6a–1.6d before Task 3.4a consumes persisted fanout pointers. Keep Task 5.9 disabled until the fresh full API evidence is recorded. The working tree currently contains unrelated ATProto/auth/location-privacy work; do not modify, stage, revert, or include it. Use only the main checkout and never create a linked worktree or `.worktrees` directory. At every handoff, synchronize progress, evidence, risks, and the next task across context, plan, and tasks.
+Finish Tasks 1.6b–1.6e before Task 3.4a consumes persisted fanout pointers. Keep Task 5.9 disabled until the fresh full API evidence is recorded. The working tree currently contains unrelated ATProto/auth/location-privacy work; do not modify, stage, revert, or include it. Use only the main checkout and never create a linked worktree or `.worktrees` directory. At every handoff, synchronize progress, evidence, risks, and the next task across context, plan, and tasks.
 
 ## Handoff Notes
 
 ### Handoff — 2026-07-18 Europe/Brussels
 
-- **Current state:** 20/50 implementation tasks are complete. Task 1.5 is implemented but uncommitted; Task 1.6a and 1.6b have partial main-checkout changes and remain unchecked.
-- **Next action:** complete 1.6a without weakening the architecture guard, then reconcile 1.6b, 1.6c, and 1.6d before starting 3.4a.
-- **Blockers:** Docker is unavailable for PostgreSQL retention evidence; a clean Release build is currently blocked by unrelated ATProto `CS9135` errors; fresh API and Mailpit merge evidence remains outstanding.
-- **Modified files:** existing email retention, SMTP operations, health/metrics, admin/HAL, migration/schema/docs/tests, and architecture-guard surfaces are dirty in the main checkout. Unrelated ATProto/auth/location-privacy work is interleaved and must remain untouched.
-- **Validation:** no command was run for this planning re-baseline. Previous focused evidence is retained as historical, not upgraded to a completed phase gate.
-- **Documentation impact:** plan/context/tasks now use 50 independently mergeable slices, single-test phase gates, immediate resolve-without-replay redaction semantics, and explicit partial-work preservation.
-- **Risks:** partial SMTP operations work may have incomplete per-tenant/cross-instance behavior; persisted fanout pointers still have no consumer.
+- **Current state:** 21/51 implementation tasks are complete. Task 1.5 and the Task 1.6a production boundary are committed in `9bfaf1e0`; the strict controller guard is preserved in the main-checkout diff. Tasks 1.6b–1.6d have partial committed behavior but remain unchecked.
+- **Next action:** implement Task 1.6b's atomic fair-claim/backpressure authority, then Task 1.6c's persisted rate/pre-handoff recovery before extending telemetry or controls.
+- **Blockers:** Docker is unavailable for PostgreSQL retention/Mailpit evidence; the last recorded clean-source rebuild was interrupted by unrelated ATProto test compilation, and no fresh phase gate has been run at current `HEAD`.
+- **Modified files:** the three email workstream docs and strict controller architecture guard are the only email-specific current-checkout changes identified by this re-baseline; extensive unrelated ATProto/auth/location-privacy work is interleaved and must remain untouched.
+- **Validation:** no build or product test was run for this planning re-baseline. Repository/log/source inspection and previous focused evidence are retained as historical, not upgraded to a completed phase gate.
+- **Documentation impact:** plan/context/tasks now use 51 independently mergeable slices and separate atomic claims/backpressure from persisted rate/pre-handoff correctness.
+- **Risks:** partial SMTP operations work currently has process-local authority and incorrect attempt/stale-claim semantics; persisted fanout pointers still have no consumer.
 - **Notes for next contributor/agent:** work only in the main checkout; preserve all current changes; do not create worktrees, stage broadly, revert shared files, or duplicate the partial Task 1.6 implementation.

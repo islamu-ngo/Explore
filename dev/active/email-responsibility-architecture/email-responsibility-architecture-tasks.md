@@ -3,10 +3,10 @@
 
 # Email Lifecycle Delivery Tasks
 
-> **Status:** Re-baselined in implementation — committed foundations plus preserved main-checkout Task 1.5/1.6 work
+> **Status:** Re-baselined in implementation — committed foundations plus preserved main-checkout SMTP and unrelated work
 > **Last Updated:** 2026-07-18 Europe/Brussels
-> **Progress:** 20/50 implementation tasks complete; phase verification remains separate
-> **Current task:** 1.6a SMTP capability boundary, then 1.6b–1.6d and 3.4a
+> **Progress:** 21/51 implementation tasks complete; phase verification remains separate
+> **Current task:** 1.6b atomic fair claims/backpressure, then 1.6c–1.6e and 3.4a
 > **Completed foundation:** explicit delivery schema, atomic materializer, dispatch eligibility/provider-handoff fence, Coop effect processing, all registration lifecycle transitions, immutable fanout occurrence/audience/lease persistence
 
 ## Working Rules
@@ -18,6 +18,8 @@
 - Persist intent, channel deliveries, in-app notification, and email row atomically per recipient.
 - After a PostgreSQL unique violation, roll back and use a fresh transaction; never continue in the aborted transaction.
 - Never perform SMTP, HTTP, broker publish, or scheduler calls inside a transaction delegate.
+- Reserve durable SMTP rate capacity before incrementing attempt count or writing provider-handoff evidence; a rate deferral is not an SMTP attempt.
+- Recover stale unfenced claims to retryable work; only provider-handoff-fenced uncertainty becomes `Unknown`.
 - Repositories perform persistence operations but do not own commit/transaction orchestration or create notification/email entities.
 - Use exact tenant predicates and persisted current verified user email.
 - Keep Osprey callbacks signal-only and reporter outcomes on `ExecuteReportDecisionCommandHandler`.
@@ -98,31 +100,38 @@ Tasks 1.1–1.3 completed the approved dependency checkpoint: relationship model
 - [x] **1.5 Add parent-aware email retention and content redaction.**
   - Files: retention settings/validator, cleanup repository/service/scheduler, email/attempt/receipt state, configuration/operations docs, focused persistence/infrastructure tests.
   - Acceptance: sent/ordinary-skipped content redacts after 180 days; unresolved failure material waits for replay or explicit resolve-without-replay; explicit resolution redacts immediately with a typed outcome; children follow parent; tenant deletion redacts and suppresses; cleanup is bounded/idempotent/dry-runnable; `ContentRedactedAt` permanently prevents claim/publish/replay.
-  - Evidence: the main-checkout patch adds `EmailDispatchRetentionCleanupProcessor`, a scoped cleanup service, transactional parent/attempt/receipt/delivery redaction, immediate `Purged`-tenant suppression, explicit `operator_resolved_without_replay`, and migration `20260718203920_AddEmailDispatchContentRetention`. Focused Infrastructure tests were reported passing before interruption; Docker-backed PostgreSQL and full phase evidence remain open. The patch is not committed and must be preserved.
+  - Evidence: commit `9bfaf1e0` adds `EmailDispatchRetentionCleanupProcessor`, a scoped cleanup service, transactional parent/attempt/receipt/delivery redaction, immediate `Purged`-tenant suppression, explicit `operator_resolved_without_replay`, and migration `20260718203920_AddEmailDispatchContentRetention`. Focused Infrastructure tests were reported passing before interruption; Docker-backed PostgreSQL and full phase evidence remain open.
 
-- [ ] **1.6a Restore the SMTP capability boundary.** 🟡 IN PROGRESS
+- [x] **1.6a Restore the SMTP capability boundary.**
   - Files: `IEmailService`, new narrow connection-test contract/query/handler, `SmtpEmailService`, `InstanceSettingsController`, `SmtpHealthCheck`, DI, `DurableSideEffectBoundaryTests`, focused application/architecture tests.
   - Acceptance: controllers and MediatR handlers have no `IEmailService`, MailKit, SMTP implementation, or direct-send dependency; SMTP connection testing flows through MediatR and an Application-owned capability; health uses the narrow diagnostic capability; the strict architecture guard passes.
-  - Existing partial work: the guard already rejects controller transport references and correctly exposes the direct `InstanceSettingsController` dependency. Keep the guard and fix the boundary.
+  - Evidence: `IEmailService` is send-only; `IEmailConnectionTester` owns diagnostics; `TestInstanceSmtpConnectionQueryHandler` forwards through the narrow contract; `InstanceSettingsController` uses MediatR; `SmtpHealthCheck` uses the diagnostic contract; DI maps both interfaces to one scoped `SmtpEmailService`. Production files are committed in `9bfaf1e0`; the strict controller guard remains preserved in the main-checkout diff. Recorded checks: handler 2/2, handler boundary 1/1, controller boundary 1/1, SMTP configuration 3/3, and API Release build with zero errors. Mailpit was Docker-blocked and remains phase evidence, not Task 1.6a acceptance.
   - Effort: M. Dependencies: 1.5.
 
-- [ ] **1.6b Finish fair selection, concurrency, SMTP rate limiting, and optional-work backpressure.** 🟡 IN PROGRESS
-  - Files: pending-row repository contract/query, `EmailDispatchDrainService`, processor settings/validator/appsettings, focused persistence/infrastructure tests.
-  - Acceptance: tenant rounds prevent starvation; paused tenants are excluded; required work outranks non-reminder optional work, which outranks reminders; global/per-tenant concurrency and global/per-tenant token buckets are bounded and validated; high/low-watermark hysteresis suppresses only optional reminder admission.
-  - Existing partial work: fair pending-query, global/per-tenant concurrency, one global SMTP rate, and backlog settings are present in the main checkout; audit and complete per-tenant rate and cross-instance semantics before checking this task.
+- [ ] **1.6b Atomically claim fair work and coordinate optional-work backpressure.** 🟡 IN PROGRESS
+  - Files: pending-row repository contract/query, PostgreSQL fair-claim transaction/advisory-lock path, `EmailDispatchDrainService`, processor concurrency/backlog settings/validator/appsettings, focused persistence/infrastructure tests.
+  - Acceptance: one atomic repository operation ranks and claims disjoint rows across replicas; tenant rounds prevent starvation; paused tenants are excluded; required work outranks optional non-reminder work, which outranks optional reminders; global/per-tenant active-processing ceilings are cross-instance authoritative; high/low-watermark hysteresis uses active core backlog excluding paused tenants and optional reminders so optional work cannot deadlock itself; required reminders, if policy ever marks one required, are never suppressed.
+  - Existing partial work: tenant-ranked selection, batch-local global/per-tenant concurrency, and process-local backlog hysteresis are committed in `9bfaf1e0`. Replace select-before-claim and total-due counting in place; do not add a second poller or rely on local semaphores for correctness.
   - Effort: L. Dependencies: 1.6a.
 
-- [ ] **1.6c Add bounded SMTP telemetry and health.**
-  - Files: `BusinessMetrics`, `EmailDispatchHealthCheck`, repository aggregate queries, settings/validator, focused infrastructure/API tests.
-  - Acceptance: oldest pending age, due/retry/unknown/parked/dead-letter counts, typed skip outcomes, rate-limit/backpressure outcomes, and bounded tenant backlog samples are visible; no address, subject, body, report evidence, event title, user ID, or provider ID becomes a metric/log dimension.
-  - Effort: M. Dependencies: 1.6b.
+- [ ] **1.6c Persist cross-instance SMTP rate admission and correct pre-handoff recovery.**
+  - Files: new persisted SMTP admission state/configuration/migration if repository evidence confirms it is required, outbox repository contracts/transitions, `EmailDispatchEligibilityEvaluator`, `EmailDispatchDrainService`, global/per-tenant rate settings/validator/appsettings/docs, focused persistence/infrastructure tests.
+  - Acceptance: global and per-tenant token-bucket limits are shared across replicas; batch and `ProcessSingleAsync`/RabbitMQ/TickerQ use the same concurrency/rate admission path; rate deferral occurs before `AttemptCount` and `provider_handoff_started`, creates no attempt/receipt/provider evidence, and cannot dead-letter; cancellation before the fence safely releases or retry-defers the claim; stale unfenced processing becomes retryable while fenced uncertainty becomes `Unknown`; configuration has bounded defaults and upper limits.
+  - Existing partial work: one singleton process-local global `TokenBucketRateLimiter` is committed, but no per-tenant/cross-instance authority exists and the current claim increments attempt count before rate acquisition. Replace that authority rather than layering another local limiter over it.
+  - Effort: L. Dependencies: 1.6b.
 
-- [ ] **1.6d Complete authenticated operator controls and runbooks.**
-  - Files: email-dispatch admin CQRS/API/HAL, configuration/operations/self-hosting/troubleshooting docs, focused application/API tests.
-  - Acceptance: existing tenant pause, park, replay, and resolve-without-replay remain server-authorized; global drain pause/rate override and unknown reconciliation are added only where absent; HAL exposes valid actions only; runbooks cover Mailpit/test SMTP, cleanup dry-run, compromised-tenant suppression, and tenant-vs-instance diagnosis.
+- [ ] **1.6d Add bounded SMTP telemetry and health.**
+  - Files: `BusinessMetrics`, `EmailDispatchHealthCheck`, repository aggregate queries, settings/validator, focused infrastructure/API tests.
+  - Acceptance: oldest active pending age, due/retry/unknown/parked/dead-letter counts, typed skip outcomes, rate-deferral/backpressure outcomes, and bounded tenant backlog metrics are visible; paused rows do not make active readiness unhealthy; public health output exposes neither tenant identifiers nor address, subject, body, report evidence, event title, user ID, or provider ID.
+  - Existing partial work: oldest-age, due/retry/dead-letter, and tenant-backlog aggregation is committed in `9bfaf1e0`; complete the missing states/outcomes and correct paused/public-health semantics.
   - Effort: M. Dependencies: 1.6c.
 
-### Phase 1 Verification — RUN ONCE AFTER TASKS 1.1–1.6d
+- [ ] **1.6e Complete authenticated operator controls and runbooks.**
+  - Files: email-dispatch admin CQRS/API/HAL, configuration/operations/self-hosting/troubleshooting docs, focused application/API tests.
+  - Acceptance: existing tenant pause, park, replay, and resolve-without-replay remain server-authorized; global drain pause/rate override and unknown reconciliation are added only where absent; HAL exposes valid actions only; runbooks cover Mailpit/test SMTP, cleanup dry-run, compromised-tenant suppression, and tenant-vs-instance diagnosis.
+  - Effort: M. Dependencies: 1.6d.
+
+### Phase 1 Verification — RUN ONCE AFTER TASKS 1.1–1.6e
 
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --no-build`
@@ -181,7 +190,7 @@ Phase 2 implementation is complete. Historical post-migration build and full Dom
 - [ ] **3.4a Route fanout pointers and ensure durable runs.**
   - Files: `CompositeOutboxMessageDispatcher`, occurrence pointer factory/repository, fanout-run repository, new Application worker, focused application/persistence tests.
   - Acceptance: the PII-free pointer is version-validated, tenant/occurrence is authoritatively loaded, and one pending run is created idempotently; the general outbox pointer completes after run creation and never holds its lease through recipient fanout.
-  - Effort: M. Dependencies: 1.6d, 3.3.
+  - Effort: M. Dependencies: 1.6e, 3.3.
 
 - [ ] **3.4b Build typed recipient materialization from immutable occurrences.**
   - Files: `NotificationIntentDraft`, `RecipientNotificationMaterializer`, new typed template/version factory, location-disclosure integration, focused application/persistence tests.
@@ -341,7 +350,7 @@ The registered intents still require Domain, Application, Persistence, Infrastru
 
 ## Final Contract Evidence Before Merge
 
-- [ ] All 50 tasks and all required channel-matrix rows are complete.
+- [ ] All 51 tasks and all required channel-matrix rows are complete.
 - [ ] Coop routing prerequisite has independent acceptance/verification evidence.
 - [ ] Architecture tests forbid direct SMTP/send dependencies from controllers and handlers.
 - [ ] Fault/concurrency/privacy scenarios listed in the plan are covered.
