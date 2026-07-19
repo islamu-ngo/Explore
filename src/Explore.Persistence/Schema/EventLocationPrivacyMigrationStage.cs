@@ -55,16 +55,15 @@ internal static class EventLocationPrivacyMigrationStage
 
         EnsurePredecessorsApplied(stage, targets, appliedSet);
 
+        if (appliedSet.Contains(target))
+        {
+            return;
+        }
+
         if (pendingStages.Count > 0 && !pendingStages.Contains(stage))
         {
             throw new InvalidOperationException(
                 $"{ConfigurationKey}={stage} cannot skip or auto-advance the pending Event Location Privacy stage.");
-        }
-
-        if (appliedSet.Contains(target))
-        {
-            await db.Database.MigrateAsync(cancellationToken);
-            return;
         }
 
         await db.GetService<IMigrator>().MigrateAsync(target, cancellationToken);

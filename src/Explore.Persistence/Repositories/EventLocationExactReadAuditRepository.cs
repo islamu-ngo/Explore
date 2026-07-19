@@ -15,19 +15,50 @@ public sealed class EventLocationExactReadAuditRepository(ExploreDbContext dbCon
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(audit);
-        RequireTenant(audit.TenantId);
+        await AppendManyAsync([audit], cancellationToken);
+        return audit;
+    }
 
-        bool eventLocationExists = await dbContext.EventLocations
-            .AsNoTracking()
-            .AnyAsync(item => item.Id == audit.EventLocationId && item.TenantId == audit.TenantId, cancellationToken);
-        if (!eventLocationExists)
+    public async Task AppendManyAsync(
+        IReadOnlyCollection<EventLocationExactReadAudit> audits,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(audits);
+        RequireTenant();
+        if (audits.Count > IEventLocationExactReadAuditRepository.MaximumBatchSize)
         {
-            throw new InvalidOperationException("Exact-read evidence requires an active EventLocation in the current tenant.");
+            throw new ArgumentOutOfRangeException(
+                nameof(audits),
+                $"Exact-read audit batches cannot exceed {IEventLocationExactReadAuditRepository.MaximumBatchSize} records.");
         }
 
-        dbContext.EventLocationExactReadAudits.Add(audit);
+        if (audits.Count == 0)
+        {
+            return;
+        }
+
+        foreach (EventLocationExactReadAudit audit in audits)
+        {
+            ArgumentNullException.ThrowIfNull(audit);
+            RequireTenant(audit.TenantId);
+        }
+
+        Guid[] eventLocationIds = audits
+            .Select(audit => audit.EventLocationId)
+            .Distinct()
+            .ToArray();
+        Guid[] existingIds = await dbContext.EventLocations
+            .AsNoTracking()
+            .Where(item => eventLocationIds.Contains(item.Id))
+            .Select(item => item.Id)
+            .ToArrayAsync(cancellationToken);
+        if (existingIds.Length != eventLocationIds.Length)
+        {
+            throw new InvalidOperationException("Exact-read evidence requires active EventLocations in the current tenant.");
+        }
+
+        dbContext.EventLocationExactReadAudits.AddRange(audits);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return audit;
     }
 
     public async Task<IReadOnlyList<EventLocationExactReadAudit>> GetByEventLocationsAsync(

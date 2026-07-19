@@ -73,6 +73,38 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<EventRegistration>> GetLocationAccessCoverageAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        if (tenantId == Guid.Empty || eventId == Guid.Empty || userId == Guid.Empty)
+        {
+            return [];
+        }
+
+        return await _dbContext.EventRegistrations
+            .AsNoTracking()
+            .Include(registration => registration.EventRegistrationIntent)
+            .Include(registration => registration.EventSession)
+            .Where(registration => registration.TenantId == tenantId
+                && registration.EventId == eventId
+                && registration.UserId == userId
+                && registration.EventRegistrationIntentId != null
+                && registration.EventRegistrationIntent != null
+                && registration.EventRegistrationIntent.TenantId == tenantId
+                && registration.EventRegistrationIntent.EventId == eventId
+                && registration.EventRegistrationIntent.UserId == userId
+                && registration.EventSession.TenantId == tenantId
+                && registration.EventSession.EventId == eventId
+                && registration.EventSession.EventLocationId != null)
+            .OrderBy(registration => registration.EventRegistrationIntentId)
+            .ThenBy(registration => registration.EventSessionId)
+            .ThenBy(registration => registration.Id)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<bool> IsUserRegisteredForSession(Guid userId, Guid eventSessionId)
     {
         return await _dbContext.EventRegistrations

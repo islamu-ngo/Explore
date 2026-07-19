@@ -205,23 +205,17 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
             return await Create(session);
         }
 
+        if (_dbContext.Database.CurrentTransaction != null)
+        {
+            return await CreateWithRoomOverlapGuardInCurrentTransactionAsync(session, cancellationToken);
+        }
+
         await using var tx = await _dbContext.Database
             .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
-        var conflicts = await BuildOverlapQuery(session.RoomId.Value, session.StartTime.Value, session.EndTime.Value, excludeSessionId: null)
-            .Select(s => s.Id)
-            .ToListAsync(cancellationToken);
-
-        if (conflicts.Count > 0)
-        {
-            await tx.RollbackAsync(cancellationToken);
-            throw new RoomScheduleConflictException(session.RoomId.Value, conflicts);
-        }
-
         try
         {
-            await _dbContext.EventSessions.AddAsync(session, cancellationToken);
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            await CreateWithRoomOverlapGuardInCurrentTransactionAsync(session, cancellationToken);
             await tx.CommitAsync(cancellationToken);
         }
         catch (DbUpdateException ex) when (IsRoomNoOverlapViolation(ex, session.RoomId))
@@ -230,6 +224,27 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
             throw CreateRoomScheduleConflict(session.RoomId!.Value);
         }
 
+        return session;
+    }
+
+    private async Task<EventSession> CreateWithRoomOverlapGuardInCurrentTransactionAsync(
+        EventSession session,
+        CancellationToken cancellationToken)
+    {
+        var conflicts = await BuildOverlapQuery(
+                session.RoomId!.Value,
+                session.StartTime!.Value,
+                session.EndTime!.Value,
+                excludeSessionId: null)
+            .Select(item => item.Id)
+            .ToListAsync(cancellationToken);
+        if (conflicts.Count > 0)
+        {
+            throw new RoomScheduleConflictException(session.RoomId.Value, conflicts);
+        }
+
+        await _dbContext.EventSessions.AddAsync(session, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
         return session;
     }
 
@@ -262,6 +277,44 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
             await tx.RollbackAsync(cancellationToken);
             throw CreateRoomScheduleConflict(session.RoomId!.Value);
         }
+    }
+
+    public async Task MoveToEventAsync(
+        EventSession session,
+        Guid eventId,
+        EventLocation eventLocation,
+        Guid? roomId,
+        CancellationToken cancellationToken)
+    {
+        if (_dbContext.Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException("Moving an event session requires an active transaction.");
+        }
+
+        _dbContext.Entry(session).State = EntityState.Detached;
+        int affectedRows = await _dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            UPDATE event_sessions
+            SET event_id = {eventId},
+                event_location_id = {eventLocation.Id},
+                location_id = {eventLocation.LocationId},
+                room_id = {roomId},
+                event_day_id = NULL
+            WHERE tenant_id = {session.TenantId}
+              AND id = {session.Id}
+              AND is_deleted = FALSE
+            """,
+            cancellationToken);
+        if (affectedRows != 1)
+        {
+            throw new InvalidOperationException("The event session could not be moved because it is no longer active.");
+        }
+
+        session.EventId = eventId;
+        session.EventDayId = null;
+        session.AssignEventLocation(eventLocation);
+        session.RoomId = roomId;
+        _dbContext.EventSessions.Attach(session);
     }
 
     private async Task UpdateWithRoomOverlapGuardInCurrentTransactionAsync(

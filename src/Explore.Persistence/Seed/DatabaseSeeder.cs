@@ -206,23 +206,161 @@ public static class DatabaseSeeder
     {
         await EnsureIslamicEventLocationsAsync(context, ct);
 
-        await AddMissingSeedRowsAsync(context, SeedData.IslamicEvents, e => e.Id, ct);
+        IReadOnlyList<Event> events = SeedData.IslamicEvents;
+        IReadOnlyList<EventSessionGroup> sessionGroups = SeedData.IslamicSessionGroups;
+        IReadOnlyList<EventSession> sessions = SeedData.IslamicEventSessions;
+        IReadOnlyList<EventAgendaItem> eventAgendaItems = SeedData.IslamicEventAgendaItems;
+        IReadOnlyList<EventSessionAgendaItem> sessionAgendaItems = SeedData.IslamicSessionAgendaItems;
+
+        await AddMissingSeedRowsAsync(context, events, e => e.Id, ct);
         await AddMissingSeedRowsAsync(context, SeedData.IslamicEventAspects, aspect => aspect.Id, ct);
         await AddMissingSeedRowsAsync(context, SeedData.IslamicEventDays, day => day.Id, ct);
-        await AddMissingSeedRowsAsync(context, SeedData.IslamicSessionGroups, group => group.Id, ct);
-        await AddMissingSeedRowsAsync(context, SeedData.IslamicEventSessions, session => session.Id, ct);
+        await EnsureIslamicEventLocationAuthoritiesAsync(
+            context,
+            sessionGroups,
+            sessions,
+            eventAgendaItems,
+            sessionAgendaItems,
+            ct);
         await EnsureIslamicEventSessionStatusesAsync(context, ct);
         await EnsureIslamicEventScheduleSummariesAsync(context, ct);
         await AddMissingSessionAspectsAsync(context, ct);
         await AddMissingSeedRowsAsync(context, SeedData.IslamicSessionGroupSessions, session => session.Id, ct);
-        await AddMissingSeedRowsAsync(context, SeedData.IslamicEventAgendaItems, item => item.Id, ct);
-        await AddMissingSeedRowsAsync(context, SeedData.IslamicSessionAgendaItems, item => item.Id, ct);
         await AddMissingSeedRowsAsync(context, SeedData.IslamicEventCategories, category => category.Id, ct);
         await AddMissingSeedRowsAsync(context, SeedData.IslamicEventTags, tag => tag.Id, ct);
         await AddMissingSeedRowsAsync(context, SeedData.IslamicSessionCategories, category => category.Id, ct);
         await AddMissingSeedRowsAsync(context, SeedData.IslamicSessionTags, tag => tag.Id, ct);
         await AddMissingSessionLanguagesAsync(context, ct);
         await AddMissingSeedRowsAsync(context, SeedData.IslamicSessionSpeakers, speaker => speaker.Id, ct);
+    }
+
+    private static async Task EnsureIslamicEventLocationAuthoritiesAsync(
+        ExploreDbContext context,
+        IReadOnlyList<EventSessionGroup> seedGroups,
+        IReadOnlyList<EventSession> seedSessions,
+        IReadOnlyList<EventAgendaItem> seedEventAgendaItems,
+        IReadOnlyList<EventSessionAgendaItem> seedSessionAgendaItems,
+        CancellationToken ct)
+    {
+        Guid[] eventIds = SeedIds.IslamicEventCatalogIds;
+        EventLocation[] existingEventLocations = await context.EventLocations
+            .IgnoreQueryFilters()
+            .Where(item => eventIds.Contains(item.EventId) && !item.IsDeleted)
+            .ToArrayAsync(ct);
+        var eventLocationByPair = existingEventLocations.ToDictionary(
+            item => (item.EventId, item.LocationId));
+
+        var sessionEventIdById = seedSessions.ToDictionary(item => item.Id, item => item.EventId);
+        var requiredPairs = seedGroups.Select(item => (item.EventId, item.LocationId))
+            .Concat(seedSessions.Select(item => (item.EventId, item.LocationId)))
+            .Concat(seedEventAgendaItems.Select(item => (item.EventId, item.LocationId)))
+            .Concat(seedSessionAgendaItems.Select(item => (
+                EventId: sessionEventIdById[item.EventSessionId],
+                LocationId: item.LocationId)))
+            .Distinct()
+            .ToArray();
+
+        foreach (var pair in requiredPairs)
+        {
+            if (eventLocationByPair.ContainsKey(pair))
+            {
+                continue;
+            }
+
+            EventLocation eventLocation = pair.LocationId.HasValue
+                ? EventLocation.CreatePhysical(
+                    SeedIds.DefaultTenantId,
+                    pair.EventId,
+                    pair.LocationId.Value,
+                    SeedIds.AdminUserId,
+                    DateTime.UnixEpoch)
+                : EventLocation.CreateToBeAnnounced(
+                    SeedIds.DefaultTenantId,
+                    pair.EventId,
+                    SeedIds.AdminUserId,
+                    DateTime.UnixEpoch);
+            context.EventLocations.Add(eventLocation);
+            context.EventLocationDisclosureAudits.Add(eventLocation.CreateInitialDisclosureAudit());
+            eventLocationByPair.Add(pair, eventLocation);
+        }
+
+        foreach (EventSessionGroup group in seedGroups)
+        {
+            group.AssignEventLocation(eventLocationByPair[(group.EventId, group.LocationId)]);
+        }
+
+        foreach (EventSession session in seedSessions)
+        {
+            session.AssignEventLocation(eventLocationByPair[(session.EventId, session.LocationId)]);
+        }
+
+        foreach (EventAgendaItem item in seedEventAgendaItems)
+        {
+            item.AssignEventLocation(eventLocationByPair[(item.EventId, item.LocationId)]);
+        }
+
+        var seedSessionById = seedSessions.ToDictionary(item => item.Id);
+        foreach (EventSessionAgendaItem item in seedSessionAgendaItems)
+        {
+            item.EventSession = seedSessionById[item.EventSessionId];
+            item.AssignEventLocation(eventLocationByPair[(item.EventSession.EventId, item.LocationId)]);
+        }
+
+        Guid[] groupIds = seedGroups.Select(item => item.Id).ToArray();
+        Guid[] sessionIds = seedSessions.Select(item => item.Id).ToArray();
+        Guid[] eventAgendaItemIds = seedEventAgendaItems.Select(item => item.Id).ToArray();
+        Guid[] sessionAgendaItemIds = seedSessionAgendaItems.Select(item => item.Id).ToArray();
+        EventSessionGroup[] existingGroups = await context.EventSessionGroups
+            .IgnoreQueryFilters()
+            .Where(item => groupIds.Contains(item.Id))
+            .ToArrayAsync(ct);
+        EventSession[] existingSessions = await context.EventSessions
+            .IgnoreQueryFilters()
+            .Where(item => sessionIds.Contains(item.Id))
+            .ToArrayAsync(ct);
+        EventAgendaItem[] existingEventAgendaItems = await context.EventAgendaItems
+            .IgnoreQueryFilters()
+            .Where(item => eventAgendaItemIds.Contains(item.Id))
+            .ToArrayAsync(ct);
+        EventSessionAgendaItem[] existingSessionAgendaItems = await context.EventSessionAgendaItems
+            .IgnoreQueryFilters()
+            .Include(item => item.EventSession)
+            .Where(item => sessionAgendaItemIds.Contains(item.Id))
+            .ToArrayAsync(ct);
+
+        foreach (EventSessionGroup group in existingGroups)
+        {
+            group.AssignEventLocation(eventLocationByPair[(group.EventId, group.LocationId)]);
+        }
+
+        foreach (EventSession session in existingSessions)
+        {
+            session.AssignEventLocation(eventLocationByPair[(session.EventId, session.LocationId)]);
+        }
+
+        foreach (EventAgendaItem item in existingEventAgendaItems)
+        {
+            item.AssignEventLocation(eventLocationByPair[(item.EventId, item.LocationId)]);
+        }
+
+        foreach (EventSessionAgendaItem item in existingSessionAgendaItems)
+        {
+            item.AssignEventLocation(eventLocationByPair[(item.EventSession.EventId, item.LocationId)]);
+        }
+
+        var existingGroupIds = existingGroups.Select(item => item.Id).ToHashSet();
+        var existingSessionIds = existingSessions.Select(item => item.Id).ToHashSet();
+        var existingEventAgendaItemIds = existingEventAgendaItems.Select(item => item.Id).ToHashSet();
+        var existingSessionAgendaItemIds = existingSessionAgendaItems.Select(item => item.Id).ToHashSet();
+        context.EventSessionGroups.AddRange(seedGroups.Where(item => !existingGroupIds.Contains(item.Id)));
+        context.EventSessions.AddRange(seedSessions.Where(item => !existingSessionIds.Contains(item.Id)));
+        context.EventAgendaItems.AddRange(
+            seedEventAgendaItems.Where(item => !existingEventAgendaItemIds.Contains(item.Id)));
+        context.EventSessionAgendaItems.AddRange(
+            seedSessionAgendaItems.Where(item => !existingSessionAgendaItemIds.Contains(item.Id)));
+
+        await context.SaveChangesAsync(ct);
+        context.ChangeTracker.Clear();
     }
 
     private static async Task EnsureIslamicEventSessionStatusesAsync(

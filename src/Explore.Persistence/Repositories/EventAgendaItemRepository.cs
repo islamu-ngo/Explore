@@ -45,4 +45,42 @@ public class EventAgendaItemRepository : GenericRepository<EventAgendaItem, Guid
             .ThenBy(item => item.StartTime)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task MoveToEventAsync(
+        EventAgendaItem agendaItem,
+        Guid eventId,
+        EventLocation eventLocation,
+        Guid? roomId,
+        CancellationToken cancellationToken)
+    {
+        if (_dbContext.Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException("Moving an event agenda item requires an active transaction.");
+        }
+
+        _dbContext.Entry(agendaItem).State = EntityState.Detached;
+        int affectedRows = await _dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            UPDATE event_agenda_items
+            SET event_id = {eventId},
+                event_location_id = {eventLocation.Id},
+                location_id = {eventLocation.LocationId},
+                room_id = {roomId},
+                event_day_id = NULL
+            WHERE tenant_id = {agendaItem.TenantId}
+              AND id = {agendaItem.Id}
+              AND is_deleted = FALSE
+            """,
+            cancellationToken);
+        if (affectedRows != 1)
+        {
+            throw new InvalidOperationException("The event agenda item could not be moved because it is no longer active.");
+        }
+
+        agendaItem.EventId = eventId;
+        agendaItem.EventDayId = null;
+        agendaItem.AssignEventLocation(eventLocation);
+        agendaItem.RoomId = roomId;
+        _dbContext.EventAgendaItems.Attach(agendaItem);
+    }
 }
