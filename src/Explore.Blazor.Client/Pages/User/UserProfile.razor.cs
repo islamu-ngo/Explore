@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Components.Events;
+using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
@@ -15,11 +16,12 @@ namespace Explore.Blazor.Client.Pages.User;
 /// Code-behind for the User Profile page.
 /// Displays user information, event attendance stats, and reviews.
 /// </summary>
-public partial class UserProfile : ComponentBase
+public partial class UserProfile : ComponentBase, IDisposable
 {
     [Inject] private IUserService UserService { get; set; } = default!;
     [Inject] private IEventService EventService { get; set; } = default!;
     [Inject] private IOrganizationReviewService OrganizationReviewService { get; set; } = default!;
+    [Inject] private IUserSettingsService UserSettingsService { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
     [Inject] private ILogger<UserProfile> Logger { get; set; } = default!;
 
@@ -40,7 +42,17 @@ public partial class UserProfile : ComponentBase
     private List<EventListDto> _pastRegistrationEvents = new();
     private List<KeyValuePair<DateTime, List<EventListDto>>> _pastRegistrationEventsByDate = new();
     private bool _isLoadingRegistrationEvents;
+    private SettingGroupResponseDto? _atprotoSettings;
+    private bool _isLoadingAtprotoSettings;
+    private bool _isSavingAtprotoConsent;
+    private bool _atprotoSaveSucceeded;
+    private string? _atprotoMessage;
+    private readonly CancellationTokenSource _lifetime = new();
     private EventPreviewWorkspace? _eventPreviewWorkspace;
+
+    private const string AtprotoCategory = "AtprotoFederation";
+    private const string AtprotoEventsEnabledKey = "federation.atproto_events_enabled";
+    private const string AtprotoPublishMyEventsKey = "federation.atproto_publish_my_events";
 
     private List<EventListDto> RegistrationEvents =>
         _upcomingRegistrationEvents.Concat(_pastRegistrationEvents).ToList();
@@ -112,7 +124,7 @@ public partial class UserProfile : ComponentBase
         catch (Exception ex)
         {
             Logger.LogError(ex, "[UserProfile] Error loading user data");
-            ErrorMessage = $"An error occurred while loading your profile: {ex.Message}";
+            ErrorMessage = "Unable to load your profile. Please try again.";
         }
         finally
         {
@@ -126,8 +138,9 @@ public partial class UserProfile : ComponentBase
         var registrationsTask = LoadEventRegistrationsAsync(userId);
         var reviewsTask = LoadReviewsAsync(userId);
         var postsTask = LoadPostsAsync();
+        var atprotoSettingsTask = LoadAtprotoSettingsAsync();
 
-        await Task.WhenAll(registrationsTask, reviewsTask, postsTask);
+        await Task.WhenAll(registrationsTask, reviewsTask, postsTask, atprotoSettingsTask);
     }
 
     private async Task LoadEventRegistrationsAsync(Guid userId)
@@ -194,6 +207,84 @@ public partial class UserProfile : ComponentBase
             MyReviews = new List<OrganizationReviewDto>();
             ReviewsGiven = 0;
         }
+    }
+
+    private async Task LoadAtprotoSettingsAsync()
+    {
+        _isLoadingAtprotoSettings = true;
+        _atprotoMessage = null;
+        try
+        {
+            _atprotoSettings = await UserSettingsService.GetSettingsAsync(AtprotoCategory, _lifetime.Token);
+            if (_atprotoSettings is null)
+            {
+                _atprotoMessage = "AT Protocol event preferences are temporarily unavailable.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "[UserProfile] Error loading AT Protocol event preferences");
+            _atprotoSettings = null;
+            _atprotoMessage = "AT Protocol event preferences are temporarily unavailable.";
+        }
+        finally
+        {
+            _isLoadingAtprotoSettings = false;
+        }
+    }
+
+    private async Task SetAtprotoPublicationConsentAsync(bool enabled)
+    {
+        if (_isSavingAtprotoConsent || AtprotoConsentSetting?.CanEdit != true)
+        {
+            return;
+        }
+
+        _isSavingAtprotoConsent = true;
+        _atprotoMessage = null;
+        try
+        {
+            _atprotoSaveSucceeded = await UserSettingsService.UpdateSettingAsync(
+                AtprotoPublishMyEventsKey,
+                enabled ? "true" : "false",
+                _lifetime.Token);
+            _atprotoMessage = _atprotoSaveSucceeded
+                ? "AT Protocol publication preference saved."
+                : "AT Protocol publication preference could not be saved.";
+            if (_atprotoSaveSucceeded)
+            {
+                _atprotoSettings = await UserSettingsService.GetSettingsAsync(AtprotoCategory, _lifetime.Token);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "[UserProfile] Error saving AT Protocol publication preference");
+            _atprotoSaveSucceeded = false;
+            _atprotoMessage = "AT Protocol publication preference could not be saved.";
+        }
+        finally
+        {
+            _isSavingAtprotoConsent = false;
+        }
+    }
+
+    private EffectiveSettingDto? AtprotoConsentSetting => FindAtprotoSetting(AtprotoPublishMyEventsKey);
+
+    private bool AtprotoEventsEnabled => ReadSettingBool(FindAtprotoSetting(AtprotoEventsEnabledKey)?.Value);
+
+    private bool PublishMyEvents => ReadSettingBool(AtprotoConsentSetting?.Value);
+
+    private EffectiveSettingDto? FindAtprotoSetting(string key) =>
+        _atprotoSettings?.Settings?.FirstOrDefault(setting =>
+            string.Equals(setting.Key, key, StringComparison.Ordinal));
+
+    private static bool ReadSettingBool(string? value) =>
+        bool.TryParse(value?.Trim().Trim('"'), out bool parsed) && parsed;
+
+    public void Dispose()
+    {
+        _lifetime.Cancel();
+        _lifetime.Dispose();
     }
 
     private Task HandleEventSelected(EventListDto evt) =>

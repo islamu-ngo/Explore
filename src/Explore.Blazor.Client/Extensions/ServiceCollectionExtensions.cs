@@ -10,6 +10,7 @@ using Explore.Blazor.Client.Contracts.Services.ControlPlane;
 using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Contracts.Services.EventReporting;
 using Explore.Blazor.Client.Contracts.Services.Events;
+using Explore.Blazor.Client.Contracts.Services.Federation;
 using Explore.Blazor.Client.Contracts.Services.Footer;
 using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Contracts.Services.Notifications;
@@ -57,6 +58,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IWebhookManagementService, WebhookManagementService>();
         services.AddScoped<IWebhookOperationsService, WebhookOperationsService>();
         services.AddScoped<IListmonkIntegrationSettingsService, ListmonkIntegrationSettingsService>();
+        services.AddScoped<IAtprotoFederationSettingsService, AtprotoFederationSettingsService>();
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IOrganizationService, OrganizationService>();
         services.AddScoped<IGroupService, GroupService>();

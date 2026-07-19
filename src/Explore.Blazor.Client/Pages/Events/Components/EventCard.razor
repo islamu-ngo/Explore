@@ -10,9 +10,9 @@
                  Class="@CardCssClass"
                  Outlined="true"
                  Elevation="0"
-                 Style="overflow: hidden; cursor: pointer;"
-                 role="button"
-                 tabindex="0"
+                 Style="@CardInteractionStyle"
+                 role="@CardRole"
+                 tabindex="@CardTabIndex"
                  aria-label="@CardAriaLabel">
             <div class="event-card__image-wrapper">
                 @if (HasCardActions)
@@ -78,6 +78,19 @@
                     {
                         <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled" Class="event-card__overlay-chip">
                             Moderated
+                        </MudChip>
+                    }
+                    @if (IsFederated)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled" Class="event-card__overlay-chip">
+                            AT Protocol
+                        </MudChip>
+                    }
+                    @if (AtprotoDeliveryLabel is { } compactDeliveryLabel)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="@AtprotoDeliveryColor" Variant="Variant.Filled"
+                                 Class="event-card__overlay-chip" title="@AtprotoDeliveryGuidance">
+                            @compactDeliveryLabel
                         </MudChip>
                     }
                     <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled" Class="event-card__overlay-chip">
@@ -164,9 +177,9 @@
                  Class="@CardCssClass"
                  Outlined="true"
                  Elevation="0"
-                 Style="overflow: hidden; cursor: pointer;"
-                 role="button"
-                 tabindex="0"
+                 Style="@CardInteractionStyle"
+                 role="@CardRole"
+                 tabindex="@CardTabIndex"
                  aria-label="@CardAriaLabel">
             <div class="event-card__horizontal">
                 <div class="event-card__horizontal-image">
@@ -238,6 +251,16 @@
 
                     @* Chips: type + price (reduced from full chip row) *@
                     <div class="event-card__dl-chips">
+                        @if (IsFederated)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled">AT Protocol</MudChip>
+                        }
+                        @if (AtprotoDeliveryLabel is { } detailedDeliveryLabel)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="@AtprotoDeliveryColor" Variant="Variant.Filled">
+                                @detailedDeliveryLabel
+                            </MudChip>
+                        }
                         <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="font-weight-bold">@EventTypeName</MudChip>
                         @if (IsModerated)
                         {
@@ -263,6 +286,13 @@
                             }
                         }
                     </div>
+
+                    @if (AtprotoDeliveryGuidance is { } detailedDeliveryGuidance)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" role="status">
+                            @detailedDeliveryGuidance
+                        </MudText>
+                    }
 
                     @* Description *@
                     @if (IsFieldVisible("event_list.card.show_description"))
@@ -315,9 +345,9 @@
                  Class="@CardCssClass"
                  Outlined="true"
                  Elevation="0"
-                 Style="overflow: hidden; cursor: pointer;"
-                 role="button"
-                 tabindex="0"
+                 Style="@CardInteractionStyle"
+                 role="@CardRole"
+                 tabindex="@CardTabIndex"
                  aria-label="@CardAriaLabel">
             <div class="event-card__full-row">
                 <div class="event-card__full-row-image">
@@ -381,6 +411,16 @@
 
                     @* Chips + icon badges: type, status, price + visibility/gender/format icons *@
                     <div class="event-card__sr-chips">
+                        @if (IsFederated)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled">AT Protocol</MudChip>
+                        }
+                        @if (AtprotoDeliveryLabel is { } rowDeliveryLabel)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="@AtprotoDeliveryColor" Variant="Variant.Filled">
+                                @rowDeliveryLabel
+                            </MudChip>
+                        }
                         <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="font-weight-bold">@EventTypeName</MudChip>
                         @if (IsModerated)
                         {
@@ -434,6 +474,13 @@
                             </MudTooltip>
                         }
                     </div>
+
+                    @if (AtprotoDeliveryGuidance is { } rowDeliveryGuidance)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" role="status">
+                            @rowDeliveryGuidance
+                        </MudText>
+                    }
 
                     @* Description *@
                     @if (IsFieldVisible("event_list.card.show_description"))

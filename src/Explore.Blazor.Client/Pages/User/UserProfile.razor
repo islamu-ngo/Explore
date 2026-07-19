@@ -22,7 +22,7 @@
     }
     else if (!string.IsNullOrEmpty(ErrorMessage))
     {
-        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6">@ErrorMessage</MudAlert>
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6" role="alert">@ErrorMessage</MudAlert>
         <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="@LoadUserDataAsync">Retry</MudButton>
     }
     else if (UserData == null)
@@ -177,6 +177,65 @@
                                 <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No reviews given yet.</MudAlert>
                             }
                         </div>
+                    </MudTabPanel>
+
+                    <MudTabPanel Text="AT Protocol">
+                        <section class="org-profile__section" aria-labelledby="profile-atproto-events-title">
+                            <MudPaper Elevation="0" Class="pa-5 border-solid border-1 mud-border-lines-default rounded-lg">
+                                <MudStack Spacing="2">
+                                    <MudText id="profile-atproto-events-title" Typo="Typo.h6" HtmlTag="h2" Style="font-weight: 700;">
+                                        Event publication consent
+                                    </MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        Allow eligible events you create here to be published to your linked AT Protocol PDS. The local event is always committed first; a PDS record is never created on its own.
+                                    </MudText>
+
+                                    @if (_isLoadingAtprotoSettings)
+                                    {
+                                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" aria-label="Loading AT Protocol publication preference" />
+                                    }
+                                    else if (_atprotoSettings is null)
+                                    {
+                                        <MudAlert Severity="Severity.Warning" Dense="true" role="alert">@_atprotoMessage</MudAlert>
+                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="LoadAtprotoSettingsAsync">
+                                            Retry AT Protocol preference
+                                        </MudButton>
+                                    }
+                                    else
+                                    {
+                                        <MudSwitch T="bool"
+                                                   Value="@PublishMyEvents"
+                                                   ValueChanged="SetAtprotoPublicationConsentAsync"
+                                                   Color="Color.Primary"
+                                                   Disabled="@(_isSavingAtprotoConsent || AtprotoConsentSetting?.CanEdit != true)">
+                                            Publish my eligible events to my PDS
+                                        </MudSwitch>
+
+                                        @if (!AtprotoEventsEnabled)
+                                        {
+                                            <MudAlert Severity="Severity.Info" Dense="true">
+                                                An administrator has disabled AT Protocol Events. Your consent is retained but no events are fetched or published until the capability is enabled.
+                                            </MudAlert>
+                                        }
+
+                                        @if (AtprotoConsentSetting?.CanEdit != true)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Warning" role="status">
+                                                @(AtprotoConsentSetting?.Reason ?? "This publication preference is currently unavailable.")
+                                            </MudText>
+                                        }
+                                    }
+
+                                    @if (!string.IsNullOrWhiteSpace(_atprotoMessage) && _atprotoSettings is not null)
+                                    {
+                                        <MudAlert Severity="@(_atprotoSaveSucceeded ? Severity.Success : Severity.Error)" Dense="true"
+                                                  role="@(_atprotoSaveSucceeded ? "status" : "alert")">
+                                            @_atprotoMessage
+                                        </MudAlert>
+                                    }
+                                </MudStack>
+                            </MudPaper>
+                        </section>
                     </MudTabPanel>
                 </MudTabs>
             </MudContainer>

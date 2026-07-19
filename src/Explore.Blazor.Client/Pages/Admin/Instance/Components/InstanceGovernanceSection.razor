@@ -5,8 +5,11 @@
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.ControlPlane
 @using Explore.Blazor.Client.Contracts.Services.ControlPlane
+@using Explore.Blazor.Client.Contracts.Services.Federation
 @using Explore.Blazor.Client.Services
 @inject IControlPlaneOperationsService OperationsService
+@inject IAtprotoFederationSettingsService AtprotoFederationSettingsService
+@inject ILogger<InstanceGovernanceSection> Logger
 
 <div class="settings-section">
     <div class="settings-section-header">
@@ -279,6 +282,129 @@
             </MudStack>
         }
 
+        @if (ShowAtprotoGovernance)
+        {
+            <MudDivider Class="my-4" />
+            <MudPaper Class="pa-4" Elevation="0" Style="border: 1px solid var(--mud-palette-lines-default);">
+                <MudStack Spacing="2" aria-labelledby="instance-atproto-events-title">
+                    <MudText id="instance-atproto-events-title" Typo="Typo.h6" HtmlTag="h2" Style="font-weight:600;">
+                        AT Protocol Event Federation
+                    </MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        One switch enables both fetching community events and publishing eligible local events to each consenting creator's PDS.
+                    </MudText>
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        Publication is local-first: the application commits and validates the event before any PDS record can be created.
+                    </MudAlert>
+
+                    @if (_atprotoLoading)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" aria-label="Loading instance AT Protocol event settings" />
+                    }
+                    else if (_atprotoSettings is null)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" role="alert">@_atprotoMessage</MudAlert>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="LoadAtprotoSettingsAsync">
+                            Retry AT Protocol settings
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudStack Spacing="1">
+                            @{ var eventsSetting = FindAtprotoSetting(AtprotoEventsEnabledKey); }
+                            <MudSwitch T="bool"
+                                       Value="@AtprotoEventsEnabled"
+                                       ValueChanged="SetAtprotoEventsEnabledAsync"
+                                       Color="Color.Primary"
+                                       Disabled="@(_atprotoSaving || !HasAtprotoAffordance(UpdateRelation(AtprotoEventsEnabledKey)))">
+                                Enable AT Protocol events
+                            </MudSwitch>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                Source: @SettingSourceLabel(eventsSetting?.Source). Lock: @LockStateLabel(eventsSetting?.IsLocked).
+                            </MudText>
+                            @if (!HasAtprotoAffordance(UpdateRelation(AtprotoEventsEnabledKey)))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Warning" role="status">
+                                    @(eventsSetting?.Reason ?? "The server has not granted an update affordance for this setting.")
+                                </MudText>
+                            }
+                            @if (HasAtprotoAffordance(LockRelation(AtprotoEventsEnabledKey)))
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Warning"
+                                           Disabled="@_atprotoSaving"
+                                           OnClick="@(() => SetAtprotoLockAsync(AtprotoEventsEnabledKey, true))"
+                                           aria-label="Lock AT Protocol events for tenants">
+                                    Lock tenant override
+                                </MudButton>
+                            }
+                            else if (HasAtprotoAffordance(UnlockRelation(AtprotoEventsEnabledKey)))
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                           Disabled="@_atprotoSaving"
+                                           OnClick="@(() => SetAtprotoLockAsync(AtprotoEventsEnabledKey, false))"
+                                           aria-label="Unlock AT Protocol events for tenants">
+                                    Unlock tenant override
+                                </MudButton>
+                            }
+                        </MudStack>
+
+                        <MudDivider />
+
+                        <MudStack Spacing="1">
+                            @{ var profileSetting = FindAtprotoSetting(AtprotoValidationProfileKey); }
+                            <MudSelect T="string"
+                                       Label="Event creation validation"
+                                       Value="@AtprotoValidationProfile"
+                                       ValueChanged="SetAtprotoValidationProfileAsync"
+                                       Variant="Variant.Outlined"
+                                       Disabled="@(_atprotoSaving || !HasAtprotoAffordance(UpdateRelation(AtprotoValidationProfileKey)))">
+                                <MudSelectItem Value="@PlatformValidationProfile">Platform publishing rules</MudSelectItem>
+                                <MudSelectItem Value="@CommunityValidationProfile">Community lexicon minimum</MudSelectItem>
+                            </MudSelect>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                Community lexicon minimum relaxes business-field requirements only. Authorization, privacy, payload safety, and the local-first commit invariant still apply.
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                Source: @SettingSourceLabel(profileSetting?.Source). Lock: @LockStateLabel(profileSetting?.IsLocked).
+                            </MudText>
+                            @if (!HasAtprotoAffordance(UpdateRelation(AtprotoValidationProfileKey)))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Warning" role="status">
+                                    @(profileSetting?.Reason ?? "The server has not granted an update affordance for this setting.")
+                                </MudText>
+                            }
+                            @if (HasAtprotoAffordance(LockRelation(AtprotoValidationProfileKey)))
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Warning"
+                                           Disabled="@_atprotoSaving"
+                                           OnClick="@(() => SetAtprotoLockAsync(AtprotoValidationProfileKey, true))"
+                                           aria-label="Lock AT Protocol validation profile for tenants">
+                                    Lock tenant override
+                                </MudButton>
+                            }
+                            else if (HasAtprotoAffordance(UnlockRelation(AtprotoValidationProfileKey)))
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                           Disabled="@_atprotoSaving"
+                                           OnClick="@(() => SetAtprotoLockAsync(AtprotoValidationProfileKey, false))"
+                                           aria-label="Unlock AT Protocol validation profile for tenants">
+                                    Unlock tenant override
+                                </MudButton>
+                            }
+                        </MudStack>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(_atprotoMessage) && _atprotoSettings is not null)
+                    {
+                        <MudAlert Severity="@(_atprotoSaveSucceeded ? Severity.Success : Severity.Error)" Dense="true"
+                                  role="@(_atprotoSaveSucceeded ? "status" : "alert")">
+                            @_atprotoMessage
+                        </MudAlert>
+                    }
+                </MudStack>
+            </MudPaper>
+        }
+
         @if (ShowRenderPolicies)
         {
         @if (ShowGeneralGovernance)
@@ -455,6 +581,10 @@
 
 @code {
     private const string RecommendedPreset = "AllInteractiveServer";
+    private const string AtprotoEventsEnabledKey = "federation.atproto_events_enabled";
+    private const string AtprotoValidationProfileKey = "federation.atproto_event_validation_profile";
+    private const string PlatformValidationProfile = "platform";
+    private const string CommunityValidationProfile = "community_lexicon";
 
     private static readonly IReadOnlyList<PresetOption> PresetOptions =
     [
@@ -508,6 +638,7 @@
     private bool ShowGeneralGovernance => DisplayMode is "full" or "general";
     private bool ShowRenderPolicies => DisplayMode is "full" or "advanced";
     private bool ShowMcpGovernance => DisplayMode is "full" or "advanced";
+    private bool ShowAtprotoGovernance => DisplayMode is "full" or "advanced";
     private bool ShowHomePage => DisplayMode is "full" or "general";
 
     private HalResourceOfControlPlaneDeploymentModeRunbookDto? _runbook;
@@ -516,6 +647,18 @@
     private string? _confirmationText;
     private string? _transitionReason;
     private bool _transitioning;
+    private HalResourceOfSettingGroupResponseDto? _atprotoSettings;
+    private bool _atprotoLoading = true;
+    private bool _atprotoSaving;
+    private bool _atprotoSaveSucceeded;
+    private string? _atprotoMessage;
+
+    private bool AtprotoEventsEnabled => ReadBool(FindAtprotoSetting(AtprotoEventsEnabledKey)?.Value);
+
+    private string AtprotoValidationProfile =>
+        ReadString(FindAtprotoSetting(AtprotoValidationProfileKey)?.Value) is CommunityValidationProfile
+            ? CommunityValidationProfile
+            : PlatformValidationProfile;
 
     private string SectionTitle => DisplayMode switch
     {
@@ -558,6 +701,11 @@
             {
                 _runbookLoaded = true;
             }
+        }
+
+        if (ShowAtprotoGovernance)
+        {
+            await LoadAtprotoSettingsAsync();
         }
     }
 
@@ -726,6 +874,143 @@
 
         EnsureOnboardingGuardrail();
     }
+
+    private async Task LoadAtprotoSettingsAsync()
+    {
+        _atprotoLoading = true;
+        _atprotoMessage = null;
+        try
+        {
+            _atprotoSettings = await AtprotoFederationSettingsService.GetInstanceAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Failed to load instance AT Protocol event settings.");
+            _atprotoSettings = null;
+            _atprotoMessage = "AT Protocol event settings are temporarily unavailable.";
+        }
+        finally
+        {
+            _atprotoLoading = false;
+        }
+    }
+
+    private Task SetAtprotoEventsEnabledAsync(bool enabled) =>
+        SaveAtprotoSettingAsync(AtprotoEventsEnabledKey, enabled ? "true" : "false");
+
+    private Task SetAtprotoValidationProfileAsync(string profile) =>
+        SaveAtprotoSettingAsync(
+            AtprotoValidationProfileKey,
+            profile == CommunityValidationProfile ? "\"community_lexicon\"" : "\"platform\"");
+
+    private async Task SaveAtprotoSettingAsync(string key, string value)
+    {
+        if (_atprotoSaving || !HasAtprotoAffordance(UpdateRelation(key)))
+        {
+            return;
+        }
+
+        _atprotoSaving = true;
+        _atprotoMessage = null;
+        try
+        {
+            var response = await AtprotoFederationSettingsService.UpdateInstanceAsync(key, value);
+            _atprotoSaveSucceeded = response.Success == true;
+            _atprotoMessage = _atprotoSaveSucceeded
+                ? "AT Protocol event settings saved."
+                : response.Message ?? "AT Protocol event settings could not be saved.";
+            if (_atprotoSaveSucceeded)
+            {
+                _atprotoSettings = await AtprotoFederationSettingsService.GetInstanceAsync();
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Failed to update instance AT Protocol event setting {SettingKey}.", key);
+            _atprotoSaveSucceeded = false;
+            _atprotoMessage = "AT Protocol event settings could not be saved.";
+        }
+        finally
+        {
+            _atprotoSaving = false;
+        }
+    }
+
+    private async Task SetAtprotoLockAsync(string key, bool shouldLock)
+    {
+        var relation = shouldLock ? LockRelation(key) : UnlockRelation(key);
+        if (_atprotoSaving || !HasAtprotoAffordance(relation))
+        {
+            return;
+        }
+
+        _atprotoSaving = true;
+        _atprotoMessage = null;
+        try
+        {
+            var response = await AtprotoFederationSettingsService.SetInstanceLockAsync(key, shouldLock);
+            _atprotoSaveSucceeded = response.Success == true;
+            _atprotoMessage = _atprotoSaveSucceeded
+                ? shouldLock ? "Tenant override locked." : "Tenant override unlocked."
+                : response.Message ?? "The tenant lock could not be changed.";
+            if (_atprotoSaveSucceeded)
+            {
+                _atprotoSettings = await AtprotoFederationSettingsService.GetInstanceAsync();
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Failed to change the instance lock for AT Protocol setting {SettingKey}.", key);
+            _atprotoSaveSucceeded = false;
+            _atprotoMessage = "The tenant lock could not be changed.";
+        }
+        finally
+        {
+            _atprotoSaving = false;
+        }
+    }
+
+    private Explore.Blazor.Client.Clients.Settings? FindAtprotoSetting(string key) =>
+        _atprotoSettings?.Settings?.FirstOrDefault(setting =>
+            string.Equals(setting.Key, key, StringComparison.Ordinal));
+
+    private bool HasAtprotoAffordance(string relation) =>
+        _atprotoSettings?._links?.ContainsKey(relation) == true;
+
+    private static string UpdateRelation(string key) => $"update-{key}";
+
+    private static string LockRelation(string key) => $"lock-{key}";
+
+    private static string UnlockRelation(string key) => $"unlock-{key}";
+
+    private static bool ReadBool(string? value) =>
+        bool.TryParse(value?.Trim().Trim('"'), out var parsed) && parsed;
+
+    private static string ReadString(string? value) => value?.Trim().Trim('"') ?? string.Empty;
+
+    private static string LockStateLabel(bool? isLocked) => isLocked switch
+    {
+        true => "Locked",
+        false => "Unlocked",
+        null => "Unknown"
+    };
+
+    private static string SettingSourceLabel(int? source) =>
+        source is { } value && Enum.IsDefined((SettingSource)value)
+            ? SettingSourceLabel((SettingSource)value)
+            : "Unknown";
+
+    private static string SettingSourceLabel(SettingSource source) => source switch
+    {
+        SettingSource.SystemDefault => "System default",
+        SettingSource.TenantOverride => "Tenant override",
+        SettingSource.SystemLocked => "System locked",
+        SettingSource.OrganizationOverride => "Organization override",
+        SettingSource.GroupOverride => "Group override",
+        SettingSource.UserPreference => "User preference",
+        SettingSource.TenantLocked => "Tenant locked",
+        _ => "Unknown"
+    };
 
     private void OnAdvancedOverridesChanged(bool enabled)
     {

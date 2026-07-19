@@ -532,7 +532,7 @@
     private string T(string key, string fallback) => Translation.T(key, fallback);
 
     private static IReadOnlyList<EventListDto> Events(IEnumerable<EventDiscoveryItemDto>? items) =>
-        items?.Where(item => item.Event is not null).Select(item => item.Event!).ToArray() ?? [];
+        items?.Select(item => item.ToEventListDto()).OfType<EventListDto>().ToArray() ?? [];
 
     private static string? AreaSecondaryLabel(PublicDiscoveryAreaDto area)
     {

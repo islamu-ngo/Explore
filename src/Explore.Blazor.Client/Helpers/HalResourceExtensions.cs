@@ -33,6 +33,35 @@ public static class HalResourceExtensions
         return DeserializeItems<EventListDto>(collection._embedded.Items);
     }
 
+    public static ICollection<EventListDto> GetItems(this HalCollectionResourceOfEventDiscoveryItemDto collection)
+    {
+        if (collection._embedded?.Items is not { Count: > 0 } items)
+            return [];
+
+        return items
+            .Select(ToEventListDto)
+            .OfType<EventListDto>()
+            .ToList();
+    }
+
+    public static EventListDto? ToEventListDto(this EventDiscoveryItemDto item) =>
+        MapDiscoveryItem(
+            item.Source,
+            item.Event,
+            item.FederatedEvent,
+            item.Federation,
+            item.AdditionalProperties.TryGetValue("_links", out var links) ? links : null);
+
+    public static EventListDto? ToEventListDto(this HalResourceOfEventDiscoveryItemDto item) =>
+        MapDiscoveryItem(
+            item.Source,
+            item.Event,
+            item.FederatedEvent,
+            item.Federation,
+            item._links is { Count: > 0 }
+                ? JsonSerializer.SerializeToElement(item._links, JsonOptions)
+                : null);
+
     /// <summary>
     /// Converts HalResourceOfEventDto to EventDto using JSON serialization.
     /// This ensures all properties are correctly mapped regardless of changes in the DTO schema.
@@ -374,6 +403,20 @@ public static class HalResourceExtensions
         };
     }
 
+    public static PaginatedResult<EventListDto> ToPaginatedResult(this HalCollectionResourceOfEventDiscoveryItemDto? collection)
+    {
+        if (collection is null)
+            return PaginatedResult<EventListDto>.Empty();
+
+        return new PaginatedResult<EventListDto>
+        {
+            Items = collection.GetItems().ToList(),
+            PageNumber = collection.PageNumber ?? 1,
+            PageSize = collection.PageSize ?? 20,
+            TotalCount = collection.TotalCount ?? 0
+        };
+    }
+
     /// <summary>
     /// Maps a HAL collection response to a <see cref="PaginatedResult{T}"/> for EventSession lists.
     /// </summary>
@@ -634,6 +677,32 @@ public static class HalResourceExtensions
     public static bool HasHalLink(this EventListDto dto, string linkRel)
         => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
 
+    public static bool IsFederatedDiscoveryEvent(this EventListDto dto) =>
+        dto.AdditionalProperties.TryGetValue("eventDiscoverySource", out var source) &&
+        string.Equals(source as string, "atproto", StringComparison.OrdinalIgnoreCase);
+
+    public static string? GetHalHref(this EventListDto dto, string linkRel)
+    {
+        if (!dto.AdditionalProperties.TryGetValue("_links", out var links) ||
+            links is not JsonElement { ValueKind: JsonValueKind.Object } linksElement ||
+            !linksElement.TryGetProperty(linkRel, out var link) ||
+            link.ValueKind != JsonValueKind.Object ||
+            !link.TryGetProperty("href", out var href) ||
+            href.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        var value = href.GetString();
+        return value is { Length: > 0 } &&
+               value[0] == '/' &&
+               (value.Length == 1 || value[1] != '/') &&
+               !value.Contains('\\') &&
+               !value.Any(char.IsControl)
+            ? value
+            : null;
+    }
+
     public static bool HasHalLink(this InstanceOnboardingStatusDto dto, string linkRel)
         => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
 
@@ -759,6 +828,47 @@ public static class HalResourceExtensions
             return linksElement.TryGetProperty(linkRel, out _);
 
         return false;
+    }
+
+    private static EventListDto? MapDiscoveryItem(
+        string? source,
+        EventListDto? localEvent,
+        FederatedEventDto? federatedEvent,
+        EventFederationMetadataDto? federation,
+        object? links)
+    {
+        EventListDto? result = localEvent;
+        if (result is null && federatedEvent is not null)
+        {
+            result = new EventListDto
+            {
+                Title = federatedEvent.Name ?? "Federated event",
+                Description = federatedEvent.Description,
+                EventTypeFullName = "AT Protocol event",
+                AudienceGenderFullName = "Community event",
+                ActorDisplayName = federation?.Provenance ?? "AT Protocol",
+                ActorTypeFullName = "AT Protocol identity",
+                EventStatusFullName = federatedEvent.Status ?? "Published",
+                VisibilityTypeFullName = "Public",
+                EventFormatFullName = federatedEvent.Mode ?? federatedEvent.LocationSummary ?? "Community event",
+                FirstSessionDate = federatedEvent.StartsAtUtc,
+                FirstSessionStartUtc = federatedEvent.StartsAtUtc,
+                LastSessionDate = federatedEvent.EndsAtUtc ?? federatedEvent.StartsAtUtc,
+                CreatedAtUtc = federatedEvent.CreatedAtUtc,
+                AtprotoRecordId = federation?.AtprotoRecordId ?? federatedEvent.Id,
+                IsRegistrationRequired = federatedEvent.RsvpExpected
+            };
+        }
+
+        if (result is null)
+            return null;
+
+        result.AdditionalProperties["eventDiscoverySource"] =
+            federatedEvent is null ? source ?? "local" : "atproto";
+        if (links is not null)
+            result.AdditionalProperties["_links"] = links;
+
+        return result;
     }
 
     /// <summary>

@@ -123,15 +123,48 @@ public partial class EventCard : ComponentBase
 
     private bool HasManagementMenu => CanEdit || CanDelete;
     private bool HasCardActions => HasManagementMenu || CanShare;
+    private bool IsFederated => Event.IsFederatedDiscoveryEvent();
+    private string? FederatedSourceHref => Event.GetHalHref("source");
+    private bool IsInteractive => !IsFederated || !string.IsNullOrWhiteSpace(FederatedSourceHref);
     private bool CanEdit => Event.HasHalLink("edit") && OnEditRequested.HasDelegate;
     private bool CanDelete => Event.HasHalLink("delete") && OnDeleteRequested.HasDelegate;
-    private bool CanShare => !IsModerated && !IsPastEvent && OnShareRequested.HasDelegate;
+    private bool CanShare => !IsFederated && !IsModerated && !IsPastEvent && OnShareRequested.HasDelegate;
     private bool IsPastEvent => Event.IsPast == true;
     private bool IsModerated =>
         Event.EventStatusId == ModeratedStatusId ||
         string.Equals(Event.EventStatusFullName, "Moderated", StringComparison.OrdinalIgnoreCase);
     private string ShareButtonLabel => $"Share event: {Event.Title}";
-    private string CardAriaLabel => $"View event: {Event.Title}";
+    private string CardAriaLabel => IsFederated
+        ? IsInteractive ? $"View AT Protocol source: {Event.Title}" : $"AT Protocol event: {Event.Title}"
+        : $"View event: {Event.Title}";
+    private string CardRole => IsInteractive ? "button" : "article";
+    private int CardTabIndex => IsInteractive ? 0 : -1;
+    private string CardInteractionStyle =>
+        $"overflow: hidden; cursor: {(IsInteractive ? "pointer" : "default")};";
+    private string? AtprotoDeliveryLabel => Event.AtprotoDeliveryStatus?.Trim().ToLowerInvariant() switch
+    {
+        "pending" => "AT Protocol publication pending",
+        "publishing" => "Publishing to AT Protocol",
+        "retrying" => "AT Protocol delivery retrying",
+        "published" => "Published to AT Protocol",
+        "removed" => "Removed from AT Protocol",
+        "failed" => "AT Protocol delivery needs attention",
+        _ => null
+    };
+    private Color AtprotoDeliveryColor => Event.AtprotoDeliveryStatus?.Trim().ToLowerInvariant() switch
+    {
+        "published" => Color.Success,
+        "failed" => Color.Error,
+        "retrying" => Color.Warning,
+        _ => Color.Info
+    };
+    private string? AtprotoDeliveryGuidance => Event.AtprotoDeliveryStatus?.Trim().ToLowerInvariant() switch
+    {
+        "pending" or "publishing" => "The local event is saved. PDS publication is being processed.",
+        "retrying" => RetryGuidance(Event.AtprotoDeliveryFailureCode),
+        "failed" => FailureGuidance(Event.AtprotoDeliveryFailureCode),
+        _ => null
+    };
 
     // ── Icon Mapping Helpers ──
 
@@ -195,10 +228,23 @@ public partial class EventCard : ComponentBase
         };
     }
 
-    private Task HandleClick() => OnClick.InvokeAsync(Event);
+    private Task HandleClick()
+    {
+        if (IsFederated)
+        {
+            if (!string.IsNullOrWhiteSpace(FederatedSourceHref))
+            {
+                Navigation.NavigateTo(FederatedSourceHref);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        return OnClick.InvokeAsync(Event);
+    }
 
     private Task HandleKeyDown(KeyboardEventArgs args) =>
-        args.Key is "Enter" or " " or "Spacebar" ? HandleClick() : Task.CompletedTask;
+        IsInteractive && args.Key is "Enter" or " " or "Spacebar" ? HandleClick() : Task.CompletedTask;
 
     private Task HandleEdit() => OnEditRequested.InvokeAsync(Event);
 
@@ -212,4 +258,20 @@ public partial class EventCard : ComponentBase
         if (url != null)
             Navigation.NavigateTo(url);
     }
+
+    private static string RetryGuidance(string? failureCode) => failureCode switch
+    {
+        "reauth_required" or "session_unavailable" or "session_binding_mismatch" =>
+            "Reconnect your AT Protocol account to resume publication.",
+        _ => "The PDS is temporarily unavailable. Delivery will retry automatically."
+    };
+
+    private static string FailureGuidance(string? failureCode) => failureCode switch
+    {
+        "reauth_required" or "session_unavailable" or "session_binding_mismatch" =>
+            "Reconnect your AT Protocol account, then update the event to publish again.",
+        "record_conflict" or "remote_record_missing" =>
+            "The PDS copy changed. Update the local event to request safe reconciliation.",
+        _ => "Review the event's public data, then update it to request publication again."
+    };
 }
