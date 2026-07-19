@@ -165,7 +165,8 @@ public sealed class EventLocation : ITenantEntity, IAuditableEntity, ISoftDeleta
         int expectedPolicyVersion,
         Guid actorUserId,
         EventLocationDisclosureAuditReasonEnum reason,
-        DateTime changedAtUtc)
+        DateTime changedAtUtc,
+        bool? needsPrivacyReview = null)
     {
         RequireId(actorUserId, nameof(actorUserId));
         if (IsDeleted)
@@ -209,6 +210,7 @@ public sealed class EventLocation : ITenantEntity, IAuditableEntity, ISoftDeleta
         ShowCoordinates = newFields.HasFlag(EventLocationDisclosureFields.Coordinates);
         FullDetailsAudienceId = (int)newAudience;
         RevealFullDetailsFromUtc = newRevealFullDetailsFromUtc;
+        NeedsPrivacyReview = needsPrivacyReview ?? NeedsPrivacyReview;
         PolicyVersion++;
         LastPolicyActorUserId = actorUserId;
         LastPolicyChangedAtUtc = changedAtUtc;
