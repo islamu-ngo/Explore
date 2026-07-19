@@ -32,12 +32,37 @@ public sealed class HomeDiscoveryContextDto
 
 public sealed class EventDiscoveryItemDto
 {
-    public EventListDto Event { get; set; } = null!;
+    public string Source { get; set; } = "local";
+    public EventListDto? Event { get; set; }
+    public FederatedEventDto? FederatedEvent { get; set; }
+    public EventFederationMetadataDto? Federation { get; set; }
     public double? DistanceMeters { get; set; }
     public Guid? NearestSessionId { get; set; }
     public Guid? NearestLocationId { get; set; }
     public string? NearestLocationName { get; set; }
     public DateTimeOffset? NearestOccurrenceStartsAtUtc { get; set; }
+}
+
+public sealed class FederatedEventDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public DateTimeOffset CreatedAtUtc { get; set; }
+    public DateTimeOffset? StartsAtUtc { get; set; }
+    public DateTimeOffset? EndsAtUtc { get; set; }
+    public string? Mode { get; set; }
+    public string? Status { get; set; }
+    public bool? RsvpExpected { get; set; }
+    public string? LocationSummary { get; set; }
+}
+
+public sealed class EventFederationMetadataDto
+{
+    public Guid AtprotoRecordId { get; set; }
+    public string Provenance { get; set; } = string.Empty;
+    public bool IsLocalEcho { get; set; }
+    public bool HasSourceLink { get; set; }
 }
 
 public sealed class HomeDiscoverySectionDto

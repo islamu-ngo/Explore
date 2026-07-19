@@ -261,4 +261,12 @@ public class GetEventListRequest : IRequest<PaginatedResult<EventListDto>>
     /// Gets or sets the temporal view filter.
     /// </summary>
     public TemporalView? View { get; set; }
+
+    public GetEventListRequest CopyWithPagination(int pageNumber, int pageSize)
+    {
+        var copy = (GetEventListRequest)MemberwiseClone();
+        copy.PageNumber = pageNumber;
+        copy.PageSize = pageSize;
+        return copy;
+    }
 }

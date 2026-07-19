@@ -1,6 +1,5 @@
 // ABOUTME: System.Text.Json source generator context for AOT compilation.
-// Enables compile-time JSON serialization code generation, eliminating reflection overhead.
-// This improves WASM bundle size and runtime performance for Blazor WebAssembly.
+// ABOUTME: Registers browser-safe generated DTOs without provider credential contracts.
 
 using System.Text.Json.Serialization;
 using Explore.Blazor.Client.Clients;
@@ -27,8 +26,6 @@ namespace Explore.Blazor.Client.Serialization;
 [JsonSerializable(typeof(ActorTypeDto))]
 [JsonSerializable(typeof(ActorTypeListDto))]
 [JsonSerializable(typeof(AddOrganizationMemberDto))]
-[JsonSerializable(typeof(AtprotoRecordDto))]
-[JsonSerializable(typeof(AtprotoRecordListDto))]
 [JsonSerializable(typeof(AudienceAgeDto))]
 [JsonSerializable(typeof(AudienceAgeListDto))]
 [JsonSerializable(typeof(AudienceGenderDto))]

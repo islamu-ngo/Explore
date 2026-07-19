@@ -72,6 +72,7 @@ public class EventListDto
     public int? SessionCount { get; set; }
     public DateOnly? FirstSessionDate { get; set; }
     public DateOnly? LastSessionDate { get; set; }
+    public DateTimeOffset? FirstSessionStartUtc { get; set; }
     public string? Timezone { get; set; }
 
     // Series
@@ -84,6 +85,11 @@ public class EventListDto
     public int TotalViews { get; set; }
     public bool IsUserReported { get; set; }
     public string? EventUrl { get; set; }
+
+    public DateTimeOffset CreatedAtUtc { get; set; }
+    public Guid? AtprotoRecordId { get; set; }
+    public string? AtprotoDeliveryStatus { get; set; }
+    public string? AtprotoDeliveryFailureCode { get; set; }
 
     // Tenant
     public Guid TenantId { get; set; }

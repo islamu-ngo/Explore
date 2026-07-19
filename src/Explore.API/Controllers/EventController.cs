@@ -4,6 +4,7 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
+using Explore.API.Extensions;
 using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.API.Models;
@@ -11,11 +12,13 @@ using Explore.API.Services.Calendar;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventProgram;
 using Explore.Application.DTOs.EventSession;
+using Explore.Application.DTOs.PublicExperience;
 using Explore.Application.Features.EventPrograms.Requests.Queries;
 using Explore.Application.Features.Events.Moderation;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Features.EventSessions.Requests.Queries;
+using Explore.Application.Features.Federation.Atproto.Requests.Queries;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using Explore.Application.Specifications.Events;
@@ -23,6 +26,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Explore.API.Controllers;
 
@@ -84,6 +88,7 @@ public class EventController : ExploreControllerBase
     private readonly IMediator _mediator;
     private readonly ILogger<EventController> _logger;
     private readonly IResourceAssembler<EventDto, EventListDto> _resourceAssembler;
+    private readonly IResourceAssembler<EventDiscoveryItemDto> _eventDiscoveryResourceAssembler;
     private readonly IEventCalendarFileBuilder _calendarFileBuilder;
     private readonly Explore.Application.Contracts.Infrastructure.IPublicUrlBuilder _publicUrlBuilder;
 
@@ -91,12 +96,14 @@ public class EventController : ExploreControllerBase
         IMediator mediator,
         ILogger<EventController> logger,
         IResourceAssembler<EventDto, EventListDto> resourceAssembler,
+        IResourceAssembler<EventDiscoveryItemDto> eventDiscoveryResourceAssembler,
         IEventCalendarFileBuilder calendarFileBuilder,
         Explore.Application.Contracts.Infrastructure.IPublicUrlBuilder publicUrlBuilder)
     {
         _mediator = mediator;
         _logger = logger;
         _resourceAssembler = resourceAssembler;
+        _eventDiscoveryResourceAssembler = eventDiscoveryResourceAssembler;
         _calendarFileBuilder = calendarFileBuilder;
         _publicUrlBuilder = publicUrlBuilder;
     }
@@ -117,12 +124,14 @@ public class EventController : ExploreControllerBase
         "Supports custom-property projection filters and text search gated behind the tenant feature flag " +
         "'custom_properties.projection_discovery_enabled' — silently ignored when disabled. " +
         "Supports sorting by date, title, views, or createdAt. " +
-        "Response includes HATEOAS navigation links (first, prev, next, last). " +
+        "When tenant governance enables ATProto Events, the result also includes tenant-visible community events " +
+        "within a bounded 1,000-item merge window, de-duplicated against locally-owned ATProto records. " +
+        "Response includes HATEOAS navigation links (first, prev, next, last) and safe source affordances. " +
         "Send 'Prefer: return=minimal' header to strip links.")]
-    [ProducesResponseType(typeof(HalCollectionResource<EventListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(HalCollectionResource<EventDiscoveryItemDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [OutputCache(PolicyName = "ListData")]
-    public async Task<ActionResult<HalCollectionResource<EventListDto>>> GetAll(
+    [OutputCache(PolicyName = "EventDiscovery")]
+    public async Task<ActionResult<HalCollectionResource<EventDiscoveryItemDto>>> GetAll(
         [FromQuery] EventFilterRequest filter,
         CancellationToken cancellationToken = default)
     {
@@ -134,7 +143,7 @@ public class EventController : ExploreControllerBase
                 "The locationIds filter is not available on public event discovery.");
         }
 
-        var result = await _mediator.Send(new GetEventListRequest
+        var result = await _mediator.Send(new GetPublicEventDiscoveryRequest(new GetEventListRequest
         {
             PageNumber = filter.PageNumber,
             PageSize = filter.PageSize,
@@ -177,9 +186,9 @@ public class EventController : ExploreControllerBase
             View = ParseTemporalView(filter.View),
             CustomPropertyFilters = filter.CustomPropertyFilters,
             CustomPropertySearchTerm = filter.CustomPropertySearchTerm
-        }, cancellationToken);
+        }), cancellationToken);
 
-        var halResource = await _resourceAssembler.ToCollectionResource(
+        var halResource = await _eventDiscoveryResourceAssembler.ToCollectionResource(
             result,
             RouteNames.GetEvents,
             additionalRouteValues: new
@@ -191,6 +200,26 @@ public class EventController : ExploreControllerBase
             HttpContext);
 
         return Ok(halResource);
+    }
+
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [EnableRateLimiting(RateLimitingExtensions.GlobalPolicy)]
+    [HttpGet("federated/{atprotoRecordId:guid}/source", Name = RouteNames.GetAtprotoEventSource)]
+    [EndpointSummary("Open Federated Event Source")]
+    [EndpointDescription("Redirects to the current tenant-visible HTTPS source for a federated event after rechecking ATProto Events governance.")]
+    [ProducesResponseType(StatusCodes.Status302Found)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetAtprotoEventSource(
+        Guid atprotoRecordId,
+        CancellationToken cancellationToken = default)
+    {
+        string? sourceUrl = await _mediator.Send(
+            new GetAtprotoEventSourceQuery(atprotoRecordId),
+            cancellationToken);
+        return sourceUrl is null
+            ? this.ToNotFoundProblem(EventNotFoundProblem)
+            : Redirect(sourceUrl);
     }
 
     /// <summary>

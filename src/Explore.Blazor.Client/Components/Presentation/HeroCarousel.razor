@@ -77,9 +77,12 @@
                                 }
                             </div>
                         </div>
-                        <a class="hero-carousel__slide-link"
-                           href="@GetEventUrl(slide)"
-                           aria-label="@GetEventLinkLabel(slide)"></a>
+                        @if (GetEventUrl(slide) is { } slideUrl)
+                        {
+                            <a class="hero-carousel__slide-link"
+                               href="@slideUrl"
+                               aria-label="@GetEventLinkLabel(slide)"></a>
+                        }
                 </article>
             }
             </div>
@@ -186,8 +189,13 @@
 
     private static string GetPosterAlt(EventListDto slide) => $"Poster for {slide.Title}";
 
-    private string GetEventLinkLabel(EventListDto slide) => $"{ViewEventLabel}: {slide.Title}";
+    private string GetEventLinkLabel(EventListDto slide) => slide.IsFederatedDiscoveryEvent()
+        ? slide.GetHalHref("source") is null
+            ? $"AT Protocol event: {slide.Title}"
+            : $"View AT Protocol source: {slide.Title}"
+        : $"{ViewEventLabel}: {slide.Title}";
 
-    private static string GetEventUrl(EventListDto slide) =>
-        EventUrlHelper.BuildPublicPath(slide.Slug, slide.PublicCode) ?? "/events";
+    private static string? GetEventUrl(EventListDto slide) => slide.IsFederatedDiscoveryEvent()
+        ? slide.GetHalHref("source")
+        : EventUrlHelper.BuildPublicPath(slide.Slug, slide.PublicCode) ?? "/events";
 }
