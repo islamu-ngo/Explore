@@ -66,6 +66,14 @@ public sealed class ParkEmailDispatchCommandHandler : IRequestHandler<ParkEmailD
                 ["Skipped email dispatch rows cannot be parked."]);
         }
 
+        if (dispatch.Status == EmailDispatchStatus.Unknown)
+        {
+            return Failure(
+                "Unknown email dispatch rows must be reconciled or resolved without replay.",
+                EmailDispatchFailureCodes.InvalidTransition,
+                ["Unknown email dispatch rows must be reconciled or resolved without replay."]);
+        }
+
         if (dispatch.Status == EmailDispatchStatus.Parked)
         {
             return Success(dispatch.Id, "Email dispatch is already parked.");

@@ -16,15 +16,16 @@ public sealed class ReplayEmailDispatchCommandHandler : IRequestHandler<ReplayEm
     [
         EmailDispatchStatus.DeadLettered,
         EmailDispatchStatus.Parked,
-        EmailDispatchStatus.Unknown,
         EmailDispatchStatus.RetryScheduled
     ];
 
     private readonly IEmailDispatchOutboxRepository _repository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public ReplayEmailDispatchCommandHandler(IEmailDispatchOutboxRepository repository)
+    public ReplayEmailDispatchCommandHandler(IEmailDispatchOutboxRepository repository, IUnitOfWork unitOfWork)
     {
         _repository = repository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -95,11 +96,13 @@ public sealed class ReplayEmailDispatchCommandHandler : IRequestHandler<ReplayEm
                 [$"Email dispatch rows in {dispatch.Status} state cannot be replayed."]);
         }
 
-        var replayed = await _repository.TryReplayForOperator(
-            request.TenantId,
-            request.OutboxId,
-            request.ChangedBy,
-            DateTime.UtcNow,
+        var replayed = await _unitOfWork.ExecuteInTransactionAsync(
+            ct => _repository.TryReplayForOperator(
+                request.TenantId,
+                request.OutboxId,
+                request.ChangedBy,
+                DateTime.UtcNow,
+                ct),
             cancellationToken);
 
         return replayed

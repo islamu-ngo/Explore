@@ -15,6 +15,8 @@ public sealed record EmailDispatchEligibilityRequest(
     Guid OutboxId,
     Guid ProcessingLeaseToken,
     int AttemptNumber,
+    int GlobalSmtpRateLimitPerMinute,
+    int TenantSmtpRateLimitPerMinute,
     string ConsumerId,
     DateTime EvaluatedAt);
 
@@ -22,12 +24,16 @@ public sealed record EmailDispatchEligibilityResult(
     EmailDispatchEligibilityOutcome Outcome,
     string? RecipientEmail,
     string? SkipReason,
-    Guid? ReceiptId = null);
+    Guid? ReceiptId = null,
+    int? AttemptNumber = null,
+    DateTime? RetryAt = null);
 
 public enum EmailDispatchEligibilityOutcome
 {
     Eligible = 1,
     Skipped = 2,
     TenantPaused = 3,
-    LostClaim = 4
+    LostClaim = 4,
+    RateDeferred = 5,
+    ProcessorPaused = 6
 }

@@ -20,3 +20,14 @@ public sealed class EmailDispatchStatusDto
     public DateTime? ContentRedactedAt { get; set; }
     public string? CorrelationId { get; set; }
 }
+
+public sealed class EmailDispatchProcessorControlDto
+{
+    public string ProcessorCode { get; set; } = "smtp";
+    public bool IsPaused { get; set; }
+    public string? PauseReason { get; set; }
+    public DateTime? PausedAt { get; set; }
+    public int? GlobalSmtpRateLimitPerMinuteOverride { get; set; }
+    public bool OptionalRemindersDeferred { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+}

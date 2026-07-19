@@ -9,16 +9,12 @@ public interface IEmailDispatchOutboxRepository
 {
     Task<EmailDispatchOutbox> Create(EmailDispatchOutbox entity, CancellationToken cancellationToken);
 
-    Task<IReadOnlyList<EmailDispatchOutbox>> GetPendingBatch(
-        int batchSize,
-        DateTime now,
+    Task<IReadOnlyList<EmailDispatchOutbox>> ClaimPendingBatchAsync(
+        EmailDispatchBatchClaimRequest request,
         CancellationToken cancellationToken);
 
-    Task<IReadOnlyList<EmailDispatchOutbox>> GetPendingBatch(
-        int batchSize,
-        int maxRowsPerTenant,
-        bool includeOptionalReminders,
-        DateTime now,
+    Task<EmailDispatchOutbox?> TryClaimSpecificAsync(
+        EmailDispatchSpecificClaimRequest request,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<EmailDispatchOutbox>> GetRabbitMqPublishBatch(
@@ -47,6 +43,27 @@ public interface IEmailDispatchOutboxRepository
         CancellationToken cancellationToken);
 
     Task<int> CountDeadLetteredAsync(CancellationToken cancellationToken);
+
+    Task<int> CountUnknownAsync(CancellationToken cancellationToken);
+
+    Task<int> CountParkedAsync(CancellationToken cancellationToken);
+
+    Task<bool> IsOptionalReminderDeferralActiveAsync(CancellationToken cancellationToken);
+
+    Task<EmailDispatchProcessorState?> GetProcessorState(CancellationToken cancellationToken);
+
+    Task<EmailDispatchProcessorState> SetProcessorPauseState(
+        bool isPaused,
+        string? pauseReason,
+        Guid? changedBy,
+        DateTime changedAt,
+        CancellationToken cancellationToken);
+
+    Task<EmailDispatchProcessorState> SetGlobalSmtpRateLimitOverride(
+        int? rateLimitPerMinute,
+        Guid? changedBy,
+        DateTime changedAt,
+        CancellationToken cancellationToken);
 
     Task<IReadOnlyList<EmailDispatchOutbox>> GetStatusRows(
         Guid tenantId,
@@ -96,6 +113,16 @@ public interface IEmailDispatchOutboxRepository
         DateTime resolvedAt,
         CancellationToken cancellationToken);
 
+    Task<bool> TryReconcileUnknown(
+        Guid tenantId,
+        Guid outboxId,
+        EmailDispatchUnknownReconciliationOutcome outcome,
+        string reason,
+        string? providerMessageId,
+        Guid? changedBy,
+        DateTime reconciledAt,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<Guid>> GetRetentionTenantIds(
         DateTime cutoffUtc,
         int maxTenants,
@@ -120,48 +147,12 @@ public interface IEmailDispatchOutboxRepository
         DateTime redactedAt,
         CancellationToken cancellationToken);
 
-    Task<bool> TryMarkAsProcessing(
-        Guid id,
-        Guid leaseToken,
-        DateTime startedAt,
+    Task<EmailDispatchStaleRecoveryResult> RecoverStaleProcessing(
+        EmailDispatchStaleRecoveryRequest request,
         CancellationToken cancellationToken);
 
-    Task<int> MarkStaleProcessingAsUnknown(
-        DateTime processingStartedBefore,
-        DateTime recoveredAt,
-        string failureCategory,
-        string errorMessage,
-        int batchSize,
-        CancellationToken cancellationToken);
-
-    Task MarkAsSent(
-        Guid id,
-        DateTime sentAt,
-        string? providerMessageId,
-        CancellationToken cancellationToken);
-
-    Task MarkAsFailed(
-        Guid id,
-        string failureCategory,
-        string errorMessage,
-        bool isRetryable,
-        TimeSpan retryDelay,
-        int maxAttempts,
-        DateTime failedAt,
-        CancellationToken cancellationToken);
-
-    Task MarkAsUnknown(
-        Guid id,
-        string failureCategory,
-        string errorMessage,
-        DateTime unknownAt,
-        CancellationToken cancellationToken);
-
-    Task MarkAsSkipped(
-        Guid id,
-        string reasonCategory,
-        string reasonMessage,
-        DateTime skippedAt,
+    Task<EmailDispatchPreHandoffReleaseOutcome> ReleaseClaimBeforeProviderHandoff(
+        EmailDispatchPreHandoffRelease request,
         CancellationToken cancellationToken);
 
     Task MarkRabbitMqPublishSucceeded(
@@ -175,48 +166,107 @@ public interface IEmailDispatchOutboxRepository
         DateTime attemptedAt,
         CancellationToken cancellationToken);
 
-    Task RecordAttempt(EmailDispatchAttempt attempt, CancellationToken cancellationToken);
-
     Task SettleProviderAccepted(
         EmailDispatchAcceptedSettlement settlement,
+        CancellationToken cancellationToken);
+
+    Task<EmailDispatchFailureSettlementOutcome> SettleProviderFailure(
+        EmailDispatchFailureSettlement settlement,
         CancellationToken cancellationToken);
 
     Task<EmailDispatchAcceptedReconciliationOutcome> ReconcileProviderAccepted(
         EmailDispatchAcceptedSettlement settlement,
         CancellationToken cancellationToken);
 
-    Task<bool> TryClaimReceipt(EmailDispatchReceipt receipt, CancellationToken cancellationToken);
-
-    Task MarkReceiptCompleted(
-        Guid receiptId,
-        DateTime completedAt,
-        string? providerMessageId,
-        CancellationToken cancellationToken);
-
-    Task MarkReceiptFailed(
-        Guid receiptId,
-        string failureCode,
-        string failureMessage,
-        DateTime failedAt,
-        CancellationToken cancellationToken);
-
-    Task MarkReceiptSkipped(
-        Guid receiptId,
-        string reasonCode,
-        string reasonMessage,
-        DateTime skippedAt,
-        CancellationToken cancellationToken);
 }
+
+public sealed record EmailDispatchBatchClaimRequest(
+    Guid LeaseToken,
+    int BatchSize,
+    int MaxRowsPerTenant,
+    int GlobalProcessingLimit,
+    int TenantProcessingLimit,
+    int OptionalReminderBacklogHighWatermark,
+    int OptionalReminderBacklogLowWatermark,
+    DateTime ClaimedAt);
+
+public sealed record EmailDispatchSpecificClaimRequest(
+    Guid TenantId,
+    Guid PublishEventId,
+    Guid LeaseToken,
+    int GlobalProcessingLimit,
+    int TenantProcessingLimit,
+    int OptionalReminderBacklogHighWatermark,
+    int OptionalReminderBacklogLowWatermark,
+    DateTime ClaimedAt);
 
 public sealed record EmailDispatchAcceptedSettlement(
     Guid TenantId,
     Guid OutboxId,
+    Guid ProcessingLeaseToken,
     int AttemptNumber,
     DateTime SettledAt,
     string? ProviderMessageId);
 
+public sealed record EmailDispatchFailureSettlement(
+    Guid TenantId,
+    Guid OutboxId,
+    Guid ProcessingLeaseToken,
+    int AttemptNumber,
+    string FailureCategory,
+    string FailureMessage,
+    TimeSpan RetryDelay,
+    int MaxAttempts,
+    DateTime SettledAt);
+
+public sealed record EmailDispatchPreHandoffRelease(
+    Guid TenantId,
+    Guid OutboxId,
+    Guid ProcessingLeaseToken,
+    int AttemptNumber,
+    DateTime ReleasedAt,
+    string FailureCategory,
+    string FailureMessage);
+
+public sealed record EmailDispatchStaleRecoveryRequest(
+    DateTime ProcessingStartedBefore,
+    DateTime RecoveredAt,
+    string RetryFailureCategory,
+    string RetryErrorMessage,
+    string UnknownFailureCategory,
+    string UnknownErrorMessage,
+    int BatchSize);
+
+public sealed record EmailDispatchStaleRecoveryResult(
+    int RetryScheduledCount,
+    int UnknownCount)
+{
+    public int RecoveredCount => RetryScheduledCount + UnknownCount;
+}
+
 public enum EmailDispatchAcceptedReconciliationOutcome
 {
     Sent = 1,
-    Unknown = 2
+    Unknown = 2,
+    StaleClaim = 3
+}
+
+public enum EmailDispatchFailureSettlementOutcome
+{
+    RetryScheduled = 1,
+    DeadLettered = 2,
+    StaleClaim = 3
+}
+
+public enum EmailDispatchPreHandoffReleaseOutcome
+{
+    Released = 1,
+    ProviderHandoffFenced = 2,
+    LostClaim = 3
+}
+
+public enum EmailDispatchUnknownReconciliationOutcome
+{
+    Delivered = 1,
+    NotDelivered = 2
 }
