@@ -1,4 +1,4 @@
-﻿// ABOUTME: Adds durable global pause and SMTP rate override controls to the email dispatch processor state.
+// ABOUTME: Adds durable global pause and SMTP rate override controls to the email dispatch processor state.
 // ABOUTME: Records bounded operator audit metadata and reverses the schema changes without data-dependent SQL.
 
 using System;

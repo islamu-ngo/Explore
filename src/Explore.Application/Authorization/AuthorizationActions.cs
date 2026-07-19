@@ -392,6 +392,7 @@ public static class AuthorizationActions
         public const string Park = "park";
         public const string Replay = "replay";
         public const string Resolve = "resolve";
+        public const string Reconcile = "reconcile";
     }
 
     public static class Webhooks

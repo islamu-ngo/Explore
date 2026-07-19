@@ -12,10 +12,10 @@ using Explore.Application.Telemetry;
 using Explore.Infrastructure;
 using Explore.ServiceDefaults.HealthChecks;
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
-using Microsoft.AspNetCore.Http;
 using NSubstitute;
 using TUnit.Core;
 

@@ -69,6 +69,10 @@ public sealed class NotificationFanoutOccurrenceConfiguration : IEntityTypeConfi
 
         builder.HasIndex(e => new { e.TenantId, e.State, e.NotBefore, e.OccurredAt })
             .HasDatabaseName("ix_notification_fanout_occurrences_runnable");
+        builder.HasIndex(e => new { e.NotBefore, e.TenantId, e.Priority, e.OccurredAt, e.Id })
+            .IsDescending(false, false, true, false, false)
+            .HasFilter("state = 1")
+            .HasDatabaseName("ix_notification_fanout_occurrences_global_runnable");
         builder.HasIndex(e => new { e.TenantId, e.SourceType, e.SourceId, e.AggregateVersion })
             .HasDatabaseName("ix_notification_fanout_occurrences_source");
         builder.HasIndex(e => new { e.TenantId, e.CoalescingKey, e.State, e.OccurredAt })

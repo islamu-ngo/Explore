@@ -23,12 +23,15 @@ public static class HealthCheckResponseWriter
     private static readonly string[] SensitiveKeyFragments =
     [
         "accesskey",
+        "address",
         "apikey",
         "body",
         "bucket",
         "connectionstring",
         "credential",
         "endpoint",
+        "eventtitle",
+        "evidence",
         "exception",
         "filesystem",
         "modelid",
@@ -38,9 +41,13 @@ public static class HealthCheckResponseWriter
         "payload",
         "prompt",
         "providerresponse",
+        "providerid",
+        "providermessageid",
+        "recipient",
         "requestid",
         "response",
         "secret",
+        "subject",
         "tenantid",
         "token",
         "userid",
@@ -114,6 +121,11 @@ public static class HealthCheckResponseWriter
             return null;
         }
 
+        if (IsSensitiveKey(key))
+        {
+            return RedactedValue;
+        }
+
         if (IsSafePrimitive(value))
         {
             return value;
@@ -121,7 +133,7 @@ public static class HealthCheckResponseWriter
 
         if (value is string text)
         {
-            return IsSensitiveKey(key) || IsSensitiveText(text)
+            return IsSensitiveText(text)
                 ? RedactedValue
                 : Truncate(text);
         }

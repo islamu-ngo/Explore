@@ -14,6 +14,31 @@ public sealed record NotificationFanoutClaim(
     int Generation,
     NotificationFanoutAudienceCursor? Cursor);
 
+public sealed record NotificationFanoutClaimRoundRequest(
+    string LeaseOwner,
+    DateTime ClaimedAt,
+    TimeSpan LeaseDuration,
+    int MaxTenants,
+    int MaxActiveClaims,
+    int MaxActiveClaimsPerTenant,
+    bool DeferOptionalReminders);
+
+public sealed record NotificationFanoutClaimRoundResult(
+    IReadOnlyList<NotificationFanoutClaim> Claims,
+    int CandidateCount,
+    int LeaseContentionCount,
+    int UnavailableCount);
+
+public sealed record NotificationFanoutProcessorSnapshot(
+    int DueOccurrenceCount,
+    int DueRequiredOccurrenceCount,
+    int DueOptionalReminderCount,
+    int ActiveClaimCount,
+    int ExpiredClaimCount,
+    int SupersededOccurrenceCount,
+    long ProcessedRecipientCount,
+    DateTime? OldestDueAt);
+
 public interface INotificationFanoutRunRepository : IGenericRepository<NotificationFanoutRun, Guid>
 {
     Task<NotificationFanoutRun?> GetBySourceAsync(
@@ -41,12 +66,22 @@ public interface INotificationFanoutRunRepository : IGenericRepository<Notificat
         Guid runId,
         CancellationToken cancellationToken);
 
+    Task<NotificationFanoutClaimRoundResult> ClaimDueRoundAsync(
+        NotificationFanoutClaimRoundRequest request,
+        CancellationToken cancellationToken);
+
+    Task<NotificationFanoutProcessorSnapshot> GetProcessorSnapshotAsync(
+        DateTime observedAt,
+        CancellationToken cancellationToken);
+
     Task<NotificationFanoutClaim?> TryClaimOccurrenceAsync(
         Guid tenantId,
         Guid occurrenceId,
         string leaseOwner,
         DateTime claimedAt,
         TimeSpan leaseDuration,
+        int maxActiveClaims,
+        int maxActiveClaimsPerTenant,
         CancellationToken cancellationToken);
 
     Task<bool> TryRenewClaimAsync(

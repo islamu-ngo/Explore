@@ -3,6 +3,7 @@
 
 using System.Data;
 using Explore.Application.Contracts.Notifications;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Notifications;
 using Explore.Domain;
@@ -33,24 +34,40 @@ public sealed class EmailDispatchEligibilityEvaluator(
         return await strategy.ExecuteAsync(async () =>
         {
             dbContext.ChangeTracker.Clear();
-            return await EvaluateWithinTransactionAsync(request, cancellationToken);
+            FanoutAuthorityHint? fanoutAuthorityHint = await LoadFanoutAuthorityHintAsync(request, cancellationToken);
+            dbContext.ChangeTracker.Clear();
+            return await EvaluateWithinTransactionAsync(request, fanoutAuthorityHint, cancellationToken);
         });
     }
 
     private async Task<EmailDispatchEligibilityResult> EvaluateWithinTransactionAsync(
         EmailDispatchEligibilityRequest request,
+        FanoutAuthorityHint? fanoutAuthorityHint,
         CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(
-            IsolationLevel.Serializable,
+            IsolationLevel.ReadCommitted,
             cancellationToken);
 
-        var dispatch = await dbContext.EmailDispatchOutbox
-            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
-            .SingleOrDefaultAsync(outbox =>
-                outbox.TenantId == request.TenantId &&
-                outbox.Id == request.OutboxId,
+        if (fanoutAuthorityHint is { OccurrenceId: not null, EventId: { } lockEventId })
+        {
+            await NotificationFanoutPrecedenceLock.AcquireAsync(
+                dbContext,
+                request.TenantId,
+                lockEventId,
                 cancellationToken);
+        }
+
+        var dispatch = await dbContext.EmailDispatchOutbox
+            .FromSqlInterpolated($$"""
+                SELECT *
+                FROM email_dispatch_outbox
+                WHERE tenant_id = {{request.TenantId}}
+                  AND id = {{request.OutboxId}}
+                FOR UPDATE
+                """)
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .SingleOrDefaultAsync(cancellationToken);
 
         if (dispatch is null
             || dispatch.ContentRedactedAt is not null
@@ -77,6 +94,69 @@ public sealed class EmailDispatchEligibilityEvaluator(
             return await SkipAsync(dispatch, delivery, request, "delivery_authority_missing", cancellationToken);
         }
 
+        if (fanoutAuthorityHint is { OccurrenceId: { } hintedOccurrenceId })
+        {
+            if (fanoutAuthorityHint.EventId is not Guid authorityEventId)
+            {
+                return await SkipAsync(
+                    dispatch,
+                    delivery,
+                    request,
+                    "fanout_occurrence_authority_missing",
+                    cancellationToken);
+            }
+
+            if (delivery.NotificationIntent.FanoutOccurrenceId != hintedOccurrenceId
+                || delivery.NotificationIntent.EventId != authorityEventId)
+            {
+                return await SkipAsync(
+                    dispatch,
+                    delivery,
+                    request,
+                    "fanout_occurrence_authority_mismatch",
+                    cancellationToken);
+            }
+
+            NotificationFanoutOccurrence? occurrence = await dbContext.NotificationFanoutOccurrences
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                .AsNoTracking()
+                .SingleOrDefaultAsync(value =>
+                    value.TenantId == request.TenantId
+                    && value.Id == hintedOccurrenceId
+                    && value.EventId == authorityEventId,
+                    cancellationToken);
+            if (occurrence is null)
+            {
+                return await SkipAsync(
+                    dispatch,
+                    delivery,
+                    request,
+                    "fanout_occurrence_authority_missing",
+                    cancellationToken);
+            }
+
+            if (occurrence.State == NotificationFanoutOccurrenceState.Superseded)
+            {
+                return await SkipAsync(
+                    dispatch,
+                    delivery,
+                    request,
+                    NotificationFanoutEmailSuppressionReason.Code,
+                    cancellationToken,
+                    preserveSupersededDelivery: true,
+                    message: NotificationFanoutEmailSuppressionReason.Message);
+            }
+        }
+        else if (delivery.NotificationIntent.FanoutOccurrenceId.HasValue)
+        {
+            return await SkipAsync(
+                dispatch,
+                delivery,
+                request,
+                "fanout_occurrence_authority_mismatch",
+                cancellationToken);
+        }
+
         var processorPaused = await dbContext.EmailDispatchProcessorStates
             .AsNoTracking()
             .AnyAsync(state => state.ProcessorCode == SmtpProcessorCode && state.IsPaused, cancellationToken);
@@ -93,7 +173,13 @@ public sealed class EmailDispatchEligibilityEvaluator(
 
         if (delivery.StatusId == (int)NotificationDeliveryStatusEnum.Superseded)
         {
-            return await SkipAsync(dispatch, delivery, request, "delivery_superseded", cancellationToken);
+            return await SkipAsync(
+                dispatch,
+                delivery,
+                request,
+                "delivery_superseded",
+                cancellationToken,
+                preserveSupersededDelivery: true);
         }
 
         if (delivery.StatusId is not ((int)NotificationDeliveryStatusEnum.Pending)
@@ -253,6 +339,16 @@ public sealed class EmailDispatchEligibilityEvaluator(
                 "processor_paused");
         }
 
+        if (admission.TenantPaused)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return new EmailDispatchEligibilityResult(
+                EmailDispatchEligibilityOutcome.TenantPaused,
+                null,
+                "tenant_paused");
+        }
+
         if (!admission.IsAcquired)
         {
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -332,6 +428,15 @@ public sealed class EmailDispatchEligibilityEvaluator(
                 """)
             .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
             .SingleAsync(cancellationToken);
+
+        if (tenantControl.IsPaused)
+        {
+            dispatch.Status = EmailDispatchStatus.Pending;
+            dispatch.ProcessingStartedAt = null;
+            dispatch.ProcessingLeaseToken = null;
+            dispatch.UpdatedAt = databaseNow;
+            return new SmtpRateAdmission(false, databaseNow, null, TenantPaused: true);
+        }
 
         var effectiveGlobalRate = processorState.GlobalSmtpRateLimitPerMinuteOverride
             ?? request.GlobalSmtpRateLimitPerMinute;
@@ -435,7 +540,9 @@ public sealed class EmailDispatchEligibilityEvaluator(
         NotificationDelivery? delivery,
         EmailDispatchEligibilityRequest request,
         string reason,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool preserveSupersededDelivery = false,
+        string message = SkipMessage)
     {
         dispatch.AttemptCount++;
         request = request with { AttemptNumber = dispatch.AttemptCount };
@@ -444,14 +551,18 @@ public sealed class EmailDispatchEligibilityEvaluator(
         dispatch.ProcessingStartedAt = null;
         dispatch.ProcessingLeaseToken = null;
         dispatch.LastFailureCategory = reason;
-        dispatch.LastError = SkipMessage;
+        dispatch.LastError = message;
         dispatch.LastFailureAt = request.EvaluatedAt;
         dispatch.UpdatedAt = request.EvaluatedAt;
 
         if (delivery is not null)
         {
-            delivery.StatusId = (int)NotificationDeliveryStatusEnum.Skipped;
-            delivery.ProviderStatus = "skipped";
+            delivery.StatusId = preserveSupersededDelivery
+                ? (int)NotificationDeliveryStatusEnum.Superseded
+                : (int)NotificationDeliveryStatusEnum.Skipped;
+            delivery.ProviderStatus = preserveSupersededDelivery
+                ? NotificationFanoutEmailSuppressionReason.ProviderStatus
+                : "skipped";
             delivery.FailureCategory = reason;
             delivery.CompletedAt = request.EvaluatedAt;
             delivery.UpdatedAt = request.EvaluatedAt;
@@ -463,7 +574,7 @@ public sealed class EmailDispatchEligibilityEvaluator(
             request,
             EmailDispatchAttemptOutcome.Skipped,
             reason,
-            SkipMessage,
+            message,
             request.EvaluatedAt,
             cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -570,10 +681,29 @@ public sealed class EmailDispatchEligibilityEvaluator(
         _ => null
     };
 
+    private Task<FanoutAuthorityHint?> LoadFanoutAuthorityHintAsync(
+        EmailDispatchEligibilityRequest request,
+        CancellationToken cancellationToken)
+    {
+        return dbContext.NotificationDeliveries
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .Where(value =>
+                value.TenantId == request.TenantId
+                && value.EmailDispatchOutboxId == request.OutboxId
+                && value.ChannelId == (int)NotificationPreferenceChannelEnum.Email)
+            .Select(value => new FanoutAuthorityHint(
+                value.NotificationIntent!.FanoutOccurrenceId,
+                value.NotificationIntent.EventId))
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
     private sealed record SmtpRateAdmission(
         bool IsAcquired,
         DateTime AdmittedAt,
         DateTime? RetryAt,
-        bool ProcessorPaused = false);
+        bool ProcessorPaused = false,
+        bool TenantPaused = false);
     private sealed record SmtpTokenBucket(int AvailableTokens, DateTime RefillAt);
+    private sealed record FanoutAuthorityHint(Guid? OccurrenceId, Guid? EventId);
 }

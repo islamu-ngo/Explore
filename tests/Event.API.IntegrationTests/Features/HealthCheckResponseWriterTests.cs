@@ -118,6 +118,41 @@ public sealed class HealthCheckResponseWriterTests
         checkData["legacySseRuntimeEnabled"]!.GetValue<bool>().Should().BeFalse();
     }
 
+    [Test]
+    public async Task WriteAsync_WhenSensitiveKeysContainPrimitiveValues_RedactsBeforeTypeInspection()
+    {
+        var context = new DefaultHttpContext();
+        context.Response.Body = new MemoryStream();
+        var report = new HealthReport(
+            new Dictionary<string, HealthReportEntry>
+            {
+                ["email-dispatch"] = new(
+                    HealthStatus.Healthy,
+                    description: null,
+                    TimeSpan.Zero,
+                    exception: null,
+                    data: new Dictionary<string, object>
+                    {
+                        ["tenantId"] = 42,
+                        ["userId"] = 17L,
+                        ["providerId"] = 3,
+                        ["recipientAddress"] = "person@example.test",
+                        ["pendingCount"] = 9
+                    })
+            },
+            TimeSpan.Zero);
+
+        await HealthCheckResponseWriter.WriteAsync(context, report);
+
+        var root = JsonNode.Parse(ReadResponseJson(context))!.AsObject();
+        var checkData = root["checks"]!.AsArray()[0]!["data"]!.AsObject();
+        checkData["tenantId"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
+        checkData["userId"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
+        checkData["providerId"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
+        checkData["recipientAddress"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
+        checkData["pendingCount"]!.GetValue<int>().Should().Be(9);
+    }
+
     private static string ReadResponseJson(HttpContext context)
     {
         context.Response.Body.Position = 0;
