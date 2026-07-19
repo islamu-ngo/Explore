@@ -10,6 +10,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSessionAgendaItem.Validators;
 using Explore.Application.Features.EventSessionAgendaItems.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using MediatR;
 
@@ -21,6 +22,8 @@ public class CreateEventSessionAgendaItemCommandHandler : IRequestHandler<Create
     private readonly IEventSessionRepository _eventSessionRepository;
     private readonly ILocationRepository _locationRepository;
     private readonly ITenantContext _tenantContext;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly IMapper _mapper;
 
     public CreateEventSessionAgendaItemCommandHandler(
@@ -28,12 +31,16 @@ public class CreateEventSessionAgendaItemCommandHandler : IRequestHandler<Create
         IEventSessionRepository eventSessionRepository,
         ILocationRepository locationRepository,
         ITenantContext tenantContext,
+        IUnitOfWork unitOfWork,
+        EventLocationAttachmentService eventLocationAttachmentService,
         IMapper mapper)
     {
         _agendaItemRepository = agendaItemRepository;
         _eventSessionRepository = eventSessionRepository;
         _locationRepository = locationRepository;
         _tenantContext = tenantContext;
+        _unitOfWork = unitOfWork;
+        _eventLocationAttachmentService = eventLocationAttachmentService;
         _mapper = mapper;
     }
 
@@ -57,7 +64,25 @@ public class CreateEventSessionAgendaItemCommandHandler : IRequestHandler<Create
         // Set TenantId from the request context
         agendaItem.TenantId = _tenantContext.TenantId;
 
-        agendaItem = await _agendaItemRepository.Create(agendaItem);
+        EventSession? parentSession = await _eventSessionRepository.GetById(request.AgendaItemDto.EventSessionId);
+        if (parentSession is null || parentSession.TenantId != agendaItem.TenantId)
+        {
+            response.Success = false;
+            response.Message = "Event session not found in the current tenant.";
+            return response;
+        }
+
+        agendaItem.EventSession = parentSession;
+        agendaItem = await _unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            EventLocation eventLocation = await _eventLocationAttachmentService.ResolveAsync(
+                parentSession.EventId,
+                agendaItem.LocationId,
+                agendaItem.EventLocationId,
+                token);
+            agendaItem.AssignEventLocation(eventLocation);
+            return await _agendaItemRepository.Create(agendaItem);
+        }, cancellationToken);
 
         response.Success = true;
         response.Id = agendaItem.Id;

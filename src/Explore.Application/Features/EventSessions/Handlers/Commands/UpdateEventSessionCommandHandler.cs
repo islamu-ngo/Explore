@@ -8,6 +8,7 @@ using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
@@ -28,6 +29,7 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
     private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
     private readonly IEventDayRepository _eventDayRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly HybridCache _cache;
 
     public UpdateEventSessionCommandHandler(
@@ -41,6 +43,7 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         IEventScheduleProjectionCalculator scheduleProjectionCalculator,
         IEventDayRepository eventDayRepository,
         IUnitOfWork unitOfWork,
+        EventLocationAttachmentService eventLocationAttachmentService,
         HybridCache cache)
     {
         _eventSessionRepository = eventSessionRepository;
@@ -53,6 +56,7 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         _scheduleProjectionCalculator = scheduleProjectionCalculator;
         _eventDayRepository = eventDayRepository;
         _unitOfWork = unitOfWork;
+        _eventLocationAttachmentService = eventLocationAttachmentService;
         _cache = cache;
     }
 
@@ -111,28 +115,60 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
             return response;
         }
 
+        var placement = await ResolveFinalPlacementAsync(
+            eventSession,
+            request.EventSessionDto,
+            cancellationToken);
+        if (!placement.Success)
+        {
+            response.Success = false;
+            response.Message = "Event session update failed.";
+            response.Errors = [placement.Message];
+            return response;
+        }
+
+        Guid? previousEventLocationId = eventSession.EventLocationId;
         var eventChanged = previousEventId != parentEvent.Id;
-        ApplyEvent(eventSession, request.EventSessionDto.Event);
-        ApplyLocation(eventSession, request.EventSessionDto.Location);
-        ApplyFeaturedImage(eventSession, request.EventSessionDto.FeaturedImage);
-        ApplyRoom(eventSession, request.EventSessionDto.Room);
-        ApplySortOrder(eventSession, request.EventSessionDto.SortOrder);
-        ApplyTitle(eventSession, request.EventSessionDto.Title);
-        ApplyKind(eventSession, request.EventSessionDto.Kind);
-        ApplyDescription(eventSession, request.EventSessionDto.Description);
-        ApplySlug(eventSession, request.EventSessionDto.Slug);
-        ApplyMaxAudienceAttendees(eventSession, request.EventSessionDto.MaxAudienceAttendees);
-        ApplyRegistrationMode(eventSession, request.EventSessionDto.RegistrationMode);
-        ApplyPrice(eventSession, request.EventSessionDto.Price);
-        ApplyCurrencyCode(eventSession, request.EventSessionDto.CurrencyCode);
-        await ApplyScheduleAsync(eventSession, parentEvent, eventChanged, request.EventSessionDto.Schedule, cancellationToken);
 
         try
         {
-            await _unitOfWork.ExecuteInTransactionAsync(async token =>
+            await _unitOfWork.ExecuteSerializableAsync(async token =>
             {
+                EventLocation eventLocation = await _eventLocationAttachmentService.ResolveAsync(
+                    parentEvent.Id,
+                    placement.LocationId,
+                    previousEventLocationId,
+                    token);
+                if (eventChanged)
+                {
+                    await _eventSessionRepository.MoveToEventAsync(
+                        eventSession,
+                        parentEvent.Id,
+                        eventLocation,
+                        placement.RoomId,
+                        token);
+                }
+                else
+                {
+                    eventSession.AssignEventLocation(eventLocation);
+                    eventSession.RoomId = placement.RoomId;
+                }
+
+                ApplyFeaturedImage(eventSession, request.EventSessionDto.FeaturedImage);
+                ApplySortOrder(eventSession, request.EventSessionDto.SortOrder);
+                ApplyTitle(eventSession, request.EventSessionDto.Title);
+                ApplyKind(eventSession, request.EventSessionDto.Kind);
+                ApplyDescription(eventSession, request.EventSessionDto.Description);
+                ApplySlug(eventSession, request.EventSessionDto.Slug);
+                ApplyMaxAudienceAttendees(eventSession, request.EventSessionDto.MaxAudienceAttendees);
+                ApplyRegistrationMode(eventSession, request.EventSessionDto.RegistrationMode);
+                ApplyPrice(eventSession, request.EventSessionDto.Price);
+                ApplyCurrencyCode(eventSession, request.EventSessionDto.CurrencyCode);
+                await ApplyScheduleAsync(eventSession, parentEvent, eventChanged, request.EventSessionDto.Schedule, token);
                 await _eventSessionRepository.UpdateWithRoomOverlapGuardAsync(eventSession, token);
                 await ApplyIslamicAspectAsync(eventSession.Id, request.EventSessionDto.IslamicAspect, eventSession.EndTimeType, token);
+                await _eventLocationAttachmentService.DetachIfUnreferencedAsync(previousEventLocationId, token);
+                return true;
             }, cancellationToken);
         }
         catch (RoomScheduleConflictException ex)
@@ -260,20 +296,35 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         return EventSessionIslamicAspectValidationRules.HasValidSchedulingState(dto.IslamicAspect.Value.Value, locationId);
     }
 
-    private static void ApplyEvent(EventSession eventSession, UpdateEventSessionEventDto? group)
+    private async Task<(bool Success, string Message, Guid? LocationId, Guid? RoomId)> ResolveFinalPlacementAsync(
+        EventSession eventSession,
+        UpdateEventSessionDto dto,
+        CancellationToken cancellationToken)
     {
-        if (group is not null)
-        {
-            eventSession.EventId = group.EventId;
-        }
-    }
+        Guid? locationId = dto.Location?.Value.HasValue == true
+            ? dto.Location.Value.Value
+            : eventSession.LocationId;
+        Guid? roomId = dto.Room?.Value.HasValue == true
+            ? dto.Room.Value.Value
+            : eventSession.RoomId;
 
-    private static void ApplyLocation(EventSession eventSession, UpdateEventSessionLocationDto? group)
-    {
-        if (group?.Value.HasValue == true)
+        if (!roomId.HasValue)
         {
-            eventSession.LocationId = group.Value.Value;
+            return (true, string.Empty, locationId, null);
         }
+
+        LocationRoom? room = await _locationRoomRepository.GetById(roomId.Value);
+        if (room is null || room.TenantId != eventSession.TenantId)
+        {
+            return (false, "Room does not belong to the same tenant as the session.", locationId, roomId);
+        }
+
+        if (locationId.HasValue && locationId.Value != room.LocationId)
+        {
+            return (false, "Room must belong to the selected location.", locationId, roomId);
+        }
+
+        return (true, string.Empty, room.LocationId, roomId);
     }
 
     private static void ApplyFeaturedImage(EventSession eventSession, UpdateEventSessionFeaturedImageDto? group)
@@ -281,14 +332,6 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         if (group?.Value.HasValue == true)
         {
             eventSession.FeaturedImageId = group.Value.Value;
-        }
-    }
-
-    private static void ApplyRoom(EventSession eventSession, UpdateEventSessionRoomDto? group)
-    {
-        if (group?.Value.HasValue == true)
-        {
-            eventSession.RoomId = group.Value.Value;
         }
     }
 

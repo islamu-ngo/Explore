@@ -8,6 +8,7 @@ using Explore.Application.DTOs.EventAgendaItem.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventAgendaItems.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Services.Scheduling;
 using MediatR;
@@ -24,6 +25,8 @@ public class UpdateEventAgendaItemCommandHandler : IRequestHandler<UpdateEventAg
     private readonly ILocationRoomRepository _locationRoomRepository;
     private readonly IScheduleItemKindRepository _scheduleItemKindRepository;
     private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly HybridCache _cache;
 
     public UpdateEventAgendaItemCommandHandler(
@@ -34,6 +37,8 @@ public class UpdateEventAgendaItemCommandHandler : IRequestHandler<UpdateEventAg
         ILocationRoomRepository locationRoomRepository,
         IScheduleItemKindRepository scheduleItemKindRepository,
         IEventScheduleProjectionCalculator scheduleProjectionCalculator,
+        IUnitOfWork unitOfWork,
+        EventLocationAttachmentService eventLocationAttachmentService,
         HybridCache cache)
     {
         _eventAgendaItemRepository = eventAgendaItemRepository;
@@ -43,6 +48,8 @@ public class UpdateEventAgendaItemCommandHandler : IRequestHandler<UpdateEventAg
         _locationRoomRepository = locationRoomRepository;
         _scheduleItemKindRepository = scheduleItemKindRepository;
         _scheduleProjectionCalculator = scheduleProjectionCalculator;
+        _unitOfWork = unitOfWork;
+        _eventLocationAttachmentService = eventLocationAttachmentService;
         _cache = cache;
     }
 
@@ -101,16 +108,42 @@ public class UpdateEventAgendaItemCommandHandler : IRequestHandler<UpdateEventAg
             return response;
         }
 
+        Guid? previousEventLocationId = agendaItem.EventLocationId;
         var eventChanged = previousEventId != parentEvent.Id;
-        ApplyEvent(agendaItem, request.EventAgendaItemDto.Event);
-        ApplyTitle(agendaItem, request.EventAgendaItemDto.Title);
-        ApplyDescription(agendaItem, request.EventAgendaItemDto.Description);
-        ApplyLocationRoom(agendaItem, request.EventAgendaItemDto, relationshipValidation.LocationId, relationshipValidation.RoomId);
-        ApplyKind(agendaItem, request.EventAgendaItemDto.Kind);
-        ApplySortOrder(agendaItem, request.EventAgendaItemDto.SortOrder);
-        await ApplyScheduleAsync(agendaItem, parentEvent, eventChanged, request.EventAgendaItemDto.Schedule, cancellationToken);
 
-        await _eventAgendaItemRepository.Update(agendaItem);
+        await _unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            EventLocation eventLocation = await _eventLocationAttachmentService.ResolveAsync(
+                parentEvent.Id,
+                relationshipValidation.LocationId,
+                previousEventLocationId,
+                token);
+            if (eventChanged)
+            {
+                await _eventAgendaItemRepository.MoveToEventAsync(
+                    agendaItem,
+                    parentEvent.Id,
+                    eventLocation,
+                    relationshipValidation.RoomId,
+                    token);
+            }
+            else
+            {
+                agendaItem.AssignEventLocation(eventLocation);
+                if (request.EventAgendaItemDto.Location is not null || request.EventAgendaItemDto.Room is not null)
+                {
+                    agendaItem.RoomId = relationshipValidation.RoomId;
+                }
+            }
+
+            ApplyTitle(agendaItem, request.EventAgendaItemDto.Title);
+            ApplyDescription(agendaItem, request.EventAgendaItemDto.Description);
+            ApplyKind(agendaItem, request.EventAgendaItemDto.Kind);
+            ApplySortOrder(agendaItem, request.EventAgendaItemDto.SortOrder);
+            await ApplyScheduleAsync(agendaItem, parentEvent, eventChanged, request.EventAgendaItemDto.Schedule, token);
+            await _eventAgendaItemRepository.Update(agendaItem);
+            await _eventLocationAttachmentService.DetachIfUnreferencedAsync(previousEventLocationId, token);
+        }, cancellationToken);
 
         if (eventChanged)
         {
@@ -201,14 +234,6 @@ public class UpdateEventAgendaItemCommandHandler : IRequestHandler<UpdateEventAg
         agendaItem.EventDayId = matchingDay?.Id;
     }
 
-    private static void ApplyEvent(EventAgendaItem agendaItem, UpdateEventAgendaItemEventDto? group)
-    {
-        if (group is not null)
-        {
-            agendaItem.EventId = group.EventId;
-        }
-    }
-
     private static void ApplyTitle(EventAgendaItem agendaItem, UpdateEventAgendaItemTitleDto? group)
     {
         if (group is not null)
@@ -222,19 +247,6 @@ public class UpdateEventAgendaItemCommandHandler : IRequestHandler<UpdateEventAg
         if (group?.Value.HasValue == true)
         {
             agendaItem.Description = group.Value.Value;
-        }
-    }
-
-    private static void ApplyLocationRoom(
-        EventAgendaItem agendaItem,
-        UpdateEventAgendaItemDto dto,
-        Guid? locationId,
-        Guid? roomId)
-    {
-        if (dto.Location is not null || dto.Room is not null)
-        {
-            agendaItem.LocationId = locationId;
-            agendaItem.RoomId = roomId;
         }
     }
 

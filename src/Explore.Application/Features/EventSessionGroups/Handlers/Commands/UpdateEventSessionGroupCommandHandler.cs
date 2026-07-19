@@ -5,6 +5,8 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSessionGroup.Validators;
 using Explore.Application.Features.EventSessionGroups.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
+using Explore.Domain;
 using MediatR;
 
 namespace Explore.Application.Features.EventSessionGroups.Handlers.Commands;
@@ -15,17 +17,23 @@ public class UpdateEventSessionGroupCommandHandler : IRequestHandler<UpdateEvent
     private readonly IEventRepository _eventRepository;
     private readonly ILocationRepository _locationRepository;
     private readonly ILocationRoomRepository _locationRoomRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly EventLocationAttachmentService _eventLocationAttachmentService;
 
     public UpdateEventSessionGroupCommandHandler(
         IEventSessionGroupRepository eventSessionGroupRepository,
         IEventRepository eventRepository,
         ILocationRepository locationRepository,
-        ILocationRoomRepository locationRoomRepository)
+        ILocationRoomRepository locationRoomRepository,
+        IUnitOfWork unitOfWork,
+        EventLocationAttachmentService eventLocationAttachmentService)
     {
         _eventSessionGroupRepository = eventSessionGroupRepository;
         _eventRepository = eventRepository;
         _locationRepository = locationRepository;
         _locationRoomRepository = locationRoomRepository;
+        _unitOfWork = unitOfWork;
+        _eventLocationAttachmentService = eventLocationAttachmentService;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventSessionGroupCommand request, CancellationToken cancellationToken)
@@ -74,16 +82,26 @@ public class UpdateEventSessionGroupCommandHandler : IRequestHandler<UpdateEvent
             return response;
         }
 
+        Guid? previousEventLocationId = group.EventLocationId;
         group.Name = request.EventSessionGroup.Name;
         group.Slug = request.EventSessionGroup.Slug;
         group.Description = request.EventSessionGroup.Description;
-        group.LocationId = request.EventSessionGroup.LocationId;
-        group.RoomId = request.EventSessionGroup.RoomId;
         group.Color = request.EventSessionGroup.Color;
         group.SortOrder = request.EventSessionGroup.SortOrder;
         group.IsPublished = request.EventSessionGroup.IsPublished;
 
-        await _eventSessionGroupRepository.Update(group);
+        await _unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            EventLocation eventLocation = await _eventLocationAttachmentService.ResolveAsync(
+                group.EventId,
+                request.EventSessionGroup.LocationId,
+                previousEventLocationId,
+                token);
+            group.AssignEventLocation(eventLocation);
+            group.RoomId = request.EventSessionGroup.RoomId;
+            await _eventSessionGroupRepository.Update(group);
+            await _eventLocationAttachmentService.DetachIfUnreferencedAsync(previousEventLocationId, token);
+        }, cancellationToken);
 
         response.Success = true;
         response.Id = group.Id;

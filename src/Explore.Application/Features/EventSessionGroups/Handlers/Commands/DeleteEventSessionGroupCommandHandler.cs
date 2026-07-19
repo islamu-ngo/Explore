@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.EventSessionGroups.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using MediatR;
 
 namespace Explore.Application.Features.EventSessionGroups.Handlers.Commands;
@@ -12,13 +13,19 @@ public class DeleteEventSessionGroupCommandHandler : IRequestHandler<DeleteEvent
 {
     private readonly IEventSessionGroupRepository _eventSessionGroupRepository;
     private readonly IEventSessionGroupSessionRepository _eventSessionGroupSessionRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly EventLocationAttachmentService _eventLocationAttachmentService;
 
     public DeleteEventSessionGroupCommandHandler(
         IEventSessionGroupRepository eventSessionGroupRepository,
-        IEventSessionGroupSessionRepository eventSessionGroupSessionRepository)
+        IEventSessionGroupSessionRepository eventSessionGroupSessionRepository,
+        IUnitOfWork unitOfWork,
+        EventLocationAttachmentService eventLocationAttachmentService)
     {
         _eventSessionGroupRepository = eventSessionGroupRepository;
         _eventSessionGroupSessionRepository = eventSessionGroupSessionRepository;
+        _unitOfWork = unitOfWork;
+        _eventLocationAttachmentService = eventLocationAttachmentService;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(DeleteEventSessionGroupCommand request, CancellationToken cancellationToken)
@@ -40,15 +47,23 @@ public class DeleteEventSessionGroupCommandHandler : IRequestHandler<DeleteEvent
             return response;
         }
 
-        var assignments = await _eventSessionGroupSessionRepository.GetAssignmentsForGroupUpdateAsync(
-            group.Id,
-            cancellationToken);
-        foreach (var assignment in assignments)
+        await _unitOfWork.ExecuteInTransactionAsync(async token =>
         {
-            await _eventSessionGroupSessionRepository.Delete(assignment);
-        }
+            Guid? eventLocationId = group.EventLocationId;
+            var assignments = await _eventSessionGroupSessionRepository.GetAssignmentsForGroupUpdateAsync(
+                group.Id,
+                token);
+            foreach (var assignment in assignments)
+            {
+                await _eventSessionGroupSessionRepository.Delete(assignment);
+            }
 
-        await _eventSessionGroupRepository.Delete(group);
+            group.DetachEventLocationForDeletion();
+            await _eventSessionGroupRepository.Delete(group);
+            await _eventLocationAttachmentService.DetachIfUnreferencedAsync(
+                eventLocationId,
+                token);
+        }, cancellationToken);
 
         response.Success = true;
         response.Id = group.Id;

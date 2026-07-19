@@ -13,6 +13,7 @@ using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
@@ -34,6 +35,8 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
     private readonly IEventSessionTemplateInstantiationService _instantiationService;
     private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
     private readonly IEventDayRepository _eventDayRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly IMapper _mapper;
 
     public CreateEventSessionCommandHandler(
@@ -49,6 +52,8 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         IEventSessionTemplateInstantiationService instantiationService,
         IEventScheduleProjectionCalculator scheduleProjectionCalculator,
         IEventDayRepository eventDayRepository,
+        IUnitOfWork unitOfWork,
+        EventLocationAttachmentService eventLocationAttachmentService,
         IMapper mapper)
     {
         _eventSessionRepository = eventSessionRepository;
@@ -63,6 +68,8 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         _instantiationService = instantiationService;
         _scheduleProjectionCalculator = scheduleProjectionCalculator;
         _eventDayRepository = eventDayRepository;
+        _unitOfWork = unitOfWork;
+        _eventLocationAttachmentService = eventLocationAttachmentService;
         _mapper = mapper;
     }
 
@@ -118,8 +125,16 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
 
         try
         {
-            // Layer B: serializable re-check of same-room overlap runs inside the repository guard method.
-            eventSession = await _eventSessionRepository.CreateWithRoomOverlapGuardAsync(eventSession, cancellationToken);
+            eventSession = await _unitOfWork.ExecuteSerializableAsync(async token =>
+            {
+                EventLocation eventLocation = await _eventLocationAttachmentService.ResolveAsync(
+                    parentEvent.Id,
+                    eventSession.LocationId,
+                    eventSession.EventLocationId,
+                    token);
+                eventSession.AssignEventLocation(eventLocation);
+                return await _eventSessionRepository.CreateWithRoomOverlapGuardAsync(eventSession, token);
+            }, cancellationToken);
         }
         catch (RoomScheduleConflictException ex)
         {

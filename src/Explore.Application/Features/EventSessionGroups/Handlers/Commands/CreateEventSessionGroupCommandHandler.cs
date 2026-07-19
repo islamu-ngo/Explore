@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSessionGroup.Validators;
 using Explore.Application.Features.EventSessionGroups.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using MediatR;
 
@@ -17,6 +18,8 @@ public class CreateEventSessionGroupCommandHandler : IRequestHandler<CreateEvent
     private readonly IEventRepository _eventRepository;
     private readonly ILocationRepository _locationRepository;
     private readonly ILocationRoomRepository _locationRoomRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly IMapper _mapper;
 
     public CreateEventSessionGroupCommandHandler(
@@ -24,12 +27,16 @@ public class CreateEventSessionGroupCommandHandler : IRequestHandler<CreateEvent
         IEventRepository eventRepository,
         ILocationRepository locationRepository,
         ILocationRoomRepository locationRoomRepository,
+        IUnitOfWork unitOfWork,
+        EventLocationAttachmentService eventLocationAttachmentService,
         IMapper mapper)
     {
         _eventSessionGroupRepository = eventSessionGroupRepository;
         _eventRepository = eventRepository;
         _locationRepository = locationRepository;
         _locationRoomRepository = locationRoomRepository;
+        _unitOfWork = unitOfWork;
+        _eventLocationAttachmentService = eventLocationAttachmentService;
         _mapper = mapper;
     }
 
@@ -73,7 +80,16 @@ public class CreateEventSessionGroupCommandHandler : IRequestHandler<CreateEvent
         var group = _mapper.Map<EventSessionGroup>(request.EventSessionGroup);
         group.TenantId = parentEvent.TenantId;
 
-        group = await _eventSessionGroupRepository.Create(group);
+        group = await _unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            EventLocation eventLocation = await _eventLocationAttachmentService.ResolveAsync(
+                parentEvent.Id,
+                group.LocationId,
+                group.EventLocationId,
+                token);
+            group.AssignEventLocation(eventLocation);
+            return await _eventSessionGroupRepository.Create(group);
+        }, cancellationToken);
 
         response.Success = true;
         response.Id = group.Id;

@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Application.Services.Lifecycle;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -19,6 +20,8 @@ public sealed class CreateDraftEventSessionCommandHandler(
     IEventRepository eventRepository,
     IEventLifecyclePolicyProvider policyProvider,
     IEventLifecycleReadinessEvaluator readinessEvaluator,
+    IUnitOfWork unitOfWork,
+    EventLocationAttachmentService eventLocationAttachmentService,
     HybridCache cache) : IRequestHandler<CreateDraftEventSessionCommand, BaseCommandResponse<Guid>>
 {
     private const string ReadinessFailedCode = "event_session_draft_readiness_failed";
@@ -59,7 +62,16 @@ public sealed class CreateDraftEventSessionCommandHandler(
             return Failure(Guid.Empty, "Event session draft is not ready to create.", readiness.Errors.Select(error => error.Message), ReadinessFailedCode);
         }
 
-        EventSession created = await eventSessionRepository.Create(session);
+        EventSession created = await unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            EventLocation eventLocation = await eventLocationAttachmentService.ResolveAsync(
+                parentEvent.Id,
+                locationId: null,
+                currentEventLocationId: null,
+                token);
+            session.AssignEventLocation(eventLocation);
+            return await eventSessionRepository.Create(session);
+        }, cancellationToken);
 
         await cache.RemoveAsync($"event:detail:{parentEvent.Id}", cancellationToken);
         await cache.RemoveByTagAsync(CacheTags.EventListByTenant(parentEvent.TenantId), cancellationToken);
