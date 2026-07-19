@@ -1,6 +1,7 @@
 // ABOUTME: HTTP message handler that forwards the captured auth cookie to BFF self-endpoints.
 // ABOUTME: Required because BffSelfClient uses UseCookies=false for handler pooling hygiene.
 
+using Explore.Blazor.Services.Auth;
 using Microsoft.AspNetCore.Http;
 
 namespace Explore.Blazor.Services;
@@ -14,17 +15,20 @@ public class BffCookieForwardingHandler : DelegatingHandler
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<BffCookieForwardingHandler> _logger;
     private readonly IBffSelfCallTokenService? _selfCallTokenService;
+    private readonly AtprotoBootstrapAssertionService? _atprotoBootstrapAssertionService;
 
     public BffCookieForwardingHandler(
         IBffAuthCookieStore bffAuthCookieStore,
         IHttpContextAccessor httpContextAccessor,
         ILogger<BffCookieForwardingHandler> logger,
-        IBffSelfCallTokenService? selfCallTokenService = null)
+        IBffSelfCallTokenService? selfCallTokenService = null,
+        AtprotoBootstrapAssertionService? atprotoBootstrapAssertionService = null)
     {
         _bffAuthCookieStore = bffAuthCookieStore;
         _httpContextAccessor = httpContextAccessor;
         _logger = logger;
         _selfCallTokenService = selfCallTokenService;
+        _atprotoBootstrapAssertionService = atprotoBootstrapAssertionService;
     }
 
     public BffCookieForwardingHandler(
@@ -54,8 +58,37 @@ public class BffCookieForwardingHandler : DelegatingHandler
         }
 
         TryAddSelfCallToken(request);
+        AddServerBootstrapAssertion(request);
 
         return base.SendAsync(request, cancellationToken);
+    }
+
+    private void AddServerBootstrapAssertion(HttpRequestMessage request)
+    {
+        _ = request.Headers.Remove(AtprotoBootstrapAssertionService.HeaderName);
+        if (_atprotoBootstrapAssertionService is null
+            || request.Method != HttpMethod.Post
+            || !IsExactPath(request.RequestUri, AtprotoBootstrapAssertionService.BridgePath)
+            || !request.Options.TryGetValue(AtprotoBootstrapRequestOptions.TenantIdKey, out var tenantId)
+            || tenantId == Guid.Empty)
+        {
+            return;
+        }
+
+        request.Headers.TryAddWithoutValidation(
+            AtprotoBootstrapAssertionService.HeaderName,
+            _atprotoBootstrapAssertionService.Issue(tenantId, request.Method, AtprotoBootstrapAssertionService.BridgePath));
+    }
+
+    private static bool IsExactPath(Uri? uri, string expectedPath)
+    {
+        if (uri is null)
+        {
+            return false;
+        }
+
+        var path = uri.IsAbsoluteUri ? uri.AbsolutePath : uri.OriginalString.Split('?', 2)[0];
+        return string.Equals(path, expectedPath, StringComparison.Ordinal);
     }
 
     private static bool IsMutatingMethod(HttpMethod method)
@@ -197,4 +230,20 @@ public class BffCookieForwardingHandler : DelegatingHandler
     }
 
     private readonly record struct CookieValue(string Name, string Value);
+}
+
+public static class AtprotoBootstrapRequestOptions
+{
+    internal static readonly HttpRequestOptionsKey<Guid> TenantIdKey = new("AtprotoBootstrapTenantId");
+
+    public static void BindTenant(HttpRequestMessage request, Guid tenantId)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (tenantId == Guid.Empty)
+        {
+            throw new ArgumentException("ATProto bootstrap tenant is required.", nameof(tenantId));
+        }
+
+        request.Options.Set(TenantIdKey, tenantId);
+    }
 }

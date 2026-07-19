@@ -372,11 +372,6 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
 
     private void RegisterAtprotoScheme(string publicUrl)
     {
-        // ATProto uses a custom authentication handler (not standard OIDC).
-        // Phase 2 registers a placeholder scheme. Full FishyFlip integration comes in a later phase.
-        // For now, we register the scheme name so the login UI can enumerate it,
-        // but the actual handler is a stub that returns NoResult until implemented.
-
         var scheme = new AuthenticationScheme(
             AuthSchemeNames.Atproto,
             displayName: "AT Protocol",
@@ -388,7 +383,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             _registeredSchemes.Add(AuthSchemeNames.Atproto);
         }
 
-        _logger.LogInformation("Registered ATProto authentication scheme (public URL: {PublicUrl})", publicUrl);
+        _logger.LogInformation("Registered ATProto authentication scheme");
     }
 
     private void RemoveScheme(string schemeName)

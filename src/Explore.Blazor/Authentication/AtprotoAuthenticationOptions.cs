@@ -13,6 +13,14 @@ public class AtprotoAuthenticationOptions : AuthenticationSchemeOptions
 
     public bool AllowDevelopmentLoopback { get; set; }
 
+    public bool UseSingleNodeMemoryStore { get; set; }
+
+    public int StateLifetimeSeconds { get; set; } = 300;
+
+    public int HandoffLifetimeSeconds { get; set; } = 60;
+
+    public List<AtprotoTenantOrigin> TenantOrigins { get; set; } = [];
+
     public string? ClientName { get; set; }
 
     public string? ClientUri { get; set; }
@@ -22,4 +30,13 @@ public class AtprotoAuthenticationOptions : AuthenticationSchemeOptions
     public string? PolicyUri { get; set; }
 
     public string? TermsOfServiceUri { get; set; }
+}
+
+public sealed class AtprotoTenantOrigin
+{
+    public string Origin { get; set; } = string.Empty;
+
+    public Guid TenantId { get; set; }
+
+    public string TenantSlug { get; set; } = string.Empty;
 }

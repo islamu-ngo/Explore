@@ -1,14 +1,18 @@
 // ABOUTME: Auth-related BFF endpoints: challenge, login, signout, status, providers, debug, refresh-schemes.
 // ABOUTME: Includes multi-provider resolution, provider readiness checks, and OIDC metadata validation.
 
+using System.Diagnostics;
 using System.Security.Claims;
 using Event.Web.BffHosting.Authentication;
+using Explore.Atproto.Transport;
+using Explore.Blazor.Authentication;
 using Explore.Blazor.Constants;
 using Explore.Blazor.Services;
 using Explore.Blazor.Services.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Explore.Blazor.Extensions;
 
@@ -21,6 +25,32 @@ public static class BffAuthEndpoints
     public static WebApplication MapAuthEndpoints(this WebApplication app)
     {
         app.MapGet("/auth/challenge", HandleChallengeAsync);
+
+        app.MapPost(
+                "/auth/atproto/challenge",
+                (Func<HttpContext, Task<IResult>>)HandleAtprotoChallengeAsync)
+            .ValidateAntiforgery()
+            .RequireRateLimiting(RateLimitingExtensions.AtprotoAuthenticationPolicy)
+            .ExcludeFromDescription();
+
+        var atprotoOptions = app.Services
+            .GetRequiredService<IOptions<AtprotoAuthenticationOptions>>()
+            .Value;
+        var atprotoPolicy = new AtprotoOutboundPolicy(
+            app.Environment.IsDevelopment() && atprotoOptions.AllowDevelopmentLoopback);
+        if (AtprotoClientIdentityFactory.TryCreate(
+                atprotoOptions.PublicUrl,
+                atprotoOptions.CallbackPath,
+                atprotoPolicy,
+                out var atprotoIdentity))
+        {
+            app.MapGet(new Uri(atprotoIdentity.CallbackUri).AbsolutePath, HandleAtprotoCallbackAsync)
+                .RequireRateLimiting(RateLimitingExtensions.AtprotoAuthenticationPolicy)
+                .ExcludeFromDescription();
+        }
+
+        app.MapGet("/auth/atproto/handoff", HandleAtprotoHandoffAsync)
+            .ExcludeFromDescription();
 
         app.MapGet("/auth/login", HandleLoginRedirect);
 
@@ -65,9 +95,7 @@ public static class BffAuthEndpoints
         var returnUrl = returnUrlService.GetSafeReturnUrl(ctx, logger);
         var provider = ctx.Request.Query["provider"].ToString();
 
-        logger.LogInformation(
-            "[AuthEndpoints] /auth/challenge hit - Provider: {Provider}, Url: {Url}, ReturnUrl: {ReturnUrl}",
-            provider, ctx.Request.GetDisplayUrl(), returnUrl);
+        logger.LogInformation("[AuthEndpoints] Authentication challenge requested for {Provider}", provider);
 
         if (await ShouldGateForOnboardingAsync(ctx))
         {
@@ -80,6 +108,11 @@ public static class BffAuthEndpoints
         // Resolve which auth scheme to challenge
         var providerReadiness = ctx.RequestServices.GetRequiredService<IBffProviderReadinessService>();
         var schemeName = providerReadiness.ResolveProviderScheme(provider);
+        if (string.Equals(schemeName, AuthSchemeNames.Atproto, StringComparison.Ordinal))
+        {
+            ctx.Response.Redirect(returnUrlService.BuildLoginRedirectUrl(returnUrl, "atproto"));
+            return;
+        }
         if (!string.IsNullOrEmpty(schemeName))
         {
             if (!await providerReadiness.IsProviderReadyAsync(schemeName, ctx.RequestAborted))
@@ -139,6 +172,222 @@ public static class BffAuthEndpoints
             ctx.Response.Redirect(redirectUrl);
         }
     }
+
+    private static async Task<IResult> HandleAtprotoChallengeAsync(HttpContext ctx)
+    {
+        ctx.Response.Headers.CacheControl = "no-store";
+        if (ctx.Request.ContentLength is > 2048 || await ShouldGateForOnboardingAsync(ctx))
+        {
+            return Results.BadRequest();
+        }
+
+        AtprotoChallengeRequest? request;
+        try
+        {
+            request = await ctx.Request.ReadFromJsonAsync<AtprotoChallengeRequest>(ctx.RequestAborted);
+        }
+        catch
+        {
+            return Results.BadRequest();
+        }
+
+        if (request is null)
+        {
+            return Results.BadRequest();
+        }
+
+        var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("AuthEndpoints");
+        var metrics = ctx.RequestServices.GetRequiredService<AtprotoAuthenticationMetrics>();
+        var started = Stopwatch.GetTimestamp();
+        var returnPath = GetSafePostedReturnPath(request.ReturnPath);
+
+        try
+        {
+            var readiness = ctx.RequestServices.GetRequiredService<IBffProviderReadinessService>();
+            if (!await readiness.IsProviderReadyAsync(AuthSchemeNames.Atproto, ctx.RequestAborted))
+            {
+                metrics.Record(
+                    AtprotoAuthenticationOperation.Challenge,
+                    AtprotoAuthenticationOutcome.ProviderUnavailable,
+                    Stopwatch.GetElapsedTime(started));
+                return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "ATProto sign-in is unavailable.");
+            }
+
+            var provider = ctx.RequestServices.GetRequiredService<IAuthenticationHandlerProvider>();
+            var handler = await provider.GetHandlerAsync(ctx, AuthSchemeNames.Atproto) as AtprotoAuthenticationHandler
+                ?? throw new InvalidOperationException("ATProto authentication handler is unavailable.");
+            var authorizationUrl = await handler.CreateAuthorizationUrlAsync(
+                request.Handle,
+                returnPath,
+                ctx.RequestAborted);
+            metrics.Record(
+                AtprotoAuthenticationOperation.Challenge,
+                AtprotoAuthenticationOutcome.Success,
+                Stopwatch.GetElapsedTime(started));
+            return Results.Ok(new AtprotoChallengeResponse(authorizationUrl));
+        }
+        catch (OperationCanceledException) when (ctx.RequestAborted.IsCancellationRequested)
+        {
+            metrics.Record(
+                AtprotoAuthenticationOperation.Challenge,
+                AtprotoAuthenticationOutcome.Cancelled,
+                Stopwatch.GetElapsedTime(started));
+            throw;
+        }
+        catch (Exception exception)
+        {
+            metrics.Record(
+                AtprotoAuthenticationOperation.Challenge,
+                AtprotoAuthenticationOutcome.ValidationFailed,
+                Stopwatch.GetElapsedTime(started));
+            var diagnostics = ctx.RequestServices.GetRequiredService<ISafeAuthDiagnosticsPolicy>();
+            var diagnostic = diagnostics.CreateDiagnostic("atproto_challenge_failed", exception);
+            logger.LogWarning(
+                "ATProto challenge failed (errorCode={ErrorCode}, correlationId={CorrelationId}, failureCategory={FailureCategory})",
+                diagnostic.ErrorCode,
+                diagnostic.CorrelationId,
+                diagnostic.FailureCategory);
+            return Results.Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "ATProto sign-in could not be started.",
+                extensions: new Dictionary<string, object?>
+                {
+                    ["code"] = diagnostic.ErrorCode,
+                    ["correlationId"] = diagnostic.CorrelationId
+                });
+        }
+    }
+
+    private static async Task HandleAtprotoCallbackAsync(HttpContext ctx)
+    {
+        ctx.Response.Headers.CacheControl = "no-store";
+        var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("AuthEndpoints");
+        var metrics = ctx.RequestServices.GetRequiredService<AtprotoAuthenticationMetrics>();
+        var started = Stopwatch.GetTimestamp();
+        try
+        {
+            var provider = ctx.RequestServices.GetRequiredService<IAuthenticationHandlerProvider>();
+            var handler = await provider.GetHandlerAsync(ctx, AuthSchemeNames.Atproto) as AtprotoAuthenticationHandler
+                ?? throw new InvalidOperationException("ATProto authentication handler is unavailable.");
+            var completion = await handler.CompleteCallbackAsync(ctx.RequestAborted);
+            var canonicalOrigin = ctx.RequestServices.GetRequiredService<AtprotoTenantOriginResolver>()
+                .ParseCanonicalOrigin();
+            if (AtprotoTenantOriginResolver.OriginsEqual(completion.Seed.Origin, canonicalOrigin))
+            {
+                await SignInAtprotoAsync(ctx, completion.Seed, completion.Session);
+                metrics.Record(
+                    AtprotoAuthenticationOperation.Callback,
+                    AtprotoAuthenticationOutcome.Success,
+                    Stopwatch.GetElapsedTime(started));
+                ctx.Response.Redirect(completion.Seed.ReturnPath);
+                return;
+            }
+
+            var handoffCode = await ctx.RequestServices.GetRequiredService<AtprotoTenantSessionHandoffStore>()
+                .CreateAsync(completion.Seed, completion.Session, ctx.RequestAborted);
+            var destination = new Uri(
+                completion.Seed.Origin,
+                $"auth/atproto/handoff?code={Uri.EscapeDataString(handoffCode)}");
+            metrics.Record(
+                AtprotoAuthenticationOperation.Callback,
+                AtprotoAuthenticationOutcome.Success,
+                Stopwatch.GetElapsedTime(started));
+            ctx.Response.Redirect(destination.AbsoluteUri);
+        }
+        catch (OperationCanceledException) when (ctx.RequestAborted.IsCancellationRequested)
+        {
+            metrics.Record(
+                AtprotoAuthenticationOperation.Callback,
+                AtprotoAuthenticationOutcome.Cancelled,
+                Stopwatch.GetElapsedTime(started));
+            throw;
+        }
+        catch (Exception exception)
+        {
+            metrics.Record(
+                AtprotoAuthenticationOperation.Callback,
+                AtprotoAuthenticationOutcome.ValidationFailed,
+                Stopwatch.GetElapsedTime(started));
+            var diagnostics = ctx.RequestServices.GetRequiredService<ISafeAuthDiagnosticsPolicy>();
+            var diagnostic = diagnostics.CreateDiagnostic("atproto_callback_failed", exception);
+            logger.LogWarning(
+                "ATProto callback failed (errorCode={ErrorCode}, correlationId={CorrelationId}, failureCategory={FailureCategory})",
+                diagnostic.ErrorCode,
+                diagnostic.CorrelationId,
+                diagnostic.FailureCategory);
+            ctx.Response.Redirect(diagnostics.BuildLoginRedirectUrl("/", "atproto", diagnostic));
+        }
+    }
+
+    private static async Task HandleAtprotoHandoffAsync(HttpContext ctx)
+    {
+        ctx.Response.Headers.CacheControl = "no-store";
+        var code = ctx.Request.Query["code"];
+        if (code.Count != 1 || code[0] is not { Length: >= 32 and <= 512 })
+        {
+            ctx.Response.Redirect("/login?provider=atproto&challengeError=1");
+            return;
+        }
+
+        var handoff = await ctx.RequestServices.GetRequiredService<AtprotoTenantSessionHandoffStore>()
+            .ConsumeAsync(code[0]!, ctx.Request, ctx.RequestAborted);
+        if (handoff is null)
+        {
+            ctx.Response.Redirect("/login?provider=atproto&challengeError=1");
+            return;
+        }
+
+        await SignInAtprotoAsync(ctx, handoff.Seed, handoff.Session);
+        ctx.Response.Redirect(handoff.Seed.ReturnPath);
+    }
+
+    private static async Task SignInAtprotoAsync(
+        HttpContext ctx,
+        AtprotoOAuthFlowSeed seed,
+        AtprotoBffSessionResult session)
+    {
+        var identity = new ClaimsIdentity([
+            new Claim("sub", session.UserId.ToString("D")),
+            new Claim(ClaimTypes.NameIdentifier, session.UserId.ToString("D")),
+            new Claim(ClaimTypes.Name, session.Did),
+            new Claim("did", session.Did),
+            new Claim("tenant_id", seed.TenantId.ToString("D")),
+            new Claim("auth_provider", "atproto"),
+            new Claim("sid", Guid.CreateVersion7().ToString("D"))
+        ], AuthSchemeNames.Atproto, ClaimTypes.Name, ClaimTypes.Role);
+        var properties = new AuthenticationProperties
+        {
+            AllowRefresh = true,
+            IsPersistent = true,
+            ExpiresUtc = session.ExpiresAt,
+            RedirectUri = seed.ReturnPath
+        };
+        properties.StoreTokens([
+            new AuthenticationToken { Name = "access_token", Value = session.AccessToken },
+            new AuthenticationToken { Name = "expires_at", Value = session.ExpiresAt.ToString("O") },
+            new AuthenticationToken { Name = "token_type", Value = "Bearer" }
+        ]);
+        await ctx.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(identity),
+            properties);
+        ctx.RequestServices.GetService<ICircuitAccessTokenService>()?.SetToken(session.AccessToken);
+    }
+
+    private static string GetSafePostedReturnPath(string? value) =>
+        !string.IsNullOrWhiteSpace(value)
+        && value.Length <= 2048
+        && value.StartsWith('/')
+        && !value.StartsWith("//", StringComparison.Ordinal)
+        && !value.StartsWith("/\\", StringComparison.Ordinal)
+        && !value.Contains('\r')
+        && !value.Contains('\n')
+            ? value
+            : "/";
+
+    private sealed record AtprotoChallengeRequest(string? Handle, string? ReturnPath);
+
+    private sealed record AtprotoChallengeResponse(string AuthorizationUrl);
 
     private static async Task HandleLoginRedirect(HttpContext ctx)
     {
@@ -246,6 +495,12 @@ public static class BffAuthEndpoints
             }
 
             return;
+        }
+
+        using (var revokeTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
+        {
+            await ctx.RequestServices.GetRequiredService<IBffSessionRefreshService>()
+                .RevokeAtprotoSessionAsync(ctx, cookieAuthResult, revokeTimeout.Token);
         }
 
         if (cookieAuthResult.Succeeded && cookieAuthResult.Principal?.Identity?.IsAuthenticated == true)
