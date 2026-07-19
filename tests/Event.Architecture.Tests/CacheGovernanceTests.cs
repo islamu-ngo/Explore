@@ -24,6 +24,8 @@ public sealed partial class CacheGovernanceTests
             ["event-aggregate:list"] = CacheFamilyClassification.FilteredList("event-aggregate.list"),
             ["event-custom-properties:detail"] = CacheFamilyClassification.EntityScoped("event-custom-properties.detail"),
             ["event-custom-properties:list"] = CacheFamilyClassification.EntityScopedList("event-custom-properties.list"),
+            ["event-locations:event"] = CacheFamilyClassification.EntityScopedList("event-locations.event"),
+            ["event-locations:tenant"] = CacheFamilyClassification.TenantScopedList("event-locations.tenant"),
             ["event-reporting:my-report"] = CacheFamilyClassification.UserScoped("event-reporting.my-report"),
             ["event-reporting:reason-options"] = CacheFamilyClassification.BoundedList("event-reporting.reason-options"),
             ["event-templates:detail"] = CacheFamilyClassification.EntityScoped("event-templates.detail"),

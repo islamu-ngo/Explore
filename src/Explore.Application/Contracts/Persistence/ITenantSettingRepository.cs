@@ -43,6 +43,10 @@ public interface ITenantSettingRepository
         IReadOnlyCollection<string> keys,
         CancellationToken cancellationToken = default);
 
+    Task<List<TenantSetting>> GetByKeyAcrossTenants(
+        string key,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Removes a tenant's override for a specific setting key.
     /// </summary>

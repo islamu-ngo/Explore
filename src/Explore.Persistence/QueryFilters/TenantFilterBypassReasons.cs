@@ -14,6 +14,9 @@ public static class TenantFilterBypassReasons
     public const string GlobalLocationPrivacyErasure =
         "Global location privacy erasure enumerates only Private Homes owned by one exact global user across tenants.";
 
+    public const string InstanceLocationPrivacyGovernance =
+        "Instance location-privacy governance versions active EventLocations across tenants after an authorized ceiling change.";
+
     public const string UserExternalLoginAuthentication =
         "External-login authentication must locate a provider subject before tenant binding.";
 
@@ -64,6 +67,9 @@ public static class TenantFilterBypassReasons
 
     public const string AtprotoJetstreamGlobalMaterialization =
         "The single fenced Jetstream consumer materializes global records and explicit tenant presentation rows atomically.";
+
+    public const string AtprotoJetstreamGovernanceResolution =
+        "The single Jetstream consumer resolves one exact governance key across active tenants before presentation materialization.";
 
     public const string EmailDispatchTenantOperation =
         "Email dispatch tenant operation bypasses ambient context only after applying an explicit tenant predicate.";

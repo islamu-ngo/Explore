@@ -42,4 +42,10 @@ public interface ILocationPrivacyGovernanceMutationService
         SettingScope scope,
         Guid? tenantId,
         CancellationToken cancellationToken = default);
+
+    Task InvalidateMutationAsync(
+        SettingScope scope,
+        Guid? tenantId,
+        IReadOnlyList<LocationPrivacyProjectionIdentity> corrected,
+        CancellationToken cancellationToken = default);
 }

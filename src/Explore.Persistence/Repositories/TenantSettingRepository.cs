@@ -112,6 +112,18 @@ public class TenantSettingRepository : ITenantSettingRepository
             .ToListAsync(cancellationToken);
     }
 
+    public Task<List<TenantSetting>> GetByKeyAcrossTenants(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        return _dbContext.TenantSettingOverrides
+            .IgnoreTenantFilter(TenantFilterBypassReasons.AtprotoJetstreamGovernanceResolution)
+            .AsNoTracking()
+            .Where(setting => setting.SettingKey == key)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<bool> RemoveOverrideAsync(
         Guid tenantId,
         string key,

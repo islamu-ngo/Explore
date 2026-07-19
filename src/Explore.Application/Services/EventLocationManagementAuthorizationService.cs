@@ -86,22 +86,19 @@ public sealed class EventLocationManagementAuthorizationService(
             .ToArray();
 
         IReadOnlyList<bool> providerDecisions = [];
-        if (checks.Length > 0)
+        try
         {
-            try
-            {
-                providerDecisions = await authorizationProvider.IsAllowedBatchAsync(checks, cancellationToken);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(
-                    "EventLocation management authorization provider failed closed. FailureType={FailureType}",
-                    ex.GetType().Name);
-            }
+            providerDecisions = await authorizationProvider.IsAllowedBatchAsync(checks, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                "EventLocation management authorization provider failed closed. FailureType={FailureType}",
+                ex.GetType().Name);
         }
 
         var decisionByEventId = new Dictionary<Guid, bool>(validTargets.Length);

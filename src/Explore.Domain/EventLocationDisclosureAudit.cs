@@ -76,6 +76,8 @@ public sealed class EventLocationDisclosureAudit : ITenantEntity
             && newPolicyVersion == 1
             && reason == EventLocationDisclosureAuditReasonEnum.AssociationCreated;
         if (!isAssociationCreation
+            && reason is not EventLocationDisclosureAuditReasonEnum.GovernanceTightening
+                and not EventLocationDisclosureAuditReasonEnum.PrivacyErasureRemediation
             && previousFields == newFields
             && previousAudience == newAudience
             && previousRevealFullDetailsFromUtc == newRevealFullDetailsFromUtc)

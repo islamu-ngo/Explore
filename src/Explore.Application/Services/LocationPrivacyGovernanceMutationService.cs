@@ -19,7 +19,8 @@ public sealed class LocationPrivacyGovernanceMutationService(
     ITenantSettingRepository tenantSettings,
     IEventLocationRepository eventLocations,
     ISettingMutationLock mutationLock,
-    HybridCache cache) : ILocationPrivacyGovernanceMutationService
+    HybridCache cache,
+    TimeProvider timeProvider) : ILocationPrivacyGovernanceMutationService
 {
     public bool Handles(string key) => LocationPrivacyGovernancePolicy.Handles(key);
 
@@ -92,21 +93,29 @@ public sealed class LocationPrivacyGovernanceMutationService(
                 "An authenticated actor is required to change location-privacy governance.");
         }
 
-        LocationPrivacyGovernanceMutationResult result = await mutationLock.ExecuteAsync(
-            key,
-            async token => await ExecuteLockedAsync(
-                key,
-                proposedStoredValue,
-                scope,
-                tenantId,
-                actorUserId,
-                persist,
-                token),
-            cancellationToken);
-
-        if (result.Accepted)
+        LocationPrivacyGovernanceMutationResult result;
+        try
         {
-            await InvalidateMutationAsync(scope, tenantId, result.CorrectedProjections, CancellationToken.None);
+            result = await mutationLock.ExecuteAsync(
+                key,
+                async token => await ExecuteLockedAsync(
+                    key,
+                    proposedStoredValue,
+                    scope,
+                    tenantId,
+                    actorUserId,
+                    persist,
+                    token),
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return LocationPrivacyGovernanceMutationResult.Rejected(
+                "Location-privacy governance storage is unavailable.");
         }
 
         return result;
@@ -172,6 +181,7 @@ public sealed class LocationPrivacyGovernanceMutationService(
 
         LocationPrivacyGovernanceSettingValue previousEffective = previousInstanceValue;
         LocationPrivacyGovernanceSettingValue currentEffective = proposedValue;
+        var tenantValuesByTenant = new Dictionary<Guid, LocationPrivacyGovernanceSettingValue>();
         if (scope == SettingScope.Tenant)
         {
             TenantSetting? previousTenantRow = await GetTenantRowAsync(
@@ -205,6 +215,36 @@ public sealed class LocationPrivacyGovernanceMutationService(
                 previousInstanceValue,
                 proposedValue);
         }
+        else
+        {
+            List<TenantSetting> tenantRows = await tenantSettings.GetByKeyAcrossTenants(
+                key,
+                cancellationToken);
+            foreach (IGrouping<Guid, TenantSetting> tenantGroup in tenantRows.GroupBy(row => row.TenantId))
+            {
+                if (tenantGroup.Count() != 1)
+                {
+                    return LocationPrivacyGovernanceMutationResult.Rejected(
+                        "Conflicting tenant location-privacy setting rows were found.");
+                }
+
+                TenantSetting tenantRow = tenantGroup.Single();
+                if (!LocationPrivacyGovernancePolicy.TryParse(
+                        key,
+                        tenantRow.Value,
+                        out LocationPrivacyGovernanceSettingValue tenantValue,
+                        out _))
+                {
+                    LocationPrivacyGovernancePolicy.TryParse(
+                        key,
+                        LocationPrivacyGovernancePolicy.DefaultStoredValue(key),
+                        out tenantValue,
+                        out _);
+                }
+
+                tenantValuesByTenant.Add(tenantGroup.Key, tenantValue);
+            }
+        }
 
         string? previousStoredValue = await persist(cancellationToken);
         if (!LocationPrivacyGovernancePolicy.IsTightening(previousEffective, currentEffective))
@@ -215,14 +255,28 @@ public sealed class LocationPrivacyGovernanceMutationService(
         IReadOnlyList<EventLocation> candidates = await eventLocations.GetActiveForGovernanceUpdateAsync(
             scope == SettingScope.Tenant ? tenantId : null,
             cancellationToken);
-        DateTime changedAtUtc = DateTime.UtcNow;
+        DateTime changedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
         var audits = new List<EventLocationDisclosureAudit>();
         var outboxMessages = new List<OutboxMessage>();
         var corrected = new List<LocationPrivacyProjectionIdentity>();
 
         foreach (EventLocation eventLocation in candidates)
         {
-            if (!IsProjectionAffected(eventLocation, key, previousEffective, currentEffective))
+            LocationPrivacyGovernanceSettingValue projectionPrevious = previousEffective;
+            LocationPrivacyGovernanceSettingValue projectionCurrent = currentEffective;
+            if (scope == SettingScope.Instance
+                && tenantValuesByTenant.TryGetValue(eventLocation.TenantId, out var tenantValue))
+            {
+                projectionPrevious = LocationPrivacyGovernancePolicy.MostRestrictive(
+                    previousInstanceValue,
+                    tenantValue);
+                projectionCurrent = LocationPrivacyGovernancePolicy.MostRestrictive(
+                    proposedValue,
+                    tenantValue);
+            }
+
+            if (!LocationPrivacyGovernancePolicy.IsTightening(projectionPrevious, projectionCurrent)
+                || !IsProjectionAffected(eventLocation, key, projectionPrevious, projectionCurrent))
             {
                 continue;
             }
@@ -355,7 +409,7 @@ public sealed class LocationPrivacyGovernanceMutationService(
             MaxRetries = 5
         };
 
-    private async Task InvalidateMutationAsync(
+    public async Task InvalidateMutationAsync(
         SettingScope scope,
         Guid? tenantId,
         IReadOnlyList<LocationPrivacyProjectionIdentity> corrected,
