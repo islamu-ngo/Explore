@@ -21,10 +21,25 @@ public sealed class EmailDispatchEligibilityEvaluator(
     private const string ProviderHandoffStarted = "provider_handoff_started";
     private const string ProviderHandoffMessage = "SMTP provider handoff started; automatic resend is suppressed until the attempt is durably settled.";
     private const string SkipMessage = "Email delivery was suppressed by current dispatch eligibility before provider handoff.";
+    private const string SmtpProcessorCode = "smtp";
+    private const string SmtpRateDeferred = "smtp_rate_deferred";
+    private const string SmtpRateDeferredMessage = "SMTP dispatch was deferred by the persisted rate policy before provider handoff.";
 
     public async Task<EmailDispatchEligibilityResult> EvaluateAndBeginProviderHandoffAsync(
         EmailDispatchEligibilityRequest request,
         CancellationToken cancellationToken = default)
+    {
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            dbContext.ChangeTracker.Clear();
+            return await EvaluateWithinTransactionAsync(request, cancellationToken);
+        });
+    }
+
+    private async Task<EmailDispatchEligibilityResult> EvaluateWithinTransactionAsync(
+        EmailDispatchEligibilityRequest request,
+        CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
@@ -60,6 +75,20 @@ public sealed class EmailDispatchEligibilityEvaluator(
         if (delivery is null || delivery.NotificationIntent is null || delivery.DeliveryPolicy is null)
         {
             return await SkipAsync(dispatch, delivery, request, "delivery_authority_missing", cancellationToken);
+        }
+
+        var processorPaused = await dbContext.EmailDispatchProcessorStates
+            .AsNoTracking()
+            .AnyAsync(state => state.ProcessorCode == SmtpProcessorCode && state.IsPaused, cancellationToken);
+        if (processorPaused)
+        {
+            dispatch.Status = EmailDispatchStatus.Pending;
+            dispatch.ProcessingStartedAt = null;
+            dispatch.ProcessingLeaseToken = null;
+            dispatch.UpdatedAt = request.EvaluatedAt;
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return new EmailDispatchEligibilityResult(EmailDispatchEligibilityOutcome.ProcessorPaused, null, "processor_paused");
         }
 
         if (delivery.StatusId == (int)NotificationDeliveryStatusEnum.Superseded)
@@ -100,7 +129,6 @@ public sealed class EmailDispatchEligibilityEvaluator(
         if (tenantPaused)
         {
             dispatch.Status = EmailDispatchStatus.Pending;
-            dispatch.AttemptCount = Math.Max(0, dispatch.AttemptCount - 1);
             dispatch.ProcessingStartedAt = null;
             dispatch.ProcessingLeaseToken = null;
             dispatch.UpdatedAt = request.EvaluatedAt;
@@ -214,10 +242,38 @@ public sealed class EmailDispatchEligibilityEvaluator(
             }
         }
 
+        var admission = await TryReserveSmtpRateAsync(dispatch, request, cancellationToken);
+        if (admission.ProcessorPaused)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return new EmailDispatchEligibilityResult(
+                EmailDispatchEligibilityOutcome.ProcessorPaused,
+                null,
+                "processor_paused");
+        }
+
+        if (!admission.IsAcquired)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return new EmailDispatchEligibilityResult(
+                EmailDispatchEligibilityOutcome.RateDeferred,
+                null,
+                SmtpRateDeferred,
+                RetryAt: admission.RetryAt);
+        }
+
+        dispatch.AttemptCount++;
         dispatch.RecipientEmail = recipientEmail;
-        dispatch.UpdatedAt = request.EvaluatedAt;
-        var receipt = await UpsertReceiptAsync(dispatch, request, EmailDispatchReceiptStatus.Processing, null, cancellationToken);
-        await UpsertAttemptAsync(dispatch, request, EmailDispatchAttemptOutcome.Unknown, ProviderHandoffStarted, ProviderHandoffMessage, null, cancellationToken);
+        dispatch.UpdatedAt = admission.AdmittedAt;
+        var attemptRequest = request with
+        {
+            AttemptNumber = dispatch.AttemptCount,
+            EvaluatedAt = admission.AdmittedAt
+        };
+        var receipt = await UpsertReceiptAsync(dispatch, attemptRequest, EmailDispatchReceiptStatus.Processing, null, cancellationToken);
+        await UpsertAttemptAsync(dispatch, attemptRequest, EmailDispatchAttemptOutcome.Unknown, ProviderHandoffStarted, ProviderHandoffMessage, null, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
@@ -225,7 +281,112 @@ public sealed class EmailDispatchEligibilityEvaluator(
             EmailDispatchEligibilityOutcome.Eligible,
             recipientEmail,
             null,
-            receipt.Id);
+            receipt.Id,
+            dispatch.AttemptCount);
+    }
+
+    private async Task<SmtpRateAdmission> TryReserveSmtpRateAsync(
+        EmailDispatchOutbox dispatch,
+        EmailDispatchEligibilityRequest request,
+        CancellationToken cancellationToken)
+    {
+        await dbContext.Database.ExecuteSqlRawAsync(
+            "SELECT pg_advisory_xact_lock(hashtext('email-dispatch-smtp-rate'))",
+            cancellationToken);
+        var databaseNow = await dbContext.Database
+            .SqlQueryRaw<DateTime>("SELECT clock_timestamp() AS \"Value\"")
+            .SingleAsync(cancellationToken);
+
+        await dbContext.Database.ExecuteSqlInterpolatedAsync($$"""
+            INSERT INTO email_dispatch_processor_states (id, processor_code, optional_reminders_deferred, updated_at)
+            VALUES ({{Guid.CreateVersion7()}}, {{SmtpProcessorCode}}, FALSE, {{databaseNow}})
+            ON CONFLICT (processor_code) DO NOTHING
+            """, cancellationToken);
+        var processorState = await dbContext.EmailDispatchProcessorStates
+            .FromSqlInterpolated($$"""
+                SELECT * FROM email_dispatch_processor_states
+                WHERE processor_code = {{SmtpProcessorCode}}
+                FOR UPDATE
+                """)
+            .SingleAsync(cancellationToken);
+
+        if (processorState.IsPaused)
+        {
+            dispatch.Status = EmailDispatchStatus.Pending;
+            dispatch.ProcessingStartedAt = null;
+            dispatch.ProcessingLeaseToken = null;
+            dispatch.UpdatedAt = databaseNow;
+            return new SmtpRateAdmission(false, databaseNow, null, ProcessorPaused: true);
+        }
+
+        await dbContext.Database.ExecuteSqlInterpolatedAsync($$"""
+            INSERT INTO email_dispatch_tenant_controls (id, tenant_id, is_paused, created_at, updated_at)
+            VALUES ({{Guid.CreateVersion7()}}, {{dispatch.TenantId}}, FALSE, {{databaseNow}}, {{databaseNow}})
+            ON CONFLICT (tenant_id) DO NOTHING
+            """, cancellationToken);
+        var tenantControl = await dbContext.EmailDispatchTenantControls
+            .FromSqlInterpolated($$"""
+                SELECT * FROM email_dispatch_tenant_controls
+                WHERE tenant_id = {{dispatch.TenantId}}
+                FOR UPDATE
+                """)
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .SingleAsync(cancellationToken);
+
+        var effectiveGlobalRate = processorState.GlobalSmtpRateLimitPerMinuteOverride
+            ?? request.GlobalSmtpRateLimitPerMinute;
+        var globalBucket = RefillBucket(
+            processorState.SmtpAvailableTokens,
+            processorState.SmtpRefillAt,
+            effectiveGlobalRate,
+            databaseNow);
+        var tenantBucket = RefillBucket(
+            tenantControl.SmtpAvailableTokens,
+            tenantControl.SmtpRefillAt,
+            request.TenantSmtpRateLimitPerMinute,
+            databaseNow);
+        var acquired = globalBucket.AvailableTokens > 0 && tenantBucket.AvailableTokens > 0;
+
+        processorState.SmtpAvailableTokens = acquired ? globalBucket.AvailableTokens - 1 : globalBucket.AvailableTokens;
+        processorState.SmtpRefillAt = globalBucket.RefillAt;
+        processorState.UpdatedAt = databaseNow;
+        tenantControl.SmtpAvailableTokens = acquired ? tenantBucket.AvailableTokens - 1 : tenantBucket.AvailableTokens;
+        tenantControl.SmtpRefillAt = tenantBucket.RefillAt;
+        tenantControl.UpdatedAt = databaseNow;
+
+        if (acquired)
+        {
+            return new SmtpRateAdmission(true, databaseNow, null);
+        }
+
+        var retryAt = new[]
+        {
+            globalBucket.AvailableTokens == 0 ? globalBucket.RefillAt : databaseNow,
+            tenantBucket.AvailableTokens == 0 ? tenantBucket.RefillAt : databaseNow
+        }.Max();
+        dispatch.Status = EmailDispatchStatus.RetryScheduled;
+        dispatch.NextAttemptAt = retryAt;
+        dispatch.ProcessingStartedAt = null;
+        dispatch.ProcessingLeaseToken = null;
+        dispatch.LastFailureCategory = SmtpRateDeferred;
+        dispatch.LastError = SmtpRateDeferredMessage;
+        dispatch.LastFailureAt = databaseNow;
+        dispatch.UpdatedAt = databaseNow;
+        return new SmtpRateAdmission(false, databaseNow, retryAt, ProcessorPaused: false);
+    }
+
+    private static SmtpTokenBucket RefillBucket(
+        int? availableTokens,
+        DateTime? refillAt,
+        int ratePerMinute,
+        DateTime databaseNow)
+    {
+        if (availableTokens is null || refillAt is null || databaseNow >= refillAt.Value)
+        {
+            return new SmtpTokenBucket(ratePerMinute, databaseNow.AddMinutes(1));
+        }
+
+        return new SmtpTokenBucket(Math.Min(availableTokens.Value, ratePerMinute), refillAt.Value);
     }
 
     private async Task<string?> ResolveConsentSkipReasonAsync(
@@ -276,6 +437,8 @@ public sealed class EmailDispatchEligibilityEvaluator(
         string reason,
         CancellationToken cancellationToken)
     {
+        dispatch.AttemptCount++;
+        request = request with { AttemptNumber = dispatch.AttemptCount };
         dispatch.Status = EmailDispatchStatus.Skipped;
         dispatch.NextAttemptAt = null;
         dispatch.ProcessingStartedAt = null;
@@ -305,7 +468,12 @@ public sealed class EmailDispatchEligibilityEvaluator(
             cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         await dbContext.Database.CommitTransactionAsync(cancellationToken);
-        return new EmailDispatchEligibilityResult(EmailDispatchEligibilityOutcome.Skipped, null, reason, receipt.Id);
+        return new EmailDispatchEligibilityResult(
+            EmailDispatchEligibilityOutcome.Skipped,
+            null,
+            reason,
+            receipt.Id,
+            dispatch.AttemptCount);
     }
 
     private async Task<EmailDispatchReceipt> UpsertReceiptAsync(
@@ -397,7 +565,15 @@ public sealed class EmailDispatchEligibilityEvaluator(
             or EmailDispatchKind.WaitlistPromoted
             or EmailDispatchKind.RegistrationCancelled
             or EmailDispatchKind.RegistrationRevoked
-            or EmailDispatchKind.EventCancelled => NotificationPreferenceCategories.EventUpdates,
+            or EmailDispatchKind.EventCancelled
+            or EmailDispatchKind.EventUpdated => NotificationPreferenceCategories.EventUpdates,
         _ => null
     };
+
+    private sealed record SmtpRateAdmission(
+        bool IsAcquired,
+        DateTime AdmittedAt,
+        DateTime? RetryAt,
+        bool ProcessorPaused = false);
+    private sealed record SmtpTokenBucket(int AvailableTokens, DateTime RefillAt);
 }
