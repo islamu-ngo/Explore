@@ -49,6 +49,11 @@ internal static class EmailDispatchRabbitMqDeadLetterReplayDecision
             return EmailDispatchRabbitMqDeadLetterReplaySettlement.Park("already_processing");
         }
 
+        if (dispatch.Status == EmailDispatchStatus.Unknown)
+        {
+            return EmailDispatchRabbitMqDeadLetterReplaySettlement.Park("unknown_requires_reconciliation");
+        }
+
         if (dispatch.Status == EmailDispatchStatus.Pending)
         {
             return EmailDispatchRabbitMqDeadLetterReplaySettlement.Replay(requiresDurableReplayReset: false);
@@ -56,7 +61,6 @@ internal static class EmailDispatchRabbitMqDeadLetterReplayDecision
 
         if (dispatch.Status is EmailDispatchStatus.DeadLettered
             or EmailDispatchStatus.Parked
-            or EmailDispatchStatus.Unknown
             or EmailDispatchStatus.RetryScheduled)
         {
             return EmailDispatchRabbitMqDeadLetterReplaySettlement.Replay(requiresDurableReplayReset: true);

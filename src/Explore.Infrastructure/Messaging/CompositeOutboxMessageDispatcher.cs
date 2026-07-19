@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 namespace Explore.Infrastructure.Messaging;
 
 public sealed class CompositeOutboxMessageDispatcher(
+    NotificationFanoutOccurrenceHandoffService notificationFanoutOccurrenceHandoffService,
     IEventPublishedNotificationFanoutService notificationFanoutService,
     IEventModerationNotificationFanoutService moderationNotificationFanoutService,
     IReportProviderSyncDispatcher reportProviderSyncDispatcher,
@@ -27,6 +28,10 @@ public sealed class CompositeOutboxMessageDispatcher(
     {
         switch (message.EventType)
         {
+            case NotificationFanoutOccurrenceOutboxMessageFactory.EventType:
+                await notificationFanoutOccurrenceHandoffService.HandoffAsync(message, ct);
+                return;
+
             case PublishEventCommandHandler.EventPublishedNotificationFanoutRequestedEventType:
                 await DispatchNotificationFanoutAsync(message, ct);
                 return;

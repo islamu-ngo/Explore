@@ -138,7 +138,7 @@ public sealed class RabbitMqEmailDispatchTransport : IEmailDispatchTransport, IA
         var options = _settings.CurrentValue;
         if (!options.Enabled)
         {
-            _metrics.RecordEmailDispatchRabbitMqPublish(pointer.TenantId.ToString(), "disabled", "none");
+            _metrics.RecordEmailDispatchRabbitMqPublish("disabled", "none");
             return EmailDispatchPublishResult.Disabled();
         }
 
@@ -200,7 +200,7 @@ public sealed class RabbitMqEmailDispatchTransport : IEmailDispatchTransport, IA
                 body: body,
                 cancellationToken: timeout.Token);
 
-            _metrics.RecordEmailDispatchRabbitMqPublish(pointer.TenantId.ToString(), "confirmed", "none");
+            _metrics.RecordEmailDispatchRabbitMqPublish("confirmed", "none");
             _logger.LogInformation(
                 "RabbitMQ confirmed EmailDispatch pointer publish {PublishEventId} for tenant {TenantId} with sequence {PublishSequenceNumber}",
                 pointer.PublishEventId,
@@ -211,7 +211,7 @@ public sealed class RabbitMqEmailDispatchTransport : IEmailDispatchTransport, IA
         }
         catch (PublishReturnException ex)
         {
-            _metrics.RecordEmailDispatchRabbitMqPublish(pointer.TenantId.ToString(), "returned", "mandatory_return");
+            _metrics.RecordEmailDispatchRabbitMqPublish("returned", "mandatory_return");
             return new EmailDispatchPublishResult(
                 EmailDispatchPublishOutcome.Returned,
                 ex.PublishSequenceNumber,
@@ -223,17 +223,17 @@ public sealed class RabbitMqEmailDispatchTransport : IEmailDispatchTransport, IA
         {
             var outcome = ex.IsReturn ? EmailDispatchPublishOutcome.Returned : EmailDispatchPublishOutcome.Nacked;
             var failureCategory = ex.IsReturn ? "mandatory_return" : "publisher_nack";
-            _metrics.RecordEmailDispatchRabbitMqPublish(pointer.TenantId.ToString(), outcome.ToString().ToLowerInvariant(), failureCategory);
+            _metrics.RecordEmailDispatchRabbitMqPublish(outcome.ToString().ToLowerInvariant(), failureCategory);
             return new EmailDispatchPublishResult(outcome, ex.PublishSequenceNumber, FailureCategory: failureCategory);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            _metrics.RecordEmailDispatchRabbitMqPublish(pointer.TenantId.ToString(), "failed", "publish_timeout");
+            _metrics.RecordEmailDispatchRabbitMqPublish("failed", "publish_timeout");
             return new EmailDispatchPublishResult(EmailDispatchPublishOutcome.Failed, FailureCategory: "publish_timeout");
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _metrics.RecordEmailDispatchRabbitMqPublish(pointer.TenantId.ToString(), "failed", "broker_publish_failed");
+            _metrics.RecordEmailDispatchRabbitMqPublish("failed", "broker_publish_failed");
             _logger.LogWarning(
                 ex,
                 "RabbitMQ EmailDispatch pointer publish failed for {PublishEventId} and tenant {TenantId}",

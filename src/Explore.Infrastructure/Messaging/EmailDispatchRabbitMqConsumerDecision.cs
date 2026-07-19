@@ -46,10 +46,6 @@ internal static class EmailDispatchRabbitMqConsumerDecision
     public static EmailDispatchRabbitMqSettlement DecideForUnexpectedFailure() =>
         EmailDispatchRabbitMqSettlement.Nack("consumer_exception");
 
-    public static string TenantMetricTag(EmailDispatchPointer? pointer) =>
-        pointer is null || pointer.TenantId == Guid.Empty
-            ? "unknown"
-            : pointer.TenantId.ToString();
 }
 
 internal sealed record EmailDispatchRabbitMqPointerParseResult(

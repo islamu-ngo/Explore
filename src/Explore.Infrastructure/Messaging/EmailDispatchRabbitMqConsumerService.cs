@@ -111,8 +111,7 @@ public sealed class EmailDispatchRabbitMqConsumerService(
         var parseResult = EmailDispatchRabbitMqConsumerDecision.ParsePointer(body);
         if (!parseResult.IsValid)
         {
-            string tenantId = GetTenantMetricTag(parseResult.Pointer);
-            metrics.RecordEmailDispatchRabbitMqConsume(tenantId, "rejected", parseResult.FailureCategory);
+            metrics.RecordEmailDispatchRabbitMqConsume("rejected", parseResult.FailureCategory);
             logger.LogWarning(
                 "Rejecting malformed RabbitMQ EmailDispatch pointer delivery {DeliveryTag} with category {FailureCategory}",
                 args.DeliveryTag,
@@ -153,7 +152,7 @@ public sealed class EmailDispatchRabbitMqConsumerService(
         }
         catch (Exception ex)
         {
-            metrics.RecordEmailDispatchRabbitMqConsume(pointer.TenantId.ToString(), "nacked", "consumer_exception");
+            metrics.RecordEmailDispatchRabbitMqConsume("nacked", "consumer_exception");
             logger.LogWarning(
                 ex,
                 "Nacking RabbitMQ EmailDispatch pointer {PublishEventId} for tenant {TenantId} after consumer exception",
@@ -166,11 +165,6 @@ public sealed class EmailDispatchRabbitMqConsumerService(
                 CancellationToken.None);
         }
     }
-
-    private static string GetTenantMetricTag(EmailDispatchPointer? pointer) =>
-        pointer is null || pointer.TenantId == Guid.Empty
-            ? "unknown"
-            : pointer.TenantId.ToString();
 
     private static ValueTask ApplySettlementAsync(
         IChannel channel,

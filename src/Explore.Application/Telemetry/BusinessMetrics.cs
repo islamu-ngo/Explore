@@ -40,10 +40,12 @@ public sealed class BusinessMetrics : IDisposable
     private readonly Counter<long> _externalApiKeyPolicyUpdated;
     private readonly Counter<long> _externalApiKeyRotated;
     private readonly Counter<long> _emailDispatchAttempts;
+    private readonly Counter<long> _emailDispatchOperationalOutcomes;
     private readonly Counter<long> _emailDispatchRabbitMqPublishes;
     private readonly Counter<long> _emailDispatchRabbitMqConsumes;
     private readonly Histogram<long> _emailDispatchTenantBacklog;
     private readonly Histogram<double> _emailDispatchOldestPendingAge;
+    private long _emailDispatchOptionalReminderDeferralState;
     private readonly Counter<long> _notificationFanoutRuns;
     private readonly Counter<long> _notificationFanoutSubscribers;
     private readonly Counter<long> _webhookMessagesCreated;
@@ -197,7 +199,12 @@ public sealed class BusinessMetrics : IDisposable
         _emailDispatchAttempts = meter.CreateCounter<long>(
             "explore.email_dispatch.attempts",
             unit: "{attempt}",
-            description: "Total Basic Dispatch Mode email dispatch attempts by outcome");
+            description: "Total SMTP provider-handoff attempts by bounded outcome and failure category");
+
+        _emailDispatchOperationalOutcomes = meter.CreateCounter<long>(
+            "explore.email_dispatch.operational_outcomes",
+            unit: "{outcome}",
+            description: "Total pre-handoff email dispatch decisions by bounded outcome and reason");
 
         _emailDispatchRabbitMqPublishes = meter.CreateCounter<long>(
             "explore.email_dispatch.rabbitmq.publishes",
@@ -218,6 +225,12 @@ public sealed class BusinessMetrics : IDisposable
             "explore.email_dispatch.oldest_pending_age",
             unit: "s",
             description: "Observed age in seconds of the oldest due email dispatch row");
+
+        meter.CreateObservableGauge(
+            "explore.email_dispatch.optional_reminder_deferral",
+            () => Volatile.Read(ref _emailDispatchOptionalReminderDeferralState),
+            unit: "{state}",
+            description: "Durable optional-reminder backpressure state where 1 is active and 0 is inactive");
 
         _notificationFanoutRuns = meter.CreateCounter<long>(
             "explore.notifications.fanout_runs",
@@ -609,39 +622,48 @@ public sealed class BusinessMetrics : IDisposable
             new KeyValuePair<string, object?>("owner_type", ownerType ?? "unknown"));
     }
 
-    public void RecordEmailDispatchAttempt(string? tenantId = null, string? outcome = null, string? failureCategory = null)
+    public void RecordEmailDispatchAttempt(string? outcome = null, string? failureCategory = null)
     {
         _emailDispatchAttempts.Add(1,
-            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
-            new KeyValuePair<string, object?>("outcome", outcome ?? "unknown"),
-            new KeyValuePair<string, object?>("failure_category", failureCategory ?? "none"));
+            new KeyValuePair<string, object?>("outcome", NormalizeEmailDispatchAttemptOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeEmailDispatchFailureCategory(failureCategory)));
     }
 
-    public void RecordEmailDispatchRabbitMqPublish(string? tenantId = null, string? outcome = null, string? failureCategory = null)
+    public void RecordEmailDispatchOperationalOutcome(string? outcome, string? reason)
+    {
+        _emailDispatchOperationalOutcomes.Add(1,
+            new KeyValuePair<string, object?>("outcome", NormalizeEmailDispatchOperationalOutcome(outcome)),
+            new KeyValuePair<string, object?>("reason", NormalizeEmailDispatchOperationalReason(reason)));
+    }
+
+    public void RecordEmailDispatchRabbitMqPublish(string? outcome = null, string? failureCategory = null)
     {
         _emailDispatchRabbitMqPublishes.Add(1,
-            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
-            new KeyValuePair<string, object?>("outcome", outcome ?? "unknown"),
-            new KeyValuePair<string, object?>("failure_category", failureCategory ?? "none"));
+            new KeyValuePair<string, object?>("outcome", NormalizeEmailDispatchRabbitMqPublishOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeEmailDispatchRabbitMqPublishFailureCategory(failureCategory)));
     }
 
-    public void RecordEmailDispatchRabbitMqConsume(string? tenantId = null, string? outcome = null, string? failureCategory = null)
+    public void RecordEmailDispatchRabbitMqConsume(string? outcome = null, string? failureCategory = null)
     {
         _emailDispatchRabbitMqConsumes.Add(1,
-            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
-            new KeyValuePair<string, object?>("outcome", outcome ?? "unknown"),
-            new KeyValuePair<string, object?>("failure_category", failureCategory ?? "none"));
+            new KeyValuePair<string, object?>("outcome", NormalizeEmailDispatchRabbitMqConsumeOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeEmailDispatchRabbitMqConsumeFailureCategory(failureCategory)));
     }
 
-    public void RecordEmailDispatchTenantBacklog(string tenantId, long count)
+    public void RecordEmailDispatchTenantBacklog(int sampleRank, long count)
     {
         _emailDispatchTenantBacklog.Record(Math.Max(0, count),
-            new KeyValuePair<string, object?>("tenant_id", tenantId));
+            new KeyValuePair<string, object?>("sample_rank", Math.Clamp(sampleRank, 1, 100)));
     }
 
     public void RecordEmailDispatchOldestPendingAge(double seconds)
     {
         _emailDispatchOldestPendingAge.Record(Math.Max(0, seconds));
+    }
+
+    public void RecordEmailDispatchOptionalReminderDeferral(bool active)
+    {
+        Volatile.Write(ref _emailDispatchOptionalReminderDeferralState, active ? 1 : 0);
     }
 
     public void RecordNotificationFanoutRun(string? tenantId, string? fanoutKind, string? outcome)
@@ -1620,6 +1642,135 @@ public sealed class BusinessMetrics : IDisposable
             "coop_webhook_json_invalid" => "webhook_json_invalid",
             "coop_webhook_body_required" => "webhook_body_required",
             _ => "unknown"
+        };
+    }
+
+    private static string NormalizeEmailDispatchAttemptOutcome(string? outcome)
+    {
+        return NormalizeTag(outcome) switch
+        {
+            "sent" => "sent",
+            "retry_scheduled" => "retry_scheduled",
+            "dead_lettered" => "dead_lettered",
+            "unknown" => "unknown",
+            _ => "other"
+        };
+    }
+
+    private static string NormalizeEmailDispatchOperationalOutcome(string? outcome)
+    {
+        return NormalizeTag(outcome) switch
+        {
+            "skipped" => "skipped",
+            "rate_deferred" => "rate_deferred",
+            _ => "other"
+        };
+    }
+
+    private static string NormalizeEmailDispatchFailureCategory(string? failureCategory)
+    {
+        return NormalizeTag(failureCategory ?? "none") switch
+        {
+            "none" => "none",
+            "smtp_send_failed" => "smtp_send_failed",
+            "smtp_outcome_unknown" => "smtp_outcome_unknown",
+            "accepted_settlement_unknown" => "accepted_settlement_unknown",
+            "processing_lease_expired" => "processing_lease_expired",
+            _ => "other"
+        };
+    }
+
+    private static string NormalizeEmailDispatchOperationalReason(string? reason)
+    {
+        return NormalizeTag(reason ?? "none") switch
+        {
+            "none" => "none",
+            "smtp_rate_deferred" => "smtp_rate_deferred",
+            "delivery_authority_missing" => "delivery_authority_missing",
+            "delivery_superseded" => "delivery_superseded",
+            "delivery_state_ineligible" => "delivery_state_ineligible",
+            "delivery_policy_version_unsupported" => "delivery_policy_version_unsupported",
+            "delivery_policy_mismatch" => "delivery_policy_mismatch",
+            "tenant_inactive" => "tenant_inactive",
+            "recipient_membership_inactive" => "recipient_membership_inactive",
+            "recipient_deleted" => "recipient_deleted",
+            "invitation_authority_missing" => "invitation_authority_missing",
+            "invitation_authority_invalid" => "invitation_authority_invalid",
+            "recipient_address_source_mismatch" => "recipient_address_source_mismatch",
+            "recipient_email_unverified" => "recipient_email_unverified",
+            "notification_preference_category_missing" => "notification_preference_category_missing",
+            "recipient_notification_preference_disabled" => "recipient_notification_preference_disabled",
+            "recipient_unsubscribed" => "recipient_unsubscribed",
+            "report_consent_source_missing" => "report_consent_source_missing",
+            "report_case_update_consent_unavailable" => "report_case_update_consent_unavailable",
+            "report_consent_purpose_mismatch" => "report_consent_purpose_mismatch",
+            "report_follow_up_consent_withdrawn" => "report_follow_up_consent_withdrawn",
+            _ => "other"
+        };
+    }
+
+    private static string NormalizeEmailDispatchRabbitMqPublishOutcome(string? outcome)
+    {
+        return NormalizeTag(outcome) switch
+        {
+            "disabled" => "disabled",
+            "confirmed" => "confirmed",
+            "returned" => "returned",
+            "nacked" => "nacked",
+            "failed" => "failed",
+            "timeout" => "timeout",
+            _ => "other"
+        };
+    }
+
+    private static string NormalizeEmailDispatchRabbitMqConsumeOutcome(string? outcome)
+    {
+        return NormalizeTag(outcome) switch
+        {
+            "acked" => "acked",
+            "rejected" => "rejected",
+            "nacked" => "nacked",
+            "replayed" => "replayed",
+            "parked" => "parked",
+            _ => "other"
+        };
+    }
+
+    private static string NormalizeEmailDispatchRabbitMqPublishFailureCategory(string? failureCategory)
+    {
+        return NormalizeTag(failureCategory ?? "none") switch
+        {
+            "none" => "none",
+            "mandatory_return" => "mandatory_return",
+            "publisher_nack" => "publisher_nack",
+            "publish_timeout" => "publish_timeout",
+            "broker_publish_failed" => "broker_publish_failed",
+            _ => "other"
+        };
+    }
+
+    private static string NormalizeEmailDispatchRabbitMqConsumeFailureCategory(string? failureCategory)
+    {
+        return NormalizeTag(failureCategory ?? "none") switch
+        {
+            "none" => "none",
+            "malformed_pointer" => "malformed_pointer",
+            "invalid_pointer" => "invalid_pointer",
+            "missing_outbox" => "missing_outbox",
+            "consumer_exception" => "consumer_exception",
+            "replay_state_changed" => "replay_state_changed",
+            "dlq_replay_exception" => "dlq_replay_exception",
+            "outbox_missing" => "outbox_missing",
+            "tenant_mismatch" => "tenant_mismatch",
+            "publish_event_mismatch" => "publish_event_mismatch",
+            "event_mismatch" => "event_mismatch",
+            "already_sent" => "already_sent",
+            "already_skipped" => "already_skipped",
+            "already_processing" => "already_processing",
+            "already_settled" => "already_settled",
+            "retry_deferred" => "retry_deferred",
+            "invalid_status" => "invalid_status",
+            _ => "other"
         };
     }
 
