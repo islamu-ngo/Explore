@@ -3490,122 +3490,6 @@
         "x-output-cache-policy": "LookupData"
       }
     },
-    "/api/atprotorecord": {
-      "get": {
-        "tags": [
-          "AtprotoRecord"
-        ],
-        "operationId": "GetAtprotoRecordEntries",
-        "parameters": [
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalCollectionResourceOfAtprotoRecordListDto"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalCollectionResourceOfAtprotoRecordListDto"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          }
-        },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "ListData"
-      }
-    },
-    "/api/atprotorecord/{id}": {
-      "get": {
-        "tags": [
-          "AtprotoRecord"
-        ],
-        "operationId": "GetAtprotoRecordEntryById",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfAtprotoRecordDto"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfAtprotoRecordDto"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal+json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": { },
-              "application/hal+json": { }
-            }
-          }
-        },
-        "x-endpoint-class": "Public",
-        "x-output-cache-policy": "DetailData"
-      }
-    },
     "/api/audienceage": {
       "get": {
         "tags": [
@@ -11129,6 +11013,653 @@
         "x-rate-limit-policy": "Write"
       }
     },
+    "/api/admin/email-dispatch/control": {
+      "get": {
+        "tags": [
+          "EmailDispatchAdmin"
+        ],
+        "operationId": "GetEmailDispatchProcessorControl",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEmailDispatchProcessorControlDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEmailDispatchProcessorControlDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Authenticated"
+      }
+    },
+    "/api/admin/email-dispatch/control/pause": {
+      "put": {
+        "tags": [
+          "EmailDispatchAdmin"
+        ],
+        "operationId": "PauseEmailDispatchProcessor",
+        "parameters": [
+          {
+            "name": "Reason",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      },
+      "delete": {
+        "tags": [
+          "EmailDispatchAdmin"
+        ],
+        "operationId": "ResumeEmailDispatchProcessor",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/admin/email-dispatch/control/rate-limit": {
+      "put": {
+        "tags": [
+          "EmailDispatchAdmin"
+        ],
+        "operationId": "SetEmailDispatchGlobalRateLimitOverride",
+        "parameters": [
+          {
+            "name": "RateLimitPerMinute",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      },
+      "delete": {
+        "tags": [
+          "EmailDispatchAdmin"
+        ],
+        "operationId": "ClearEmailDispatchGlobalRateLimitOverride",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
+    "/api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/reconcile": {
+      "post": {
+        "tags": [
+          "EmailDispatchAdmin"
+        ],
+        "operationId": "ReconcileUnknownEmailDispatch",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "outboxId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Outcome",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/EmailDispatchUnknownReconciliationOutcome"
+            }
+          },
+          {
+            "name": "Reason",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ProviderMessageId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
+      }
+    },
     "/api/email/unsubscribe": {
       "get": {
         "tags": [
@@ -12519,7 +13050,7 @@
           "Event"
         ],
         "summary": "Get all Events",
-        "description": "Get a paginated, filterable list of all Events (Conference, Webinar, Workshop...). Default page size is 20, max is 100. Supports filtering by category, tag, format, madhab, language, date range, and free-text search. Supports module-conditional aspect filters: Islamic (genderMode, quranRecitation, referencePrayer, islamicLanguage) and Tech (skillLevel, codingCompetition, hackathon, requiresLaptop, techStack). Aspect filters are silently ignored when the corresponding module is not enabled for the tenant. Supports custom-property projection filters and text search gated behind the tenant feature flag 'custom_properties.projection_discovery_enabled' — silently ignored when disabled. Supports sorting by date, title, views, or createdAt. Response includes HATEOAS navigation links (first, prev, next, last). Send 'Prefer: return=minimal' header to strip links.",
+        "description": "Get a paginated, filterable list of all Events (Conference, Webinar, Workshop...). Default page size is 20, max is 100. Supports filtering by category, tag, format, madhab, language, date range, and free-text search. Supports module-conditional aspect filters: Islamic (genderMode, quranRecitation, referencePrayer, islamicLanguage) and Tech (skillLevel, codingCompetition, hackathon, requiresLaptop, techStack). Aspect filters are silently ignored when the corresponding module is not enabled for the tenant. Supports custom-property projection filters and text search gated behind the tenant feature flag 'custom_properties.projection_discovery_enabled' — silently ignored when disabled. Supports sorting by date, title, views, or createdAt. When tenant governance enables ATProto Events, the result also includes tenant-visible community events within a bounded 1,000-item merge window, de-duplicated against locally-owned ATProto records. Response includes HATEOAS navigation links (first, prev, next, last) and safe source affordances. Send 'Prefer: return=minimal' header to strip links.",
         "operationId": "GetEvents",
         "parameters": [
           {
@@ -12958,12 +13489,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/HalCollectionResourceOfEventListDto"
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventDiscoveryItemDto"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/HalCollectionResourceOfEventListDto"
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventDiscoveryItemDto"
                 }
               },
               "application/json": { },
@@ -12989,7 +13520,7 @@
           }
         },
         "x-endpoint-class": "Public",
-        "x-output-cache-policy": "ListData"
+        "x-output-cache-policy": "EventDiscovery"
       },
       "post": {
         "tags": [
@@ -13100,6 +13631,69 @@
           }
         },
         "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/event/federated/{atprotoRecordId}/source": {
+      "get": {
+        "tags": [
+          "Event"
+        ],
+        "summary": "Open Federated Event Source",
+        "description": "Redirects to the current tenant-visible HTTPS source for a federated event after rechecking ATProto Events governance.",
+        "operationId": "GetAtprotoEventSource",
+        "parameters": [
+          {
+            "name": "atprotoRecordId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found",
+            "content": {
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Public",
+        "x-rate-limit-policy": "Global"
       }
     },
     "/api/event/my": {
@@ -46566,6 +47160,258 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/settings/tenant/keys/{key}": {
+      "delete": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Reset Tenant Setting",
+        "description": "Removes the tenant override for a setting, restoring the effective instance value. Requires tenant administrator.",
+        "operationId": "ResetTenantSetting",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      },
+      "put": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Update Single Tenant Setting",
+        "description": "Updates a single tenant setting by key. Requires tenant administrator.",
+        "operationId": "UpdateTenantSetting",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSettingValueDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSettingValueDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSettingValueDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/settings/tenant/{category}": {
       "get": {
         "tags": [
@@ -46730,143 +47576,6 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BatchUpdateResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated"
-      }
-    },
-    "/api/settings/tenant/keys/{key}": {
-      "put": {
-        "tags": [
-          "Settings"
-        ],
-        "summary": "Update Single Tenant Setting",
-        "description": "Updates a single tenant setting by key. Requires tenant administrator.",
-        "operationId": "UpdateTenantSetting",
-        "parameters": [
-          {
-            "name": "key",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateSettingValueDto"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateSettingValueDto"
-              }
-            },
-            "application/*+json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateSettingValueDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               }
             }
@@ -47308,6 +48017,122 @@
           },
           "required": true
         },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin",
+        "x-rate-limit-policy": "Write"
+      },
+      "delete": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Reset Instance ATProto Federation Setting",
+        "description": "Removes an instance ATProto override and restores its registered default. Requires instance administrator.",
+        "operationId": "ResetInstanceAtprotoFederationSetting",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -60274,6 +61099,16 @@
             ],
             "format": "uuid"
           },
+          "eventLocation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventLocationPublicDto"
+              }
+            ]
+          },
           "maxAudienceAttendees": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -61196,78 +62031,6 @@
               "string"
             ],
             "format": "int32"
-          }
-        }
-      },
-      "AtprotoRecordDto": {
-        "required": [
-          "did",
-          "collection",
-          "recordKey"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "did": {
-            "type": "string"
-          },
-          "collection": {
-            "type": "string"
-          },
-          "recordKey": {
-            "type": "string"
-          },
-          "cid": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "uri": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "indexedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          }
-        }
-      },
-      "AtprotoRecordListDto": {
-        "required": [
-          "did",
-          "collection",
-          "recordKey"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "did": {
-            "type": "string"
-          },
-          "collection": {
-            "type": "string"
-          },
-          "recordKey": {
-            "type": "string"
-          },
-          "indexedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
           }
         }
       },
@@ -67858,6 +68621,49 @@
           }
         }
       },
+      "EmailDispatchProcessorControlDto": {
+        "type": "object",
+        "properties": {
+          "processorCode": {
+            "type": "string"
+          },
+          "isPaused": {
+            "type": "boolean"
+          },
+          "pauseReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "pausedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "globalSmtpRateLimitPerMinuteOverride": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "optionalRemindersDeferred": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "EmailDispatchStatusDto": {
         "type": "object",
         "properties": {
@@ -67942,6 +68748,13 @@
             ]
           }
         }
+      },
+      "EmailDispatchUnknownReconciliationOutcome": {
+        "enum": [
+          "Delivered",
+          "NotDelivered"
+        ],
+        "type": "string"
       },
       "EmailUnsubscribeResponseDto": {
         "required": [
@@ -68083,6 +68896,113 @@
             ],
             "format": "uuid"
           },
+          "eventLocation": {
+            "type": "object",
+            "properties": {
+              "eventLocationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "state": { },
+              "fields": {
+                "required": [
+                  "country",
+                  "timezone",
+                  "city",
+                  "venueName",
+                  "roomName",
+                  "streetAddress",
+                  "postcode",
+                  "latitude",
+                  "longitude",
+                  "formattedAddress",
+                  "mapUrl",
+                  "geohash"
+                ],
+                "type": "object",
+                "properties": {
+                  "country": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "city": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "venueName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "roomName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "streetAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "postcode": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "latitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "longitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "formattedAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "mapUrl": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "geohash": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  }
+                }
+              }
+            }
+          },
           "kindId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -68179,6 +69099,113 @@
           "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
+          },
+          "eventLocation": {
+            "type": "object",
+            "properties": {
+              "eventLocationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "state": { },
+              "fields": {
+                "required": [
+                  "country",
+                  "timezone",
+                  "city",
+                  "venueName",
+                  "roomName",
+                  "streetAddress",
+                  "postcode",
+                  "latitude",
+                  "longitude",
+                  "formattedAddress",
+                  "mapUrl",
+                  "geohash"
+                ],
+                "type": "object",
+                "properties": {
+                  "country": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "city": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "venueName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "roomName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "streetAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "postcode": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "latitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "longitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "formattedAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "mapUrl": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "geohash": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -68888,8 +69915,38 @@
       "EventDiscoveryItemDto": {
         "type": "object",
         "properties": {
+          "source": {
+            "type": "string"
+          },
           "event": {
-            "$ref": "#/components/schemas/EventListDto"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventListDto"
+              }
+            ]
+          },
+          "federatedEvent": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/FederatedEventDto"
+              }
+            ]
+          },
+          "federation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventFederationMetadataDto"
+              }
+            ]
           },
           "distanceMeters": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
@@ -69370,6 +70427,24 @@
           }
         }
       },
+      "EventFederationMetadataDto": {
+        "type": "object",
+        "properties": {
+          "atprotoRecordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "provenance": {
+            "type": "string"
+          },
+          "isLocalEcho": {
+            "type": "boolean"
+          },
+          "hasSourceLink": {
+            "type": "boolean"
+          }
+        }
+      },
       "EventFormatDto": {
         "required": [
           "masterCode",
@@ -69762,6 +70837,13 @@
             ],
             "format": "date"
           },
+          "firstSessionStartUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
           "timezone": {
             "type": [
               "null",
@@ -69794,9 +70876,155 @@
               "string"
             ]
           },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "atprotoRecordId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "atprotoDeliveryStatus": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "atprotoDeliveryFailureCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "tenantId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "EventLocationDisclosureState": {
+        "enum": [
+          "Hidden",
+          "ToBeAnnounced",
+          "Available",
+          "PrivateVenue",
+          "Unavailable",
+          "NeedsPrivacyReview"
+        ],
+        "type": "string"
+      },
+      "EventLocationPublicDto": {
+        "type": "object",
+        "properties": {
+          "eventLocationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "$ref": "#/components/schemas/EventLocationDisclosureState"
+          },
+          "fields": {
+            "$ref": "#/components/schemas/EventLocationPublicFieldsDto"
+          }
+        }
+      },
+      "EventLocationPublicFieldsDto": {
+        "required": [
+          "country",
+          "timezone",
+          "city",
+          "venueName",
+          "roomName",
+          "streetAddress",
+          "postcode",
+          "latitude",
+          "longitude",
+          "formattedAddress",
+          "mapUrl",
+          "geohash"
+        ],
+        "type": "object",
+        "properties": {
+          "country": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "timezone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "city": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "venueName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "roomName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "streetAddress": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "postcode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "latitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "longitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "formattedAddress": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "mapUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "geohash": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -70036,6 +71264,16 @@
               "string"
             ]
           },
+          "eventLocation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventLocationPublicDto"
+              }
+            ]
+          },
           "capacity": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -70135,6 +71373,16 @@
             "type": [
               "null",
               "string"
+            ]
+          },
+          "eventLocation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventLocationPublicDto"
+              }
             ]
           },
           "days": {
@@ -70757,6 +72005,16 @@
               "string"
             ]
           },
+          "eventLocation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventLocationPublicDto"
+              }
+            ]
+          },
           "tenantId": {
             "type": "string",
             "format": "uuid"
@@ -70806,6 +72064,16 @@
             "type": [
               "null",
               "string"
+            ]
+          },
+          "eventLocation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventLocationPublicDto"
+              }
             ]
           }
         }
@@ -71655,6 +72923,113 @@
               "string"
             ]
           },
+          "eventLocation": {
+            "type": "object",
+            "properties": {
+              "eventLocationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "state": { },
+              "fields": {
+                "required": [
+                  "country",
+                  "timezone",
+                  "city",
+                  "venueName",
+                  "roomName",
+                  "streetAddress",
+                  "postcode",
+                  "latitude",
+                  "longitude",
+                  "formattedAddress",
+                  "mapUrl",
+                  "geohash"
+                ],
+                "type": "object",
+                "properties": {
+                  "country": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "city": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "venueName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "roomName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "streetAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "postcode": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "latitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "longitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "formattedAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "mapUrl": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "geohash": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  }
+                }
+              }
+            }
+          },
           "title": {
             "type": [
               "null",
@@ -71892,6 +73267,113 @@
               "string"
             ]
           },
+          "eventLocation": {
+            "type": "object",
+            "properties": {
+              "eventLocationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "state": { },
+              "fields": {
+                "required": [
+                  "country",
+                  "timezone",
+                  "city",
+                  "venueName",
+                  "roomName",
+                  "streetAddress",
+                  "postcode",
+                  "latitude",
+                  "longitude",
+                  "formattedAddress",
+                  "mapUrl",
+                  "geohash"
+                ],
+                "type": "object",
+                "properties": {
+                  "country": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "city": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "venueName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "roomName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "streetAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "postcode": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "latitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "longitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "formattedAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "mapUrl": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "geohash": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  }
+                }
+              }
+            }
+          },
           "color": {
             "type": [
               "null",
@@ -71963,6 +73445,113 @@
               "null",
               "string"
             ]
+          },
+          "eventLocation": {
+            "type": "object",
+            "properties": {
+              "eventLocationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "state": { },
+              "fields": {
+                "required": [
+                  "country",
+                  "timezone",
+                  "city",
+                  "venueName",
+                  "roomName",
+                  "streetAddress",
+                  "postcode",
+                  "latitude",
+                  "longitude",
+                  "formattedAddress",
+                  "mapUrl",
+                  "geohash"
+                ],
+                "type": "object",
+                "properties": {
+                  "country": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "city": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "venueName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "roomName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "streetAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "postcode": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "latitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "longitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "formattedAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "mapUrl": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "geohash": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  }
+                }
+              }
+            }
           },
           "color": {
             "type": [
@@ -72292,6 +73881,113 @@
               "null",
               "string"
             ]
+          },
+          "eventLocation": {
+            "type": "object",
+            "properties": {
+              "eventLocationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "state": { },
+              "fields": {
+                "required": [
+                  "country",
+                  "timezone",
+                  "city",
+                  "venueName",
+                  "roomName",
+                  "streetAddress",
+                  "postcode",
+                  "latitude",
+                  "longitude",
+                  "formattedAddress",
+                  "mapUrl",
+                  "geohash"
+                ],
+                "type": "object",
+                "properties": {
+                  "country": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "city": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "venueName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "roomName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "streetAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "postcode": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "latitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "longitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "formattedAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "mapUrl": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "geohash": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  }
+                }
+              }
+            }
           },
           "title": {
             "type": [
@@ -73900,6 +75596,66 @@
           }
         }
       },
+      "FederatedEventDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startsAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "endsAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "mode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "rsvpExpected": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "locationSummary": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "FieldChangeDto": {
         "required": [
           "fieldName",
@@ -74663,17 +76419,6 @@
           }
         }
       },
-      "HalCollectionEmbeddedOfAtprotoRecordListDto": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/HalResourceOfAtprotoRecordListDto"
-            }
-          }
-        }
-      },
       "HalCollectionEmbeddedOfCategoryListDto": {
         "type": "object",
         "properties": {
@@ -74758,6 +76503,17 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/HalResourceOfEventDayListDto"
+            }
+          }
+        }
+      },
+      "HalCollectionEmbeddedOfEventDiscoveryItemDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfEventDiscoveryItemDto"
             }
           }
         }
@@ -75311,58 +77067,6 @@
           }
         }
       },
-      "HalCollectionResourceOfAtprotoRecordListDto": {
-        "type": "object",
-        "properties": {
-          "pageNumber": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "pageSize": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "totalCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "totalPages": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "hasPrevious": {
-            "type": "boolean"
-          },
-          "hasNext": {
-            "type": "boolean"
-          },
-          "_links": {
-            "type": "object",
-            "additionalProperties": {
-              "$ref": "#/components/schemas/HalLink"
-            }
-          },
-          "_embedded": {
-            "$ref": "#/components/schemas/HalCollectionEmbeddedOfAtprotoRecordListDto"
-          }
-        }
-      },
       "HalCollectionResourceOfCategoryListDto": {
         "type": "object",
         "properties": {
@@ -75776,6 +77480,58 @@
           },
           "_embedded": {
             "$ref": "#/components/schemas/HalCollectionEmbeddedOfEventDayListDto"
+          }
+        }
+      },
+      "HalCollectionResourceOfEventDiscoveryItemDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfEventDiscoveryItemDto"
           }
         }
       },
@@ -78652,106 +80408,6 @@
           }
         }
       },
-      "HalResourceOfAtprotoRecordDto": {
-        "required": [
-          "did",
-          "collection",
-          "recordKey"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "did": {
-            "type": "string"
-          },
-          "collection": {
-            "type": "string"
-          },
-          "recordKey": {
-            "type": "string"
-          },
-          "cid": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "uri": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "indexedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "_links": {
-            "type": "object",
-            "additionalProperties": {
-              "$ref": "#/components/schemas/HalLink"
-            },
-            "description": "HAL hypermedia links"
-          },
-          "_embedded": {
-            "type": [
-              "null",
-              "object"
-            ],
-            "description": "Embedded related resources"
-          }
-        }
-      },
-      "HalResourceOfAtprotoRecordListDto": {
-        "required": [
-          "did",
-          "collection",
-          "recordKey"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "did": {
-            "type": "string"
-          },
-          "collection": {
-            "type": "string"
-          },
-          "recordKey": {
-            "type": "string"
-          },
-          "indexedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "_links": {
-            "type": "object",
-            "additionalProperties": {
-              "$ref": "#/components/schemas/HalLink"
-            },
-            "description": "HAL hypermedia links"
-          },
-          "_embedded": {
-            "type": [
-              "null",
-              "object"
-            ],
-            "description": "Embedded related resources"
-          }
-        }
-      },
       "HalResourceOfCategoryDto": {
         "required": [
           "masterCode",
@@ -79861,6 +81517,63 @@
           }
         }
       },
+      "HalResourceOfEmailDispatchProcessorControlDto": {
+        "type": "object",
+        "properties": {
+          "processorCode": {
+            "type": "string"
+          },
+          "isPaused": {
+            "type": "boolean"
+          },
+          "pauseReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "pausedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "globalSmtpRateLimitPerMinuteOverride": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "optionalRemindersDeferred": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
       "HalResourceOfEmailDispatchStatusDto": {
         "type": "object",
         "properties": {
@@ -80050,6 +81763,113 @@
             ],
             "format": "uuid"
           },
+          "eventLocation": {
+            "type": "object",
+            "properties": {
+              "eventLocationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "state": { },
+              "fields": {
+                "required": [
+                  "country",
+                  "timezone",
+                  "city",
+                  "venueName",
+                  "roomName",
+                  "streetAddress",
+                  "postcode",
+                  "latitude",
+                  "longitude",
+                  "formattedAddress",
+                  "mapUrl",
+                  "geohash"
+                ],
+                "type": "object",
+                "properties": {
+                  "country": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "city": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "venueName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "roomName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "streetAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "postcode": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "latitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "longitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "formattedAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "mapUrl": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "geohash": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  }
+                }
+              }
+            }
+          },
           "kindId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -80160,6 +81980,113 @@
           "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
+          },
+          "eventLocation": {
+            "type": "object",
+            "properties": {
+              "eventLocationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "state": { },
+              "fields": {
+                "required": [
+                  "country",
+                  "timezone",
+                  "city",
+                  "venueName",
+                  "roomName",
+                  "streetAddress",
+                  "postcode",
+                  "latitude",
+                  "longitude",
+                  "formattedAddress",
+                  "mapUrl",
+                  "geohash"
+                ],
+                "type": "object",
+                "properties": {
+                  "country": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "city": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "venueName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "roomName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "streetAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "postcode": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "latitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "longitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "formattedAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "mapUrl": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "geohash": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  }
+                }
+              }
+            }
           },
           "_links": {
             "type": "object",
@@ -80649,6 +82576,73 @@
           "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfEventDiscoveryItemDto": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "event": {
+            "$ref": "#/components/schemas/EventListDto"
+          },
+          "federatedEvent": {
+            "$ref": "#/components/schemas/FederatedEventDto"
+          },
+          "federation": {
+            "$ref": "#/components/schemas/EventFederationMetadataDto"
+          },
+          "distanceMeters": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "nearestSessionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "nearestLocationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "nearestLocationName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nearestOccurrenceStartsAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           },
           "_links": {
             "type": "object",
@@ -81389,6 +83383,13 @@
             ],
             "format": "date"
           },
+          "firstSessionStartUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
           "timezone": {
             "type": [
               "null",
@@ -81416,6 +83417,29 @@
             "type": "boolean"
           },
           "eventUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "atprotoRecordId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "atprotoDeliveryStatus": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "atprotoDeliveryFailureCode": {
             "type": [
               "null",
               "string"
@@ -82019,6 +84043,113 @@
               "string"
             ]
           },
+          "eventLocation": {
+            "type": "object",
+            "properties": {
+              "eventLocationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "state": { },
+              "fields": {
+                "required": [
+                  "country",
+                  "timezone",
+                  "city",
+                  "venueName",
+                  "roomName",
+                  "streetAddress",
+                  "postcode",
+                  "latitude",
+                  "longitude",
+                  "formattedAddress",
+                  "mapUrl",
+                  "geohash"
+                ],
+                "type": "object",
+                "properties": {
+                  "country": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "city": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "venueName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "roomName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "streetAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "postcode": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "latitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "longitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "formattedAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "mapUrl": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "geohash": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  }
+                }
+              }
+            }
+          },
           "title": {
             "type": [
               "null",
@@ -82270,6 +84401,113 @@
               "string"
             ]
           },
+          "eventLocation": {
+            "type": "object",
+            "properties": {
+              "eventLocationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "state": { },
+              "fields": {
+                "required": [
+                  "country",
+                  "timezone",
+                  "city",
+                  "venueName",
+                  "roomName",
+                  "streetAddress",
+                  "postcode",
+                  "latitude",
+                  "longitude",
+                  "formattedAddress",
+                  "mapUrl",
+                  "geohash"
+                ],
+                "type": "object",
+                "properties": {
+                  "country": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "city": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "venueName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "roomName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "streetAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "postcode": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "latitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "longitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "formattedAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "mapUrl": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "geohash": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  }
+                }
+              }
+            }
+          },
           "color": {
             "type": [
               "null",
@@ -82355,6 +84593,113 @@
               "null",
               "string"
             ]
+          },
+          "eventLocation": {
+            "type": "object",
+            "properties": {
+              "eventLocationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "state": { },
+              "fields": {
+                "required": [
+                  "country",
+                  "timezone",
+                  "city",
+                  "venueName",
+                  "roomName",
+                  "streetAddress",
+                  "postcode",
+                  "latitude",
+                  "longitude",
+                  "formattedAddress",
+                  "mapUrl",
+                  "geohash"
+                ],
+                "type": "object",
+                "properties": {
+                  "country": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "city": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "venueName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "roomName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "streetAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "postcode": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "latitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "longitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "formattedAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "mapUrl": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "geohash": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  }
+                }
+              }
+            }
           },
           "color": {
             "type": [
@@ -82507,6 +84852,113 @@
               "null",
               "string"
             ]
+          },
+          "eventLocation": {
+            "type": "object",
+            "properties": {
+              "eventLocationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "state": { },
+              "fields": {
+                "required": [
+                  "country",
+                  "timezone",
+                  "city",
+                  "venueName",
+                  "roomName",
+                  "streetAddress",
+                  "postcode",
+                  "latitude",
+                  "longitude",
+                  "formattedAddress",
+                  "mapUrl",
+                  "geohash"
+                ],
+                "type": "object",
+                "properties": {
+                  "country": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "city": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "venueName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "roomName": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "streetAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "postcode": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "latitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "longitude": {
+                    "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                    "type": [
+                      "null",
+                      "number",
+                      "string"
+                    ],
+                    "format": "double"
+                  },
+                  "formattedAddress": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "mapUrl": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "geohash": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  }
+                }
+              }
+            }
           },
           "title": {
             "type": [
@@ -86680,7 +89132,96 @@
           }
         }
       },
-      "HalResourceOfSettingGroupResponseDto": { },
+      "HalResourceOfSettingGroupResponseDto": {
+        "required": [
+          "category",
+          "settings"
+        ],
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "settings": {
+            "type": "array",
+            "items": {
+              "required": [
+                "key",
+                "value",
+                "settingValueTypeCode",
+                "settingValueTypeName"
+              ],
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                },
+                "settingValueTypeId": {
+                  "pattern": "^-?(?:0|[1-9]\\d*)$",
+                  "type": [
+                    "integer",
+                    "string"
+                  ],
+                  "format": "int32"
+                },
+                "settingValueTypeCode": {
+                  "type": "string"
+                },
+                "settingValueTypeName": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "integer"
+                },
+                "isLocked": {
+                  "type": "boolean"
+                },
+                "isLockable": {
+                  "type": "boolean"
+                },
+                "canEdit": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "description": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "allowedValues": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                }
+              }
+            }
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
       "HalResourceOfStorageObjectDto": {
         "required": [
           "uri",
@@ -101164,14 +103705,6 @@
           }
         }
       },
-      "UpdateEventRegistrationAtprotoRecordDto": {
-        "type": "object",
-        "properties": {
-          "atprotoRecordId": {
-            "$ref": "#/components/schemas/OptionalUpdateOfGuid"
-          }
-        }
-      },
       "UpdateEventRegistrationDto": {
         "type": "object",
         "properties": {
@@ -101212,16 +103745,6 @@
               },
               {
                 "$ref": "#/components/schemas/UpdateEventRegistrationApprovalStatusDto"
-              }
-            ]
-          },
-          "atprotoRecord": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/UpdateEventRegistrationAtprotoRecordDto"
               }
             ]
           }
@@ -105832,9 +108355,6 @@
     },
     {
       "name": "ApprovalStatus"
-    },
-    {
-      "name": "AtprotoRecord"
     },
     {
       "name": "AudienceAge"

@@ -769,6 +769,30 @@ Table "atproto_records" {
   Note: 'Global canonical AT Protocol record. Tenant visibility and outbound ownership are stored separately.'
 }
 
+Table "atproto_event_projections" {
+  "atproto_record_id" uuid [pk, not null]
+  "name" varchar(240) [not null]
+  "description" varchar(4000)
+  "created_at" timestamptz [not null]
+  "starts_at" timestamptz
+  "ends_at" timestamptz
+  "mode" varchar(80)
+  "status" varchar(80)
+  "rsvp_expected" boolean
+  "location_summary" varchar(500)
+  "source_url" varchar(2048)
+  "source_version" bigint [not null]
+  "materialized_at" timestamptz [not null]
+
+  indexes {
+    (starts_at, atproto_record_id) [name: 'ix_atproto_event_projections_starts_at']
+    (created_at, atproto_record_id) [name: 'ix_atproto_event_projections_created_at']
+    (name, atproto_record_id) [name: 'ix_atproto_event_projections_name']
+  }
+
+  Note: 'Bounded typed public projection materialized atomically with its canonical event record; source URLs are HTTPS-only and tenant presentation is resolved separately.'
+}
+
 Table "indexed_dids" {
   "did" varchar(255) [pk, not null]
   "handle" varchar(255)
@@ -881,6 +905,7 @@ Table "pds_sync_outbox" {
   "source_version" uuid [not null]
   "atproto_record_id" uuid
   "depends_on_atproto_record_id" uuid
+  "depends_on_cid" varchar(255) [note: 'event strongRef CID captured for durable terminal-attempt reconciliation suppression']
   "expected_cid" varchar(255)
   "status" int [not null]
   "created_at" timestamptz [not null]
@@ -901,7 +926,7 @@ Table "pds_sync_outbox" {
 
   indexes {
     (tenant_id, idempotency_key) [unique, name: 'ux_pds_sync_outbox_idempotency']
-    (tenant_id, source_entity_type, source_entity_id, source_version, operation) [unique, name: 'ux_pds_sync_outbox_source_version']
+    (tenant_id, source_entity_type, source_entity_id, source_version, operation, payload_hash) [unique, name: 'ux_pds_sync_outbox_source_version', note: 'filter: status IN (1, 2) AND superseded_at IS NULL']
     (status, next_retry_at, lease_expires_at, created_at) [name: 'ix_pds_sync_outbox_worker_poll']
     (tenant_id, user_id, status) [name: 'ix_pds_sync_outbox_owner']
     (did, collection, record_key) [name: 'ix_pds_sync_outbox_record_identity']
@@ -1313,6 +1338,8 @@ Table "email_dispatch_tenant_controls" {
   "pause_reason" varchar(500)
   "paused_at" timestamptz
   "paused_by" uuid
+  "smtp_available_tokens" integer [note: 'Remaining tenant SMTP admissions in the current one-minute window. Null only with smtp_refill_at.']
+  "smtp_refill_at" timestamptz [note: 'Database-clock boundary for refilling the tenant SMTP bucket. Null only with smtp_available_tokens.']
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -1323,7 +1350,22 @@ Table "email_dispatch_tenant_controls" {
     (is_paused, updated_at) [name: 'ix_email_dispatch_tenant_controls_pause_state']
   }
 
-  Note: 'Tenant-scoped operational pause/resume control for email dispatch.'
+  Note: 'Tenant-scoped operational pause/resume control and shared SMTP rate bucket. CHECK smtp pair is jointly null/non-null; token count is nonnegative.'
+}
+
+Table "email_dispatch_processor_states" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "processor_code" varchar(32) [not null]
+  "optional_reminders_deferred" boolean [not null]
+  "smtp_available_tokens" integer [note: 'Remaining global SMTP admissions in the current one-minute window. Null only with smtp_refill_at.']
+  "smtp_refill_at" timestamptz [note: 'Database-clock boundary for refilling the global SMTP bucket. Null only with smtp_available_tokens.']
+  "updated_at" timestamptz [not null]
+
+  indexes {
+    processor_code [unique, name: 'ux_email_dispatch_processor_states_processor_code']
+  }
+
+  Note: 'Cross-replica email processor coordination state. The smtp singleton persists optional-reminder hysteresis and the shared global SMTP rate bucket. CHECK smtp pair is jointly null/non-null; token count is nonnegative.'
 }
 
 // ============================================================
@@ -2553,6 +2595,15 @@ Table "location_disclosure_audiences" {
   }
 
   Note: 'Lookup: EventLocation exact-detail audience. Values: Never(1), AnyCurrentRegistrant(2), ConfirmedParticipant(3).'
+}
+
+Table "event_location_privacy_backfill_reversal" {
+  "location_id" uuid [pk, not null]
+  "previous_privacy_state_id" int [not null]
+  "backfilled_privacy_state_id" int [not null]
+  "recorded_at_utc" timestamptz [not null]
+
+  Note: 'Migration-owned, PII-free reversal ledger for ELP-230B Location lifecycle changes. Retained only until the contract stage makes rollback invalid.'
 }
 
 Table "locations" {
@@ -4563,7 +4614,7 @@ Ref: "roles"."role_scope_id" > "role_scopes"."id" [delete: restrict]
 Ref: "permissions"."role_scope_id" > "role_scopes"."id" [delete: restrict]
 Ref: "role_permissions"."role_id" > "roles"."id" [delete: cascade]
 Ref: "role_permissions"."permission_id" > "permissions"."id" [delete: cascade]
-Ref: "user_authentication_tokens"."user_id" > "users"."id" [delete: restrict]
+Ref: "user_authentication_tokens"."user_id" > "users"."id" [delete: cascade]
 Ref: "user_authentication_tokens"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "user_external_logins"."user_id" > "users"."id" [delete: restrict]
 Ref: "user_preferences"."user_id" > "users"."id" [delete: restrict]
@@ -4660,6 +4711,7 @@ Ref: "location_privacy_erasure_replay_checkpoints"."previous_checkpoint_id" > "l
 // Federation / AT Protocol
 Ref: "atproto_record_tenant_presentations"."tenant_id" > "tenants"."id" [delete: cascade]
 Ref: "atproto_record_tenant_presentations"."atproto_record_id" > "atproto_records"."id" [delete: cascade]
+Ref: "atproto_event_projections"."atproto_record_id" - "atproto_records"."id" [delete: cascade]
 Ref: "atproto_outbound_record_ownerships"."atproto_record_id" - "atproto_records"."id" [delete: cascade]
 Ref: "atproto_outbound_record_ownerships"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "atproto_outbound_record_ownerships"."user_id" > "users"."id" [delete: restrict]
