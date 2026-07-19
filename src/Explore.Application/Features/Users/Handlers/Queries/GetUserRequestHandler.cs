@@ -45,7 +45,7 @@ public class GetUserRequestHandler : IRequestHandler<GetUserRequest, UserDto>
             cacheKey,
             async _ =>
             {
-                var user = await _userRepository.GetUserWithDetails(request.UserId);
+                var user = await _userRepository.GetUserWithDetails(request.UserId, _);
                 if (user == null)
                 {
                     return null;

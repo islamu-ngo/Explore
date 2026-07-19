@@ -30,6 +30,15 @@ public class TenantRepository : GenericRepository<Tenant, Guid>, ITenantReposito
             .CountAsync(t => t.TenantStatus.IsActiveState);
     }
 
+    public async Task<IReadOnlyList<Tenant>> GetActiveAsNoTrackingAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Tenants
+            .AsNoTracking()
+            .Where(tenant => tenant.TenantStatus.IsActiveState)
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<Tenant?> GetByIdAsNoTrackingAsync(Guid id, CancellationToken cancellationToken = default) =>
         _dbContext.Tenants
             .AsNoTracking()

@@ -23,7 +23,10 @@ public class UserRepository : GenericRepository<User, Guid>, IUserRepository
             .FirstOrDefaultAsync(u => u.Id == id);
     }
 
-    public async Task<User?> GetUserWithDetails(Guid id)
+    public Task<User?> GetUserWithDetails(Guid id) =>
+        GetUserWithDetails(id, CancellationToken.None);
+
+    public async Task<User?> GetUserWithDetails(Guid id, CancellationToken cancellationToken)
     {
         return await _dbContext.Users
             .AsNoTracking()
@@ -32,7 +35,7 @@ public class UserRepository : GenericRepository<User, Guid>, IUserRepository
                 .ThenInclude(a => a!.Pii)
             .Include(u => u.Actor)
                 .ThenInclude(a => a!.ProfilePicture)
-            .FirstOrDefaultAsync(u => u.Id == id);
+            .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
     }
 
     public async Task<User?> GetUserByEmail(string email)

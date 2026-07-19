@@ -9,6 +9,7 @@ public interface ITenantRepository : IGenericRepository<Tenant, Guid>
 {
     Task<Tenant?> GetTenantBySlug(string slug);
     Task<int> GetActiveTenantCountAsync();
+    Task<IReadOnlyList<Tenant>> GetActiveAsNoTrackingAsync(CancellationToken cancellationToken = default);
     Task<Tenant?> GetByIdAsNoTrackingAsync(Guid id, CancellationToken cancellationToken = default);
     Task<bool> TryTransitionStatusAsync(
         Guid id,
