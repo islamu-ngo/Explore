@@ -247,6 +247,133 @@ public sealed class HomeDiscoveryExperienceTests : IDisposable
         await Assert.That(cut.Markup).Contains("Recently added");
     }
 
+    [Test]
+    public async Task FederatedHomeEventRendersTypedDataWithoutInventingSourceAction()
+    {
+        var home = CompleteHome(Guid.NewGuid());
+        home.UpcomingInArea =
+        [
+            new EventDiscoveryItemDto
+            {
+                Source = "atproto",
+                FederatedEvent = new FederatedEventDto
+                {
+                    Name = "Federated neighborhood iftar",
+                    Description = "Published from a community PDS",
+                    StartsAtUtc = new DateTimeOffset(2026, 9, 4, 18, 30, 0, TimeSpan.Zero),
+                    Mode = "in-person"
+                },
+                Federation = new EventFederationMetadataDto
+                {
+                    AtprotoRecordId = Guid.NewGuid(),
+                    Provenance = "AT Protocol"
+                }
+            }
+        ];
+        discoveryService.LoadAsync(null, null, Arg.Any<CancellationToken>()).Returns(home);
+
+        var cut = context.RenderMudComponent<HomeDiscoveryExperience>();
+        cut.WaitForElement("[data-testid='upcoming-event-row']", TimeSpan.FromSeconds(2));
+        var row = cut.Find("[data-testid='upcoming-event-row']");
+
+        await Assert.That(cut.Markup).Contains("Federated neighborhood iftar");
+        await Assert.That(row.HasAttribute("href")).IsFalse();
+        await Assert.That(row.GetAttribute("aria-label")).IsEqualTo("AT Protocol event: Federated neighborhood iftar");
+    }
+
+    [Test]
+    public async Task FederatedHeroEventUsesDescriptiveServerSourceLink()
+    {
+        const string sourcePath = "/api/event/federated/source-record/source";
+        var home = CompleteHome(Guid.NewGuid());
+        var federated = new EventDiscoveryItemDto
+        {
+            Source = "atproto",
+            FederatedEvent = new FederatedEventDto
+            {
+                Name = "Federated hero gathering",
+                StartsAtUtc = new DateTimeOffset(2026, 9, 4, 18, 30, 0, TimeSpan.Zero)
+            }
+        };
+        federated.AdditionalProperties["_links"] = System.Text.Json.JsonSerializer.SerializeToElement(
+            new Dictionary<string, HalLink>
+            {
+                ["source"] = new() { Href = sourcePath, Method = "GET" }
+            });
+        home.Hero = [federated];
+        discoveryService.LoadAsync(null, null, Arg.Any<CancellationToken>()).Returns(home);
+
+        var cut = context.RenderMudComponent<HomeDiscoveryExperience>();
+        var link = cut.WaitForElement(".hero-carousel__slide-link", TimeSpan.FromSeconds(2));
+
+        await Assert.That(link.GetAttribute("href")).IsEqualTo(sourcePath);
+        await Assert.That(link.GetAttribute("aria-label")).IsEqualTo("View AT Protocol source: Federated hero gathering");
+    }
+
+    [Test]
+    public async Task RefreshedServerResultReplacesTombstonedFederatedCard()
+    {
+        var areaId = Guid.NewGuid();
+        var stale = CompleteHome(areaId);
+        stale.UpcomingInArea =
+        [
+            new EventDiscoveryItemDto
+            {
+                Source = "atproto",
+                FederatedEvent = new FederatedEventDto
+                {
+                    Name = "Tombstoned federated gathering",
+                    StartsAtUtc = new DateTimeOffset(2026, 9, 4, 18, 30, 0, TimeSpan.Zero)
+                }
+            }
+        ];
+        var refreshed = CompleteHome(areaId);
+        refreshed.Context!.Mode = HomeDiscoveryMode.Online;
+        discoveryService.LoadAsync(null, null, Arg.Any<CancellationToken>()).Returns(stale);
+        discoveryService.LoadAsync(null, "online", Arg.Any<CancellationToken>()).Returns(refreshed);
+
+        var cut = context.RenderMudComponent<HomeDiscoveryExperience>();
+        cut.WaitForAssertion(() => Assert.That(cut.Markup).Contains("Tombstoned federated gathering"));
+
+        cut.Render(parameters => parameters
+            .Add(component => component.UrlMode, "online"));
+
+        cut.WaitForAssertion(() => Assert.That(cut.Markup).DoesNotContain("Tombstoned federated gathering"));
+        await Assert.That(cut.Markup).Contains("Upcoming event");
+        await discoveryService.Received(1).LoadAsync(null, "online", Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SupersededRefreshCannotRestoreCanceledStaleResult()
+    {
+        var areaId = Guid.NewGuid();
+        var initial = CompleteHome(areaId);
+        var stale = CompleteHome(areaId);
+        stale.UpcomingInArea = [new EventDiscoveryItemDto { Event = Event("Canceled stale event", "stale") }];
+        var current = CompleteHome(areaId);
+        current.UpcomingInArea = [new EventDiscoveryItemDto { Event = Event("Current refreshed event", "current") }];
+        var staleCompletion = new TaskCompletionSource<HomeDiscoveryDto?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken staleCancellation = default;
+        discoveryService.LoadAsync(null, null, Arg.Any<CancellationToken>()).Returns(initial);
+        discoveryService.LoadAsync(null, "online", Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            staleCancellation = call.ArgAt<CancellationToken>(2);
+            return staleCompletion.Task;
+        });
+        discoveryService.LoadAsync(null, "all", Arg.Any<CancellationToken>()).Returns(current);
+        var cut = context.RenderMudComponent<HomeDiscoveryExperience>();
+        cut.WaitForAssertion(() => Assert.That(cut.Markup).Contains("Upcoming event"));
+
+        cut.Render(parameters => parameters.Add(component => component.UrlMode, "online"));
+        cut.WaitForAssertion(() => Assert.That(staleCancellation.CanBeCanceled).IsTrue());
+        cut.Render(parameters => parameters.Add(component => component.UrlMode, "all"));
+        cut.WaitForAssertion(() => Assert.That(cut.Markup).Contains("Current refreshed event"));
+        staleCompletion.SetResult(stale);
+
+        cut.WaitForAssertion(() => Assert.That(cut.Markup).DoesNotContain("Canceled stale event"));
+        await Assert.That(staleCancellation.IsCancellationRequested).IsTrue();
+    }
+
     private static HomeDiscoveryDto CompleteHome(Guid areaId)
     {
         var hero = Event("Hero event", "hero");

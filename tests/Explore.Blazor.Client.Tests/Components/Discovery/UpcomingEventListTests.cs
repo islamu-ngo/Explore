@@ -37,6 +37,41 @@ public sealed class UpcomingEventListTests : IDisposable
             .StartsWith("data:image/svg+xml");
     }
 
+    [Test]
+    public async Task FederatedEventWithoutSourceAffordanceRendersWithoutLink()
+    {
+        var federatedEvent = CreateEvents(1).Single();
+        federatedEvent.AdditionalProperties["eventDiscoverySource"] = "atproto";
+
+        var cut = context.RenderMudComponent<UpcomingEventList>(parameters => parameters
+            .Add(component => component.Events, new[] { federatedEvent }));
+        var row = cut.Find("[data-testid='upcoming-event-row']");
+
+        await Assert.That(row.HasAttribute("href")).IsFalse();
+        await Assert.That(row.GetAttribute("role")).IsEqualTo("article");
+        await Assert.That(row.GetAttribute("aria-label")).IsEqualTo("AT Protocol event: Upcoming event 1");
+    }
+
+    [Test]
+    public async Task FederatedEventWithUnsafeSourceHrefRendersWithoutLink()
+    {
+        var federatedEvent = CreateEvents(1).Single();
+        federatedEvent.AdditionalProperties["eventDiscoverySource"] = "atproto";
+        federatedEvent.AdditionalProperties["_links"] = System.Text.Json.JsonSerializer.SerializeToElement(
+            new Dictionary<string, HalLink>
+            {
+                ["source"] = new() { Href = "javascript:alert(document.cookie)", Method = "GET" }
+            });
+
+        var cut = context.RenderMudComponent<UpcomingEventList>(parameters => parameters
+            .Add(component => component.Events, new[] { federatedEvent }));
+        var row = cut.Find("[data-testid='upcoming-event-row']");
+
+        await Assert.That(row.HasAttribute("href")).IsFalse();
+        await Assert.That(row.GetAttribute("role")).IsEqualTo("article");
+        await Assert.That(cut.Markup).DoesNotContain("javascript:");
+    }
+
     public void Dispose()
     {
         context.Dispose();

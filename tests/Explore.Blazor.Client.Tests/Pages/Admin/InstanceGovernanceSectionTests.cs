@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Client.Contracts.ControlPlane;
 using Explore.Blazor.Client.Contracts.Services.ControlPlane;
+using Explore.Blazor.Client.Contracts.Services.Federation;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
 
@@ -10,6 +11,7 @@ public class InstanceGovernanceSectionTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
     private readonly IControlPlaneOperationsService _operationsService;
+    private readonly IAtprotoFederationSettingsService _settingsService;
 
     public InstanceGovernanceSectionTests()
     {
@@ -18,7 +20,11 @@ public class InstanceGovernanceSectionTests : IDisposable
         _operationsService = Substitute.For<IControlPlaneOperationsService>();
         _operationsService.GetDeploymentModeRunbookAsync(Arg.Any<CancellationToken>())
             .Returns(new HalResourceOfControlPlaneDeploymentModeRunbookDto());
+        _settingsService = Substitute.For<IAtprotoFederationSettingsService>();
+        _settingsService.GetInstanceAsync(Arg.Any<CancellationToken>())
+            .Returns(CreateAtprotoSettings());
         _ctx.Services.AddSingleton(_operationsService);
+        _ctx.Services.AddSingleton(_settingsService);
     }
 
     public void Dispose()
@@ -183,6 +189,104 @@ public class InstanceGovernanceSectionTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task AtprotoGovernance_WithoutHalAffordances_DisablesUpdateAndHidesLockActions()
+    {
+        _settingsService.GetInstanceAsync(Arg.Any<CancellationToken>())
+            .Returns(CreateAtprotoSettings());
+
+        var cut = RenderGovernanceSection(displayMode: "advanced");
+        cut.WaitForState(() => cut.Markup.Contains("Enable AT Protocol events", StringComparison.OrdinalIgnoreCase));
+        var label = cut.FindAll("label")
+            .Single(element => element.TextContent.Contains("Enable AT Protocol events", StringComparison.OrdinalIgnoreCase));
+        var input = label.QuerySelector("input") ?? throw new InvalidOperationException("AT Protocol events switch input not found.");
+
+        await Assert.That(input.HasAttribute("disabled")).IsTrue();
+        await Assert.That(cut.Markup).Contains("server has not granted an update affordance", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).DoesNotContain("Lock tenant override", StringComparison.OrdinalIgnoreCase);
+        await _settingsService.DidNotReceive().UpdateInstanceAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task AtprotoGovernance_WithoutHalAffordances_RendersServerSourceAndReason()
+    {
+        var settings = CreateAtprotoSettings();
+        var eventsSetting = settings.Settings.Single(setting =>
+            setting.Key == "federation.atproto_events_enabled");
+        eventsSetting.Source = (int)SettingSource.SystemLocked;
+        eventsSetting.IsLocked = true;
+        eventsSetting.Reason = "Instance policy denied this mutation.";
+        _settingsService.GetInstanceAsync(Arg.Any<CancellationToken>()).Returns(settings);
+
+        var cut = RenderGovernanceSection(displayMode: "advanced");
+        cut.WaitForState(() => cut.Markup.Contains("Enable AT Protocol events", StringComparison.OrdinalIgnoreCase));
+
+        await Assert.That(cut.Markup).Contains("Source: System locked", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).Contains("Lock: Locked", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).Contains("Instance policy denied this mutation.", StringComparison.Ordinal);
+        await Assert.That(cut.FindAll("[role='status']").Any(element =>
+            element.TextContent.Contains("Instance policy denied this mutation.", StringComparison.Ordinal))).IsTrue();
+    }
+
+    [Test]
+    public async Task AtprotoGovernance_UnknownProfileWithoutHal_FallsBackAndStaysDisabled()
+    {
+        var settings = CreateAtprotoSettings();
+        settings.Settings.Single(setting =>
+            setting.Key == "federation.atproto_event_validation_profile").Value = "\"unknown_profile\"";
+        _settingsService.GetInstanceAsync(Arg.Any<CancellationToken>()).Returns(settings);
+
+        var cut = RenderGovernanceSection(displayMode: "advanced");
+        cut.WaitForState(() => cut.Markup.Contains("Enable AT Protocol events", StringComparison.OrdinalIgnoreCase));
+        var validationInput = cut.Find("input[aria-label='Event creation validation']");
+
+        await Assert.That(validationInput.GetAttribute("value")).IsEqualTo("platform");
+        await Assert.That(validationInput.HasAttribute("disabled")).IsTrue();
+        await _settingsService.DidNotReceive().UpdateInstanceAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task AtprotoGovernance_WithHalAffordances_UpdatesAndLocksExactSetting()
+    {
+        const string key = "federation.atproto_events_enabled";
+        _settingsService.GetInstanceAsync(Arg.Any<CancellationToken>())
+            .Returns(CreateAtprotoSettings($"update-{key}", $"lock-{key}"));
+        _settingsService.UpdateInstanceAsync(
+                key,
+                "true",
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
+        _settingsService.SetInstanceLockAsync(
+                key,
+                true,
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
+
+        var cut = RenderGovernanceSection(displayMode: "advanced");
+        cut.WaitForState(() => cut.Markup.Contains("Enable AT Protocol events", StringComparison.OrdinalIgnoreCase));
+        var label = cut.FindAll("label")
+            .Single(element => element.TextContent.Contains("Enable AT Protocol events", StringComparison.OrdinalIgnoreCase));
+        (label.QuerySelector("input") ?? throw new InvalidOperationException("AT Protocol events switch input not found."))
+            .Change(true);
+        cut.Find("button[aria-label='Lock AT Protocol events for tenants']").Click();
+
+        await _settingsService.Received(1).UpdateInstanceAsync(
+            key,
+            "true",
+            Arg.Any<CancellationToken>());
+        await _settingsService.Received(1).SetInstanceLockAsync(
+            key,
+            true,
+            Arg.Any<CancellationToken>());
+        await Assert.That(cut.Markup).Contains("application commits and validates the event before any PDS record", StringComparison.OrdinalIgnoreCase);
+    }
+
     private IRenderedComponent<DynamicComponent> RenderGovernanceSection(
         TenantDelegationSettingsDto? delegation = null,
         EventPolicyDto? eventPolicy = null,
@@ -242,4 +346,33 @@ public class InstanceGovernanceSectionTests : IDisposable
             relation => relation,
             relation => new HalLink { Href = $"/api/control-plane/deployment-mode/{relation}", Method = "POST" },
             StringComparer.OrdinalIgnoreCase);
+
+    private static HalResourceOfSettingGroupResponseDto CreateAtprotoSettings(params string[] relations) =>
+        new()
+        {
+            Category = "AtprotoFederation",
+            Settings =
+            [
+                new Explore.Blazor.Client.Clients.Settings
+                {
+                    Key = "federation.atproto_events_enabled",
+                    Value = "false",
+                    CanEdit = true,
+                    IsLocked = false,
+                    IsLockable = true
+                },
+                new Explore.Blazor.Client.Clients.Settings
+                {
+                    Key = "federation.atproto_event_validation_profile",
+                    Value = "\"platform\"",
+                    CanEdit = true,
+                    IsLocked = false,
+                    IsLockable = true
+                }
+            ],
+            _links = relations.ToDictionary(
+                relation => relation,
+                relation => new HalLink { Href = $"/api/settings/instance/atproto-federation/{relation}" },
+                StringComparer.Ordinal)
+        };
 }

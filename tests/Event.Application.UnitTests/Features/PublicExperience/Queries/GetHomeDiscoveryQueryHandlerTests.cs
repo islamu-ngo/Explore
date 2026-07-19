@@ -10,6 +10,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.PublicExperience;
 using Explore.Application.Features.Events.Requests.Queries;
+using Explore.Application.Features.Federation.Atproto.Requests.Queries;
 using Explore.Application.Features.PublicExperience.Handlers.Queries;
 using Explore.Application.Features.PublicExperience.Requests.Queries;
 using Explore.Application.Models.PublicExperience;
@@ -28,8 +29,8 @@ namespace Explore.Application.UnitTests.Features.PublicExperience.Queries;
 public sealed class GetHomeDiscoveryQueryHandlerTests
 {
     private static readonly Guid TenantId = Guid.NewGuid();
-    private readonly IRequestHandler<GetEventListRequest, PaginatedResult<EventListDto>> _eventListHandler =
-        Substitute.For<IRequestHandler<GetEventListRequest, PaginatedResult<EventListDto>>>();
+    private readonly IRequestHandler<GetPublicEventDiscoveryRequest, PaginatedResult<EventDiscoveryItemDto>> _eventDiscoveryHandler =
+        Substitute.For<IRequestHandler<GetPublicEventDiscoveryRequest, PaginatedResult<EventDiscoveryItemDto>>>();
     private readonly IRequestHandler<GetPublicExperienceShellQuery, PublicExperienceShellDto> _shellHandler =
         Substitute.For<IRequestHandler<GetPublicExperienceShellQuery, PublicExperienceShellDto>>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
@@ -108,10 +109,10 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
         hybridEvent.EventFormatId = (int)EventFormatEnum.Hybrid;
         hybridEvent.EventFormatFullName = "Hybrid";
         var requests = new List<GetEventListRequest>();
-        _eventListHandler.Handle(Arg.Any<GetEventListRequest>(), Arg.Any<CancellationToken>())
+        _eventDiscoveryHandler.Handle(Arg.Any<GetPublicEventDiscoveryRequest>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var request = call.Arg<GetEventListRequest>()!;
+                var request = call.Arg<GetPublicEventDiscoveryRequest>()!.Criteria;
                 requests.Add(request);
                 EventListDto[] events = request.SortBy == "views" &&
                                         request.FormatIds?.Contains((int)EventFormatEnum.Hybrid) == true
@@ -140,10 +141,10 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
         var heroOnly = CreateEvent("Hero only");
         var upcomingOne = CreateEvent("Upcoming one");
         var upcomingTwo = CreateEvent("Upcoming two");
-        _eventListHandler.Handle(Arg.Any<GetEventListRequest>(), Arg.Any<CancellationToken>())
+        _eventDiscoveryHandler.Handle(Arg.Any<GetPublicEventDiscoveryRequest>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var request = call.Arg<GetEventListRequest>()!;
+                var request = call.Arg<GetPublicEventDiscoveryRequest>()!.Criteria;
                 requests.Add(request);
                 var events = request.SortBy == "views"
                     ? new[] { shared, heroOnly }
@@ -165,10 +166,10 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
         ConfigureAreas();
         _locationRepository.GetLocationsByTenant(TenantId, Arg.Any<CancellationToken>()).Returns([]);
         var recent = CreateEvent("Recent");
-        _eventListHandler.Handle(Arg.Any<GetEventListRequest>(), Arg.Any<CancellationToken>())
+        _eventDiscoveryHandler.Handle(Arg.Any<GetPublicEventDiscoveryRequest>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var request = call.Arg<GetEventListRequest>()!;
+                var request = call.Arg<GetPublicEventDiscoveryRequest>()!.Criteria;
                 if (request.FormatIds?.SequenceEqual(
                         [(int)EventFormatEnum.Digital, (int)EventFormatEnum.Hybrid]) == true)
                     throw new InvalidOperationException("Online query unavailable");
@@ -190,10 +191,10 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
         _locationRepository.GetLocationsByTenant(TenantId, Arg.Any<CancellationToken>()).Returns([]);
         var recent = CreateEvent("Recent");
         var callCount = 0;
-        _eventListHandler.Handle(Arg.Any<GetEventListRequest>(), Arg.Any<CancellationToken>())
+        _eventDiscoveryHandler.Handle(Arg.Any<GetPublicEventDiscoveryRequest>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var request = call.Arg<GetEventListRequest>()!;
+                var request = call.Arg<GetPublicEventDiscoveryRequest>()!.Criteria;
                 if (callCount++ == 0)
                     throw new OperationCanceledException(call.Arg<CancellationToken>());
 
@@ -247,10 +248,10 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
                     new PublicEventSectionPresetConfig($"curated-{index}", $"Curated {index}", SortOrder: index))
             ])));
         var eventSequence = 0;
-        _eventListHandler.Handle(Arg.Any<GetEventListRequest>(), Arg.Any<CancellationToken>())
+        _eventDiscoveryHandler.Handle(Arg.Any<GetPublicEventDiscoveryRequest>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var request = call.Arg<GetEventListRequest>()!;
+                var request = call.Arg<GetPublicEventDiscoveryRequest>()!.Criteria;
                 var items = Enumerable.Range(0, request.PageSize)
                     .Select(_ => CreateLargeEvent(++eventSequence))
                     .ToArray();
@@ -298,7 +299,7 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
 
     private GetHomeDiscoveryQueryHandler CreateHandler() =>
         new(
-            _eventListHandler,
+            _eventDiscoveryHandler,
             _shellHandler,
             _tenantContext,
             _settingsResolver,
@@ -309,10 +310,10 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
     private List<GetEventListRequest> CaptureSuccessfulRequests()
     {
         var requests = new List<GetEventListRequest>();
-        _eventListHandler.Handle(Arg.Any<GetEventListRequest>(), Arg.Any<CancellationToken>())
+        _eventDiscoveryHandler.Handle(Arg.Any<GetPublicEventDiscoveryRequest>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var request = call.Arg<GetEventListRequest>()!;
+                var request = call.Arg<GetPublicEventDiscoveryRequest>()!.Criteria;
                 requests.Add(request);
                 return Page([], request.PageSize);
             });
@@ -421,10 +422,12 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
         return checked((int)output.Length);
     }
 
-    private static PaginatedResult<EventListDto> Page(IEnumerable<EventListDto> items, int pageSize)
+    private static PaginatedResult<EventDiscoveryItemDto> Page(IEnumerable<EventListDto> items, int pageSize)
     {
-        var values = items.ToList();
-        return PaginatedResult<EventListDto>.Create(values, values.Count, 1, pageSize);
+        List<EventDiscoveryItemDto> values = items
+            .Select(item => new EventDiscoveryItemDto { Event = item })
+            .ToList();
+        return PaginatedResult<EventDiscoveryItemDto>.Create(values, values.Count, 1, pageSize);
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider

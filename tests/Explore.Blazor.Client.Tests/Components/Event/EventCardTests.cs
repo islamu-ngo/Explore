@@ -273,6 +273,106 @@ public class EventCardTests : IDisposable
     }
 
     [Test]
+    public async Task FederatedEventCard_UsesOnlyServerSourceAffordance()
+    {
+        var selectCount = 0;
+        var eventDto = CreateTestEvent();
+        eventDto.Id = null;
+        eventDto.AdditionalProperties["eventDiscoverySource"] = "atproto";
+        eventDto.AdditionalProperties["_links"] = System.Text.Json.JsonSerializer.SerializeToElement(
+            new Dictionary<string, HalLink>
+            {
+                ["source"] = new() { Href = "/api/event/federated/record/source", Method = "GET" }
+            });
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(parameters => parameters
+            .Add(component => component.Event, eventDto)
+            .Add(component => component.Layout, LayoutMode.DetailedList)
+            .Add(component => component.OnClick, EventCallback.Factory.Create<EventListDto>(this, _ => selectCount++))
+            .Add(component => component.OnShareRequested, EventCallback.Factory.Create<EventListDto>(this, _ => { })));
+
+        cut.Find(".event-card").Click();
+
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        await Assert.That(navigation.Uri).EndsWith("/api/event/federated/record/source");
+        await Assert.That(selectCount).IsEqualTo(0);
+        await Assert.That(cut.Markup).Contains("AT Protocol");
+        await Assert.That(cut.Markup).DoesNotContain("Share event: Test Blazor Conference");
+    }
+
+    [Test]
+    public async Task FederatedEventCard_WithoutSourceAffordance_IsNonInteractive()
+    {
+        var selectCount = 0;
+        var eventDto = CreateTestEvent();
+        eventDto.Id = null;
+        eventDto.AdditionalProperties["eventDiscoverySource"] = "atproto";
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(parameters => parameters
+            .Add(component => component.Event, eventDto)
+            .Add(component => component.Layout, LayoutMode.CompactGrid)
+            .Add(component => component.OnClick, EventCallback.Factory.Create<EventListDto>(this, _ => selectCount++)));
+
+        var card = cut.Find(".event-card");
+        card.Click();
+
+        await Assert.That(card.GetAttribute("role")).IsEqualTo("article");
+        await Assert.That(card.GetAttribute("tabindex")).IsEqualTo("-1");
+        await Assert.That(card.GetAttribute("aria-label")).IsEqualTo("AT Protocol event: Test Blazor Conference");
+        await Assert.That(selectCount).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task LocalEventCard_WithFailedPdsDelivery_ShowsStableRecoveryGuidanceOnly()
+    {
+        var eventDto = CreateTestEvent();
+        eventDto.AtprotoDeliveryStatus = "failed";
+        eventDto.AtprotoDeliveryFailureCode = "session_unavailable";
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(parameters => parameters
+            .Add(component => component.Event, eventDto)
+            .Add(component => component.Layout, LayoutMode.DetailedList));
+
+        await Assert.That(cut.Markup).Contains("AT Protocol delivery needs attention");
+        await Assert.That(cut.Markup).Contains("Reconnect your AT Protocol account");
+        await Assert.That(cut.Markup).DoesNotContain("session_unavailable");
+    }
+
+    [Test]
+    public async Task LocalEventCard_WithUnknownPdsFailure_RendersBoundedGuidanceWithoutRawFailure()
+    {
+        var eventDto = CreateTestEvent();
+        eventDto.AtprotoDeliveryStatus = "failed";
+        eventDto.AtprotoDeliveryFailureCode = "HTTP 500 provider body: private upstream detail";
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(parameters => parameters
+            .Add(component => component.Event, eventDto)
+            .Add(component => component.Layout, LayoutMode.SingleRow));
+
+        await Assert.That(cut.Markup).Contains("AT Protocol delivery needs attention");
+        await Assert.That(cut.Markup).Contains("Review the event's public data");
+        await Assert.That(cut.Markup).DoesNotContain("private upstream detail");
+        await Assert.That(cut.FindAll("button")).IsEmpty();
+    }
+
+    [Test]
+    [Arguments(LayoutMode.CompactGrid)]
+    [Arguments(LayoutMode.DetailedList)]
+    [Arguments(LayoutMode.SingleRow)]
+    public async Task FederatedEventStateSemanticsPersistAcrossNarrowAndWideLayoutClasses(LayoutMode layout)
+    {
+        var eventDto = CreateTestEvent();
+        eventDto.Id = null;
+        eventDto.AdditionalProperties["eventDiscoverySource"] = "atproto";
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(parameters => parameters
+            .Add(component => component.Event, eventDto)
+            .Add(component => component.Layout, layout));
+        var card = cut.Find(".event-card");
+
+        await Assert.That(card.ClassList).Contains($"event-card--{layout}");
+        await Assert.That(card.GetAttribute("role")).IsEqualTo("article");
+        await Assert.That(card.GetAttribute("tabindex")).IsEqualTo("-1");
+        await Assert.That(card.GetAttribute("aria-label")).IsEqualTo("AT Protocol event: Test Blazor Conference");
+        await Assert.That(card.TextContent).Contains("AT Protocol");
+    }
+
+    [Test]
     public async Task EventDetail_SourceIncludesVisibleShareAction()
     {
         var eventDetailPath = FindSourceFilePath("src", "Explore.Blazor.Client", "Pages", "Events", "EventDetail.razor");

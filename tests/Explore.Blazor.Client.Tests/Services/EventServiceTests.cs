@@ -43,7 +43,7 @@ public class EventServiceTests
     {
         // Arrange
         var expectedEvents = ComponentDataBuilder.EventListDto.Generate(3);
-        var halResponse = CreateHalCollectionResponse(expectedEvents);
+        var halResponse = CreateDiscoveryCollectionResponse(expectedEvents);
 
         _apiClient.GetEventsAsync().ReturnsForAnyArgs(halResponse);
 
@@ -60,7 +60,7 @@ public class EventServiceTests
     public async Task GetAllEventsAsync_ReturnsEmptyList_WhenApiReturnsNull()
     {
         // Arrange
-        _apiClient.GetEventsAsync().ReturnsForAnyArgs((HalCollectionResourceOfEventListDto?)null);
+        _apiClient.GetEventsAsync().ReturnsForAnyArgs((HalCollectionResourceOfEventDiscoveryItemDto?)null);
 
         // Act
         var result = await _service.GetAllEventsAsync();
@@ -86,7 +86,7 @@ public class EventServiceTests
     public async Task GetAllEventsAsync_ReturnsEmptyList_WhenEmbeddedIsNull()
     {
         // Arrange
-        var halResponse = new HalCollectionResourceOfEventListDto
+        var halResponse = new HalCollectionResourceOfEventDiscoveryItemDto
         {
             _embedded = null
         };
@@ -103,7 +103,7 @@ public class EventServiceTests
     public async Task GetAllEventsAsync_CallsApiWithCorrectPagination()
     {
         // Arrange
-        var halResponse = CreateHalCollectionResponse(new List<EventListDto>());
+        var halResponse = CreateDiscoveryCollectionResponse([]);
         _apiClient.GetEventsAsync().ReturnsForAnyArgs(halResponse);
 
         // Act
@@ -111,6 +111,85 @@ public class EventServiceTests
 
         // Assert - Service should request page 1 with size 100
         await _apiClient.Received(1).GetEventsAsync(1, 100);
+    }
+
+    [Test]
+    public async Task GetAllEventsAsync_MapsFederatedEnvelopeAndPreservesSourceAffordance()
+    {
+        var recordId = Guid.NewGuid();
+        const string sourcePath = "/api/event/federated/source-record/source";
+        _apiClient.GetEventsAsync().ReturnsForAnyArgs(new HalCollectionResourceOfEventDiscoveryItemDto
+        {
+            _embedded = new HalCollectionEmbeddedOfEventDiscoveryItemDto
+            {
+                Items =
+                [
+                    new HalResourceOfEventDiscoveryItemDto
+                    {
+                        Source = "atproto",
+                        FederatedEvent = new FederatedEventDto
+                        {
+                            Name = "Federated community gathering",
+                            Description = "From a community PDS",
+                            StartsAtUtc = new DateTimeOffset(2026, 9, 1, 18, 0, 0, TimeSpan.Zero),
+                            Mode = "in-person",
+                            Status = "scheduled"
+                        },
+                        Federation = new EventFederationMetadataDto
+                        {
+                            AtprotoRecordId = recordId,
+                            Provenance = "AT Protocol",
+                            HasSourceLink = true
+                        },
+                        _links = new Dictionary<string, HalLink>
+                        {
+                            ["source"] = new() { Href = sourcePath, Method = "GET" }
+                        }
+                    }
+                ]
+            }
+        });
+
+        var result = await _service.GetAllEventsAsync();
+        var mapped = result.Single();
+
+        await Assert.That(mapped.Title).IsEqualTo("Federated community gathering");
+        await Assert.That(mapped.Id).IsNull();
+        await Assert.That(mapped.AtprotoRecordId).IsEqualTo(recordId);
+        await Assert.That(mapped.IsFederatedDiscoveryEvent()).IsTrue();
+        await Assert.That(mapped.GetHalHref("source")).IsEqualTo(sourcePath);
+        await Assert.That(mapped.HasHalLink("edit")).IsFalse();
+    }
+
+    [Test]
+    public async Task GetAllEventsAsync_RefreshReplacesTombstonedFederatedResult()
+    {
+        var stale = new HalCollectionResourceOfEventDiscoveryItemDto
+        {
+            _embedded = new HalCollectionEmbeddedOfEventDiscoveryItemDto
+            {
+                Items =
+                [
+                    new HalResourceOfEventDiscoveryItemDto
+                    {
+                        Source = "atproto",
+                        FederatedEvent = new FederatedEventDto { Name = "Tombstoned remote event" }
+                    }
+                ]
+            }
+        };
+        var refreshed = new HalCollectionResourceOfEventDiscoveryItemDto
+        {
+            _embedded = new HalCollectionEmbeddedOfEventDiscoveryItemDto { Items = [] }
+        };
+        _apiClient.GetEventsAsync(1, 100).Returns(stale, refreshed);
+
+        var first = await _service.GetAllEventsAsync();
+        var second = await _service.GetAllEventsAsync();
+
+        await Assert.That(first.Select(item => item.Title)).Contains("Tombstoned remote event");
+        await Assert.That(second).IsEmpty();
+        await _apiClient.Received(2).GetEventsAsync(1, 100);
     }
 
     #endregion
@@ -166,7 +245,7 @@ public class EventServiceTests
     public async Task GetMyEventsAsync_CallsApiWithCorrectPagination()
     {
         // Arrange
-        var halResponse = CreateHalCollectionResponse(new List<EventListDto>());
+        var halResponse = CreateHalCollectionResponse([]);
         _apiClient.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
@@ -1548,7 +1627,7 @@ public class EventServiceTests
     public async Task GetEventsPagedAsync_CallsApiWithCorrectPagination()
     {
         // Arrange
-        var halResponse = CreateHalCollectionResponse(new List<EventListDto>());
+        var halResponse = CreateDiscoveryCollectionResponse([]);
         _apiClient.GetEventsAsync(Arg.Any<int?>(), Arg.Any<int?>())
             .Returns(halResponse);
 
@@ -1570,7 +1649,7 @@ public class EventServiceTests
             new() { Id = Guid.NewGuid(), ActorId = actorId, Title = "Actor event" },
             new() { Id = Guid.NewGuid(), ActorId = otherActorId, Title = "Server decides visibility" }
         };
-        _apiClient.GetEventsAsync().ReturnsForAnyArgs(CreateHalCollectionResponse(events));
+        _apiClient.GetEventsAsync().ReturnsForAnyArgs(CreateDiscoveryCollectionResponse(events));
 
         // Act
         var result = await _service.GetPublicEventsByActorAsync(actorId);
@@ -1589,7 +1668,7 @@ public class EventServiceTests
         var managedDuplicate = new EventListDto { Id = sharedEventId, ActorId = actorId, Title = "Managed version" };
         var moderatedEvent = new EventListDto { Id = Guid.NewGuid(), ActorId = actorId, Title = "Moderated", EventStatusId = 6 };
 
-        _apiClient.GetEventsAsync().ReturnsForAnyArgs(CreateHalCollectionResponse(new List<EventListDto> { publicEvent }));
+        _apiClient.GetEventsAsync().ReturnsForAnyArgs(CreateDiscoveryCollectionResponse([publicEvent]));
         _apiClient.GetManagedEventsByActorAsync(
                 actorId: actorId,
                 pageNumber: 1,
@@ -1698,6 +1777,22 @@ public class EventServiceTests
             _embedded = new HalCollectionEmbeddedOfEventListDto
             {
                 Items = items.Select(ToHalResource).ToList()
+            }
+        };
+    }
+
+    private static HalCollectionResourceOfEventDiscoveryItemDto CreateDiscoveryCollectionResponse(
+        IList<EventListDto> items)
+    {
+        return new HalCollectionResourceOfEventDiscoveryItemDto
+        {
+            _embedded = new HalCollectionEmbeddedOfEventDiscoveryItemDto
+            {
+                Items = items.Select(item => new HalResourceOfEventDiscoveryItemDto
+                {
+                    Source = "local",
+                    Event = item
+                }).ToList()
             }
         };
     }

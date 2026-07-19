@@ -30,11 +30,11 @@ public static class MockServiceFactory
         // Configure default successful empty responses for events (HAL collection)
         // GetEventsAsync has many optional filter parameters (searchTerm, categoryId, etc.)
         // Use ReturnsForAnyArgs to match regardless of which parameters are passed
-        mock.GetEventsAsync().ReturnsForAnyArgs(new HalCollectionResourceOfEventListDto
+        mock.GetEventsAsync().ReturnsForAnyArgs(new HalCollectionResourceOfEventDiscoveryItemDto
         {
-            _embedded = new HalCollectionEmbeddedOfEventListDto
+            _embedded = new HalCollectionEmbeddedOfEventDiscoveryItemDto
             {
-                Items = new List<HalResourceOfEventListDto>()
+                Items = new List<HalResourceOfEventDiscoveryItemDto>()
             }
         });
 

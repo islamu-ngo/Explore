@@ -2,6 +2,7 @@
 // ABOUTME: Centralizes JS interop stubs and test-only service registrations so component tests stay deterministic.
 
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Services.Federation;
 using Explore.Blazor.Client.Contracts.Services.Notifications;
 using Explore.Blazor.Client.Services.Docking;
 using MudBlazor;
@@ -71,6 +72,8 @@ public class BlazorTestContext : BunitContext
         AddLocalizationMocks();
         Services.AddSingleton(Substitute.For<IHttpClientFactory>());
         Services.AddSingleton(Substitute.For<IBffAuthApi>());
+        Services.AddSingleton(Substitute.For<IEventApiClient>());
+        Services.AddSingleton(Substitute.For<IAtprotoFederationSettingsService>());
         Services.AddSingleton(Substitute.For<IBrowserActionInterop>());
         AddAccessibilityMocks();
         AddAppearanceThemeMock();
