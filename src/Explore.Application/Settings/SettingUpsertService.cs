@@ -5,6 +5,7 @@ namespace Explore.Application.Settings;
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Notifications;
 using Explore.Domain;
 using MediatR;
@@ -17,13 +18,16 @@ public class SettingUpsertService
 {
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly IMediator _mediator;
+    private readonly ILocationPrivacyGovernanceMutationService? _locationPrivacyMutations;
 
     public SettingUpsertService(
         ISystemSettingRepository systemSettingRepository,
-        IMediator mediator)
+        IMediator mediator,
+        ILocationPrivacyGovernanceMutationService? locationPrivacyMutations = null)
     {
         _systemSettingRepository = systemSettingRepository;
         _mediator = mediator;
+        _locationPrivacyMutations = locationPrivacyMutations;
     }
 
     /// <summary>
@@ -40,7 +44,7 @@ public class SettingUpsertService
         Guid? actorId = null,
         CancellationToken cancellationToken = default)
     {
-        string? oldValue = await _systemSettingRepository.UpsertAsync(new SystemSetting
+        string? oldValue = await PersistAsync(new SystemSetting
         {
             SettingKey = settingKey,
             Value = value,
@@ -53,10 +57,10 @@ public class SettingUpsertService
             CreatedBy = actorId,
             UpdatedAt = DateTime.UtcNow,
             UpdatedBy = actorId
-        }, cancellationToken);
+        }, actorId, cancellationToken);
 
         await _mediator.Publish(new SettingChangedNotification(
-            settingKey, oldValue, value, SettingSource.SystemDefault, null, actorId, DateTime.UtcNow), cancellationToken);
+            settingKey, oldValue, value, SettingSource.SystemDefault, null, actorId, DateTime.UtcNow), CancellationToken.None);
     }
 
     /// <summary>
@@ -80,7 +84,7 @@ public class SettingUpsertService
         CancellationToken cancellationToken = default)
     {
         var definition = Domain.Settings.SettingRegistry.Get(settingKey);
-        string? oldValue = await _systemSettingRepository.UpsertAsync(new SystemSetting
+        string? oldValue = await PersistAsync(new SystemSetting
         {
             SettingKey = settingKey,
             Value = value,
@@ -93,9 +97,35 @@ public class SettingUpsertService
             CreatedBy = actorId,
             UpdatedAt = DateTime.UtcNow,
             UpdatedBy = actorId
-        }, cancellationToken);
+        }, actorId, cancellationToken);
 
         await _mediator.Publish(new SettingChangedNotification(
-            settingKey, oldValue, value, SettingSource.SystemDefault, null, actorId, DateTime.UtcNow), cancellationToken);
+            settingKey, oldValue, value, SettingSource.SystemDefault, null, actorId, DateTime.UtcNow), CancellationToken.None);
+    }
+
+    private async Task<string?> PersistAsync(
+        SystemSetting setting,
+        Guid? actorId,
+        CancellationToken cancellationToken)
+    {
+        if (_locationPrivacyMutations?.Handles(setting.SettingKey) != true)
+        {
+            return await _systemSettingRepository.UpsertAsync(setting, cancellationToken);
+        }
+
+        LocationPrivacyGovernanceMutationResult mutation = await _locationPrivacyMutations.ExecuteAsync(
+            setting.SettingKey,
+            setting.Value,
+            Domain.Settings.SettingScope.Instance,
+            tenantId: null,
+            actorId ?? Guid.Empty,
+            token => _systemSettingRepository.UpsertAsync(setting, token),
+            cancellationToken);
+        if (!mutation.Accepted)
+        {
+            throw new InvalidOperationException(mutation.Error);
+        }
+
+        return mutation.PreviousStoredValue;
     }
 }

@@ -1,14 +1,78 @@
-// ABOUTME: Resolves live registration intent and child facts into one fail-closed EventLocation access fact.
-// ABOUTME: Applies scope, lifecycle, null-approval mode, requested-placement, and disclosure-audience rules.
+// ABOUTME: Resolves live registration intents and child placements into fail-closed EventLocation access facts.
+// ABOUTME: Applies identity, scope, lifecycle, null-mode, requested-placement, and audience rules to pure or loaded facts.
 
 using System.Collections.Immutable;
 using Explore.Application.Contracts.Services;
+using Explore.Domain;
 using Explore.Domain.Enums;
 
 namespace Explore.Application.Services;
 
 public sealed class EventLocationRegistrationAccessService : IEventLocationRegistrationAccessService
 {
+    public IReadOnlyDictionary<Guid, EventLocationRegistrationAccess> ResolveMany(
+        Guid tenantId,
+        Guid eventId,
+        Guid userId,
+        DateTimeOffset asOfUtc,
+        IReadOnlyCollection<Guid> requestedEventLocationIds,
+        IReadOnlyCollection<EventRegistration> registrations)
+    {
+        ArgumentNullException.ThrowIfNull(requestedEventLocationIds);
+        ArgumentNullException.ThrowIfNull(registrations);
+
+        if (tenantId == Guid.Empty
+            || eventId == Guid.Empty
+            || userId == Guid.Empty
+            || asOfUtc == default
+            || asOfUtc.Offset != TimeSpan.Zero)
+        {
+            return new Dictionary<Guid, EventLocationRegistrationAccess>();
+        }
+
+        var requestedIds = requestedEventLocationIds
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .Order()
+            .ToArray();
+        if (requestedIds.Length == 0)
+        {
+            return new Dictionary<Guid, EventLocationRegistrationAccess>();
+        }
+
+        var intentSources = registrations
+            .Where(registration => HasValidLoadedSource(
+                registration,
+                tenantId,
+                eventId,
+                userId))
+            .GroupBy(registration => registration.EventRegistrationIntentId!.Value)
+            .Select(CreateLoadedIntentSource)
+            .ToArray();
+        if (intentSources.Length == 0)
+        {
+            return new Dictionary<Guid, EventLocationRegistrationAccess>();
+        }
+
+        var results = new Dictionary<Guid, EventLocationRegistrationAccess>(requestedIds.Length);
+        foreach (var requestedId in requestedIds)
+        {
+            var strongest = intentSources
+                .Select(source => Resolve(new(
+                    requestedId,
+                    asOfUtc,
+                    source.Intent,
+                    source.Coverage)))
+                .OrderByDescending(access => access.CoversRequestedEventLocation)
+                .ThenByDescending(access => AuthorityRank(access.EffectiveState))
+                .ThenBy(access => access.IntentId)
+                .First();
+            results.Add(requestedId, strongest);
+        }
+
+        return results;
+    }
+
     public EventLocationRegistrationAccess Resolve(EventLocationRegistrationAccessRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -66,6 +130,59 @@ public sealed class EventLocationRegistrationAccessService : IEventLocationRegis
                 .ToImmutableArray(),
             request.RequestedEventLocationId,
             requestedCoverage.Length > 0);
+    }
+
+    private static bool HasValidLoadedSource(
+        EventRegistration registration,
+        Guid tenantId,
+        Guid eventId,
+        Guid userId)
+    {
+        var intent = registration.EventRegistrationIntent;
+        var session = registration.EventSession;
+        return registration.TenantId == tenantId
+            && registration.EventId == eventId
+            && registration.UserId == userId
+            && registration.EventRegistrationIntentId is { } intentId
+            && intent is not null
+            && intent.Id == intentId
+            && intent.TenantId == tenantId
+            && intent.EventId == eventId
+            && intent.UserId == userId
+            && session is not null
+            && session.Id == registration.EventSessionId
+            && session.TenantId == tenantId
+            && session.EventId == eventId
+            && session.EventLocationId is { } eventLocationId
+            && eventLocationId != Guid.Empty;
+    }
+
+    private static LoadedIntentSource CreateLoadedIntentSource(
+        IGrouping<Guid, EventRegistration> registrations)
+    {
+        var rows = registrations.ToArray();
+        var intent = rows[0].EventRegistrationIntent!;
+        var intentFact = new EventLocationRegistrationIntentFact(
+            intent.Id,
+            intent.EventId,
+            (RegistrationScopeEnum)intent.RegistrationScopeId,
+            intent.SelectedEventDayId,
+            intent.ApprovalStatusId,
+            intent.IsDeleted,
+            ExpiresAtUtc: null);
+        var coverage = rows
+            .Select(registration => new EventLocationRegistrationCoverageFact(
+                intent.Id,
+                registration.EventId,
+                registration.EventSession.EventDayId,
+                registration.EventSessionId,
+                registration.EventSession.EventLocationId!.Value,
+                registration.ApprovalStatusId,
+                registration.EventSession.RegistrationModeId,
+                registration.IsDeleted || registration.EventSession.IsDeleted,
+                ExpiresAtUtc: null))
+            .ToImmutableArray();
+        return new(intentFact, coverage);
     }
 
     private static bool HasValidIdentity(EventLocationRegistrationAccessRequest request)
@@ -237,4 +354,8 @@ public sealed class EventLocationRegistrationAccessService : IEventLocationRegis
     private sealed record ResolvedCoverage(
         EventLocationRegistrationCoverageFact Fact,
         EventLocationRegistrationEffectiveState State);
+
+    private sealed record LoadedIntentSource(
+        EventLocationRegistrationIntentFact Intent,
+        ImmutableArray<EventLocationRegistrationCoverageFact> Coverage);
 }

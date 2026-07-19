@@ -9,6 +9,7 @@ using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Domain.Settings.Definitions;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Application.Services;
@@ -108,7 +109,8 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             AdminPortal = MapAdminPortalDto(adminPortal),
             AiAssistant = MapAiAssistantDto(aiAssistant, delegation),
             Mcp = MapMcpDto(mcp, delegation),
-            RenderPolicy = rpDto
+            RenderPolicy = rpDto,
+            LocationPrivacy = MapLocationPrivacyDto(resolved)
         };
     }
 
@@ -177,6 +179,10 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         await ApplyOrganizationPolicyAsync(settings.OrganizationPolicy, actorUserId);
         await ApplyBrandingSettingsAsync(settings.Branding, actorUserId);
         await ApplyDomainSettingsAsync(settings.Domains, actorUserId);
+        if (settings.LocationPrivacy is not null)
+        {
+            await ApplyLocationPrivacySettingsAsync(settings.LocationPrivacy, actorUserId);
+        }
     }
 
     public async Task ApplyModuleSettingsAsync(Guid? defaultTenantId, ModuleSettingsDto modules, Guid? actorUserId)
@@ -419,6 +425,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             .Concat(McpSettingGroup.SettingKeys)
             .Concat(RenderPolicySettingGroup.SettingKeys)
             .Concat(RoutingSettingGroup.SettingKeys)
+            .Concat(LocationPrivacySettingDefinitions.All.Select(definition => definition.Key))
             .Concat(
             [
                 GovernanceSettingKeys.Tenants.SelfServiceRegistration,
@@ -543,6 +550,61 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         };
     }
 
+    private static LocationPrivacyGovernanceSettingsDto MapLocationPrivacyDto(
+        IReadOnlyDictionary<string, ResolvedSetting> resolved)
+    {
+        LocationPrivacyGovernanceSettingValue allowHomes = ResolveLocationPrivacyValue(
+            resolved,
+            GovernanceSettingKeys.LocationPrivacy.AllowHomeLocations);
+        LocationPrivacyGovernanceSettingValue allowAddress = ResolveLocationPrivacyValue(
+            resolved,
+            GovernanceSettingKeys.LocationPrivacy.AllowPublicExactAddress);
+        LocationPrivacyGovernanceSettingValue allowCoordinates = ResolveLocationPrivacyValue(
+            resolved,
+            GovernanceSettingKeys.LocationPrivacy.AllowPublicCoordinates);
+        LocationPrivacyGovernanceSettingValue audience = ResolveLocationPrivacyValue(
+            resolved,
+            GovernanceSettingKeys.LocationPrivacy.MinimumHomeAudience);
+        LocationPrivacyGovernanceSettingValue revealOffset = ResolveLocationPrivacyValue(
+            resolved,
+            GovernanceSettingKeys.LocationPrivacy.DefaultRevealOffset);
+
+        return new()
+        {
+            AllowHomeLocations = allowHomes.Boolean == true,
+            AllowPublicExactAddress = allowAddress.Boolean == true,
+            AllowPublicCoordinates = allowCoordinates.Boolean == true,
+            MinimumHomeAudience = audience.Audience switch
+            {
+                LocationDisclosureAudienceEnum.AnyCurrentRegistrant => "ANY_CURRENT_REGISTRANT",
+                LocationDisclosureAudienceEnum.ConfirmedParticipant => "CONFIRMED_PARTICIPANT",
+                _ => "NEVER"
+            },
+            DefaultRevealOffset = System.Xml.XmlConvert.ToString(
+                revealOffset.Duration ?? TimeSpan.FromDays(30))
+        };
+    }
+
+    private static LocationPrivacyGovernanceSettingValue ResolveLocationPrivacyValue(
+        IReadOnlyDictionary<string, ResolvedSetting> resolved,
+        string key)
+    {
+        string storedValue = resolved.TryGetValue(key, out ResolvedSetting? setting)
+            ? setting.Value
+            : LocationPrivacyGovernancePolicy.DefaultStoredValue(key);
+        if (LocationPrivacyGovernancePolicy.TryParse(key, storedValue, out var value, out _))
+        {
+            return value;
+        }
+
+        LocationPrivacyGovernancePolicy.TryParse(
+            key,
+            LocationPrivacyGovernancePolicy.DefaultStoredValue(key),
+            out value,
+            out _);
+        return value;
+    }
+
     // ── Internal write methods ──────────────────────────────────────
 
     private async Task ApplyTenantDelegationSettingsInternalAsync(TenantDelegationSettingsDto d, bool isMultiTenant, Guid? actorUserId)
@@ -587,6 +649,32 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         await _upsertService.UpsertValueAsync(
             GovernanceSettingKeys.TenantDelegation.LockAiAssistant,
             SettingValueSerializer.Serialize(d.LockTenantAiAssistant), actorUserId);
+    }
+
+    private async Task ApplyLocationPrivacySettingsAsync(
+        LocationPrivacyGovernanceSettingsDto settings,
+        Guid? actorUserId)
+    {
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.LocationPrivacy.AllowHomeLocations,
+            SettingValueSerializer.Serialize(settings.AllowHomeLocations),
+            actorUserId);
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.LocationPrivacy.AllowPublicExactAddress,
+            SettingValueSerializer.Serialize(settings.AllowPublicExactAddress),
+            actorUserId);
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.LocationPrivacy.AllowPublicCoordinates,
+            SettingValueSerializer.Serialize(settings.AllowPublicCoordinates),
+            actorUserId);
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.LocationPrivacy.MinimumHomeAudience,
+            SettingValueSerializer.Serialize(settings.MinimumHomeAudience),
+            actorUserId);
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.LocationPrivacy.DefaultRevealOffset,
+            SettingValueSerializer.Serialize(settings.DefaultRevealOffset),
+            actorUserId);
     }
 
     private async Task ApplyRenderPolicySettingsInternalAsync(RenderPolicySettingsDto rp, Guid? actorUserId)

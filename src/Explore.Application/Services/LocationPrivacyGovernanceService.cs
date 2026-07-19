@@ -1,6 +1,8 @@
 // ABOUTME: Resolves EventLocation disclosure settings from instance and tenant storage independently.
 // ABOUTME: Merges only toward greater restriction and returns bounded fail-closed outcomes for invalid data or repository failure.
 
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Xml;
 using Explore.Application.Contracts.Persistence;
@@ -60,6 +62,8 @@ public sealed class LocationPrivacyGovernanceService(
                     LocationPrivacyGovernanceReasonCode.InvalidTenantSetting);
             }
 
+            string instanceVersion = ComputeVersion(instance);
+            string? tenantVersion = tenant.Count > 0 ? ComputeVersion(tenant) : null;
             return new(
                 IsResolved: true,
                 LocationPrivacyGovernanceReasonCode.Resolved,
@@ -69,7 +73,18 @@ public sealed class LocationPrivacyGovernanceService(
                 MoreRestrictive(instanceValues.MinimumHomeAudience, tenantValues.MinimumHomeAudience),
                 instanceValues.DefaultRevealOffset >= tenantValues.DefaultRevealOffset
                     ? instanceValues.DefaultRevealOffset
-                    : tenantValues.DefaultRevealOffset);
+                    : tenantValues.DefaultRevealOffset)
+            {
+                Metadata = new(
+                    tenant.Count > 0
+                        ? LocationPrivacyGovernanceSource.InstanceAndTenant
+                        : instance.Count > 0
+                            ? LocationPrivacyGovernanceSource.Instance
+                            : LocationPrivacyGovernanceSource.ConservativeDefaults,
+                    instanceVersion,
+                    tenantVersion,
+                    ComputeVersion(instanceVersion, tenantVersion ?? "inherited"))
+            };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -270,6 +285,20 @@ public sealed class LocationPrivacyGovernanceService(
         LocationDisclosureAudienceEnum.Never => 3,
         _ => int.MaxValue
     };
+
+    private static string ComputeVersion(IReadOnlyDictionary<string, string> values)
+    {
+        string canonical = string.Join(
+            '\n',
+            Keys.Select(key => $"{key}={values.GetValueOrDefault(key, "<inherited>")}"));
+        return ComputeVersion(canonical);
+    }
+
+    private static string ComputeVersion(params string[] parts)
+    {
+        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(string.Join('|', parts)));
+        return Convert.ToHexStringLower(hash);
+    }
 
     private sealed record GovernanceValues(
         bool AllowHomeLocations,

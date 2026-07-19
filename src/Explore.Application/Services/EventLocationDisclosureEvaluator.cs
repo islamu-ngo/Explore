@@ -153,51 +153,57 @@ public sealed class EventLocationDisclosureEvaluator
     {
         ArgumentNullException.ThrowIfNull(facts);
         ArgumentNullException.ThrowIfNull(facts.Request);
-        ArgumentNullException.ThrowIfNull(facts.Governance);
 
         var request = facts.Request;
-        if (!HasValidRequest(request)
-            || !HasValidAssociation(request, facts.EventLocation))
+        if (facts.Governance is null
+            || !HasValidRequest(request)
+            || !HasValidAssociation(request, facts.EventLocation)
+            || !HasValidGovernance(facts.Governance))
         {
             return Hidden(request);
         }
 
         var eventLocation = facts.EventLocation!;
+        if (!HasPurposeAuthority(request, eventLocation, facts)
+            || !HasValidServerTime(facts.ServerNowUtc)
+            || !HasValidDisclosurePolicy(eventLocation, facts.Governance.DefaultRevealOffset))
+        {
+            return Hidden(request);
+        }
+
         var isToBeAnnounced = eventLocation.IsToBeAnnounced;
         if (isToBeAnnounced
             && (request.RoomId.HasValue || facts.Room is not null))
         {
-            return Unavailable(request);
+            return Hidden(request);
         }
 
-        if (!isToBeAnnounced
-            && (!HasValidPhysicalSource(request, eventLocation, facts.Location, facts.Room)
-                || !HasUsablePrivacyState(facts.Location!)))
+        if (!isToBeAnnounced)
         {
-            return Unavailable(request);
+            if (!HasValidPhysicalSource(request, eventLocation, facts.Location, facts.Room))
+            {
+                return Hidden(request);
+            }
+
+            var physicalLocation = facts.Location!;
+            if (IsUnavailableLifecycleState(physicalLocation))
+            {
+                return HasValidUnavailableLifecycle(physicalLocation)
+                    ? Unavailable(request)
+                    : Hidden(request);
+            }
+
+            if (!HasValidActivePrivacyState(physicalLocation))
+            {
+                return Hidden(request);
+            }
         }
 
         var location = facts.Location;
         var isPrivateHome = location?.LocationKindId == (int)LocationKindEnum.PrivateHome;
-        if (!HasValidGovernance(facts.Governance))
-        {
-            return Hidden(request);
-        }
-
         if (isPrivateHome && !facts.Governance.AllowHomeLocations)
         {
             return Unavailable(request);
-        }
-
-        if (!HasPurposeAuthority(request, eventLocation, facts)
-            || !HasValidServerTime(facts.ServerNowUtc))
-        {
-            return Hidden(request);
-        }
-
-        if (!Enum.IsDefined((LocationDisclosureAudienceEnum)eventLocation.FullDetailsAudienceId))
-        {
-            return Hidden(request);
         }
 
         if (isToBeAnnounced)
@@ -255,7 +261,6 @@ public sealed class EventLocationDisclosureEvaluator
                 values),
             EventLocationDisclosurePurpose.Management => EventLocationDisclosureResult.Management(
                 request.EventLocationId,
-                location!.Id,
                 EventLocationDisclosureState.Available,
                 values),
             _ => Hidden(request)
@@ -277,6 +282,8 @@ public sealed class EventLocationDisclosureEvaluator
             && eventLocation.Id == request.EventLocationId
             && eventLocation.TenantId == request.TenantId
             && eventLocation.EventId == request.EventId
+            && eventLocation.PolicyVersion > 0
+            && (!eventLocation.LocationId.HasValue || eventLocation.LocationId.Value != Guid.Empty)
             && eventLocation.HasValidLocationOrTbaShape;
 
     private static bool HasValidPhysicalSource(
@@ -305,27 +312,75 @@ public sealed class EventLocationDisclosureEvaluator
             && room.LocationId == locationId;
     }
 
-    private static bool HasUsablePrivacyState(Location location)
+    private static bool IsUnavailableLifecycleState(Location location)
+        => location.LocationPrivacyStateId is (int)LocationPrivacyStateEnum.NotProvided
+            or (int)LocationPrivacyStateEnum.Erased;
+
+    private static bool HasValidUnavailableLifecycle(Location location)
+    {
+        if (!Enum.IsDefined((LocationPrivacyStateEnum)location.LocationPrivacyStateId)
+            || !Enum.IsDefined((LocationKindEnum)location.LocationKindId))
+        {
+            return false;
+        }
+
+        return (LocationPrivacyStateEnum)location.LocationPrivacyStateId switch
+        {
+            LocationPrivacyStateEnum.NotProvided =>
+                location.Pii is null
+                && location.PiiErasedAtUtc is null
+                && location.PiiErasureReason is null
+                && HasValidOwnerKind(location),
+            LocationPrivacyStateEnum.Erased =>
+                location.LocationKindId == (int)LocationKindEnum.PrivateHome
+                && location.Pii is null
+                && location.OwnerUserId is null
+                && location.PiiErasedAtUtc is { } erasedAtUtc
+                && erasedAtUtc != default
+                && erasedAtUtc.Kind == DateTimeKind.Utc
+                && location.PiiErasureReason is { } erasureReason
+                && Enum.IsDefined(erasureReason),
+            _ => false
+        };
+    }
+
+    private static bool HasValidActivePrivacyState(Location location)
     {
         if (!Enum.IsDefined((LocationPrivacyStateEnum)location.LocationPrivacyStateId)
             || !Enum.IsDefined((LocationKindEnum)location.LocationKindId)
             || location.LocationPrivacyStateId != (int)LocationPrivacyStateEnum.Active
             || location.Pii is null
+            || location.Pii.LocationId != location.Id
+            || location.PiiErasedAtUtc.HasValue
+            || location.PiiErasureReason.HasValue
             || !HasText(location.Pii.Address)
             || !HasText(location.Pii.Postcode))
         {
             return false;
         }
 
-        return location.LocationKindId != (int)LocationKindEnum.PrivateHome
-            || location.OwnerUserId is { } ownerId && ownerId != Guid.Empty;
+        return HasValidOwnerKind(location);
     }
+
+    private static bool HasValidOwnerKind(Location location)
+        => location.LocationKindId == (int)LocationKindEnum.PrivateHome
+            ? location.OwnerUserId is { } ownerId && ownerId != Guid.Empty
+            : location.OwnerUserId is null;
 
     private static bool HasValidGovernance(EventLocationDisclosureGovernanceFact governance)
         => governance.IsResolved
             && Enum.IsDefined(governance.MinimumHomeAudience)
             && governance.DefaultRevealOffset >= TimeSpan.Zero
             && governance.DefaultRevealOffset <= TimeSpan.FromDays(30);
+
+    private static bool HasValidDisclosurePolicy(
+        EventLocation eventLocation,
+        TimeSpan defaultRevealOffset)
+        => Enum.IsDefined((LocationDisclosureAudienceEnum)eventLocation.FullDetailsAudienceId)
+            && TryResolveEffectiveRevealTime(
+                eventLocation,
+                defaultRevealOffset,
+                out _);
 
     private static bool HasPurposeAuthority(
         EventLocationDisclosureRequest request,

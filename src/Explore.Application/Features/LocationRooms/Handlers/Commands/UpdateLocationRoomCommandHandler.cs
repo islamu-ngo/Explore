@@ -66,6 +66,16 @@ public class UpdateLocationRoomCommandHandler : IRequestHandler<UpdateLocationRo
                 response.Message = "Location does not belong to the same tenant as the room.";
                 return response;
             }
+
+            if (parentLocation.Id != room.LocationId
+                && await _locationRoomRepository.HasActiveScheduleReferencesAsync(
+                    room.Id,
+                    cancellationToken))
+            {
+                response.Success = false;
+                response.Message = "A room used by an event schedule cannot be moved to another location.";
+                return response;
+            }
         }
 
         ApplyLocation(room, request.UpdateLocationRoomDto.Location);

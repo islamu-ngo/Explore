@@ -25,6 +25,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
     private readonly IDeploymentModeProvider _deploymentModeProvider;
     private readonly ILogger<UpdateInstanceGovernanceSettingsCommandHandler> _logger;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILocationPrivacyGovernanceMutationService? _locationPrivacyMutations;
 
     public UpdateInstanceGovernanceSettingsCommandHandler(
         IAdminContext adminContext,
@@ -33,7 +34,8 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
         IInstanceGovernanceSettingService governanceSettingService,
         IDeploymentModeProvider deploymentModeProvider,
         ILogger<UpdateInstanceGovernanceSettingsCommandHandler> logger,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ILocationPrivacyGovernanceMutationService? locationPrivacyMutations = null)
     {
         _adminContext = adminContext;
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
@@ -42,6 +44,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
         _deploymentModeProvider = deploymentModeProvider;
         _logger = logger;
         _unitOfWork = unitOfWork;
+        _locationPrivacyMutations = locationPrivacyMutations;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateInstanceGovernanceSettingsCommand request, CancellationToken cancellationToken)
@@ -73,6 +76,23 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
             response.Message = "Invalid instance governance settings.";
             response.Errors = renderPolicyValidation.Errors.Select(e => e.ErrorMessage).ToList();
             return response;
+        }
+
+        if (request.Settings.LocationPrivacy is not null)
+        {
+            var locationPrivacyValidator = new LocationPrivacyGovernanceSettingsDtoValidator();
+            var locationPrivacyValidation = await locationPrivacyValidator.ValidateAsync(
+                request.Settings.LocationPrivacy,
+                cancellationToken);
+            if (!locationPrivacyValidation.IsValid)
+            {
+                response.Success = false;
+                response.Message = "Invalid location-privacy governance settings.";
+                response.Errors = locationPrivacyValidation.Errors
+                    .Select(error => error.ErrorMessage)
+                    .ToList();
+                return response;
+            }
         }
 
         var bootstrap = await _instanceBootstrapStateRepository.GetCurrent(cancellationToken);
@@ -118,6 +138,13 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
 
         // Invalidate the cached deployment mode so all in-process caches reflect the new value immediately.
         await _deploymentModeProvider.InvalidateCacheAsync();
+        if (request.Settings.LocationPrivacy is not null && _locationPrivacyMutations is not null)
+        {
+            await _locationPrivacyMutations.InvalidateScopeAsync(
+                Explore.Domain.Settings.SettingScope.Instance,
+                tenantId: null,
+                CancellationToken.None);
+        }
 
         response.Id = bootstrapId;
         response.Success = true;
