@@ -32,13 +32,16 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<EmailDispatchStatusDto, EmailDispatchStatusDto> _statusAssembler;
+    private readonly IResourceAssembler<EmailDispatchProcessorControlDto, EmailDispatchProcessorControlDto> _processorControlAssembler;
 
     public EmailDispatchAdminController(
         IMediator mediator,
-        IResourceAssembler<EmailDispatchStatusDto, EmailDispatchStatusDto> statusAssembler)
+        IResourceAssembler<EmailDispatchStatusDto, EmailDispatchStatusDto> statusAssembler,
+        IResourceAssembler<EmailDispatchProcessorControlDto, EmailDispatchProcessorControlDto> processorControlAssembler)
     {
         _mediator = mediator;
         _statusAssembler = statusAssembler;
+        _processorControlAssembler = processorControlAssembler;
     }
 
     /// <summary>
@@ -217,6 +220,129 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
             },
             cancellationToken);
 
+        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
+    }
+
+    /// <summary>Get sanitized instance-wide SMTP processor control state.</summary>
+    [HttpGet("control", Name = RouteNames.GetEmailDispatchProcessorControl)]
+    [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]
+    [ProducesResponseType(typeof(HalResource<EmailDispatchProcessorControlDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<HalResource<EmailDispatchProcessorControlDto>>> GetProcessorControl(
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(new GetEmailDispatchProcessorControlQuery(), cancellationToken);
+        return Ok(await _processorControlAssembler.ToResource(result, HttpContext));
+    }
+
+    /// <summary>Pause every SMTP dispatch admission path for the instance.</summary>
+    [HttpPut("control/pause", Name = RouteNames.PauseEmailDispatchProcessor)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> PauseProcessor(
+        [FromQuery] EmailDispatchProcessorPauseQueryRequest query,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(new SetEmailDispatchProcessorPauseStateCommand
+        {
+            IsPaused = true,
+            PauseReason = query.GetNormalizedReason(),
+            ChangedBy = CurrentUserId
+        }, cancellationToken);
+        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
+    }
+
+    /// <summary>Resume SMTP dispatch admission for the instance.</summary>
+    [HttpDelete("control/pause", Name = RouteNames.ResumeEmailDispatchProcessor)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> ResumeProcessor(
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(new SetEmailDispatchProcessorPauseStateCommand
+        {
+            IsPaused = false,
+            ChangedBy = CurrentUserId
+        }, cancellationToken);
+        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
+    }
+
+    /// <summary>Set the persisted instance-wide SMTP rate-limit override.</summary>
+    [HttpPut("control/rate-limit", Name = RouteNames.SetEmailDispatchGlobalRateLimitOverride)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> SetGlobalRateLimitOverride(
+        [FromQuery] EmailDispatchGlobalRateLimitQueryRequest query,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(new SetEmailDispatchGlobalRateLimitOverrideCommand
+        {
+            RateLimitPerMinute = query.RateLimitPerMinute,
+            ChangedBy = CurrentUserId
+        }, cancellationToken);
+        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
+    }
+
+    /// <summary>Clear the persisted SMTP rate override and restore configured rate.</summary>
+    [HttpDelete("control/rate-limit", Name = RouteNames.ClearEmailDispatchGlobalRateLimitOverride)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> ClearGlobalRateLimitOverride(
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(new SetEmailDispatchGlobalRateLimitOverrideCommand
+        {
+            RateLimitPerMinute = null,
+            ChangedBy = CurrentUserId
+        }, cancellationToken);
+        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
+    }
+
+    /// <summary>Resolve an Unknown SMTP outcome as delivered or not delivered.</summary>
+    [HttpPost("tenants/{tenantId:guid}/outbox/{outboxId:guid}/reconcile", Name = RouteNames.ReconcileUnknownEmailDispatch)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> ReconcileUnknown(
+        Guid tenantId,
+        Guid outboxId,
+        [FromQuery] EmailDispatchReconciliationQueryRequest query,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(new ReconcileUnknownEmailDispatchCommand
+        {
+            TenantId = tenantId,
+            OutboxId = outboxId,
+            Outcome = query.Outcome,
+            Reason = query.GetNormalizedReason(),
+            ProviderMessageId = string.IsNullOrWhiteSpace(query.ProviderMessageId)
+                ? null
+                : query.ProviderMessageId.Trim(),
+            ChangedBy = CurrentUserId
+        }, cancellationToken);
         return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
     }
 }

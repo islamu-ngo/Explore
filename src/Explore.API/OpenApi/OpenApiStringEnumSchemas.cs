@@ -4,6 +4,7 @@
 using System.Text.Json.Nodes;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.LocationPrivacy;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.ManagedProviderProvisioning;
@@ -32,6 +33,7 @@ internal static class OpenApiStringEnumSchemaCatalog
         typeof(CustomPropertyProjectionState),
         typeof(CustomPropertyFilterOperator),
         typeof(DeclineBehavior),
+        typeof(EmailDispatchUnknownReconciliationOutcome),
         typeof(EntityTypeName),
         typeof(EventReportDecisionKind),
         typeof(EventReportProviderEvidenceMode),

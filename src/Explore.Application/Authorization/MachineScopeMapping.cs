@@ -108,9 +108,11 @@ public static class MachineScopeMapping
             case ResourceKinds.Tenant:
             case ResourceKinds.TenantUserRoleGrant:
             case ResourceKinds.TenantSetting:
-            case ResourceKinds.EmailDispatch:
             case ResourceKinds.Webhook:
                 return HasAny(scopeSet, ExternalApiKeyScopes.AdminTenant);
+
+            case ResourceKinds.EmailDispatch:
+                return HasAny(scopeSet, ExternalApiKeyScopes.AdminTenant, ExternalApiKeyScopes.AdminInstance);
 
             case ResourceKinds.InstanceSetting:
             case ResourceKinds.AtprotoRecord:
@@ -171,6 +173,7 @@ public static class MachineScopeMapping
         AuthorizationActions.EmailDispatches.Park => true,
         AuthorizationActions.EmailDispatches.Replay => true,
         AuthorizationActions.EmailDispatches.Resolve => true,
+        AuthorizationActions.EmailDispatches.Reconcile => true,
         _ => false
     };
 

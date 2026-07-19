@@ -53,7 +53,7 @@ tests:
     input:
       principals: ["islamuevent_instance_admin"]
       resources: ["dispatch_in_tenant1"]
-      actions: ["view", "manage_tenant", "park", "replay", "resolve"]
+      actions: ["view", "manage_tenant", "park", "replay", "resolve", "reconcile"]
     expected:
       - principal: "islamuevent_instance_admin"
         resource: "dispatch_in_tenant1"
@@ -63,12 +63,13 @@ tests:
           park: EFFECT_ALLOW
           replay: EFFECT_ALLOW
           resolve: EFFECT_ALLOW
+          reconcile: EFFECT_ALLOW
 
   - name: "Tenant admin can operate email dispatch in their tenant"
     input:
       principals: ["islamuevent_tenant_admin"]
       resources: ["dispatch_in_tenant1"]
-      actions: ["view", "manage_tenant", "park", "replay", "resolve"]
+      actions: ["view", "manage_tenant", "park", "replay", "resolve", "reconcile"]
     expected:
       - principal: "islamuevent_tenant_admin"
         resource: "dispatch_in_tenant1"
@@ -78,12 +79,13 @@ tests:
           park: EFFECT_ALLOW
           replay: EFFECT_ALLOW
           resolve: EFFECT_ALLOW
+          reconcile: EFFECT_ALLOW
 
   - name: "Other tenant admin cannot operate email dispatch outside their tenant"
     input:
       principals: ["other_tenant_admin"]
       resources: ["dispatch_in_tenant1"]
-      actions: ["view", "manage_tenant", "park", "replay", "resolve"]
+      actions: ["view", "manage_tenant", "park", "replay", "resolve", "reconcile"]
     expected:
       - principal: "other_tenant_admin"
         resource: "dispatch_in_tenant1"
@@ -93,12 +95,13 @@ tests:
           park: EFFECT_DENY
           replay: EFFECT_DENY
           resolve: EFFECT_DENY
+          reconcile: EFFECT_DENY
 
   - name: "Regular user cannot access email dispatch operator actions"
     input:
       principals: ["regular_user"]
       resources: ["dispatch_in_tenant1"]
-      actions: ["view", "manage_tenant", "park", "replay", "resolve"]
+      actions: ["view", "manage_tenant", "park", "replay", "resolve", "reconcile"]
     expected:
       - principal: "regular_user"
         resource: "dispatch_in_tenant1"
@@ -108,3 +111,4 @@ tests:
           park: EFFECT_DENY
           replay: EFFECT_DENY
           resolve: EFFECT_DENY
+          reconcile: EFFECT_DENY

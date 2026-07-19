@@ -30,7 +30,6 @@ public sealed class EmailDispatchStatusCollectionLinkPolicy : ICollectionLinkPol
     [
         "DeadLettered",
         "Parked",
-        "Unknown",
         "RetryScheduled"
     ];
 
@@ -79,6 +78,21 @@ public sealed class EmailDispatchStatusCollectionLinkPolicy : ICollectionLinkPol
                     ResourceDescriptors.EmailDispatchStatus,
                     dto);
         }
+
+        if (dto.ContentRedactedAt is null
+            && string.Equals(dto.DeliveryStatus, "Unknown", StringComparison.Ordinal))
+        {
+            yield return new LinkDefinition(
+                "reconcile",
+                RouteNames.ReconcileUnknownEmailDispatch,
+                routeValues,
+                "POST",
+                "Reconcile unknown email dispatch",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.EmailDispatches.Reconcile,
+                    ResourceDescriptors.EmailDispatchStatus,
+                    dto);
+        }
     }
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user) => [];
@@ -89,7 +103,9 @@ public sealed class EmailDispatchStatusCollectionLinkPolicy : ICollectionLinkPol
     private static bool CanPark(string deliveryStatus)
         => !string.Equals(deliveryStatus, "Sent", StringComparison.Ordinal) &&
            !string.Equals(deliveryStatus, "Skipped", StringComparison.Ordinal) &&
-           !string.Equals(deliveryStatus, "Parked", StringComparison.Ordinal);
+           !string.Equals(deliveryStatus, "Parked", StringComparison.Ordinal) &&
+           !string.Equals(deliveryStatus, "Processing", StringComparison.Ordinal) &&
+           !string.Equals(deliveryStatus, "Unknown", StringComparison.Ordinal);
 
     private static bool CanResolve(string deliveryStatus)
         => string.Equals(deliveryStatus, "DeadLettered", StringComparison.Ordinal)

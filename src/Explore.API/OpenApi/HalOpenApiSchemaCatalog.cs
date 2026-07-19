@@ -115,6 +115,7 @@ internal static class HalOpenApiSchemaCatalog
 
         // Email dispatch admin DTOs
         typeof(Explore.Application.DTOs.EmailDispatch.EmailDispatchStatusDto),
+        typeof(Explore.Application.DTOs.EmailDispatch.EmailDispatchProcessorControlDto),
 
         typeof(Explore.Application.DTOs.SupportAccess.SupportAccessSessionDto),
         typeof(Explore.Application.DTOs.SupportAccess.SupportAccessAuditEventDto),
@@ -225,6 +226,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfIncomingWebhookEffectStatusDto"] = typeof(Explore.Application.DTOs.Webhooks.IncomingWebhookEffectStatusDto),
         ["HalResourceOfTemplateDiffDto"] = typeof(Explore.Application.DTOs.EventTemplateSync.TemplateDiffDto),
         ["HalResourceOfEmailDispatchStatusDto"] = typeof(Explore.Application.DTOs.EmailDispatch.EmailDispatchStatusDto),
+        ["HalResourceOfEmailDispatchProcessorControlDto"] = typeof(Explore.Application.DTOs.EmailDispatch.EmailDispatchProcessorControlDto),
         ["HalResourceOfSupportAccessSessionDto"] = typeof(Explore.Application.DTOs.SupportAccess.SupportAccessSessionDto),
         ["HalResourceOfSupportAccessAuditEventDto"] = typeof(Explore.Application.DTOs.SupportAccess.SupportAccessAuditEventDto),
         ["HalResourceOfProjectionStatusDto"] = typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionStatusDto),

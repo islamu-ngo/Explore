@@ -248,6 +248,62 @@ public sealed class EmailDispatchResolveQueryRequest : IValidatableObject
     }
 }
 
+public sealed class EmailDispatchProcessorPauseQueryRequest : IValidatableObject
+{
+    public string? Reason { get; set; }
+
+    public string? GetNormalizedReason() => string.IsNullOrWhiteSpace(Reason) ? null : Reason.Trim();
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        => QueryValidationRules.ValidateBoundedText(Reason, nameof(Reason), 500);
+}
+
+public sealed class EmailDispatchGlobalRateLimitQueryRequest : IValidatableObject
+{
+    public int RateLimitPerMinute { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (RateLimitPerMinute is < 1 or > 100000)
+        {
+            yield return new ValidationResult(
+                $"{nameof(RateLimitPerMinute)} must be between 1 and 100000.",
+                [nameof(RateLimitPerMinute)]);
+        }
+    }
+}
+
+public sealed class EmailDispatchReconciliationQueryRequest : IValidatableObject
+{
+    public Explore.Application.Contracts.Persistence.EmailDispatchUnknownReconciliationOutcome Outcome { get; set; }
+    public string? Reason { get; set; }
+    public string? ProviderMessageId { get; set; }
+
+    public string GetNormalizedReason() => Reason?.Trim() ?? string.Empty;
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (Outcome is not Explore.Application.Contracts.Persistence.EmailDispatchUnknownReconciliationOutcome.Delivered
+            and not Explore.Application.Contracts.Persistence.EmailDispatchUnknownReconciliationOutcome.NotDelivered)
+        {
+            yield return new ValidationResult(
+                $"{nameof(Outcome)} must be Delivered or NotDelivered.",
+                [nameof(Outcome)]);
+        }
+
+        if (string.IsNullOrWhiteSpace(Reason))
+        {
+            yield return new ValidationResult($"{nameof(Reason)} is required.", [nameof(Reason)]);
+        }
+
+        foreach (var result in QueryValidationRules.ValidateBoundedText(Reason, nameof(Reason), 500)
+            .Concat(QueryValidationRules.ValidateBoundedText(ProviderMessageId, nameof(ProviderMessageId), 500)))
+        {
+            yield return result;
+        }
+    }
+}
+
 public sealed class CustomPropertyGovernanceReportQueryRequest : PaginationQueryRequest
 {
     public Guid TenantId { get; set; }

@@ -33,6 +33,7 @@ public sealed class EmailDispatchHealthCheck(
             ["processingLeaseTimeoutSeconds"] = settings.ProcessingLeaseTimeoutSeconds,
             ["dueDispatchWarningThreshold"] = settings.HealthDueDispatchWarningThreshold,
             ["staleProcessingWarningThreshold"] = settings.HealthStaleProcessingWarningThreshold,
+            ["unknownWarningThreshold"] = settings.HealthUnknownWarningThreshold,
             ["deadLetterWarningThreshold"] = settings.HealthDeadLetterWarningThreshold,
             ["oldestPendingWarningSeconds"] = settings.HealthOldestPendingWarningSeconds,
             ["tenantBacklogWarningThreshold"] = settings.HealthTenantBacklogWarningThreshold,
@@ -72,6 +73,10 @@ public sealed class EmailDispatchHealthCheck(
             processingStartedBefore,
             cancellationToken);
         var deadLetteredCount = await repository.CountDeadLetteredAsync(cancellationToken);
+        var unknownCount = await repository.CountUnknownAsync(cancellationToken);
+        var parkedCount = await repository.CountParkedAsync(cancellationToken);
+        var optionalReminderDeferralActive = await repository.IsOptionalReminderDeferralActiveAsync(cancellationToken);
+        var processorState = await repository.GetProcessorState(cancellationToken);
         var oldestDueCreatedAt = await repository.GetOldestDueCreatedAtAsync(now, cancellationToken);
         var tenantBacklog = await repository.CountDueDispatchByTenantAsync(
             now,
@@ -85,13 +90,30 @@ public sealed class EmailDispatchHealthCheck(
         data["retryScheduledCount"] = retryScheduledCount;
         data["staleProcessingCount"] = staleProcessingCount;
         data["deadLetteredCount"] = deadLetteredCount;
+        data["unknownCount"] = unknownCount;
+        data["parkedCount"] = parkedCount;
+        data["optionalReminderDeferralActive"] = optionalReminderDeferralActive;
+        data["globalPaused"] = processorState?.IsPaused == true;
+        data["globalSmtpRateLimitOverrideActive"] = processorState?.GlobalSmtpRateLimitPerMinuteOverride.HasValue == true;
         data["processingStartedBefore"] = processingStartedBefore;
-        data["oldestPendingAgeSeconds"] = oldestPendingAgeSeconds;
+        data["oldestActivePendingAgeSeconds"] = oldestPendingAgeSeconds;
         data["tenantBacklogSample"] = tenantBacklog;
         metrics.RecordEmailDispatchOldestPendingAge(oldestPendingAgeSeconds);
-        foreach (var (tenantId, count) in tenantBacklog)
+        metrics.RecordEmailDispatchOptionalReminderDeferral(optionalReminderDeferralActive);
+        var sampleRank = 0;
+        foreach (var count in tenantBacklog
+                     .OrderByDescending(entry => entry.Value)
+                     .ThenBy(entry => entry.Key)
+                     .Select(entry => entry.Value))
         {
-            metrics.RecordEmailDispatchTenantBacklog(tenantId.ToString(), count);
+            metrics.RecordEmailDispatchTenantBacklog(++sampleRank, count);
+        }
+
+        if (processorState?.IsPaused == true)
+        {
+            return HealthCheckResult.Degraded(
+                "Basic email dispatch is paused by an instance operator.",
+                data: data);
         }
 
         if (staleProcessingCount >= settings.HealthStaleProcessingWarningThreshold)
@@ -105,6 +127,13 @@ public sealed class EmailDispatchHealthCheck(
         {
             return HealthCheckResult.Degraded(
                 "Basic email dispatch has dead-lettered rows.",
+                data: data);
+        }
+
+        if (unknownCount >= settings.HealthUnknownWarningThreshold)
+        {
+            return HealthCheckResult.Degraded(
+                "Basic email dispatch has rows requiring provider-outcome reconciliation.",
                 data: data);
         }
 
