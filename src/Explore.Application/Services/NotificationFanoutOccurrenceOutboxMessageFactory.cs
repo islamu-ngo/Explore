@@ -12,8 +12,17 @@ public static class NotificationFanoutOccurrenceOutboxMessageFactory
 {
     public const string EventType = "NotificationFanoutOccurrenceRequested";
 
-    public static OutboxMessage Create(NotificationFanoutOccurrence occurrence)
+    public static OutboxMessage Create(NotificationFanoutOccurrence occurrence) =>
+        Create(occurrence, Guid.CreateVersion7());
+
+    public static OutboxMessage Create(NotificationFanoutOccurrence occurrence, Guid outboxMessageId)
     {
+        ArgumentNullException.ThrowIfNull(occurrence);
+        if (outboxMessageId == Guid.Empty)
+        {
+            throw new ArgumentException("The fanout pointer outbox identifier must be non-empty.", nameof(outboxMessageId));
+        }
+
         var pointer = new NotificationFanoutOccurrenceRequested(
             occurrence.TenantId,
             occurrence.Id,
@@ -21,7 +30,7 @@ public static class NotificationFanoutOccurrenceOutboxMessageFactory
 
         return new OutboxMessage
         {
-            Id = Guid.CreateVersion7(),
+            Id = outboxMessageId,
             AggregateType = nameof(NotificationFanoutOccurrence),
             AggregateId = occurrence.Id,
             EventType = EventType,

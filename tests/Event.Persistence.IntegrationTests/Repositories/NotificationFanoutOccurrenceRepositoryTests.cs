@@ -3,12 +3,17 @@
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Notifications;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Exceptions;
 using Explore.Application.Models.InternalEvents;
+using Explore.Application.Notifications;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
+using Explore.Persistence.Services;
 using Microsoft.EntityFrameworkCore;
 using TUnit.Core;
 
@@ -18,6 +23,257 @@ namespace Event.Persistence.IntegrationTests.Repositories;
 [NotInParallel("PersistenceDb")]
 public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContainerFixture fixture)
 {
+    [Test]
+    [Arguments(EmailDispatchStatus.Pending, false, true)]
+    [Arguments(EmailDispatchStatus.RetryScheduled, false, true)]
+    [Arguments(EmailDispatchStatus.Processing, false, true)]
+    [Arguments(EmailDispatchStatus.Processing, true, false)]
+    [Arguments(EmailDispatchStatus.Sent, false, false)]
+    [Arguments(EmailDispatchStatus.Unknown, false, false)]
+    [Arguments(EmailDispatchStatus.DeadLettered, false, false)]
+    [Arguments(EmailDispatchStatus.Parked, false, false)]
+    [Arguments(EmailDispatchStatus.Skipped, false, false)]
+    public async Task OccurrenceSuppressionPreservesProviderAndTerminalEvidence(
+        EmailDispatchStatus status,
+        bool providerFenced,
+        bool expectedSuppressed)
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        Scenario scenario = await CreateScenarioAsync(context, $"suppression-{status}-{providerFenced}", includeRecipient: true);
+        NotificationFanoutOccurrence occurrence = CreateOccurrence(scenario.TenantId, scenario.EventId);
+        context.NotificationFanoutOccurrences.Add(occurrence);
+        await context.SaveChangesAsync();
+        SuppressionGraph graph = await CreateSuppressionGraphAsync(context, scenario, occurrence, status, providerFenced);
+        var occurrenceRepository = new NotificationFanoutOccurrenceRepository(context);
+        var repository = new NotificationFanoutEmailSuppressionRepository(context);
+        var unitOfWork = new EfCoreUnitOfWork(context);
+        DateTime suppressedAt = DateTime.UtcNow;
+
+        NotificationFanoutEmailSuppressionResult first = await unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            await occurrenceRepository.AcquireSourceThenEventCoordinationLocksAsync(
+                scenario.TenantId,
+                occurrence.SourceType,
+                occurrence.SourceId,
+                occurrence.AggregateVersion,
+                scenario.EventId,
+                token);
+            return await repository.SuppressPreHandoffAsync(scenario.TenantId, occurrence.Id, suppressedAt, token);
+        });
+        NotificationFanoutEmailSuppressionResult replay = await unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            await occurrenceRepository.AcquireSourceThenEventCoordinationLocksAsync(
+                scenario.TenantId,
+                occurrence.SourceType,
+                occurrence.SourceId,
+                occurrence.AggregateVersion,
+                scenario.EventId,
+                token);
+            return await repository.SuppressPreHandoffAsync(scenario.TenantId, occurrence.Id, suppressedAt, token);
+        });
+
+        context.ChangeTracker.Clear();
+        EmailDispatchOutbox dispatch = await context.EmailDispatchOutbox.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.Id == graph.DispatchId);
+        NotificationDelivery delivery = await context.NotificationDeliveries.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.Id == graph.DeliveryId);
+        EmailDispatchAttempt[] attempts = await context.EmailDispatchAttempts.IgnoreQueryFilters().AsNoTracking()
+            .Where(value => value.EmailDispatchOutboxId == graph.DispatchId)
+            .OrderBy(value => value.AttemptNumber)
+            .ToArrayAsync();
+        EmailDispatchReceipt[] receipts = await context.EmailDispatchReceipts.IgnoreQueryFilters().AsNoTracking()
+            .Where(value => value.EmailDispatchOutboxId == graph.DispatchId)
+            .ToArrayAsync();
+
+        await Assert.That(first.OutboxRowsSkipped).IsEqualTo(expectedSuppressed ? 1 : 0);
+        await Assert.That(first.DeliveryRowsSuperseded).IsEqualTo(expectedSuppressed ? 1 : 0);
+        await Assert.That(replay).IsEqualTo(new NotificationFanoutEmailSuppressionResult(0, 0));
+        await Assert.That(dispatch.Status).IsEqualTo(expectedSuppressed ? EmailDispatchStatus.Skipped : status);
+        await Assert.That(dispatch.AttemptCount).IsEqualTo(graph.AttemptCount);
+        await Assert.That(delivery.StatusId).IsEqualTo(expectedSuppressed
+            ? (int)NotificationDeliveryStatusEnum.Superseded
+            : graph.DeliveryStatusId);
+        await Assert.That(attempts.Select(value => (value.AttemptNumber, value.Outcome, value.FailureCategory)))
+            .IsEquivalentTo(graph.Attempts);
+        await Assert.That(receipts.Select(value => (value.Status, value.FailureCode)))
+            .IsEquivalentTo(graph.Receipts);
+    }
+
+    [Test]
+    public async Task SupersededOccurrenceEligibilitySkipsTransportButKeepsDeliverySuperseded()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        Scenario scenario = await CreateScenarioAsync(context, "eligibility-superseded", includeRecipient: true);
+        NotificationFanoutOccurrence oldOccurrence = CreateOccurrence(scenario.TenantId, scenario.EventId);
+        NotificationFanoutOccurrence replacement = CreateOccurrence(
+            scenario.TenantId,
+            scenario.EventId,
+            Guid.CreateVersion7());
+        oldOccurrence.Supersede(replacement.Id, "superseded_by_newer_update", DateTime.UtcNow);
+        context.NotificationFanoutOccurrences.AddRange(oldOccurrence, replacement);
+        await context.SaveChangesAsync();
+        SuppressionGraph graph = await CreateSuppressionGraphAsync(
+            context,
+            scenario,
+            oldOccurrence,
+            EmailDispatchStatus.Pending,
+            providerFenced: false);
+        var outboxRepository = new EmailDispatchOutboxRepository(context);
+        Guid leaseToken = Guid.CreateVersion7();
+        EmailDispatchOutbox? claimed = await outboxRepository.TryClaimSpecificAsync(
+            new EmailDispatchSpecificClaimRequest(
+                scenario.TenantId,
+                graph.PublishEventId,
+                leaseToken,
+                20,
+                5,
+                100,
+                50,
+                DateTime.UtcNow),
+            CancellationToken.None);
+        await Assert.That(claimed).IsNotNull();
+        context.ChangeTracker.Clear();
+
+        EmailDispatchEligibilityResult result = await CreateEligibilityEvaluator(context)
+            .EvaluateAndBeginProviderHandoffAsync(
+                new EmailDispatchEligibilityRequest(
+                    scenario.TenantId,
+                    graph.DispatchId,
+                    leaseToken,
+                    0,
+                    120,
+                    30,
+                    "test-worker",
+                    DateTime.UtcNow),
+                CancellationToken.None);
+
+        context.ChangeTracker.Clear();
+        EmailDispatchOutbox dispatch = await context.EmailDispatchOutbox.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.Id == graph.DispatchId);
+        NotificationDelivery delivery = await context.NotificationDeliveries.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.Id == graph.DeliveryId);
+        EmailDispatchAttempt attempt = await context.EmailDispatchAttempts.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.EmailDispatchOutboxId == graph.DispatchId);
+        EmailDispatchReceipt receipt = await context.EmailDispatchReceipts.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.EmailDispatchOutboxId == graph.DispatchId);
+        await Assert.That(result.Outcome).IsEqualTo(EmailDispatchEligibilityOutcome.Skipped);
+        await Assert.That(result.SkipReason).IsEqualTo(NotificationFanoutEmailSuppressionReason.Code);
+        await Assert.That(dispatch.Status).IsEqualTo(EmailDispatchStatus.Skipped);
+        await Assert.That(delivery.StatusId).IsEqualTo((int)NotificationDeliveryStatusEnum.Superseded);
+        await Assert.That(delivery.ProviderStatus).IsEqualTo(NotificationFanoutEmailSuppressionReason.ProviderStatus);
+        await Assert.That(attempt.Outcome).IsEqualTo(EmailDispatchAttemptOutcome.Skipped);
+        await Assert.That(receipt.Status).IsEqualTo(EmailDispatchReceiptStatus.Skipped);
+    }
+
+    [Test]
+    public async Task EligibilityFailsClosedWhenIntentEventDoesNotOwnTheFanoutOccurrence()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        Scenario scenario = await CreateScenarioAsync(context, "eligibility-authority", includeRecipient: true);
+        Guid otherEventId = await CreateEventAsync(context, scenario.TenantId, "Mismatched authority event");
+        NotificationFanoutOccurrence occurrence = CreateOccurrence(scenario.TenantId, scenario.EventId);
+        context.NotificationFanoutOccurrences.Add(occurrence);
+        await context.SaveChangesAsync();
+        SuppressionGraph graph = await CreateSuppressionGraphAsync(
+            context,
+            scenario,
+            occurrence,
+            EmailDispatchStatus.Pending,
+            providerFenced: false);
+        NotificationIntent intent = await context.NotificationIntents
+            .SingleAsync(value => value.Id == graph.NotificationIntentId);
+        intent.EventId = otherEventId;
+        await context.SaveChangesAsync();
+        var outboxRepository = new EmailDispatchOutboxRepository(context);
+        Guid leaseToken = Guid.CreateVersion7();
+        await Assert.That(await outboxRepository.TryClaimSpecificAsync(
+            new EmailDispatchSpecificClaimRequest(
+                scenario.TenantId,
+                graph.PublishEventId,
+                leaseToken,
+                20,
+                5,
+                100,
+                50,
+                DateTime.UtcNow),
+            CancellationToken.None)).IsNotNull();
+        context.ChangeTracker.Clear();
+
+        EmailDispatchEligibilityResult result = await CreateEligibilityEvaluator(context)
+            .EvaluateAndBeginProviderHandoffAsync(
+                new EmailDispatchEligibilityRequest(
+                    scenario.TenantId,
+                    graph.DispatchId,
+                    leaseToken,
+                    0,
+                    120,
+                    30,
+                    "test-worker",
+                    DateTime.UtcNow),
+                CancellationToken.None);
+
+        NotificationDelivery delivery = await context.NotificationDeliveries.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.Id == graph.DeliveryId);
+        await Assert.That(result.Outcome).IsEqualTo(EmailDispatchEligibilityOutcome.Skipped);
+        await Assert.That(result.SkipReason).IsEqualTo("fanout_occurrence_authority_missing");
+        await Assert.That(delivery.StatusId).IsEqualTo((int)NotificationDeliveryStatusEnum.Skipped);
+    }
+
+    [Test]
+    public async Task EligibilityWithWrongTenantCannotChangeFanoutDelivery()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        Scenario scenario = await CreateScenarioAsync(context, "eligibility-tenant", includeRecipient: true);
+        NotificationFanoutOccurrence occurrence = CreateOccurrence(scenario.TenantId, scenario.EventId);
+        context.NotificationFanoutOccurrences.Add(occurrence);
+        await context.SaveChangesAsync();
+        SuppressionGraph graph = await CreateSuppressionGraphAsync(
+            context,
+            scenario,
+            occurrence,
+            EmailDispatchStatus.Pending,
+            providerFenced: false);
+        var outboxRepository = new EmailDispatchOutboxRepository(context);
+        Guid leaseToken = Guid.CreateVersion7();
+        await Assert.That(await outboxRepository.TryClaimSpecificAsync(
+            new EmailDispatchSpecificClaimRequest(
+                scenario.TenantId,
+                graph.PublishEventId,
+                leaseToken,
+                20,
+                5,
+                100,
+                50,
+                DateTime.UtcNow),
+            CancellationToken.None)).IsNotNull();
+        context.ChangeTracker.Clear();
+
+        EmailDispatchEligibilityResult result = await CreateEligibilityEvaluator(context)
+            .EvaluateAndBeginProviderHandoffAsync(
+                new EmailDispatchEligibilityRequest(
+                    Guid.CreateVersion7(),
+                    graph.DispatchId,
+                    leaseToken,
+                    0,
+                    120,
+                    30,
+                    "test-worker",
+                    DateTime.UtcNow),
+                CancellationToken.None);
+
+        EmailDispatchOutbox dispatch = await context.EmailDispatchOutbox.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.Id == graph.DispatchId);
+        NotificationDelivery delivery = await context.NotificationDeliveries.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.Id == graph.DeliveryId);
+        await Assert.That(result.Outcome).IsEqualTo(EmailDispatchEligibilityOutcome.LostClaim);
+        await Assert.That(dispatch.Status).IsEqualTo(EmailDispatchStatus.Processing);
+        await Assert.That(delivery.StatusId).IsEqualTo((int)NotificationDeliveryStatusEnum.Queued);
+    }
+
     [Test]
     public async Task CreateAndLoad_PersistsOccurrenceAndTenantScopedPointer()
     {
@@ -71,11 +327,11 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
         context.NotificationFanoutOccurrences.Add(occurrence);
         await context.SaveChangesAsync();
 
-        context.NotificationIntents.Add(CreateIntent(scenario, occurrence.Id, "fanout:first"));
-        await context.SaveChangesAsync();
-        context.NotificationIntents.Add(CreateIntent(scenario, occurrence.Id, "fanout:second"));
+        var repository = new NotificationIntentRepository(context);
+        await repository.CreateGraphAsync(CreateIntent(scenario, occurrence.Id, "fanout:first"));
 
-        await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+        await Assert.ThrowsAsync<NotificationIntentDeduplicationConflictException>(() =>
+            repository.CreateGraphAsync(CreateIntent(scenario, occurrence.Id, "fanout:second")));
     }
 
     [Test]
@@ -108,7 +364,475 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
         await Assert.That(pointerExists).IsFalse();
     }
 
-    private static NotificationFanoutOccurrence CreateOccurrence(Guid tenantId, Guid eventId)
+    [Test]
+    public async Task CoordinationLock_WithoutCallerTransaction_FailsClosed()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        Scenario scenario = await CreateScenarioAsync(context, "coordination-no-transaction");
+        var repository = new NotificationFanoutOccurrenceRepository(context);
+        NotificationFanoutOccurrenceCandidate candidate = CreateCoordinationCandidate(
+            scenario.TenantId,
+            scenario.EventId,
+            DateTime.UtcNow,
+            sequence: 1);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => repository
+            .AcquireSourceThenEventCoordinationLocksAsync(
+                candidate.TenantId,
+                candidate.SourceType,
+                candidate.SourceId,
+                candidate.AggregateVersion,
+                candidate.EventId));
+    }
+
+    [Test]
+    public async Task SourceIdentityLookup_IsTenantWideAndNotLimitedToTheLockedEvent()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        Scenario scenario = await CreateScenarioAsync(context, "coordination-source-scope");
+        Guid otherEventId = await CreateEventAsync(context, scenario.TenantId, "Other source event");
+        NotificationFanoutOccurrenceCandidate candidate = CreateCoordinationCandidate(
+            scenario.TenantId,
+            scenario.EventId,
+            DateTime.UtcNow,
+            sequence: 1);
+        NotificationFanoutOccurrence occurrence = CreatePersistedCandidate(candidate);
+        var repository = new NotificationFanoutOccurrenceRepository(context);
+        var unitOfWork = new EfCoreUnitOfWork(context);
+        await unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            await repository.Create(occurrence);
+            await repository.AcquireSourceThenEventCoordinationLocksAsync(
+                scenario.TenantId,
+                candidate.SourceType,
+                candidate.SourceId,
+                candidate.AggregateVersion,
+                otherEventId,
+                token);
+            NotificationFanoutOccurrence? replay = await repository.GetBySourceIdentityForCoordinationAsync(
+                scenario.TenantId,
+                candidate.SourceType,
+                candidate.SourceId,
+                candidate.AggregateVersion,
+                token);
+            await Assert.That(replay).IsNotNull();
+            await Assert.That(replay!.EventId).IsEqualTo(scenario.EventId);
+        });
+    }
+
+    [Test]
+    public async Task SessionAuthority_RequiresExactTenantEventAndSessionBinding()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        Scenario scenario = await CreateScenarioAsync(context, "coordination-session-authority");
+        Guid otherEventId = await CreateEventAsync(context, scenario.TenantId, "Session owner event");
+        Guid sessionId = await CreateSessionAsync(context, scenario.TenantId, otherEventId, "Foreign session");
+        NotificationFanoutOccurrenceCandidate candidate = CreateCoordinationCandidate(
+            scenario.TenantId,
+            scenario.EventId,
+            DateTime.UtcNow,
+            sequence: 1);
+        var repository = new NotificationFanoutOccurrenceRepository(context);
+        var unitOfWork = new EfCoreUnitOfWork(context);
+
+        await unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            await repository.AcquireSourceThenEventCoordinationLocksAsync(
+                candidate.TenantId,
+                candidate.SourceType,
+                candidate.SourceId,
+                candidate.AggregateVersion,
+                candidate.EventId,
+                token);
+            bool wrongEvent = await repository.SessionBelongsToEventForCoordinationAsync(
+                scenario.TenantId,
+                scenario.EventId,
+                sessionId,
+                token);
+            bool ownerEvent = await repository.SessionBelongsToEventForCoordinationAsync(
+                scenario.TenantId,
+                otherEventId,
+                sessionId,
+                token);
+
+            await Assert.That(wrongEvent).IsFalse();
+            await Assert.That(ownerEvent).IsTrue();
+        });
+    }
+
+    [Test]
+    public async Task ConditionalSupersession_WhenPendingStateChanged_ReturnsFalse()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+        Scenario scenario = await CreateScenarioAsync(seedContext, "coordination-conditional");
+        DateTime at = DateTime.UtcNow;
+        NotificationFanoutOccurrence old = CreatePersistedCandidate(CreateCoordinationCandidate(
+            scenario.TenantId,
+            scenario.EventId,
+            at,
+            sequence: 1));
+        NotificationFanoutOccurrence firstWinner = CreatePersistedCandidate(CreateCoordinationCandidate(
+            scenario.TenantId,
+            scenario.EventId,
+            at.AddMinutes(1),
+            sequence: 2));
+        NotificationFanoutOccurrence secondWinner = CreatePersistedCandidate(CreateCoordinationCandidate(
+            scenario.TenantId,
+            scenario.EventId,
+            at.AddMinutes(2),
+            sequence: 3));
+        seedContext.NotificationFanoutOccurrences.AddRange(old, firstWinner, secondWinner);
+        await seedContext.SaveChangesAsync();
+
+        await using var staleContext = fixture.CreateDbContext();
+        var staleRepository = new NotificationFanoutOccurrenceRepository(staleContext);
+        NotificationFanoutOccurrence stale = (await staleRepository.GetByPointerAsync(
+            new NotificationFanoutOccurrenceRequested(
+                scenario.TenantId,
+                old.Id,
+                NotificationFanoutOccurrenceRequested.CurrentVersion)))!;
+
+        await using (var competingContext = fixture.CreateDbContext())
+        {
+            var competingRepository = new NotificationFanoutOccurrenceRepository(competingContext);
+            var competingUnitOfWork = new EfCoreUnitOfWork(competingContext);
+            await competingUnitOfWork.ExecuteInTransactionAsync(async token =>
+            {
+                await competingRepository.AcquireSourceThenEventCoordinationLocksAsync(
+                    scenario.TenantId,
+                    old.SourceType,
+                    old.SourceId,
+                    old.AggregateVersion,
+                    scenario.EventId,
+                    token);
+                NotificationFanoutOccurrence competing = (await competingRepository.GetByPointerAsync(
+                    new NotificationFanoutOccurrenceRequested(
+                        scenario.TenantId,
+                        old.Id,
+                        NotificationFanoutOccurrenceRequested.CurrentVersion),
+                    cancellationToken: token))!;
+                competing.Supersede(firstWinner.Id, "superseded_by_newer_update", at.AddMinutes(1));
+                await Assert.That(await competingRepository.TryPersistSupersessionAsync(competing, token)).IsTrue();
+            });
+        }
+
+        stale.Supersede(secondWinner.Id, "superseded_by_newer_update", at.AddMinutes(2));
+        var staleUnitOfWork = new EfCoreUnitOfWork(staleContext);
+        bool changed = await staleUnitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            await staleRepository.AcquireSourceThenEventCoordinationLocksAsync(
+                scenario.TenantId,
+                stale.SourceType,
+                stale.SourceId,
+                stale.AggregateVersion,
+                scenario.EventId,
+                token);
+            return await staleRepository.TryPersistSupersessionAsync(stale, token);
+        });
+
+        await Assert.That(changed).IsFalse();
+    }
+
+    [Test]
+    public async Task ConcurrentCoordinators_ProduceOnePendingWinnerWithoutDuplicateSourceRows()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+        Scenario scenario = await CreateScenarioAsync(seedContext, "coordination-concurrent");
+        DateTime at = DateTime.UtcNow;
+        NotificationFanoutOccurrenceCandidate first = CreateCoordinationCandidate(
+            scenario.TenantId,
+            scenario.EventId,
+            at,
+            sequence: 1);
+        NotificationFanoutOccurrenceCandidate second = CreateCoordinationCandidate(
+            scenario.TenantId,
+            scenario.EventId,
+            at.AddMinutes(1),
+            sequence: 2);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        async Task<NotificationFanoutOccurrenceCoordinationResult> CoordinateAsync(
+            NotificationFanoutOccurrenceCandidate candidate)
+        {
+            await using var context = fixture.CreateDbContext();
+            var coordinator = new NotificationFanoutOccurrenceCoordinator(
+                new NotificationFanoutOccurrenceRepository(context),
+                new NotificationFanoutEmailSuppressionRepository(context),
+                new OutboxRepository(context),
+                new NotificationFanoutRecipientTemplateFactory());
+            var unitOfWork = new EfCoreUnitOfWork(context);
+            await release.Task;
+            return await unitOfWork.ExecuteInTransactionAsync(token =>
+                coordinator.CoordinateInCurrentTransactionAsync(candidate, token));
+        }
+
+        Task<NotificationFanoutOccurrenceCoordinationResult> firstTask = CoordinateAsync(first);
+        Task<NotificationFanoutOccurrenceCoordinationResult> secondTask = CoordinateAsync(second);
+        release.SetResult();
+        await Task.WhenAll(firstTask, secondTask);
+
+        await using var verificationContext = fixture.CreateDbContext();
+        List<NotificationFanoutOccurrence> occurrences = await verificationContext.NotificationFanoutOccurrences
+            .Where(value => value.TenantId == scenario.TenantId && value.EventId == scenario.EventId)
+            .OrderBy(value => value.OccurredAt)
+            .ToListAsync();
+        NotificationFanoutOccurrence active = occurrences.Single(value => value.State == NotificationFanoutOccurrenceState.Pending);
+        NotificationFanoutOccurrence superseded = occurrences.Single(value => value.State == NotificationFanoutOccurrenceState.Superseded);
+
+        await Assert.That(occurrences).Count().IsEqualTo(2);
+        await Assert.That(active.Id).IsEqualTo(second.OccurrenceId);
+        await Assert.That(superseded.SupersededByOccurrenceId).IsEqualTo(active.Id);
+        await Assert.That(occurrences.Select(value => new
+        {
+            value.TenantId,
+            value.SourceType,
+            value.SourceId,
+            value.AggregateVersion
+        }).Distinct()).Count().IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task ConcurrentDifferentEventCoordinators_WithSameSourceTuple_PersistOneAndFailClosed()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+        Scenario scenario = await CreateScenarioAsync(seedContext, "coordination-source-race");
+        Guid otherEventId = await CreateEventAsync(seedContext, scenario.TenantId, "Competing source event");
+        DateTime at = DateTime.UtcNow;
+        NotificationFanoutOccurrenceCandidate first = CreateCoordinationCandidate(
+            scenario.TenantId,
+            scenario.EventId,
+            at,
+            sequence: 1);
+        NotificationFanoutOccurrenceCandidate second = first with
+        {
+            OccurrenceId = Guid.CreateVersion7(),
+            PointerOutboxMessageId = Guid.CreateVersion7(),
+            EventId = otherEventId
+        };
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        async Task<Exception?> TryCoordinateAsync(NotificationFanoutOccurrenceCandidate candidate)
+        {
+            await using var context = fixture.CreateDbContext();
+            var coordinator = new NotificationFanoutOccurrenceCoordinator(
+                new NotificationFanoutOccurrenceRepository(context),
+                new NotificationFanoutEmailSuppressionRepository(context),
+                new OutboxRepository(context),
+                new NotificationFanoutRecipientTemplateFactory());
+            var unitOfWork = new EfCoreUnitOfWork(context);
+            await release.Task;
+            try
+            {
+                await unitOfWork.ExecuteInTransactionAsync(token =>
+                    coordinator.CoordinateInCurrentTransactionAsync(candidate, token));
+                return null;
+            }
+            catch (Exception exception)
+            {
+                return exception;
+            }
+        }
+
+        Task<Exception?> firstTask = TryCoordinateAsync(first);
+        Task<Exception?> secondTask = TryCoordinateAsync(second);
+        release.SetResult();
+        Exception?[] outcomes = await Task.WhenAll(firstTask, secondTask);
+
+        await Assert.That(outcomes.Count(outcome => outcome is null)).IsEqualTo(1);
+        await Assert.That(outcomes.Count(outcome => outcome is InvalidOperationException)).IsEqualTo(1);
+        await using var verificationContext = fixture.CreateDbContext();
+        List<NotificationFanoutOccurrence> persisted = await verificationContext.NotificationFanoutOccurrences
+            .Where(value => value.TenantId == first.TenantId
+                && value.SourceType == first.SourceType
+                && value.SourceId == first.SourceId
+                && value.AggregateVersion == first.AggregateVersion)
+            .ToListAsync();
+        int pointerCount = await verificationContext.OutboxMessages.CountAsync(value =>
+            value.EventType == NotificationFanoutOccurrenceOutboxMessageFactory.EventType
+            && (value.AggregateId == first.OccurrenceId || value.AggregateId == second.OccurrenceId));
+
+        await Assert.That(persisted).Count().IsEqualTo(1);
+        await Assert.That(pointerCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task ExactReplay_WithSubMicrosecondInput_UsesPersistedTimestampPrecision()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+        Scenario scenario = await CreateScenarioAsync(seedContext, "coordination-timestamp-replay");
+        DateTime occurredAt = new DateTime(2026, 7, 19, 12, 0, 0, DateTimeKind.Utc).AddTicks(7);
+        NotificationFanoutOccurrenceCandidate candidate = CreateCoordinationCandidate(
+            scenario.TenantId,
+            scenario.EventId,
+            occurredAt,
+            sequence: 1);
+
+        await using (var firstContext = fixture.CreateDbContext())
+        {
+            var firstCoordinator = new NotificationFanoutOccurrenceCoordinator(
+                new NotificationFanoutOccurrenceRepository(firstContext),
+                new NotificationFanoutEmailSuppressionRepository(firstContext),
+                new OutboxRepository(firstContext),
+                new NotificationFanoutRecipientTemplateFactory());
+            var firstUnitOfWork = new EfCoreUnitOfWork(firstContext);
+            NotificationFanoutOccurrenceCoordinationResult first = await firstUnitOfWork.ExecuteInTransactionAsync(
+                token => firstCoordinator.CoordinateInCurrentTransactionAsync(candidate, token));
+            await Assert.That(first.Outcome).IsEqualTo(NotificationFanoutOccurrenceCoordinationOutcome.NewlyActive);
+            await Assert.That(first.Occurrence.OccurredAt.Ticks % TimeSpan.TicksPerMicrosecond).IsEqualTo(0);
+        }
+
+        await using var replayContext = fixture.CreateDbContext();
+        var replayCoordinator = new NotificationFanoutOccurrenceCoordinator(
+            new NotificationFanoutOccurrenceRepository(replayContext),
+            new NotificationFanoutEmailSuppressionRepository(replayContext),
+            new OutboxRepository(replayContext),
+            new NotificationFanoutRecipientTemplateFactory());
+        var replayUnitOfWork = new EfCoreUnitOfWork(replayContext);
+        NotificationFanoutOccurrenceCoordinationResult replay = await replayUnitOfWork.ExecuteInTransactionAsync(
+            token => replayCoordinator.CoordinateInCurrentTransactionAsync(candidate, token));
+        int persistedCount = await replayContext.NotificationFanoutOccurrences.CountAsync(value =>
+            value.TenantId == candidate.TenantId
+            && value.SourceType == candidate.SourceType
+            && value.SourceId == candidate.SourceId
+            && value.AggregateVersion == candidate.AggregateVersion);
+
+        await Assert.That(replay.Outcome).IsEqualTo(NotificationFanoutOccurrenceCoordinationOutcome.SourceReplay);
+        await Assert.That(replay.Occurrence.Id).IsEqualTo(candidate.OccurrenceId);
+        await Assert.That(persistedCount).IsEqualTo(1);
+    }
+
+    private static NotificationFanoutOccurrenceCandidate CreateCoordinationCandidate(
+        Guid tenantId,
+        Guid eventId,
+        DateTime occurredAt,
+        int sequence)
+    {
+        string before = NotificationFanoutTemplateJson.Serialize(new NotificationFanoutSnapshotV1(
+            "Concurrent event",
+            null,
+            new DateTimeOffset(occurredAt.AddHours(sequence)),
+            new DateTimeOffset(occurredAt.AddHours(sequence + 1)),
+            "UTC",
+            null));
+        string after = NotificationFanoutTemplateJson.Serialize(new NotificationFanoutSnapshotV1(
+            "Concurrent event",
+            null,
+            new DateTimeOffset(occurredAt.AddHours(sequence + 1)),
+            new DateTimeOffset(occurredAt.AddHours(sequence + 2)),
+            "UTC",
+            null));
+        return new(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            tenantId,
+            eventId,
+            null,
+            occurredAt,
+            occurredAt,
+            Guid.CreateVersion7(),
+            NotificationFanoutTemplateJson.Serialize(new NotificationFanoutChangeSetV1([
+                NotificationFanoutChangeField.StartTime])),
+            before,
+            after,
+            NotificationFanoutRecipientTemplateFactory.EventUpdatedTemplateKey,
+            NotificationFanoutRecipientTemplateFactory.CurrentTemplateVersion,
+            (int)NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional,
+            NotificationFanoutRecipientTemplateFactory.CurrentPolicyVersion,
+            occurredAt,
+            "event-mutation",
+            Guid.CreateVersion7());
+    }
+
+    private static NotificationFanoutOccurrence CreatePersistedCandidate(
+        NotificationFanoutOccurrenceCandidate candidate)
+    {
+        DateTime notBefore = candidate.OccurredAt.AddMinutes(5);
+        return NotificationFanoutOccurrence.Create(
+            candidate.OccurrenceId,
+            candidate.TenantId,
+            candidate.EventId,
+            candidate.SessionId,
+            candidate.OccurredAt,
+            candidate.AudienceCutoffAt,
+            candidate.AggregateVersion,
+            candidate.ChangeSetJson,
+            candidate.SafeBeforeSnapshotJson,
+            candidate.SafeAfterSnapshotJson,
+            candidate.TemplateKey,
+            candidate.TemplateVersion,
+            candidate.DeliveryPolicyId,
+            candidate.PolicyVersion,
+            NotificationFanoutOccurrenceCoordinationPolicy.ImportantUpdatePriority,
+            notBefore,
+            candidate.SourceType,
+            candidate.SourceId,
+            $"event:{candidate.EventId:N}",
+            notBefore);
+    }
+
+    private static async Task<Guid> CreateEventAsync(
+        ExploreDbContext context,
+        Guid tenantId,
+        string title)
+    {
+        Guid actorId = await context.Actors
+            .Where(value => value.TenantId == tenantId)
+            .Select(value => value.Id)
+            .SingleAsync();
+        var @event = new Explore.Domain.Event
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            Title = title,
+            ActorId = actorId,
+            Actor = null!,
+            EventTypeId = (int)EventTypeEnum.Conference,
+            EventType = null!,
+            EventFormatId = (int)EventFormatEnum.Local,
+            EventFormat = null!,
+            EventStatusId = (int)EventStatusEnum.Draft,
+            EventStatus = null!,
+            ConcurrencyStamp = Guid.CreateVersion7(),
+        };
+        context.Events.Add(@event);
+        await context.SaveChangesAsync();
+        return @event.Id;
+    }
+
+    private static async Task<Guid> CreateSessionAsync(
+        ExploreDbContext context,
+        Guid tenantId,
+        Guid eventId,
+        string title)
+    {
+        var session = new EventSession
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenantId,
+            Tenant = null!,
+            EventId = eventId,
+            Event = null!,
+            Title = title,
+            EventSessionStatusId = (int)EventSessionStatusEnum.Draft,
+            ConcurrencyStamp = Guid.CreateVersion7(),
+            CreatedAt = DateTime.UtcNow
+        };
+        context.EventSessions.Add(session);
+        await context.SaveChangesAsync();
+        return session.Id;
+    }
+
+    private static NotificationFanoutOccurrence CreateOccurrence(
+        Guid tenantId,
+        Guid eventId,
+        Guid? sourceId = null)
     {
         DateTime occurredAt = DateTime.UtcNow;
         return NotificationFanoutOccurrence.Create(
@@ -119,9 +843,186 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
             "{\"startTime\":\"2026-07-18T09:00:00Z\"}",
             "event.session.updated", 1,
             (int)NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional, 1,
-            30, occurredAt.AddMinutes(5), "event", eventId,
+            30, occurredAt.AddMinutes(5), "event", sourceId ?? eventId,
             $"event:{eventId:N}:schedule", occurredAt.AddMinutes(5));
     }
+
+    private static async Task<SuppressionGraph> CreateSuppressionGraphAsync(
+        ExploreDbContext context,
+        Scenario scenario,
+        NotificationFanoutOccurrence occurrence,
+        EmailDispatchStatus status,
+        bool providerFenced)
+    {
+        DateTime now = DateTime.UtcNow;
+        Guid recipientUserId = scenario.RecipientUserId!.Value;
+        TenantUser tenantUser = await context.TenantUsers
+            .SingleAsync(value => value.TenantId == scenario.TenantId && value.UserId == recipientUserId);
+        var intent = new NotificationIntent
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = scenario.TenantId,
+            CategoryId = (int)NotificationCategoryEnum.EventLifecycle,
+            OwnershipTypeId = (int)NotificationOwnershipTypeEnum.IslamuEvent,
+            RecipientKindId = (int)NotificationRecipientKindEnum.User,
+            StatusId = (int)NotificationIntentStatusEnum.DispatchQueued,
+            TemplateKey = occurrence.TemplateKey,
+            DeduplicationKey = $"suppression:{occurrence.Id:N}:{Guid.CreateVersion7():N}",
+            RecipientUserId = recipientUserId,
+            RecipientTenantUser = tenantUser,
+            FanoutOccurrenceId = occurrence.Id,
+            EventId = scenario.EventId,
+            CreatedAt = now
+        };
+        int attemptCount = status == EmailDispatchStatus.Pending ? 0 : 3;
+        var dispatch = new EmailDispatchOutbox
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = scenario.TenantId,
+            PublishEventId = Guid.CreateVersion7(),
+            Kind = EmailDispatchKind.EventUpdated,
+            SourceType = "notification_intent",
+            SourceId = intent.Id,
+            NotificationIntentId = intent.Id,
+            NotificationIntent = intent,
+            EventId = scenario.EventId,
+            RecipientUserId = recipientUserId,
+            RecipientTenantUser = tenantUser,
+            RecipientAddressSource = RecipientAddressSource.TenantUserVerifiedEmail,
+            RecipientEmail = "fanout-recipient@example.test",
+            Subject = "Event updated",
+            PlainTextBody = "Event information changed.",
+            Status = status,
+            AttemptCount = attemptCount,
+            MaxAttempts = 5,
+            NextAttemptAt = status == EmailDispatchStatus.RetryScheduled ? now.AddMinutes(5) : null,
+            ProcessingStartedAt = status == EmailDispatchStatus.Processing ? now : null,
+            ProcessingLeaseToken = status == EmailDispatchStatus.Processing ? Guid.CreateVersion7() : null,
+            SentAt = status == EmailDispatchStatus.Sent ? now : null,
+            DeadLetteredAt = status == EmailDispatchStatus.DeadLettered ? now : null,
+            ParkedAt = status == EmailDispatchStatus.Parked ? now : null,
+            UnknownAt = status == EmailDispatchStatus.Unknown ? now : null,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        int deliveryStatusId = status switch
+        {
+            EmailDispatchStatus.Sent => (int)NotificationDeliveryStatusEnum.Delivered,
+            EmailDispatchStatus.Unknown => (int)NotificationDeliveryStatusEnum.Unknown,
+            EmailDispatchStatus.DeadLettered => (int)NotificationDeliveryStatusEnum.DeadLettered,
+            EmailDispatchStatus.Parked => (int)NotificationDeliveryStatusEnum.Parked,
+            EmailDispatchStatus.Skipped => (int)NotificationDeliveryStatusEnum.Skipped,
+            _ => (int)NotificationDeliveryStatusEnum.Queued
+        };
+        var delivery = new NotificationDelivery
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = scenario.TenantId,
+            NotificationIntentId = intent.Id,
+            NotificationIntent = intent,
+            ChannelId = (int)NotificationPreferenceChannelEnum.Email,
+            DeliveryPolicyId = (int)NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional,
+            IsRequired = false,
+            PolicyVersion = 1,
+            PreferenceCategoryCode = "event-updates",
+            RecipientAddressSource = RecipientAddressSource.TenantUserVerifiedEmail,
+            DisclosureLevel = "standard",
+            TemplateKey = occurrence.TemplateKey,
+            TemplateVersion = 1,
+            LinkAllowed = false,
+            EmailDispatchOutboxId = dispatch.Id,
+            EmailDispatchOutbox = dispatch,
+            StatusId = deliveryStatusId,
+            ProviderStatus = status.ToString().ToLowerInvariant(),
+            QueuedAt = now,
+            CompletedAt = status is EmailDispatchStatus.Sent
+                or EmailDispatchStatus.Unknown
+                or EmailDispatchStatus.DeadLettered
+                or EmailDispatchStatus.Parked
+                or EmailDispatchStatus.Skipped
+                    ? now
+                    : null,
+            CreatedAt = now
+        };
+        intent.Deliveries.Add(delivery);
+        var attempts = new List<EmailDispatchAttempt>();
+        var receipts = new List<EmailDispatchReceipt>();
+        if (status != EmailDispatchStatus.Pending)
+        {
+            int attemptNumber = status == EmailDispatchStatus.Processing && !providerFenced
+                ? attemptCount - 1
+                : attemptCount;
+            string failureCategory = providerFenced ? "provider_handoff_started" : "existing_evidence";
+            var attempt = new EmailDispatchAttempt
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = scenario.TenantId,
+                EmailDispatchOutboxId = dispatch.Id,
+                EmailDispatchOutbox = dispatch,
+                AttemptNumber = attemptNumber,
+                Outcome = providerFenced || status == EmailDispatchStatus.Unknown
+                    ? EmailDispatchAttemptOutcome.Unknown
+                    : status == EmailDispatchStatus.Sent
+                        ? EmailDispatchAttemptOutcome.Succeeded
+                        : status == EmailDispatchStatus.Skipped
+                            ? EmailDispatchAttemptOutcome.Skipped
+                            : EmailDispatchAttemptOutcome.Failed,
+                StartedAt = now,
+                CompletedAt = providerFenced ? null : now,
+                FailureCategory = failureCategory,
+                SanitizedErrorMessage = "Existing non-PII evidence.",
+                CreatedAt = now
+            };
+            var receipt = new EmailDispatchReceipt
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = scenario.TenantId,
+                PublishEventId = dispatch.PublishEventId,
+                EmailDispatchOutboxId = dispatch.Id,
+                EmailDispatchOutbox = dispatch,
+                Status = providerFenced
+                    ? EmailDispatchReceiptStatus.Processing
+                    : status == EmailDispatchStatus.Sent
+                        ? EmailDispatchReceiptStatus.Completed
+                        : status == EmailDispatchStatus.Unknown
+                            ? EmailDispatchReceiptStatus.Unknown
+                            : status == EmailDispatchStatus.Skipped
+                                ? EmailDispatchReceiptStatus.Skipped
+                                : EmailDispatchReceiptStatus.Failed,
+                ConsumerId = "test-worker",
+                FirstSeenAt = now,
+                ProcessingStartedAt = providerFenced ? now : null,
+                CompletedAt = status == EmailDispatchStatus.Sent ? now : null,
+                FailedAt = providerFenced || status == EmailDispatchStatus.Sent ? null : now,
+                FailureCode = failureCategory,
+                CreatedAt = now
+            };
+            attempts.Add(attempt);
+            receipts.Add(receipt);
+        }
+
+        context.NotificationIntents.Add(intent);
+        context.EmailDispatchOutbox.Add(dispatch);
+        context.NotificationDeliveries.Add(delivery);
+        context.EmailDispatchAttempts.AddRange(attempts);
+        context.EmailDispatchReceipts.AddRange(receipts);
+        await context.SaveChangesAsync();
+        return new SuppressionGraph(
+            dispatch.Id,
+            dispatch.PublishEventId,
+            intent.Id,
+            delivery.Id,
+            attemptCount,
+            deliveryStatusId,
+            attempts.Select(value => (value.AttemptNumber, value.Outcome, value.FailureCategory)).ToArray(),
+            receipts.Select(value => (value.Status, value.FailureCode)).ToArray());
+    }
+
+    private static EmailDispatchEligibilityEvaluator CreateEligibilityEvaluator(ExploreDbContext context) =>
+        new(
+            context,
+            new NotificationDeliveryPolicyResolver(),
+            new NotificationPreferenceResolver(context));
 
     private static NotificationIntent CreateIntent(Scenario scenario, Guid occurrenceId, string deduplicationKey)
     {
@@ -223,5 +1124,14 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
     }
 
     private sealed record Scenario(Guid TenantId, Guid EventId, Guid? RecipientUserId);
+    private sealed record SuppressionGraph(
+        Guid DispatchId,
+        Guid PublishEventId,
+        Guid NotificationIntentId,
+        Guid DeliveryId,
+        int AttemptCount,
+        int DeliveryStatusId,
+        IReadOnlyList<(int AttemptNumber, EmailDispatchAttemptOutcome Outcome, string? FailureCategory)> Attempts,
+        IReadOnlyList<(EmailDispatchReceiptStatus Status, string? FailureCode)> Receipts);
     private sealed class InjectedMutationFailureException : Exception;
 }

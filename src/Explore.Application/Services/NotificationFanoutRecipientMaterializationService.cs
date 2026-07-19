@@ -15,7 +15,7 @@ public sealed class NotificationFanoutRecipientMaterializationService(
     INotificationPreferenceResolver preferenceResolver,
     IFanoutAttendeeLocationAuthorizationService locationAuthorizationService,
     NotificationFanoutRecipientTemplateFactory templateFactory,
-    IRecipientNotificationMaterializer materializer)
+    IRecipientNotificationMaterializer materializer) : INotificationFanoutRecipientMaterializationService
 {
     public async Task<RecipientNotificationMaterializationResult> MaterializeAsync(
         NotificationFanoutOccurrence occurrence,
