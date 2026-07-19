@@ -110,6 +110,11 @@ public sealed class AtprotoEventDescriptionFormatterTests
         AtprotoSourceFieldManifestEntry[] matches = entries
             .Where(entry => Matches(entry.SourcePath, sourcePath))
             .ToArray();
+        if (matches.Length == 0)
+        {
+            return 0;
+        }
+
         int maximumSpecificity = matches.Max(entry => entry.SourcePath.Count(character => character != '*'));
         return matches.Count(entry => entry.SourcePath.Count(character => character != '*') == maximumSpecificity);
     }
@@ -173,7 +178,16 @@ public sealed class AtprotoEventDescriptionFormatterTests
             ["Category / Child"],
             ["Tag"],
             ["English"],
-            [new("speaker-canary", "speaker.example", "Speaker description", "https://cdn.example/speaker.png")],
+            [new(
+                "speaker-canary",
+                "speaker.example",
+                "Speaker description",
+                "https://cdn.example/speaker.png",
+                null,
+                null,
+                null,
+                null,
+                null)],
             [new(
                 new(2026, 8, 1, 9, 15, 0, TimeSpan.Zero),
                 new(2026, 8, 1, 9, 45, 0, TimeSpan.Zero),
@@ -239,6 +253,7 @@ public sealed class AtprotoEventDescriptionFormatterTests
                 new(2026, 8, 31, 0, 0, 0, TimeSpan.Zero),
                 2,
                 "Series organizer",
+                "series.organizer",
                 "https://cdn.example/series.png"),
             new("Hanafi", "islamic-canary", 10, "Family", true, "Arabic"),
             new("https://github.com/example/repo", "tech-canary", "Beginner", [".NET"], true, true, 4, 1000m, "EUR"),

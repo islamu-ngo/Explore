@@ -81,6 +81,7 @@ public sealed record AtprotoEventSeriesSnapshot(
     DateTimeOffset? EndsAt,
     int? EventOrder,
     string OrganizerName,
+    string? OrganizerHandle,
     string? FeaturedImageUri);
 
 public sealed record AtprotoEventIslamicAspectSnapshot(
@@ -176,7 +177,12 @@ public sealed record AtprotoSpeakerSnapshot(
     string DisplayName,
     string? Handle,
     string? Description,
-    string? ProfileImageUri);
+    string? ProfileImageUri,
+    string? BannerImageUri,
+    string? BackgroundImageUri,
+    string? BackgroundColor,
+    string? BackgroundEffect,
+    string? BannerColor);
 
 public sealed record AtprotoSessionAgendaItemSnapshot(
     DateTimeOffset StartsAt,

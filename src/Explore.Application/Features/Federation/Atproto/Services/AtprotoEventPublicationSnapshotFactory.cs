@@ -95,14 +95,14 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
             new(
                 Normalize(eventEntity.BackgroundColor),
                 Normalize(eventEntity.BackgroundEffect),
-                PublicStorageUri(eventEntity.FeaturedImage),
-                PublicStorageUri(eventEntity.BackgroundImage)),
+                PublicStorageDescription(eventEntity.FeaturedImage),
+                PublicStorageDescription(eventEntity.BackgroundImage)),
             graph.Categories
                 .Select(link => LookupPath(link.Category))
                 .Order(StringComparer.Ordinal)
                 .ToImmutableArray(),
             graph.Tags
-                .Select(link => Normalize(link.Tag.FullName)!)
+                .Select(link => LookupLabel(link.Tag.MasterCode, link.Tag.FullName))
                 .Order(StringComparer.Ordinal)
                 .ToImmutableArray(),
             locations,
@@ -135,7 +135,7 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
                     item.LocalEndDate,
                     item.LocalStartTime,
                     item.LocalEndTime,
-                    Normalize(item.Kind?.FullName),
+                    item.Kind is null ? null : LookupLabel(item.Kind.MasterCode, item.Kind.FullName, item.Kind.Description),
                     item.SortOrder,
                     ResolveLocation(item.EventLocationId, item.LocationId, item.RoomId)))
                 .ToImmutableArray(),
@@ -328,14 +328,14 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
             session.EndTimeType.ToString(),
             session.SortOrder,
             Normalize(session.Slug),
-            Normalize(session.EventSessionKind?.FullName),
-            Normalize(session.EventSessionStatus?.FullName)!,
-            Normalize(session.RegistrationMode?.FullName),
+            session.EventSessionKind is null ? null : LookupLabel(session.EventSessionKind.MasterCode, session.EventSessionKind.FullName, session.EventSessionKind.Description),
+            LookupLabel(session.EventSessionStatus!.MasterCode, session.EventSessionStatus.FullName, session.EventSessionStatus.Description),
+            session.RegistrationMode is null ? null : LookupLabel(session.RegistrationMode.MasterCode, session.RegistrationMode.FullName, session.RegistrationMode.Description),
             session.MaxAudienceAttendees,
             session.CurrentAudienceAttendees,
             session.Price,
             Normalize(session.CurrencyCode),
-            PublicStorageUri(session.FeaturedImage),
+            PublicStorageDescription(session.FeaturedImage),
             resolveLocation(session.EventLocationId, session.LocationId, session.RoomId),
             MapSessionIslamicAspect(session.IslamicAspect),
             graph.SessionCategories
@@ -345,12 +345,12 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
                 .ToImmutableArray(),
             graph.SessionTags
                 .Where(link => link.EventSessionId == session.Id)
-                .Select(link => Normalize(link.Tag.FullName)!)
+                .Select(link => LookupLabel(link.Tag.MasterCode, link.Tag.FullName))
                 .Order(StringComparer.Ordinal)
                 .ToImmutableArray(),
             graph.SessionLanguages
                 .Where(link => link.EventSessionId == session.Id)
-                .Select(link => Normalize(link.Language.FullName)!)
+                .Select(link => LookupLabel(link.Language.MasterCode, link.Language.FullName, link.Language.Description))
                 .Order(StringComparer.Ordinal)
                 .ToImmutableArray(),
             graph.SessionSpeakers
@@ -365,7 +365,12 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
                     Normalize(link.Actor.Pii.DisplayName)!,
                     Normalize(link.Actor.Pii.Handle),
                     Normalize(link.Actor.Description),
-                    PublicStorageUri(link.Actor.ProfilePicture)))
+                    PublicStorageDescription(link.Actor.ProfilePicture),
+                    PublicStorageDescription(link.Actor.BannerPicture),
+                    PublicStorageDescription(link.Actor.BackgroundImage),
+                    Normalize(link.Actor.BackgroundColor),
+                    Normalize(link.Actor.BackgroundEffect),
+                    Normalize(link.Actor.BannerColor)))
                 .ToImmutableArray(),
             graph.SessionAgendaItems
                 .Where(item => item.EventSessionId == session.Id)
@@ -421,17 +426,22 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
     private static AtprotoEventDetailsSnapshot MapDetails(Event eventEntity)
         => new(
             Normalize(eventEntity.Subtitle),
-            Normalize(eventEntity.EventType?.FullName),
-            Normalize(eventEntity.AudienceGender?.FullName),
-            Normalize(eventEntity.AudienceAge?.FullName),
+            eventEntity.EventType is null ? null : LookupLabel(eventEntity.EventType.MasterCode, eventEntity.EventType.FullName, eventEntity.EventType.Description),
+            eventEntity.AudienceGender is null ? null : LookupLabel(eventEntity.AudienceGender.MasterCode, eventEntity.AudienceGender.FullName, eventEntity.AudienceGender.Description),
+            eventEntity.AudienceAge is null ? null : string.Join(" | ", new[]
+            {
+                LookupLabel(eventEntity.AudienceAge.MasterCode, eventEntity.AudienceAge.FullName, eventEntity.AudienceAge.Description),
+                eventEntity.AudienceAge.MinAge.HasValue ? $"Minimum age: {eventEntity.AudienceAge.MinAge.Value.ToString(CultureInfo.InvariantCulture)}" : null,
+                eventEntity.AudienceAge.MaxAge.HasValue ? $"Maximum age: {eventEntity.AudienceAge.MaxAge.Value.ToString(CultureInfo.InvariantCulture)}" : null
+            }.Where(value => value is not null)),
             eventEntity.Price,
             Normalize(eventEntity.CurrencyCode),
             eventEntity.TotalViews,
-            Normalize(eventEntity.VisibilityType.FullName)!,
-            Normalize(eventEntity.Madhab?.FullName),
+            LookupLabel(eventEntity.VisibilityType.MasterCode, eventEntity.VisibilityType.FullName, eventEntity.VisibilityType.Description),
+            eventEntity.Madhab is null ? null : LookupLabel(eventEntity.Madhab.MasterCode, eventEntity.Madhab.FullName, eventEntity.Madhab.Description),
             Normalize(eventEntity.GetEffectiveScheduleTimeZoneId())!,
             eventEntity.SessionCount,
-            Normalize(eventEntity.RegistrationPolicy?.FullName),
+            eventEntity.RegistrationPolicy is null ? null : LookupLabel(eventEntity.RegistrationPolicy.MasterCode, eventEntity.RegistrationPolicy.FullName, eventEntity.RegistrationPolicy.Description),
             Normalize(eventEntity.Slug),
             Normalize(eventEntity.PublicCode) ?? string.Empty,
             eventEntity.FirstSessionDate,
@@ -445,7 +455,7 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
             : null;
         return new(
             Normalize(actor.Pii.DisplayName)!,
-            Normalize(actor.ActorType.FullName)!,
+            LookupLabel(actor.ActorType.MasterCode, actor.ActorType.FullName, actor.ActorType.Description),
             Normalize(actor.Pii.Handle),
             Normalize(actor.Description),
             Normalize(organization?.Pii.FullName),
@@ -454,13 +464,13 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
             Normalize(organization?.Pii.City),
             Normalize(actor.Group?.FullName),
             Normalize(actor.Group?.Description),
-            PublicStorageUri(actor.ProfilePicture),
-            PublicStorageUri(actor.BannerPicture),
-            PublicStorageUri(actor.BackgroundImage),
+            PublicStorageDescription(actor.ProfilePicture),
+            PublicStorageDescription(actor.BannerPicture),
+            PublicStorageDescription(actor.BackgroundImage),
             Normalize(actor.BackgroundColor),
             Normalize(actor.BackgroundEffect),
             Normalize(actor.BannerColor),
-            PublicStorageUri(actor.Group?.ProfilePicture));
+            PublicStorageDescription(actor.Group?.ProfilePicture));
     }
 
     private static AtprotoEventSeriesSnapshot? MapSeries(Explore.Domain.EventSeries? series, int? eventOrder)
@@ -475,12 +485,13 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
                 Normalize(series.Slug),
                 series.IsPublished,
                 series.TotalViews,
-                Normalize(series.VisibilityType.FullName)!,
+                LookupLabel(series.VisibilityType.MasterCode, series.VisibilityType.FullName, series.VisibilityType.Description),
                 series.StartDateUtc?.ToUniversalTime(),
                 series.EndDateUtc?.ToUniversalTime(),
                 eventOrder,
                 Normalize(series.Actor?.Pii.DisplayName) ?? string.Empty,
-                PublicStorageUri(series.FeaturedImage));
+                Normalize(series.Actor?.Pii.Handle),
+                PublicStorageDescription(series.FeaturedImage));
 
     private static AtprotoEventDaySnapshot MapDay(EventDay day)
         => new(
@@ -488,7 +499,7 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
             Normalize(day.Label),
             Normalize(day.Description),
             Normalize(day.BannerText),
-            PublicStorageUri(day.BannerImage),
+            PublicStorageDescription(day.BannerImage),
             day.AllowsDayScopeRegistration,
             day.SortOrder);
 
@@ -496,12 +507,12 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
         => aspect is null
             ? null
             : new(
-                Normalize(aspect.Madhab?.FullName),
+                aspect.Madhab is null ? null : LookupLabel(aspect.Madhab.MasterCode, aspect.Madhab.FullName, aspect.Madhab.Description),
                 aspect.ReferencePrayer?.ToString(),
                 aspect.PrayerTimeOffset,
                 aspect.GenderMode.ToString(),
                 aspect.IncludesQuranRecitation,
-                Normalize(aspect.PrimaryLanguage?.FullName));
+                aspect.PrimaryLanguage is null ? null : LookupLabel(aspect.PrimaryLanguage.MasterCode, aspect.PrimaryLanguage.FullName, aspect.PrimaryLanguage.Description));
 
     private static AtprotoSessionIslamicAspectSnapshot? MapSessionIslamicAspect(EventSessionIslamicAspect? aspect)
         => aspect is null
@@ -802,8 +813,21 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
 
     private static string LookupPath(Category category)
         => category.Parent is null
-            ? Normalize(category.FullName)!
-            : $"{Normalize(category.Parent.FullName)} / {Normalize(category.FullName)}";
+            ? LookupLabel(category.MasterCode, category.FullName)
+            : $"{LookupLabel(category.Parent.MasterCode, category.Parent.FullName)} / {LookupLabel(category.MasterCode, category.FullName)}";
+
+    private static string LookupLabel(string? masterCode, string fullName, string? description = null)
+    {
+        string label = Normalize(fullName)!;
+        string? code = Normalize(masterCode);
+        string? detail = Normalize(description);
+        return string.Join(" | ", new[]
+        {
+            label,
+            code is null ? null : $"Code: {code}",
+            detail is null ? null : $"Description: {detail}"
+        }.Where(value => value is not null));
+    }
 
     private static string SessionDisplayKey(EventSession session)
         => Normalize(session.Title)
@@ -831,6 +855,26 @@ public sealed partial class AtprotoEventPublicationSnapshotFactory(
             && string.Equals(storageObject.LifecycleState, StorageObjectLifecycleStates.Active, StringComparison.Ordinal)
                 ? Normalize(storageObject.Uri)
                 : null;
+
+    private static string? PublicStorageDescription(StorageObject? storageObject)
+    {
+        string? uri = PublicStorageUri(storageObject);
+        if (uri is null || storageObject is null)
+        {
+            return null;
+        }
+
+        return string.Join(" | ", new[]
+        {
+            uri,
+            $"Name: {Normalize(storageObject.SafeDisplayName)}",
+            $"Extension: {Normalize(storageObject.Extension)}",
+            Normalize(storageObject.ContentType) is { } contentType ? $"Content type: {contentType}" : null,
+            $"Size: {storageObject.Size.ToString(CultureInfo.InvariantCulture)} bytes",
+            $"Purpose: {Normalize(storageObject.Purpose)}",
+            storageObject.FileType is null ? null : $"File type: {LookupLabel(storageObject.FileType.MasterCode, storageObject.FileType.FullName)}"
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
 
     private static string? MapMode(string masterCode)
         => masterCode.ToUpperInvariant() switch

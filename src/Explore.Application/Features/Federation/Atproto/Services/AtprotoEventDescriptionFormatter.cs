@@ -95,6 +95,7 @@ public static class AtprotoEventDescriptionFormatter
         Field(output, "Ends", Timestamp(series.EndsAt));
         Field(output, "Event order", series.EventOrder?.ToString(CultureInfo.InvariantCulture));
         Field(output, "Organizer", series.OrganizerName);
+        Field(output, "Organizer handle", series.OrganizerHandle);
         Field(output, "Featured image", series.FeaturedImageUri);
     }
 
@@ -518,7 +519,12 @@ public static class AtprotoEventDescriptionFormatter
             speaker.DisplayName,
             speaker.Handle,
             speaker.Description,
-            speaker.ProfileImageUri
+            speaker.ProfileImageUri,
+            speaker.BannerImageUri,
+            speaker.BackgroundImageUri,
+            speaker.BackgroundColor,
+            speaker.BackgroundEffect,
+            speaker.BannerColor
         }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
     private static string YesNo(bool value) => value ? "Yes" : "No";

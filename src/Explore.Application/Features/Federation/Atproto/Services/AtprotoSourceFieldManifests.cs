@@ -27,25 +27,34 @@ public static class AtprotoEventSourceFieldManifest
         Excluded("Event.FirstSessionStartUtc", "cached schedule rollup; native time derives from eligible sessions"),
         Description("Event.LastSessionStartUtc"),
         Excluded("Event.LastSessionEndUtc", "cached schedule rollup; native time derives from eligible sessions"),
-        Native("Event.EventFormat", "community event mode"),
-        Native("Event.EventStatus", "community event status"),
+        Native("Event.EventFormat.MasterCode", "community event mode"),
+        Native("Event.EventStatus.MasterCode", "community event status"),
         Native("Event.EventUrl", "community event URI"),
         Native("Event.ExternalRegistrationUrl", "community event URI"),
-        Native("Event.FeaturedImage", "community event URI"),
-        Native("Event.BackgroundImage", "community event URI"),
         Native("Event.IsRegistrationRequired", "community event rsvpExpected"),
-        Native("EventLocationDisclosureResult.Values", "community event native locations and description"),
 
         Description("Event.Subtitle"),
         Description("Event.Content"),
-        Description("Event.EventType"),
-        Description("Event.AudienceGender"),
-        Description("Event.AudienceAge"),
+        Description("Event.EventType.MasterCode"),
+        Description("Event.EventType.FullName"),
+        Description("Event.EventType.Description"),
+        Description("Event.AudienceGender.MasterCode"),
+        Description("Event.AudienceGender.FullName"),
+        Description("Event.AudienceGender.Description"),
+        Description("Event.AudienceAge.MasterCode"),
+        Description("Event.AudienceAge.FullName"),
+        Description("Event.AudienceAge.Description"),
+        Description("Event.AudienceAge.MinAge"),
+        Description("Event.AudienceAge.MaxAge"),
         Description("Event.Price"),
         Description("Event.CurrencyCode"),
         Description("Event.TotalViews"),
-        Description("Event.VisibilityType"),
-        Description("Event.Madhab"),
+        Description("Event.VisibilityType.MasterCode"),
+        Description("Event.VisibilityType.FullName"),
+        Description("Event.VisibilityType.Description"),
+        Description("Event.Madhab.MasterCode"),
+        Description("Event.Madhab.FullName"),
+        Description("Event.Madhab.Description"),
         Description("Event.Slug"),
         Description("Event.PublicCode"),
         Description("Event.FirstSessionDate"),
@@ -53,18 +62,23 @@ public static class AtprotoEventSourceFieldManifest
         Description("Event.Timezone"),
         Description("Event.EventTimeZoneId"),
         Description("Event.SessionCount"),
-        Description("Event.RegistrationPolicy"),
+        Description("Event.RegistrationPolicy.MasterCode"),
+        Description("Event.RegistrationPolicy.FullName"),
+        Description("Event.RegistrationPolicy.Description"),
+        Description("Event.EventFormat.FullName"),
+        Description("Event.EventFormat.Description"),
+        Description("Event.EventStatus.FullName"),
+        Description("Event.EventStatus.Description"),
         Description("Event.SeriesOrder"),
         Description("Event.BackgroundColor"),
         Description("Event.BackgroundEffect"),
 
-        Description("Event.Actor.ActorType"),
+        Description("Event.Actor.ActorType.MasterCode"),
+        Description("Event.Actor.ActorType.FullName"),
+        Description("Event.Actor.ActorType.Description"),
         Description("Event.Actor.Pii.DisplayName"),
         Description("Event.Actor.Pii.Handle"),
         Description("Event.Actor.Description"),
-        Description("Event.Actor.ProfilePicture"),
-        Description("Event.Actor.BannerPicture"),
-        Description("Event.Actor.BackgroundImage"),
         Description("Event.Actor.BackgroundColor"),
         Description("Event.Actor.BackgroundEffect"),
         Description("Event.Actor.BannerColor"),
@@ -74,26 +88,31 @@ public static class AtprotoEventSourceFieldManifest
         Description("Event.Actor.Organization.Pii.City"),
         Description("Event.Actor.Group.FullName"),
         Description("Event.Actor.Group.Description"),
-        Description("Event.Actor.Group.ProfilePicture"),
 
         Description("Event.EventSeries.Title"),
         Description("Event.EventSeries.Description"),
         Description("Event.EventSeries.Slug"),
-        Description("Event.EventSeries.FeaturedImage"),
         Description("Event.EventSeries.IsPublished"),
         Excluded("Event.EventSeries.IsDeleted", "series eligibility gate, never payload"),
         Description("Event.EventSeries.TotalViews"),
-        Description("Event.EventSeries.VisibilityType"),
+        Description("Event.EventSeries.VisibilityType.MasterCode"),
+        Description("Event.EventSeries.VisibilityType.FullName"),
+        Description("Event.EventSeries.VisibilityType.Description"),
         Description("Event.EventSeries.StartDateUtc"),
         Description("Event.EventSeries.EndDateUtc"),
         Description("Event.EventSeries.Actor.Pii.DisplayName"),
+        Description("Event.EventSeries.Actor.Pii.Handle"),
 
-        Description("Event.IslamicAspect.Madhab"),
+        Description("Event.IslamicAspect.Madhab.MasterCode"),
+        Description("Event.IslamicAspect.Madhab.FullName"),
+        Description("Event.IslamicAspect.Madhab.Description"),
         Description("Event.IslamicAspect.ReferencePrayer"),
         Description("Event.IslamicAspect.PrayerTimeOffset"),
         Description("Event.IslamicAspect.GenderMode"),
         Description("Event.IslamicAspect.IncludesQuranRecitation"),
-        Description("Event.IslamicAspect.PrimaryLanguage"),
+        Description("Event.IslamicAspect.PrimaryLanguage.MasterCode"),
+        Description("Event.IslamicAspect.PrimaryLanguage.FullName"),
+        Description("Event.IslamicAspect.PrimaryLanguage.Description"),
         Description("Event.TechAspect.GithubRepoUrl"),
         Description("Event.TechAspect.HackathonTrack"),
         Description("Event.TechAspect.SkillLevel"),
@@ -123,7 +142,6 @@ public static class AtprotoEventSourceFieldManifest
         Description("EventDay.Label"),
         Description("EventDay.Description"),
         Description("EventDay.BannerText"),
-        Description("EventDay.BannerImage"),
         Description("EventDay.SortOrder"),
         Description("EventDay.AllowsDayScopeRegistration"),
 
@@ -140,21 +158,25 @@ public static class AtprotoEventSourceFieldManifest
         Excluded("EventSession.LocalEndMinuteOfDay", "cached local-time projection"),
         Description("EventSession.SortOrder"),
         Description("EventSession.Slug"),
-        Description("EventSession.EventSessionKind"),
-        Description("EventSession.EventSessionStatus"),
+        Description("EventSession.EventSessionKind.MasterCode"),
+        Description("EventSession.EventSessionKind.FullName"),
+        Description("EventSession.EventSessionKind.Description"),
+        Description("EventSession.EventSessionStatus.MasterCode"),
+        Description("EventSession.EventSessionStatus.FullName"),
+        Description("EventSession.EventSessionStatus.Description"),
         Description("EventSession.MaxAudienceAttendees"),
         Description("EventSession.CurrentAudienceAttendees"),
-        Description("EventSession.RegistrationMode"),
-        Description("EventSession.FeaturedImage"),
+        Description("EventSession.RegistrationMode.MasterCode"),
+        Description("EventSession.RegistrationMode.FullName"),
+        Description("EventSession.RegistrationMode.Description"),
         Description("EventSession.Price"),
         Description("EventSession.CurrencyCode"),
-        Description("EventSession.Category"),
-        Description("EventSession.Tag"),
-        Description("EventSession.Language"),
         Description("EventSession.Speaker.Actor.Pii.DisplayName"),
         Description("EventSession.Speaker.Actor.Pii.Handle"),
         Description("EventSession.Speaker.Actor.Description"),
-        Description("EventSession.Speaker.Actor.ProfilePicture"),
+        Description("EventSession.Speaker.Actor.BackgroundColor"),
+        Description("EventSession.Speaker.Actor.BackgroundEffect"),
+        Description("EventSession.Speaker.Actor.BannerColor"),
         Description("EventSession.IslamicAspect.StartTimeType"),
         Description("EventSession.IslamicAspect.ReferencePrayer"),
         Description("EventSession.IslamicAspect.OffsetMinutes"),
@@ -178,7 +200,9 @@ public static class AtprotoEventSourceFieldManifest
         Description("EventAgendaItem.LocalEndDate"),
         Description("EventAgendaItem.LocalStartTime"),
         Description("EventAgendaItem.LocalEndTime"),
-        Description("EventAgendaItem.Kind"),
+        Description("EventAgendaItem.Kind.MasterCode"),
+        Description("EventAgendaItem.Kind.FullName"),
+        Description("EventAgendaItem.Kind.Description"),
         Description("EventAgendaItem.SortOrder"),
         Description("EventSessionAgendaItem.Title"),
         Description("EventSessionAgendaItem.Description"),
@@ -187,7 +211,12 @@ public static class AtprotoEventSourceFieldManifest
 
         Description("Event.Category.Parent.FullName"),
         Description("Event.Category.FullName"),
+        Description("Event.Category.MasterCode"),
         Description("Event.Tag.FullName"),
+        Description("Event.Tag.MasterCode"),
+        Description("EventSession.Language.FullName"),
+        Description("EventSession.Language.MasterCode"),
+        Description("EventSession.Language.Description"),
         Description("EventCustomPropertyDefinition.Namespace"),
         Description("EventCustomPropertyDefinition.Key"),
         Description("EventCustomPropertyDefinition.DisplayName"),
@@ -277,6 +306,172 @@ public static class AtprotoEventSourceFieldManifest
         Description("EventSessionCustomPropertyValue.DateTimeValue"),
         Description("EventSessionCustomPropertyValue.Option.DisplayName"),
 
+        Native("StorageObject.Uri", "public media URI used by native URI fields and description media entries"),
+        Description("StorageObject.SafeDisplayName"),
+        Description("StorageObject.Extension"),
+        Description("StorageObject.ContentType"),
+        Description("StorageObject.Size"),
+        Description("StorageObject.Purpose"),
+        Description("StorageObject.FileType.MasterCode"),
+        Description("StorageObject.FileType.FullName"),
+        Description("StorageObject.FileType.Description"),
+
+        .. ExcludedMany(
+            [
+                "Event.Actor.ActorTypeId", "Event.Actor.BackgroundImageId", "Event.Actor.BannerPictureId",
+                "Event.Actor.DidCustodyTypeId", "Event.Actor.Group.ActorId", "Event.Actor.Group.ApprovalStatusId",
+                "Event.Actor.Group.ParentGroupId", "Event.Actor.Group.ParentOrganizationId",
+                "Event.Actor.Group.ProfilePictureId", "Event.Actor.GroupId", "Event.Actor.Organization.ActorId",
+                "Event.Actor.Organization.ApprovalStatusId", "Event.Actor.Organization.Pii.OrganizationId",
+                "Event.Actor.OrganizationId", "Event.Actor.Pii.ActorId", "Event.Actor.ProfilePictureId",
+                "Event.Actor.UserId", "Event.ActorId", "Event.AtprotoRecordId", "Event.AudienceAgeId",
+                "Event.AudienceGenderId", "Event.BackgroundImageId", "Event.Category.ParentId",
+                "Event.EventFormatId", "Event.EventSeries.ActorId", "Event.EventSeries.FeaturedImageId",
+                "Event.EventSeries.VisibilityTypeId", "Event.EventSeriesId", "Event.EventStatusId",
+                "Event.EventTypeId", "Event.FeaturedImageId", "Event.IslamicAspect.MadhabId",
+                "Event.IslamicAspect.PrimaryLanguageId", "Event.MadhabId", "Event.RegistrationPolicyId",
+                "Event.VisibilityTypeId", "EventAgendaItem.EventDayId", "EventAgendaItem.EventId",
+                "EventAgendaItem.EventLocationId", "EventAgendaItem.KindId", "EventAgendaItem.LocationId",
+                "EventAgendaItem.RoomId", "EventCategoryLink.CategoryId", "EventCategoryLink.EventId",
+                "EventCustomPropertyDefinition.DefaultOptionId", "EventCustomPropertyDefinition.EventId",
+                "EventCustomPropertyOption.EventCustomPropertyDefinitionId", "EventCustomPropertyOption.ParentOptionId",
+                "EventCustomPropertyValue.EventCustomPropertyDefinitionId", "EventCustomPropertyValue.EventId",
+                "EventCustomPropertyValue.OptionId", "EventDay.BannerImageId", "EventDay.EventId",
+                "EventLocation.EventId", "EventLocation.FullDetailsAudienceId", "EventLocation.LocationId",
+                "EventLocationDisclosureResult.EventLocationId", "EventLocationDisclosureResult.LocationId",
+                "EventSession.EventDayId", "EventSession.EventId", "EventSession.EventLocationId",
+                "EventSession.EventSessionKindId", "EventSession.EventSessionStatusId",
+                "EventSession.FeaturedImageId", "EventSession.IslamicAspect.EventSessionId",
+                "EventSession.LocationId", "EventSession.RegistrationModeId", "EventSession.RoomId",
+                "EventSession.SourceTemplateId", "EventSession.Speaker.Actor.ActorTypeId",
+                "EventSession.Speaker.Actor.BackgroundImageId", "EventSession.Speaker.Actor.BannerPictureId",
+                "EventSession.Speaker.Actor.DidCustodyTypeId", "EventSession.Speaker.Actor.GroupId",
+                "EventSession.Speaker.Actor.OrganizationId", "EventSession.Speaker.Actor.Pii.ActorId",
+                "EventSession.Speaker.Actor.ProfilePictureId", "EventSession.Speaker.Actor.UserId",
+                "EventSession.Speaker.ActorId", "EventSession.Speaker.EventSessionId",
+                "EventSessionAgendaItem.EventLocationId", "EventSessionAgendaItem.EventSessionId",
+                "EventSessionAgendaItem.LocationId", "EventSessionCategoryLink.CategoryId",
+                "EventSessionCategoryLink.EventSessionId", "EventSessionCustomPropertyDefinition.DefaultOptionId",
+                "EventSessionCustomPropertyDefinition.EventSessionId",
+                "EventSessionCustomPropertyOption.EventSessionCustomPropertyDefinitionId",
+                "EventSessionCustomPropertyOption.ParentOptionId",
+                "EventSessionCustomPropertyValue.EventSessionCustomPropertyDefinitionId",
+                "EventSessionCustomPropertyValue.EventSessionId", "EventSessionCustomPropertyValue.OptionId",
+                "EventSessionGroup.EventId", "EventSessionGroup.EventLocationId", "EventSessionGroup.LocationId",
+                "EventSessionGroup.RoomId", "EventSessionGroupSession.EventId",
+                "EventSessionGroupSession.EventSessionGroupId", "EventSessionGroupSession.EventSessionId",
+                "EventSessionLanguageLink.EventSessionId", "EventSessionLanguageLink.LanguageId",
+                "EventSessionTagLink.EventSessionId", "EventSessionTagLink.TagId",
+                "EventTagLink.EventId", "EventTagLink.TagId", "LocationRoom.LocationId",
+                "StorageObject.ActorId", "StorageObject.FileTypeId", "StorageObject.OwningResourceId"
+            ],
+            "internal persistence or relationship identifier"),
+
+        .. ExcludedMany(
+            [
+                "Event.Actor.CreatedAt", "Event.Actor.Group.CreatedAt", "Event.Actor.Organization.CreatedAt",
+                "Event.EventSeries.CreatedAt", "EventAgendaItem.CreatedAt", "EventCategoryLink.CreatedAt",
+                "EventCustomPropertyDefinition.CreatedAt", "EventCustomPropertyOption.CreatedAt",
+                "EventCustomPropertyValue.CreatedAt", "EventDay.CreatedAt", "EventLocation.CreatedAt",
+                "EventSession.CreatedAt", "EventSession.Speaker.Actor.CreatedAt",
+                "EventSessionCategoryLink.CreatedAt", "EventSessionCustomPropertyDefinition.CreatedAt",
+                "EventSessionCustomPropertyOption.CreatedAt", "EventSessionCustomPropertyValue.CreatedAt",
+                "EventSessionGroup.CreatedAt", "EventSessionGroupSession.CreatedAt",
+                "EventSessionTagLink.CreatedAt", "EventTagLink.CreatedAt", "LocationRoom.CreatedAt",
+                "StorageObject.CreatedAt"
+            ],
+            "audit creation timestamp; the event record has its own native createdAt"),
+
+        .. ExcludedMany(
+            [
+                "Event.Actor.Organization.ApprovedAt", "Event.Actor.Organization.ApprovedBy",
+                "Event.Actor.Organization.ApprovalNotes", "Event.Actor.IndexedAt",
+                "EventSession.Speaker.Actor.IndexedAt"
+            ],
+            "administrative approval or indexing audit metadata"),
+
+        .. ExcludedMany(
+            [
+                "Event.Actor.Did", "Event.Actor.ProfilePictureCid", "Event.Actor.Pii.ProfilePictureUri",
+                "Event.Actor.ProfilePictureUri", "EventSession.Speaker.Actor.Did",
+                "EventSession.Speaker.Actor.PdsHost", "EventSession.Speaker.Actor.Pii.Did",
+                "EventSession.Speaker.Actor.Pii.ProfilePictureUri",
+                "EventSession.Speaker.Actor.ProfilePictureCid", "EventSession.Speaker.Actor.ProfilePictureUri"
+            ],
+            "provider identity or legacy remote-media bookkeeping"),
+
+        .. ExcludedMany(
+            [
+                "Event.Actor.DisplayName", "Event.Actor.Handle", "Event.Actor.Organization.City",
+                "Event.Actor.Organization.Country", "Event.Actor.Organization.FullName",
+                "EventSession.Speaker.Actor.DisplayName", "EventSession.Speaker.Actor.Handle"
+            ],
+            "not-mapped alias; the canonical PII extension value is classified separately"),
+
+        .. ExcludedMany(
+            [
+                "Event.Actor.Organization.Address", "Event.Actor.Organization.Email",
+                "Event.Actor.Organization.Postcode"
+            ],
+            "organizer contact or precise-address PII"),
+
+        .. ExcludedMany(
+            [
+                "Event.InstantiatedFromTemplateAt", "Event.LastSyncedFromTemplateAt",
+                "EventSession.InstantiatedFromTemplateAt", "EventSession.LastSyncedFromTemplateAt",
+                "EventSession.SourceTemplateKey", "EventSession.SourceTemplateVersion"
+            ],
+            "template provenance metadata"),
+
+        .. ExcludedMany(
+            [
+                "EventAgendaItem.LocalEndMinuteOfDay", "EventAgendaItem.LocalStartMinuteOfDay"
+            ],
+            "cached local-time projection; readable local date and time values are rendered"),
+
+        .. ExcludedMany(
+            [
+                "EventLocation.HasValidLocationOrTbaShape", "EventLocation.IsToBeAnnounced",
+                "EventLocation.LastPolicyActorUserId", "EventLocation.LastPolicyChangedAtUtc",
+                "EventLocation.NeedsPrivacyReview", "EventLocation.PolicyVersion",
+                "EventLocation.RevealFullDetailsFromUtc", "EventLocation.ShowCity",
+                "EventLocation.ShowCoordinates", "EventLocation.ShowCountry", "EventLocation.ShowPostcode",
+                "EventLocation.ShowRoomName", "EventLocation.ShowStreetAddress", "EventLocation.ShowVenueName"
+            ],
+            "privacy-policy input; only the evaluated public disclosure result may be published"),
+        Excluded("EventLocationDisclosureResult.Purpose", "privacy evaluator routing metadata; only public-purpose results are mapped"),
+
+        .. ExcludedMany(
+            [
+                "LocationRoom.Name", "LocationRoom.Description", "LocationRoom.Slug",
+                "LocationRoom.Capacity", "LocationRoom.SortOrder"
+            ],
+            "raw room data is not a publication source; only disclosure-authorized room values may be rendered"),
+
+        Excluded("StorageObject.FullName", "untrusted original filename; SafeDisplayName is rendered instead"),
+        Excluded("StorageObject.LifecycleState", "media availability eligibility gate"),
+        Excluded("StorageObject.Visibility", "media publication eligibility gate"),
+        .. ExcludedMany(
+            [
+                "StorageObject.ObjectKey", "StorageObject.Provider", "StorageObject.Sha256Checksum",
+                "StorageObject.OwningResourceKind", "StorageObject.QuarantineReason",
+                "StorageObject.QuarantinedAt", "StorageObject.QuarantinedBy"
+            ],
+            "storage-provider, integrity, ownership, or quarantine bookkeeping"),
+
+        Description("Event.Category.Parent.MasterCode"),
+        Excluded("Event.Category.Parent.ParentId", "internal parent-category relationship identifier"),
+        Excluded("Event.EventSeries.Actor.Pii.ActorId", "internal actor relationship identifier"),
+        Excluded("Event.EventSeries.Actor.Pii.Did", "provider identity bookkeeping"),
+        Excluded("Event.EventSeries.Actor.Pii.ProfilePictureUri", "legacy remote-media bookkeeping"),
+
+        .. ExcludedNestedOptionFields("EventCustomPropertyDefinition.DefaultOption"),
+        .. ExcludedNestedOptionFields("EventCustomPropertyOption.ParentOption"),
+        .. ExcludedNestedOptionFields("EventCustomPropertyValue.Option"),
+        .. ExcludedNestedOptionFields("EventSessionCustomPropertyDefinition.DefaultOption"),
+        .. ExcludedNestedOptionFields("EventSessionCustomPropertyOption.ParentOption"),
+        .. ExcludedNestedOptionFields("EventSessionCustomPropertyValue.Option"),
+
         Excluded("*.Id", "internal persistence identifier"),
         Excluded("*.TenantId", "tenant isolation identifier"),
         Excluded("*.CreatedBy", "audit identity"),
@@ -290,8 +485,6 @@ public static class AtprotoEventSourceFieldManifest
         Excluded("EventSessionGroup.IsPublished", "publication eligibility gate, never payload"),
         Excluded("*.IsDeleted", "soft-delete eligibility gate, never payload"),
         Excluded("Event.IsUserReported", "moderation signal"),
-        Excluded("Event.ModerationRecords", "moderation evidence"),
-        Excluded("Event.AtprotoRecord", "provider bookkeeping"),
         Excluded("Event.SourceTemplate*", "template provenance"),
         Excluded("Event.Provenance*", "import provenance"),
         Excluded("Event.Actor.Pii.Did", "provider identity bookkeeping"),
@@ -308,9 +501,8 @@ public static class AtprotoEventSourceFieldManifest
         Excluded("EventSessionCustomPropertyDefinition.LastSyncedFromTemplateAt", "template provenance timestamp"),
         Excluded("EventSessionCustomPropertyOption.SourceTemplate*", "template provenance"),
         Excluded("Location.*", "raw physical location is never a publication source"),
+        Excluded("Location.TenantId", "raw physical-location tenant identifier"),
         Excluded("LocationPii.*", "raw physical PII is never a publication source"),
-        Excluded("EventRegistration*", "attendee, answers, approval, payment, and registration PII"),
-        Excluded("EventReport*", "moderation and report evidence"),
         Excluded("EventCustomPropertyDefinition.ExposureLevel!=Public", "non-public custom property"),
         Excluded("EventSessionCustomPropertyDefinition.ExposureLevel!=Public", "non-public custom property"),
         Excluded("StorageObject.Visibility!=public_image", "non-public media"),
@@ -325,6 +517,39 @@ public static class AtprotoEventSourceFieldManifest
 
     private static AtprotoSourceFieldManifestEntry Excluded(string sourcePath, string reason)
         => new(sourcePath, AtprotoSourceFieldDisposition.Excluded, reason);
+
+    private static IEnumerable<AtprotoSourceFieldManifestEntry> ExcludedMany(
+        IEnumerable<string> sourcePaths,
+        string reason)
+        => sourcePaths.Select(sourcePath => Excluded(sourcePath, reason));
+
+    private static IEnumerable<AtprotoSourceFieldManifestEntry> ExcludedNestedOptionFields(string prefix)
+    {
+        yield return Excluded($"{prefix}.CreatedAt", "option audit metadata");
+        foreach (string suffix in new[]
+                 {
+                     "Description", "IsActive", "IsDefault", "Key", "Namespace", "SortOrder", "Value"
+                 })
+        {
+            yield return Excluded(
+                $"{prefix}.{suffix}",
+                "duplicate relationship view; the canonical option collection renders this field");
+        }
+
+        foreach (string suffix in new[]
+                 {
+                     prefix.StartsWith("EventSession", StringComparison.Ordinal)
+                         ? "EventSessionCustomPropertyDefinitionId"
+                         : "EventCustomPropertyDefinitionId",
+                     "ParentOptionId"
+                 })
+        {
+            yield return Excluded($"{prefix}.{suffix}", "internal option relationship identifier");
+        }
+
+        yield return Excluded($"{prefix}.SourceTemplateOptionId", "template provenance identifier");
+        yield return Excluded($"{prefix}.SourceTemplateVersion", "template provenance version");
+    }
 }
 
 public static class AtprotoRsvpSourceFieldManifest

@@ -8,11 +8,20 @@ namespace Explore.Application.Contracts.Persistence;
 
 public interface IEventRepository : IGenericRepository<Event, Guid>
 {
+    const int MaximumAuthorizationTargetBatchSize = 256;
+
     Task<Event?> GetEventWithDetails(Guid id);
     Task<Event?> GetPublicEventWithDetailsByCodeAsync(string publicCode, CancellationToken cancellationToken);
     Task<Event?> GetScheduleGraphForUpdateAsync(Guid id, CancellationToken cancellationToken);
     Task<Event?> GetAuthorizationTargetByIdAsync(Guid id, CancellationToken cancellationToken);
+    Task<IReadOnlyList<Event>> GetAuthorizationTargetsByIdsAsync(
+        IReadOnlyCollection<Guid> ids,
+        CancellationToken cancellationToken);
     Task<AtprotoEventPublicationEntityGraph?> GetAtprotoPublicationGraphAsync(
+        Guid tenantId,
+        Guid eventId,
+        CancellationToken cancellationToken);
+    Task<Event?> GetAtprotoLifecycleStateAsync(
         Guid tenantId,
         Guid eventId,
         CancellationToken cancellationToken);

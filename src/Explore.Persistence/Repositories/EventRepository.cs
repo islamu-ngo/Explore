@@ -64,6 +64,37 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Event>> GetAuthorizationTargetsByIdsAsync(
+        IReadOnlyCollection<Guid> ids,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        Guid[] normalizedIds = ids.Distinct().ToArray();
+        if (normalizedIds.Any(id => id == Guid.Empty))
+        {
+            throw new ArgumentException("Authorization target ids must be non-empty.", nameof(ids));
+        }
+
+        if (normalizedIds.Length > IEventRepository.MaximumAuthorizationTargetBatchSize)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(ids),
+                $"Event authorization target batches cannot exceed {IEventRepository.MaximumAuthorizationTargetBatchSize} unique ids.");
+        }
+
+        if (normalizedIds.Length == 0)
+        {
+            return [];
+        }
+
+        return await _dbContext.Events
+            .AsNoTracking()
+            .Include(eventEntity => eventEntity.Actor)
+            .Where(eventEntity => normalizedIds.Contains(eventEntity.Id))
+            .OrderBy(eventEntity => eventEntity.Id)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<AtprotoEventPublicationEntityGraph?> GetAtprotoPublicationGraphAsync(
         Guid tenantId,
         Guid eventId,
@@ -189,6 +220,10 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
                 .ThenInclude(actor => actor.Pii)
             .Include(link => link.Actor)
                 .ThenInclude(actor => actor.ProfilePicture)
+            .Include(link => link.Actor)
+                .ThenInclude(actor => actor.BannerPicture)
+            .Include(link => link.Actor)
+                .ThenInclude(actor => actor.BackgroundImage)
             .Where(link => sessionIds.Contains(link.EventSessionId))
             .ToListAsync(cancellationToken);
 
@@ -232,6 +267,15 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             customPropertyDefinitions,
             sessionCustomPropertyDefinitions);
     }
+
+    public Task<Event?> GetAtprotoLifecycleStateAsync(
+        Guid tenantId,
+        Guid eventId,
+        CancellationToken cancellationToken) =>
+        TenantScoped(_dbContext.Events, tenantId)
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .AsNoTracking()
+            .SingleOrDefaultAsync(value => value.Id == eventId, cancellationToken);
 
     private static IQueryable<TEntity> TenantScoped<TEntity>(
         DbSet<TEntity> set,
@@ -333,7 +377,13 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         // If no sort was specified by the specification, default to date descending
         if (!specification.HasSort)
         {
-            query = query.OrderByDescending(e => e.FirstSessionStartUtc);
+            query = query
+                .OrderByDescending(e => e.FirstSessionStartUtc)
+                .ThenBy(e => e.Id);
+        }
+        else if (query is IOrderedQueryable<Event> orderedQuery)
+        {
+            query = orderedQuery.ThenBy(e => e.Id);
         }
 
         var totalCount = await query.CountAsync();
