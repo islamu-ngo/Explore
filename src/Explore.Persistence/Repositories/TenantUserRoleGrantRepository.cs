@@ -90,6 +90,27 @@ public class TenantUserRoleGrantRepository : GenericRepository<TenantUserRoleGra
                 && !x.TenantUser.IsDeleted);
     }
 
+    public async Task<bool> IsTenantAdminInCurrentTenantAsync(
+        Guid tenantId,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        if (_dbContext.TenantFilterTenantId != tenantId || _dbContext.IsTenantFilterBypassed)
+        {
+            throw new InvalidOperationException("Tenant-admin revalidation requires the matching active tenant filter.");
+        }
+
+        return await _dbContext.TenantUserRoleGrants
+            .AsNoTracking()
+            .AnyAsync(grant => grant.TenantId == tenantId
+                && grant.RevokedAt == null
+                && grant.TenantUser.UserId == userId
+                && grant.RoleId == (int)RoleEnum.TenantAdmin
+                && grant.TenantUser.StatusId == (int)TenantUserStatusEnum.Active
+                && !grant.TenantUser.IsDeleted,
+                cancellationToken);
+    }
+
     public async Task<TenantUserRoleGrant?> GetGrantWithDetails(Guid id)
     {
         return await _dbContext.TenantUserRoleGrants

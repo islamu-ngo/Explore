@@ -13,6 +13,10 @@ public interface ITenantUserRoleGrantRepository : IGenericRepository<TenantUserR
     Task<List<TenantUserRoleGrant>> GetByUserId(Guid userId);
     Task<bool> HasActiveTenantUserRoleGrant(Guid tenantId, Guid userId);
     Task<bool> IsTenantAdmin(Guid tenantId, Guid userId);
+    Task<bool> IsTenantAdminInCurrentTenantAsync(
+        Guid tenantId,
+        Guid userId,
+        CancellationToken cancellationToken = default);
     Task<TenantUserRoleGrant?> GetGrantWithDetails(Guid id);
     Task<List<TenantUserRoleGrant>> GetGrantsWithDetails();
 }
