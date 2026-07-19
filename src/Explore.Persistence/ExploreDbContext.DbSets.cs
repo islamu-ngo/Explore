@@ -224,6 +224,7 @@ public partial class ExploreDbContext
     public DbSet<NotificationScopeType> NotificationScopeTypes { get; set; }
     public DbSet<NotificationFanoutRun> NotificationFanoutRuns { get; set; }
     public DbSet<NotificationFanoutOccurrence> NotificationFanoutOccurrences { get; set; }
+    public DbSet<NotificationFanoutProcessorState> NotificationFanoutProcessorStates { get; set; }
     public DbSet<NotificationPreferenceCategory> NotificationPreferenceCategories { get; set; }
     public DbSet<NotificationPreferenceChannel> NotificationPreferenceChannels { get; set; }
     public DbSet<WebPushSubscription> WebPushSubscriptions { get; set; }

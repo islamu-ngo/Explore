@@ -8,12 +8,14 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Explore.Persistence.Repositories;
 
 public class NotificationFanoutRunRepository : GenericRepository<NotificationFanoutRun, Guid>, INotificationFanoutRunRepository
 {
     private const int MaximumClaimRoundSize = 1000;
+    private const string ProcessorCode = "fanout";
     private readonly ExploreDbContext _dbContext;
 
     public NotificationFanoutRunRepository(ExploreDbContext dbContext) : base(dbContext)
@@ -231,6 +233,18 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
                     return ClaimAttempt.Unavailable;
                 }
 
+                bool optionalRemindersDeferred = await _dbContext.NotificationFanoutProcessorStates
+                    .AsNoTracking()
+                    .Where(state => state.ProcessorCode == ProcessorCode)
+                    .Select(state => state.OptionalRemindersDeferred)
+                    .SingleOrDefaultAsync(cancellationToken);
+                if (optionalRemindersDeferred
+                    && occurrence.DeliveryPolicyId == (int)NotificationDeliveryPolicyEnum.ReminderOptional)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                    return ClaimAttempt.CapacityDeferred;
+                }
+
                 var run = await _dbContext.NotificationFanoutRuns
                     .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
                     .SingleOrDefaultAsync(
@@ -271,7 +285,7 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
                     {
                         await transaction.CommitAsync(cancellationToken);
                         _dbContext.Entry(run).State = EntityState.Detached;
-                        return ClaimAttempt.LeaseContention;
+                        return ClaimAttempt.CapacityDeferred;
                     }
 
                     int activeClaims = await _dbContext.NotificationFanoutRuns
@@ -286,7 +300,7 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
                     {
                         await transaction.CommitAsync(cancellationToken);
                         _dbContext.Entry(run).State = EntityState.Detached;
-                        return ClaimAttempt.LeaseContention;
+                        return ClaimAttempt.CapacityDeferred;
                     }
 
                     run.Status = "processing";
@@ -318,7 +332,7 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
                     run.ProcessingGeneration,
                     cursor);
                 _dbContext.Entry(run).State = EntityState.Detached;
-                return new ClaimAttempt(claim, false, false);
+                return new ClaimAttempt(claim, ClaimAttemptOutcome.Claimed);
             }
             catch
             {
@@ -339,6 +353,9 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
             || request.MaxActiveClaims <= 0
             || request.MaxActiveClaimsPerTenant <= 0
             || request.MaxActiveClaimsPerTenant > request.MaxActiveClaims
+            || request.OptionalReminderBacklogHighWatermark <= 0
+            || request.OptionalReminderBacklogLowWatermark < 0
+            || request.OptionalReminderBacklogLowWatermark >= request.OptionalReminderBacklogHighWatermark
             || string.IsNullOrWhiteSpace(request.LeaseOwner))
         {
             throw new ArgumentException("The notification fanout claim round is invalid.", nameof(request));
@@ -355,15 +372,18 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
             throw new InvalidOperationException("A notification fanout claim round cannot run inside an ambient transaction.");
         }
 
-        IReadOnlyList<RunnableOccurrenceCandidate> candidates = await LoadRunnableRoundAsync(
+        RunnableRound runnableRound = await LoadRunnableRoundAsync(
             request.ClaimedAt,
             request.MaxTenants,
             request.MaxActiveClaims,
             request.MaxActiveClaimsPerTenant,
-            request.DeferOptionalReminders,
+            request.OptionalReminderBacklogHighWatermark,
+            request.OptionalReminderBacklogLowWatermark,
             cancellationToken);
+        IReadOnlyList<RunnableOccurrenceCandidate> candidates = runnableRound.Candidates;
         var claims = new List<NotificationFanoutClaim>(candidates.Count);
         int leaseContentionCount = 0;
+        int capacityDeferredCount = 0;
         int unavailableCount = 0;
         foreach (RunnableOccurrenceCandidate candidate in candidates)
         {
@@ -380,9 +400,13 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
             {
                 claims.Add(attempt.Claim);
             }
-            else if (attempt.LeaseContended)
+            else if (attempt.Outcome == ClaimAttemptOutcome.LeaseContention)
             {
                 leaseContentionCount++;
+            }
+            else if (attempt.Outcome == ClaimAttemptOutcome.CapacityDeferred)
+            {
+                capacityDeferredCount++;
             }
             else
             {
@@ -394,6 +418,7 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
             claims,
             candidates.Count,
             leaseContentionCount,
+            capacityDeferredCount,
             unavailableCount);
     }
 
@@ -496,8 +521,8 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
             join run in _dbContext.NotificationFanoutRuns
                 .IgnoreTenantFilter(TenantFilterBypassReasons.NotificationFanoutWorkerCrossTenantQueue)
                 .AsNoTracking()
-                on new { occurrence.TenantId, OccurrenceId = occurrence.Id }
-                equals new { run.TenantId, OccurrenceId = run.FanoutOccurrenceId!.Value }
+                on new { occurrence.TenantId, OccurrenceId = (Guid?)occurrence.Id }
+                equals new { run.TenantId, OccurrenceId = run.FanoutOccurrenceId }
             where occurrence.State == NotificationFanoutOccurrenceState.Pending
                 && occurrence.NotBefore <= observedAt
                 && (run.Status == "pending"
@@ -509,7 +534,7 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
             item => item.DeliveryPolicyId == (int)NotificationDeliveryPolicyEnum.ReminderOptional,
             cancellationToken);
         DateTime? oldestDueAt = await dueOccurrences
-            .Select(item => (DateTime?)item.NotBefore)
+            .Select(item => (DateTime?)item.OccurredAt)
             .MinAsync(cancellationToken);
 
         IQueryable<NotificationFanoutRun> occurrenceRuns = _dbContext.NotificationFanoutRuns
@@ -523,6 +548,7 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
             run => run.Status == "processing" && run.ProcessingLeaseExpiresAt <= observedAt,
             cancellationToken);
         long processedRecipientCount = await occurrenceRuns
+            .Where(run => run.Status == "pending" || run.Status == "processing")
             .Select(run => (long?)run.ProcessedCount)
             .SumAsync(cancellationToken) ?? 0L;
         int supersededOccurrenceCount = await _dbContext.NotificationFanoutOccurrences
@@ -531,6 +557,11 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
             .CountAsync(
                 occurrence => occurrence.State == NotificationFanoutOccurrenceState.Superseded,
                 cancellationToken);
+        bool optionalRemindersDeferred = await _dbContext.NotificationFanoutProcessorStates
+            .AsNoTracking()
+            .Where(state => state.ProcessorCode == ProcessorCode)
+            .Select(state => state.OptionalRemindersDeferred)
+            .SingleOrDefaultAsync(cancellationToken);
 
         return new NotificationFanoutProcessorSnapshot(
             dueOccurrenceCount,
@@ -540,7 +571,8 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
             expiredClaimCount,
             supersededOccurrenceCount,
             processedRecipientCount,
-            oldestDueAt);
+            oldestDueAt,
+            optionalRemindersDeferred);
     }
 
     private IQueryable<NotificationFanoutRun> ActiveClaimQuery(
@@ -593,7 +625,95 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
         }
     }
 
-    private async Task<IReadOnlyList<RunnableOccurrenceCandidate>> LoadRunnableRoundAsync(
+    private async Task<RunnableRound> LoadRunnableRoundAsync(
+        DateTime claimedAt,
+        int maxTenants,
+        int maxActiveClaims,
+        int maxActiveClaimsPerTenant,
+        int optionalReminderBacklogHighWatermark,
+        int optionalReminderBacklogLowWatermark,
+        CancellationToken cancellationToken)
+    {
+        var strategy = _dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            try
+            {
+                await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+                await AcquireGlobalClaimLockAsync(cancellationToken);
+                bool optionalRemindersDeferred = await UpdateOptionalReminderHysteresisAsync(
+                    claimedAt,
+                    optionalReminderBacklogHighWatermark,
+                    optionalReminderBacklogLowWatermark,
+                    cancellationToken);
+                IReadOnlyList<RunnableOccurrenceCandidate> candidates = await ExecuteRunnableRoundAsync(
+                    transaction,
+                    claimedAt,
+                    maxTenants,
+                    maxActiveClaims,
+                    maxActiveClaimsPerTenant,
+                    optionalRemindersDeferred,
+                    cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                _dbContext.ChangeTracker.Clear();
+                return new RunnableRound(candidates, optionalRemindersDeferred);
+            }
+            catch
+            {
+                _dbContext.ChangeTracker.Clear();
+                throw;
+            }
+        });
+    }
+
+    private async Task<bool> UpdateOptionalReminderHysteresisAsync(
+        DateTime claimedAt,
+        int highWatermark,
+        int lowWatermark,
+        CancellationToken cancellationToken)
+    {
+        NotificationFanoutProcessorState? state = await _dbContext.NotificationFanoutProcessorStates
+            .SingleOrDefaultAsync(item => item.ProcessorCode == ProcessorCode, cancellationToken);
+        if (state is null)
+        {
+            state = new NotificationFanoutProcessorState
+            {
+                Id = Guid.CreateVersion7(),
+                ProcessorCode = ProcessorCode,
+                UpdatedAt = claimedAt
+            };
+            await _dbContext.NotificationFanoutProcessorStates.AddAsync(state, cancellationToken);
+        }
+
+        int coreBacklog = await CountDueCoreOccurrencesAsync(claimedAt, cancellationToken);
+        state.OptionalRemindersDeferred = coreBacklog >= highWatermark
+            || (coreBacklog > lowWatermark && state.OptionalRemindersDeferred);
+        state.UpdatedAt = claimedAt;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return state.OptionalRemindersDeferred;
+    }
+
+    private Task<int> CountDueCoreOccurrencesAsync(
+        DateTime claimedAt,
+        CancellationToken cancellationToken) =>
+        (from occurrence in _dbContext.NotificationFanoutOccurrences
+                .IgnoreTenantFilter(TenantFilterBypassReasons.NotificationFanoutWorkerCrossTenantQueue)
+                .AsNoTracking()
+            join run in _dbContext.NotificationFanoutRuns
+                .IgnoreTenantFilter(TenantFilterBypassReasons.NotificationFanoutWorkerCrossTenantQueue)
+                .AsNoTracking()
+                on new { occurrence.TenantId, OccurrenceId = (Guid?)occurrence.Id }
+                equals new { run.TenantId, OccurrenceId = run.FanoutOccurrenceId }
+            where occurrence.State == NotificationFanoutOccurrenceState.Pending
+                && occurrence.NotBefore <= claimedAt
+                && occurrence.DeliveryPolicyId != (int)NotificationDeliveryPolicyEnum.ReminderOptional
+                && (run.Status == "pending"
+                    || (run.Status == "processing" && run.ProcessingLeaseExpiresAt <= claimedAt))
+            select occurrence.Id)
+        .CountAsync(cancellationToken);
+
+    private async Task<IReadOnlyList<RunnableOccurrenceCandidate>> ExecuteRunnableRoundAsync(
+        IDbContextTransaction transaction,
         DateTime claimedAt,
         int maxTenants,
         int maxActiveClaims,
@@ -653,39 +773,32 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
                 GREATEST(0, @max_active_claims - (SELECT active_count FROM active_global)));
             """;
 
-        await _dbContext.Database.OpenConnectionAsync(cancellationToken);
-        try
-        {
-            await using DbCommand command = _dbContext.Database.GetDbConnection().CreateCommand();
-            command.CommandText = sql;
-            AddParameter(command, "claimed_at", claimedAt);
-            AddParameter(command, "max_tenants", maxTenants, DbType.Int32);
-            AddParameter(command, "max_active_claims", maxActiveClaims, DbType.Int32);
-            AddParameter(
-                command,
-                "max_active_claims_per_tenant",
-                maxActiveClaimsPerTenant,
-                DbType.Int32);
-            AddParameter(command, "defer_optional_reminders", deferOptionalReminders, DbType.Boolean);
-            AddParameter(
-                command,
-                "reminder_optional_policy_id",
-                (int)NotificationDeliveryPolicyEnum.ReminderOptional,
-                DbType.Int32);
+        await using DbCommand command = _dbContext.Database.GetDbConnection().CreateCommand();
+        command.Transaction = transaction.GetDbTransaction();
+        command.CommandText = sql;
+        AddParameter(command, "claimed_at", claimedAt);
+        AddParameter(command, "max_tenants", maxTenants, DbType.Int32);
+        AddParameter(command, "max_active_claims", maxActiveClaims, DbType.Int32);
+        AddParameter(
+            command,
+            "max_active_claims_per_tenant",
+            maxActiveClaimsPerTenant,
+            DbType.Int32);
+        AddParameter(command, "defer_optional_reminders", deferOptionalReminders, DbType.Boolean);
+        AddParameter(
+            command,
+            "reminder_optional_policy_id",
+            (int)NotificationDeliveryPolicyEnum.ReminderOptional,
+            DbType.Int32);
 
-            var candidates = new List<RunnableOccurrenceCandidate>(maxTenants);
-            await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                candidates.Add(new RunnableOccurrenceCandidate(reader.GetGuid(0), reader.GetGuid(1)));
-            }
-
-            return candidates;
-        }
-        finally
+        var candidates = new List<RunnableOccurrenceCandidate>(maxTenants);
+        await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
         {
-            await _dbContext.Database.CloseConnectionAsync();
+            candidates.Add(new RunnableOccurrenceCandidate(reader.GetGuid(0), reader.GetGuid(1)));
         }
+
+        return candidates;
     }
 
     private static void AddParameter(DbCommand command, string name, object value, DbType dbType)
@@ -723,7 +836,10 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
                     .AsNoTracking(),
                 item => new { item.TenantId, item.EventId },
                 item => new { item.TenantId, EventId = item.Id },
-                (item, eventEntity) => new OccurrenceSource(item.EventId, eventEntity.ActorId))
+                (item, eventEntity) => new OccurrenceSource(
+                    item.EventId,
+                    eventEntity.ActorId,
+                    item.DeliveryPolicyId))
             .SingleOrDefaultAsync(cancellationToken);
 
     private Task<Guid?> LoadOccurrenceEventIdHintAsync(
@@ -769,16 +885,28 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
         || (next.FirstEligibleRegistrationCreatedAt == current.Value.FirstEligibleRegistrationCreatedAt
             && next.UserId.CompareTo(current.Value.UserId) > 0);
 
-    private sealed record OccurrenceSource(Guid EventId, Guid ActorId);
+    private sealed record OccurrenceSource(Guid EventId, Guid ActorId, int DeliveryPolicyId);
 
     private sealed record RunnableOccurrenceCandidate(Guid TenantId, Guid OccurrenceId);
 
+    private sealed record RunnableRound(
+        IReadOnlyList<RunnableOccurrenceCandidate> Candidates,
+        bool OptionalRemindersDeferred);
+
     private sealed record ClaimAttempt(
         NotificationFanoutClaim? Claim,
-        bool LeaseContended,
-        bool IsUnavailable)
+        ClaimAttemptOutcome Outcome)
     {
-        public static ClaimAttempt LeaseContention { get; } = new(null, true, false);
-        public static ClaimAttempt Unavailable { get; } = new(null, false, true);
+        public static ClaimAttempt LeaseContention { get; } = new(null, ClaimAttemptOutcome.LeaseContention);
+        public static ClaimAttempt CapacityDeferred { get; } = new(null, ClaimAttemptOutcome.CapacityDeferred);
+        public static ClaimAttempt Unavailable { get; } = new(null, ClaimAttemptOutcome.Unavailable);
+    }
+
+    private enum ClaimAttemptOutcome
+    {
+        Claimed = 1,
+        LeaseContention = 2,
+        CapacityDeferred = 3,
+        Unavailable = 4
     }
 }

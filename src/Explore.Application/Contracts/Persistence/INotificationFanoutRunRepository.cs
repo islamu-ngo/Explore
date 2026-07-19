@@ -21,23 +21,26 @@ public sealed record NotificationFanoutClaimRoundRequest(
     int MaxTenants,
     int MaxActiveClaims,
     int MaxActiveClaimsPerTenant,
-    bool DeferOptionalReminders);
+    int OptionalReminderBacklogHighWatermark,
+    int OptionalReminderBacklogLowWatermark);
 
 public sealed record NotificationFanoutClaimRoundResult(
     IReadOnlyList<NotificationFanoutClaim> Claims,
     int CandidateCount,
     int LeaseContentionCount,
+    int CapacityDeferredCount,
     int UnavailableCount);
 
 public sealed record NotificationFanoutProcessorSnapshot(
     int DueOccurrenceCount,
-    int DueRequiredOccurrenceCount,
+    int DueCoreOccurrenceCount,
     int DueOptionalReminderCount,
     int ActiveClaimCount,
     int ExpiredClaimCount,
     int SupersededOccurrenceCount,
     long ProcessedRecipientCount,
-    DateTime? OldestDueAt);
+    DateTime? OldestDueAt,
+    bool OptionalRemindersDeferred);
 
 public interface INotificationFanoutRunRepository : IGenericRepository<NotificationFanoutRun, Guid>
 {
