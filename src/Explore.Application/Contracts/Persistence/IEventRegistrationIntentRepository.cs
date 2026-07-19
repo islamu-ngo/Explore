@@ -7,6 +7,22 @@ namespace Explore.Application.Contracts.Persistence;
 
 public interface IEventRegistrationIntentRepository : IGenericRepository<EventRegistrationIntent, Guid>
 {
+    Task<EventRegistrationIntent?> GetAtprotoLifecycleStateAsync(
+        Guid tenantId,
+        Guid intentId,
+        CancellationToken cancellationToken);
+
+    Task<int> CountActiveForEventUserAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid userId,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<EventRegistrationIntent>> GetAtprotoReconciliationCandidatesAsync(
+        Guid? afterIntentId,
+        int batchSize,
+        CancellationToken cancellationToken);
+
     /// <summary>
     /// Returns the existing parent intent for the supplied (event, user, scope[, selectedDay]) tuple, or null.
     /// Day-scope intents key on <paramref name="selectedEventDayId"/>; all other scopes ignore it.

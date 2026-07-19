@@ -26,7 +26,6 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
     private readonly IApprovalStatusRepository _approvalStatusRepository;
     private readonly IEventRegistrationIntentRepository _intentRepository;
     private readonly IEventRepository _eventRepository;
-    private readonly IAtprotoRecordRepository _atprotoRecordRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
     private readonly IRegistrationNotificationDeliveryService _notificationDeliveryService;
@@ -40,7 +39,6 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
         IApprovalStatusRepository approvalStatusRepository,
         IEventRegistrationIntentRepository intentRepository,
         IEventRepository eventRepository,
-        IAtprotoRecordRepository atprotoRecordRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
         IRegistrationNotificationDeliveryService notificationDeliveryService,
@@ -53,7 +51,6 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
         _approvalStatusRepository = approvalStatusRepository;
         _intentRepository = intentRepository;
         _eventRepository = eventRepository;
-        _atprotoRecordRepository = atprotoRecordRepository;
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _notificationDeliveryService = notificationDeliveryService;
@@ -228,18 +225,10 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
             }
         }
 
-        if (update.AtprotoRecord?.AtprotoRecordId.HasValue == true
-            && update.AtprotoRecord.AtprotoRecordId.Value.HasValue
-            && !await _atprotoRecordRepository.Exists(update.AtprotoRecord.AtprotoRecordId.Value.Value))
-        {
-            return new UpdateExecutionOutcome(ValidationFailure("AtprotoRecordId not found."));
-        }
-
         ApplyUser(eventRegistration, update.User);
         ApplySession(eventRegistration, update.Session, effectiveEventId, effectiveTenantId);
         ApplyIntent(eventRegistration, update.Intent);
         ApplyApprovalStatus(eventRegistration, update.ApprovalStatus);
-        ApplyAtprotoRecord(eventRegistration, update.AtprotoRecord);
 
         var actorUserId = _currentUserService.UserId;
         var actorProvenance = actorUserId switch
@@ -327,14 +316,6 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
         if (group?.ApprovalStatusId.HasValue == true)
         {
             registration.ApprovalStatusId = group.ApprovalStatusId.Value;
-        }
-    }
-
-    private static void ApplyAtprotoRecord(EventRegistration registration, UpdateEventRegistrationAtprotoRecordDto? group)
-    {
-        if (group?.AtprotoRecordId.HasValue == true)
-        {
-            registration.AtprotoRecordId = group.AtprotoRecordId.Value;
         }
     }
 

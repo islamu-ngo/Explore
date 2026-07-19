@@ -39,12 +39,6 @@ public class UpdateEventRegistrationDtoValidator : AbstractValidator<UpdateEvent
                 .WithMessage("ApprovalStatusId must specify an explicit field operation.");
         });
 
-        When(dto => dto.AtprotoRecord is not null, () =>
-        {
-            RuleFor(dto => dto.AtprotoRecord!.AtprotoRecordId.HasValue)
-                .Equal(true)
-                .WithMessage("AtprotoRecordId must specify an explicit field operation.");
-        });
     }
 
     private static bool HaveAtLeastOneGroup(UpdateEventRegistrationDto dto)
@@ -52,7 +46,6 @@ public class UpdateEventRegistrationDtoValidator : AbstractValidator<UpdateEvent
         return dto.User is not null
             || dto.Session is not null
             || dto.Intent is not null
-            || dto.ApprovalStatus is not null
-            || dto.AtprotoRecord is not null;
+            || dto.ApprovalStatus is not null;
     }
 }

@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -23,6 +24,131 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
     public EventRegistrationIntentRepository(ExploreDbContext dbContext) : base(dbContext)
     {
         _dbContext = dbContext;
+    }
+
+    public Task<EventRegistrationIntent?> GetAtprotoLifecycleStateAsync(
+        Guid tenantId,
+        Guid intentId,
+        CancellationToken cancellationToken) =>
+        _dbContext.EventRegistrationIntents
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .AsNoTracking()
+            .SingleOrDefaultAsync(intent =>
+                intent.TenantId == tenantId && intent.Id == intentId,
+                cancellationToken);
+
+    public Task<int> CountActiveForEventUserAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid userId,
+        CancellationToken cancellationToken) =>
+        _dbContext.EventRegistrationIntents
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .CountAsync(intent =>
+                intent.TenantId == tenantId
+                && intent.EventId == eventId
+                && intent.UserId == userId,
+                cancellationToken);
+
+    public async Task<IReadOnlyList<EventRegistrationIntent>> GetAtprotoReconciliationCandidatesAsync(
+        Guid? afterIntentId,
+        int batchSize,
+        CancellationToken cancellationToken)
+    {
+        if (batchSize is < 1 or > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(batchSize));
+        }
+
+        IQueryable<EventRegistrationIntent> query = _dbContext.EventRegistrationIntents
+            .IgnoreAllFilters(TenantFilterBypassReasons.AtprotoPdsWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .Where(intent =>
+                !intent.IsDeleted
+                && _dbContext.AtprotoOutboundRecordOwnerships
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.AtprotoPdsWorkerCrossTenantQueue)
+                    .Any(ownership =>
+                        ownership.TenantId == intent.TenantId
+                        && ownership.SourceEntityType == "Event"
+                        && ownership.SourceEntityId == intent.EventId
+                        && ownership.AtprotoRecord != null
+                        && ownership.AtprotoRecord.Uri != null
+                        && ownership.AtprotoRecord.Cid != null
+                        && ownership.AtprotoRecord.TombstonedAt == null)
+                && !_dbContext.AtprotoOutboundRecordOwnerships
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.AtprotoPdsWorkerCrossTenantQueue)
+                    .Any(ownership =>
+                        ownership.TenantId == intent.TenantId
+                        && ownership.UserId == intent.UserId
+                        && ownership.SourceEntityType == "EventRegistrationIntent"
+                        && ownership.AtprotoRecord != null
+                        && ownership.AtprotoRecord.Uri != null
+                        && ownership.AtprotoRecord.Cid != null
+                        && ownership.AtprotoRecord.TombstonedAt == null
+                        && _dbContext.EventRegistrationIntents
+                            .IgnoreAllFilters(TenantFilterBypassReasons.AtprotoPdsWorkerCrossTenantQueue)
+                            .Any(source =>
+                                source.Id == ownership.SourceEntityId
+                                && source.TenantId == intent.TenantId
+                                && source.UserId == intent.UserId
+                                && source.EventId == intent.EventId))
+                && !_dbContext.PdsSyncOutbox
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.AtprotoPdsWorkerCrossTenantQueue)
+                    .Any(outbox =>
+                        outbox.TenantId == intent.TenantId
+                        && outbox.SourceEntityType == "EventRegistrationIntent"
+                        && outbox.Collection == "community.lexicon.calendar.rsvp"
+                        && (outbox.Operation == PdsSyncOperation.Create
+                            || outbox.Operation == PdsSyncOperation.Update)
+                        && (outbox.Status == PdsSyncStatus.Pending
+                            || outbox.Status == PdsSyncStatus.Processing)
+                        && outbox.SupersededAt == null
+                        && _dbContext.EventRegistrationIntents
+                            .IgnoreAllFilters(TenantFilterBypassReasons.AtprotoPdsWorkerCrossTenantQueue)
+                            .Any(source =>
+                                source.Id == outbox.SourceEntityId
+                                && source.TenantId == intent.TenantId
+                                && source.UserId == intent.UserId
+                                && source.EventId == intent.EventId)));
+        query = query.Where(intent => !_dbContext.PdsSyncOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.AtprotoPdsWorkerCrossTenantQueue)
+            .Any(outbox =>
+                outbox.TenantId == intent.TenantId
+                && outbox.SourceEntityType == "EventRegistrationIntent"
+                && outbox.Collection == "community.lexicon.calendar.rsvp"
+                && (outbox.Operation == PdsSyncOperation.Create
+                    || outbox.Operation == PdsSyncOperation.Update)
+                && outbox.Status == PdsSyncStatus.DeadLettered
+                && outbox.SupersededAt == null
+                && outbox.SourceVersion == intent.ConcurrencyStamp
+                && outbox.DependsOnCid != null
+                && outbox.DependsOnAtprotoRecord != null
+                && outbox.DependsOnAtprotoRecord.Cid == outbox.DependsOnCid
+                && outbox.DependsOnAtprotoRecord.TombstonedAt == null
+                && _dbContext.EventRegistrationIntents
+                    .IgnoreAllFilters(TenantFilterBypassReasons.AtprotoPdsWorkerCrossTenantQueue)
+                    .Any(source =>
+                        source.Id == outbox.SourceEntityId
+                        && source.TenantId == intent.TenantId
+                        && source.UserId == intent.UserId
+                        && source.EventId == intent.EventId)));
+
+        IQueryable<EventRegistrationIntent> representatives = query.Where(intent => !query.Any(other =>
+            other.TenantId == intent.TenantId
+            && other.UserId == intent.UserId
+            && other.EventId == intent.EventId
+            && other.Id.CompareTo(intent.Id) < 0));
+        if (afterIntentId is { } cursor)
+        {
+            representatives = representatives.Where(intent => intent.Id.CompareTo(cursor) > 0);
+        }
+
+        return await representatives
+            .OrderBy(intent => intent.Id)
+            .Take(batchSize)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<EventRegistrationIntent?> FindExistingAsync(

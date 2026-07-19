@@ -11,7 +11,6 @@ public class UpdateEventRegistrationDto
     public UpdateEventRegistrationSessionDto? Session { get; set; }
     public UpdateEventRegistrationIntentDto? Intent { get; set; }
     public UpdateEventRegistrationApprovalStatusDto? ApprovalStatus { get; set; }
-    public UpdateEventRegistrationAtprotoRecordDto? AtprotoRecord { get; set; }
 }
 
 public class UpdateEventRegistrationUserDto
@@ -32,9 +31,4 @@ public class UpdateEventRegistrationIntentDto
 public class UpdateEventRegistrationApprovalStatusDto
 {
     public OptionalUpdate<int?> ApprovalStatusId { get; set; } = OptionalUpdate<int?>.Unspecified();
-}
-
-public class UpdateEventRegistrationAtprotoRecordDto
-{
-    public OptionalUpdate<Guid?> AtprotoRecordId { get; set; } = OptionalUpdate<Guid?>.Unspecified();
 }

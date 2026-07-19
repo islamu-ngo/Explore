@@ -10,11 +10,13 @@ using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventRegistration.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
+using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using Explore.Domain.Services.Registration;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -38,6 +40,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
     private readonly IUnitOfWork _unitOfWork;
     private readonly IWebhookEventPublisher _webhookPublisher;
     private readonly ILogger<CreateEventRegistrationCommandHandler> _logger;
+    private readonly AtprotoEventPublicationPlanner _atprotoPublicationPlanner;
 
     public CreateEventRegistrationCommandHandler(
         IEventRegistrationIntentRepository intentRepository,
@@ -54,7 +57,8 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         IRecipientNotificationMaterializer recipientNotificationMaterializer,
         IUnitOfWork unitOfWork,
         IWebhookEventPublisher webhookPublisher,
-        ILogger<CreateEventRegistrationCommandHandler> logger)
+        ILogger<CreateEventRegistrationCommandHandler> logger,
+        AtprotoEventPublicationPlanner atprotoPublicationPlanner)
     {
         _intentRepository = intentRepository;
         _eventRepository = eventRepository;
@@ -71,6 +75,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         _unitOfWork = unitOfWork;
         _webhookPublisher = webhookPublisher;
         _logger = logger;
+        _atprotoPublicationPlanner = atprotoPublicationPlanner;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventRegistrationCommand request, CancellationToken cancellationToken)
@@ -155,6 +160,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         var occurredAt = DateTimeOffset.UtcNow;
         var notificationIntentId = Guid.CreateVersion7();
         var emailDispatchOutboxId = Guid.CreateVersion7();
+        var atprotoOutboxId = Guid.CreateVersion7();
 
         var intent = new EventRegistrationIntent
         {
@@ -215,6 +221,17 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
                             listmonkSyncOutbox);
                     if (!createdResult.WasExisting)
                     {
+                        await _atprotoPublicationPlanner.PlanRsvpAsync(
+                            new AtprotoRsvpPublicationInput(
+                                createdResult.Intent.TenantId,
+                                createdResult.Intent.UserId,
+                                createdResult.Intent.EventId,
+                                createdResult.Intent.Id,
+                                createdResult.Intent.ConcurrencyStamp,
+                                PdsSyncOperation.Create,
+                                atprotoOutboxId,
+                                occurredAt.UtcDateTime),
+                            ct);
                         RecipientNotificationMaterialization notificationMaterialization =
                             _notificationDeliveryService.CreateLifecycleMaterialization(
                                 createdResult.Intent,

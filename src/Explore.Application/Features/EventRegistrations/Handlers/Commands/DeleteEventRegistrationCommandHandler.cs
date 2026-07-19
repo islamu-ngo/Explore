@@ -5,7 +5,9 @@ using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
+using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Domain;
+using Explore.Domain.Federation;
 using MediatR;
 
 namespace Explore.Application.Features.EventRegistrations.Handlers.Commands;
@@ -20,6 +22,7 @@ public class DeleteEventRegistrationCommandHandler : IRequestHandler<DeleteEvent
     private readonly IUserRepository _userRepository;
     private readonly IRegistrationNotificationDeliveryService _notificationDeliveryService;
     private readonly IRecipientNotificationMaterializer _recipientNotificationMaterializer;
+    private readonly AtprotoEventPublicationPlanner _atprotoPublicationPlanner;
 
     public DeleteEventRegistrationCommandHandler(
         IEventRegistrationRepository eventRegistrationRepository,
@@ -29,7 +32,8 @@ public class DeleteEventRegistrationCommandHandler : IRequestHandler<DeleteEvent
         IEventRepository eventRepository,
         IUserRepository userRepository,
         IRegistrationNotificationDeliveryService notificationDeliveryService,
-        IRecipientNotificationMaterializer recipientNotificationMaterializer)
+        IRecipientNotificationMaterializer recipientNotificationMaterializer,
+        AtprotoEventPublicationPlanner atprotoPublicationPlanner)
     {
         _eventRegistrationRepository = eventRegistrationRepository;
         _unitOfWork = unitOfWork;
@@ -39,6 +43,7 @@ public class DeleteEventRegistrationCommandHandler : IRequestHandler<DeleteEvent
         _userRepository = userRepository;
         _notificationDeliveryService = notificationDeliveryService;
         _recipientNotificationMaterializer = recipientNotificationMaterializer;
+        _atprotoPublicationPlanner = atprotoPublicationPlanner;
     }
 
     public async Task<bool> Handle(DeleteEventRegistrationCommand request, CancellationToken cancellationToken)
@@ -50,6 +55,7 @@ public class DeleteEventRegistrationCommandHandler : IRequestHandler<DeleteEvent
         var occurredAt = DateTimeOffset.UtcNow;
         var notificationIntentId = Guid.CreateVersion7();
         var emailDispatchOutboxId = Guid.CreateVersion7();
+        var atprotoOutboxId = Guid.CreateVersion7();
         var actorUserId = _currentUserService.UserId;
         var actorProvenance = actorUserId switch
         {
@@ -80,6 +86,24 @@ public class DeleteEventRegistrationCommandHandler : IRequestHandler<DeleteEvent
                         actorProvenance,
                         actorUserId,
                         ct);
+                if (result.Changed
+                    && registrationIntent is not null
+                    && actorProvenance == EventRegistrationActorProvenance.Attendee
+                    && result.ActorProvenance == EventRegistrationActorProvenance.Attendee
+                    && result.TransitionReason == EventRegistrationTransitionReason.SelfCancelled)
+                {
+                    await _atprotoPublicationPlanner.PlanRsvpAsync(
+                        new AtprotoRsvpPublicationInput(
+                            registrationIntent.TenantId,
+                            registrationIntent.UserId,
+                            registrationIntent.EventId,
+                            registrationIntent.Id,
+                            registrationIntent.ConcurrencyStamp,
+                            PdsSyncOperation.Delete,
+                            atprotoOutboxId,
+                            occurredAt.UtcDateTime),
+                        ct);
+                }
                 if (registrationIntent is not null
                     && parentEvent is not null
                     && recipient is not null
