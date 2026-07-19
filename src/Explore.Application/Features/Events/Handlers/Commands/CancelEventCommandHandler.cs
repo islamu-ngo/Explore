@@ -2,12 +2,15 @@
 // ABOUTME: Tolerant path: skips publish readiness and emits no public outbox events.
 
 using Explore.Application.Caching;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -17,7 +20,9 @@ namespace Explore.Application.Features.Events.Handlers.Commands;
 public sealed class CancelEventCommandHandler(
     IEventRepository eventRepository,
     IUnitOfWork unitOfWork,
-    HybridCache cache) : IRequestHandler<CancelEventCommand, BaseCommandResponse<Guid>>
+    HybridCache cache,
+    IUserContext userContext,
+    AtprotoEventPublicationPlanner atprotoPublicationPlanner) : IRequestHandler<CancelEventCommand, BaseCommandResponse<Guid>>
 {
     private const string ConcurrencyConflictCode = "event_cancel_concurrency_conflict";
     private const string AlreadyCancelledCode = "event_cancel_already_cancelled";
@@ -30,6 +35,10 @@ public sealed class CancelEventCommandHandler(
         {
             return Failure(request.Id, "Event cancel request is invalid.", validationResult.Errors.Select(e => e.ErrorMessage));
         }
+
+        var currentUserId = userContext.GetRequiredUserId();
+        var federationOutboxId = Guid.CreateVersion7();
+        var federationCreatedAt = DateTime.UtcNow;
 
         return await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
@@ -53,6 +62,16 @@ public sealed class CancelEventCommandHandler(
             @event.UpdatedAt = DateTime.UtcNow;
 
             await eventRepository.Update(@event);
+            await atprotoPublicationPlanner.PlanEventAsync(
+                new AtprotoEventPublicationInput(
+                    @event.TenantId,
+                    currentUserId,
+                    @event.Id,
+                    @event.ConcurrencyStamp,
+                    PdsSyncOperation.Update,
+                    federationOutboxId,
+                    federationCreatedAt),
+                token);
             await cache.RemoveAsync($"event:detail:{@event.Id}", token);
             await cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), token);
 

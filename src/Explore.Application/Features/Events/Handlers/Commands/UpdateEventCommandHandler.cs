@@ -6,12 +6,16 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Explore.Application.Caching;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Responses;
+using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using Explore.Domain.Services.Scheduling;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -31,6 +35,9 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
     private readonly IEventRegistrationPolicyRepository _eventRegistrationPolicyRepository;
     private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
     private readonly HybridCache _cache;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IUserContext _userContext;
+    private readonly AtprotoEventPublicationPlanner _atprotoPublicationPlanner;
 
     public UpdateEventCommandHandler(
         IEventRepository eventRepository,
@@ -43,7 +50,10 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         IEventSeriesRepository eventSeriesRepository,
         IEventRegistrationPolicyRepository eventRegistrationPolicyRepository,
         IEventScheduleProjectionCalculator scheduleProjectionCalculator,
-        HybridCache cache)
+        HybridCache cache,
+        IUnitOfWork unitOfWork,
+        IUserContext userContext,
+        AtprotoEventPublicationPlanner atprotoPublicationPlanner)
     {
         _eventRepository = eventRepository;
         _audienceAgeRepository = audienceAgeRepository;
@@ -56,6 +66,9 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         _eventRegistrationPolicyRepository = eventRegistrationPolicyRepository;
         _scheduleProjectionCalculator = scheduleProjectionCalculator;
         _cache = cache;
+        _unitOfWork = unitOfWork;
+        _userContext = userContext;
+        _atprotoPublicationPlanner = atprotoPublicationPlanner;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventCommand request, CancellationToken cancellationToken)
@@ -124,14 +137,33 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         ApplySeriesOrder(eventEntity, update.SeriesOrder);
         ApplyRegistrationPolicy(eventEntity, update.RegistrationPolicy);
 
-        await _eventRepository.Update(eventEntity);
+        var currentUserId = _userContext.GetRequiredUserId();
+        var federationOutboxId = Guid.CreateVersion7();
+        var federationCreatedAt = DateTime.UtcNow;
+        await _unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            await _eventRepository.Update(eventEntity);
+            if (eventEntity.EventStatusId == (int)EventStatusEnum.Published)
+            {
+                await _atprotoPublicationPlanner.PlanEventAsync(
+                    new AtprotoEventPublicationInput(
+                        eventEntity.TenantId,
+                        currentUserId,
+                        eventEntity.Id,
+                        eventEntity.ConcurrencyStamp,
+                        PdsSyncOperation.Update,
+                        federationOutboxId,
+                        federationCreatedAt),
+                    token);
+            }
+        }, cancellationToken);
+
+        await _cache.RemoveAsync($"event:detail:{eventEntity.Id}", cancellationToken);
+        await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(eventEntity.TenantId), cancellationToken);
 
         response.Success = true;
         response.Id = eventEntity.Id;
         response.Message = "Event updated successfully.";
-
-        await _cache.RemoveAsync($"event:detail:{eventEntity.Id}", cancellationToken);
-        await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(eventEntity.TenantId), cancellationToken);
 
         return response;
     }

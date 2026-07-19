@@ -3,6 +3,7 @@
 
 using System.Diagnostics.Metrics;
 using System.Text.Json;
+using Event.Application.UnitTests.Common;
 using Explore.Application.Authorization;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Infrastructure;
@@ -59,7 +60,8 @@ public sealed class HeavyRedactEventCommandHandlerTests
             _currentUserService,
             _cache,
             CreateMetrics(),
-            NullLogger<HeavyRedactEventCommandHandler>.Instance);
+            NullLogger<HeavyRedactEventCommandHandler>.Instance,
+            AtprotoPublicationPlannerTestFactory.Disabled());
 
         _storageObjectDeletionService
             .DeleteRequestedForResourceAsync(
@@ -295,10 +297,10 @@ public sealed class HeavyRedactEventCommandHandlerTests
 
     private static Explore.Domain.Event CreateEvent(EventStatusEnum status, Guid? imageId) => new()
     {
-        Id = Guid.NewGuid(),
-        TenantId = Guid.NewGuid(),
+        Id = Guid.CreateVersion7(),
+        TenantId = Guid.CreateVersion7(),
         Tenant = null!,
-        ActorId = Guid.NewGuid(),
+        ActorId = Guid.CreateVersion7(),
         Actor = null!,
         Title = "Illegal Event",
         FeaturedImageId = imageId,
@@ -308,7 +310,8 @@ public sealed class HeavyRedactEventCommandHandlerTests
         VisibilityTypeId = (int)VisibilityTypeEnum.Public,
         VisibilityType = null!,
         EventFormatId = (int)EventFormatEnum.Local,
-        EventFormat = null!
+        EventFormat = null!,
+        ConcurrencyStamp = Guid.CreateVersion7()
     };
 
     private static StorageObject CreateStorageObject() => new()

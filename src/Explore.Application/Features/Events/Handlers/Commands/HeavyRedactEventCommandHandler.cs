@@ -8,11 +8,13 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Events.Moderation;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
@@ -28,7 +30,8 @@ public sealed class HeavyRedactEventCommandHandler(
     ICurrentUserService currentUserService,
     HybridCache cache,
     BusinessMetrics metrics,
-    ILogger<HeavyRedactEventCommandHandler> logger) : IRequestHandler<HeavyRedactEventCommand, BaseCommandResponse<Guid>>
+    ILogger<HeavyRedactEventCommandHandler> logger,
+    AtprotoEventPublicationPlanner atprotoPublicationPlanner) : IRequestHandler<HeavyRedactEventCommand, BaseCommandResponse<Guid>>
 {
     private const int ImmediateDeletionBatchSize = 100;
     private const string ActionKind = "heavy_redacted";
@@ -54,6 +57,8 @@ public sealed class HeavyRedactEventCommandHandler(
         var eventId = Guid.Empty;
         var wasIdempotent = false;
         EventModerationRecord? moderationRecordForLog = null;
+        var federationOutboxId = Guid.CreateVersion7();
+        var federationCreatedAt = DateTime.UtcNow;
         var transactionResponse = await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
             var graph = await redactionRepository.GetForUpdateAsync(request.Id, token);
@@ -108,6 +113,16 @@ public sealed class HeavyRedactEventCommandHandler(
             EventHeavyRedactionApplicator.Apply(graph, moderatorUserId, redactedAt);
 
             await redactionRepository.SaveChangesAsync(token);
+            await atprotoPublicationPlanner.PlanEventAsync(
+                new AtprotoEventPublicationInput(
+                    @event.TenantId,
+                    moderatorUserId ?? Guid.Empty,
+                    @event.Id,
+                    @event.ConcurrencyStamp,
+                    PdsSyncOperation.Delete,
+                    federationOutboxId,
+                    federationCreatedAt),
+                token);
             await moderationRecordRepository.Create(moderationRecord);
             await outboxRepository.Create(EventModerationOutboxMessageFactory.CreateHeavyRedactionNotificationFanoutMessage(@event, moderationRecord));
             moderationRecordForLog = moderationRecord;

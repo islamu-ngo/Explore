@@ -2,12 +2,15 @@
 // ABOUTME: Tolerant path: skips publish readiness and emits no public outbox events.
 
 using Explore.Application.Caching;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -17,7 +20,9 @@ namespace Explore.Application.Features.Events.Handlers.Commands;
 public sealed class ArchiveEventCommandHandler(
     IEventRepository eventRepository,
     IUnitOfWork unitOfWork,
-    HybridCache cache) : IRequestHandler<ArchiveEventCommand, BaseCommandResponse<Guid>>
+    HybridCache cache,
+    IUserContext userContext,
+    AtprotoEventPublicationPlanner atprotoPublicationPlanner) : IRequestHandler<ArchiveEventCommand, BaseCommandResponse<Guid>>
 {
     private const string ConcurrencyConflictCode = "event_archive_concurrency_conflict";
     private const string AlreadyArchivedCode = "event_archive_already_archived";
@@ -31,6 +36,9 @@ public sealed class ArchiveEventCommandHandler(
             return Failure(request.Id, "Event archive request is invalid.", validationResult.Errors.Select(e => e.ErrorMessage));
         }
 
+        Guid currentUserId = userContext.GetRequiredUserId();
+        Guid federationOutboxId = Guid.CreateVersion7();
+        DateTime federationCreatedAt = DateTime.UtcNow;
         return await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
             var @event = await eventRepository.GetById(request.Id);
@@ -53,6 +61,16 @@ public sealed class ArchiveEventCommandHandler(
             @event.UpdatedAt = DateTime.UtcNow;
 
             await eventRepository.Update(@event);
+            await atprotoPublicationPlanner.PlanEventAsync(
+                new AtprotoEventPublicationInput(
+                    @event.TenantId,
+                    currentUserId,
+                    @event.Id,
+                    @event.ConcurrencyStamp,
+                    PdsSyncOperation.Delete,
+                    federationOutboxId,
+                    federationCreatedAt),
+                token);
             await cache.RemoveAsync($"event:detail:{@event.Id}", token);
             await cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), token);
 

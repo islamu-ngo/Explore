@@ -5,11 +5,13 @@ using Explore.Application.Caching;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
@@ -25,7 +27,8 @@ public sealed class ModerateEventCommandHandler(
     ICurrentUserService currentUserService,
     HybridCache cache,
     BusinessMetrics metrics,
-    ILogger<ModerateEventCommandHandler> logger) : IRequestHandler<ModerateEventCommand, BaseCommandResponse<Guid>>
+    ILogger<ModerateEventCommandHandler> logger,
+    AtprotoEventPublicationPlanner atprotoPublicationPlanner) : IRequestHandler<ModerateEventCommand, BaseCommandResponse<Guid>>
 {
     private const string InvalidStatusFailureCode = "event_light_moderation_invalid_status";
     private const string UserResolutionFailureCode = "event_light_moderation_user_unresolved";
@@ -48,6 +51,8 @@ public sealed class ModerateEventCommandHandler(
                 UserResolutionFailureCode);
         }
 
+        Guid federationOutboxId = Guid.CreateVersion7();
+        DateTime federationCreatedAt = DateTime.UtcNow;
         return await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
             var @event = await eventRepository.GetById(request.Id);
@@ -120,6 +125,16 @@ public sealed class ModerateEventCommandHandler(
             await CascadeModerationToSessionsAsync(@event.Id, moderatedAt.UtcDateTime);
             await moderationRecordRepository.Create(moderationRecord);
             await eventRepository.Update(@event);
+            await atprotoPublicationPlanner.PlanEventAsync(
+                new AtprotoEventPublicationInput(
+                    @event.TenantId,
+                    moderatorUserId ?? Guid.Empty,
+                    @event.Id,
+                    @event.ConcurrencyStamp,
+                    PdsSyncOperation.Delete,
+                    federationOutboxId,
+                    federationCreatedAt),
+                token);
             await outboxRepository.Create(EventModerationOutboxMessageFactory.CreateLightModerationNotificationFanoutMessage(@event, moderationRecord));
 
             await cache.RemoveAsync($"event:detail:{@event.Id}", token);

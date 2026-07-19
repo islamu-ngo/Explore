@@ -3,15 +3,18 @@
 
 using System.Text.Json;
 using Explore.Application.Caching;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Application.Services.Lifecycle;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -23,7 +26,9 @@ public class PublishEventCommandHandler(
     IUnitOfWork unitOfWork,
     HybridCache cache,
     IEventLifecyclePolicyProvider policyProvider,
-    IEventLifecycleReadinessEvaluator readinessEvaluator) : IRequestHandler<PublishEventCommand, BaseCommandResponse<Guid>>
+    IEventLifecycleReadinessEvaluator readinessEvaluator,
+    IUserContext userContext,
+    AtprotoEventPublicationPlanner atprotoPublicationPlanner) : IRequestHandler<PublishEventCommand, BaseCommandResponse<Guid>>
 {
     private const string ConcurrencyConflictCode = "event_publish_concurrency_conflict";
     private const string ReadinessFailedCode = "event_publish_readiness_failed";
@@ -38,6 +43,10 @@ public class PublishEventCommandHandler(
         {
             return Failure(request.Id, "Event publish request is invalid.", validationResult.Errors.Select(error => error.ErrorMessage));
         }
+
+        var currentUserId = userContext.GetRequiredUserId();
+        var federationOutboxId = Guid.CreateVersion7();
+        var federationCreatedAt = DateTime.UtcNow;
 
         return await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
@@ -66,6 +75,17 @@ public class PublishEventCommandHandler(
             @event.UpdatedAt = DateTime.UtcNow;
 
             await eventRepository.Update(@event);
+
+            await atprotoPublicationPlanner.PlanEventAsync(
+                new AtprotoEventPublicationInput(
+                    @event.TenantId,
+                    currentUserId,
+                    @event.Id,
+                    @event.ConcurrencyStamp,
+                    PdsSyncOperation.Create,
+                    federationOutboxId,
+                    federationCreatedAt),
+                token);
 
             var publishedAt = DateTimeOffset.UtcNow;
             await outboxRepository.Create(EventPublishedOutboxMessageFactory.CreateNotificationFanoutOutboxMessage(@event, publishedAt));

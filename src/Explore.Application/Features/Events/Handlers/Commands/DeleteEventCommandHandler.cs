@@ -8,7 +8,9 @@ using Explore.Application.Caching;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
@@ -38,6 +40,8 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
     private readonly ICurrentUserService _currentUserService;
     private readonly ILogger<DeleteEventCommandHandler> _logger;
     private readonly HybridCache _cache;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly AtprotoEventPublicationPlanner _atprotoPublicationPlanner;
 
     public DeleteEventCommandHandler(
         IEventRepository eventRepository,
@@ -48,7 +52,9 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
         IRoleRepository roleRepository,
         ICurrentUserService currentUserService,
         ILogger<DeleteEventCommandHandler> logger,
-        HybridCache cache)
+        HybridCache cache,
+        IUnitOfWork unitOfWork,
+        AtprotoEventPublicationPlanner atprotoPublicationPlanner)
     {
         _eventRepository = eventRepository;
         _eventSessionRepository = eventSessionRepository;
@@ -59,6 +65,8 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
         _currentUserService = currentUserService;
         _logger = logger;
         _cache = cache;
+        _unitOfWork = unitOfWork;
+        _atprotoPublicationPlanner = atprotoPublicationPlanner;
     }
 
     public async Task<bool> Handle(DeleteEventCommand request, CancellationToken cancellationToken)
@@ -90,33 +98,38 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
             return false;
         }
 
-        // Cascading soft delete: Delete all EventSessions for this event
         var sessions = await _eventSessionRepository.GetSessionsByEvent(request.Id);
         _logger.LogInformation(
             "Cascading soft delete: Found {SessionCount} event session(s) for event {EventId}",
             sessions.Count,
             request.Id);
 
-        foreach (var session in sessions)
+        var federationOutboxId = Guid.CreateVersion7();
+        var federationCreatedAt = DateTime.UtcNow;
+        await _unitOfWork.ExecuteInTransactionAsync(async token =>
         {
-            _logger.LogDebug(
-                "Soft deleting event session {SessionId} (Title: {SessionTitle}) for event {EventId}",
-                session.Id,
-                session.Title ?? "Untitled",
-                request.Id);
-            await _eventSessionRepository.Delete(session);
-        }
+            foreach (var session in sessions)
+            {
+                _logger.LogDebug(
+                    "Soft deleting event session {SessionId} (Title: {SessionTitle}) for event {EventId}",
+                    session.Id,
+                    session.Title ?? "Untitled",
+                    request.Id);
+                await _eventSessionRepository.Delete(session);
+            }
 
-        if (sessions.Count > 0)
-        {
-            _logger.LogInformation(
-                "Successfully cascaded soft delete to {SessionCount} event session(s) for event {EventId}",
-                sessions.Count,
-                request.Id);
-        }
-
-        // Perform soft delete on the event (handled by DbContext SaveChanges override)
-        await _eventRepository.Delete(@event);
+            await _eventRepository.Delete(@event);
+            await _atprotoPublicationPlanner.PlanEventAsync(
+                new AtprotoEventPublicationInput(
+                    @event.TenantId,
+                    userId.Value,
+                    @event.Id,
+                    @event.ConcurrencyStamp,
+                    PdsSyncOperation.Delete,
+                    federationOutboxId,
+                    federationCreatedAt),
+                token);
+        }, cancellationToken);
 
         _logger.LogInformation(
             "Event {EventId} successfully deleted by user {UserId}",

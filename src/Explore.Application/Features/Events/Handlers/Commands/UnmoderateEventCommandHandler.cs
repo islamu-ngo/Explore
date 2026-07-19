@@ -5,10 +5,12 @@ using Explore.Application.Caching;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Responses;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
@@ -22,7 +24,8 @@ public sealed class UnmoderateEventCommandHandler(
     ICurrentUserService currentUserService,
     HybridCache cache,
     BusinessMetrics metrics,
-    ILogger<UnmoderateEventCommandHandler> logger) : IRequestHandler<UnmoderateEventCommand, BaseCommandResponse<Guid>>
+    ILogger<UnmoderateEventCommandHandler> logger,
+    AtprotoEventPublicationPlanner atprotoPublicationPlanner) : IRequestHandler<UnmoderateEventCommand, BaseCommandResponse<Guid>>
 {
     private const string InvalidStatusFailureCode = "event_unmoderation_invalid_status";
     private const string NotReversibleFailureCode = "event_unmoderation_not_reversible";
@@ -45,6 +48,8 @@ public sealed class UnmoderateEventCommandHandler(
                 UserResolutionFailureCode);
         }
 
+        Guid federationOutboxId = Guid.CreateVersion7();
+        DateTime federationCreatedAt = DateTime.UtcNow;
         return await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
             var @event = await eventRepository.GetById(request.Id);
@@ -107,6 +112,17 @@ public sealed class UnmoderateEventCommandHandler(
 
             await moderationRecordRepository.Create(unmoderationRecord);
             await eventRepository.Update(@event);
+            await atprotoPublicationPlanner.PlanEventAsync(
+                new AtprotoEventPublicationInput(
+                    @event.TenantId,
+                    moderatorUserId,
+                    @event.Id,
+                    @event.ConcurrencyStamp,
+                    PdsSyncOperation.Create,
+                    federationOutboxId,
+                    federationCreatedAt,
+                    RestoreOnly: true),
+                token);
 
             await cache.RemoveAsync($"event:detail:{@event.Id}", token);
             await cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), token);

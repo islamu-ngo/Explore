@@ -1,7 +1,9 @@
 // ABOUTME: Unit tests for explicit event lifecycle transition command handlers.
 // ABOUTME: Verifies archive/cancel transitions preserve concurrency gates, cache invalidation, and status side effects.
 
+using Event.Application.UnitTests.Common;
 using Explore.Application.Caching;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Handlers.Commands;
@@ -9,6 +11,7 @@ using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
@@ -26,7 +29,20 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
         var cache = Substitute.For<HybridCache>();
         var eventEntity = CreateEvent(EventStatusEnum.Published);
         eventRepository.GetById(eventEntity.Id).Returns(eventEntity);
-        var handler = new ArchiveEventCommandHandler(eventRepository, unitOfWork, cache);
+        var userContext = Substitute.For<IUserContext>();
+        Guid ownerUserId = Guid.CreateVersion7();
+        userContext.GetRequiredUserId().Returns(ownerUserId);
+        var federationOutbox = Substitute.For<IPdsSyncOutboxRepository>();
+        var handler = new ArchiveEventCommandHandler(
+            eventRepository,
+            unitOfWork,
+            cache,
+            userContext,
+            AtprotoPublicationPlannerTestFactory.ExistingEventDelete(
+                eventEntity.TenantId,
+                eventEntity.Id,
+                ownerUserId,
+                federationOutbox));
 
         var result = await handler.Handle(new ArchiveEventCommand
         {
@@ -37,6 +53,11 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(eventEntity.EventStatusId).IsEqualTo((int)EventStatusEnum.Archived);
         await eventRepository.Received(1).Update(eventEntity);
+        await federationOutbox.Received(1).AddAsync(
+            Arg.Is<PdsSyncOutbox>(outbox =>
+                outbox.Operation == PdsSyncOperation.Delete
+                && outbox.RecordKey == "stable-lifecycle-key"),
+            Arg.Any<CancellationToken>());
         await cache.Received(1).RemoveAsync($"event:detail:{eventEntity.Id}", Arg.Any<CancellationToken>());
         await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(eventEntity.TenantId), Arg.Any<CancellationToken>());
     }
@@ -49,12 +70,19 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
         var cache = Substitute.For<HybridCache>();
         var eventEntity = CreateEvent(EventStatusEnum.Published);
         eventRepository.GetById(eventEntity.Id).Returns(eventEntity);
-        var handler = new ArchiveEventCommandHandler(eventRepository, unitOfWork, cache);
+        var userContext = Substitute.For<IUserContext>();
+        userContext.GetRequiredUserId().Returns(Guid.CreateVersion7());
+        var handler = new ArchiveEventCommandHandler(
+            eventRepository,
+            unitOfWork,
+            cache,
+            userContext,
+            AtprotoPublicationPlannerTestFactory.Disabled());
 
         var result = await handler.Handle(new ArchiveEventCommand
         {
             Id = eventEntity.Id,
-            Request = new ArchiveEventRequestDto { ExpectedConcurrencyStamp = Guid.NewGuid() }
+            Request = new ArchiveEventRequestDto { ExpectedConcurrencyStamp = Guid.CreateVersion7() }
         }, CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
@@ -71,7 +99,14 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
         var cache = Substitute.For<HybridCache>();
         var eventEntity = CreateEvent(EventStatusEnum.Published);
         eventRepository.GetById(eventEntity.Id).Returns(eventEntity);
-        var handler = new CancelEventCommandHandler(eventRepository, unitOfWork, cache);
+        var userContext = Substitute.For<IUserContext>();
+        userContext.GetRequiredUserId().Returns(Guid.CreateVersion7());
+        var handler = new CancelEventCommandHandler(
+            eventRepository,
+            unitOfWork,
+            cache,
+            userContext,
+            AtprotoPublicationPlannerTestFactory.Disabled());
 
         var result = await handler.Handle(new CancelEventCommand
         {
@@ -94,7 +129,14 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
         var cache = Substitute.For<HybridCache>();
         var eventEntity = CreateEvent(EventStatusEnum.Cancelled);
         eventRepository.GetById(eventEntity.Id).Returns(eventEntity);
-        var handler = new CancelEventCommandHandler(eventRepository, unitOfWork, cache);
+        var userContext = Substitute.For<IUserContext>();
+        userContext.GetRequiredUserId().Returns(Guid.CreateVersion7());
+        var handler = new CancelEventCommandHandler(
+            eventRepository,
+            unitOfWork,
+            cache,
+            userContext,
+            AtprotoPublicationPlannerTestFactory.Disabled());
 
         var result = await handler.Handle(new CancelEventCommand
         {
@@ -118,11 +160,11 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
 
     private static Explore.Domain.Event CreateEvent(EventStatusEnum status) => new()
     {
-        Id = Guid.NewGuid(),
+        Id = Guid.CreateVersion7(),
         Title = "Lifecycle event",
-        ActorId = Guid.NewGuid(),
+        ActorId = Guid.CreateVersion7(),
         Actor = null!,
-        TenantId = Guid.NewGuid(),
+        TenantId = Guid.CreateVersion7(),
         Tenant = null!,
         VisibilityTypeId = (int)VisibilityTypeEnum.Public,
         VisibilityType = null!,
@@ -130,6 +172,6 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
         EventStatus = null!,
         EventFormatId = (int)EventFormatEnum.Local,
         EventFormat = null!,
-        ConcurrencyStamp = Guid.NewGuid()
+        ConcurrencyStamp = Guid.CreateVersion7()
     };
 }

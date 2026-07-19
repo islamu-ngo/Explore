@@ -2,14 +2,22 @@
 // ABOUTME: Verifies lifecycle readiness, concurrency, outbox, and cache side effects.
 
 using System.Text.Json;
+using Event.Application.UnitTests.Common;
 using Explore.Application.Caching;
+using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Models.InternalEvents;
+using Explore.Application.Services.Federation;
 using Explore.Application.Services.Lifecycle;
+using Explore.Application.Settings;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
@@ -25,6 +33,7 @@ public class PublishEventCommandHandlerTests
     private readonly IEventLifecyclePolicyProvider _policyProvider;
     private readonly HybridCache _cache;
     private readonly PublishEventCommandHandler _handler;
+    private readonly IUserContext _userContext;
 
     public PublishEventCommandHandlerTests()
     {
@@ -33,6 +42,8 @@ public class PublishEventCommandHandlerTests
         _unitOfWork = Substitute.For<IUnitOfWork>();
         _policyProvider = Substitute.For<IEventLifecyclePolicyProvider>();
         _cache = Substitute.For<HybridCache>();
+        _userContext = Substitute.For<IUserContext>();
+        _userContext.GetRequiredUserId().Returns(Guid.CreateVersion7());
 
         _policyProvider
             .GetEffectivePolicyAsync(Arg.Any<Guid?>(), ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
@@ -55,13 +66,15 @@ public class PublishEventCommandHandlerTests
             _unitOfWork,
             _cache,
             _policyProvider,
-            new EventLifecycleReadinessEvaluator());
+            new EventLifecycleReadinessEvaluator(),
+            _userContext,
+            AtprotoPublicationPlannerTestFactory.Disabled());
     }
 
     [Test]
     public async Task Handle_WhenDraftEventIsReady_PublishesAndCreatesNotificationFanoutOutboxMessage()
     {
-        var concurrencyStamp = Guid.NewGuid();
+        var concurrencyStamp = Guid.CreateVersion7();
         var @event = CreateReadyEvent(concurrencyStamp);
         var createdMessages = new List<OutboxMessage>();
         _eventRepository.GetById(@event.Id).Returns(@event);
@@ -101,15 +114,150 @@ public class PublishEventCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WithEnabledAtproto_StagesEventOutboxAfterLocalSaveInsideTransactionWithoutPdsCall()
+    {
+        var userId = Guid.CreateVersion7();
+        var concurrencyStamp = Guid.CreateVersion7();
+        var @event = CreateReadyEvent(concurrencyStamp);
+        _userContext.GetRequiredUserId().Returns(userId);
+        _eventRepository.GetById(@event.Id).Returns(@event);
+        _eventRepository.GetAtprotoPublicationGraphAsync(
+                @event.TenantId,
+                @event.Id,
+                Arg.Any<CancellationToken>())
+            .Returns(new AtprotoPublicationGraphFactory(@event).Build());
+
+        var settings = Substitute.For<IHierarchicalSettingsResolver>();
+        settings.ResolveBatchAsync(
+                Arg.Any<IEnumerable<string>>(),
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<IEnumerable<string>>().Select(key => new ResolvedSetting
+            {
+                Key = key,
+                Value = key == GovernanceSettingKeys.Federation.AtprotoEventValidationProfile
+                    ? "\"platform\""
+                    : "true",
+                Source = SettingSource.UserPreference
+            }).ToArray());
+        var sessions = Substitute.For<IUserAuthenticationTokenRepository>();
+        sessions.GetAtprotoSessionsForReadAsync(
+                @event.TenantId,
+                userId,
+                RepositoryBackedAtprotoSession.Provider,
+                Arg.Any<CancellationToken>())
+            .Returns([
+                new UserAuthenticationToken
+                {
+                    Id = Guid.CreateVersion7(),
+                    TenantId = @event.TenantId,
+                    Tenant = null!,
+                    UserId = userId,
+                    User = null!,
+                    Provider = RepositoryBackedAtprotoSession.Provider,
+                    SubjectDid = "did:plc:publisher",
+                    SessionCiphertext = [1],
+                    EncryptionKeyId = "enc",
+                    OAuthClientKeyId = "oauth",
+                    PdsHost = "https://pds.example/"
+                }
+            ]);
+        var logins = Substitute.For<IUserExternalLoginRepository>();
+        logins.GetByProviderAndKey(RepositoryBackedAtprotoSession.Provider, "did:plc:publisher")
+            .Returns(new UserExternalLogin
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = @event.TenantId,
+                Tenant = null!,
+                UserId = userId,
+                User = null!,
+                Provider = RepositoryBackedAtprotoSession.Provider,
+                ProviderKey = "did:plc:publisher"
+            });
+        var payloads = Substitute.For<IAtprotoPublicationPayloadBuilder>();
+        payloads.BuildEventAsync(
+                Arg.Any<AtprotoEventPublicationEntityGraph>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<CancellationToken>())
+            .Returns(AtprotoPublicationPayloadBuildResult.Valid(new("{}", "hash")));
+        var federationOutbox = Substitute.For<IPdsSyncOutboxRepository>();
+        var gateway = Substitute.For<IAtprotoPdsDeliveryGateway>();
+        var insideTransaction = false;
+        var localSaved = false;
+        var addedAfterLocalSaveInsideTransaction = false;
+        _unitOfWork.ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task<Explore.Application.Responses.BaseCommandResponse<Guid>>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                insideTransaction = true;
+                try
+                {
+                    return await call.ArgAt<Func<CancellationToken, Task<Explore.Application.Responses.BaseCommandResponse<Guid>>>>(0)(
+                        call.ArgAt<CancellationToken>(1));
+                }
+                finally
+                {
+                    insideTransaction = false;
+                }
+            });
+        _eventRepository.Update(@event).Returns(_ =>
+        {
+            localSaved = true;
+            return Task.CompletedTask;
+        });
+        federationOutbox.AddAsync(Arg.Any<PdsSyncOutbox>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                addedAfterLocalSaveInsideTransaction = localSaved && insideTransaction;
+                return Task.CompletedTask;
+            });
+        var planner = new AtprotoEventPublicationPlanner(
+            new AtprotoEventGovernanceResolver(settings),
+            _eventRepository,
+            Substitute.For<IEventRegistrationIntentRepository>(),
+            Substitute.For<IAtprotoRecordRepository>(),
+            sessions,
+            logins,
+            payloads,
+            federationOutbox,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<AtprotoEventPublicationPlanner>.Instance);
+        var handler = new PublishEventCommandHandler(
+            _eventRepository,
+            _outboxRepository,
+            _unitOfWork,
+            _cache,
+            _policyProvider,
+            new EventLifecycleReadinessEvaluator(),
+            _userContext,
+            planner);
+
+        var result = await handler.Handle(new PublishEventCommand
+        {
+            Id = @event.Id,
+            Request = new() { ExpectedConcurrencyStamp = concurrencyStamp }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(addedAfterLocalSaveInsideTransaction).IsTrue();
+        await federationOutbox.Received(1).AddAsync(
+            Arg.Is<PdsSyncOutbox>(row =>
+                row.SourceEntityId == @event.Id
+                && row.Operation == PdsSyncOperation.Create),
+            Arg.Any<CancellationToken>());
+        await gateway.DidNotReceiveWithAnyArgs().DeliverAsync(default!, default);
+    }
+
+    [Test]
     public async Task Handle_WhenConcurrencyStampDoesNotMatch_ReturnsConflictFailure()
     {
-        var @event = CreateReadyEvent(Guid.NewGuid());
+        var @event = CreateReadyEvent(Guid.CreateVersion7());
         _eventRepository.GetById(@event.Id).Returns(@event);
 
         var result = await _handler.Handle(new PublishEventCommand
         {
             Id = @event.Id,
-            Request = new() { ExpectedConcurrencyStamp = Guid.NewGuid() }
+            Request = new() { ExpectedConcurrencyStamp = Guid.CreateVersion7() }
         }, CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
@@ -121,7 +269,7 @@ public class PublishEventCommandHandlerTests
     [Test]
     public async Task Handle_WhenEventIsMissingSchedule_ReturnsReadinessFailure()
     {
-        var concurrencyStamp = Guid.NewGuid();
+        var concurrencyStamp = Guid.CreateVersion7();
         var @event = CreateReadyEvent(concurrencyStamp);
         @event.FirstSessionStartUtc = null;
         _eventRepository.GetById(@event.Id).Returns(@event);
@@ -142,7 +290,7 @@ public class PublishEventCommandHandlerTests
     [Test]
     public async Task Handle_WhenCommunityProfileAndScheduleIsMissing_PublishesUsingInternalSafetyFields()
     {
-        var concurrencyStamp = Guid.NewGuid();
+        var concurrencyStamp = Guid.CreateVersion7();
         var @event = CreateReadyEvent(concurrencyStamp);
         @event.FirstSessionStartUtc = null;
         @event.LastSessionStartUtc = null;
@@ -165,7 +313,7 @@ public class PublishEventCommandHandlerTests
     [Test]
     public async Task Handle_WhenCommunityProfileEventIsModerated_ReturnsReadinessFailureWithoutMutation()
     {
-        var concurrencyStamp = Guid.NewGuid();
+        var concurrencyStamp = Guid.CreateVersion7();
         var @event = CreateReadyEvent(concurrencyStamp);
         @event.EventStatusId = (int)EventStatusEnum.Moderated;
         _eventRepository.GetById(@event.Id).Returns(@event);
@@ -189,16 +337,16 @@ public class PublishEventCommandHandlerTests
 
     private static Explore.Domain.Event CreateReadyEvent(Guid concurrencyStamp) => new()
     {
-        Id = Guid.NewGuid(),
+        Id = Guid.CreateVersion7(),
         Title = "Draft Event",
-        ActorId = Guid.NewGuid(),
+        ActorId = Guid.CreateVersion7(),
         Actor = new Actor
         {
             ActorType = new ActorType { Id = 1, FullName = "User", MasterCode = "user" },
             Tenant = CreateTenant(),
             Pii = new ActorPii { DisplayName = "Publisher" }
         },
-        TenantId = Guid.NewGuid(),
+        TenantId = Guid.CreateVersion7(),
         Tenant = CreateTenant(),
         VisibilityTypeId = 1,
         VisibilityType = new VisibilityType { Id = 1, FullName = "Public", MasterCode = "public" },
@@ -217,6 +365,12 @@ public class PublishEventCommandHandlerTests
         Slug = "test",
         TenantStatus = null!
     };
+
+    private sealed class AtprotoPublicationGraphFactory(Explore.Domain.Event eventEntity)
+    {
+        public AtprotoEventPublicationEntityGraph Build() =>
+            new(eventEntity, [], [], [], [], [], [], [], [], [], [], [], [], [], [], []);
+    }
 
     private static EventLifecyclePolicy CreateEventPublishPolicy() => new()
     {

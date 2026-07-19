@@ -3,6 +3,7 @@
 
 using System.Diagnostics.Metrics;
 using System.Text.Json;
+using Event.Application.UnitTests.Common;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
@@ -57,7 +58,8 @@ public sealed class ModerateEventCommandHandlerTests
             _currentUserService,
             _cache,
             CreateMetrics(),
-            NullLogger<ModerateEventCommandHandler>.Instance);
+            NullLogger<ModerateEventCommandHandler>.Instance,
+            AtprotoPublicationPlannerTestFactory.Disabled());
     }
 
     [Test]
@@ -193,10 +195,10 @@ public sealed class ModerateEventCommandHandlerTests
 
     private static Explore.Domain.Event CreateEvent(EventStatusEnum status) => new()
     {
-        Id = Guid.NewGuid(),
-        TenantId = Guid.NewGuid(),
+        Id = Guid.CreateVersion7(),
+        TenantId = Guid.CreateVersion7(),
         Tenant = null!,
-        ActorId = Guid.NewGuid(),
+        ActorId = Guid.CreateVersion7(),
         Actor = null!,
         Title = "Community Iftar",
         EventStatusId = (int)status,
@@ -204,7 +206,8 @@ public sealed class ModerateEventCommandHandlerTests
         VisibilityTypeId = 1,
         VisibilityType = null!,
         EventFormatId = 1,
-        EventFormat = null!
+        EventFormat = null!,
+        ConcurrencyStamp = Guid.CreateVersion7()
     };
 
     private static EventSession CreateSession(Explore.Domain.Event @event, EventSessionStatusEnum status) => new()
