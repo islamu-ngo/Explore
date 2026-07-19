@@ -1,9 +1,11 @@
 // ABOUTME: PostgreSQL integration tests for fenced AT Protocol outbox settlement and atomic Jetstream cursor application.
 // ABOUTME: Covers stale-worker rollback, idempotent replay, UUID allocation, and tenant presentation isolation.
 
+using System.Data.Common;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Federation;
@@ -18,6 +20,60 @@ namespace Event.Persistence.IntegrationTests.Federation;
 [NotInParallel("PersistenceDb")]
 public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture fixture)
 {
+    [Test]
+    public async Task PdsOutboxSchema_ModelMigrationAndLivePostgresStayInParity()
+    {
+        await fixture.ResetAsync();
+        await using ExploreDbContext context = fixture.CreateDbContext();
+        string[] modelIndexProperties = context.Model.FindEntityType(typeof(PdsSyncOutbox))!
+            .GetIndexes()
+            .Single(index => index.GetDatabaseName() == "ux_pds_sync_outbox_source_version")
+            .Properties
+            .Select(property => property.Name)
+            .ToArray();
+        string? modelFilter = context.Model.FindEntityType(typeof(PdsSyncOutbox))!
+            .GetIndexes()
+            .Single(index => index.GetDatabaseName() == "ux_pds_sync_outbox_source_version")
+            .GetFilter();
+        await context.Database.OpenConnectionAsync();
+        await using DbCommand columnCommand = context.Database.GetDbConnection().CreateCommand();
+        columnCommand.CommandText = """
+            SELECT character_maximum_length
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'pds_sync_outbox'
+              AND column_name = 'depends_on_cid'
+            """;
+        object? columnLength = await columnCommand.ExecuteScalarAsync();
+        await using DbCommand indexCommand = context.Database.GetDbConnection().CreateCommand();
+        indexCommand.CommandText = """
+            SELECT indexdef
+            FROM pg_indexes
+            WHERE schemaname = 'public'
+              AND tablename = 'pds_sync_outbox'
+              AND indexname = 'ux_pds_sync_outbox_source_version'
+            """;
+        string indexDefinition = (string)(await indexCommand.ExecuteScalarAsync()
+            ?? throw new InvalidOperationException("PDS source-attempt index was not created."));
+
+        await Assert.That(await context.Database.GetAppliedMigrationsAsync())
+            .Contains("20260719130000_IncludePdsPayloadHashInSourceVersionUniqueness");
+        await Assert.That(modelIndexProperties).IsEquivalentTo([
+            nameof(PdsSyncOutbox.TenantId),
+            nameof(PdsSyncOutbox.SourceEntityType),
+            nameof(PdsSyncOutbox.SourceEntityId),
+            nameof(PdsSyncOutbox.SourceVersion),
+            nameof(PdsSyncOutbox.Operation),
+            nameof(PdsSyncOutbox.PayloadHash)
+        ]);
+        await Assert.That(modelFilter).IsEqualTo("status IN (1, 2) AND superseded_at IS NULL");
+        await Assert.That(Convert.ToInt32(columnLength)).IsEqualTo(255);
+        await Assert.That(indexDefinition).Contains("payload_hash");
+        await Assert.That(indexDefinition).Contains("WHERE");
+        await Assert.That(indexDefinition).Contains("status");
+        await Assert.That(indexDefinition).Contains("superseded_at IS NULL");
+    }
+
     [Test]
     public async Task JetstreamApply_AllocatesIdentityAndAdvancesDuplicateReplayWithoutDuplication()
     {
@@ -66,6 +122,55 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
     }
 
     [Test]
+    public async Task JetstreamApply_InvalidOutOfRangeCursorStoresQuarantineWithoutPoisoningCheckpoint()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var repository = new AtprotoJetstreamRepository(context);
+        var now = Utc(10);
+        AtprotoJetstreamClaim claim = await repository.TryClaimAsync(
+            "https://jetstream.example",
+            "worker-a",
+            now,
+            TimeSpan.FromMinutes(5)) ?? throw new InvalidOperationException("Claim was not acquired.");
+        var quarantine = new AtprotoJetstreamQuarantine
+        {
+            Id = Guid.CreateVersion7(),
+            ReasonCode = "invalid_cursor",
+            EnvelopeHash = new string('a', 64),
+            EventAt = now,
+            QuarantinedAt = now
+        };
+
+        bool quarantined = await repository.TryApplyAndAdvanceAsync(new AtprotoJetstreamApplyRequest(
+            claim,
+            ExpectedCursor: 0,
+            NextCursor: long.MaxValue,
+            Record: null,
+            Presentations: [],
+            quarantine,
+            now,
+            AdvanceCursor: false));
+        bool applied = await repository.TryApplyAndAdvanceAsync(new AtprotoJetstreamApplyRequest(
+            claim,
+            ExpectedCursor: 0,
+            NextCursor: 100,
+            IncomingRecord(sourceVersion: 100, now.AddSeconds(1)),
+            Presentations: [],
+            Quarantine: null,
+            now.AddSeconds(1)));
+
+        context.ChangeTracker.Clear();
+        long cursor = await context.AtprotoJetstreamConsumerStates.AsNoTracking().Select(value => value.Cursor).SingleAsync();
+        long quarantinedCursor = await context.AtprotoJetstreamQuarantines.AsNoTracking().Select(value => value.Cursor).SingleAsync();
+        await Assert.That(quarantined).IsTrue();
+        await Assert.That(applied).IsTrue();
+        await Assert.That(cursor).IsEqualTo(100);
+        await Assert.That(quarantinedCursor).IsEqualTo(long.MaxValue);
+        await Assert.That(await context.AtprotoRecords.CountAsync()).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task AtprotoRecordRepository_ExposesOnlyCurrentTenantPresentations()
     {
         await fixture.ResetAsync();
@@ -95,6 +200,160 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         var hidden = await new AtprotoRecordRepository(contextB).GetById(recordId);
         await Assert.That(visible).IsNotNull();
         await Assert.That(hidden).IsNull();
+    }
+
+    [Test]
+    public async Task AtprotoEventProjectionRepositoryEnforcesTenantPresentationIsolation()
+    {
+        await fixture.ResetAsync();
+        FederationScope tenantA = await SeedScopeAsync("projection-a");
+        FederationScope tenantB = await SeedScopeAsync("projection-b");
+        Guid recordId = Guid.CreateVersion7();
+        await using (var seedContext = fixture.CreateDbContext())
+        {
+            AtprotoRecord record = IncomingRecord(1, Utc(10));
+            record.Id = recordId;
+            seedContext.AtprotoRecords.Add(record);
+            seedContext.AtprotoEventProjections.Add(Projection(recordId, 1, "Visible event"));
+            seedContext.AtprotoRecordTenantPresentations.Add(new AtprotoRecordTenantPresentation
+            {
+                TenantId = tenantA.TenantId,
+                AtprotoRecordId = recordId,
+                IsVisible = true,
+                SourceVersion = 1,
+                EvaluatedAt = Utc(10)
+            });
+            await seedContext.SaveChangesAsync();
+        }
+
+        var query = new AtprotoEventProjectionQuery(
+            20,
+            null,
+            null,
+            null,
+            null,
+            AtprotoEventTemporalFilter.All,
+            AtprotoEventDiscoverySort.Date,
+            false,
+            new DateTimeOffset(Utc(10)));
+        await using ExploreDbContext contextA = fixture.CreateTenantFilteredDbContext(new StaticTenantContext(tenantA.TenantId));
+        await using ExploreDbContext contextB = fixture.CreateTenantFilteredDbContext(new StaticTenantContext(tenantB.TenantId));
+
+        (IReadOnlyList<AtprotoEventProjection> visible, int visibleCount) =
+            await new AtprotoEventProjectionRepository(contextA).GetPublicWindowAsync(query, CancellationToken.None);
+        (IReadOnlyList<AtprotoEventProjection> hidden, int hiddenCount) =
+            await new AtprotoEventProjectionRepository(contextB).GetPublicWindowAsync(query, CancellationToken.None);
+
+        await Assert.That(visible).HasSingleItem();
+        await Assert.That(visibleCount).IsEqualTo(1);
+        await Assert.That(hidden).IsEmpty();
+        await Assert.That(hiddenCount).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task JetstreamApply_EventTombstoneSuppressesDependentRsvpPresentationAtomically()
+    {
+        await fixture.ResetAsync();
+        var scope = await SeedScopeAsync("jetstream-tombstone");
+        await using var context = fixture.CreateDbContext();
+        var repository = new AtprotoJetstreamRepository(context);
+        var now = Utc(10);
+        var claim = await repository.TryClaimAsync(
+            "https://jetstream.example",
+            "worker-a",
+            now,
+            TimeSpan.FromMinutes(5)) ?? throw new InvalidOperationException("Claim was not acquired.");
+        AtprotoRecord calendarEvent = IncomingRecord(sourceVersion: 1, now);
+        var eventPresentation = new AtprotoRecordTenantPresentation { TenantId = scope.TenantId, IsVisible = true };
+        await repository.TryApplyAndAdvanceAsync(new AtprotoJetstreamApplyRequest(
+            claim,
+            0,
+            1,
+            calendarEvent,
+            [eventPresentation],
+            null,
+            now,
+            EventProjection: Projection(calendarEvent.Id, 1, "Materialized event")));
+        await Assert.That(await context.AtprotoEventProjections.CountAsync()).IsEqualTo(1);
+        var rsvp = new AtprotoRecord
+        {
+            Did = "did:plc:rsvp-owner",
+            Collection = "community.lexicon.calendar.rsvp",
+            RecordKey = "3m7rsvp",
+            Cid = "bafyreirsvp",
+            Uri = "at://did:plc:rsvp-owner/community.lexicon.calendar.rsvp/3m7rsvp",
+            SourceVersion = 2,
+            SubjectUri = calendarEvent.Uri,
+            SubjectCid = calendarEvent.Cid,
+            RecordJson = "{\"status\":\"community.lexicon.calendar.rsvp#going\"}",
+            RecordHash = new string('c', 64),
+            IndexedAt = now.AddSeconds(1),
+            UpdatedAt = now.AddSeconds(1)
+        };
+        await repository.TryApplyAndAdvanceAsync(new AtprotoJetstreamApplyRequest(
+            claim,
+            1,
+            2,
+            rsvp,
+            [new AtprotoRecordTenantPresentation { TenantId = scope.TenantId, IsVisible = true }],
+            null,
+            now.AddSeconds(1)));
+        AtprotoRecord tombstone = IncomingRecord(sourceVersion: 3, now.AddSeconds(2));
+        tombstone.RecordJson = null;
+        tombstone.RecordHash = null;
+        tombstone.Cid = null;
+        tombstone.TombstonedAt = now.AddSeconds(2);
+
+        bool applied = await repository.TryApplyAndAdvanceAsync(new AtprotoJetstreamApplyRequest(
+            claim, 2, 3, tombstone, [], null, now.AddSeconds(2)));
+
+        context.ChangeTracker.Clear();
+        AtprotoRecord persistedEvent = await context.AtprotoRecords.AsNoTracking()
+            .SingleAsync(value => value.Collection == "community.lexicon.calendar.event");
+        bool[] visibility = await context.AtprotoRecordTenantPresentations
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .OrderBy(value => value.AtprotoRecordId)
+            .Select(value => value.IsVisible)
+            .ToArrayAsync();
+        long cursor = await context.AtprotoJetstreamConsumerStates.AsNoTracking().Select(value => value.Cursor).SingleAsync();
+        await Assert.That(applied).IsTrue();
+        await Assert.That(persistedEvent.TombstonedAt).IsEqualTo(now.AddSeconds(2));
+        await Assert.That(visibility).IsEquivalentTo([false, false]);
+        await Assert.That(await context.AtprotoEventProjections.CountAsync()).IsEqualTo(0);
+        await Assert.That(cursor).IsEqualTo(3);
+    }
+
+    [Test]
+    public async Task JetstreamApply_RepeatedLocalEchoRemainsReconciled()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var now = Utc(10);
+        AtprotoRecord local = IncomingRecord(sourceVersion: 0, now);
+        local.Id = Guid.CreateVersion7();
+        local.Direction = AtprotoRecordDirection.Outbound;
+        local.Provenance = AtprotoRecordProvenance.LocalLifecycle;
+        context.AtprotoRecords.Add(local);
+        await context.SaveChangesAsync();
+        var repository = new AtprotoJetstreamRepository(context);
+        AtprotoJetstreamClaim claim = await repository.TryClaimAsync(
+            "https://jetstream.example",
+            "worker-a",
+            now,
+            TimeSpan.FromMinutes(5)) ?? throw new InvalidOperationException("Claim was not acquired.");
+
+        await repository.TryApplyAndAdvanceAsync(new AtprotoJetstreamApplyRequest(
+            claim, 0, 1, IncomingRecord(sourceVersion: 1, now.AddSeconds(1)), [], null, now.AddSeconds(1)));
+        await repository.TryApplyAndAdvanceAsync(new AtprotoJetstreamApplyRequest(
+            claim, 1, 2, IncomingRecord(sourceVersion: 2, now.AddSeconds(2)), [], null, now.AddSeconds(2)));
+
+        context.ChangeTracker.Clear();
+        AtprotoRecord persisted = await context.AtprotoRecords.AsNoTracking().SingleAsync();
+        await Assert.That(persisted.Direction).IsEqualTo(AtprotoRecordDirection.Reconciled);
+        await Assert.That(persisted.Provenance).IsEqualTo(AtprotoRecordProvenance.JetstreamEcho);
+        await Assert.That(persisted.SourceVersion).IsEqualTo(2);
+        await Assert.That(await context.AtprotoRecords.CountAsync()).IsEqualTo(1);
     }
 
     [Test]
@@ -156,6 +415,418 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         await Assert.That(await verifyContext.AtprotoRecordTenantPresentations.IgnoreQueryFilters().CountAsync()).IsEqualTo(0);
     }
 
+    [Test]
+    public async Task PdsSettlement_SupersededCreateCannotSettleAfterRemoteSuccess()
+    {
+        await fixture.ResetAsync();
+        FederationScope scope = await SeedScopeAsync("pds-supersede");
+        DateTime now = Utc(10);
+        PdsSyncOutbox stale = CreateOutbox(scope, now);
+        PdsSyncOutbox successor = CreateOutbox(
+            scope,
+            now.AddSeconds(1),
+            PdsSyncOperation.Delete,
+            sourceEntityId: stale.SourceEntityId,
+            sourceVersion: Guid.CreateVersion7());
+        await using var context = fixture.CreateDbContext();
+        context.PdsSyncOutbox.Add(stale);
+        await context.SaveChangesAsync();
+        PdsSyncOutboxRepository repository = new(context);
+        PdsSyncClaim claim = (await repository.ClaimDueAsync(1, "worker-a", now, TimeSpan.FromSeconds(90))).Single();
+        context.PdsSyncOutbox.Add(successor);
+        await context.SaveChangesAsync();
+        await repository.SupersedePriorAsync(
+            scope.TenantId,
+            stale.SourceEntityType,
+            stale.SourceEntityId,
+            successor.Id,
+            now.AddSeconds(2));
+        await context.SaveChangesAsync();
+
+        bool settled = await repository.TrySettleAsync(
+            claim,
+            $"at://{stale.Did}/{stale.Collection}/{stale.RecordKey}",
+            "bafy-stale-success",
+            now.AddSeconds(3));
+
+        await Assert.That(settled).IsFalse();
+        await Assert.That(await context.AtprotoRecords.CountAsync()).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task EventDeliveryStateRead_ReturnsOnlyLatestRequestedTenantRowWithoutTracking()
+    {
+        await fixture.ResetAsync();
+        FederationScope scope = await SeedScopeAsync("pds-delivery-state");
+        DateTime now = Utc(10);
+        Guid eventId = Guid.CreateVersion7();
+        PdsSyncOutbox completed = CreateOutbox(scope, now, sourceEntityId: eventId);
+        completed.Status = PdsSyncStatus.Completed;
+        completed.ProcessedAt = now.AddSeconds(1);
+        PdsSyncOutbox deadLettered = CreateOutbox(
+            scope,
+            now.AddSeconds(2),
+            PdsSyncOperation.Update,
+            sourceEntityId: eventId,
+            sourceVersion: Guid.CreateVersion7());
+        deadLettered.Status = PdsSyncStatus.DeadLettered;
+        deadLettered.LastError = "session_unavailable";
+        deadLettered.DeadLetteredAt = now.AddSeconds(3);
+        PdsSyncOutbox unrelated = CreateOutbox(scope, now.AddSeconds(4));
+        await using var context = fixture.CreateDbContext();
+        context.PdsSyncOutbox.AddRange(completed, deadLettered, unrelated);
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        IReadOnlyList<PdsSyncOutbox> rows = await new PdsSyncOutboxRepository(context)
+            .GetCurrentEventDeliveryStatesAsync(scope.TenantId, [eventId]);
+
+        await Assert.That(rows).HasSingleItem();
+        await Assert.That(rows[0].Id).IsEqualTo(deadLettered.Id);
+        await Assert.That(rows[0].LastError).IsEqualTo("session_unavailable");
+        await Assert.That(context.ChangeTracker.Entries()).IsEmpty();
+    }
+
+    [Test]
+    public async Task PdsSettlement_LinksCanonicalRecordBackToCommittedLocalEvent()
+    {
+        await fixture.ResetAsync();
+        FederationScope scope = await SeedScopeAsync("pds-event-link");
+        DateTime now = Utc(10);
+        await using var context = fixture.CreateDbContext();
+        var actor = new Actor
+        {
+            Id = Guid.CreateVersion7(),
+            ActorTypeId = (int)ActorTypeEnum.User,
+            ActorType = null!,
+            UserId = scope.UserId,
+            TenantId = scope.TenantId,
+            Tenant = null!,
+            Pii = new ActorPii { DisplayName = "PDS event owner" },
+            CreatedAt = now,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        var eventEntity = new Explore.Domain.Event
+        {
+            Id = Guid.CreateVersion7(),
+            Title = "Committed before PDS delivery",
+            ActorId = actor.Id,
+            Actor = actor,
+            TenantId = scope.TenantId,
+            Tenant = null!,
+            VisibilityTypeId = (int)VisibilityTypeEnum.Public,
+            VisibilityType = null!,
+            EventStatusId = (int)EventStatusEnum.Published,
+            EventStatus = null!,
+            EventFormatId = (int)EventFormatEnum.Digital,
+            EventFormat = null!,
+            CreatedAt = now,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        PdsSyncOutbox outbox = CreateOutbox(scope, now.AddSeconds(1), sourceEntityId: eventEntity.Id);
+        context.AddRange(actor, eventEntity, outbox);
+        await context.SaveChangesAsync();
+        PdsSyncOutboxRepository repository = new(context);
+        PdsSyncClaim claim = (await repository.ClaimDueAsync(
+            1,
+            "worker-link",
+            now.AddSeconds(2),
+            TimeSpan.FromSeconds(90))).Single();
+
+        bool settled = await repository.TrySettleAsync(
+            claim,
+            $"at://{outbox.Did}/{outbox.Collection}/{outbox.RecordKey}",
+            "bafy-event-link",
+            now.AddSeconds(3));
+
+        await Assert.That(settled).IsTrue();
+        Guid recordId = (await context.AtprotoRecords.SingleAsync()).Id;
+        await Assert.That((await context.Events.SingleAsync(value => value.Id == eventEntity.Id)).AtprotoRecordId)
+            .IsEqualTo(recordId);
+    }
+
+    [Test]
+    public async Task PdsSettlement_ExactCreateEchoSettlesWithoutOverwritingDifferentState()
+    {
+        await fixture.ResetAsync();
+        FederationScope scope = await SeedScopeAsync("pds-create-echo");
+        DateTime now = Utc(10);
+        PdsSyncOutbox outbox = CreateOutbox(scope, now);
+        string uri = $"at://{outbox.Did}/{outbox.Collection}/{outbox.RecordKey}";
+        const string cid = "bafy-create-echo";
+        await using var context = fixture.CreateDbContext();
+        context.PdsSyncOutbox.Add(outbox);
+        AtprotoRecord reorderedEcho = Echo(outbox, uri, cid, now.AddSeconds(1));
+        reorderedEcho.RecordJson = "{\"createdAt\":\"2026-07-18T10:00:00Z\",\"name\":\"Fenced event\"}";
+        reorderedEcho.RecordHash = new string('f', 64);
+        context.AtprotoRecords.Add(reorderedEcho);
+        await context.SaveChangesAsync();
+        PdsSyncOutboxRepository repository = new(context);
+        PdsSyncClaim claim = (await repository.ClaimDueAsync(1, "worker-a", now, TimeSpan.FromSeconds(90))).Single();
+
+        bool settled = await repository.TrySettleAsync(claim, uri, cid, now.AddSeconds(2));
+
+        await Assert.That(settled).IsTrue();
+        await Assert.That(await context.AtprotoRecords.CountAsync()).IsEqualTo(1);
+        await Assert.That(await context.AtprotoOutboundRecordOwnerships.IgnoreQueryFilters().CountAsync()).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task PdsSettlement_SameCidWithAlteredEchoPayloadIsRejected()
+    {
+        await fixture.ResetAsync();
+        FederationScope scope = await SeedScopeAsync("pds-altered-echo");
+        DateTime now = Utc(10);
+        PdsSyncOutbox outbox = CreateOutbox(scope, now);
+        string uri = $"at://{outbox.Did}/{outbox.Collection}/{outbox.RecordKey}";
+        const string cid = "bafy-altered-echo";
+        await using var context = fixture.CreateDbContext();
+        context.PdsSyncOutbox.Add(outbox);
+        AtprotoRecord alteredEcho = Echo(outbox, uri, cid, now.AddSeconds(1));
+        alteredEcho.RecordJson = "{\"name\":\"Unrelated event\"}";
+        context.AtprotoRecords.Add(alteredEcho);
+        await context.SaveChangesAsync();
+        PdsSyncOutboxRepository repository = new(context);
+        PdsSyncClaim claim = (await repository.ClaimDueAsync(1, "worker-a", now, TimeSpan.FromSeconds(90))).Single();
+
+        bool settled = await repository.TrySettleAsync(claim, uri, cid, now.AddSeconds(2));
+
+        await Assert.That(settled).IsFalse();
+        await Assert.That(await context.AtprotoOutboundRecordOwnerships.IgnoreQueryFilters().CountAsync()).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task PdsSettlement_CompensationUpdateAcceptsObservedCanonicalBaseOnFirstAttempt()
+    {
+        await fixture.ResetAsync();
+        FederationScope scope = await SeedScopeAsync("pds-compensation-first");
+        DateTime now = Utc(10);
+        (PdsSyncOutbox predecessor, PdsSyncOutbox successor) = CompensationPair(scope, now);
+        string uri = $"at://{successor.Did}/{successor.Collection}/{successor.RecordKey}";
+        const string oldCid = "bafy-predecessor";
+        const string newCid = "bafy-successor";
+        await using var context = fixture.CreateDbContext();
+        context.PdsSyncOutbox.AddRange(predecessor, successor);
+        context.AtprotoRecords.Add(Echo(predecessor, uri, oldCid, now));
+        await context.SaveChangesAsync();
+        PdsSyncOutboxRepository repository = new(context);
+        PdsSyncClaim claim = (await repository.ClaimDueAsync(1, "worker-a", now.AddSeconds(2), TimeSpan.FromSeconds(90))).Single();
+
+        bool settled = await repository.TrySettleAsync(
+            claim,
+            uri,
+            newCid,
+            now.AddSeconds(3),
+            observedBaseCid: oldCid);
+
+        await Assert.That(settled).IsTrue();
+        await Assert.That((await context.AtprotoRecords.SingleAsync()).Cid).IsEqualTo(newCid);
+    }
+
+    [Test]
+    public async Task PdsSettlement_CompensationRetryAcceptsSemanticPredecessorEchoButRejectsUnrelatedThirdPayload()
+    {
+        await fixture.ResetAsync();
+        FederationScope scope = await SeedScopeAsync("pds-compensation-retry");
+        DateTime now = Utc(10);
+        (PdsSyncOutbox predecessor, PdsSyncOutbox successor) = CompensationPair(scope, now);
+        string uri = $"at://{successor.Did}/{successor.Collection}/{successor.RecordKey}";
+        const string remoteDesiredCid = "bafy-successor";
+        await using var context = fixture.CreateDbContext();
+        context.PdsSyncOutbox.AddRange(predecessor, successor);
+        AtprotoRecord reorderedPredecessorEcho = Echo(predecessor, uri, "bafy-predecessor", now);
+        reorderedPredecessorEcho.RecordJson = "{\"createdAt\":\"2026-07-18T10:00:00Z\",\"name\":\"Fenced event\"}";
+        context.AtprotoRecords.Add(reorderedPredecessorEcho);
+        await context.SaveChangesAsync();
+        PdsSyncOutboxRepository repository = new(context);
+        PdsSyncClaim claim = (await repository.ClaimDueAsync(1, "worker-a", now.AddSeconds(2), TimeSpan.FromSeconds(90))).Single();
+
+        bool retrySettled = await repository.TrySettleAsync(
+            claim,
+            uri,
+            remoteDesiredCid,
+            now.AddSeconds(3),
+            observedBaseCid: remoteDesiredCid);
+
+        await Assert.That(retrySettled).IsTrue();
+
+        await fixture.ResetAsync();
+        scope = await SeedScopeAsync("pds-compensation-third");
+        (predecessor, successor) = CompensationPair(scope, now);
+        uri = $"at://{successor.Did}/{successor.Collection}/{successor.RecordKey}";
+        await using var unrelatedContext = fixture.CreateDbContext();
+        unrelatedContext.PdsSyncOutbox.AddRange(predecessor, successor);
+        AtprotoRecord unrelatedEcho = Echo(predecessor, uri, "bafy-third", now);
+        unrelatedEcho.RecordJson = "{\"name\":\"Unrelated third update\",\"createdAt\":\"2026-07-18T10:00:00Z\"}";
+        unrelatedContext.AtprotoRecords.Add(unrelatedEcho);
+        await unrelatedContext.SaveChangesAsync();
+        PdsSyncOutboxRepository unrelatedRepository = new(unrelatedContext);
+        claim = (await unrelatedRepository.ClaimDueAsync(1, "worker-a", now.AddSeconds(2), TimeSpan.FromSeconds(90))).Single();
+
+        bool unrelatedSettled = await unrelatedRepository.TrySettleAsync(
+            claim,
+            uri,
+            remoteDesiredCid,
+            now.AddSeconds(3),
+            observedBaseCid: remoteDesiredCid);
+
+        await Assert.That(unrelatedSettled).IsFalse();
+        await Assert.That(await unrelatedContext.AtprotoOutboundRecordOwnerships.IgnoreQueryFilters().CountAsync()).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task PdsDelivery_CompensationLineageBeyondMaximumDepthFailsClosedBeforeGatewayMutation()
+    {
+        await fixture.ResetAsync();
+        FederationScope scope = await SeedScopeAsync("pds-compensation-overflow");
+        DateTime now = Utc(10);
+        Guid sourceEntityId = Guid.CreateVersion7();
+        PdsSyncOutbox successor = CreateOutbox(
+            scope,
+            now.AddSeconds(34),
+            PdsSyncOperation.Update,
+            sourceEntityId: sourceEntityId,
+            sourceVersion: Guid.CreateVersion7(),
+            payload: "{\"name\":\"Current desired event\",\"createdAt\":\"2026-07-18T10:00:00Z\"}");
+        var predecessors = Enumerable.Range(0, 33)
+            .Select(index => CreateOutbox(
+                scope,
+                now.AddSeconds(index),
+                PdsSyncOperation.Create,
+                sourceEntityId: sourceEntityId,
+                sourceVersion: Guid.CreateVersion7(),
+                payload: $"{{\"name\":\"Predecessor {index}\",\"createdAt\":\"2026-07-18T10:00:00Z\"}}"))
+            .ToArray();
+        for (var index = 0; index < predecessors.Length; index++)
+        {
+            predecessors[index].Status = PdsSyncStatus.Superseded;
+            predecessors[index].SupersededById = index == predecessors.Length - 1
+                ? successor.Id
+                : predecessors[index + 1].Id;
+            predecessors[index].SupersededAt = now.AddSeconds(index + 1);
+        }
+
+        await using var context = fixture.CreateDbContext();
+        context.PdsSyncOutbox.AddRange(predecessors);
+        context.PdsSyncOutbox.Add(successor);
+        await context.SaveChangesAsync();
+        var repository = new PdsSyncOutboxRepository(context);
+        PdsSyncCompensationEvidence evidence = await repository.GetCompensationEvidenceAsync(successor);
+        await Assert.That(evidence.IsComplete).IsFalse();
+
+        DateTime claimedAt = now.AddMinutes(2);
+        PdsSyncClaim claim = (await repository.ClaimDueAsync(
+            1,
+            "worker-overflow",
+            claimedAt,
+            TimeSpan.FromSeconds(90))).Single();
+        var gate = new PermittingDeliveryGate();
+        var gateway = new CountingDeliveryGateway();
+        var processor = new AtprotoPdsDeliveryProcessor(
+            repository,
+            gate,
+            gateway,
+            new FixedTimeProvider(claimedAt.AddSeconds(1)));
+
+        AtprotoPdsClaimResult result = await processor.ProcessAsync(
+            claim,
+            TimeSpan.FromSeconds(90),
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsClaimOutcome.DeliveryFailed);
+        await Assert.That(result.FailureCode).IsEqualTo("record_conflict");
+        await Assert.That(result.FailureDisposition).IsEqualTo(AtprotoPdsFailureDisposition.DeadLettered);
+        await Assert.That(gate.CallCount).IsEqualTo(1);
+        await Assert.That(gateway.CallCount).IsEqualTo(0);
+        await Assert.That((await context.PdsSyncOutbox.SingleAsync(value => value.Id == successor.Id)).Status)
+            .IsEqualTo(PdsSyncStatus.DeadLettered);
+        await Assert.That(await context.AtprotoRecords.CountAsync()).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task PdsSettlement_ExactUpdateEchoAcceptsReturnedCidInsteadOfOldExpectedCid()
+    {
+        await fixture.ResetAsync();
+        FederationScope scope = await SeedScopeAsync("pds-update-echo");
+        DateTime now = Utc(10);
+        PdsSyncOutbox outbox = CreateOutbox(
+            scope,
+            now,
+            PdsSyncOperation.Update,
+            expectedCid: "bafy-old");
+        string uri = $"at://{outbox.Did}/{outbox.Collection}/{outbox.RecordKey}";
+        const string returnedCid = "bafy-new";
+        await using var context = fixture.CreateDbContext();
+        context.PdsSyncOutbox.Add(outbox);
+        context.AtprotoRecords.Add(Echo(outbox, uri, returnedCid, now.AddSeconds(1)));
+        await context.SaveChangesAsync();
+        PdsSyncOutboxRepository repository = new(context);
+        PdsSyncClaim claim = (await repository.ClaimDueAsync(1, "worker-a", now, TimeSpan.FromSeconds(90))).Single();
+
+        bool settled = await repository.TrySettleAsync(claim, uri, returnedCid, now.AddSeconds(2));
+
+        await Assert.That(settled).IsTrue();
+        await Assert.That((await context.AtprotoRecords.SingleAsync()).Cid).IsEqualTo(returnedCid);
+    }
+
+    [Test]
+    public async Task PdsSettlement_DeleteEchoAndAbsentRecordBothCompleteWithoutFabricatedLiveRecord()
+    {
+        await fixture.ResetAsync();
+        FederationScope scope = await SeedScopeAsync("pds-delete-echo");
+        DateTime now = Utc(10);
+        PdsSyncOutbox echoedDelete = CreateOutbox(
+            scope,
+            now,
+            PdsSyncOperation.Delete,
+            expectedCid: "bafy-before-delete");
+        Guid absentSourceId = Guid.CreateVersion7();
+        PdsSyncOutbox absentDelete = CreateOutbox(
+            scope,
+            now.AddSeconds(1),
+            PdsSyncOperation.Delete,
+            sourceEntityId: absentSourceId,
+            sourceVersion: Guid.CreateVersion7(),
+            recordKey: "3m7absent");
+        PdsSyncOutbox absentPredecessor = CreateOutbox(
+            scope,
+            now,
+            sourceEntityId: absentSourceId,
+            sourceVersion: Guid.CreateVersion7(),
+            recordKey: absentDelete.RecordKey);
+        absentPredecessor.Status = PdsSyncStatus.Superseded;
+        absentPredecessor.SupersededById = absentDelete.Id;
+        absentPredecessor.SupersededAt = now.AddSeconds(1);
+        string echoedUri = $"at://{echoedDelete.Did}/{echoedDelete.Collection}/{echoedDelete.RecordKey}";
+        AtprotoRecord tombstone = Echo(echoedDelete, echoedUri, "bafy-before-delete", now);
+        tombstone.Cid = null;
+        tombstone.RecordJson = null;
+        tombstone.RecordHash = null;
+        tombstone.TombstonedAt = now.AddSeconds(1);
+        await using var context = fixture.CreateDbContext();
+        context.PdsSyncOutbox.AddRange(echoedDelete, absentPredecessor, absentDelete);
+        context.AtprotoRecords.Add(tombstone);
+        await context.SaveChangesAsync();
+        PdsSyncOutboxRepository repository = new(context);
+        IReadOnlyList<PdsSyncClaim> claims = await repository.ClaimDueAsync(2, "worker-a", now.AddSeconds(2), TimeSpan.FromSeconds(90));
+
+        bool echoedSettled = await repository.TrySettleAsync(
+            claims.Single(value => value.OutboxId == echoedDelete.Id),
+            echoedUri,
+            "bafy-before-delete",
+            now.AddSeconds(3));
+        bool absentSettled = await repository.TrySettleAsync(
+            claims.Single(value => value.OutboxId == absentDelete.Id),
+            $"at://{absentDelete.Did}/{absentDelete.Collection}/{absentDelete.RecordKey}",
+            AtprotoPdsDeliveryResult.AbsentRecordCid,
+            now.AddSeconds(3));
+
+        await Assert.That(echoedSettled).IsTrue();
+        await Assert.That(absentSettled).IsTrue();
+        await Assert.That(await context.AtprotoRecords.CountAsync()).IsEqualTo(1);
+        await Assert.That((await context.AtprotoRecords.SingleAsync()).TombstonedAt).IsNotNull();
+    }
+
     private async Task<FederationScope> SeedScopeAsync(string slug)
     {
         await using var context = fixture.CreateDbContext();
@@ -197,32 +868,101 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         return new FederationScope(tenant.Id, user.Id);
     }
 
-    private static PdsSyncOutbox CreateOutbox(FederationScope scope, DateTime createdAt) => new()
+    private static AtprotoEventProjection Projection(
+        Guid atprotoRecordId,
+        long sourceVersion,
+        string name) => new()
+        {
+            AtprotoRecordId = atprotoRecordId,
+            Name = name,
+            CreatedAt = new DateTimeOffset(Utc(10)),
+            StartsAt = new DateTimeOffset(Utc(11)),
+            SourceUrl = "https://events.example/source",
+            SourceVersion = sourceVersion,
+            MaterializedAt = Utc(10)
+        };
+
+    private static PdsSyncOutbox CreateOutbox(
+        FederationScope scope,
+        DateTime createdAt,
+        PdsSyncOperation operation = PdsSyncOperation.Create,
+        string? expectedCid = null,
+        Guid? sourceEntityId = null,
+        Guid? sourceVersion = null,
+        string recordKey = "3m7fenced",
+        string? payload = null) => new()
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = scope.TenantId,
+            UserId = scope.UserId,
+            Did = "did:plc:fenced-owner",
+            Collection = "community.lexicon.calendar.event",
+            RecordKey = recordKey,
+            Operation = operation,
+            Payload = operation == PdsSyncOperation.Delete
+            ? null
+            : payload ?? "{\"name\":\"Fenced event\",\"createdAt\":\"2026-07-18T10:00:00Z\"}",
+            PayloadHash = new string('a', 64),
+            IdempotencyKey = $"event:{Guid.CreateVersion7():N}:create",
+            PdsHost = "https://pds.example",
+            SourceEntityType = "Event",
+            SourceEntityId = sourceEntityId ?? Guid.CreateVersion7(),
+            SourceVersion = sourceVersion ?? Guid.CreateVersion7(),
+            ExpectedCid = expectedCid,
+            Status = PdsSyncStatus.Pending,
+            CreatedAt = createdAt,
+            MaxRetries = 3
+        };
+
+    private static (PdsSyncOutbox Predecessor, PdsSyncOutbox Successor) CompensationPair(
+        FederationScope scope,
+        DateTime now)
     {
-        Id = Guid.CreateVersion7(),
-        TenantId = scope.TenantId,
-        UserId = scope.UserId,
-        Did = "did:plc:fenced-owner",
-        Collection = "community.lexicon.calendar.event",
-        RecordKey = "3m7fenced",
-        Operation = PdsSyncOperation.Create,
-        Payload = "{\"name\":\"Fenced event\",\"createdAt\":\"2026-07-18T10:00:00Z\"}",
-        PayloadHash = new string('a', 64),
-        IdempotencyKey = $"event:{Guid.CreateVersion7():N}:create",
-        PdsHost = "https://pds.example",
-        SourceEntityType = "Event",
-        SourceEntityId = Guid.CreateVersion7(),
-        SourceVersion = Guid.CreateVersion7(),
-        Status = PdsSyncStatus.Pending,
-        CreatedAt = createdAt,
-        MaxRetries = 3
-    };
+        Guid sourceEntityId = Guid.CreateVersion7();
+        var successor = CreateOutbox(
+            scope,
+            now.AddSeconds(1),
+            PdsSyncOperation.Update,
+            sourceEntityId: sourceEntityId,
+            sourceVersion: Guid.CreateVersion7(),
+            payload: "{\"name\":\"Updated event\",\"createdAt\":\"2026-07-18T10:00:00Z\"}");
+        var predecessor = CreateOutbox(
+            scope,
+            now,
+            sourceEntityId: sourceEntityId,
+            sourceVersion: Guid.CreateVersion7());
+        predecessor.Status = PdsSyncStatus.Superseded;
+        predecessor.SupersededById = successor.Id;
+        predecessor.SupersededAt = now.AddSeconds(1);
+        return (predecessor, successor);
+    }
+
+    private static AtprotoRecord Echo(
+        PdsSyncOutbox outbox,
+        string uri,
+        string cid,
+        DateTime observedAt) => new()
+        {
+            Did = outbox.Did,
+            Collection = outbox.Collection,
+            RecordKey = outbox.RecordKey,
+            Direction = AtprotoRecordDirection.Inbound,
+            Provenance = AtprotoRecordProvenance.Jetstream,
+            Uri = uri,
+            Cid = cid,
+            RecordJson = outbox.Payload,
+            RecordHash = outbox.PayloadHash,
+            IndexedAt = observedAt,
+            UpdatedAt = observedAt
+        };
 
     private static AtprotoRecord IncomingRecord(long sourceVersion, DateTime observedAt) => new()
     {
         Did = "did:plc:remote-owner",
         Collection = "community.lexicon.calendar.event",
         RecordKey = "3m7remote",
+        Direction = AtprotoRecordDirection.Inbound,
+        Provenance = AtprotoRecordProvenance.Jetstream,
         Cid = $"bafyreiv{sourceVersion}",
         Uri = "at://did:plc:remote-owner/community.lexicon.calendar.event/3m7remote",
         SourceVersion = sourceVersion,
@@ -236,6 +976,38 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
 
     private sealed record FederationScope(Guid TenantId, Guid UserId);
     private sealed record StaticTenantContext(Guid TenantId) : ITenantContext;
+
+    private sealed class PermittingDeliveryGate : IAtprotoDeliveryGate
+    {
+        public int CallCount { get; private set; }
+
+        public Task<AtprotoDeliveryGateResult> CheckDeliveryAsync(
+            PdsSyncOutbox outbox,
+            DateTimeOffset observedAt,
+            CancellationToken cancellationToken)
+        {
+            CallCount++;
+            return Task.FromResult(AtprotoDeliveryGateResult.Permit());
+        }
+    }
+
+    private sealed class CountingDeliveryGateway : IAtprotoPdsDeliveryGateway
+    {
+        public int CallCount { get; private set; }
+
+        public Task<AtprotoPdsDeliveryResult> DeliverAsync(
+            AtprotoPdsDeliveryRequest command,
+            CancellationToken cancellationToken)
+        {
+            CallCount++;
+            return Task.FromResult(AtprotoPdsDeliveryResult.Failed("unexpected_gateway_call", false));
+        }
+    }
+
+    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(utcNow);
+    }
 
     private sealed class ReclaimOnSaveInterceptor(Func<Task> reclaim) : SaveChangesInterceptor
     {

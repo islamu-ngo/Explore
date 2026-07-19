@@ -6,6 +6,7 @@ using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Services.Scheduling;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -39,6 +40,24 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
         await Assert.That(graph).IsNotNull();
         await Assert.That(graph!.Event.Id).IsEqualTo(eventId);
         await Assert.That(graph.Event.TenantId).IsEqualTo(tenantId);
+        await Assert.That(graph.EventLocations).Count().IsEqualTo(2);
+        await Assert.That(graph.EventLocations.Single(location => location.LocationId.HasValue).Location!.Rooms).IsNotEmpty();
+        await Assert.That(graph.Sessions).Count().IsEqualTo(2);
+        await Assert.That(graph.Days).Count().IsEqualTo(2);
+        await Assert.That(graph.SessionGroups).IsNotEmpty();
+        await Assert.That(graph.SessionGroupSessions).Count().IsEqualTo(2);
+        await Assert.That(graph.AgendaItems).IsNotEmpty();
+        await Assert.That(graph.SessionAgendaItems).IsNotEmpty();
+        await Assert.That(graph.Categories).IsNotEmpty();
+        await Assert.That(graph.Tags).IsNotEmpty();
+        await Assert.That(graph.SessionCategories).IsNotEmpty();
+        await Assert.That(graph.SessionTags).IsNotEmpty();
+        await Assert.That(graph.SessionLanguages).IsNotEmpty();
+        await Assert.That(graph.SessionSpeakers).IsNotEmpty();
+        await Assert.That(graph.CustomPropertyDefinitions.Single().Options).IsNotEmpty();
+        await Assert.That(graph.CustomPropertyDefinitions.Single().Values).IsNotEmpty();
+        await Assert.That(graph.SessionCustomPropertyDefinitions.Single().Options).IsNotEmpty();
+        await Assert.That(graph.SessionCustomPropertyDefinitions.Single().Values).IsNotEmpty();
         await Assert.That(context.ChangeTracker.Entries()).IsEmpty();
         await Assert.That(counter.ReaderCommandCount).IsLessThanOrEqualTo(MaximumPublicationQueryCount);
     }
@@ -96,8 +115,413 @@ public sealed class AtprotoEventPublicationRepositoryTests(PostgreSqlContainerFi
         };
         context.Events.Add(eventEntity);
         await context.SaveChangesAsync();
+
+        DateTimeOffset start = DateTimeOffset.UtcNow.AddDays(7);
+        var calculator = new EventScheduleProjectionCalculator();
+        var physicalLocation = new Location
+        {
+            Id = Guid.CreateVersion7(),
+            FullName = "ATProto venue",
+            Country = "Belgium",
+            City = "Brussels",
+            Timezone = "Europe/Brussels",
+            TenantId = tenant.Id,
+            Tenant = null!,
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        physicalLocation.AttachPii(new LocationPii
+        {
+            LocationId = physicalLocation.Id,
+            Location = physicalLocation,
+            Address = "Projection street 1",
+            Postcode = "1000",
+            Latitude = 50.85,
+            Longitude = 4.35
+        });
+        var room = new LocationRoom
+        {
+            Id = Guid.CreateVersion7(),
+            LocationId = physicalLocation.Id,
+            Location = physicalLocation,
+            Name = "Projection room",
+            Slug = "projection-room",
+            Description = "Full graph room",
+            Capacity = 120,
+            SortOrder = 1,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        physicalLocation.Rooms.Add(room);
+        context.Locations.Add(physicalLocation);
+        await context.SaveChangesAsync();
+
+        EventLocation physicalPlacement = EventLocation.CreatePhysical(
+            tenant.Id, eventEntity.Id, physicalLocation.Id, user.Id, DateTime.UtcNow);
+        physicalPlacement.ChangeDisclosurePolicy(
+            EventLocationDisclosureFields.All,
+            LocationDisclosureAudienceEnum.AnyCurrentRegistrant,
+            null,
+            1,
+            user.Id,
+            EventLocationDisclosureAuditReasonEnum.OrganizerPolicyChange,
+            DateTime.UtcNow.AddMinutes(1));
+        EventLocation tbaPlacement = EventLocation.CreateToBeAnnounced(
+            tenant.Id, eventEntity.Id, user.Id, DateTime.UtcNow);
+        context.EventLocations.AddRange(physicalPlacement, tbaPlacement);
+
+        var dayOne = new EventDay
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = eventEntity.Id,
+            Event = null!,
+            LocalDate = DateOnly.FromDateTime(start.UtcDateTime),
+            Label = "Projection day one",
+            Description = "First day",
+            BannerText = "Welcome",
+            IsPublished = true,
+            SortOrder = 1,
+            AllowsDayScopeRegistration = true,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        var dayTwo = new EventDay
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = eventEntity.Id,
+            Event = null!,
+            LocalDate = DateOnly.FromDateTime(start.AddDays(1).UtcDateTime),
+            Label = "Projection day two",
+            Description = "Second day",
+            BannerText = "Closing",
+            IsPublished = true,
+            SortOrder = 2,
+            AllowsDayScopeRegistration = true,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        context.EventDays.AddRange(dayOne, dayTwo);
+
+        var sessionOne = new EventSession
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = eventEntity.Id,
+            Event = null!,
+            EventDayId = dayOne.Id,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            Title = "Projection session one",
+            SortOrder = 1,
+            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
+            EventSessionKindId = (int)EventSessionKindEnum.Talk,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        sessionOne.Reschedule(start, start.AddHours(1), "Europe/Brussels", calculator);
+        sessionOne.AssignEventLocation(physicalPlacement);
+        sessionOne.RoomId = room.Id;
+        var sessionTwo = new EventSession
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = eventEntity.Id,
+            Event = null!,
+            EventDayId = dayTwo.Id,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            Title = "Projection session two",
+            SortOrder = 2,
+            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
+            EventSessionKindId = (int)EventSessionKindEnum.Workshop,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        sessionTwo.Reschedule(start.AddDays(1), start.AddDays(1).AddHours(1), "Europe/Brussels", calculator);
+        sessionTwo.AssignEventLocation(tbaPlacement);
+        context.EventSessions.AddRange(sessionOne, sessionTwo);
+
+        var group = new EventSessionGroup
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = eventEntity.Id,
+            Event = null!,
+            Name = "Projection track",
+            Slug = "projection-track",
+            Description = "Full graph track",
+            SortOrder = 1,
+            IsPublished = true,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        group.AssignEventLocation(physicalPlacement);
+        group.RoomId = room.Id;
+        context.EventSessionGroups.Add(group);
+
+        var agenda = new EventAgendaItem
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = eventEntity.Id,
+            Event = null!,
+            EventDayId = dayOne.Id,
+            Title = "Projection event agenda",
+            Description = "Agenda description",
+            SortOrder = 1,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        agenda.Reschedule(start.AddHours(1), start.AddHours(2), "Europe/Brussels", calculator);
+        agenda.AssignEventLocation(physicalPlacement);
+        agenda.RoomId = room.Id;
+        var sessionAgenda = new EventSessionAgendaItem
+        {
+            Id = Guid.CreateVersion7(),
+            EventSessionId = sessionOne.Id,
+            EventSession = sessionOne,
+            StartTime = start,
+            EndTime = start.AddMinutes(30),
+            Title = "Projection session agenda",
+            Description = "Session agenda description",
+            TenantId = tenant.Id,
+            Tenant = null!
+        };
+        sessionAgenda.AssignEventLocation(physicalPlacement);
+        context.EventAgendaItems.Add(agenda);
+        context.EventSessionAgendaItems.Add(sessionAgenda);
+        await context.SaveChangesAsync();
+
+        context.EventSessionGroupSessions.AddRange(
+            CreateGroupLink(tenant.Id, eventEntity.Id, group.Id, sessionOne.Id, true, 1),
+            CreateGroupLink(tenant.Id, eventEntity.Id, group.Id, sessionTwo.Id, false, 2));
+        var category = new Category
+        {
+            Id = Guid.CreateVersion7(),
+            MasterCode = $"ATP-{Guid.NewGuid():N}",
+            FullName = "ATProto category",
+            TenantId = tenant.Id,
+            Tenant = null!,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        var sessionCategory = new Category
+        {
+            Id = Guid.CreateVersion7(),
+            MasterCode = $"ATP-S-{Guid.NewGuid():N}",
+            FullName = "ATProto session category",
+            TenantId = tenant.Id,
+            Tenant = null!,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        var tag = new Tag
+        {
+            Id = Guid.CreateVersion7(),
+            MasterCode = $"ATP-{Guid.NewGuid():N}",
+            FullName = "ATProto tag",
+            TenantId = tenant.Id,
+            Tenant = null!
+        };
+        var sessionTag = new Tag
+        {
+            Id = Guid.CreateVersion7(),
+            MasterCode = $"ATP-S-{Guid.NewGuid():N}",
+            FullName = "ATProto session tag",
+            TenantId = tenant.Id,
+            Tenant = null!
+        };
+        context.AddRange(category, sessionCategory, tag, sessionTag);
+        await context.SaveChangesAsync();
+
+        Language language = await context.Languages.AsNoTracking().FirstAsync();
+        context.EventCategories.Add(new Explore.Domain.EventCategories
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = eventEntity.Id,
+            Event = null!,
+            CategoryId = category.Id,
+            Category = null!,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        });
+        context.EventTags.Add(new Explore.Domain.EventTags
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = eventEntity.Id,
+            Event = null!,
+            TagId = tag.Id,
+            Tag = null!,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        });
+        context.EventSessionCategories.Add(new EventSessionCategory
+        {
+            Id = Guid.CreateVersion7(),
+            EventSessionId = sessionOne.Id,
+            EventSession = null!,
+            CategoryId = sessionCategory.Id,
+            Category = null!,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            CreatedAt = DateTime.UtcNow
+        });
+        context.EventSessionTags.Add(new EventSessionTag
+        {
+            Id = Guid.CreateVersion7(),
+            EventSessionId = sessionOne.Id,
+            EventSession = null!,
+            TagId = sessionTag.Id,
+            Tag = null!,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            CreatedAt = DateTime.UtcNow
+        });
+        context.EventSessionLanguages.Add(new EventSessionLanguage
+        {
+            EventSessionId = sessionOne.Id,
+            EventSession = null!,
+            LanguageId = language.Id,
+            Language = null!,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        });
+        context.EventSessionSpeakers.Add(new EventSessionSpeaker
+        {
+            Id = Guid.CreateVersion7(),
+            EventSessionId = sessionOne.Id,
+            EventSession = null!,
+            ActorId = actor.Id,
+            Actor = null!,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        });
+
+        var eventDefinition = new EventCustomPropertyDefinition
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = eventEntity.Id,
+            Event = null!,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            Namespace = "atproto",
+            Key = "event-field",
+            DisplayName = "Event field",
+            PropertyType = PropertyType.Text,
+            IsActive = true,
+            ExposureLevel = ExposureLevel.Public,
+            SortOrder = 1,
+            InstantiatedAt = DateTimeOffset.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        var sessionDefinition = new EventSessionCustomPropertyDefinition
+        {
+            Id = Guid.CreateVersion7(),
+            EventSessionId = sessionOne.Id,
+            EventSession = null!,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            Namespace = "atproto",
+            Key = "session-field",
+            DisplayName = "Session field",
+            PropertyType = PropertyType.Option,
+            IsActive = true,
+            ExposureLevel = ExposureLevel.Public,
+            SortOrder = 1,
+            InstantiatedAt = DateTimeOffset.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        context.AddRange(eventDefinition, sessionDefinition);
+        await context.SaveChangesAsync();
+
+        var eventOption = new EventCustomPropertyOption
+        {
+            Id = Guid.CreateVersion7(),
+            EventCustomPropertyDefinitionId = eventDefinition.Id,
+            Namespace = "atproto",
+            Key = "event-option",
+            DisplayName = "Event option",
+            Value = "event-option",
+            IsActive = true,
+            SortOrder = 1,
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        var sessionOption = new EventSessionCustomPropertyOption
+        {
+            Id = Guid.CreateVersion7(),
+            EventSessionCustomPropertyDefinitionId = sessionDefinition.Id,
+            Namespace = "atproto",
+            Key = "session-option",
+            DisplayName = "Session option",
+            Value = "session-option",
+            IsActive = true,
+            SortOrder = 1,
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        context.AddRange(eventOption, sessionOption);
+        await context.SaveChangesAsync();
+        context.EventCustomPropertyValues.Add(new EventCustomPropertyValue
+        {
+            Id = Guid.CreateVersion7(),
+            EventCustomPropertyDefinitionId = eventDefinition.Id,
+            EventId = eventEntity.Id,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            Ordinal = 1,
+            TextValue = "Event value",
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        });
+        context.EventSessionCustomPropertyValues.Add(new EventSessionCustomPropertyValue
+        {
+            Id = Guid.CreateVersion7(),
+            EventSessionCustomPropertyDefinitionId = sessionDefinition.Id,
+            EventSessionId = sessionOne.Id,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            Ordinal = 1,
+            OptionId = sessionOption.Id,
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        });
+        await context.SaveChangesAsync();
         return (tenant.Id, eventEntity.Id);
     }
+
+    private static EventSessionGroupSession CreateGroupLink(
+        Guid tenantId,
+        Guid eventId,
+        Guid groupId,
+        Guid sessionId,
+        bool isPrimary,
+        int sortOrder)
+        => new()
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = eventId,
+            Event = null!,
+            EventSessionGroupId = groupId,
+            EventSessionGroup = null!,
+            EventSessionId = sessionId,
+            EventSession = null!,
+            IsPrimary = isPrimary,
+            SortOrder = sortOrder,
+            TenantId = tenantId,
+            Tenant = null!,
+            CreatedAt = DateTime.UtcNow
+        };
 
     private sealed class CommandCountingInterceptor : DbCommandInterceptor
     {

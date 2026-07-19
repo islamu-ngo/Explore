@@ -12,9 +12,21 @@ public sealed record PdsSyncClaim(
     Guid LeaseToken,
     long LeaseFence);
 
+public sealed record PdsSyncCompensationEvidence(
+    IReadOnlyList<string> AllowedPayloads,
+    IReadOnlyList<string> AllowedBaseCids,
+    bool IsComplete);
+
 public interface IPdsSyncOutboxRepository
 {
+    const int MaximumEventDeliveryStateBatchSize = 100;
+
     Task AddAsync(PdsSyncOutbox outbox, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PdsSyncOutbox>> GetCurrentEventDeliveryStatesAsync(
+        Guid tenantId,
+        IReadOnlyCollection<Guid> eventIds,
+        CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<PdsSyncClaim>> ClaimDueAsync(
         int batchSize,
@@ -28,6 +40,25 @@ public interface IPdsSyncOutboxRepository
         DateTime observedAt,
         CancellationToken cancellationToken = default);
 
+    Task<PdsSyncOutbox?> GetLatestUnsettledMutationAsync(
+        Guid tenantId,
+        string sourceEntityType,
+        Guid sourceEntityId,
+        string collection,
+        CancellationToken cancellationToken = default);
+
+    Task<PdsSyncOutbox?> GetLatestUnsettledRsvpMutationAsync(
+        Guid tenantId,
+        Guid userId,
+        Guid eventId,
+        string sourceEntityType,
+        string collection,
+        CancellationToken cancellationToken = default);
+
+    Task<PdsSyncCompensationEvidence> GetCompensationEvidenceAsync(
+        PdsSyncOutbox successor,
+        CancellationToken cancellationToken = default);
+
     Task<bool> TryRenewClaimAsync(
         PdsSyncClaim claim,
         DateTime observedAt,
@@ -39,7 +70,8 @@ public interface IPdsSyncOutboxRepository
         string? uri,
         string? cid,
         DateTime settledAt,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string? observedBaseCid = null);
 
     Task<bool> TryFailAsync(
         PdsSyncClaim claim,
@@ -55,5 +87,33 @@ public interface IPdsSyncOutboxRepository
         Guid sourceEntityId,
         Guid supersedingOutboxId,
         DateTime supersededAt,
+        CancellationToken cancellationToken = default);
+
+    Task<int> SupersedePriorRsvpAsync(
+        Guid tenantId,
+        Guid userId,
+        Guid eventId,
+        string collection,
+        Guid supersedingOutboxId,
+        DateTime supersededAt,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> HasActiveRsvpPublicationAsync(
+        Guid tenantId,
+        Guid userId,
+        Guid eventId,
+        string sourceEntityType,
+        string collection,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> HasTerminalRsvpPublicationAttemptAsync(
+        Guid tenantId,
+        Guid userId,
+        Guid eventId,
+        Guid sourceVersion,
+        PdsSyncOperation operation,
+        string payloadHash,
+        string sourceEntityType,
+        string collection,
         CancellationToken cancellationToken = default);
 }

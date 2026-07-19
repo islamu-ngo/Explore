@@ -1,6 +1,8 @@
 // ABOUTME: Implements tenant-owned PDS outbox enqueue, reclaimable fenced claims, supersession, and settlement.
 // ABOUTME: Settles canonical URI/CID, ownership, presentation, and terminal outbox state in one transaction.
 
+using System.Text.Json;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Federation;
@@ -11,6 +13,7 @@ namespace Explore.Persistence.Repositories;
 
 public sealed class PdsSyncOutboxRepository : IPdsSyncOutboxRepository
 {
+    private const int MaximumCompensationLineageDepth = 32;
     private readonly ExploreDbContext _dbContext;
 
     public PdsSyncOutboxRepository(ExploreDbContext dbContext)
@@ -18,8 +21,40 @@ public sealed class PdsSyncOutboxRepository : IPdsSyncOutboxRepository
         _dbContext = dbContext;
     }
 
-    public async Task AddAsync(PdsSyncOutbox outbox, CancellationToken cancellationToken = default) =>
+    public async Task AddAsync(PdsSyncOutbox outbox, CancellationToken cancellationToken = default)
+    {
         await _dbContext.PdsSyncOutbox.AddAsync(outbox, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<PdsSyncOutbox>> GetCurrentEventDeliveryStatesAsync(
+        Guid tenantId,
+        IReadOnlyCollection<Guid> eventIds,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(eventIds);
+        Guid[] normalizedIds = eventIds.Distinct().ToArray();
+        if (tenantId == Guid.Empty || normalizedIds.Any(id => id == Guid.Empty))
+            throw new ArgumentException("Tenant and event identifiers must be non-empty.");
+        if (normalizedIds.Length > IPdsSyncOutboxRepository.MaximumEventDeliveryStateBatchSize)
+            throw new ArgumentOutOfRangeException(nameof(eventIds));
+        if (normalizedIds.Length == 0)
+            return [];
+
+        return await CrossTenantOutbox()
+            .AsNoTracking()
+            .Where(value =>
+                value.TenantId == tenantId &&
+                value.SourceEntityType == "Event" &&
+                normalizedIds.Contains(value.SourceEntityId) &&
+                value.SupersededAt == null)
+            .GroupBy(value => value.SourceEntityId)
+            .Select(group => group
+                .OrderByDescending(value => value.CreatedAt)
+                .ThenByDescending(value => value.Id)
+                .First())
+            .ToListAsync(cancellationToken);
+    }
 
     public async Task<IReadOnlyList<PdsSyncClaim>> ClaimDueAsync(
         int batchSize,
@@ -107,6 +142,117 @@ public sealed class PdsSyncOutboxRepository : IPdsSyncOutboxRepository
                 value.LeaseExpiresAt > observedAt,
                 cancellationToken);
 
+    public Task<PdsSyncOutbox?> GetLatestUnsettledMutationAsync(
+        Guid tenantId,
+        string sourceEntityType,
+        Guid sourceEntityId,
+        string collection,
+        CancellationToken cancellationToken = default) =>
+        CrossTenantOutbox()
+            .AsNoTracking()
+            .Where(value =>
+                value.TenantId == tenantId &&
+                value.SourceEntityType == sourceEntityType &&
+                value.SourceEntityId == sourceEntityId &&
+                value.Collection == collection &&
+                (value.Status == PdsSyncStatus.Pending || value.Status == PdsSyncStatus.Processing) &&
+                value.SupersededAt == null)
+            .OrderByDescending(value => value.CreatedAt)
+            .ThenByDescending(value => value.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public Task<PdsSyncOutbox?> GetLatestUnsettledRsvpMutationAsync(
+        Guid tenantId,
+        Guid userId,
+        Guid eventId,
+        string sourceEntityType,
+        string collection,
+        CancellationToken cancellationToken = default) =>
+        CrossTenantOutbox()
+            .AsNoTracking()
+            .Where(outbox =>
+                outbox.TenantId == tenantId &&
+                outbox.UserId == userId &&
+                outbox.SourceEntityType == sourceEntityType &&
+                outbox.Collection == collection &&
+                (outbox.Status == PdsSyncStatus.Pending || outbox.Status == PdsSyncStatus.Processing) &&
+                outbox.SupersededAt == null &&
+                _dbContext.EventRegistrationIntents
+                    .IgnoreAllFilters(TenantFilterBypassReasons.AtprotoTenantOperation)
+                    .Any(intent =>
+                        intent.Id == outbox.SourceEntityId &&
+                        intent.TenantId == tenantId &&
+                        intent.UserId == userId &&
+                        intent.EventId == eventId))
+            .OrderByDescending(value => value.CreatedAt)
+            .ThenByDescending(value => value.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<PdsSyncCompensationEvidence> GetCompensationEvidenceAsync(
+        PdsSyncOutbox successor,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(successor);
+        List<CompensationLineageNode> candidates = await CrossTenantOutbox()
+            .AsNoTracking()
+            .Where(value =>
+                value.Status == PdsSyncStatus.Superseded
+                && value.SupersededById != null
+                && value.TenantId == successor.TenantId
+                && value.UserId == successor.UserId
+                && value.Did == successor.Did
+                && value.Collection == successor.Collection
+                && value.RecordKey == successor.RecordKey
+                && value.SourceEntityType == successor.SourceEntityType)
+            .OrderByDescending(value => value.CreatedAt)
+            .Take(MaximumCompensationLineageDepth + 1)
+            .Select(value => new CompensationLineageNode(
+                value.Id,
+                value.SupersededById!.Value,
+                value.Payload,
+                value.ExpectedCid))
+            .ToListAsync(cancellationToken);
+        if (candidates.Count > MaximumCompensationLineageDepth)
+        {
+            return new([], [], IsComplete: false);
+        }
+
+        var allowedPayloads = new List<string>();
+        var allowedBaseCids = new List<string>();
+        var frontier = new HashSet<Guid> { successor.Id };
+        while (frontier.Count > 0)
+        {
+            CompensationLineageNode[] predecessors = candidates
+                .Where(value => frontier.Contains(value.SupersededById))
+                .ToArray();
+            if (predecessors.Length == 0)
+            {
+                break;
+            }
+
+            frontier = predecessors.Select(value => value.Id).ToHashSet();
+            allowedPayloads.AddRange(predecessors
+                .Select(value => value.Payload)
+                .OfType<string>()
+                .Where(value => !string.IsNullOrWhiteSpace(value)));
+            allowedBaseCids.AddRange(predecessors
+                .Select(value => value.ExpectedCid)
+                .OfType<string>()
+                .Where(value => !string.IsNullOrWhiteSpace(value)));
+            candidates.RemoveAll(value => frontier.Contains(value.Id));
+        }
+
+        if (!string.IsNullOrWhiteSpace(successor.ExpectedCid))
+        {
+            allowedBaseCids.Add(successor.ExpectedCid);
+        }
+
+        return new(
+            allowedPayloads.Distinct(StringComparer.Ordinal).ToArray(),
+            allowedBaseCids.Distinct(StringComparer.Ordinal).ToArray(),
+            IsComplete: true);
+    }
+
     public async Task<bool> TryRenewClaimAsync(
         PdsSyncClaim claim,
         DateTime observedAt,
@@ -136,7 +282,8 @@ public sealed class PdsSyncOutboxRepository : IPdsSyncOutboxRepository
         string? uri,
         string? cid,
         DateTime settledAt,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? observedBaseCid = null)
     {
         if (settledAt.Kind != DateTimeKind.Utc)
         {
@@ -162,26 +309,60 @@ public sealed class PdsSyncOutboxRepository : IPdsSyncOutboxRepository
 
             if (outbox.Operation == PdsSyncOperation.Delete)
             {
-                if (record?.Uri is null || record.Cid is null)
+                if (record is null
+                    && string.Equals(cid, AtprotoPdsDeliveryResult.AbsentRecordCid, StringComparison.Ordinal)
+                    && outbox.AtprotoRecordId is null
+                    && outbox.ExpectedCid is null
+                    && string.Equals(uri, BuildAtUri(outbox), StringComparison.Ordinal)
+                    && (await GetCompensationEvidenceAsync(outbox, cancellationToken)) is
+                    { IsComplete: true } absentEvidence
+                    && (absentEvidence.AllowedPayloads.Count > 0 || absentEvidence.AllowedBaseCids.Count > 0))
+                {
+                    CompleteOutbox(outbox, uri, cid, settledAt);
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                    await transaction.CommitAsync(cancellationToken);
+                    return true;
+                }
+
+                if (record?.Uri is null
+                    || !string.Equals(record.Uri, uri, StringComparison.Ordinal)
+                    || record.TombstonedAt is null && record.Cid is null)
                 {
                     await transaction.RollbackAsync(cancellationToken);
                     return false;
                 }
 
-                record.TombstonedAt = settledAt;
-                record.UpdatedAt = settledAt;
+                if (record.TombstonedAt is null)
+                {
+                    if (outbox.ExpectedCid is not null
+                        && !string.Equals(record.Cid, outbox.ExpectedCid, StringComparison.Ordinal))
+                    {
+                        await transaction.RollbackAsync(cancellationToken);
+                        return false;
+                    }
+
+                    if (outbox.ExpectedCid is null
+                        && !await CanonicalMatchesCompensationEvidenceAsync(outbox, record, cancellationToken))
+                    {
+                        await transaction.RollbackAsync(cancellationToken);
+                        return false;
+                    }
+
+                    record.TombstonedAt = settledAt;
+                    record.UpdatedAt = settledAt;
+                }
+
                 uri = record.Uri;
-                cid = record.Cid;
+                cid = record.Cid ?? outbox.ExpectedCid ?? cid;
+                if (string.IsNullOrWhiteSpace(cid))
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return false;
+                }
             }
             else
             {
                 if (string.IsNullOrWhiteSpace(uri) || string.IsNullOrWhiteSpace(cid))
-                {
-                    await transaction.RollbackAsync(cancellationToken);
-                    return false;
-                }
-
-                if (outbox.ExpectedCid is not null && record?.Cid != outbox.ExpectedCid)
                 {
                     await transaction.RollbackAsync(cancellationToken);
                     return false;
@@ -203,6 +384,42 @@ public sealed class PdsSyncOutboxRepository : IPdsSyncOutboxRepository
                 }
                 else
                 {
+                    bool exactEcho = string.Equals(record.Cid, cid, StringComparison.Ordinal)
+                        && JsonSemanticallyEquals(record.RecordJson, outbox.Payload);
+                    bool expectedBase = outbox.Operation == PdsSyncOperation.Update
+                        && outbox.ExpectedCid is not null
+                        && string.Equals(record.Cid, outbox.ExpectedCid, StringComparison.Ordinal);
+                    bool observedCompensationBase = outbox.Operation == PdsSyncOperation.Update
+                        && outbox.ExpectedCid is null
+                        && observedBaseCid is not null
+                        && string.Equals(record.Cid, observedBaseCid, StringComparison.Ordinal)
+                        && await CanonicalMatchesCompensationEvidenceAsync(outbox, record, cancellationToken);
+                    bool immutablePredecessorEcho = outbox.Operation == PdsSyncOperation.Update
+                        && outbox.ExpectedCid is null
+                        && string.Equals(observedBaseCid, cid, StringComparison.Ordinal)
+                        && await CanonicalMatchesCompensationEvidenceAsync(outbox, record, cancellationToken);
+                    bool tombstonedRestore = outbox.Operation == PdsSyncOperation.Create
+                        && record.TombstonedAt is not null
+                        && record.Cid is null;
+                    bool tombstonedCompensationRestore = outbox.Operation == PdsSyncOperation.Update
+                        && outbox.ExpectedCid is null
+                        && record.TombstonedAt is not null
+                        && record.Cid is null
+                        && outbox.AtprotoRecordId == record.Id
+                        && (await GetCompensationEvidenceAsync(outbox, cancellationToken)) is
+                        { IsComplete: true } restoreEvidence
+                        && (restoreEvidence.AllowedPayloads.Count > 0 || restoreEvidence.AllowedBaseCids.Count > 0);
+                    if (!exactEcho
+                        && !expectedBase
+                        && !observedCompensationBase
+                        && !immutablePredecessorEcho
+                        && !tombstonedRestore
+                        && !tombstonedCompensationRestore)
+                    {
+                        await transaction.RollbackAsync(cancellationToken);
+                        return false;
+                    }
+
                     record.Direction = record.Direction == AtprotoRecordDirection.Inbound
                         ? AtprotoRecordDirection.Reconciled
                         : AtprotoRecordDirection.Outbound;
@@ -244,14 +461,43 @@ public sealed class PdsSyncOutboxRepository : IPdsSyncOutboxRepository
                 };
                 await _dbContext.AtprotoOutboundRecordOwnerships.AddAsync(ownership, cancellationToken);
             }
-            else if (ownership.TenantId != outbox.TenantId || ownership.UserId != outbox.UserId ||
-                     ownership.SourceEntityType != outbox.SourceEntityType || ownership.SourceEntityId != outbox.SourceEntityId)
+            else if (ownership.TenantId != outbox.TenantId
+                     || ownership.UserId != outbox.UserId
+                     || ownership.SourceEntityType != outbox.SourceEntityType)
             {
                 await transaction.RollbackAsync(cancellationToken);
                 return false;
             }
             else
             {
+                if (ownership.SourceEntityId != outbox.SourceEntityId)
+                {
+                    if (!string.Equals(
+                            outbox.SourceEntityType,
+                            "EventRegistrationIntent",
+                            StringComparison.Ordinal)
+                        || !await _dbContext.EventRegistrationIntents
+                            .IgnoreAllFilters(TenantFilterBypassReasons.AtprotoTenantOperation)
+                            .AnyAsync(current =>
+                                current.Id == outbox.SourceEntityId
+                                && current.TenantId == outbox.TenantId
+                                && current.UserId == outbox.UserId
+                                && _dbContext.EventRegistrationIntents
+                                    .IgnoreAllFilters(TenantFilterBypassReasons.AtprotoTenantOperation)
+                                    .Any(previous =>
+                                        previous.Id == ownership.SourceEntityId
+                                        && previous.TenantId == current.TenantId
+                                        && previous.UserId == current.UserId
+                                        && previous.EventId == current.EventId),
+                                cancellationToken))
+                    {
+                        await transaction.RollbackAsync(cancellationToken);
+                        return false;
+                    }
+
+                    ownership.SourceEntityId = outbox.SourceEntityId;
+                }
+
                 ownership.SourceVersion = outbox.SourceVersion;
                 ownership.UpdatedAt = settledAt;
             }
@@ -282,12 +528,19 @@ public sealed class PdsSyncOutboxRepository : IPdsSyncOutboxRepository
             }
 
             outbox.AtprotoRecordId = record.Id;
-            outbox.SettledUri = uri;
-            outbox.SettledCid = cid;
-            outbox.Status = PdsSyncStatus.Completed;
-            outbox.ProcessedAt = settledAt;
-            outbox.LastError = null;
-            ClearLease(outbox);
+            if (outbox.SourceEntityType == "Event" && outbox.Operation != PdsSyncOperation.Delete)
+            {
+                Event? sourceEvent = await _dbContext.Events
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.AtprotoTenantOperation)
+                    .SingleOrDefaultAsync(value =>
+                        value.Id == outbox.SourceEntityId && value.TenantId == outbox.TenantId,
+                        cancellationToken);
+                if (sourceEvent is not null)
+                {
+                    sourceEvent.AtprotoRecordId = record.Id;
+                }
+            }
+            CompleteOutbox(outbox, uri!, cid!, settledAt);
             await _dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return true;
@@ -364,6 +617,102 @@ public sealed class PdsSyncOutboxRepository : IPdsSyncOutboxRepository
         return rows.Count;
     }
 
+    public async Task<int> SupersedePriorRsvpAsync(
+        Guid tenantId,
+        Guid userId,
+        Guid eventId,
+        string collection,
+        Guid supersedingOutboxId,
+        DateTime supersededAt,
+        CancellationToken cancellationToken = default)
+    {
+        var rows = await CrossTenantOutbox()
+            .Where(outbox =>
+                outbox.TenantId == tenantId
+                && outbox.UserId == userId
+                && outbox.SourceEntityType == "EventRegistrationIntent"
+                && outbox.Collection == collection
+                && outbox.Id != supersedingOutboxId
+                && outbox.Status != PdsSyncStatus.Completed
+                && outbox.Status != PdsSyncStatus.Superseded
+                && _dbContext.EventRegistrationIntents
+                    .IgnoreAllFilters(TenantFilterBypassReasons.AtprotoTenantOperation)
+                    .Any(intent =>
+                        intent.Id == outbox.SourceEntityId
+                        && intent.TenantId == tenantId
+                        && intent.UserId == userId
+                        && intent.EventId == eventId))
+            .ToListAsync(cancellationToken);
+        foreach (PdsSyncOutbox row in rows)
+        {
+            row.Status = PdsSyncStatus.Superseded;
+            row.SupersededById = supersedingOutboxId;
+            row.SupersededAt = supersededAt;
+            ClearLease(row);
+        }
+
+        return rows.Count;
+    }
+
+    public Task<bool> HasActiveRsvpPublicationAsync(
+        Guid tenantId,
+        Guid userId,
+        Guid eventId,
+        string sourceEntityType,
+        string collection,
+        CancellationToken cancellationToken = default) =>
+        CrossTenantOutbox()
+            .AsNoTracking()
+            .AnyAsync(outbox =>
+                outbox.TenantId == tenantId
+                && outbox.UserId == userId
+                && outbox.SourceEntityType == sourceEntityType
+                && outbox.Collection == collection
+                && (outbox.Status == PdsSyncStatus.Pending
+                    || outbox.Status == PdsSyncStatus.Processing)
+                && (outbox.Operation == PdsSyncOperation.Create
+                    || outbox.Operation == PdsSyncOperation.Update)
+                && outbox.SupersededAt == null
+                && _dbContext.EventRegistrationIntents
+                    .IgnoreAllFilters(TenantFilterBypassReasons.AtprotoTenantOperation)
+                    .Any(intent =>
+                        intent.Id == outbox.SourceEntityId
+                        && intent.TenantId == tenantId
+                        && intent.UserId == userId
+                        && intent.EventId == eventId),
+                cancellationToken);
+
+    public Task<bool> HasTerminalRsvpPublicationAttemptAsync(
+        Guid tenantId,
+        Guid userId,
+        Guid eventId,
+        Guid sourceVersion,
+        PdsSyncOperation operation,
+        string payloadHash,
+        string sourceEntityType,
+        string collection,
+        CancellationToken cancellationToken = default) =>
+        CrossTenantOutbox()
+            .AsNoTracking()
+            .AnyAsync(outbox =>
+                outbox.TenantId == tenantId
+                && outbox.UserId == userId
+                && outbox.SourceEntityType == sourceEntityType
+                && outbox.SourceVersion == sourceVersion
+                && outbox.Collection == collection
+                && outbox.Operation == operation
+                && outbox.PayloadHash == payloadHash
+                && outbox.Status == PdsSyncStatus.DeadLettered
+                && outbox.SupersededAt == null
+                && _dbContext.EventRegistrationIntents
+                    .IgnoreAllFilters(TenantFilterBypassReasons.AtprotoTenantOperation)
+                    .Any(intent =>
+                        intent.Id == outbox.SourceEntityId
+                        && intent.TenantId == tenantId
+                        && intent.UserId == userId
+                        && intent.EventId == eventId),
+                cancellationToken);
+
     private IQueryable<PdsSyncOutbox> CrossTenantOutbox() =>
         _dbContext.PdsSyncOutbox.IgnoreTenantFilter(TenantFilterBypassReasons.AtprotoPdsWorkerCrossTenantQueue);
 
@@ -378,10 +727,60 @@ public sealed class PdsSyncOutboxRepository : IPdsSyncOutboxRepository
             value.LeaseExpiresAt > observedAt &&
             value.SupersededAt == null);
 
+    private async Task<bool> CanonicalMatchesCompensationEvidenceAsync(
+        PdsSyncOutbox successor,
+        AtprotoRecord canonical,
+        CancellationToken cancellationToken)
+    {
+        PdsSyncCompensationEvidence evidence = await GetCompensationEvidenceAsync(successor, cancellationToken);
+        return evidence.IsComplete
+            && (canonical.Cid is not null
+                && evidence.AllowedBaseCids.Contains(canonical.Cid, StringComparer.Ordinal)
+                || evidence.AllowedPayloads.Any(payload => JsonSemanticallyEquals(payload, canonical.RecordJson)));
+    }
+
+    private static bool JsonSemanticallyEquals(string? left, string? right)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+        {
+            return false;
+        }
+
+        try
+        {
+            using JsonDocument leftDocument = JsonDocument.Parse(left);
+            using JsonDocument rightDocument = JsonDocument.Parse(right);
+            return JsonElement.DeepEquals(leftDocument.RootElement, rightDocument.RootElement);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
     private static void ClearLease(PdsSyncOutbox outbox)
     {
         outbox.LeaseOwner = null;
         outbox.LeaseToken = null;
         outbox.LeaseExpiresAt = null;
     }
+
+    private static void CompleteOutbox(PdsSyncOutbox outbox, string uri, string cid, DateTime settledAt)
+    {
+        outbox.SettledUri = uri;
+        outbox.SettledCid = cid;
+        outbox.Status = PdsSyncStatus.Completed;
+        outbox.ProcessedAt = settledAt;
+        outbox.LastError = null;
+        ClearLease(outbox);
+    }
+
+    private static string BuildAtUri(PdsSyncOutbox outbox) =>
+        $"at://{outbox.Did}/{outbox.Collection}/{outbox.RecordKey}";
+
+    private sealed record CompensationLineageNode(
+        Guid Id,
+        Guid SupersededById,
+        string? Payload,
+        string? ExpectedCid);
 }

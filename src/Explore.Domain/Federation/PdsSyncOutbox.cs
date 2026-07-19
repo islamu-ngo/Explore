@@ -22,7 +22,8 @@ public sealed class PdsSyncOutbox : ITenantEntity
     public Guid SourceEntityId { get; init; }
     public Guid SourceVersion { get; init; }
     public Guid? AtprotoRecordId { get; set; }
-    public Guid? DependsOnAtprotoRecordId { get; init; }
+    public Guid? DependsOnAtprotoRecordId { get; set; }
+    public string? DependsOnCid { get; init; }
     public string? ExpectedCid { get; init; }
     public PdsSyncStatus Status { get; set; }
     public DateTime CreatedAt { get; init; }

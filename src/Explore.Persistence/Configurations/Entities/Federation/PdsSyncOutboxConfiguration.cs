@@ -43,6 +43,7 @@ public sealed class PdsSyncOutboxConfiguration : IEntityTypeConfiguration<PdsSyn
         builder.Property(value => value.IdempotencyKey).HasMaxLength(255).IsRequired();
         builder.Property(value => value.PdsHost).HasMaxLength(500).IsRequired();
         builder.Property(value => value.SourceEntityType).HasMaxLength(100).IsRequired();
+        builder.Property(value => value.DependsOnCid).HasMaxLength(255);
         builder.Property(value => value.ExpectedCid).HasMaxLength(255);
         builder.Property(value => value.LastError).HasMaxLength(500);
         builder.Property(value => value.LeaseOwner).HasMaxLength(200);
@@ -86,9 +87,11 @@ public sealed class PdsSyncOutboxConfiguration : IEntityTypeConfiguration<PdsSyn
             value.SourceEntityType,
             value.SourceEntityId,
             value.SourceVersion,
-            value.Operation
+            value.Operation,
+            value.PayloadHash
         })
             .IsUnique()
+            .HasFilter("status IN (1, 2) AND superseded_at IS NULL")
             .HasDatabaseName("ux_pds_sync_outbox_source_version");
         builder.HasIndex(value => new { value.Status, value.NextRetryAt, value.LeaseExpiresAt, value.CreatedAt })
             .HasDatabaseName("ix_pds_sync_outbox_worker_poll");

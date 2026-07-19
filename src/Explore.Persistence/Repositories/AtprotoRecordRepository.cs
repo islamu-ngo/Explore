@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Domain.Federation;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -51,6 +52,47 @@ public sealed class AtprotoRecordRepository : IAtprotoRecordRepository
                 value.SourceEntityId == sourceEntityId)
             .Select(value => value.AtprotoRecord!)
             .SingleOrDefaultAsync(cancellationToken);
+
+    public Task<AtprotoOutboundRecordOwnership?> GetOwnedRecordForSourceAsync(
+        Guid tenantId,
+        string sourceEntityType,
+        Guid sourceEntityId,
+        CancellationToken cancellationToken = default) =>
+        _dbContext.AtprotoOutboundRecordOwnerships
+            .IgnoreTenantFilter(TenantFilterBypassReasons.AtprotoTenantOperation)
+            .AsNoTracking()
+            .Include(value => value.AtprotoRecord)
+            .SingleOrDefaultAsync(value =>
+                value.TenantId == tenantId
+                && value.SourceEntityType == sourceEntityType
+                && value.SourceEntityId == sourceEntityId,
+                cancellationToken);
+
+    public Task<AtprotoOutboundRecordOwnership?> GetOwnedRsvpForUserEventAsync(
+        Guid tenantId,
+        Guid userId,
+        Guid eventId,
+        string sourceEntityType,
+        string collection,
+        CancellationToken cancellationToken = default) =>
+        _dbContext.AtprotoOutboundRecordOwnerships
+            .IgnoreTenantFilter(TenantFilterBypassReasons.AtprotoTenantOperation)
+            .AsNoTracking()
+            .Include(value => value.AtprotoRecord)
+            .SingleOrDefaultAsync(value =>
+                value.TenantId == tenantId
+                && value.UserId == userId
+                && value.SourceEntityType == sourceEntityType
+                && value.AtprotoRecord != null
+                && value.AtprotoRecord.Collection == collection
+                && _dbContext.EventRegistrationIntents
+                    .IgnoreAllFilters(TenantFilterBypassReasons.AtprotoTenantOperation)
+                    .Any(intent =>
+                        intent.Id == value.SourceEntityId
+                        && intent.TenantId == tenantId
+                        && intent.UserId == userId
+                        && intent.EventId == eventId),
+                cancellationToken);
 
     private IQueryable<AtprotoRecord> VisibleRecords() =>
         _dbContext.AtprotoRecords
