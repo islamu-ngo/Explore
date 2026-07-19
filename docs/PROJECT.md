@@ -21,7 +21,7 @@ ISLAMU Event (solution: `Explore`) is an open-source event discovery and managem
 6. Runtime-selectable authorization provider (Cerbos or local).
 7. HAL/HATEOAS API responses and build-time OpenAPI generation for client generation.
 8. Modular event aspects (Islamic and Tech aspect models).
-9. Background PDS sync worker for federation-related outbox processing.
+9. Linked-account AT Protocol OAuth plus governed event federation through database-first PDS delivery, exact-collection Jetstream ingestion, and typed tenant-gated discovery.
 
 ## Platform Positioning
 1. General-purpose software platform: can be adapted beyond Islamic use-cases.
@@ -29,12 +29,15 @@ ISLAMU Event (solution: `Explore`) is an open-source event discovery and managem
 3. White-label use is supported via tenant and governance settings.
 
 ## Federation Status
-Implemented foundation:
-- Federation-related entities and API resources exist (e.g., indexed DIDs, ATProto records).
-- Outbox-based sync processing exists.
+Implemented AT Protocol surface:
+- Confidential-client OAuth links an already-associated DID to a platform account without exposing AT credentials to the browser.
+- Local event publication commits before immutable PDS delivery intent; a fenced worker delivers eligible event/RSVP records and settles canonical URI/CID state.
+- A globally leased, allowlisted Jetstream consumer materializes canonical community event/RSVP records for governed tenant discovery.
+- Administrator capability/profile controls, user publication consent, safe source HAL, and delivery status are available through the API and Blazor client.
 
-Not fully implemented as protocol surface:
-- Full ActivityPub gateway endpoint set and interoperability endpoints.
+Roadmap protocol surface:
+- Full ActivityPub gateway/interoperability endpoints.
+- First-party ATProto PDS or AppView hosting.
 
 ## Non-Inferable Product Notes
 1. Deployment mode (`SingleTenant` / `MultiTenant`) is runtime-governed, not compile-time.

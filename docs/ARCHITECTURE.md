@@ -111,12 +111,14 @@ Write operations support `Idempotency-Key` header for safe retries. `Idempotency
 
 ## Federation Status
 Implemented today:
-- ATProto-related entities and API resources (e.g., indexed DID and ATProto records).
-- Outbox-based PDS sync background worker.
+- AT Protocol confidential-client OAuth for already-linked platform accounts, with a server-private trust bridge and encrypted DID-keyed sessions.
+- Database-first event/RSVP publication through immutable `PdsSyncOutbox` intent, fenced leases, stable record keys, retry/reconciliation, and URI/CID settlement.
+- One globally leased, allowlisted Jetstream consumer for canonical community event/RSVP records, tombstones, quarantine evidence, and durable cursor state.
+- Tenant-governed typed event discovery, safe source HAL, administrator controls, user consent, and delivery-status client surfaces.
 
 Not fully implemented today:
 - Complete ActivityPub gateway endpoint surface.
-- Full federation protocol exposure expected by third-party federated servers.
+- First-party ATProto PDS/AppView hosting and ActivityPub interoperability expected by third-party federated servers.
 
 ## Outbox Pattern
 
@@ -154,7 +156,8 @@ See [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) for full entity model, configuration,
 | Service | Purpose | Polling |
 |---|---|---|
 | `OutboxProcessor` | General outbox message dispatch with retry/dead-letter | Configurable (default 5s) |
-| `PdsSyncWorker` | AT Protocol PDS synchronization from `PdsSyncOutbox` | Configurable with exponential backoff |
+| `PdsSyncWorker` | Fenced, bounded-parallel AT Protocol event/RSVP delivery from committed `PdsSyncOutbox` rows, including retry/reconciliation and URI/CID settlement | Configurable, default 5s |
+| `AtprotoJetstreamSubscriber` | One globally leased, allowlisted consumer for canonical community event/RSVP materialization, tombstones, quarantine, and cursor advancement | Capability-aware reconnect loop with bounded backoff |
 | TickerQ `email-dispatch-drain` | Default Basic Dispatch Mode trigger for draining `EmailDispatchOutbox` through the shared drain service | Cron, default every 10s |
 | `EmailDispatchProcessor` | Hosted-service fallback trigger over the same EmailDispatch drain service | Configurable fallback |
 | `CompositeOutboxMessageDispatcher` | Dispatch component used by `OutboxProcessor` to route internal notification fanout, moderation fanout, and report provider sync messages | Invoked per outbox message |

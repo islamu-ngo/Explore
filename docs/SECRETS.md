@@ -103,6 +103,16 @@ Encryption uses AES-256-GCM with 12-byte nonce and 16-byte authentication tag.
 
 ### ATProto OAuth Session Envelopes
 
+AT Protocol authentication has three purpose-separated, instance-only key rings:
+
+| Secret key | Consumer | Purpose |
+|---|---|---|
+| `auth.atproto.oauth_client_private_jwks` | Blazor BFF | P-256/ES256 OAuth `private_key_jwt` assertions and short-lived bootstrap assertions. |
+| `auth.atproto.session_encryption_keyring` | Infrastructure | AES-256-GCM encryption of the complete persisted CarpaNet OAuth session. |
+| `auth.atproto.session_jwt_private_jwks` | API | P-256/ES256 signing and validation of short-lived first-party ATProto session JWTs. |
+
+Never reuse a key between these purposes. Key IDs may be persisted or advertised where the protocol requires them; private key values, OAuth tokens, DPoP keys, and decrypted session JSON must remain inside the owning server process.
+
 `auth.atproto.session_encryption_keyring` is an instance-only secret used exclusively for durable CarpaNet OAuth sessions. Its value is strict JSON with one active AES-256 key and zero or more retired read keys:
 
 ```json
@@ -112,6 +122,8 @@ Encryption uses AES-256-GCM with 12-byte nonce and 16-byte authentication tag.
 Key IDs are persisted as metadata; key material is never stored in the application database. The encrypted envelope contains the complete token set and private DPoP JWK. AES-GCM associated data binds the ciphertext to the tenant, user, provider, subject DID, normalized PDS URI, OAuth client signing-key ID, and envelope version, so copying a row across any of those boundaries fails authentication.
 
 To rotate, publish a new active key and mark the previous active key retired. A successfully restored session is rewritten under the active key. Keep each retired key available until no session row references its key ID; removing it earlier forces affected users to authenticate again. Unknown keys, malformed key rings, ciphertext tampering, or binding mismatches fail closed as reauthentication and must never be repaired by inventing session data or restoring plaintext credential columns.
+
+OAuth client and session-JWT signing rings follow the same overlap rule: exactly one active signing key, with previous keys retained as retired verification/session keys until their pinned OAuth sessions or issued JWTs have expired or been revoked. Rotate one purpose at a time, verify readiness, and only then remove an unused retired key. Removing an in-use session-encryption or OAuth-client key deliberately invalidates the affected sessions and requires those users to sign in again.
 
 ### Rotation Section
 

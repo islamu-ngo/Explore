@@ -120,7 +120,9 @@ EmailDispatch admin routes live under `/api/admin/email-dispatch` and are authen
 - `PUT /api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/park` authorizes `islamuevent_email_dispatch:park`.
 - `POST /api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/replay` authorizes `islamuevent_email_dispatch:replay`.
 - `POST /api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/resolve-without-replay?reason=...` authorizes `islamuevent_email_dispatch:resolve` and transitions only `DeadLettered`, `Parked`, or `Unknown` rows to terminal `Skipped` state.
-- HAL item links for `replay`, `park`, and `resolve-without-replay` use the same resource/action metadata; clients must render these controls only when the server includes the link.
+- `POST /api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/reconcile?outcome=Delivered|NotDelivered&reason=...&providerMessageId=...` authorizes `islamuevent_email_dispatch:reconcile` and atomically aligns an `Unknown` outbox, latest attempt, receipt, and notification delivery. `Delivered` settles the graph as delivered; `NotDelivered` queues it safely. Generic replay does not accept `Unknown`.
+- `GET /api/admin/email-dispatch/control` returns sanitized global processor state. `PUT|DELETE /api/admin/email-dispatch/control/pause` pauses/resumes admission, and `PUT|DELETE /api/admin/email-dispatch/control/rate-limit` sets/clears the bounded global SMTP-per-minute override. These routes authorize as the instance setting `email-dispatch.processor`, so tenant administrators cannot use them.
+- HAL item links for `replay`, `park`, `resolve-without-replay`, and `reconcile`, plus global `pause`/`resume` and rate links, use the same resource/action metadata; clients must render controls only when the server includes the link.
 - `Skipped` is terminal. Sent, skipped, and `ContentRedactedAt` rows are not replayable or parkable; redacted rows permanently omit all delivery-control affordances.
 
 ### Notification Preference Endpoints
@@ -836,11 +838,11 @@ Authorization decisions are also traced via `ActivitySource` named `Explore.Auth
 - Polling responses must remain safe metadata only: status, provider label, model label, timestamps, bounded failure code/message, and HAL links. Do not return prompt content, provider response bodies, tool payloads, provider request IDs tied to content, endpoint URLs, API keys, or raw provider exceptions.
 
 ### PdsSyncWorker
-- Polls `PdsSyncOutbox` table for pending AT Protocol sync entries.
-- Processes batches with configurable polling interval and batch size.
-- Exponential backoff on failures with configurable max retry count.
-- Optimistic locking (`TryMarkAsProcessing`) for multi-worker safety.
-- Availability-gated: skips processing when PDS service is unavailable.
+- Polls `PdsSyncOutbox` for committed, due AT Protocol event/RSVP delivery intents and reconciles missing active RSVP intents in bounded pages.
+- Claims rows with owner, token, monotonic fence, and expiring lease so crashed workers are reclaimable and stale workers cannot settle or fail a successor claim.
+- Rechecks effective capability, the owner's current self-consent, exact linked DID/session, source version, public-location privacy, and immutable payload immediately before CarpaNet PDS I/O.
+- Retries the same stable record key with bounded exponential backoff; permanent or exhausted failures are dead-lettered with a stable failure code, never a provider response body.
+- Settles URI/CID, canonical record ownership/presentation, outbox completion, and the local Event's `AtprotoRecordId` transactionally. RSVP claims remain blocked until the event URI/CID strong reference exists.
 
 ---
 
@@ -923,8 +925,13 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
     - `GET /api/publicexperience/settings`
     - `POST /api/a/t` — anonymous-safe analytics relay for relay transport mode
 6. Federation:
-   - `/api/atproto/*` — AT Protocol record management
-   - `/api/indexeddid/*` — DID indexing
+   - `GET /api/event` — anonymous typed local/federated event discovery; federated items appear only for an effectively enabled tenant and are de-duplicated against local ATProto ownership.
+   - `GET /api/event/federated/{atprotoRecordId}/source` — anonymous, rate-limited redirect to the currently tenant-visible bounded HTTPS source. Clients render this action only from the item-level `source` HAL relation.
+   - `GET /api/event/my` — authenticated local event list with optional `atprotoDeliveryStatus` and stable `atprotoDeliveryFailureCode`; no provider body is returned.
+   - `GET|PUT|DELETE /api/settings/instance/atproto-federation...` — instance administrator read/update/reset and lock/unlock operations for the two administrator ATProto federation settings, with HAL as action authority.
+   - `/api/indexeddid/*` — DID indexing metadata under existing authorization.
+   - `/api/auth/atproto/*` — server-private bootstrap/current/refresh/revoke bridge, excluded from public OpenAPI and generated browser clients.
+   - No `/api/atprotorecord` CRUD/read contract exists. Lifecycle-owned outbox delivery and canonical Jetstream ingestion are the only `AtprotoRecord` write authorities.
 7. Notifications (all `[Authorize]`):
        - `GET /api/notification` — paginated list with `?isRead=` and `?notificationTypeId=` filters
       - `GET /api/notification/{id}` — detail

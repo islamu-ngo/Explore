@@ -189,17 +189,59 @@ Local development may point a self-hosted Keycloak realm SMTP configuration at M
 
 ### ATProto/PDS Identity Lifecycle Email Configuration
 
-ATProto/PDS account lifecycle email follows the same account-authority rule, but the authority is the PDS that hosts the account. ISLAMU Event is currently a relying party/federation foundation, not a public ATProto OAuth login provider or PDS server.
+ATProto/PDS account lifecycle email follows the same account-authority rule, but the authority is the PDS that hosts the account. ISLAMU Event is an ATProto OAuth relying party and event-federation client; it is not a PDS server.
 
 | Logical setting | Expected value | Meaning |
 |---|---|---|
-| `auth.provider` | `ATProto` only when ATProto login is actually implemented | Current source exposes federation foundations and governance settings; it does not ship public ATProto OAuth/login yet. |
+| `auth.provider` | `ATProto` for an enabled, ready linked-account login | The BFF implements confidential ATProto OAuth and issues its normal protected application cookie only after the API verifies the linked DID/PDS session. |
 | `auth.identity_email_owner` | `AccountAuthority` | PDS email confirmation, password reset, email change, migration, and security messages are not ISLAMU product emails. |
 | `auth.account_authority_kind` | `AtprotoPds` or `IslamuOperatedPds` | External PDS hosts own their hosted-account lifecycle email. A future ISLAMU-operated PDS cell also owns its own PDS credential lifecycle email because the PDS owns and verifies the credential token. |
 
 Do not add a global `emails.provider = PDS` switch. PDS SMTP is account-authority transport, not a product email provider for `EmailDispatchOutbox` or `IEmailService`. If a future ISLAMU-operated PDS cell uses shared SMTP or local Mailpit, that only configures the PDS cell's account-email delivery path; it does not transfer product notification ownership away from ISLAMU Event.
 
 AT Protocol account email access is private account-hosting data. Product email flows must not assume a verified email claim is available from ATProto login. When `email` or `email_verified` is unavailable or unverified, use a separately verified app-level notification email or in-app notifications instead of reusing PDS credential email semantics.
+
+### AT Protocol OAuth Configuration
+
+AT Protocol login is enabled by the instance governance setting `auth.atproto_login_enabled`. Disabled login is omitted from `/auth/providers`; enabled login remains unavailable until every local prerequisite below is valid. The readiness check is passive and never signs in to a user PDS.
+
+| Key | Default | Purpose |
+|---|---|---|
+| `Atproto:PublicUrl` | empty | Exact browser-facing HTTPS origin used for the URL `client_id` and callback. Paths, credentials, queries, fragments, Unicode host spelling, and trailing-dot aliases are rejected. |
+| `Atproto:CallbackPath` | `/signin-atproto` | Root-relative OAuth callback path published in client metadata. |
+| `Atproto:AllowDevelopmentLoopback` | `false` | Allows exact loopback origins only in the Development environment. It has no effect in production. |
+| `Atproto:UseSingleNodeMemoryStore` | `false` | Development-only state/handoff fallback. Production and multi-replica deployments require the configured distributed cache. |
+| `Atproto:StateLifetimeSeconds` | `300` | One-time protected OAuth state lifetime; runtime clamps it to 30–600 seconds. |
+| `Atproto:HandoffLifetimeSeconds` | `60` | One-time cross-tenant-host handoff lifetime; runtime clamps it to 30–300 seconds. |
+| `Atproto:TenantOrigins` | empty | Bounded canonical tenant origins with their tenant ID and slug. Each origin must pass the same HTTPS/loopback policy as the public URL. |
+
+`ATPROTO_OAUTH_CLIENT_PRIVATE_JWKS` maps to `Atproto:OAuthClientPrivateJwks` in the BFF and must come from server-side secret configuration. Durable session encryption and first-party API session signing use the separate secrets documented in [SECRETS.md](SECRETS.md#atproto-oauth-session-envelopes). Readiness exposes only `enabled` and a bounded failure code; readiness logs, metrics, health JSON, and support output must not contain handles, DIDs, endpoint queries, tokens, JWK values, or provider response bodies.
+
+### AT Protocol Events Governance And Workers
+
+ATProto login and ATProto Events are independent. The effective administrator capability must be enabled for both tenant-visible Jetstream discovery and new eligible event/RSVP outbox enqueue. Outbound work additionally requires the event owner's self-scoped consent, linked DID, restorable OAuth session, successful local publication, and a complete privacy-safe community record.
+
+| Governance key | Default | Scope | Purpose |
+|---|---|---|---|
+| `federation.atproto_events_enabled` | `false` | Instance through Tenant; lockable | One switch for both inbound event fetching/presentation and eligible outbound event/RSVP publication. Instance administrators can lock tenant overrides. |
+| `federation.atproto_event_validation_profile` | `platform` | Instance through Tenant; lockable | `platform` retains normal event publish readiness. `community_lexicon` requires only community-required business fields while retaining authorization, ownership, tenant, privacy, reference, storage, concurrency, and supplied-value validation. |
+| `federation.atproto_publish_my_events` | `false` | User only | Personal publication consent. Administrators cannot grant it on a user's behalf and it is not lockable. |
+
+| Static key | Default | Bounds / purpose |
+|---|---:|---|
+| `Atproto:PdsSync:Enabled` | `true` | Enables the post-commit PDS worker; it never changes governance or user consent. |
+| `Atproto:PdsSync:PollingIntervalSeconds` | `5` | 1–300 seconds. |
+| `Atproto:PdsSync:BatchSize` | `20` | 1–100 fenced claims per pass. |
+| `Atproto:PdsSync:MaxConcurrency` | `10` | 1 through the configured batch size. |
+| `Atproto:PdsSync:LeaseDurationSeconds` | `90` | 30–900 seconds. Expired processing claims are reclaimable. |
+| `Atproto:Jetstream:Endpoint` | `https://jetstream1.us-east.bsky.network` | Fixed HTTPS origin without credentials, path, query, or fragment. |
+| `Atproto:Jetstream:MaxMessageSizeBytes` | `2113536` | Bounded near the verified community-record maximum; startup validation accepts 2,097,152–2,162,688 bytes. |
+| `Atproto:Jetstream:LeaseDurationSeconds` / `LeaseRenewalSeconds` | `60` / `20` | One shared canonical consumer lease; renewal must remain shorter than the lease. |
+| `Atproto:Jetstream:CapabilityPollMilliseconds` | `5000` | Polls for an effective enabled scope without opening per-tenant sockets. |
+| `Atproto:Jetstream:RetryMinimumMilliseconds` / `RetryMaximumMilliseconds` | `1000` / `30000` | Bounded reconnect backoff. |
+| `Atproto:Jetstream:AllowedDids` | empty | Curated unique DID allowlist, maximum 10,000. Empty is a valid dormant host configuration but readiness fails closed if capability is enabled with no admitted DIDs. |
+
+The PDS worker calls CarpaNet only for committed outbox rows. Event creation/update request transactions never call a PDS. Projection coverage, privacy, unsafe values, or encoded-size overflow prevent PDS enqueue; the implementation never truncates or silently omits public snapshot values to force a record through.
 
 ### Dedicated Admin Host Configuration
 
@@ -486,7 +528,7 @@ Endpoint and secret safety rules:
 
 ### Email Dispatch Scheduler Configuration
 
-Basic Dispatch Mode uses PostgreSQL as the durable source of truth and the existing SMTP abstraction as the transport. It does **not** require RabbitMQ. Registration confirmation currently creates an `EmailDispatchOutbox` row in the registration transaction; the default TickerQ `email-dispatch-drain` cron job triggers the drain service, which claims due rows, rebinds tenant context, calls `IEmailService`, records attempts/receipts, and advances final delivery state.
+Basic Dispatch Mode uses PostgreSQL as the durable source of truth and the existing SMTP abstraction as the transport. It does **not** require RabbitMQ. Registration confirmation currently creates an `EmailDispatchOutbox` row in the registration transaction; the default TickerQ `email-dispatch-drain` cron job triggers the drain service, which claims due rows, reserves shared SMTP capacity, rebinds tenant context, calls `IEmailService`, and atomically advances the outbox/attempt/receipt/delivery graph.
 
 Static dispatch settings bind from `EmailDispatchProcessor` and are validated at startup with `ValidateOnStart`:
 
@@ -495,20 +537,35 @@ Static dispatch settings bind from `EmailDispatchProcessor` and are validated at
 | `Enabled` | `true` | Enables Basic Dispatch Mode. When disabled, the `email-dispatch` readiness check reports `Degraded` intentionally. |
 | `Mode` | `TickerQ` | Selects the trigger mechanism: `TickerQ`, `HostedService`, or `Disabled`. `TickerQ` is the default scheduler; `HostedService` is a fallback timer wrapper over the same drain service. |
 | `PollingIntervalSeconds` | `5` | Delay between polling loops. Must be greater than zero. |
-| `BatchSize` | `50` | Maximum due outbox rows loaded per loop. Must be greater than zero. |
+| `BatchSize` | `50` | Maximum rows claimed per loop. Valid range `1..1000`. |
+| `MaxRowsPerTenantPerBatch` | `5` | Fair-round cap for one tenant in a batch. Valid range `1..BatchSize`, up to `1000`. |
+| `MaxConcurrentDispatches` | `8` | Cross-replica global `Processing` ceiling. Valid range `1..256`. |
+| `MaxConcurrentDispatchesPerTenant` | `2` | Cross-replica per-tenant `Processing` ceiling. Valid range `1..MaxConcurrentDispatches`, up to `256`. |
+| `GlobalSmtpRateLimitPerMinute` | `120` | Shared PostgreSQL-backed global SMTP admissions per one-minute window. Valid range `1..100000`. |
+| `TenantSmtpRateLimitPerMinute` | `30` | Shared PostgreSQL-backed admissions per tenant per one-minute window. Valid range `1..GlobalSmtpRateLimitPerMinute`, up to `100000`. |
+| `OptionalBacklogHighWatermark` | `1000` | Active core-backlog level that enables persisted optional-reminder deferral. Valid range `1..1000000`. |
+| `OptionalBacklogLowWatermark` | `500` | Backlog level below which optional reminders resume. Valid range `0..999999` and must be lower than the high watermark. |
 | `MaxAttemptCount` | `5` | Worker-level cap used with per-row `MaxAttempts` before dead-lettering. Must be greater than zero. |
 | `InitialRetryDelaySeconds` | `5` | Base retry delay for failed SMTP dispatch. Must be greater than zero. |
 | `MaxRetryDelaySeconds` | `3600` | Maximum retry delay cap. Must be greater than or equal to `InitialRetryDelaySeconds`. |
-| `ProcessingLeaseTimeoutSeconds` | `900` | Maximum age for a `Processing` row before the recovery scan marks it `Unknown` for operator review. Must be greater than zero. |
+| `ProcessingLeaseTimeoutSeconds` | `900` | Maximum age for a `Processing` lease before recovery. Unfenced claims become immediately retryable; claims with provider-handoff evidence become `Unknown`. Must be greater than zero. |
 | `HealthDueDispatchWarningThreshold` | `1000` | Degrades `email-dispatch` readiness when due `Pending`/`RetryScheduled` outbox rows reach this count. Must be between 1 and 100000. |
 | `HealthStaleProcessingWarningThreshold` | `1` | Degrades `email-dispatch` readiness when stale `Processing` rows reach this count. Must be between 1 and 10000. |
+| `HealthUnknownWarningThreshold` | `1` | Degrades readiness when active non-paused `Unknown` rows requiring reconciliation reach this count. Must be between 1 and 10000. |
 | `HealthDeadLetterWarningThreshold` | `1` | Degrades `email-dispatch` readiness when `DeadLettered` rows reach this count. Must be between 1 and 10000. |
+| `HealthOldestPendingWarningSeconds` | `900` | Degrades readiness when the oldest active due row reaches this age. Must be between 1 and 604800. |
+| `HealthTenantBacklogWarningThreshold` | `250` | Degrades readiness when a sampled active tenant backlog reaches this count. Must be between 1 and 100000. |
+| `HealthTenantSampleLimit` | `10` | Maximum tenant backlog samples used by readiness. Metrics expose rank only, never the tenant GUID. Must be between 1 and 100. |
 | `ConsumerId` | machine name | Drain identity recorded in receipts and logs. Must not be blank. |
 | `VerboseLogging` | `false` | Enables additional drain logs when troubleshooting. Logs must remain free of bodies, recipients, and secrets. |
 
+Concurrency, optional-work hysteresis, and SMTP rate state are PostgreSQL authorities shared by every API replica and every trigger. The `smtp` row in `email_dispatch_processor_states` stores instance pause state, a nullable `GlobalSmtpRateLimitPerMinute` override, the global bucket, and optional-reminder hysteresis; `email_dispatch_tenant_controls` stores pause state and each tenant bucket. The authenticated instance control API accepts an override from `1..100000`; clearing it restores the static configured value and resets the global bucket. Rate windows use the database clock. A new or expired bucket starts full, a rate decrease clamps retained tokens, and admission locks global state before tenant state and decrements both in one transaction.
+
+Rate deferral is not an SMTP attempt. It releases the processing lease as `RetryScheduled` with `smtp_rate_deferred`, schedules the row at the later exhausted-bucket refill boundary, and creates no attempt, receipt, or `provider_handoff_started` evidence. Consequently rate pressure cannot consume retry budget or dead-letter a message without provider I/O.
+
 SMTP settings still come from the `email.*` governance/secret keys resolved by `SmtpConfigResolver`; the dispatch processor does not introduce new SMTP credential keys. Local development defaults are seeded from `MAIL_SMTP_*`, then `SMTP_*` aliases, then local Mailpit values when the instance SMTP host is empty. In Aspire `FullLocal` mode, Development seeding refreshes those SMTP rows on each run so persistent local database volumes follow the current `--isolated` Mailpit SMTP port. RabbitMQ Dispatch Mode is not part of Basic mode.
 
-The `email-dispatch` readiness payload reports `dueDispatchCount`, `retryScheduledCount`, `staleProcessingCount`, and `deadLetteredCount`. Future `RetryScheduled` rows are visible for operator context, but only due rows count toward `HealthDueDispatchWarningThreshold`; scheduled future retries are normal backoff state.
+The `email-dispatch` readiness payload reports active non-paused `dueDispatchCount`, `retryScheduledCount`, `staleProcessingCount`, `unknownCount`, `parkedCount`, `deadLetteredCount`, `oldestActivePendingAgeSeconds`, persisted `optionalReminderDeferralActive`, and sanitized `globalPaused`/`globalSmtpRateLimitOverrideActive` booleans. A deliberate global pause degrades readiness while backlog counts stay visible. Future retries remain informational until due, and `Parked` remains visible without degrading readiness. Public health serialization redacts tenant/user/provider identifiers, addresses, subjects, bodies, event titles, reasons, actors, and evidence.
 
 Email content retention binds from `EmailDispatchRetention` and is validated at startup:
 

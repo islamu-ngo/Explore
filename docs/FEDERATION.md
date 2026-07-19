@@ -1,17 +1,17 @@
-ABOUTME: Documents federation status, boundaries, and planned protocol architecture.
-ABOUTME: Distinguishes shipped governance/auth controls from roadmap protocol features.
+ABOUTME: Documents implemented AT Protocol authentication and governed event federation boundaries.
+ABOUTME: Covers DB-first PDS delivery, exhaustive projection, Jetstream discovery, HAL, and roadmap protocols.
 
 # Federation
 
 > **Audience:** Contributors | Integrators | AI agents
-> **Status:** Mixed
+> **Status:** Implemented AT Protocol integration; ActivityPub/PDS hosting remain roadmap
 > **Owner:** API
-> **Last Verified:** 2026-05-06
-> **Source Anchors:** `Explore.Domain/Actor.cs`, `Explore.Domain/Federation/PdsSyncOutbox.cs`, `Explore.API/Controllers/AtprotoRecordController.cs`, `Explore.API/BackgroundServices/PdsSyncWorker.cs`, `Explore.Infrastructure/Services/Federation/PdsService.cs`, `docs/LEXICONS.md`, `docs/OUTBOX_PATTERN.md`
+> **Last Verified:** 2026-07-19
+> **Source Anchors:** `Explore.API/Controllers/AtprotoSessionController.cs`, `Explore.API/Controllers/EventController.cs`, `Explore.API/BackgroundServices/PdsSyncWorker.cs`, `Explore.Blazor/Authentication/AtprotoAuthenticationHandler.cs`, `Explore.Infrastructure/Services/Federation/AtprotoJetstreamSubscriber.cs`, `Explore.Application/Features/Federation/Atproto/`, `docs/LEXICONS.md`, `docs/OUTBOX_PATTERN.md`
 
 ## Status
 
-Federation protocol support (ATProto / ActivityPub bridge behavior) remains a **roadmap feature**. The project currently ships foundation models, persistence, internal API resources, outbound PDS sync plumbing, and federation-related governance/auth controls, but not public protocol endpoints.
+AT Protocol OAuth authentication is implemented for accounts that are already linked to a platform user. Governed outbound event/RSVP publication, exact-collection Jetstream ingestion, tenant-gated discovery, safe source HAL, and administrator/user client controls are implemented. ActivityPub bridging and operating an ATProto PDS/AppView remain roadmap features.
 
 ### ✅ Implemented (Current Runtime + Foundation)
 - **Domain entities**: federation models exist in `Explore.Domain`:
@@ -22,16 +22,19 @@ Federation protocol support (ATProto / ActivityPub bridge behavior) remains a **
   - `ActorKeyStore` (key storage model)
   - supporting enums: `ActorType`, `DidCustodyType`
 - **Persistence**: federation tables are represented through `ExploreDbContext` DbSets, entity configurations, and repositories, including ATProto record and PDS sync outbox repositories.
-- **Internal API resources**: CRUD-style APIs exist for ATProto records and indexed DID records. These are platform API resources, not public ATProto or ActivityPub protocol endpoints.
-- **Outbound PDS sync**: `PdsSyncWorker` polls `PdsSyncOutbox` entries and calls `IPdsService`; `PdsService` sends XRPC `com.atproto.repo.putRecord` and `com.atproto.repo.deleteRecord` requests to a configured PDS host.
-- **Governance toggle**: instance-level decentralization setting is available via `federation.decentralization_enabled`.
-- **Settings surface**: decentralization is represented in governance setting DTOs and can be locked through `LockDecentralizationEnabled` when instance governance settings are updated.
-- **Related auth setting**: `auth.atproto_login_enabled` is a separate governance setting for ATProto login support. Do not document public ATProto OAuth login as implemented until source adds that flow.
+- **OAuth authentication**: the BFF uses CarpaNet confidential-client OAuth with protected single-use state, PKCE, DPoP, a server-private bootstrap bridge, encrypted DID-keyed session persistence, and a short-lived first-party ES256 API session JWT. The browser receives only the HttpOnly BFF cookie and safe display state.
+- **Linked-account boundary**: the verified DID, PDS, tenant, and existing `UserExternalLogin` must agree. ATProto login does not create or email-match platform users.
+- **Safe public API**: `GET /api/event` returns a typed local-or-federated discovery collection. Federated items receive only a policy-produced `source` relation to `GET /api/event/federated/{atprotoRecordId}/source`; no raw `AtprotoRecord` read or mutation API exists.
+- **Governance**: `federation.atproto_events_enabled` controls both event ingestion and eligible outbound enqueue. `federation.atproto_event_validation_profile` selects platform or community-lexicon publication requirements, subject to instance locks; `federation.atproto_publish_my_events` remains self-scoped user consent.
+- **Projection**: one typed community event record maps native lexicon fields and renders every other public event value—including all sessions, aspects, resolved lookups, and EAV values—into one deterministic description. Coverage, privacy, or exact-size failures prevent enqueue; values are never silently dropped or truncated.
+- **Inbound ingestion**: one leased CarpaNet Jetstream consumer accepts exactly the community event and RSVP collections and persists canonical records, tombstones, quarantine evidence, and cursor state atomically.
+- **Outbound delivery**: event lifecycle handlers atomically commit the local publication and immutable `PdsSyncOutbox` intent. A fenced worker rechecks capability, self-consent, linked session, source version, payload, and public-location privacy immediately before CarpaNet PDS I/O, then settles URI/CID and links the canonical record back to the committed local event.
+- **Client surfaces**: instance administrators manage defaults/locks, unlocked tenant administrators manage effective capability/profile, and users manage only their own publication consent. Federated cards and local delivery status use text plus color and render actions only from HAL.
 - **Authorization fallback**: local fallback authorization treats actor records as read-only for authenticated users and denies ATProto record/indexed DID writes except for instance-admin bypass.
 
 ### ATProto/PDS Account Email Ownership
 
-Current federation code is foundation-only and does not implement public ATProto OAuth login or PDS account hosting. When those features arrive, identity lifecycle email remains PDS/account-authority owned:
+ATProto OAuth login is implemented, while PDS account hosting is not. Identity lifecycle email remains PDS/account-authority owned:
 
 - External PDS hosts own email confirmation, password reset, email update, account migration, and PDS security email for their accounts.
 - Future ISLAMU-operated PDS cells also own those PDS credential emails for the accounts they host, even when ISLAMU operates the infrastructure or shares SMTP plumbing.
@@ -49,12 +52,12 @@ Current federation code is foundation-only and does not implement public ATProto
 - **Cryptographic federation verification** (HTTP signatures / full protocol validation paths) is not implemented.
 - **Public social collections** (followers/following/liked) are not exposed as protocol collections.
 
-**Important**: The decentralization toggle is now part of runtime governance configuration, and outbound PDS sync foundation exists, but full external federation protocol behavior is still phased roadmap work.
+**Important**: ATProto login and ATProto Events governance are independent. A successful login never enables ingestion or publication, and enabling the administrator capability never substitutes for user publication consent.
 
-## Protocol Overview (Planned)
+## Protocol Overview
 
 > **Note**: This section describes the **intended** federation model for ISLAMU Event.
-> **Current Status**: Foundation models, internal resources, governance controls, and outbound PDS sync plumbing exist. Public ActivityPub and ATProto server protocol endpoints are not implemented.
+> **Current Status**: ATProto OAuth, governed event/RSVP projection and delivery, exact-collection Jetstream ingestion, tenant-gated discovery, and client governance/status surfaces are implemented. Public ActivityPub endpoints and ATProto PDS/AppView server behavior are not implemented.
 
 - **Server-to-Server (S2S)** (planned): Instances exchange activities via inbox/outbox.
 - **HTTP Signatures** (planned): Cryptographic verification of federated messages.
@@ -64,7 +67,7 @@ Current federation code is foundation-only and does not implement public ATProto
 ## Planned Architecture Philosophy
 
 > **⚠️ Planned Feature**: The architecture diagrams below represent the **intended** public federation design.
-> **Current Implementation**: Domain models, persistence, internal ATProto resources, governance settings, and outbound PDS sync plumbing exist. Public ActivityPub endpoints, ATProto PDS/AppView server behavior, and bridge/gateway behavior are not implemented.
+> **Current Implementation**: Domain persistence, confidential ATProto OAuth, event/RSVP projection and DB-first delivery, governance, exact-collection ingestion, tenant discovery, and HAL-driven client surfaces exist. Public ActivityPub endpoints, ATProto PDS/AppView server behavior, and bridge/gateway behavior remain planned.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -104,7 +107,9 @@ Current federation code is foundation-only and does not implement public ATProto
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Event Data Flow (Planned Implementation)
+## Event Data Flow
+
+The diagram below is a product-level illustration, not the record-shape contract. The implemented projection creates one community event record: native lexicon fields are mapped directly, and every remaining public event value—including every session, aspect, resolved lookup, and EAV value—is rendered into the same deterministic description. No companion session records are emitted, and any coverage, privacy, or size failure stops PDS enqueue instead of truncating data. The transactional outbox worker writes only after the local publication commits and uses a stable record key plus URI/CID reconciliation for retry safety.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -171,12 +176,11 @@ Current federation code is foundation-only and does not implement public ATProto
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Identity System Hybrid Approach (Planned)
+## Identity System Hybrid Approach
 
-> **⚠️ Planned Feature**: The hybrid authentication system is not yet implemented.
-> **Current State**: Keycloak/OIDC authentication is active. ATProto login support is represented by governance settings and foundation models, but public ATProto OAuth login is not implemented.
+> **Current State**: Keycloak/OIDC and CarpaNet ATProto OAuth are both active BFF authentication choices when configured. ATProto accepts only an already-linked DID and never creates or email-matches a platform account. Custodial DID provisioning for Keycloak users in the diagram remains planned and is separate from login.
 
-**Planned Approach**: Support BOTH Keycloak (traditional) AND ATProto OAuth, with custodial DIDs for Keycloak users:
+The current login paths converge on the existing platform user identifier so authorization and tenant isolation remain unchanged:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -253,10 +257,11 @@ The key insight is that DID creation is **async**. Here's how to handle it:
 
 ## Operator And Product Guidance
 
-- Treat decentralization settings as governance controls for foundation behavior, not a promise that external federation is live.
-- Keep public-facing release notes explicit: federation protocol interoperability is roadmap work until protocol endpoints, conformance tests, and operator runbooks exist.
+- Treat `federation.atproto_events_enabled` as one governed capability for both canonical Jetstream ingestion and eligible outbound PDS delivery. Keep it disabled until migrations, worker configuration, and operator recovery procedures are ready.
+- Treat `auth.atproto_login_enabled` as authentication only; it does not enable event federation or user publication consent.
+- Keep public-facing release notes precise: AT Protocol OAuth, event discovery, Jetstream ingestion, and lifecycle-owned PDS publication are implemented; ActivityPub interoperability and first-party PDS hosting remain roadmap work.
 - Keep ATProto/PDS account email separate from ISLAMU product notification email. PDS SMTP is account-authority transport, not a general product-email provider.
-- If implementing public protocol support later, update this document with exact routes, auth/trust boundaries, conformance tests, and rollback guidance.
+- When adding another federation protocol, update this document with its exact routes, auth/trust boundaries, conformance tests, and rollback guidance without weakening the AT Protocol database-first publication invariant.
 
 ## Related
 

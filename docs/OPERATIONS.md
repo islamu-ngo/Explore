@@ -476,9 +476,13 @@ Current counters include:
 - `explore.support_access.session_validation_denials` (`reason`, `mode`) — forwarded support-session validation denials such as kill-switch or write-mode shutdown; labels intentionally exclude forwarded session IDs, actor IDs, tenant IDs, and request headers.
 - `explore.support_access.authorization_boundary_denials` (`reason`, `mode`, `action_class`) — runtime support-access boundary denials such as inactive forwarded sessions, read-only write attempts, missing tenant context, and cross-tenant mismatches; labels intentionally exclude resource IDs, session IDs, actor IDs, and tenant IDs.
 - `event_role_assignment.changed` (`operation`, `outcome`, `role`)
-- `explore.email_dispatch.attempts` (`tenant_id`, `outcome`, `failure_category`) — Basic Dispatch Mode email outcomes; labels intentionally exclude recipient, subject, body, provider message ID, and raw error text.
-- `explore.email_dispatch.rabbitmq.publishes` (`tenant_id`, `outcome`, `failure_category`) — optional RabbitMQ pointer-publish outcomes; labels intentionally exclude recipient, subject, body, provider message ID, raw broker error text, and connection strings.
-- `explore.email_dispatch.rabbitmq.consumes` (`tenant_id`, `outcome`, `failure_category`) — manual-ack RabbitMQ delivery outcomes; labels intentionally exclude recipient, subject, body, provider message ID, publish event ID, delivery tag, raw broker error text, and connection strings.
+- `explore.email_dispatch.attempts` (`outcome`, `failure_category`) — SMTP provider-handoff outcomes with closed-vocabulary labels; labels intentionally exclude tenant identity, recipient, subject, body, provider message ID, and raw error text.
+- `explore.email_dispatch.operational_outcomes` (`outcome`, `reason`) — bounded eligibility-skip and SMTP-rate-deferral outcomes that occur without provider handoff.
+- `explore.email_dispatch.tenant_backlog` (`sample_rank`) — active backlog samples ranked within the bounded health sample; no tenant identifier is exported.
+- `explore.email_dispatch.oldest_pending_age` — oldest active due-row age in seconds without labels.
+- `explore.email_dispatch.optional_reminder_deferral` — current persisted optional-reminder deferral state (`0` or `1`) as an observable gauge without labels.
+- `explore.email_dispatch.rabbitmq.publishes` (`outcome`, `failure_category`) — optional RabbitMQ pointer-publish outcomes with closed-vocabulary labels; labels intentionally exclude tenant, recipient, subject, body, provider message ID, raw broker error text, and connection strings.
+- `explore.email_dispatch.rabbitmq.consumes` (`outcome`, `failure_category`) — manual-ack RabbitMQ delivery outcomes with closed-vocabulary labels; labels intentionally exclude tenant, recipient, subject, body, provider message ID, publish event ID, delivery tag, raw broker error text, and connection strings.
 - `explore.notifications.fanout_runs` (`tenant_id`, `fanout_kind`, `outcome`) — notification fanout run outcomes; labels intentionally exclude event IDs, actor IDs, subscriber IDs, notification IDs, event titles, and deduplication keys.
 - `explore.notifications.fanout_subscribers` (`tenant_id`, `fanout_kind`, `outcome`) — aggregate subscriber decisions for notification fanout; labels intentionally exclude event IDs, actor IDs, subscriber IDs, notification IDs, event titles, and deduplication keys.
 - `explore.event_reports.submissions` (`tenant_id`, `outcome`, `failure_category`) — event-report intake outcomes; labels intentionally exclude reporter text, reporter IP/User-Agent values or hashes, event titles, slugs, URLs, report IDs, and raw validation/provider errors.
@@ -604,11 +608,12 @@ Registration confirmation email is handled as a durable side effect:
 
 1. The registration command creates an `EmailDispatchOutbox` row in the same PostgreSQL transaction as the registration state.
 2. TickerQ `email-dispatch-drain` triggers the shared drain service. In fallback mode, `EmailDispatchProcessor` triggers the same service with a hosted timer.
-3. The drain service checks tenant pause state, atomically claims one row, and sets tenant context before resolving SMTP settings.
-4. For mapped lifecycle categories with a `UserId`, the drain checks `UserNotificationPreference` immediately before SMTP handoff. A disabled preference records a `Skipped` attempt/receipt/outbox result with failure category `recipient_unsubscribed`; it does not call the SMTP provider and it does not retry.
-5. SMTP is called through `IEmailService`; handlers and controllers do not send SMTP, publish RabbitMQ, or schedule TickerQ jobs directly.
-6. The drain records `EmailDispatchAttempt` and `EmailDispatchReceipt` state, then marks the outbox row `Sent`, `RetryScheduled`, `DeadLettered`, `Unknown`, or `Skipped`.
-7. TickerQ `email-dispatch-recovery-scan` marks stale `Processing` rows as `Unknown` after `EmailDispatchProcessor:ProcessingLeaseTimeoutSeconds`; the hosted-service fallback runs the same recovery scan before each drain loop.
+3. Batch, TickerQ, hosted-service, and RabbitMQ pointer paths enter the same atomic claim operation. PostgreSQL applies the instance drain pause, fair tenant rounds, required-work priority, paused-tenant exclusion, and global/per-tenant `Processing` ceilings without incrementing `AttemptCount`. Dispatch-time eligibility rechecks the instance pause to close the claim-to-provider race.
+4. The conditional eligibility transition rechecks current authorization, consent, preference, and verified address, then reserves both persisted SMTP buckets using PostgreSQL `clock_timestamp()`. Rate deferral releases the lease without creating an attempt, receipt, or provider fence.
+5. An admitted transition atomically decrements the global and tenant buckets, increments `AttemptCount`, and creates the processing receipt plus `provider_handoff_started` attempt fence before SMTP I/O.
+6. SMTP is called through `IEmailService`; handlers and controllers do not send SMTP, publish RabbitMQ, or schedule TickerQ jobs directly.
+7. Provider acceptance, provider failure, and acceptance reconciliation use tenant/outbox/lease/attempt-fenced transactions to align `EmailDispatchOutbox`, `EmailDispatchAttempt`, `EmailDispatchReceipt`, and `NotificationDelivery`.
+8. TickerQ `email-dispatch-recovery-scan` returns stale unfenced claims to `RetryScheduled` and marks only fenced or partially fenced provider uncertainty `Unknown`; the hosted-service fallback runs the same recovery scan before each drain loop.
 
 When an absolute public base URL is configured through `PublicBaseUrl`, `App:PublicBaseUrl`, or `Application:PublicBaseUrl`, categorized lifecycle messages include `List-Unsubscribe`, `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, and a visible unsubscribe URL appended to the plain text and HTML bodies. Public launch deployments should configure the public base URL; otherwise the dispatch path still sends allowed email, but it cannot emit absolute unsubscribe links.
 
@@ -616,14 +621,15 @@ Operator signals:
 
 | Signal | Meaning |
 |---|---|
-| `email-dispatch` health check | Selected dispatch mode, TickerQ enabled state, dashboard enabled state, safe dispatch settings, threshold values, and aggregate outbox counts (`dueDispatchCount`, `retryScheduledCount`, `staleProcessingCount`, `deadLetteredCount`). |
-| `explore.email_dispatch.attempts` | Outcome counter for sent, skipped, tenant paused, unknown, retry-scheduled, and dead-lettered attempts. |
+| `email-dispatch` health check | Selected dispatch mode, safe settings, persisted optional-reminder deferral, and active non-paused aggregate counts including due, retry, stale processing, unknown, parked, and dead-lettered rows. Parked rows are informational; unknown rows degrade at the configured threshold. |
+| `explore.email_dispatch.attempts` | Provider-handoff outcome counter for sent, unknown, retry-scheduled, and dead-lettered attempts. Closed-vocabulary labels omit tenant identity. |
+| `explore.email_dispatch.operational_outcomes` | Eligibility-skip and SMTP-rate-deferral counter. These outcomes do not claim provider I/O occurred. |
 | TickerQ dashboard | Optional instance-admin-only scheduler internals. It is disabled by default and is not the product/operator source of truth for email delivery state. |
 | Structured drain logs | Include dispatch/outbox IDs, tenant IDs, outcomes, retry delay, and normalized failure category; do not include bodies, recipients, subjects, secrets, provider message IDs, or raw SMTP error text. |
 
-Timeout-like SMTP outcomes are recorded as `Unknown` instead of blind retry. Skipped rows are terminal preference/compliance outcomes and are not replayable. Dead-lettered rows remain in PostgreSQL for operator inspection and later replay tooling.
+Timeout-like SMTP outcomes are recorded as `Unknown` instead of blind retry. Use the HAL `reconcile` action only after provider evidence supports `Delivered` or `NotDelivered`; the transaction aligns outbox, current attempt, receipt, and notification delivery. Generic replay excludes `Unknown`, while `resolve-without-replay` remains the explicit unresolved/abandon path. Skipped rows are terminal.
 
-Crash-window recovery is intentionally conservative. If a node dies after claiming a row but before persisting a final delivery state, the stale-processing recovery scan clears the processing lease, marks the outbox row `Unknown` with failure category `processing_lease_expired`, and marks any processing receipt `Unknown`. Operators should inspect the HAL-gated EmailDispatch admin status and replay only when the business context makes another send safe. The recovery path does not infer SMTP success from TickerQ job state.
+Crash-window recovery follows the durable handoff evidence. If a node dies after claim but before `provider_handoff_started`, the scan clears the exact lease and schedules an immediate safe retry with `processing_lease_released`; no SMTP attempt was consumed. If the current attempt has the provider fence, or a processing receipt shows a partial fence, recovery atomically marks the outbox/current attempt/receipt/delivery graph `Unknown` with `processing_lease_expired`. Operators must reconcile fenced uncertainty before replay. Recovery selects bounded rows with `FOR UPDATE SKIP LOCKED` and never infers SMTP success from TickerQ or RabbitMQ state.
 
 TickerQ retries are infrastructure retries. Expected SMTP/provider outcomes should be caught by the drain service and persisted in `EmailDispatchOutbox`; only unexpected infrastructure failures should bubble to TickerQ as failed job executions.
 
@@ -650,11 +656,11 @@ PostgreSQL remains the email delivery ledger. Parent-aware content retention is 
 - A `Purged` tenant is eligible immediately. Non-sent work and related delivery/receipt state become typed `tenant_deleted` skips before only non-PII ledger metadata remains.
 - Run with `EmailDispatchRetention:DryRun=true` first when changing retention policy. Compare the bounded eligible count, then restore mutating mode. Repeated passes are idempotent because already-redacted parents are excluded.
 
-The remaining lifecycle release requirements are:
+The lifecycle dispatch foundation now processes bounded batches with fair tenant rounds, cross-replica concurrency ceilings, persisted global/per-tenant SMTP buckets, required-work priority, and persisted high/low optional-reminder hysteresis. Rate deferral occurs before attempt/fence creation and therefore consumes no SMTP attempt budget.
 
-- process bounded batches with fair tenant rounds, configurable global/per-tenant concurrency and SMTP rate limits, required-work priority, and high/low backlog hysteresis that defers optional reminders without consuming SMTP attempt count;
-- expose oldest pending email/fanout age, success/failure and retryable/permanent rates, dead-letter/unknown/parked counts, typed skip counts, fanout progress/lease contention, and bounded tenant backlog without recipient PII;
-- provide authenticated HAL-gated controls to pause/drain, suppress a compromised tenant sender, inspect/reconcile/replay eligible failures, adjust rates, and dry-run cleanup.
+Implemented operator controls now include authenticated HAL-gated instance pause/resume, bounded global SMTP-rate override/clear, tenant suppression, replay/park/resolve, two-outcome `Unknown` reconciliation, and retention dry-run. Remaining lifecycle release requirements are:
+
+- expose fanout oldest-pending age, progress, and lease-contention telemetry without recipient PII;
 
 Eligibility and the occurrence/version fence are checked in the conditional provider-handoff transition. Before that transition, cancellation, consent withdrawal, preference, deletion, and supersession can skip work. After it, in-flight cancellation is not promised; I/O/protocol/process/persistence uncertainty settles as `Unknown` and is never automatically resent.
 
@@ -668,7 +674,7 @@ Operator signals:
 |---|---|
 | `email-dispatch-rabbitmq` health check | Disabled mode is healthy and independent; enabled mode proves broker connectivity and topology declaration. |
 | `explore.email_dispatch.rabbitmq.publishes` | Outcome counter for disabled, confirmed, returned, nacked, failed, and timeout publish attempts. |
-| `explore.email_dispatch.rabbitmq.consumes` | Manual-ack dispatch and DLQ replay delivery counter with low-cardinality `tenant_id`, `outcome`, and `failure_category` tags only. |
+| `explore.email_dispatch.rabbitmq.consumes` | Manual-ack dispatch and DLQ replay delivery counter with closed-vocabulary `outcome` and `failure_category` tags only; tenant identity is omitted. |
 | Structured RabbitMQ transport logs | Include dispatch IDs, tenant IDs, topology names, outcomes, and normalized failure categories; do not include recipient addresses, subjects, bodies, provider message IDs, raw broker errors, or AMQP connection strings. |
 
 The RabbitMQ payload is a pointer contract only: tenant ID, stable `PublishEventId`, dispatch kind, source IDs, and optional event/registration/user IDs. Email body, subject, recipient, reply-to, SMTP settings, provider message IDs, and raw provider errors remain out of broker payloads and logs.
@@ -1010,6 +1016,22 @@ Admin settings management:
 | `islamu_tms_fallback_activated_total` | > 0 in 5m | TMS provider failed; page on-call |
 | `islamu_translation_fetch_duration_seconds` | p99 > 5s | TMS latency degradation |
 | `islamu_translation_fetch_total{result="error"}` | > 10 in 5m | Repeated fetch failures |
+
+### AT Protocol Operations
+
+AT Protocol event federation is disabled by governance by default. Before enabling `federation.atproto_events_enabled`, verify the OAuth health check is ready, the migrations are current, the curated Jetstream DID allowlist is non-empty, and the PDS/Jetstream worker bounds match [CONFIGURATION.md](CONFIGURATION.md). The administrator capability enables both inbound event discovery and eligibility for outbound publication; each owner must still opt in through `federation.atproto_publish_my_events`.
+
+Operational signals are intentionally bounded:
+
+| Signal | Meaning |
+|---|---|
+| `atproto.authentication.operations` | Count of readiness/challenge/callback/bridge/refresh/revoke outcomes with bounded `operation` and `outcome` tags. |
+| `atproto.authentication.duration` | Matching authentication duration histogram in seconds. |
+| `atproto.jetstream.envelopes` | Jetstream connection, replay, fencing, materialization, quarantine, and lease outcomes; the optional `collection` tag is normalized to `event`, `rsvp`, or `unsupported`. |
+| `atproto-authentication` health check | BFF readiness for canonical public URL/callback, signing material, state/session stores, and provider configuration; failure detail is reduced to a stable code. |
+| `PdsSyncWorker` structured logs | Per-claim completion or bounded `FailureCode`/`FailureDisposition`; provider response bodies, OAuth material, DIDs, record keys, and payloads must not be logged. |
+
+For delayed or failed publication, keep the local event authoritative. Inspect the newest non-superseded `PdsSyncOutbox` row for the tenant/event, verify capability, consent, linked session, and public-location eligibility, then follow the stable recovery guidance in [TROUBLESHOOTING.md](TROUBLESHOOTING.md). Do not create a PDS record manually and do not replay by changing the stable record key.
 
 ## Incident Triage Quick Checks
 

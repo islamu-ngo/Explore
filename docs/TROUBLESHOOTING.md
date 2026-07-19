@@ -116,7 +116,36 @@ Checks:
 9. Do not enable CarpaNet logging or attach raw OAuth bodies to tickets. Never capture authorization codes, refresh/access tokens, assertions, DPoP proofs/nonces, private JWK material, provider response bodies, or user PDS identifiers. Report only the bounded failure category and redacted endpoint class.
 10. PDS calls must go through the Infrastructure hardened core-client factory. If `getSession` appears to bypass DNS/redirect controls, check for accidental use of CarpaNet's returned OAuth client and replace it with the application-owned core client.
 
+Cache and PDS recovery:
+
+- Redis or distributed-cache loss invalidates outstanding OAuth state and tenant handoff codes. Restore the cache, confirm its readiness check, and restart the login from the handle form. Do not retry an old callback and do not enable `UseSingleNodeMemoryStore` outside a single-node Development host. Persisted encrypted OAuth sessions are separate from this transient state.
+- A PDS outage can prevent login, refresh, `getSession`, and best-effort remote revocation. Local sign-out must still clear the BFF cookie. Restore public DNS/TLS/PDS availability, then start a new login if refresh reports the durable session invalid, corrupt, revoked, expired, or bound to an unavailable retired key.
+- To invalidate a compromised local session, revoke/delete it through the authorized session lifecycle and clear the BFF cookie. Do not edit encrypted session bytes or reuse another user's DID/PDS binding. If remote revocation is unavailable, local removal remains authoritative and the bounded outage result is retained for operators.
+
 Recovery is configuration- and dependency-first: restore the secret resolver or durable stores, correct canonical public URLs/DNS/metadata, retain required retired keys, and start a new flow. Do not bypass endpoint discovery, private-client assertions, DPoP, response limits, or SSRF checks.
+
+### AT Protocol events are missing, pending, retrying, or failed
+
+Symptoms:
+
+- no federated events appear in public discovery;
+- a local My Events card remains `AT Protocol publication pending` or `delivery retrying`;
+- a card reports `AT Protocol delivery needs attention`;
+- an event exists locally but has no PDS record.
+
+Checks:
+
+1. Resolve the effective `federation.atproto_events_enabled` value and lock metadata. The same capability governs both inbound discovery and new eligible outbound enqueue. A disabled or locked-off tenant must show neither federated cards nor new publication work.
+2. For inbound discovery, confirm `Atproto:Jetstream:AllowedDids` contains the intended curated DIDs. An empty allowlist is a safe dormant configuration; when capability is enabled it is unhealthy and admits no records. Confirm the subscriber lease, last safe cursor, quarantine counts, exact wanted collections, and discovery-cache invalidation without logging DID/rkey/payload values.
+3. For outbound publication, confirm the owner enabled only their own `federation.atproto_publish_my_events`, has exactly one linked DID/session for the same tenant and PDS, and the event passed the effective `platform` or `community_lexicon` readiness profile. Administrator enablement never grants personal consent.
+4. Confirm the local event publication and immutable outbox row committed. A request handler never calls a PDS, and no recovery procedure may synthesize a PDS record when the local Event is absent. Projection coverage/privacy/size failure intentionally creates no outbox row; do not truncate the description or omit sessions/EAV/aspects/lookups to bypass it.
+5. For `pending` or `retrying`, inspect bounded lease age, retry count, next retry time, PDS worker health, and stable failure code. Expired processing leases are reclaimable. Do not manually clear fences or change stable record keys.
+6. `session_unavailable`, `session_binding_mismatch`, or `reauth_required` requires the user to reconnect the same AT Protocol account, then update the local event to request publication again.
+7. `record_conflict` or `remote_record_missing` means the PDS copy changed or disappeared. Update the local event to request safe reconciliation; do not issue an unfenced direct record write.
+8. Provider rate-limit, timeout, or availability failures retry automatically within the row's configured bound. Dead-lettered rows retain only stable codes; raw provider bodies, tokens, DPoP material, and session envelopes must not enter logs, support artifacts, API responses, or the UI.
+9. After successful delivery, verify the outbox URI/CID, canonical ownership/presentation, and local Event `AtprotoRecordId` were settled together. A crash after remote success should reconcile the same record key, never create a duplicate.
+
+Local data remains authoritative during every PDS outage or permanent federation failure. Do not delete or roll back a valid local event merely because delivery failed.
 
 ### Keycloak `unauthorized_client` during login
 
@@ -330,10 +359,16 @@ Checks:
 Checks:
 1. For local development, open Mailpit at the Aspire-discovered UI endpoint or Compose default `http://localhost:8025`. Non-isolated Aspire normally uses SMTP `localhost:1025`; isolated Aspire assigns dynamic ports, so run `aspire describe mailpit --apphost Explore.AppHost/Explore.AppHost.csproj --format Json` and verify API `email.smtp_port` matches the current Mailpit SMTP endpoint. Compose uses `mailpit:1025` from API containers.
 2. Check `/health`: `smtp` covers configured SMTP/Mailpit connectivity, `email-dispatch` covers Basic Dispatch trigger readiness, `email-dispatch-retention-cleanup` covers the retention worker posture, and `email-dispatch-rabbitmq` covers optional broker topology only when RabbitMQ mode is enabled. If Mailpit is stopped in FullLocal, API `/health` should return HTTP 503 with `smtp` Unhealthy. The SMTP readiness probe is bounded to five seconds; the 2026-07-04 local proof returned in `5.014s`.
-3. Inspect HAL-gated EmailDispatch admin status before replaying rows. Replay and park actions must be driven by `_links`; use `resolve-without-replay` with a bounded audit reason only when `DeadLettered`, `Unknown`, or `Parked` work should become terminal without SMTP delivery. Redacted rows expose no mutation affordances.
+3. Inspect HAL-gated EmailDispatch admin status before changing rows. Use only emitted `_links`. `Unknown` never exposes generic replay: reconcile it as `Delivered` or `NotDelivered` only with provider evidence, or use `resolve-without-replay` when the outcome cannot be proven and the work must be abandoned. Redacted and `Processing` rows expose no mutation affordances.
 4. Query `email_dispatch_outbox` by status and tenant. `Unknown` rows are inspectable crash-window outcomes; `DeadLettered` rows require operator review; `Skipped` rows are terminal preference/compliance outcomes.
    - For planned lifecycle rows, compare linked `NotificationDelivery` and immutable occurrence/policy versions. Do not replay `ContentRedactedAt`, consent-withdrawn, superseded, tenant-deleted, or post-handoff `Unknown` work until the authorized reconciliation surface says it is replayable.
    - If one tenant dominates the backlog, inspect fair-selection, per-tenant concurrency/rate limits, and high/low watermarks before increasing global throughput. Optional reminders should defer before required cancellation/moderation work.
+   - Rows with `last_failure_category = 'smtp_rate_deferred'` did not call SMTP and did not consume an attempt. Compare `email_dispatch_processor_states.smtp_refill_at` with the tenant row in `email_dispatch_tenant_controls`; the later exhausted refill boundary controls `next_attempt_at`. Do not manually create attempt/receipt evidence for these rows.
+   - An unfenced stale lease becomes `RetryScheduled`; a stale row with the current `provider_handoff_started` attempt or a processing receipt becomes `Unknown`. If those classifications look wrong, inspect the exact outbox lease/attempt graph before using a HAL replay action.
+   - If `globalPaused=true`, inspect `GET /api/admin/email-dispatch/control`. Resume only after the incident is contained. A temporary global rate override is visible as a boolean in public health and as its sanitized value in the authenticated control resource.
+   - For a compromised tenant sender, pause that tenant immediately with `PUT /api/admin/email-dispatch/tenants/{tenantId}/pause?reason=...`; use the tenant suppression/redaction lifecycle when tenant deletion or compromise requires queued content removal. Do not pause every tenant unless the provider/instance itself is unsafe.
+   - Distinguish tenant SMTP failure from instance failure: one tenant failing while others send points to tenant override/governance or tenant pause; all tenants failing plus `smtp` health failure points to instance credentials, DNS/TLS, provider outage, or global pause/rate control.
+   - Before changing retention, set `EmailDispatchRetention:DryRun=true`, restart the worker, compare only aggregate eligible counts/cutoff, then restore mutating mode. Dry-run must not be used as proof of message delivery.
 5. In RabbitMQ mode, verify broker connectivity, dispatch/DLX/parking topology, and bounded logs. Broker payloads must contain only pointer fields, never recipient, subject, body, SMTP credentials, provider IDs, or raw errors.
 6. Use `docs/EMAIL_NOTIFICATIONS.md` for focused Mailpit and RabbitMQ verification commands.
 

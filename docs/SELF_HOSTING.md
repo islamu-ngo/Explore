@@ -49,6 +49,7 @@ Failure or rollback returns the product to `area_only`; it must not start a brow
 Email dispatch modes:
 
 - **Basic Dispatch Mode is implemented and requires no extra Compose profile.** API + PostgreSQL + configured SMTP are sufficient for registration confirmation email. By default, API-hosted TickerQ schedules `email-dispatch-drain`, which claims `EmailDispatchOutbox` rows from PostgreSQL through the shared drain service and sends through the SMTP abstraction. `EmailDispatchProcessor:Mode=HostedService` is a fallback trigger, not a separate business workflow.
+- Configure `EmailDispatchProcessor:MaxConcurrentDispatches`, `MaxConcurrentDispatchesPerTenant`, `GlobalSmtpRateLimitPerMinute`, and `TenantSmtpRateLimitPerMinute` for provider capacity. These are shared PostgreSQL limits, not per-replica multipliers; the defaults are `8`, `2`, `120`, and `30`. Rate deferral preserves SMTP retry budget.
 - The Compose default SMTP target is local Mailpit: API containers use SMTP host `mailpit`, port `1025`, encryption `None`, and from-address `noreply@localhost`. Open the capture UI at `http://localhost:8025`. Replace `MAIL_SMTP_*` values before using a real external SMTP provider.
 - **RabbitMQ Dispatch Mode is optional transport infrastructure.** The repository now has a local Aspire RabbitMQ resource plus API-side pointer publishing, topology declaration, health checks, manual-ack consumption, and DLQ replay/parking for pointer-only dispatch messages. The production Compose stack still does not require or start RabbitMQ by default. Enabling RabbitMQ outside Aspire requires an operator-provided broker connection string and an explicit `EmailDispatchRabbitMq:Enabled=true` opt-in. RabbitMQ shares the same PostgreSQL `EmailDispatchOutbox` state machine; it is transport only.
 
@@ -230,6 +231,24 @@ CarpaNet diagnostic logging remains disabled because the library can log OAuth i
 
 AT Protocol readiness stays false until the public identity, signing ring, and durable OAuth state and session stores are all available. The transport boundary can be deployed before those persistence adapters; the provider must remain unavailable rather than using an in-memory production fallback.
 
+Roll out key rotation with overlap: add the new active key, retain the previous key as retired, verify `/health`, and remove the retired key only after no persisted OAuth session or unexpired first-party JWT depends on it. A Redis/cache loss invalidates in-flight OAuth state and cross-host handoffs, so restore the cache and ask users with an in-flight login to restart; it does not justify enabling the single-node memory store in production. A PDS outage makes new login, refresh, or remote revocation unavailable, but sign-out must still clear the local BFF cookie. Restore PDS reachability and start a new login when the durable session is invalid or expired.
+
+### AT Protocol Event Federation
+
+Event federation is disabled by default through `federation.atproto_events_enabled`. Enabling that effective setting activates both tenant-visible Jetstream discovery and new eligible outbound event/RSVP publication; it does not grant a user's `federation.atproto_publish_my_events` consent. Instance administrators own defaults and locks, while tenant administrators may override only when the server reports the setting editable.
+
+Before enabling the capability:
+
+1. Complete ATProto OAuth configuration and verify the BFF `atproto-authentication` health check.
+2. Configure `Atproto:Jetstream:AllowedDids` with the curated DIDs admitted to public discovery. Empty is safe for a dormant host but fails closed when federation is enabled.
+3. Verify PostgreSQL migrations include the hardened `AtprotoRecord`, ownership/presentation, event projection, cursor/quarantine, and `PdsSyncOutbox` schema.
+4. Keep `Atproto:PdsSync` and `Atproto:Jetstream` worker settings within the validated bounds documented in [CONFIGURATION.md](CONFIGURATION.md#at-protocol-events-governance-and-workers).
+5. Select `platform` validation unless the operator intentionally wants the community lexicon's minimum business requirements. `community_lexicon` never relaxes authorization, tenant isolation, consent, privacy, storage, reference integrity, concurrency, or validation of supplied optional values.
+
+The API database is authoritative. Event lifecycle transactions commit the local event and immutable outbox intent together, and only then may the worker call CarpaNet. Do not place a PDS call in an API request transaction and do not recover by creating a remote record for a missing local event. All public snapshot values without a native community lexicon property—including every session, EAV value, aspect, and resolved lookup—must fit in the one readable description; coverage or size failure means no PDS enqueue, never truncation.
+
+Scale horizontally without starting per-tenant sockets: one leased Jetstream consumer maintains the global canonical record/cursor state, and tenant presentation joins filter discovery. PDS delivery uses expiring fenced claims and stable record keys so crashed workers are reclaimable and a retry after remote success reconciles rather than duplicates.
+
 ### Multi-Tenant Hostnames And Reverse Proxy
 
 Multi-tenant deployments use three host classes in front of the Blazor BFF:
@@ -267,6 +286,8 @@ The default Compose stack starts Mailpit without a profile so first-run registra
 | `MAIL_SMTP_FROM_ADDRESS`, `MAIL_SMTP_FROM_NAME` | Default sender metadata for local SMTP testing. |
 
 The `/smtp` Infisical folder and `.env` file use the same `MAIL_SMTP_*` names. The older `SMTP_*` environment aliases are still supplied by Compose for local compatibility, but new secret bindings should prefer `MAIL_SMTP_*`.
+
+Before testing external SMTP, use Mailpit first: send one product dispatch, confirm the PostgreSQL outbox/attempt/receipt graph settles, then inspect the captured message at `http://localhost:8025`. For a shared test SMTP account, use a non-production recipient/domain and the same `MAIL_SMTP_*` inputs; never copy provider credentials, recipient addresses, or bodies into tickets. Instance administrators can pause all admission and apply a temporary bounded global rate override through `/api/admin/email-dispatch/control`; clear the override after the incident so static configuration becomes authoritative again.
 
 ### AI Assistant
 
@@ -427,6 +448,8 @@ Operational controls:
 
 ## Health Checks
 
+The Blazor BFF `/health` response includes `atproto-authentication`. Disabled AT Protocol login is healthy dormant state with `enabled=false`. When login is enabled, invalid public identity, missing signing keys, or unavailable state/session stores make readiness unhealthy with a bounded `failureCode`. The probe is local and passive: it never resolves a handle, contacts a user PDS, performs OAuth discovery, or returns configuration values.
+
 | Endpoint | Host | Purpose |
 |---|---|---|
 | `/alive` | API, Blazor | Liveness probe. |
@@ -437,7 +460,7 @@ Treat `Unhealthy` as non-deployable. Treat `Degraded` as acceptable only when th
 
 For explicit `AUTHORIZATION_PROVIDER=cerbos`, PDP reachability alone is not onboarding readiness. The authorization status is ready only after the background reconciliation also publishes the bundled policy package. A failed verification or publish remains fail-closed and must be repaired from the deployment-owned authorization task before launch.
 
-Basic Email Dispatch readiness is reported by the API `email-dispatch` health check. `Degraded` means dispatch is intentionally disabled. `Unhealthy` means the selected trigger is not usable, for example `EmailDispatchProcessor:Mode=TickerQ` while `Scheduler:TickerQ:Enabled=false`. RabbitMQ is not part of Basic Dispatch Mode readiness.
+Basic Email Dispatch readiness is reported by the API `email-dispatch` health check. `Degraded` means dispatch is intentionally disabled, globally paused, or has a bounded warning condition. `Unhealthy` means the selected trigger is unusable, for example TickerQ mode with its scheduler disabled. The payload exposes only booleans for global pause/rate override, never operator reason or actor. RabbitMQ is not part of Basic Dispatch Mode readiness.
 
 The approved lifecycle-email expansion remains self-hostable with PostgreSQL plus SMTP; Mailpit remains the local capture service and RabbitMQ remains optional. Before enabling new lifecycle triggers, operators must configure bounded concurrency/rates/backpressure, retention/redaction cleanup, alert thresholds, and tenant/global pause controls, then prove a PostgreSQL -> attempt/receipt -> SMTP -> Mailpit run. Required cancellation/moderation work must not be starved by one tenant or optional reminders.
 

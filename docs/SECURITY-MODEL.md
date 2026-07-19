@@ -47,6 +47,18 @@ Current security gates:
 - Dev mode: accepts self-signed certificates, suppresses HTTPS metadata requirement.
 - Detailed JWT event logging on: `OnMessageReceived`, `OnAuthenticationFailed`, and `OnChallenge`.
 
+### ATProto bootstrap and first-party session schemes
+
+The `MultiAuth` policy selector preserves the Keycloak and API-key branches and adds two purpose-separated ATProto schemes:
+
+- `AtprotoBootstrap` is valid only for `POST /api/auth/atproto/session`. The BFF signs a one-minute ES256 assertion with the OAuth-client key ring and binds issuer, audience, tenant, method, path, `iat`, expiry, and single-use `jti`. The assertion carries no DID or user authority. Browser-supplied bootstrap headers are stripped, and the BFF injects a server-created assertion only for the private bridge request.
+- The API atomically consumes the bootstrap `jti` in the durable idempotency table before dispatch. PostgreSQL `INSERT ... ON CONFLICT DO NOTHING` makes concurrent replay have exactly one winner across API instances.
+- The private bridge is excluded from API discovery and generated browser clients, rate-limited as a write, request-size bounded, and returned with `no-store`. It accepts opaque CarpaNet session material only over the server-to-server BFF boundary.
+- Infrastructure restores the OAuth session through CarpaNet, permits token refresh through the constrained ATProto transport, calls the user's PDS `com.atproto.server.getSession`, and requires the authenticated DID, returned DID, expected canonical HTTPS PDS, and linked tenant identity to agree before any write.
+- `AtprotoSession` accepts only ES256 first-party tokens from the separate session-JWT key ring, with exact issuer/audience, known `kid`, valid lifetime, tenant claim, `auth_provider=atproto`, DID claim, and a platform user `Guid` in `sub`. Configured lifetime is constrained to one through sixty minutes.
+
+OAuth session JSON, access/refresh tokens, DPoP material, JWTs, and JWK private values must never appear in logs, traces, metrics, URLs, OpenAPI, WASM authentication state, or generated clients. Verification failures use bounded reason codes; provider exceptions and response bodies are not reflected to callers.
+
 ## Auth Diagnostic Safety
 
 OIDC and BFF challenge failures must expose only safe diagnostic handles:
