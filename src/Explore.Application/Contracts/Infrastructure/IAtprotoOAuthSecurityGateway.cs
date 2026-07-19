@@ -1,0 +1,40 @@
+// ABOUTME: Defines the Application boundary for independently verifying and persisting ATProto OAuth sessions.
+// ABOUTME: Keeps CarpaNet credential types and PDS network access in Infrastructure.
+
+using Explore.Application.Features.Authentication.Atproto.Models;
+
+namespace Explore.Application.Contracts.Infrastructure;
+
+public interface IAtprotoOAuthSecurityGateway
+{
+    Task<AtprotoOAuthVerificationResult> VerifyAsync(
+        AtprotoOAuthVerificationInput request,
+        CancellationToken cancellationToken);
+
+    Task PersistAsync(
+        AtprotoVerifiedOAuthSession verifiedSession,
+        Guid tenantId,
+        Guid userId,
+        CancellationToken cancellationToken);
+
+    Task<AtprotoCurrentOAuthSession?> GetCurrentAsync(
+        AtprotoCurrentSessionIdentity identity,
+        CancellationToken cancellationToken);
+
+    Task<AtprotoOAuthRefreshResult> RefreshAsync(
+        AtprotoCurrentSessionIdentity identity,
+        CancellationToken cancellationToken);
+
+    Task<AtprotoSessionRevocationResult> RevokeCurrentAsync(
+        AtprotoCurrentSessionIdentity identity,
+        CancellationToken cancellationToken);
+}
+
+public interface IAtprotoSessionTokenIssuer
+{
+    Task<AtprotoIssuedSessionToken> IssueAsync(
+        Guid userId,
+        Guid tenantId,
+        string did,
+        CancellationToken cancellationToken);
+}
