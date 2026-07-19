@@ -3,9 +3,9 @@
 
 # AT Protocol Integration — Context
 
-Last Updated: 2026-07-18 Europe/Brussels
+Last Updated: 2026-07-19 Europe/Brussels
 
-## SESSION PROGRESS (2026-07-18 Europe/Brussels)
+## SESSION PROGRESS (2026-07-19 Europe/Brussels)
 
 ### COMPLETED
 
@@ -19,27 +19,39 @@ Last Updated: 2026-07-18 Europe/Brussels
 - Verified the full event graph spans sessions, days, agenda, locations/rooms, lookups, aspects, categories/tags, speakers/languages, and event/session custom-property EAV values.
 - Re-queried Context7 /drasticactions/carpanet for RestoreSessionAsync, repository record operations, and Jetstream WantedCollections/cursor/commit behavior.
 - Replaced the former F0 blocker with executable governance, projection, outbox, Jetstream, API/HAL, and UI phases. ADR-015 is now Task 9.1.
-- Execution was approved by the user's persistent implementation goal; the workstream is now in progress with 5/27 product tasks complete.
+- Execution was approved by the user's persistent implementation goal; all 27/27 planned product tasks are now implemented.
 - Captured a fresh protected dirty-tree fingerprint at HEAD `aefa7797054c58a1233267835417aea46830b050` and confirmed the exact Release baseline: 25 projects, 0 errors, 0 warnings.
 - Reconciled architecture corrections: no direct `AtprotoRecord` mutations, a server-private bridge, the existing `IsLockable` engine, typed RSVP projection, public-location disclosure, independent source-field manifests, global canonical inbound ownership, capability-bound community readiness, and last-moment delivery gate rechecks.
 - Completed and independently verified Task 1.1: stable CarpaNet 1.0.2 packages are centrally pinned with NuGet-generated lock files, BFF/Infrastructure ownership is enforced, and the exact eight-file authoritative local lexicon closure compiles without network resolution. Evidence is in `.omo/evidence/atproto-auth/task-2/README.md`.
 - Completed and independently verified Task 1.2: ADR-014, canonical OAuth client metadata/JWKS publication, a strict rotation-capable ES256 key provider, typed BFF options/Infisical mapping, and three direct instance-only secret definitions are implemented. Implementation evidence is in `.omo/evidence/atproto-auth/task-3a/`; independent confirmation is in `.omo/evidence/atproto-auth/task-3a-verifier/`.
 - Task 1.2 security rework now rejects ambiguous/non-local callback paths, credential-bearing or non-canonical public origins, and non-canonical base64url JWK values; public JWKS and browser contracts remain private-material free.
 - Completed and independently scoped-confirmed Task 1.3: one package-free shared transport now enforces canonical metadata, strict OAuth forms, fresh issuer-bound assertions, mandatory response nonces, DNS-pinned public egress, bounded responses, and fail-closed readiness across BFF and Infrastructure. Evidence is in `.omo/evidence/atproto-auth/task-3/README.md`.
+- Completed the remaining OAuth/session, governed event federation, exhaustive projection, transactional outbound delivery, filtered Jetstream ingress, tenant-gated discovery/HAL, and administrator/user/client surfaces. Independent evidence for the final API slice is in `.omo/evidence/atproto-auth/task-13/README.md`.
+- Added tenant-scoped current PDS delivery state to My Events, stable recovery guidance without raw provider text, and transactional settlement link-back from the canonical ATProto record to the committed local Event.
+- The administrator components now use `IAtprotoFederationSettingsService` instead of directly injecting the generated API client; the shared test context supplies the typed service boundary. The complete Blazor client suite is green: 1,728 passed and one pre-existing explicit skip.
+- Repaired the final ATProto architecture gaps: immutable atomic-cache snapshots, truthful 3xx OpenAPI success metadata, CQRS/repository naming alignment, explicitly BFF-private bridge models, and typed UI service ownership. The architecture suite improved from 9 failures to 2 unrelated baseline failures.
+- Fixed the reported compilation diagnostics by removing obsolete raw `AtprotoRecordDto` serializer roots, removing the obsolete `PermissionAction` attribute constructor, and matching the `ISecureRequest.ResourceAttributes` nullability contract.
+- Reconciled federation, API, configuration, self-hosting, troubleshooting, project, architecture, outbox, and operations documentation with the implemented governance, DB-first delivery, exhaustive one-description projection, Jetstream ingestion, safe HAL, client status, and recovery contracts.
+- Regenerated `docs/API_CONTRACT_INVENTORY.md` from the current canonical OpenAPI schema; the obsolete raw `/api/atprotorecord` surface is absent and the typed federated-event source redirect is recorded.
 
 ### IN PROGRESS
 
-- Phase 1 implementation is complete. Its final root verification is pending only because unrelated concurrent email-retention changes currently break the Infrastructure test fixture contract and one email side-effect architecture rule. Phase 7 governance/validation is independently verified complete.
+- No ATProto implementation or documentation work remains. Only unrelated shared-tree broad-gate failures remain open.
 
 ### NEXT
 
-1. Re-run the Phase 1 Release build and architecture gates when the unrelated email-retention work settles.
-2. Mark Phase 1 verification complete only when both root commands pass.
-3. Begin Task 2.1 encrypted DID-keyed session persistence after that gate.
+1. Re-run the open Release/Application/Architecture/Persistence/API broad gates after their unrelated owners repair the shared-tree failures.
+2. Keep ATProto focused verification green and do not absorb unrelated notification/email/location work into this workstream.
 
 ### BLOCKERS
 
-- **Shared-tree verification limitation:** the latest Phase 1 root rerun is unrelatedly blocked by `InMemoryEmailDispatchOutboxRepository` missing three new retention interface members; architecture additionally reports an unrelated `InstanceSettingsController` email-transport boundary violation. Task 1.3 itself is independently scoped-confirmed. Do not fix those email files from this workstream.
+- **Shared-tree Release/persistence compile limitation:** unrelated notification work currently leaves required `Event.Tenant` and `Event.VisibilityType` members unset at `NotificationFanoutOccurrenceRepositoryTests.cs:789`; the ATProto production projects themselves build successfully.
+- **Shared-tree Application limitation:** the canonical Application suite has 2,734 passes, two unrelated notification/email-metrics failures, and two skips.
+- **Shared-tree architecture limitation:** every ATProto-owned violation is fixed; only unrelated `EmailDispatchProcessorControlLinkPolicy` and pre-existing `CustomPropertyExposureScope` violations remain (255 passed, 2 failed, 1 skipped).
+- **Broad API evidence limitation:** the full API command was terminated at the tool/process boundary without a test verdict; all focused ATProto API suites are green.
+- **Shared-tree migration limitation:** the concurrent migration chain adds `smtp_available_tokens` twice and PostgreSQL stops with `42701` before ATProto test bodies.
+- **Visual evidence limitation:** the workstream explicitly forbids starting a browser/live app for phase verification. Semantic/accessibility bUnit coverage is green, but no live screenshot-based `/visual-qa` pass is claimed.
+- **Documentation source limitation:** Context7 was invoked as required but its monthly quota is exhausted; pinned CarpaNet 1.0.2 documentation/source under `/home/amir/dev/Github/CarpaNet` remains the recorded fallback authority.
 
 ### ACCEPTED PRODUCT CONSTRAINT
 
@@ -57,13 +69,28 @@ Last Updated: 2026-07-18 Europe/Brussels
 
 | Field | Value |
 |---|---|
-| Overall status | Approved; implementation in progress |
-| Completed implementation tasks | 5/27 |
-| Current priority | Implement encrypted DID-keyed persistence and exhaustive event/RSVP projection |
-| Next executable slice | Complete Tasks 2.1-2.2/9.1 and 8.1-8.2, then independently verify both lanes |
+| Overall status | 27/27 implementation tasks and documentation reconciliation complete; canonical verification executed and remaining failures classified as unrelated |
+| Completed implementation tasks | 27/27; final API/discovery slice independently confirmed |
+| Current priority | Completed-work handoff and preservation of unrelated concurrent changes |
+| Next executable slice | Re-run only the open broad gates after their unrelated blockers are repaired |
 | OAuth release | Fully planned in Phases 1-6 |
 | Federation release | Fully planned in Phases 7-12; ADR-015 is the first persistence task, not an external blocker |
 | Baseline build | Fresh green baseline at HEAD aefa7797 on 2026-07-18; 25 projects, 0 errors, 0 warnings |
+
+## Final Canonical Verification Matrix
+
+| Command | Result |
+|---|---|
+| `dotnet build --configuration Release --verbosity quiet` | Blocked only by two unrelated `CS9035` errors in `NotificationFanoutOccurrenceRepositoryTests.cs:789`. |
+| Event.Domain.UnitTests | Passed. |
+| Event.Application.UnitTests | 2,734 passed, 2 unrelated failures, 2 skipped. |
+| Event.Architecture.Tests | 255 passed, 2 unrelated failures, 1 skipped; all ATProto-owned failures are green. |
+| Explore.Secrets.UnitTests | Passed. |
+| Explore.Infrastructure.Tests `Category!=Runtime` | Passed. |
+| Event.Persistence.IntegrationTests | Compile-blocked by the same unrelated notification fixture. |
+| Event.API.IntegrationTests | Broad command indeterminate at the process boundary; focused ATProto API suites passed. |
+| Explore.Blazor.IntegrationTests | Passed. |
+| Explore.Blazor.Client.Tests | 1,728 passed, one pre-existing explicit skip. |
 
 ## Evidence Sources Read
 
@@ -157,7 +184,7 @@ Last Updated: 2026-07-18 Europe/Brussels
 | src/Explore.API/Controllers/AtprotoSessionController.cs | New | API | Establish/refresh/revoke boundary | Explicit auth schemes and rate limits. |
 | src/Explore.API/Extensions/AuthenticationExtensions.cs | Existing | API | MultiAuth registration/selector | Add Bootstrap and Session validators. |
 | src/Explore.Application/Features/Authentication/Atproto/ | New | Application | CQRS establish/refresh/revoke use cases | Manual validators, public SyncUser request only. |
-| src/Explore.Application/Contracts/Identity/IAtprotoOAuthSecurityGateway.cs | New | Application | External OAuth verification/crypto boundary | No Carpa types leak into Application. |
+| src/Explore.Application/Contracts/Infrastructure/IAtprotoOAuthSecurityGateway.cs | New/implemented | Application | External OAuth verification/crypto boundary | No Carpa types leak into Application. |
 | src/Explore.Infrastructure/Services/Federation/AtprotoOAuthSecurityGateway.cs | New | Infrastructure | CarpaNet verify/restore/JWT operations | Uses constrained transport. |
 | src/Explore.Infrastructure/Services/Federation/RepositoryBackedOAuthSessionStore.cs | New | Infrastructure | Durable CarpaNet store | Same table as BFF API adapter. |
 | src/Explore.Infrastructure/Services/Federation/AtprotoSessionEnvelopeProtector.cs | New | Infrastructure | AES-GCM OAuthSessionData envelope | Key ring via Explore.Secrets. |
@@ -184,7 +211,7 @@ Last Updated: 2026-07-18 Europe/Brussels
 | src/Explore.API/BackgroundServices/PdsSyncWorker.cs | Existing | API host | Post-commit outbound delivery | Restore CarpaNet session; stable rkey; settle URI/CID before RSVP. |
 | src/Explore.Infrastructure/Services/Federation/AtprotoJetstreamSubscriber.cs | New | Infrastructure | Filtered inbound event/RSVP stream | Exactly two WantedCollections plus long cursor/tombstones. |
 
-## Verified Current Behavior
+## Verified Baseline Behavior Before This Implementation
 
 ### BFF
 
@@ -329,6 +356,36 @@ These are binding requirements assigned to Phases 7-12:
 - ADR-015 for payload, tenant/user ownership, direction/provenance, aggregate-version idempotency, leases, cursor/checkpoint policy, entity correlation, and settlement.
 
 ## Handoff Notes
+
+### Phase 9 implementation handoff — 2026-07-19 Europe/Brussels
+
+- **Current state:** Tasks 9.2-9.3 are implemented but deliberately unchecked until independent verification. Exact red/green history, commands, static scans, attributed files, and the PostgreSQL environment limitation are recorded in `.omo/evidence/atproto-auth/task-11/README.md`.
+- **Local-first transaction:** Event create/publish/update/cancel/delete/heavy-redact handlers plan immutable PDS work only after the local lifecycle write and inside the same `IUnitOfWork`. Stable outbox IDs/rkeys/timestamps are allocated before retryable delegates. Direct enabled tests prove local Event and registration writes precede outbox insertion while the transaction delegate is active, with no request-path gateway call.
+- **Delivery boundary:** `AtprotoPdsDeliveryProcessor` accepts only an active fenced claim, gates after claim, renews the exact lease, gates immediately before I/O, then delegates to the repository-backed CarpaNet gateway. Success fence-settles URI/CID; bounded permanent/transient failures fence-fail with capped retry and dead-letter semantics.
+- **CarpaNet repository writes:** The Infrastructure gateway restores only the exact tenant/user/DID/PDS OAuth session and verifies authenticated DID/PDS binding. The writer uses generic `getRecord`/`putRecord`/`deleteRecord`, a stable rkey, identical-payload reconciliation, and CID compare-and-swap so a crash after remote success does not create a duplicate.
+- **RSVP rule:** Only a committed active `EventRegistrationIntent` emits typed `#going`, only with a settled event URI/CID dependency. Approval workflow values are ignored. Cancellation deletes only the existing owned RSVP after the last active intent is gone; missing ownership never synthesizes a record. UpdateEventRegistration intentionally has no publication call.
+- **Verification:** Focused Application and Infrastructure suites, Persistence/API builds, the canonical 26-project Release build, and the ATProto architecture boundary suite are green. No Docker/live PDS was used; independent verification should run the PostgreSQL Phase 9 suite when available.
+- **Documentation source limitation:** Context7 quota remained exhausted, so exact transport behavior was verified against pinned local CarpaNet 1.0.2 docs/source under `/home/amir/dev/Github/CarpaNet`.
+
+### Phases 5-6 implementation checkpoint — 2026-07-19 Europe/Brussels
+
+- **Current state:** Tasks 5.1-6.2 are implemented but deliberately unchecked until independent verification. Exact commands, trust-boundary proof, static scans, shared-tree limitations, and the Context7 fallback are recorded in `.omo/evidence/atproto-auth/task-8/README.md`.
+- **Refresh decision:** Use a PostgreSQL session advisory lock derived deterministically from tenant/user/DID on the existing scoped EF connection. This serializes refresh across nodes without holding an EF execution-strategy transaction across CarpaNet HTTP. CarpaNet's `IOAuthSessionStore` persists rotated `OAuthSessionData` during explicit `DPoPTokenProvider.RefreshAsync`; only after authenticated `getSession` confirms the expected active DID/PDS does the API mint the replacement platform JWT.
+- **Revocation decision:** Browser cookie and circuit token are cleared before bounded remote work. The private DELETE dispatches typed CQRS revocation; real CarpaNet `SignOutAsync` is attempted and the exact local encrypted session is removed even on PDS outage, prior absence, or caller cancellation. The obsolete local-delete command/gateway path was removed rather than retained as a compatibility shim.
+- **BFF/API flow:** ATProto refresh is selected only by an unambiguous protected-cookie provider claim and server-validated platform user, tenant, DID, origin, and token properties. The BFF calls the hidden current-session POST/DELETE route with both bearer and one-use method/path-bound ES256 assertion. Refresh success replaces only protected cookie/circuit state; any rejected or invalid response signs out and returns stable `reauthentication_required` without retry loops or token-bearing bodies.
+- **Operations:** Passive readiness distinguishes disabled, ready, and safely unavailable configuration without a PDS/OAuth probe. Fixed-cardinality metrics cover readiness, challenge, callback, bridge verification, refresh, and revoke; no DID, handle, query, token, JWK, exception body, or arbitrary URL is a label.
+- **Public surface:** Raw token writes and direct public `AtprotoRecord` mutations have no controller/CQRS/OpenAPI/HAL/serializer/generated-client authority. The canonical NSwag command ran once. The handle UX remains labelled, required, autofocus/keyboard accessible, and posts server-side without URL handle leakage.
+- **Verification:** Focused Infrastructure gateway, API bridge metadata, BFF refresh/revoke, readiness, observability, login UX, generated-surface, and the complete Blazor.Client test project are green. The broad BFF project is 313/314 with one isolated-repeat failure in a pre-existing non-hermetic tenant-page fixture that reaches unavailable API/localhost endpoints; no Todo 8 diff touches its test/factory/forwarding/page stack. The canonical build and ATProto architecture build are currently stopped by unrelated concurrent email-dispatch interface drift (`CS1061`), the full Application project was also previously blocked by unrelated stale event-location constructors, and real PostgreSQL lock contention is blocked before its body by unrelated missing `is_deleted` schema state. No Docker, browser, Aspire, or live PDS was started.
+- **Documentation source limitation:** Context7 was invoked as required but its monthly quota was exhausted. Pinned local CarpaNet 1.0.2 docs/source under `/home/amir/dev/Github/CarpaNet/docs/docs` and the restored package were used as the recorded authoritative fallback.
+- **Next action:** Independent verifier reruns Todo 8 gates and audits ordering, identity binding, cancellation-safe cleanup, bounded operations, and browser isolation before checking any Phase 5/6 task or acceptance box.
+
+### Phase 3 implementation handoff — 2026-07-18 Europe/Brussels
+
+- **Current state:** Tasks 3.1-3.3 are implemented but deliberately unchecked until independent verification. The BFF assertion, API bootstrap/session schemes, replay ledger, linked-account-only CQRS transaction, real Carpa PDS verification, encrypted session persistence, first-party JWT, private controller, and MultiAuth routing are present.
+- **Security regression found and fixed:** deterministic real-Carpa coverage showed CarpaNet 1.0.2's default JSON resolver cannot deserialize its public `GetSessionResponse`. Infrastructure now adds its own source-generated response model to a cloned Carpa options resolver chain; the suite proves repeated restore from encrypted repository state.
+- **Validation:** focused BFF, API, Application, and Infrastructure tests pass; API/BFF/Infrastructure production builds report zero errors/warnings; persistence replay tests compile. Exact commands and red-green evidence are in `.omo/evidence/atproto-auth/task-6/README.md`.
+- **Independent gates:** run the PostgreSQL replay race with Testcontainers in an approved environment, inspect the private/OpenAPI/WASM boundary, and run full Phase 3 gates after unrelated shared test constructors settle.
+- **Non-negotiable boundaries:** bootstrap assertions carry no user/DID authority; PDS verification precedes all writes; only exact pre-linked identities may sign in; Actor/IndexedDid/encrypted session commit before JWT minting; OAuth-client, encryption, and session-JWT keys stay purpose-separated; Keycloak/API-key routing remains unchanged.
 
 ### Handoff — 2026-07-18 Europe/Brussels
 

@@ -3,15 +3,15 @@
 
 # AT Protocol Integration — Implementation Plan
 
-Last Updated: 2026-07-18 Europe/Brussels
+Last Updated: 2026-07-19 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Original request:** Write an implementation plan under dev/active for the ATProto implementation, follow dev/report/atproto-report.md strictly, use CarpaNet documentation from /home/amir/dev/Github/CarpaNet/docs/docs and Context7, ignore backward compatibility because the product is still in development, and preserve repository conventions, Clean Architecture, security, and maintainability. The 2026-07-18 clarification makes ATProto Events one governed capability for both fetch and publication, requires local-DB-first publication, requires every non-native public event field in the single event record description, and adds an administrator-selectable community-lexicon validation profile.
 - **Task directory:** dev/active/atproto-auth/
-- **Planning status:** Approved for execution; implementation in progress.
-- **Completed implementation tasks:** 5/27; Tasks 1.1-1.3 and 7.1-7.2 are independently verified. Phase 1 implementation is complete with root verification pending unrelated shared-tree repairs; Phase 7 is verified complete.
-- **Current priority:** Implement Task 2.1 encrypted DID-keyed session persistence and Phase 8 exhaustive event/RSVP projection in parallel.
+- **Planning status:** All 27 planned implementation tasks and documentation reconciliation are complete. Canonical verification has been executed; focused ATProto gates are green and remaining broad failures are unrelated shared-tree blockers.
+- **Completed implementation tasks:** 27/27. The final tenant-gated discovery/API slice is independently confirmed in `.omo/evidence/atproto-auth/task-13/README.md`.
+- **Current priority:** Completed-work handoff; re-run the open broad gates only after their unrelated notification/email/architecture blockers are repaired.
 - **Primary source:** dev/report/atproto-report.md, revision 3 dated 2026-07-18.
 - **Matched intents:** bff-auth-bug, add-write-endpoint, add-get-endpoint, add-cqrs-handler, add-ef-migration, update-repository-query, openapi-contract-change, add-hal-link, blazor-component-affordance, and external-infrastructure-bootstrap.
 - **Relevant skills:** implementation-plan, agentic-research, clean-architecture-rules, auth-patterns, blazor-bff-patterns, cqrs-mediatr-guidelines, dotnet-efcore-guidelines, outbox-pattern, error-tracking, blazor-ui-conventions, and lsp.
@@ -52,7 +52,7 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 - No reflection-based EF graph serialization, raw entity JSON, private registration answers, attendee PII, moderation evidence, audit internals, secrets, or internal-only identifiers in the PDS description.
 - No public create/update/delete API, DTO, handler, generated client method, or HAL affordance may directly mutate `AtprotoRecord`; only lifecycle-owned outbound delivery and the canonical inbound subscriber own those records.
 
-## 2. Source-Grounded Current State Report
+## 2. Source-Grounded Pre-Implementation State Report
 
 ### 2.1 Evidence Log
 
@@ -1008,13 +1008,15 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 - **Type:** create / modify
 - **Layer:** Application / Infrastructure / API
 - **Files:**
-  - src/Explore.Application/Contracts/Infrastructure/IPdsService.cs (existing)
-  - src/Explore.Infrastructure/Services/Federation/PdsService.cs (existing)
-  - src/Explore.API/BackgroundServices/PdsSyncWorker.cs (existing)
+  - src/Explore.Application/Contracts/Infrastructure/IAtprotoPdsDeliveryGateway.cs (new)
+  - src/Explore.Application/Features/Federation/Atproto/Services/AtprotoPdsDeliveryProcessor.cs (new)
+  - src/Explore.Infrastructure/Services/Federation/AtprotoPdsDeliveryGateway.cs (new)
+  - src/Explore.API/BackgroundServices/PdsSyncWorker.cs (new)
+  - src/Explore.API/BackgroundServices/PdsSyncWorkerOptions.cs (new)
   - src/Explore.Application/Features/EventRegistrations/Handlers/Commands/CreateEventRegistrationCommandHandler.cs (existing)
-  - src/Explore.Application/Features/EventRegistrations/Handlers/Commands/UpdateEventRegistrationCommandHandler.cs (existing)
   - src/Explore.Application/Features/EventRegistrations/Handlers/Commands/DeleteEventRegistrationCommandHandler.cs (existing)
-  - tests/Event.Persistence.IntegrationTests/Federation/PdsSyncWorkerSettlementTests.cs (new)
+  - src/Explore.Application/Features/EventRegistrations/Handlers/Commands/UpdateEventRegistrationCommandHandler.cs (existing; intentionally no RSVP publication call)
+  - focused Application/Infrastructure delivery, RSVP, and enabled-handler atomicity tests (new/modified)
 - **Description:** Replace unauthenticated raw HTTP with the repository-backed CarpaNet OAuth session restored by user DID. Immediately before each remote call, re-resolve the effective capability, current self-consent, and `EventLocationDisclosurePurpose.Public`; release/dead-letter the claim without remote I/O when any gate no longer permits delivery. Write the event at the stable record key with retry reconciliation and optional swap/CID protection supported by the pinned binding; classify 429/5xx/timeouts as retryable and auth/validation/ownership errors as permanent/reauth-required. Settle URI/CID transactionally. A committed active registration enqueues typed `#going` only after the event AtprotoRecord has URI/CID; user cancellation/deletion enqueues delete for the existing remote RSVP. Organizer approval changes never synthesize RSVP intent.
 - **Acceptance Criteria:**
   - [ ] Worker cannot process an uncommitted/disabled/cross-tenant row and restores only the row owner's session.
@@ -1127,9 +1129,13 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
   - src/Explore.Blazor.Client/Pages/Admin/Instance/Components/InstanceGovernanceSection.razor (existing)
   - src/Explore.Blazor.Client/Pages/Admin/Tenant/Components/TenantPoliciesSection.razor (existing)
   - src/Explore.Blazor.Client/Pages/User/UserProfile.razor and UserProfile.razor.cs (existing)
+  - src/Explore.Blazor.Client/Contracts/Services/Federation/IAtprotoFederationSettingsService.cs (new)
+  - src/Explore.Blazor.Client/Services/AtprotoFederationSettingsService.cs (new)
   - src/Explore.Blazor.Client/Clients/EventApiClient.g.cs (existing, generated)
   - src/Explore.Blazor.Client/Serialization/AppJsonSerializerContext.cs (existing)
-  - tests/Explore.Blazor.Client.Tests/Pages/AtprotoFederationSettingsTests.cs (new)
+  - tests/Explore.Blazor.Client.Tests/Pages/Admin/InstanceGovernanceSectionTests.cs (existing)
+  - tests/Explore.Blazor.Client.Tests/Pages/Admin/TenantPoliciesSectionTests.cs (existing)
+  - tests/Explore.Blazor.Client.Tests/Pages/User/UserProfileTests.cs (existing)
 - **Description:** Render the master capability, two instance lock controls, platform/community profile selector, effective-source/reason metadata, and self-scoped publication consent. Regenerate contracts from OpenAPI. Explain that enabling makes both fetching and eligible publication possible, but a PDS write still requires consent, a linked session, successful local publication, and complete projection.
 - **Acceptance Criteria:**
   - [ ] Instance admin can set defaults/locks; tenant admin can edit only when API metadata permits; user can change only personal consent.
@@ -1146,11 +1152,20 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 - **Type:** create / modify
 - **Layer:** Blazor Client
 - **Files:**
+  - src/Explore.Application/DTOs/Event/EventListDto.cs (existing)
+  - src/Explore.Application/Features/Events/Handlers/Queries/GetMyEventsRequestHandler.cs (existing)
+  - src/Explore.Application/Contracts/Persistence/IPdsSyncOutboxRepository.cs (existing)
+  - src/Explore.Persistence/Repositories/PdsSyncOutboxRepository.cs (existing)
   - src/Explore.Blazor.Client/Components/Discovery/HomeDiscoveryExperience.razor (existing)
   - src/Explore.Blazor.Client/Components/Discovery/UpcomingEventList.razor (existing)
-  - src/Explore.Blazor.Client/Pages/Events/EventList.razor and EventList.razor.cs (existing)
-  - tests/Explore.Blazor.Client.Tests/Pages/AtprotoFederatedEventRenderingTests.cs (new)
-- **Description:** Display source/provenance, safe external source navigation, and local outbound delivery state using generated DTOs and HAL relations. Keep local and inbound event presentation coherent and accessible. Never display raw outbox/provider error bodies; map stable failure codes to guidance.
+  - src/Explore.Blazor.Client/Pages/Events/Components/EventCard.razor and EventCard.razor.cs (existing)
+  - tests/Event.Application.UnitTests/Features/Events/Queries/GetMyEventsRequestHandlerTests.cs (new)
+  - tests/Event.Persistence.IntegrationTests/Federation/AtprotoFederationPersistenceTests.cs (existing)
+  - tests/Explore.Blazor.Client.Tests/Components/Event/EventCardTests.cs (existing)
+  - tests/Explore.Blazor.Client.Tests/Components/Discovery/HomeDiscoveryExperienceTests.cs (existing)
+  - tests/Explore.Blazor.Client.Tests/Components/Discovery/UpcomingEventListTests.cs (existing)
+  - tests/Explore.Blazor.Client.Tests/Services/EventServiceTests.cs (existing)
+- **Description:** Display source/provenance, safe external source navigation, and local outbound delivery state using generated DTOs and HAL relations. My Events performs one bounded tenant-scoped repository read that returns only the latest unsuperseded PDS delivery row per local event; successful settlement links the canonical AtprotoRecord back to the already-committed Event. Keep local and inbound event presentation coherent and accessible. Never display raw outbox/provider error bodies or machine codes; map stable failure codes to guidance.
 - **Acceptance Criteria:**
   - [ ] Federated source/status is understandable without relying only on color and links have descriptive accessible names.
   - [ ] Source/RSVP/retry/sync actions render only when their HAL relations exist.
