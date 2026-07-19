@@ -11,6 +11,11 @@ public interface IEventRegistrationRepository : IGenericRepository<EventRegistra
     Task<EventRegistration?> GetRegistrationByUserAndSession(Guid userId, Guid eventSessionId, CancellationToken cancellationToken = default);
     Task<List<EventRegistration>> GetRegistrationsBySession(Guid eventSessionId, CancellationToken cancellationToken = default);
     Task<List<EventRegistration>> GetRegistrationsByUser(Guid userId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<EventRegistration>> GetLocationAccessCoverageAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid userId,
+        CancellationToken cancellationToken);
     Task<bool> IsUserRegisteredForSession(Guid userId, Guid eventSessionId);
     Task<(List<EventRegistration> Items, int TotalCount)> GetRegistrationsByUserWithDetailsPaged(
         Guid userId,

@@ -1,7 +1,8 @@
-// ABOUTME: Pure Application contract for resolving registration-based access to an EventLocation.
-// ABOUTME: Accepts immutable loaded facts so ELP-225 can add repository-backed loading without DTO-returning repositories.
+// ABOUTME: Application contract for resolving registration-based access to requested EventLocations.
+// ABOUTME: Supports pure facts and validated entity batches without making repositories return authority DTOs.
 
 using System.Collections.Immutable;
+using Explore.Domain;
 using Explore.Domain.Enums;
 
 namespace Explore.Application.Contracts.Services;
@@ -9,6 +10,14 @@ namespace Explore.Application.Contracts.Services;
 public interface IEventLocationRegistrationAccessService
 {
     EventLocationRegistrationAccess Resolve(EventLocationRegistrationAccessRequest request);
+
+    IReadOnlyDictionary<Guid, EventLocationRegistrationAccess> ResolveMany(
+        Guid tenantId,
+        Guid eventId,
+        Guid userId,
+        DateTimeOffset asOfUtc,
+        IReadOnlyCollection<Guid> requestedEventLocationIds,
+        IReadOnlyCollection<EventRegistration> registrations);
 }
 
 public sealed record EventLocationRegistrationAccessRequest(

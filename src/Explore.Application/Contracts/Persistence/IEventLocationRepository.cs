@@ -18,5 +18,18 @@ public interface IEventLocationRepository
         Guid eventId,
         Guid locationId,
         CancellationToken cancellationToken);
+    Task<EventLocation?> FindActiveToBeAnnouncedAsync(
+        Guid eventId,
+        CancellationToken cancellationToken);
+    Task<bool> HasActiveCarrierReferencesAsync(
+        Guid eventLocationId,
+        CancellationToken cancellationToken);
+    Task<IReadOnlyList<EventLocation>> GetActiveForGovernanceUpdateAsync(
+        Guid? tenantId,
+        CancellationToken cancellationToken);
+    Task SaveGovernanceChangesAsync(
+        IReadOnlyCollection<EventLocationDisclosureAudit> audits,
+        IReadOnlyCollection<OutboxMessage> outboxMessages,
+        CancellationToken cancellationToken);
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

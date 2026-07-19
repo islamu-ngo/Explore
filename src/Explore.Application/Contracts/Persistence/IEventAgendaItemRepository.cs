@@ -12,4 +12,11 @@ public interface IEventAgendaItemRepository : IGenericRepository<EventAgendaItem
     Task<EventAgendaItem?> GetPublicByIdAsync(Guid id, CancellationToken cancellationToken);
 
     Task<List<EventAgendaItem>> GetPublicByEventAsync(Guid eventId, CancellationToken cancellationToken);
+
+    Task MoveToEventAsync(
+        EventAgendaItem agendaItem,
+        Guid eventId,
+        EventLocation eventLocation,
+        Guid? roomId,
+        CancellationToken cancellationToken);
 }

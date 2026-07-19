@@ -39,8 +39,8 @@ public interface IEventSessionRepository : IGenericRepository<EventSession, Guid
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// Layer B create path: opens a Serializable transaction, re-checks same-room overlap inside the
-    /// transaction, and commits only if no overlap exists. Throws
+    /// Layer B create path: reuses an ambient transaction or opens a Serializable transaction,
+    /// re-checks same-room overlap, and commits only if no overlap exists. Throws
     /// <see cref="Explore.Application.Exceptions.RoomScheduleConflictException"/> on conflict.
     /// If <see cref="EventSession.RoomId"/> is null, falls back to the base Create path.
     /// </summary>
@@ -52,4 +52,11 @@ public interface IEventSessionRepository : IGenericRepository<EventSession, Guid
     /// Throws <see cref="Explore.Application.Exceptions.RoomScheduleConflictException"/> on conflict.
     /// </summary>
     Task UpdateWithRoomOverlapGuardAsync(EventSession session, CancellationToken cancellationToken);
+
+    Task MoveToEventAsync(
+        EventSession session,
+        Guid eventId,
+        EventLocation eventLocation,
+        Guid? roomId,
+        CancellationToken cancellationToken);
 }

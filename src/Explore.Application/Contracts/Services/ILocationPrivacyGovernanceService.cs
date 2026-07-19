@@ -14,6 +14,20 @@ public enum LocationPrivacyGovernanceReasonCode
     RepositoryUnavailable = 5
 }
 
+public enum LocationPrivacyGovernanceSource
+{
+    FailClosed = 0,
+    ConservativeDefaults = 1,
+    Instance = 2,
+    InstanceAndTenant = 3
+}
+
+public sealed record LocationPrivacyGovernanceMetadata(
+    LocationPrivacyGovernanceSource Source,
+    string InstanceVersion,
+    string? TenantVersion,
+    string EffectiveVersion);
+
 public sealed record EffectiveLocationPrivacyGovernance(
     bool IsResolved,
     LocationPrivacyGovernanceReasonCode ReasonCode,
@@ -23,6 +37,12 @@ public sealed record EffectiveLocationPrivacyGovernance(
     LocationDisclosureAudienceEnum MinimumHomeAudience,
     TimeSpan DefaultRevealOffset)
 {
+    public LocationPrivacyGovernanceMetadata Metadata { get; init; } = new(
+        LocationPrivacyGovernanceSource.FailClosed,
+        "fail-closed",
+        null,
+        "fail-closed");
+
     public static EffectiveLocationPrivacyGovernance FailClosed(
         LocationPrivacyGovernanceReasonCode reasonCode)
         => new(
@@ -32,7 +52,14 @@ public sealed record EffectiveLocationPrivacyGovernance(
             AllowPublicExactAddress: false,
             AllowPublicCoordinates: false,
             MinimumHomeAudience: LocationDisclosureAudienceEnum.Never,
-            DefaultRevealOffset: TimeSpan.FromDays(30));
+            DefaultRevealOffset: TimeSpan.FromDays(30))
+        {
+            Metadata = new(
+                LocationPrivacyGovernanceSource.FailClosed,
+                "fail-closed",
+                null,
+                $"fail-closed:{reasonCode}")
+        };
 }
 
 public interface ILocationPrivacyGovernanceService

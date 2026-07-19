@@ -118,17 +118,9 @@ public sealed record EventLocationDisclosureResult
 
     public static EventLocationDisclosureResult Management(
         Guid eventLocationId,
-        Guid locationId,
         EventLocationDisclosureState state,
         EventLocationDisclosureValues values)
-    {
-        if (locationId == Guid.Empty)
-        {
-            throw new ArgumentException("Management disclosure requires a physical Location id.", nameof(locationId));
-        }
-
-        return Materialize(eventLocationId, EventLocationDisclosurePurpose.Management, state, locationId, values);
-    }
+        => Materialize(eventLocationId, EventLocationDisclosurePurpose.Management, state, null, values);
 
     private static EventLocationDisclosureResult Materialize(
         Guid eventLocationId,

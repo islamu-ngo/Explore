@@ -12,6 +12,9 @@ public interface IEventLocationExactReadAuditRepository
     Task<EventLocationExactReadAudit> AppendAsync(
         EventLocationExactReadAudit audit,
         CancellationToken cancellationToken);
+    Task AppendManyAsync(
+        IReadOnlyCollection<EventLocationExactReadAudit> audits,
+        CancellationToken cancellationToken);
     Task<IReadOnlyList<EventLocationExactReadAudit>> GetByEventLocationsAsync(
         IReadOnlyCollection<Guid> eventLocationIds,
         CancellationToken cancellationToken);
