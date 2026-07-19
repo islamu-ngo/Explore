@@ -185,6 +185,12 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
             Room = null;
         }
     }
+
+    public void DetachEventLocationForDeletion()
+    {
+        EventLocationId = null;
+        EventLocation = null;
+    }
 }
 
 public enum SessionStartTimeType

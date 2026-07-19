@@ -73,4 +73,10 @@ public class EventSessionGroup : ITenantEntity, IAuditableEntity, ISoftDeletable
             Room = null;
         }
     }
+
+    public void DetachEventLocationForDeletion()
+    {
+        EventLocationId = null;
+        EventLocation = null;
+    }
 }

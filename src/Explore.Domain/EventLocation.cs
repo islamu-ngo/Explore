@@ -218,6 +218,28 @@ public sealed class EventLocation : ITenantEntity, IAuditableEntity, ISoftDeleta
         return audit;
     }
 
+    public EventLocationDisclosureAudit ApplyGovernanceTightening(
+        bool requiresPrivacyReview,
+        Guid actorUserId,
+        DateTime changedAtUtc)
+    {
+        EventLocationDisclosureAudit audit = ChangeDisclosurePolicy(
+            GetDisclosureFields(),
+            (LocationDisclosureAudienceEnum)FullDetailsAudienceId,
+            RevealFullDetailsFromUtc,
+            PolicyVersion,
+            actorUserId,
+            EventLocationDisclosureAuditReasonEnum.GovernanceTightening,
+            changedAtUtc);
+
+        if (requiresPrivacyReview)
+        {
+            NeedsPrivacyReview = true;
+        }
+
+        return audit;
+    }
+
     public void DetachFinalReference(Guid actorUserId, DateTime deletedAtUtc)
     {
         RequireId(actorUserId, nameof(actorUserId));
