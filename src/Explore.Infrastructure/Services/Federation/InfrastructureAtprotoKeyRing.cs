@@ -53,6 +53,23 @@ internal sealed class InfrastructureAtprotoKeyRing
         });
     }
 
+    public ECDsa CreateEcdsaKey(string keyId, bool includePrivateKey)
+    {
+        if (!_keys.TryGetValue(keyId, out var key))
+        {
+            throw new InvalidOperationException("ATProto signing key is unavailable.");
+        }
+
+        return ECDsa.Create(new ECParameters
+        {
+            Curve = ECCurve.NamedCurves.nistP256,
+            D = includePrivateKey ? key.D.ToArray() : null,
+            Q = new ECPoint { X = key.X.ToArray(), Y = key.Y.ToArray() }
+        });
+    }
+
+    public IReadOnlyList<string> KeyIds => _keys.Keys.Order(StringComparer.Ordinal).ToArray();
+
     public static InfrastructureAtprotoKeyRing Parse(string? serialized)
     {
         if (string.IsNullOrWhiteSpace(serialized)

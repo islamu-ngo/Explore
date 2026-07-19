@@ -9,8 +9,24 @@ using Explore.Atproto.Transport;
 
 namespace Explore.Infrastructure.Services.Federation;
 
-public sealed class AtprotoCoreClientFactory(AtprotoOAuthClientFactory oauthFactory)
+public sealed class AtprotoCoreClientFactory
 {
+    private readonly AtprotoOAuthClientFactory _oauthFactory;
+    private readonly IAtprotoCorePrimaryHandlerFactory _primaryHandlerFactory;
+
+    public AtprotoCoreClientFactory(AtprotoOAuthClientFactory oauthFactory)
+        : this(oauthFactory, new ProductionAtprotoCorePrimaryHandlerFactory())
+    {
+    }
+
+    internal AtprotoCoreClientFactory(
+        AtprotoOAuthClientFactory oauthFactory,
+        IAtprotoCorePrimaryHandlerFactory primaryHandlerFactory)
+    {
+        _oauthFactory = oauthFactory;
+        _primaryHandlerFactory = primaryHandlerFactory;
+    }
+
     public async Task<AtprotoCoreClientLease> CreateAsync(
         string subjectDid,
         string pinnedKeyId,
@@ -19,7 +35,7 @@ public sealed class AtprotoCoreClientFactory(AtprotoOAuthClientFactory oauthFact
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(subjectDid);
         ArgumentNullException.ThrowIfNull(sessionStore);
-        var (ring, identity, policy) = await oauthFactory
+        var (ring, identity, policy) = await _oauthFactory
             .ResolveReadyContextAsync(cancellationToken)
             .ConfigureAwait(false);
         if (!ring.HasKey(pinnedKeyId))
@@ -31,7 +47,8 @@ public sealed class AtprotoCoreClientFactory(AtprotoOAuthClientFactory oauthFact
             policy,
             ring,
             identity,
-            pinnedKeyId);
+            pinnedKeyId,
+            _primaryHandlerFactory.CreateOAuthPrimary(policy));
         var discovery = new AuthorizationServerDiscovery(oauthHttpClient);
         var tokenProvider = new DPoPTokenProvider(
             oauthHttpClient,
@@ -56,7 +73,7 @@ public sealed class AtprotoCoreClientFactory(AtprotoOAuthClientFactory oauthFact
             }
 
             policy.ValidateUri(pdsUri);
-            var corePrimary = AtprotoHardenedHttpClient.CreatePrimaryHandler(policy, TimeSpan.FromSeconds(5));
+            var corePrimary = _primaryHandlerFactory.CreatePdsPrimary(policy);
             var coreAuth = new ATProtoDPoPAuthHandler(
                 tokenProvider,
                 new AtprotoBoundedResponseHandler(4 * 1024 * 1024, corePrimary));
@@ -66,12 +83,15 @@ public sealed class AtprotoCoreClientFactory(AtprotoOAuthClientFactory oauthFact
             };
             try
             {
+                var jsonOptions = new System.Text.Json.JsonSerializerOptions(
+                    global::CarpaNet.ATProtoClientFactory.CreateJsonOptions());
+                jsonOptions.TypeInfoResolverChain.Insert(0, InfrastructureAtprotoJsonContext.Default);
                 var client = new ATProtoClient(new ATProtoClientOptions
                 {
                     BaseUrl = pdsUri,
                     HttpClient = coreHttpClient,
                     TokenProvider = tokenProvider,
-                    JsonOptions = global::CarpaNet.ATProtoClientFactory.CreateJsonOptions(),
+                    JsonOptions = jsonOptions,
                     CborContext = global::CarpaNet.Cbor.ATProtoCborContext.Default,
                     CreateIdentityResolver = false,
                     AutoRetryOnAuthFailure = false,
@@ -95,6 +115,21 @@ public sealed class AtprotoCoreClientFactory(AtprotoOAuthClientFactory oauthFact
     }
 }
 
+internal interface IAtprotoCorePrimaryHandlerFactory
+{
+    HttpMessageHandler CreateOAuthPrimary(AtprotoOutboundPolicy policy);
+    HttpMessageHandler CreatePdsPrimary(AtprotoOutboundPolicy policy);
+}
+
+internal sealed class ProductionAtprotoCorePrimaryHandlerFactory : IAtprotoCorePrimaryHandlerFactory
+{
+    public HttpMessageHandler CreateOAuthPrimary(AtprotoOutboundPolicy policy) =>
+        AtprotoHardenedHttpClient.CreatePrimaryHandler(policy, TimeSpan.FromSeconds(5));
+
+    public HttpMessageHandler CreatePdsPrimary(AtprotoOutboundPolicy policy) =>
+        AtprotoHardenedHttpClient.CreatePrimaryHandler(policy, TimeSpan.FromSeconds(5));
+}
+
 public sealed class AtprotoCoreClientLease(
     ATProtoClient client,
     HttpClient coreHttpClient,
@@ -103,6 +138,9 @@ public sealed class AtprotoCoreClientLease(
     HttpClient oauthHttpClient) : IDisposable
 {
     public ATProtoClient Client { get; } = client;
+
+    public Task RefreshAsync(CancellationToken cancellationToken) =>
+        tokenProvider.RefreshAsync(cancellationToken);
 
     public void Dispose()
     {

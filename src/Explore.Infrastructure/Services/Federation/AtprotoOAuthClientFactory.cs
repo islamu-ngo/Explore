@@ -16,6 +16,19 @@ public sealed class AtprotoOAuthClientFactory(
     IOptions<AtprotoInfrastructureOptions> configuredOptions,
     IHostEnvironment environment)
 {
+    private readonly Func<AtprotoOutboundPolicy, HttpMessageHandler> _primaryHandlerFactory =
+        policy => AtprotoHardenedHttpClient.CreatePrimaryHandler(policy, TimeSpan.FromSeconds(5));
+
+    internal AtprotoOAuthClientFactory(
+        ISecretResolver secretResolver,
+        IOptions<AtprotoInfrastructureOptions> configuredOptions,
+        IHostEnvironment environment,
+        Func<AtprotoOutboundPolicy, HttpMessageHandler> primaryHandlerFactory)
+        : this(secretResolver, configuredOptions, environment)
+    {
+        _primaryHandlerFactory = primaryHandlerFactory;
+    }
+
     public async Task<AtprotoInfrastructureReadiness> GetReadinessAsync(
         CancellationToken cancellationToken)
     {
@@ -45,6 +58,19 @@ public sealed class AtprotoOAuthClientFactory(
         string pinnedKeyId,
         IOAuthStateStore stateStore,
         IOAuthSessionStore sessionStore,
+        CancellationToken cancellationToken) =>
+        await CreateAsync(
+            pinnedKeyId,
+            stateStore,
+            sessionStore,
+            revocationObserver: null,
+            cancellationToken).ConfigureAwait(false);
+
+    internal async Task<AtprotoInfrastructureOAuthLease> CreateAsync(
+        string pinnedKeyId,
+        IOAuthStateStore stateStore,
+        IOAuthSessionStore sessionStore,
+        AtprotoRevocationObserver? revocationObserver,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(stateStore);
@@ -55,11 +81,18 @@ public sealed class AtprotoOAuthClientFactory(
             throw new InvalidOperationException("ATProto Infrastructure OAuth is not ready.");
         }
 
+        HttpMessageHandler primary = _primaryHandlerFactory(policy);
+        if (revocationObserver is not null)
+        {
+            primary = new AtprotoRevocationObserverHandler(revocationObserver, primary);
+        }
+
         var httpClient = InfrastructureAtprotoOAuthTransportFactory.Create(
             policy,
             ring,
             identity,
-            pinnedKeyId);
+            pinnedKeyId,
+            primary);
         try
         {
             var config = new OAuthClientConfig

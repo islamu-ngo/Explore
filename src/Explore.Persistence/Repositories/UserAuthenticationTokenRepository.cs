@@ -112,6 +112,21 @@ public class UserAuthenticationTokenRepository : GenericRepository<UserAuthentic
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<UserAuthenticationToken>> GetAtprotoSessionsForReadAsync(
+        Guid tenantId,
+        Guid userId,
+        string provider,
+        CancellationToken cancellationToken = default) =>
+        await _dbContext.UserAuthenticationTokens
+            .AsNoTracking()
+            .Where(token =>
+                token.TenantId == tenantId
+                && token.UserId == userId
+                && token.Provider == provider)
+            .OrderBy(token => token.SubjectDid)
+            .Take(2)
+            .ToListAsync(cancellationToken);
+
     private IQueryable<UserAuthenticationToken> QueryAtprotoSession(
         Guid tenantId,
         Guid userId,

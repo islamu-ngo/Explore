@@ -2,6 +2,7 @@
 // ABOUTME: Requires an explicit tenant/user/DID/PDS/client-key binding for every store instance.
 
 using CarpaNet.OAuth.Storage;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 
@@ -12,8 +13,6 @@ public sealed class RepositoryBackedOAuthSessionStore(
     AtprotoSessionEnvelopeProtector protector,
     AtprotoOAuthSessionStoreContext context) : IOAuthSessionStore
 {
-    internal const string Provider = "atproto";
-
     public async Task StoreAsync(
         string sub,
         OAuthSessionData data,
@@ -26,7 +25,7 @@ public sealed class RepositoryBackedOAuthSessionStore(
         var existing = await repository.GetAtprotoSessionForUpdateAsync(
             context.TenantId,
             context.UserId,
-            Provider,
+            RepositoryBackedAtprotoSession.Provider,
             context.ExpectedSubjectDid,
             cancellationToken).ConfigureAwait(false);
 
@@ -39,7 +38,7 @@ public sealed class RepositoryBackedOAuthSessionStore(
                 Tenant = null!,
                 UserId = context.UserId,
                 User = null!,
-                Provider = Provider,
+                Provider = RepositoryBackedAtprotoSession.Provider,
                 SubjectDid = context.ExpectedSubjectDid,
                 SessionCiphertext = protectedSession.Ciphertext,
                 EncryptionKeyId = protectedSession.EncryptionKeyId,
@@ -68,7 +67,7 @@ public sealed class RepositoryBackedOAuthSessionStore(
         var existing = await repository.GetAtprotoSessionForUpdateAsync(
             context.TenantId,
             context.UserId,
-            Provider,
+            RepositoryBackedAtprotoSession.Provider,
             context.ExpectedSubjectDid,
             cancellationToken).ConfigureAwait(false);
         if (existing is null)
@@ -98,7 +97,7 @@ public sealed class RepositoryBackedOAuthSessionStore(
         await repository.DeleteAtprotoSessionAsync(
             context.TenantId,
             context.UserId,
-            Provider,
+            RepositoryBackedAtprotoSession.Provider,
             context.ExpectedSubjectDid,
             cancellationToken).ConfigureAwait(false);
     }

@@ -14,9 +14,21 @@ internal static class InfrastructureAtprotoOAuthTransportFactory
         InfrastructureAtprotoKeyRing ring,
         AtprotoClientIdentity identity,
         string pinnedKeyId)
+        => Create(
+            policy,
+            ring,
+            identity,
+            pinnedKeyId,
+            AtprotoHardenedHttpClient.CreatePrimaryHandler(policy, TimeSpan.FromSeconds(5)));
+
+    internal static HttpClient Create(
+        AtprotoOutboundPolicy policy,
+        InfrastructureAtprotoKeyRing ring,
+        AtprotoClientIdentity identity,
+        string pinnedKeyId,
+        HttpMessageHandler primary)
     {
         var registry = new AtprotoAuthorizationServerRegistry();
-        var primary = AtprotoHardenedHttpClient.CreatePrimaryHandler(policy, TimeSpan.FromSeconds(5));
         var bounded = new AtprotoBoundedResponseHandler(1024 * 1024, primary);
         var metadata = new AtprotoAuthorizationServerMetadataHandler(registry, policy, bounded);
         var assertions = new InfrastructureAtprotoPrivateKeyJwtHandler(

@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using CarpaNet.OAuth.Crypto;
 using CarpaNet.OAuth.Storage;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Secrets;
 using Explore.Domain.Secrets;
 
@@ -132,32 +133,41 @@ public sealed class AtprotoSessionEnvelopeProtector(ISecretResolver secretResolv
 
     private static void ValidateSession(OAuthSessionData session, AtprotoOAuthSessionStoreContext context)
     {
-        ArgumentNullException.ThrowIfNull(session);
-        if (!string.Equals(session.TokenSet.Sub, context.ExpectedSubjectDid, StringComparison.Ordinal)
-            || !string.Equals(
-                AtprotoOAuthSessionStoreContext.NormalizePdsUri(session.TokenSet.Audience),
-                context.ExpectedPdsUri,
-                StringComparison.Ordinal)
-            || session.DPoPKey.Kty != "EC"
-            || session.DPoPKey.Crv != "P-256"
-            || session.DPoPKey.Alg != "ES256"
-            || session.DPoPKey.Use != "sig"
-            || string.IsNullOrWhiteSpace(session.DPoPKey.X)
-            || string.IsNullOrWhiteSpace(session.DPoPKey.Y)
-            || string.IsNullOrWhiteSpace(session.DPoPKey.D)
-            || string.IsNullOrWhiteSpace(session.TokenSet.AccessToken)
-            || string.IsNullOrWhiteSpace(session.TokenSet.RefreshToken)
-            || string.IsNullOrWhiteSpace(session.TokenSet.Issuer)
+        if (session is null || session.TokenSet is null || session.DPoPKey is null)
+        {
+            throw Unavailable("invalid_session");
+        }
+
+        var tokenSet = session.TokenSet;
+        var dpopKey = session.DPoPKey;
+        if (string.IsNullOrWhiteSpace(tokenSet.Sub)
+            || string.IsNullOrWhiteSpace(tokenSet.Audience)
+            || string.IsNullOrWhiteSpace(tokenSet.Scope)
+            || string.IsNullOrWhiteSpace(tokenSet.AccessToken)
+            || string.IsNullOrWhiteSpace(tokenSet.RefreshToken)
+            || string.IsNullOrWhiteSpace(tokenSet.Issuer)
             || string.IsNullOrWhiteSpace(session.ClientId)
             || string.IsNullOrWhiteSpace(session.RedirectUri)
-            || string.IsNullOrWhiteSpace(session.Scope))
+            || string.IsNullOrWhiteSpace(session.Scope)
+            || !string.Equals(tokenSet.Sub, context.ExpectedSubjectDid, StringComparison.Ordinal)
+            || !string.Equals(
+                AtprotoOAuthSessionStoreContext.NormalizePdsUri(tokenSet.Audience),
+                context.ExpectedPdsUri,
+                StringComparison.Ordinal)
+            || dpopKey.Kty != "EC"
+            || dpopKey.Crv != "P-256"
+            || dpopKey.Alg != "ES256"
+            || dpopKey.Use != "sig"
+            || string.IsNullOrWhiteSpace(dpopKey.X)
+            || string.IsNullOrWhiteSpace(dpopKey.Y)
+            || string.IsNullOrWhiteSpace(dpopKey.D))
         {
             throw Unavailable("invalid_session");
         }
 
         try
         {
-            using var key = DPoPKeyPair.Import(session.DPoPKey);
+            using var key = DPoPKeyPair.Import(dpopKey);
         }
         catch (Exception exception) when (exception is ArgumentException or CryptographicException or FormatException)
         {
@@ -171,7 +181,7 @@ public sealed class AtprotoSessionEnvelopeProtector(ISecretResolver secretResolv
         WriteInt32(writer, CurrentEnvelopeVersion);
         WriteString(writer, context.TenantId.ToString("D"));
         WriteString(writer, context.UserId.ToString("D"));
-        WriteString(writer, RepositoryBackedOAuthSessionStore.Provider);
+        WriteString(writer, RepositoryBackedAtprotoSession.Provider);
         WriteString(writer, context.ExpectedSubjectDid);
         WriteString(writer, context.ExpectedPdsUri);
         WriteString(writer, context.OAuthClientKeyId);

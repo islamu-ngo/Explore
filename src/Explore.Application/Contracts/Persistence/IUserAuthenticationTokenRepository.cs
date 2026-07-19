@@ -7,6 +7,12 @@ namespace Explore.Application.Contracts.Persistence;
 
 public interface IUserAuthenticationTokenRepository : IGenericRepository<UserAuthenticationToken, Guid>
 {
+    Task<IReadOnlyList<UserAuthenticationToken>> GetAtprotoSessionsForReadAsync(
+        Guid tenantId,
+        Guid userId,
+        string provider,
+        CancellationToken cancellationToken = default);
+
     Task<UserAuthenticationToken?> GetAtprotoSessionForReadAsync(
         Guid tenantId,
         Guid userId,
