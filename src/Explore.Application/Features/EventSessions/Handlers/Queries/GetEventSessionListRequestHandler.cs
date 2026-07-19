@@ -20,17 +20,20 @@ public class GetEventSessionListRequestHandler : IRequestHandler<GetEventSession
     private readonly IMapper _mapper;
     private readonly ICustomPropertyQuotaResolver _quotaResolver;
     private readonly ITenantContext _tenantContext;
+    private readonly IEventLocationDisclosureService _disclosureService;
 
     public GetEventSessionListRequestHandler(
         IEventSessionRepository eventSessionRepository,
         IMapper mapper,
         ICustomPropertyQuotaResolver quotaResolver,
-        ITenantContext tenantContext)
+        ITenantContext tenantContext,
+        IEventLocationDisclosureService disclosureService)
     {
         _eventSessionRepository = eventSessionRepository;
         _mapper = mapper;
         _quotaResolver = quotaResolver;
         _tenantContext = tenantContext;
+        _disclosureService = disclosureService;
     }
 
     public async Task<PaginatedResult<EventSessionListDto>> Handle(GetEventSessionListRequest request, CancellationToken cancellationToken)
@@ -45,9 +48,12 @@ public class GetEventSessionListRequestHandler : IRequestHandler<GetEventSession
                 pageNumber,
                 pageSize,
                 cancellationToken);
-            var dtos = _mapper.Map<List<EventSessionListDto>>(items);
             return PaginatedResult<EventSessionListDto>.Create(
-                PublicEventSessionLocationRedactor.Redact(dtos),
+                await PublicEventSessionLocationProjector.ProjectAsync(
+                    items,
+                    _mapper,
+                    _disclosureService,
+                    cancellationToken),
                 totalCount,
                 pageNumber,
                 pageSize);
@@ -58,9 +64,12 @@ public class GetEventSessionListRequestHandler : IRequestHandler<GetEventSession
             pageSize,
             specification,
             cancellationToken);
-        var sessionDtos = _mapper.Map<List<EventSessionListDto>>(sessions);
         return PaginatedResult<EventSessionListDto>.Create(
-            PublicEventSessionLocationRedactor.Redact(sessionDtos),
+            await PublicEventSessionLocationProjector.ProjectAsync(
+                sessions,
+                _mapper,
+                _disclosureService,
+                cancellationToken),
             total,
             pageNumber,
             pageSize);

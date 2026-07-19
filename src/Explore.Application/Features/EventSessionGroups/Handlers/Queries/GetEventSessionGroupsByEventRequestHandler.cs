@@ -3,6 +3,7 @@
 
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.Features.EventSessionGroups.Requests.Queries;
 using MediatR;
@@ -13,28 +14,25 @@ public class GetEventSessionGroupsByEventRequestHandler : IRequestHandler<GetEve
 {
     private readonly IEventSessionGroupRepository _eventSessionGroupRepository;
     private readonly IMapper _mapper;
+    private readonly IEventLocationDisclosureService _disclosureService;
 
     public GetEventSessionGroupsByEventRequestHandler(
         IEventSessionGroupRepository eventSessionGroupRepository,
-        IMapper mapper)
+        IMapper mapper,
+        IEventLocationDisclosureService disclosureService)
     {
         _eventSessionGroupRepository = eventSessionGroupRepository;
         _mapper = mapper;
+        _disclosureService = disclosureService;
     }
 
     public async Task<List<EventSessionGroupListDto>> Handle(GetEventSessionGroupsByEventRequest request, CancellationToken cancellationToken)
     {
         var groups = await _eventSessionGroupRepository.GetPublicByEventAsync(request.EventId, cancellationToken);
-        var dtos = _mapper.Map<List<EventSessionGroupListDto>>(groups);
-
-        foreach (var dto in dtos)
-        {
-            dto.LocationId = null;
-            dto.LocationName = null;
-            dto.RoomId = null;
-            dto.RoomName = null;
-        }
-
-        return dtos;
+        return await PublicEventSessionGroupLocationProjector.ProjectAsync(
+            groups,
+            _mapper,
+            _disclosureService,
+            cancellationToken);
     }
 }

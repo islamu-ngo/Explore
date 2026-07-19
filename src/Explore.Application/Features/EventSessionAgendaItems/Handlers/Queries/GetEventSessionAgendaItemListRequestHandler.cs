@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.Features.EventSessionAgendaItems.Requests.Queries;
 using Explore.Application.Responses;
@@ -16,13 +17,16 @@ public class GetEventSessionAgendaItemListRequestHandler : IRequestHandler<GetEv
 {
     private readonly IEventSessionAgendaItemRepository _agendaItemRepository;
     private readonly IMapper _mapper;
+    private readonly IEventLocationDisclosureService _disclosureService;
 
     public GetEventSessionAgendaItemListRequestHandler(
         IEventSessionAgendaItemRepository agendaItemRepository,
-        IMapper mapper)
+        IMapper mapper,
+        IEventLocationDisclosureService disclosureService)
     {
         _agendaItemRepository = agendaItemRepository;
         _mapper = mapper;
+        _disclosureService = disclosureService;
     }
 
     public async Task<PaginatedResult<EventSessionAgendaItemListDto>> Handle(GetEventSessionAgendaItemListRequest request, CancellationToken cancellationToken)
@@ -32,8 +36,11 @@ public class GetEventSessionAgendaItemListRequestHandler : IRequestHandler<GetEv
             pageNumber,
             pageSize,
             cancellationToken);
-        var dtos = PublicEventSessionAgendaItemLocationRedactor.Redact(
-            _mapper.Map<List<EventSessionAgendaItemListDto>>(agendaItems));
+        var dtos = await PublicEventSessionAgendaItemLocationProjector.ProjectAsync(
+            agendaItems,
+            _mapper,
+            _disclosureService,
+            cancellationToken);
         return PaginatedResult<EventSessionAgendaItemListDto>.Create(dtos, totalCount, pageNumber, pageSize);
     }
 }

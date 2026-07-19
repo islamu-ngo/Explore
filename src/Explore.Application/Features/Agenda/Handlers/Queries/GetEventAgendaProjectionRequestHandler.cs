@@ -2,8 +2,10 @@
 // ABOUTME: Groups by LocalStartDate, enriches with EventDay metadata, and sorts entries by start time within each day.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Agenda;
 using Explore.Application.Features.Agenda.Requests.Queries;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using MediatR;
@@ -16,17 +18,20 @@ public class GetEventAgendaProjectionRequestHandler : IRequestHandler<GetEventAg
     private readonly IEventDayRepository _eventDayRepository;
     private readonly IEventSessionRepository _eventSessionRepository;
     private readonly IEventAgendaItemRepository _eventAgendaItemRepository;
+    private readonly IEventLocationDisclosureService _disclosureService;
 
     public GetEventAgendaProjectionRequestHandler(
         IEventRepository eventRepository,
         IEventDayRepository eventDayRepository,
         IEventSessionRepository eventSessionRepository,
-        IEventAgendaItemRepository eventAgendaItemRepository)
+        IEventAgendaItemRepository eventAgendaItemRepository,
+        IEventLocationDisclosureService disclosureService)
     {
         _eventRepository = eventRepository;
         _eventDayRepository = eventDayRepository;
         _eventSessionRepository = eventSessionRepository;
         _eventAgendaItemRepository = eventAgendaItemRepository;
+        _disclosureService = disclosureService;
     }
 
     public async Task<EventAgendaProjectionDto?> Handle(GetEventAgendaProjectionRequest request, CancellationToken cancellationToken)
@@ -40,6 +45,20 @@ public class GetEventAgendaProjectionRequestHandler : IRequestHandler<GetEventAg
             .ToList();
         var sessions = await _eventSessionRepository.GetPublicSessionsByEventAsync(request.EventId, cancellationToken);
         var agendaItems = await _eventAgendaItemRepository.GetPublicByEventAsync(request.EventId, cancellationToken);
+        var eventLocations = await PublicEventLocationProjection.ResolveAsync(
+            _disclosureService,
+            sessions
+                .Select(session => new PublicEventLocationPlacement(
+                    session.TenantId,
+                    session.EventId,
+                    session.EventLocationId,
+                    session.RoomId))
+                .Concat(agendaItems.Select(item => new PublicEventLocationPlacement(
+                    item.TenantId,
+                    item.EventId,
+                    item.EventLocationId,
+                    item.RoomId))),
+            cancellationToken);
 
         var entries = new List<AgendaScheduleEntryDto>();
 
@@ -71,6 +90,9 @@ public class GetEventAgendaProjectionRequestHandler : IRequestHandler<GetEventAg
                 LocalEndMinuteOfDay = localEndMinuteOfDay,
                 RoomId = null,
                 LocationId = null,
+                EventLocation = session.EventLocationId is { } eventLocationId
+                    ? eventLocations.GetValueOrDefault(eventLocationId)
+                    : null,
                 MaxAudienceAttendees = session.MaxAudienceAttendees,
                 CurrentAudienceAttendees = session.CurrentAudienceAttendees,
                 RegistrationModeId = session.RegistrationModeId,
@@ -98,6 +120,9 @@ public class GetEventAgendaProjectionRequestHandler : IRequestHandler<GetEventAg
                 LocalEndMinuteOfDay = item.LocalEndMinuteOfDay,
                 RoomId = null,
                 LocationId = null,
+                EventLocation = item.EventLocationId is { } eventLocationId
+                    ? eventLocations.GetValueOrDefault(eventLocationId)
+                    : null,
                 KindId = item.KindId,
                 KindFullName = item.Kind?.FullName,
                 SortOrder = item.SortOrder

@@ -1,11 +1,15 @@
 // ABOUTME: Handler assembling the server-backed event program summary from event sessions and groups.
 // ABOUTME: Applies local-day grouping and readiness guidance inside Application layer boundaries.
 
+using System.Collections.Immutable;
 using System.Globalization;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventProgram;
+using Explore.Application.DTOs.Location;
 using Explore.Application.Features.EventPrograms.Models;
 using Explore.Application.Features.EventPrograms.Requests.Queries;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using MediatR;
@@ -23,17 +27,20 @@ public class GetEventProgramSummaryRequestHandler :
     private readonly IEventSessionRepository _eventSessionRepository;
     private readonly IEventSessionGroupRepository _eventSessionGroupRepository;
     private readonly IEventAgendaItemRepository _eventAgendaItemRepository;
+    private readonly IEventLocationDisclosureService _disclosureService;
 
     public GetEventProgramSummaryRequestHandler(
         IEventRepository eventRepository,
         IEventSessionRepository eventSessionRepository,
         IEventSessionGroupRepository eventSessionGroupRepository,
-        IEventAgendaItemRepository eventAgendaItemRepository)
+        IEventAgendaItemRepository eventAgendaItemRepository,
+        IEventLocationDisclosureService disclosureService)
     {
         _eventRepository = eventRepository;
         _eventSessionRepository = eventSessionRepository;
         _eventSessionGroupRepository = eventSessionGroupRepository;
         _eventAgendaItemRepository = eventAgendaItemRepository;
+        _disclosureService = disclosureService;
     }
 
     public async Task<EventProgramSummaryDto?> Handle(GetEventProgramSummaryRequest request, CancellationToken cancellationToken)
@@ -61,6 +68,22 @@ public class GetEventProgramSummaryRequestHandler :
             ? await _eventAgendaItemRepository.GetByEventAsync(eventId, cancellationToken)
             : await _eventAgendaItemRepository.GetPublicByEventAsync(eventId, cancellationToken);
         var groupLookup = groups.ToDictionary(group => group.Id);
+        IReadOnlyDictionary<Guid, EventLocationPublicDto> eventLocations = includeManaged
+            ? ImmutableDictionary<Guid, EventLocationPublicDto>.Empty
+            : await PublicEventLocationProjection.ResolveAsync(
+                _disclosureService,
+                sessions
+                    .Select(session => new PublicEventLocationPlacement(
+                        session.TenantId,
+                        session.EventId,
+                        session.EventLocationId,
+                        session.RoomId))
+                    .Concat(groups.Select(group => new PublicEventLocationPlacement(
+                        group.TenantId,
+                        group.EventId,
+                        group.EventLocationId,
+                        group.RoomId))),
+                cancellationToken);
         var timezoneId = eventEntity.EventTimeZoneId ?? eventEntity.Timezone;
         var timezone = ResolveTimeZone(timezoneId);
 
@@ -74,7 +97,13 @@ public class GetEventProgramSummaryRequestHandler :
         AddGlobalWarnings(summary, eventEntity, timezoneId, groups, sessions);
         AddAgendaWarnings(summary, agendaItems, eventEntity, timezone);
 
-        var programGroups = BuildProgramGroups(sessions, groupLookup, timezone, eventEntity, summary);
+        var programGroups = BuildProgramGroups(
+            sessions,
+            groupLookup,
+            eventLocations,
+            timezone,
+            eventEntity,
+            summary);
         summary.Sections = programGroups
             .OrderBy(group => group.SortOrder)
             .ThenBy(group => group.Title)
@@ -99,6 +128,7 @@ public class GetEventProgramSummaryRequestHandler :
     private static List<ProgramGroupAccumulator> BuildProgramGroups(
         IEnumerable<EventSession> sessions,
         IReadOnlyDictionary<Guid, EventSessionGroup> groupLookup,
+        IReadOnlyDictionary<Guid, EventLocationPublicDto> eventLocations,
         TimeZoneInfo timezone,
         Event eventEntity,
         EventProgramSummaryDto summary)
@@ -119,11 +149,23 @@ public class GetEventProgramSummaryRequestHandler :
             {
                 accumulator = group is null
                     ? ProgramGroupAccumulator.Unassigned(UnassignedSectionKey, UnassignedSortOrder)
-                    : ProgramGroupAccumulator.FromGroup(group);
+                    : ProgramGroupAccumulator.FromGroup(
+                        group,
+                        group.EventLocationId is { } groupEventLocationId
+                            ? eventLocations.GetValueOrDefault(groupEventLocationId)
+                            : null);
                 accumulators[sectionKey] = accumulator;
             }
 
-            var item = BuildProgramItem(session, primaryAssignment, group, timezone, eventEntity);
+            var item = BuildProgramItem(
+                session,
+                primaryAssignment,
+                group,
+                session.EventLocationId is { } sessionEventLocationId
+                    ? eventLocations.GetValueOrDefault(sessionEventLocationId)
+                    : null,
+                timezone,
+                eventEntity);
             accumulator.Items.Add(item);
 
             if (primaryAssignment is null)
@@ -142,6 +184,7 @@ public class GetEventProgramSummaryRequestHandler :
         EventSession session,
         EventSessionGroupSession? assignment,
         EventSessionGroup? group,
+        EventLocationPublicDto? eventLocation,
         TimeZoneInfo timezone,
         Event eventEntity)
     {
@@ -179,6 +222,7 @@ public class GetEventProgramSummaryRequestHandler :
             SessionGroupId = group?.Id,
             LocationName = null,
             RoomName = null,
+            EventLocation = eventLocation,
             Capacity = session.MaxAudienceAttendees,
             RegistrationModeName = session.RegistrationMode?.FullName
         };
@@ -194,6 +238,7 @@ public class GetEventProgramSummaryRequestHandler :
             Color = accumulator.Color,
             LocationName = null,
             RoomName = null,
+            EventLocation = accumulator.EventLocation,
             Days = accumulator.Items
                 .GroupBy(item => item.LocalDate)
                 .OrderBy(group => group.Key)

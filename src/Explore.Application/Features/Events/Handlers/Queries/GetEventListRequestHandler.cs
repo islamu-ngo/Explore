@@ -85,7 +85,12 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
                 Expiration = TimeSpan.FromMinutes(5),
                 LocalCacheExpiration = TimeSpan.FromMinutes(1)
             },
-            tags: [CacheTags.EventListByTenant(_tenantContext.TenantId)],
+            tags:
+            [
+                CacheTags.Events,
+                CacheTags.EventLists,
+                CacheTags.EventListByTenant(_tenantContext.TenantId)
+            ],
             cancellationToken: cancellationToken);
 
         // Resolve presigned URLs for images

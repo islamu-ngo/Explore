@@ -3,6 +3,7 @@
 
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.Features.EventSessionGroups.Requests.Queries;
 using Explore.Application.Features.EventSessions.Handlers.Queries;
@@ -15,15 +16,18 @@ public class GetEventSessionGroupSessionsRequestHandler : IRequestHandler<GetEve
     private readonly IEventSessionGroupRepository _eventSessionGroupRepository;
     private readonly IEventSessionGroupSessionRepository _assignmentRepository;
     private readonly IMapper _mapper;
+    private readonly IEventLocationDisclosureService _disclosureService;
 
     public GetEventSessionGroupSessionsRequestHandler(
         IEventSessionGroupRepository eventSessionGroupRepository,
         IEventSessionGroupSessionRepository assignmentRepository,
-        IMapper mapper)
+        IMapper mapper,
+        IEventLocationDisclosureService disclosureService)
     {
         _eventSessionGroupRepository = eventSessionGroupRepository;
         _assignmentRepository = assignmentRepository;
         _mapper = mapper;
+        _disclosureService = disclosureService;
     }
 
     public async Task<List<EventSessionListDto>> Handle(
@@ -39,6 +43,10 @@ public class GetEventSessionGroupSessionsRequestHandler : IRequestHandler<GetEve
         var assignments = await _assignmentRepository.GetPublicByGroupAsync(request.EventSessionGroupId, cancellationToken);
         var sessions = assignments.Select(assignment => assignment.EventSession).ToList();
 
-        return PublicEventSessionLocationRedactor.Redact(_mapper.Map<List<EventSessionListDto>>(sessions));
+        return await PublicEventSessionLocationProjector.ProjectAsync(
+            sessions,
+            _mapper,
+            _disclosureService,
+            cancellationToken);
     }
 }
