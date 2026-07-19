@@ -35,6 +35,12 @@ public interface INotificationFanoutRunRepository : IGenericRepository<Notificat
         bool trackChanges = false,
         CancellationToken cancellationToken = default);
 
+    Task<NotificationFanoutRun?> EnsurePendingOccurrenceRunAsync(
+        Guid tenantId,
+        Guid occurrenceId,
+        Guid runId,
+        CancellationToken cancellationToken);
+
     Task<NotificationFanoutClaim?> TryClaimOccurrenceAsync(
         Guid tenantId,
         Guid occurrenceId,

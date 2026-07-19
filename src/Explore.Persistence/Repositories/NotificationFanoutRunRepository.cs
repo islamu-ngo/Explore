@@ -81,6 +81,69 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
         return query.SingleOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<NotificationFanoutRun?> EnsurePendingOccurrenceRunAsync(
+        Guid tenantId,
+        Guid occurrenceId,
+        Guid runId,
+        CancellationToken cancellationToken)
+    {
+        if (tenantId == Guid.Empty || occurrenceId == Guid.Empty || runId == Guid.Empty)
+        {
+            throw new ArgumentException("Fanout run identifiers must be non-empty.");
+        }
+
+        Guid concurrencyStamp = Guid.CreateVersion7();
+        var strategy = _dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            try
+            {
+                await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+                await AcquireOccurrenceLockAsync(tenantId, occurrenceId, cancellationToken);
+
+                var occurrence = await LoadPendingOccurrenceSourceAsync(
+                    tenantId,
+                    occurrenceId,
+                    notAfter: null,
+                    cancellationToken);
+                if (occurrence is null)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                    return null;
+                }
+
+                var existing = await _dbContext.NotificationFanoutRuns
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(
+                        item => item.TenantId == tenantId && item.FanoutOccurrenceId == occurrenceId,
+                        cancellationToken);
+                if (existing is not null)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                    return existing;
+                }
+
+                var run = CreateOccurrenceRun(
+                    runId,
+                    tenantId,
+                    occurrenceId,
+                    occurrence.EventId,
+                    occurrence.ActorId,
+                    concurrencyStamp);
+                await _dbContext.NotificationFanoutRuns.AddAsync(run, cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return run;
+            }
+            catch
+            {
+                _dbContext.ChangeTracker.Clear();
+                throw;
+            }
+        });
+    }
+
     public async Task<NotificationFanoutClaim?> TryClaimOccurrenceAsync(
         Guid tenantId,
         Guid occurrenceId,
@@ -102,107 +165,94 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
             throw new ArgumentOutOfRangeException(nameof(leaseOwner));
         }
 
+        Guid runId = Guid.CreateVersion7();
+        Guid concurrencyStamp = Guid.CreateVersion7();
+        Guid leaseToken = Guid.CreateVersion7();
         var strategy = _dbContext.Database.CreateExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
         {
-            await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-            if (_dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+            try
             {
-                await _dbContext.Database.ExecuteSqlRawAsync(
-                    "SELECT pg_advisory_xact_lock(hashtext({0}))",
-                    [$"notification-fanout:{tenantId:N}:{occurrenceId:N}"],
-                    cancellationToken);
-            }
+                await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+                await AcquireOccurrenceLockAsync(tenantId, occurrenceId, cancellationToken);
 
-            var occurrence = await _dbContext.NotificationFanoutOccurrences
-                .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
-                .AsNoTracking()
-                .Where(item => item.TenantId == tenantId
-                    && item.Id == occurrenceId
-                    && item.State == NotificationFanoutOccurrenceState.Pending
-                    && item.NotBefore <= claimedAt)
-                .Join(
-                    _dbContext.Events
-                        .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
-                        .AsNoTracking(),
-                    item => new { item.TenantId, item.EventId },
-                    item => new { item.TenantId, EventId = item.Id },
-                    (item, eventEntity) => new
-                    {
-                        item.EventId,
-                        eventEntity.ActorId
-                    })
-                .SingleOrDefaultAsync(cancellationToken);
-            if (occurrence is null)
-            {
-                await transaction.CommitAsync(cancellationToken);
-                return null;
-            }
-
-            var run = await _dbContext.NotificationFanoutRuns
-                .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
-                .SingleOrDefaultAsync(
-                    item => item.TenantId == tenantId && item.FanoutOccurrenceId == occurrenceId,
+                var occurrence = await LoadPendingOccurrenceSourceAsync(
+                    tenantId,
+                    occurrenceId,
+                    claimedAt,
                     cancellationToken);
-            if (run is null)
-            {
-                run = new NotificationFanoutRun
+                if (occurrence is null)
                 {
-                    Id = occurrenceId,
-                    TenantId = tenantId,
-                    Tenant = null!,
-                    FanoutOccurrenceId = occurrenceId,
-                    FanoutOccurrence = null,
-                    FanoutKind = "recipient_occurrence",
-                    NotificationEntityTypeId = (int)NotificationEntityTypeEnum.Event,
-                    NotificationEntityType = null!,
-                    EntityId = occurrence.EventId,
-                    SourceActorId = occurrence.ActorId,
-                    SourceActor = null!,
-                    Status = "pending",
-                    ConcurrencyStamp = Guid.CreateVersion7()
-                };
-                await _dbContext.NotificationFanoutRuns.AddAsync(run, cancellationToken);
-            }
+                    await transaction.CommitAsync(cancellationToken);
+                    return null;
+                }
 
-            if (run.Status == "completed"
-                || (run.Status == "processing" && run.ProcessingLeaseExpiresAt > claimedAt))
-            {
+                var run = await _dbContext.NotificationFanoutRuns
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                    .SingleOrDefaultAsync(
+                        item => item.TenantId == tenantId && item.FanoutOccurrenceId == occurrenceId,
+                        cancellationToken);
+                if (run is null)
+                {
+                    run = CreateOccurrenceRun(
+                        runId,
+                        tenantId,
+                        occurrenceId,
+                        occurrence.EventId,
+                        occurrence.ActorId,
+                        concurrencyStamp);
+                    await _dbContext.NotificationFanoutRuns.AddAsync(run, cancellationToken);
+                }
+
+                bool hasActiveLease = run.Status == "processing" && run.ProcessingLeaseExpiresAt > claimedAt;
+                bool ownsActiveLease = hasActiveLease
+                    && run.ProcessingLeaseOwner == normalizedOwner
+                    && run.ProcessingLeaseToken == leaseToken;
+                if (run.Status == "completed" || (hasActiveLease && !ownsActiveLease))
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                    _dbContext.Entry(run).State = EntityState.Detached;
+                    return null;
+                }
+
+                if (!ownsActiveLease)
+                {
+                    run.Status = "processing";
+                    run.ProcessingLeaseOwner = normalizedOwner;
+                    run.ProcessingLeaseToken = leaseToken;
+                    run.ProcessingLeaseExpiresAt = claimedAt.Add(leaseDuration);
+                    run.HeartbeatAt = claimedAt;
+                    run.StartedAt ??= claimedAt;
+                    run.ProcessingGeneration = checked(run.ProcessingGeneration + 1);
+                    run.ProcessingFence = checked(run.ProcessingFence + 1);
+                    run.FailedAt = null;
+                    run.LastError = null;
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                }
                 await transaction.CommitAsync(cancellationToken);
+
+                NotificationFanoutAudienceCursor? cursor = run.CursorFirstEligibleRegistrationCreatedAt.HasValue
+                    && run.CursorUserId.HasValue
+                    ? new NotificationFanoutAudienceCursor(
+                        run.CursorFirstEligibleRegistrationCreatedAt.Value,
+                        run.CursorUserId.Value)
+                    : null;
+                var claim = new NotificationFanoutClaim(
+                    run.Id,
+                    run.TenantId,
+                    occurrenceId,
+                    leaseToken,
+                    run.ProcessingFence,
+                    run.ProcessingGeneration,
+                    cursor);
                 _dbContext.Entry(run).State = EntityState.Detached;
-                return null;
+                return claim;
             }
-
-            Guid leaseToken = Guid.CreateVersion7();
-            run.Status = "processing";
-            run.ProcessingLeaseOwner = normalizedOwner;
-            run.ProcessingLeaseToken = leaseToken;
-            run.ProcessingLeaseExpiresAt = claimedAt.Add(leaseDuration);
-            run.HeartbeatAt = claimedAt;
-            run.StartedAt ??= claimedAt;
-            run.ProcessingGeneration = checked(run.ProcessingGeneration + 1);
-            run.ProcessingFence = checked(run.ProcessingFence + 1);
-            run.FailedAt = null;
-            run.LastError = null;
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-
-            NotificationFanoutAudienceCursor? cursor = run.CursorFirstEligibleRegistrationCreatedAt.HasValue
-                && run.CursorUserId.HasValue
-                ? new NotificationFanoutAudienceCursor(
-                    run.CursorFirstEligibleRegistrationCreatedAt.Value,
-                    run.CursorUserId.Value)
-                : null;
-            var claim = new NotificationFanoutClaim(
-                run.Id,
-                run.TenantId,
-                occurrenceId,
-                leaseToken,
-                run.ProcessingFence,
-                run.ProcessingGeneration,
-                cursor);
-            _dbContext.Entry(run).State = EntityState.Detached;
-            return claim;
+            catch
+            {
+                _dbContext.ChangeTracker.Clear();
+                throw;
+            }
         });
     }
 
@@ -300,6 +350,65 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
                 && run.ProcessingGeneration == claim.Generation
                 && run.ProcessingLeaseExpiresAt > observedAt);
 
+    private async Task AcquireOccurrenceLockAsync(
+        Guid tenantId,
+        Guid occurrenceId,
+        CancellationToken cancellationToken)
+    {
+        if (_dbContext.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            await _dbContext.Database.ExecuteSqlRawAsync(
+                "SELECT pg_advisory_xact_lock(hashtext({0}))",
+                [$"notification-fanout:{tenantId:N}:{occurrenceId:N}"],
+                cancellationToken);
+        }
+    }
+
+    private Task<OccurrenceSource?> LoadPendingOccurrenceSourceAsync(
+        Guid tenantId,
+        Guid occurrenceId,
+        DateTime? notAfter,
+        CancellationToken cancellationToken) =>
+        _dbContext.NotificationFanoutOccurrences
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .Where(item => item.TenantId == tenantId
+                && item.Id == occurrenceId
+                && item.State == NotificationFanoutOccurrenceState.Pending
+                && (notAfter == null || item.NotBefore <= notAfter))
+            .Join(
+                _dbContext.Events
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                    .AsNoTracking(),
+                item => new { item.TenantId, item.EventId },
+                item => new { item.TenantId, EventId = item.Id },
+                (item, eventEntity) => new OccurrenceSource(item.EventId, eventEntity.ActorId))
+            .SingleOrDefaultAsync(cancellationToken);
+
+    private static NotificationFanoutRun CreateOccurrenceRun(
+        Guid runId,
+        Guid tenantId,
+        Guid occurrenceId,
+        Guid eventId,
+        Guid sourceActorId,
+        Guid concurrencyStamp) =>
+        new()
+        {
+            Id = runId,
+            TenantId = tenantId,
+            Tenant = null!,
+            FanoutOccurrenceId = occurrenceId,
+            FanoutOccurrence = null,
+            FanoutKind = "recipient_occurrence",
+            NotificationEntityTypeId = (int)NotificationEntityTypeEnum.Event,
+            NotificationEntityType = null!,
+            EntityId = eventId,
+            SourceActorId = sourceActorId,
+            SourceActor = null!,
+            Status = "pending",
+            ConcurrencyStamp = concurrencyStamp
+        };
+
     private static bool IsAfter(
         NotificationFanoutAudienceCursor next,
         NotificationFanoutAudienceCursor? current) =>
@@ -307,4 +416,6 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
         || next.FirstEligibleRegistrationCreatedAt > current.Value.FirstEligibleRegistrationCreatedAt
         || (next.FirstEligibleRegistrationCreatedAt == current.Value.FirstEligibleRegistrationCreatedAt
             && next.UserId.CompareTo(current.Value.UserId) > 0);
+
+    private sealed record OccurrenceSource(Guid EventId, Guid ActorId);
 }

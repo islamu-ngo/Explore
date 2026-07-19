@@ -16,6 +16,7 @@ public sealed class NotificationIntentRepository : GenericRepository<Notificatio
 {
     private const string UniqueViolationSqlState = "23505";
     private const string DeduplicationConstraintName = "ux_notification_intents_tenant_deduplication_key";
+    private const string OccurrenceRecipientConstraintName = "ux_notification_intents_tenant_occurrence_recipient";
     private readonly ExploreDbContext _dbContext;
 
     public NotificationIntentRepository(ExploreDbContext dbContext) : base(dbContext)
@@ -39,11 +40,30 @@ public sealed class NotificationIntentRepository : GenericRepository<Notificatio
         catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
         {
             SqlState: UniqueViolationSqlState,
-            ConstraintName: DeduplicationConstraintName
+            ConstraintName: DeduplicationConstraintName or OccurrenceRecipientConstraintName
         })
         {
             throw new NotificationIntentDeduplicationConflictException(ex);
         }
+    }
+
+    public async Task<NotificationIntent?> GetGraphByTenantOccurrenceAndRecipientAsync(
+        Guid tenantId,
+        Guid occurrenceId,
+        Guid recipientUserId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.NotificationIntents
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .Include(intent => intent.Deliveries)
+                .ThenInclude(delivery => delivery.Notification)
+            .Include(intent => intent.Deliveries)
+                .ThenInclude(delivery => delivery.EmailDispatchOutbox)
+            .SingleOrDefaultAsync(intent => intent.TenantId == tenantId
+                && intent.FanoutOccurrenceId == occurrenceId
+                && intent.RecipientUserId == recipientUserId,
+                cancellationToken);
     }
 
     public async Task<NotificationIntent?> GetGraphByTenantAndDeduplicationKeyAsync(

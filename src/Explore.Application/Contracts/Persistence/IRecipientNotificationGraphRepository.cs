@@ -16,6 +16,12 @@ public interface IRecipientNotificationGraphRepository
         string deduplicationKey,
         CancellationToken cancellationToken = default);
 
+    Task<NotificationIntent?> GetGraphByTenantOccurrenceAndRecipientAsync(
+        Guid tenantId,
+        Guid occurrenceId,
+        Guid recipientUserId,
+        CancellationToken cancellationToken = default);
+
     Task RepairMissingRecipientDeliveryRowsAsync(
         NotificationIntent winningIntent,
         IReadOnlyList<NotificationDelivery> expectedDeliveries,

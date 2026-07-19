@@ -19,4 +19,5 @@ public sealed record NotificationIntentDraft(
     Guid? ReportId = null,
     Guid? ReportDecisionId = null,
     string? ExternalProviderId = null,
-    string? ExternalCorrelationId = null);
+    string? ExternalCorrelationId = null,
+    Guid? FanoutOccurrenceId = null);

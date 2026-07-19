@@ -54,11 +54,7 @@ public sealed class RecipientNotificationMaterializer(
         RecipientNotificationMaterialization request,
         CancellationToken cancellationToken)
     {
-        Guid tenantId = request.Intent.TenantId!.Value;
-        NotificationIntent? winner = await notificationGraphRepository.GetGraphByTenantAndDeduplicationKeyAsync(
-            tenantId,
-            request.Intent.DeduplicationKey!,
-            cancellationToken);
+        NotificationIntent? winner = await LoadWinningIntentAsync(request, cancellationToken);
         if (winner is null)
         {
             throw new InvalidOperationException("The winning notification intent was not visible after exact conflict rollback.");
@@ -72,12 +68,26 @@ public sealed class RecipientNotificationMaterializer(
             expected.Email,
             cancellationToken);
 
-        NotificationIntent repaired = await notificationGraphRepository.GetGraphByTenantAndDeduplicationKeyAsync(
-                tenantId,
-                request.Intent.DeduplicationKey!,
-                cancellationToken)
+        NotificationIntent repaired = await LoadWinningIntentAsync(request, cancellationToken)
             ?? throw new InvalidOperationException("The repaired notification graph could not be loaded.");
         return ToResult(repaired);
+    }
+
+    private Task<NotificationIntent?> LoadWinningIntentAsync(
+        RecipientNotificationMaterialization request,
+        CancellationToken cancellationToken)
+    {
+        Guid tenantId = request.Intent.TenantId!.Value;
+        return request.Intent.FanoutOccurrenceId is { } occurrenceId
+            ? notificationGraphRepository.GetGraphByTenantOccurrenceAndRecipientAsync(
+                tenantId,
+                occurrenceId,
+                request.Intent.UserId!.Value,
+                cancellationToken)
+            : notificationGraphRepository.GetGraphByTenantAndDeduplicationKeyAsync(
+                tenantId,
+                request.Intent.DeduplicationKey!,
+                cancellationToken);
     }
 
     private static RecipientNotificationMaterializationResult BuildGraph(RecipientNotificationMaterialization request)
@@ -103,6 +113,7 @@ public sealed class RecipientNotificationMaterializer(
             SafePayloadHash = BlankToNull(draft.SafePayloadHash),
             CorrelationId = BlankToNull(draft.CorrelationId),
             RecipientUserId = recipientUserId,
+            FanoutOccurrenceId = draft.FanoutOccurrenceId,
             EventId = draft.EventId,
             ReportId = draft.ReportId,
             ReportDecisionId = draft.ReportDecisionId,
@@ -252,6 +263,10 @@ public sealed class RecipientNotificationMaterializer(
         ArgumentException.ThrowIfNullOrWhiteSpace(request.Intent.TemplateKey);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.Intent.DeduplicationKey);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.DisclosureLevel);
+        if (request.Intent.FanoutOccurrenceId == Guid.Empty)
+        {
+            throw new InvalidOperationException("Fanout occurrence id must be non-empty when supplied.");
+        }
     }
 
     private static int MapCategory(NotificationCategory category) =>
