@@ -1240,6 +1240,7 @@ public sealed class BusinessMetrics : IDisposable
     {
         "claimed" => "claimed",
         "lease_contention" => "lease_contention",
+        "capacity_deferred" => "capacity_deferred",
         "unavailable" => "unavailable",
         "completed" => "completed",
         "stale_claim" => "stale_claim",
