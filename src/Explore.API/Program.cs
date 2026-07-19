@@ -109,6 +109,7 @@ builder.Services.Configure<BrotliCompressionProviderOptions>(options => options.
 builder.Services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
 
 builder.Services.AddApiCaching();
+builder.Services.AddScoped<IAtprotoDiscoveryCacheInvalidator, AtprotoDiscoveryCacheInvalidator>();
 builder.Services.AddSingleton<IEventCalendarFileBuilder, IcalNetEventCalendarFileBuilder>();
 builder.Services.AddScoped<ICoopWebhookSignatureValidator, CoopWebhookSignatureValidator>();
 builder.Services.AddScoped<IIncomingWebhookVerifier, CoopIncomingWebhookVerifier>();
@@ -269,9 +270,26 @@ builder.Services.AddOpenApi("islamu-event", options =>
     options.AddOperationTransformer<Explore.API.OpenApi.StorageUploadRequestBodyTransformer>();
 });
 
-// Register PDS sync background worker for AT Protocol federation
+builder.Services.AddOptions<PdsSyncWorkerOptions>()
+    .Bind(builder.Configuration.GetSection(PdsSyncWorkerOptions.SectionName))
+    .Validate(options => options.PollingIntervalSeconds is >= 1 and <= 300,
+        "ATProto PDS polling interval must be between 1 and 300 seconds.")
+    .Validate(options => options.BatchSize is >= 1 and <= 100,
+        "ATProto PDS batch size must be between 1 and 100.")
+    .Validate(options => options.MaxConcurrency >= 1 && options.MaxConcurrency <= options.BatchSize,
+        "ATProto PDS concurrency must be between 1 and the batch size.")
+    .Validate(options => options.LeaseDurationSeconds is >= 30 and <= 900,
+        "ATProto PDS lease duration must be between 30 and 900 seconds.")
+    .ValidateOnStart();
+
+// Register ATProto inbound and outbound background workers.
 if (!isOpenApiGeneration)
 {
+    if (!builder.Environment.IsEnvironment("Testing"))
+    {
+        builder.Services.AddHostedService<Explore.Infrastructure.Services.Federation.AtprotoJetstreamSubscriber>();
+        builder.Services.AddHostedService<PdsSyncWorker>();
+    }
 }
 
 // Register generic outbox processor for reliable side-effect delivery
@@ -448,6 +466,10 @@ builder.Services.AddHealthChecks()
         "cerbos",
         failureStatus: HealthStatus.Unhealthy,
         tags: ["ready", "cerbos", "infrastructure"])
+    .AddCheck<AtprotoJetstreamReadinessHealthCheck>(
+        "atproto-jetstream",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "atproto", "federation", "infrastructure"])
     .AddCheck<AiProviderHealthCheck>(
         "ai-provider",
         failureStatus: HealthStatus.Unhealthy,

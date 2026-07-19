@@ -112,6 +112,7 @@ public static class PersistenceServicesRegistration
         // Unit of Work (wraps EF Core transactions)
         services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();
         services.AddScoped<ISettingMutationLock, PostgresSettingMutationLock>();
+        services.AddScoped<IAtprotoSessionRefreshLock, PostgresAtprotoSessionRefreshLock>();
 
         services.AddScoped<IGenericRepository<EventReportDecision, Guid>, GenericRepository<EventReportDecision, Guid>>();
         services.AddScoped<IGenericRepository<EventReportTarget, Guid>, GenericRepository<EventReportTarget, Guid>>();
@@ -184,6 +185,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IActorSubscriptionRepository, ActorSubscriptionRepository>();
         services.AddScoped<INotificationFanoutRunRepository, NotificationFanoutRunRepository>();
         services.AddScoped<INotificationFanoutOccurrenceRepository, NotificationFanoutOccurrenceRepository>();
+        services.AddScoped<INotificationFanoutEmailSuppressionRepository, NotificationFanoutEmailSuppressionRepository>();
 
         // Organization Repositories
         services.AddScoped<IOrganizationRepository, OrganizationRepository>();
@@ -247,6 +249,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IEventLocationDisclosureAuditRepository, EventLocationDisclosureAuditRepository>();
         services.AddScoped<IEventLocationExactReadAuditRepository, EventLocationExactReadAuditRepository>();
         services.AddScoped<ILocationPrivacyErasureReplayCheckpointRepository, LocationPrivacyErasureReplayCheckpointRepository>();
+        services.AddScoped<IGlobalLocationPrivacyErasureRepository, GlobalLocationPrivacyErasureRepository>();
 
         // Storage Repository
         services.AddScoped<IStorageObjectRepository, StorageObjectRepository>();
@@ -265,6 +268,7 @@ public static class PersistenceServicesRegistration
 
         // ATProto/Federation Repositories
         services.AddScoped<IAtprotoRecordRepository, AtprotoRecordRepository>();
+        services.AddScoped<IAtprotoEventProjectionRepository, AtprotoEventProjectionRepository>();
         services.AddScoped<IAtprotoJetstreamRepository, AtprotoJetstreamRepository>();
         services.AddScoped<IIndexedDidRepository, IndexedDidRepository>();
         services.AddScoped<ISyncStateRepository, SyncStateRepository>();
@@ -340,6 +344,7 @@ public static class PersistenceServicesRegistration
 
         // Idempotency Repository
         services.AddScoped<IIdempotencyRepository, IdempotencyRepository>();
+        services.AddScoped<IAtprotoBootstrapReplayRepository, AtprotoBootstrapReplayRepository>();
 
         // AI Assistant Repositories
         services.AddScoped<IAiConversationRepository, AiConversationRepository>();

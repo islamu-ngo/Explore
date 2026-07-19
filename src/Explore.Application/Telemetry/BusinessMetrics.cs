@@ -48,6 +48,17 @@ public sealed class BusinessMetrics : IDisposable
     private long _emailDispatchOptionalReminderDeferralState;
     private readonly Counter<long> _notificationFanoutRuns;
     private readonly Counter<long> _notificationFanoutSubscribers;
+    private readonly Counter<long> _notificationFanoutProcessorClaims;
+    private readonly Counter<long> _notificationFanoutProcessorRecipients;
+    private long _notificationFanoutDueOccurrenceCount;
+    private long _notificationFanoutDueRequiredOccurrenceCount;
+    private long _notificationFanoutDueOptionalReminderCount;
+    private long _notificationFanoutActiveClaimCount;
+    private long _notificationFanoutExpiredClaimCount;
+    private long _notificationFanoutSupersededOccurrenceCount;
+    private long _notificationFanoutProcessedRecipientCount;
+    private long _notificationFanoutOldestDueAgeSeconds;
+    private long _notificationFanoutOptionalReminderDeferralState;
     private readonly Counter<long> _webhookMessagesCreated;
     private readonly Counter<long> _webhookDeliveryAttempts;
     private readonly Counter<long> _webhookDeliverySuccess;
@@ -241,6 +252,62 @@ public sealed class BusinessMetrics : IDisposable
             "explore.notifications.fanout_subscribers",
             unit: "{subscriber}",
             description: "Total notification fanout subscriber decisions by kind and bounded outcome");
+
+        _notificationFanoutProcessorClaims = meter.CreateCounter<long>(
+            "explore.notifications.fanout_processor.claims",
+            unit: "{claim}",
+            description: "Fanout processor claim decisions by bounded outcome");
+
+        _notificationFanoutProcessorRecipients = meter.CreateCounter<long>(
+            "explore.notifications.fanout_processor.recipients",
+            unit: "{recipient}",
+            description: "Fanout processor recipient outcomes without tenant or recipient labels");
+
+        meter.CreateObservableGauge(
+            "explore.notifications.fanout_processor.due_occurrences",
+            () => Volatile.Read(ref _notificationFanoutDueOccurrenceCount),
+            unit: "{occurrence}",
+            description: "Current due fanout occurrence count");
+        meter.CreateObservableGauge(
+            "explore.notifications.fanout_processor.due_required_occurrences",
+            () => Volatile.Read(ref _notificationFanoutDueRequiredOccurrenceCount),
+            unit: "{occurrence}",
+            description: "Current due non-reminder fanout occurrence count");
+        meter.CreateObservableGauge(
+            "explore.notifications.fanout_processor.due_optional_reminders",
+            () => Volatile.Read(ref _notificationFanoutDueOptionalReminderCount),
+            unit: "{occurrence}",
+            description: "Current due optional-reminder fanout occurrence count");
+        meter.CreateObservableGauge(
+            "explore.notifications.fanout_processor.active_claims",
+            () => Volatile.Read(ref _notificationFanoutActiveClaimCount),
+            unit: "{claim}",
+            description: "Current active fanout claim count");
+        meter.CreateObservableGauge(
+            "explore.notifications.fanout_processor.expired_claims",
+            () => Volatile.Read(ref _notificationFanoutExpiredClaimCount),
+            unit: "{claim}",
+            description: "Current expired fanout claim count");
+        meter.CreateObservableGauge(
+            "explore.notifications.fanout_processor.superseded_occurrences",
+            () => Volatile.Read(ref _notificationFanoutSupersededOccurrenceCount),
+            unit: "{occurrence}",
+            description: "Current durable superseded fanout occurrence count");
+        meter.CreateObservableGauge(
+            "explore.notifications.fanout_processor.processed_recipients",
+            () => Volatile.Read(ref _notificationFanoutProcessedRecipientCount),
+            unit: "{recipient}",
+            description: "Current durable processed-recipient total across fanout runs");
+        meter.CreateObservableGauge(
+            "explore.notifications.fanout_processor.oldest_due_age",
+            () => Volatile.Read(ref _notificationFanoutOldestDueAgeSeconds),
+            unit: "s",
+            description: "Current age in seconds of the oldest due fanout occurrence");
+        meter.CreateObservableGauge(
+            "explore.notifications.fanout_processor.optional_reminder_deferral",
+            () => Volatile.Read(ref _notificationFanoutOptionalReminderDeferralState),
+            unit: "{state}",
+            description: "Optional-reminder fanout backpressure state where 1 is active and 0 is inactive");
 
         _webhookMessagesCreated = meter.CreateCounter<long>(
             "explore.webhooks.messages_created",
@@ -666,15 +733,14 @@ public sealed class BusinessMetrics : IDisposable
         Volatile.Write(ref _emailDispatchOptionalReminderDeferralState, active ? 1 : 0);
     }
 
-    public void RecordNotificationFanoutRun(string? tenantId, string? fanoutKind, string? outcome)
+    public void RecordNotificationFanoutRun(string? fanoutKind, string? outcome)
     {
         _notificationFanoutRuns.Add(1,
-            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
-            new KeyValuePair<string, object?>("fanout_kind", NormalizeTag(fanoutKind)),
-            new KeyValuePair<string, object?>("outcome", NormalizeTag(outcome)));
+            new KeyValuePair<string, object?>("fanout_kind", NormalizeNotificationFanoutKind(fanoutKind)),
+            new KeyValuePair<string, object?>("outcome", NormalizeNotificationFanoutOutcome(outcome)));
     }
 
-    public void RecordNotificationFanoutSubscribers(long subscriberCount, string? tenantId, string? fanoutKind, string? outcome)
+    public void RecordNotificationFanoutSubscribers(long subscriberCount, string? fanoutKind, string? outcome)
     {
         if (subscriberCount <= 0)
         {
@@ -682,9 +748,53 @@ public sealed class BusinessMetrics : IDisposable
         }
 
         _notificationFanoutSubscribers.Add(subscriberCount,
-            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
-            new KeyValuePair<string, object?>("fanout_kind", NormalizeTag(fanoutKind)),
-            new KeyValuePair<string, object?>("outcome", NormalizeTag(outcome)));
+            new KeyValuePair<string, object?>("fanout_kind", NormalizeNotificationFanoutKind(fanoutKind)),
+            new KeyValuePair<string, object?>("outcome", NormalizeNotificationFanoutOutcome(outcome)));
+    }
+
+    public void RecordNotificationFanoutProcessorClaims(long count, string? outcome)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        _notificationFanoutProcessorClaims.Add(count,
+            new KeyValuePair<string, object?>("outcome", NormalizeNotificationFanoutProcessorOutcome(outcome)));
+    }
+
+    public void RecordNotificationFanoutProcessorRecipients(long count, string? outcome)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        _notificationFanoutProcessorRecipients.Add(count,
+            new KeyValuePair<string, object?>("outcome", NormalizeNotificationFanoutRecipientOutcome(outcome)));
+    }
+
+    public void RecordNotificationFanoutProcessorSnapshot(
+        long dueOccurrenceCount,
+        long dueRequiredOccurrenceCount,
+        long dueOptionalReminderCount,
+        long activeClaimCount,
+        long expiredClaimCount,
+        long supersededOccurrenceCount,
+        long processedRecipientCount,
+        long oldestDueAgeSeconds,
+        bool optionalReminderDeferralActive)
+    {
+        Interlocked.Exchange(ref _notificationFanoutDueOccurrenceCount, Math.Max(0, dueOccurrenceCount));
+        Interlocked.Exchange(ref _notificationFanoutDueRequiredOccurrenceCount, Math.Max(0, dueRequiredOccurrenceCount));
+        Interlocked.Exchange(ref _notificationFanoutDueOptionalReminderCount, Math.Max(0, dueOptionalReminderCount));
+        Interlocked.Exchange(ref _notificationFanoutActiveClaimCount, Math.Max(0, activeClaimCount));
+        Interlocked.Exchange(ref _notificationFanoutExpiredClaimCount, Math.Max(0, expiredClaimCount));
+        Interlocked.Exchange(ref _notificationFanoutSupersededOccurrenceCount, Math.Max(0, supersededOccurrenceCount));
+        Interlocked.Exchange(ref _notificationFanoutProcessedRecipientCount, Math.Max(0, processedRecipientCount));
+        Interlocked.Exchange(ref _notificationFanoutOldestDueAgeSeconds, Math.Max(0, oldestDueAgeSeconds));
+        Volatile.Write(ref _notificationFanoutOptionalReminderDeferralState,
+            optionalReminderDeferralActive ? 1 : 0);
     }
 
     public void RecordWebhookMessageCreated(
@@ -1104,6 +1214,45 @@ public sealed class BusinessMetrics : IDisposable
             ? "unknown"
             : value.Trim().ToLowerInvariant();
     }
+
+    private static string NormalizeNotificationFanoutKind(string? fanoutKind) => NormalizeTag(fanoutKind) switch
+    {
+        "event-published" => "event-published",
+        "event-moderated-light" => "event-moderated-light",
+        "event-moderated-heavy" => "event-moderated-heavy",
+        "recipient_occurrence" => "recipient_occurrence",
+        _ => "unknown"
+    };
+
+    private static string NormalizeNotificationFanoutOutcome(string? outcome) => NormalizeTag(outcome) switch
+    {
+        "processing" => "processing",
+        "processed" => "processed",
+        "notification_created" => "notification_created",
+        "duplicate_skipped" => "duplicate_skipped",
+        "skipped_completed" => "skipped_completed",
+        "completed" => "completed",
+        "failed" => "failed",
+        _ => "unknown"
+    };
+
+    private static string NormalizeNotificationFanoutProcessorOutcome(string? outcome) => NormalizeTag(outcome) switch
+    {
+        "claimed" => "claimed",
+        "lease_contention" => "lease_contention",
+        "unavailable" => "unavailable",
+        "completed" => "completed",
+        "stale_claim" => "stale_claim",
+        "failed" => "failed",
+        _ => "unknown"
+    };
+
+    private static string NormalizeNotificationFanoutRecipientOutcome(string? outcome) => NormalizeTag(outcome) switch
+    {
+        "processed" => "processed",
+        "notification_created" => "notification_created",
+        _ => "unknown"
+    };
 
     private static string NormalizeWebhookEventType(string? eventType)
     {

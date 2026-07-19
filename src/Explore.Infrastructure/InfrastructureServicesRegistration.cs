@@ -60,9 +60,18 @@ public static class InfrastructureServicesRegistration
     {
         services.AddOptions<AtprotoInfrastructureOptions>()
             .Bind(configuration.GetSection(AtprotoInfrastructureOptions.SectionName));
+        services.AddOptions<AtprotoJetstreamOptions>()
+            .Bind(configuration.GetSection(AtprotoJetstreamOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<AtprotoJetstreamOptions>, AtprotoJetstreamOptionsValidator>();
+        services.AddSingleton<IAtprotoJetstreamEventSource, CarpaNetJetstreamEventSource>();
+        services.AddSingleton<IAtprotoJetstreamRuntimeStore, AtprotoJetstreamRuntimeStore>();
         services.AddScoped<AtprotoOAuthClientFactory>();
         services.AddScoped<AtprotoCoreClientFactory>();
         services.AddScoped<AtprotoSessionEnvelopeProtector>();
+        services.AddScoped<IAtprotoOAuthSecurityGateway, AtprotoOAuthSecurityGateway>();
+        services.AddScoped<IAtprotoPublicationPayloadBuilder, AtprotoPublicationPayloadBuilder>();
+        services.AddScoped<IAtprotoPdsDeliveryGateway, AtprotoPdsDeliveryGateway>();
 
         services.AddOptions<LocationPrivacyErasureAuthorityOptions>()
             .Bind(configuration.GetSection(LocationPrivacyErasureAuthorityOptions.SectionName));

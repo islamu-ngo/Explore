@@ -102,9 +102,22 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IKeycloakRealmDesiredStateBuilder, KeycloakRealmDesiredStateBuilder>();
         services.AddScoped<IAnalyticsGovernanceService, AnalyticsGovernanceService>();
         services.AddScoped<ILocationPrivacyGovernanceService, LocationPrivacyGovernanceService>();
+        services.AddScoped<ILocationPrivacyGovernanceMutationService, LocationPrivacyGovernanceMutationService>();
+        services.AddScoped<EventLocationAttachmentService>();
+        services.AddSingleton<IEventLocationRegistrationAccessService, EventLocationRegistrationAccessService>();
+        services.AddScoped<IEventLocationExactReadAuditService, EventLocationExactReadAuditService>();
+        services.AddScoped<IEventLocationManagementAuthorizationService, EventLocationManagementAuthorizationService>();
+        services.AddScoped<IEventLocationDisclosureService, EventLocationDisclosureService>();
+        services.AddScoped<IFanoutAttendeeLocationAuthorizationService, FanoutAttendeeLocationAuthorizationService>();
+        services.AddScoped<IGlobalLocationPrivacyErasureService, GlobalLocationPrivacyErasureService>();
         services.AddSingleton<EventLocationDisclosureEvaluator>();
         services.AddScoped<PublicEventLocationDisclosureEvaluator>();
         services.AddScoped<AtprotoEventPublicationSnapshotFactory>();
+        services.AddScoped<AtprotoEventGovernanceResolver>();
+        services.AddScoped<AtprotoEventPublicationPlanner>();
+        services.AddScoped<IAtprotoDeliveryGate>(provider =>
+            provider.GetRequiredService<AtprotoEventPublicationPlanner>());
+        services.AddScoped<AtprotoPdsDeliveryProcessor>();
         services.AddScoped<IModuleCapabilityService, ModuleCapabilityService>();
         services.AddScoped<SettingUpsertService>();
         services.AddScoped<ManagedTenantProvisioningPreflight>();
@@ -136,15 +149,23 @@ public static class ApplicationServicesRegistration
         services.AddScoped<INotificationOrchestrator, DefaultNotificationOrchestrator>();
         services.AddScoped<IRecipientNotificationMaterializer, RecipientNotificationMaterializer>();
         services.AddSingleton<NotificationDeliveryPolicyResolver>();
+        services.AddSingleton<NotificationFanoutRecipientTemplateFactory>();
+        services.AddScoped<NotificationFanoutRecipientMaterializationService>();
+        services.AddScoped<INotificationFanoutRecipientMaterializationService>(provider =>
+            provider.GetRequiredService<NotificationFanoutRecipientMaterializationService>());
+        services.AddScoped<NotificationFanoutPageProcessor>();
+        services.AddScoped<NotificationFanoutOccurrenceCoordinator>();
         services.AddScoped<IEventLifecycleEmailOutboxFactory, EventLifecycleEmailOutboxFactory>();
         services.AddScoped<IListmonkRegistrationSyncOutboxFactory, ListmonkRegistrationSyncOutboxFactory>();
         services.AddScoped<IRegistrationNotificationDeliveryService, RegistrationNotificationDeliveryService>();
+        services.AddScoped<NotificationFanoutOccurrenceHandoffService>();
         services.AddScoped<IEventPublishedNotificationFanoutService, EventPublishedNotificationFanoutService>();
         services.AddScoped<IEventModerationNotificationFanoutService, EventModerationNotificationFanoutService>();
         services.AddScoped<IEventDetailsProjectionService, EventDetailsProjectionService>();
         services.AddScoped<INotificationRefreshStreamService, NotificationRefreshStreamService>();
         services.AddScoped<IEventLifecycleScheduler, EventLifecycleScheduler>();
         services.AddScoped<AtprotoEventGovernanceResolver>();
+        services.AddScoped<AtprotoJetstreamTenantPresentationResolver>();
         services.AddScoped<IEventLifecyclePolicyProvider, EventLifecyclePolicyProvider>();
         services.AddScoped<IEventLifecycleReadinessEvaluator, EventLifecycleReadinessEvaluator>();
         services.AddScoped<IScheduledEmailDispatchTrigger, NoOpScheduledEmailDispatchTrigger>();

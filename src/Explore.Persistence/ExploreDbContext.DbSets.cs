@@ -248,6 +248,7 @@ public partial class ExploreDbContext
     public DbSet<IndexedDid> IndexedDids { get; set; }
     public DbSet<SyncState> SyncStates { get; set; }
     public DbSet<AtprotoRecord> AtprotoRecords { get; set; }
+    public DbSet<AtprotoEventProjection> AtprotoEventProjections { get; set; }
     public DbSet<AtprotoRecordTenantPresentation> AtprotoRecordTenantPresentations { get; set; }
     public DbSet<AtprotoOutboundRecordOwnership> AtprotoOutboundRecordOwnerships { get; set; }
     public DbSet<AtprotoJetstreamConsumerState> AtprotoJetstreamConsumerStates { get; set; }
@@ -264,6 +265,7 @@ public partial class ExploreDbContext
     public DbSet<EmailDispatchAttempt> EmailDispatchAttempts { get; set; }
     public DbSet<EmailDispatchReceipt> EmailDispatchReceipts { get; set; }
     public DbSet<EmailDispatchTenantControl> EmailDispatchTenantControls { get; set; }
+    public DbSet<EmailDispatchProcessorState> EmailDispatchProcessorStates { get; set; }
 
     // ===== Native Integration Sync Outbox =====
     public DbSet<IntegrationSyncOutbox> IntegrationSyncOutbox { get; set; }
