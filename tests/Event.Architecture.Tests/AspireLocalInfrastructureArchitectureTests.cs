@@ -56,6 +56,30 @@ public sealed class AspireLocalInfrastructureArchitectureTests
     }
 
     [Test]
+    public async Task EventLocationPrivacyMigrationStage_MustBeForwardedWithoutDefault_ToMigrationWorkerAndApi()
+    {
+        var appHost = await File.ReadAllTextAsync(Path.Combine(RepoRoot, "src", "Explore.AppHost", "AppHost.cs"));
+        const string configurationRead =
+            "builder.Configuration[\"Database:Migrations:EventLocationPrivacyStage\"]";
+        const string environmentMapping =
+            ".WithEnvironment(\"Database__Migrations__EventLocationPrivacyStage\", eventLocationPrivacyMigrationStage)";
+
+        await Assert.That(appHost.Split(configurationRead, StringSplitOptions.None).Length - 1).IsEqualTo(1);
+        await Assert.That(appHost.Split(environmentMapping, StringSplitOptions.None).Length - 1).IsEqualTo(2);
+        await Assert.That(appHost).Contains("if (!string.IsNullOrWhiteSpace(eventLocationPrivacyMigrationStage))");
+        await Assert.That(appHost).DoesNotContain($"{configurationRead} ??");
+
+        int migrationWorkerIndex = appHost.IndexOf("var migrations = WithProfileSecretMode(", StringComparison.Ordinal);
+        int apiIndex = appHost.IndexOf("var exploreAPI = WithProfileSecretMode(", StringComparison.Ordinal);
+        int firstMappingIndex = appHost.IndexOf(environmentMapping, StringComparison.Ordinal);
+        int secondMappingIndex = appHost.IndexOf(environmentMapping, firstMappingIndex + 1, StringComparison.Ordinal);
+
+        await Assert.That(firstMappingIndex).IsGreaterThan(migrationWorkerIndex);
+        await Assert.That(firstMappingIndex).IsLessThan(apiIndex);
+        await Assert.That(secondMappingIndex).IsGreaterThan(apiIndex);
+    }
+
+    [Test]
     public async Task WebApplications_MustExposeStableHttpsEndpoints()
     {
         var appHost = await File.ReadAllTextAsync(Path.Combine(RepoRoot, "src", "Explore.AppHost", "AppHost.cs"));

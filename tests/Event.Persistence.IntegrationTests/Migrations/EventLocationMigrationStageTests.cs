@@ -17,12 +17,14 @@ using TUnit.Core;
 
 namespace Event.Persistence.IntegrationTests.Migrations;
 
-[ClassDataSource<PostgreSqlContainerFixture>(Shared = SharedType.PerAssembly)]
+[ClassDataSource<RecipientDeliveryMigrationContainerFixture>(Shared = SharedType.PerAssembly)]
 [NotInParallel("PersistenceDb")]
 [Property("Category", "EventLocationPrivacy")]
-public sealed class EventLocationMigrationStageTests(PostgreSqlContainerFixture fixture)
+public sealed class EventLocationMigrationStageTests(RecipientDeliveryMigrationContainerFixture fixture)
 {
     private const string PreviousMigration = "20260715172404_AddTypedWebhookOwnership";
+    private const string BackfillPreviousMigration = "20260718210538_HardenAtprotoFederationPersistence";
+    private const string BackfillMigration = "20260718215537_BackfillUnclassifiedEventLocations";
 
     [Test]
     public async Task GenericMigrator_RequiresExplicitPendingStage_AndRejectsUnavailableContract()
@@ -34,6 +36,14 @@ public sealed class EventLocationMigrationStageTests(PostgreSqlContainerFixture 
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 ExploreDatabaseMigrator.MigrateAsync(context, configuration));
 
+            configuration[EventLocationPrivacyMigrationStage.ConfigurationKey] = " ";
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                ExploreDatabaseMigrator.MigrateAsync(context, configuration));
+
+            configuration[EventLocationPrivacyMigrationStage.ConfigurationKey] = "Backfill";
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                ExploreDatabaseMigrator.MigrateAsync(context, configuration));
+
             configuration[EventLocationPrivacyMigrationStage.ConfigurationKey] = "Contract";
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 ExploreDatabaseMigrator.MigrateAsync(context, configuration));
@@ -42,7 +52,8 @@ public sealed class EventLocationMigrationStageTests(PostgreSqlContainerFixture 
             await ExploreDatabaseMigrator.MigrateAsync(context, configuration);
 
             configuration[EventLocationPrivacyMigrationStage.ConfigurationKey] = null;
-            await ExploreDatabaseMigrator.MigrateAsync(context, configuration);
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                ExploreDatabaseMigrator.MigrateAsync(context, configuration));
 
             string[] applied = (await context.Database.GetAppliedMigrationsAsync()).ToArray();
             await Assert.That(applied).Contains(EventLocationPrivacyMigrationStage.ExpandMigration);
@@ -54,6 +65,34 @@ public sealed class EventLocationMigrationStageTests(PostgreSqlContainerFixture 
             configuration[EventLocationPrivacyMigrationStage.ConfigurationKey] = "Everything";
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 ExploreDatabaseMigrator.MigrateAsync(context, configuration));
+        });
+    }
+
+    [Test]
+    [Arguments(EventLocationPrivacyMigrationStage.Expand)]
+    [Arguments(EventLocationPrivacyMigrationStage.Backfill)]
+    public async Task ReRequestingAppliedStage_IsSuccessfulNoOp_AndPreservesMigrationHistory(string stage)
+    {
+        await WithDatabaseAsync(async context =>
+        {
+            if (stage == EventLocationPrivacyMigrationStage.Backfill)
+            {
+                await EventLocationPrivacyMigrationStage.MigrateAsync(
+                    context,
+                    EventLocationPrivacyMigrationStage.Expand);
+            }
+
+            await EventLocationPrivacyMigrationStage.MigrateAsync(context, stage);
+            string[] historyBeforeRetry = (await context.Database.GetAppliedMigrationsAsync()).ToArray();
+            string expectedTarget = stage == EventLocationPrivacyMigrationStage.Expand
+                ? EventLocationPrivacyMigrationStage.ExpandMigration
+                : BackfillMigration;
+            await Assert.That(historyBeforeRetry[^1]).IsEqualTo(expectedTarget);
+
+            await EventLocationPrivacyMigrationStage.MigrateAsync(context, stage);
+
+            string[] historyAfterRetry = (await context.Database.GetAppliedMigrationsAsync()).ToArray();
+            await Assert.That(historyAfterRetry).IsEquivalentTo(historyBeforeRetry);
         });
     }
 
@@ -192,6 +231,73 @@ public sealed class EventLocationMigrationStageTests(PostgreSqlContainerFixture 
 
             await Assert.ThrowsAsync<PostgresException>(() => context.Database.ExecuteSqlAsync(
                 $"UPDATE event_locations SET is_deleted = true WHERE id = '{graph.EventLocationId:D}'::uuid"));
+        });
+    }
+
+    [Test]
+    public async Task BackfillDown_RejectsLaterCarrierReferenceBeforeMutation_ThenRestoresOnlyCapturedCarrier()
+    {
+        await WithDatabaseAsync(async context =>
+        {
+            IMigrator migrator = context.GetService<IMigrator>();
+            await migrator.MigrateAsync(BackfillPreviousMigration);
+            await SeedLegacyEventLocationLookupsAsync(context);
+            context.EnableTenantFilterBypass("Event Location Privacy Backfill rollback verification.");
+
+            LegacyCarrierGraph graph = await SeedLegacyCarrierGraphAsync(context);
+            await migrator.MigrateAsync(BackfillMigration);
+            context.ChangeTracker.Clear();
+
+            EventLocation authority = await context.EventLocations
+                .IgnoreQueryFilters()
+                .SingleAsync(item => item.EventId == graph.EventId && item.LocationId == graph.LocationId);
+            var laterSession = new EventSession
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = graph.TenantId,
+                Tenant = null!,
+                EventId = graph.EventId,
+                Event = null!,
+                CreatedBy = graph.UserId
+            };
+            laterSession.AssignEventLocation(authority);
+            context.EventSessions.Add(laterSession);
+            await context.SaveChangesAsync();
+            context.ChangeTracker.Clear();
+
+            var failure = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                migrator.MigrateAsync(BackfillPreviousMigration));
+            var postgresFailure = failure!.GetBaseException() as PostgresException;
+            await Assert.That(postgresFailure).IsNotNull();
+            await Assert.That(postgresFailure!.SqlState).IsEqualTo(PostgresErrorCodes.ObjectNotInPrerequisiteState);
+
+            Guid?[] referencesAfterRejectedDown = await context.Database.SqlQuery<Guid?>(
+                    $"SELECT event_location_id AS \"Value\" FROM event_sessions WHERE id IN ({graph.LegacySessionId}, {laterSession.Id}) ORDER BY id")
+                .ToArrayAsync();
+            int authorityCountAfterRejectedDown = await context.Database.SqlQuery<int>(
+                    $"SELECT COUNT(*)::integer AS \"Value\" FROM event_locations WHERE id = {authority.Id}")
+                .SingleAsync();
+            await Assert.That(referencesAfterRejectedDown).IsEquivalentTo(new Guid?[] { authority.Id, authority.Id });
+            await Assert.That(authorityCountAfterRejectedDown).IsEqualTo(1);
+            await Assert.That(await context.Database.GetAppliedMigrationsAsync()).Contains(BackfillMigration);
+
+            await context.Database.ExecuteSqlAsync($"DELETE FROM event_sessions WHERE id = {laterSession.Id}");
+            await migrator.MigrateAsync(BackfillPreviousMigration);
+
+            Guid? legacyReferenceAfterSafeDown = await context.Database.SqlQuery<Guid?>(
+                    $"SELECT event_location_id AS \"Value\" FROM event_sessions WHERE id = {graph.LegacySessionId}")
+                .SingleAsync();
+            int authorityCountAfterSafeDown = await context.Database.SqlQuery<int>(
+                    $"SELECT COUNT(*)::integer AS \"Value\" FROM event_locations WHERE id = {authority.Id}")
+                .SingleAsync();
+            await Assert.That(legacyReferenceAfterSafeDown).IsNull();
+            await Assert.That(authorityCountAfterSafeDown).IsEqualTo(0);
+
+            await migrator.MigrateAsync(BackfillMigration);
+            Guid? repairedReference = await context.Database.SqlQuery<Guid?>(
+                    $"SELECT event_location_id AS \"Value\" FROM event_sessions WHERE id = {graph.LegacySessionId}")
+                .SingleAsync();
+            await Assert.That(repairedReference).IsNotNull();
         });
     }
 
@@ -446,6 +552,87 @@ public sealed class EventLocationMigrationStageTests(PostgreSqlContainerFixture 
             });
     }
 
+    private static async Task<LegacyCarrierGraph> SeedLegacyCarrierGraphAsync(ExploreDbContext context)
+    {
+        var tenant = new Tenant
+        {
+            Id = Guid.CreateVersion7(),
+            FullName = "ELP Backfill rollback tenant",
+            Slug = $"elp-backfill-{Guid.NewGuid():N}",
+            TenantStatusId = (int)TenantStatusEnum.Active,
+            TenantStatus = null!
+        };
+        var user = new User
+        {
+            Id = Guid.CreateVersion7(),
+            Pii = new UserPii
+            {
+                Email = $"elp-backfill-{Guid.NewGuid():N}@example.com",
+                FirstName = "Backfill",
+                LastName = "Owner"
+            }
+        };
+        context.AddRange(tenant, user);
+        await context.SaveChangesAsync();
+
+        var actor = new Actor
+        {
+            Id = Guid.CreateVersion7(),
+            Pii = new ActorPii { DisplayName = "ELP Backfill rollback actor" },
+            ActorTypeId = (int)ActorTypeEnum.User,
+            ActorType = null!,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            UserId = user.Id
+        };
+        context.Actors.Add(actor);
+        await context.SaveChangesAsync();
+
+        var eventEntity = new Explore.Domain.Event
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = null!,
+            ActorId = actor.Id,
+            Actor = null!,
+            Title = "ELP Backfill rollback event",
+            EventStatusId = (int)EventStatusEnum.Draft,
+            EventStatus = null!,
+            EventFormatId = (int)EventFormatEnum.Local,
+            EventFormat = null!,
+            VisibilityTypeId = (int)VisibilityTypeEnum.Public,
+            VisibilityType = null!,
+            IsRegistrationRequired = false,
+            CreatedBy = user.Id
+        };
+        var location = new Location
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = null!,
+            FullName = "ELP Backfill legacy venue",
+            Country = "BE",
+            City = "Brussels"
+        };
+        context.AddRange(eventEntity, location);
+        await context.SaveChangesAsync();
+
+        var legacySession = new EventSession
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = tenant.Id,
+            Tenant = null!,
+            EventId = eventEntity.Id,
+            Event = null!,
+            LocationId = location.Id,
+            CreatedBy = user.Id
+        };
+        context.EventSessions.Add(legacySession);
+        await context.SaveChangesAsync();
+
+        return new LegacyCarrierGraph(tenant.Id, user.Id, eventEntity.Id, location.Id, legacySession.Id);
+    }
+
     private sealed record PrivacyGraph(
         Guid EventLocationId,
         Guid AuditId,
@@ -453,4 +640,11 @@ public sealed class EventLocationMigrationStageTests(PostgreSqlContainerFixture 
         Guid HomeRoomId,
         Guid OtherLocationId,
         IReadOnlyDictionary<string, Guid> CarrierIds);
+
+    private sealed record LegacyCarrierGraph(
+        Guid TenantId,
+        Guid UserId,
+        Guid EventId,
+        Guid LocationId,
+        Guid LegacySessionId);
 }

@@ -20,6 +20,8 @@ if (File.Exists(dotenvPath))
     Env.NoClobber().Load(dotenvPath);
 var builder = DistributedApplication.CreateBuilder(args);
 var runMode = AspireRunModeExtensions.Parse(builder.Configuration["ISLAMU_ASPIRE_MODE"]);
+var eventLocationPrivacyMigrationStage =
+    builder.Configuration["Database:Migrations:EventLocationPrivacyStage"];
 var webhookProvider = ConfiguredValue(
     builder.Configuration,
     "WEBHOOKS_PROVIDER",
@@ -100,6 +102,11 @@ var migrations = WithProfileSecretMode(
         runMode,
         builder.Configuration);
 
+if (!string.IsNullOrWhiteSpace(eventLocationPrivacyMigrationStage))
+{
+    migrations = migrations.WithEnvironment("Database__Migrations__EventLocationPrivacyStage", eventLocationPrivacyMigrationStage);
+}
+
 if (database is not null)
 {
     migrations = migrations
@@ -128,6 +135,11 @@ var exploreAPI = WithProfileSecretMode(
     .WaitFor(mailpit);
 
 exploreAPI = ConfigureLocalMailpitSmtp(exploreAPI, mailpit, builder.Configuration);
+
+if (!string.IsNullOrWhiteSpace(eventLocationPrivacyMigrationStage))
+{
+    exploreAPI = exploreAPI.WithEnvironment("Database__Migrations__EventLocationPrivacyStage", eventLocationPrivacyMigrationStage);
+}
 
 var vapidPublicKey = builder.Configuration["VAPID_PUBLIC_KEY"];
 var vapidPrivateKey = builder.Configuration["VAPID_PRIVATE_KEY"];

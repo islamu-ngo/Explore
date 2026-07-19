@@ -12,6 +12,19 @@ public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLif
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        try
+        {
+            await MigrateAsync(stoppingToken);
+        }
+        catch
+        {
+            Environment.ExitCode = 1;
+            throw;
+        }
+    }
+
+    private async Task MigrateAsync(CancellationToken stoppingToken)
+    {
         logger.LogInformation("Starting database migration...");
 
         await using var scope = serviceProvider.CreateAsyncScope();
