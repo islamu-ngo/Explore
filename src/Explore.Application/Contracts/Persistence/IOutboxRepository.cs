@@ -17,6 +17,10 @@ public interface IOutboxRepository
     /// </summary>
     Task<OutboxMessage> Create(OutboxMessage message);
 
+    Task<IReadOnlyList<OutboxMessage>> CreateRange(
+        IReadOnlyCollection<OutboxMessage> messages,
+        CancellationToken ct = default);
+
     /// <summary>
     /// Returns due Pending messages, expired Processing leases, and expired
     /// DeadLettered reconciliation leases, ordered by CreatedAt.

@@ -17,7 +17,8 @@ public sealed class LocationPrivacyErasureReplayCheckpoint
 
     public static LocationPrivacyErasureReplayCheckpoint Start(
         LocationPrivacyErasureAuthorityIntent intent,
-        DateTime appliedAtUtc)
+        DateTime appliedAtUtc,
+        Guid? checkpointId = null)
     {
         ArgumentNullException.ThrowIfNull(intent);
         if (intent.AuthoritySequence != 1)
@@ -25,13 +26,14 @@ public sealed class LocationPrivacyErasureReplayCheckpoint
             throw new InvalidOperationException("A fresh local checkpoint must start at authority sequence one.");
         }
 
-        return Create(intent, null, appliedAtUtc);
+        return Create(intent, null, appliedAtUtc, checkpointId ?? Guid.CreateVersion7());
     }
 
     public static LocationPrivacyErasureReplayCheckpoint Advance(
         LocationPrivacyErasureReplayCheckpoint previous,
         LocationPrivacyErasureAuthorityIntent intent,
-        DateTime appliedAtUtc)
+        DateTime appliedAtUtc,
+        Guid? checkpointId = null)
     {
         ArgumentNullException.ThrowIfNull(previous);
         ArgumentNullException.ThrowIfNull(intent);
@@ -45,7 +47,7 @@ public sealed class LocationPrivacyErasureReplayCheckpoint
             throw new InvalidOperationException("One erasure intent cannot occupy multiple authority sequences.");
         }
 
-        return Create(intent, previous.Id, appliedAtUtc);
+        return Create(intent, previous.Id, appliedAtUtc, checkpointId ?? Guid.CreateVersion7());
     }
 
     public bool Matches(LocationPrivacyErasureAuthorityIntent intent) =>
@@ -56,7 +58,8 @@ public sealed class LocationPrivacyErasureReplayCheckpoint
     private static LocationPrivacyErasureReplayCheckpoint Create(
         LocationPrivacyErasureAuthorityIntent intent,
         Guid? previousCheckpointId,
-        DateTime appliedAtUtc)
+        DateTime appliedAtUtc,
+        Guid checkpointId)
     {
         if (appliedAtUtc == default || appliedAtUtc.Kind != DateTimeKind.Utc)
         {
@@ -68,9 +71,14 @@ public sealed class LocationPrivacyErasureReplayCheckpoint
             throw new ArgumentException("An intent cannot be applied before the authority records it.", nameof(appliedAtUtc));
         }
 
+        if (checkpointId == Guid.Empty || checkpointId.Version != 7 || checkpointId.Variant is < 8 or > 11)
+        {
+            throw new ArgumentException("Checkpoint ids must be RFC 4122 UUIDv7 values.", nameof(checkpointId));
+        }
+
         return new LocationPrivacyErasureReplayCheckpoint
         {
-            Id = Guid.CreateVersion7(),
+            Id = checkpointId,
             AuthoritySequence = intent.AuthoritySequence,
             IntentId = intent.IntentId,
             PreviousCheckpointId = previousCheckpointId,

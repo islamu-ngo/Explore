@@ -24,6 +24,16 @@ public class OutboxRepository : GenericRepository<OutboxMessage, Guid>, IOutboxR
         return message;
     }
 
+    public async Task<IReadOnlyList<OutboxMessage>> CreateRange(
+        IReadOnlyCollection<OutboxMessage> messages,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(messages);
+        await _dbContext.OutboxMessages.AddRangeAsync(messages, ct);
+        await _dbContext.SaveChangesAsync(ct);
+        return messages.ToArray();
+    }
+
     public async Task<List<OutboxMessage>> GetPendingBatch(int batchSize, CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;

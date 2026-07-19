@@ -4,19 +4,20 @@
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Users.Handlers.Commands;
 using Explore.Application.Features.Users.Requests.Commands;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Caching.Hybrid;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using TUnit.Core;
 
 namespace Event.Application.UnitTests.Features.Users.Commands;
 
-[Category("EventLocationPrivacyPending")]
-[Skip("Category: EventLocationPrivacyPending. Removal: Todo 10 implements authority-first ELP-505/515 orchestration at the DeleteUser command boundary.")]
+[Category("EventLocationPrivacy")]
 public sealed class GlobalLocationPrivacyErasurePendingSpecs
 {
     [Test]
@@ -33,7 +34,7 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             harness.Handler.Handle(new DeleteUserCommand { UserId = userId }, CancellationToken.None));
-        await harness.UserRepository.DidNotReceive().Delete(Arg.Any<User>());
+        await harness.UserRepository.DidNotReceive().Update(Arg.Any<User>());
     }
 
     [Test]
@@ -44,26 +45,9 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
         var tenantBHome = CreatePrivateHome(Guid.CreateVersion7(), userId, "Owner home B");
         var unrelatedHome = CreatePrivateHome(Guid.CreateVersion7(), Guid.CreateVersion7(), "Unrelated home");
         await using DeletionHarness harness = CreateHarness(userId);
-        harness.LocationRepository
-            .GetOwnedPrivateHomesForGlobalErasureAsync(userId, Arg.Any<CancellationToken>())
+        harness.ErasureRepository
+            .GetOwnedPrivateHomesAsync(userId, Arg.Any<CancellationToken>())
             .Returns([tenantAHome, tenantBHome]);
-        harness.Authority
-            .AppendAsync(
-                Arg.Any<LocationPrivacyErasureIntent>(),
-                Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                LocationPrivacyErasureIntent intent = call.Arg<LocationPrivacyErasureIntent>();
-                DateTime recordedAt = DateTime.UtcNow;
-                return Task.FromResult(LocationPrivacyErasureAuthorityIntent.Record(
-                    intent.IntentId,
-                    1,
-                    intent.OwnerUserId,
-                    intent.LocationIds,
-                    intent.Reason,
-                    recordedAt,
-                    recordedAt));
-            });
 
         await harness.Handler.Handle(
             new DeleteUserCommand { UserId = userId },
@@ -88,43 +72,90 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
             Substitute.For<IGenericRepository<UserPii, Guid>>();
         IUserAuthenticationTokenRepository tokenRepository =
             Substitute.For<IUserAuthenticationTokenRepository>();
-        IActorRepository actorRepository = Substitute.For<IActorRepository>();
-        IGenericRepository<ActorPii, Guid> actorPiiRepository =
-            Substitute.For<IGenericRepository<ActorPii, Guid>>();
-        ILocationRepository locationRepository = Substitute.For<ILocationRepository>();
+        IGlobalLocationPrivacyErasureRepository erasureRepository =
+            Substitute.For<IGlobalLocationPrivacyErasureRepository>();
+        ILocationPrivacyErasureReplayCheckpointRepository checkpointRepository =
+            Substitute.For<ILocationPrivacyErasureReplayCheckpointRepository>();
+        IOutboxRepository outboxRepository = Substitute.For<IOutboxRepository>();
         ILocationPrivacyErasureAuthority authority =
             Substitute.For<ILocationPrivacyErasureAuthority>();
         HybridCache cache = Substitute.For<HybridCache>();
-        IUnitOfWork unitOfWork = Substitute.For<IUnitOfWork>();
+        IUnitOfWork unitOfWork = new ImmediateUnitOfWork();
         User user = DataBuilder.User.Generate();
         user.Id = userId;
+        LocationPrivacyErasureAuthorityIntent? retainedIntent = null;
+        LocationPrivacyErasureReplayCheckpoint? checkpoint = null;
 
         userRepository.GetById(userId).Returns(user);
-        userRepository.Delete(user).Returns(Task.CompletedTask);
+        userRepository.Update(user).Returns(Task.CompletedTask);
         userPiiRepository.GetById(userId).Returns((UserPii?)null);
         tokenRepository.GetByUser(userId, Arg.Any<CancellationToken>())
             .Returns([]);
-        actorRepository.GetActorByUserId(userId).Returns((Actor?)null);
-        unitOfWork
-            .ExecuteInTransactionAsync(
-                Arg.Any<Func<CancellationToken, Task>>(),
+        erasureRepository
+            .GetOwnedPrivateHomesAsync(userId, Arg.Any<CancellationToken>())
+            .Returns([]);
+        erasureRepository
+            .GetEventLocationsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+        erasureRepository
+            .GetUserActorsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns([]);
+        authority
+            .AppendAsync(Arg.Any<LocationPrivacyErasureIntent>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                LocationPrivacyErasureIntent intent = call.Arg<LocationPrivacyErasureIntent>();
+                DateTime recordedAt = DateTime.UtcNow;
+                retainedIntent = LocationPrivacyErasureAuthorityIntent.Record(
+                    intent.IntentId,
+                    1,
+                    intent.OwnerUserId,
+                    intent.LocationIds,
+                    intent.Reason,
+                    recordedAt,
+                    recordedAt);
+                return retainedIntent;
+            });
+        authority
+            .ReadAfterAsync(Arg.Any<long>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                long afterSequence = call.ArgAt<long>(0);
+                return retainedIntent is not null && afterSequence < retainedIntent.AuthoritySequence
+                    ? [retainedIntent]
+                    : [];
+            });
+        checkpointRepository
+            .GetLatestAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => checkpoint);
+        checkpointRepository
+            .AppendAsync(
+                Arg.Any<LocationPrivacyErasureReplayCheckpoint>(),
                 Arg.Any<CancellationToken>())
-            .Returns(call => call.Arg<Func<CancellationToken, Task>>()(CancellationToken.None));
+            .Returns(call =>
+            {
+                checkpoint = call.Arg<LocationPrivacyErasureReplayCheckpoint>();
+                return checkpoint;
+            });
+        outboxRepository
+            .CreateRange(Arg.Any<IReadOnlyCollection<OutboxMessage>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<IReadOnlyCollection<OutboxMessage>>().ToArray());
 
-        var services = new ServiceCollection();
-        services.AddSingleton(userRepository);
-        services.AddSingleton(userPiiRepository);
-        services.AddSingleton(tokenRepository);
-        services.AddSingleton(actorRepository);
-        services.AddSingleton(actorPiiRepository);
-        services.AddSingleton(locationRepository);
-        services.AddSingleton(authority);
-        services.AddSingleton(cache);
-        services.AddSingleton(unitOfWork);
-        ServiceProvider provider = services.BuildServiceProvider();
-        var handler = ActivatorUtilities.CreateInstance<DeleteUserCommandHandler>(provider);
+        IGlobalLocationPrivacyErasureService service = new GlobalLocationPrivacyErasureService(
+            userRepository,
+            userPiiRepository,
+            tokenRepository,
+            erasureRepository,
+            checkpointRepository,
+            outboxRepository,
+            authority,
+            unitOfWork,
+            cache,
+            TimeProvider.System,
+            Substitute.For<ILogger<GlobalLocationPrivacyErasureService>>());
+        var handler = new DeleteUserCommandHandler(service);
 
-        return new DeletionHarness(handler, userRepository, locationRepository, authority, provider);
+        return new DeletionHarness(handler, userRepository, erasureRepository, authority);
     }
 
     private static Location CreatePrivateHome(Guid tenantId, Guid ownerUserId, string name)
@@ -152,10 +183,24 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
     private sealed record DeletionHarness(
         DeleteUserCommandHandler Handler,
         IUserRepository UserRepository,
-        ILocationRepository LocationRepository,
-        ILocationPrivacyErasureAuthority Authority,
-        ServiceProvider Provider) : IAsyncDisposable
+        IGlobalLocationPrivacyErasureRepository ErasureRepository,
+        ILocationPrivacyErasureAuthority Authority) : IAsyncDisposable
     {
-        public ValueTask DisposeAsync() => Provider.DisposeAsync();
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class ImmediateUnitOfWork : IUnitOfWork
+    {
+        public Task ExecuteInTransactionAsync(
+            Func<CancellationToken, Task> operation,
+            CancellationToken ct = default) => operation(ct);
+
+        public Task<T> ExecuteInTransactionAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => operation(ct);
+
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) => operation(ct);
     }
 }
