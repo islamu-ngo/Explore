@@ -61,7 +61,7 @@ public sealed class EventPublishedNotificationFanoutService : IEventPublishedNot
         var run = await GetOrCreateRunAsync(request, cancellationToken);
         if (string.Equals(run.Status, StatusCompleted, StringComparison.Ordinal))
         {
-            metrics.RecordNotificationFanoutRun(request.TenantId.ToString(), FanoutKind, OutcomeSkippedCompleted);
+            metrics.RecordNotificationFanoutRun(FanoutKind, OutcomeSkippedCompleted);
             logger.LogInformation(
                 "Skipping completed notification fanout run {RunId} for event {EventId}",
                 run.Id,
@@ -74,7 +74,7 @@ public sealed class EventPublishedNotificationFanoutService : IEventPublishedNot
         run.FailedAt = null;
         run.LastError = null;
         await fanoutRunRepository.Update(run);
-        metrics.RecordNotificationFanoutRun(request.TenantId.ToString(), FanoutKind, OutcomeProcessing);
+        metrics.RecordNotificationFanoutRun(FanoutKind, OutcomeProcessing);
         logger.LogInformation(
             "Started notification fanout run {RunId} for event {EventId} and tenant {TenantId}",
             run.Id,
@@ -155,10 +155,10 @@ public sealed class EventPublishedNotificationFanoutService : IEventPublishedNot
             run.FailedAt = null;
             run.LastError = null;
             await fanoutRunRepository.Update(run);
-            metrics.RecordNotificationFanoutRun(request.TenantId.ToString(), FanoutKind, OutcomeCompleted);
-            metrics.RecordNotificationFanoutSubscribers(processedThisAttempt, request.TenantId.ToString(), FanoutKind, OutcomeProcessed);
-            metrics.RecordNotificationFanoutSubscribers(createdThisAttempt, request.TenantId.ToString(), FanoutKind, OutcomeNotificationCreated);
-            metrics.RecordNotificationFanoutSubscribers(duplicateSkippedThisAttempt, request.TenantId.ToString(), FanoutKind, OutcomeDuplicateSkipped);
+            metrics.RecordNotificationFanoutRun(FanoutKind, OutcomeCompleted);
+            metrics.RecordNotificationFanoutSubscribers(processedThisAttempt, FanoutKind, OutcomeProcessed);
+            metrics.RecordNotificationFanoutSubscribers(createdThisAttempt, FanoutKind, OutcomeNotificationCreated);
+            metrics.RecordNotificationFanoutSubscribers(duplicateSkippedThisAttempt, FanoutKind, OutcomeDuplicateSkipped);
             logger.LogInformation(
                 "Completed notification fanout run {RunId} for event {EventId}: processed {ProcessedCount}, created {CreatedCount}, duplicate skipped {DuplicateSkippedCount}",
                 run.Id,
@@ -173,10 +173,10 @@ public sealed class EventPublishedNotificationFanoutService : IEventPublishedNot
             run.FailedAt = DateTime.UtcNow;
             run.LastError = ex.Message;
             await fanoutRunRepository.Update(run);
-            metrics.RecordNotificationFanoutRun(request.TenantId.ToString(), FanoutKind, OutcomeFailed);
-            metrics.RecordNotificationFanoutSubscribers(processedThisAttempt, request.TenantId.ToString(), FanoutKind, OutcomeProcessed);
-            metrics.RecordNotificationFanoutSubscribers(createdThisAttempt, request.TenantId.ToString(), FanoutKind, OutcomeNotificationCreated);
-            metrics.RecordNotificationFanoutSubscribers(duplicateSkippedThisAttempt, request.TenantId.ToString(), FanoutKind, OutcomeDuplicateSkipped);
+            metrics.RecordNotificationFanoutRun(FanoutKind, OutcomeFailed);
+            metrics.RecordNotificationFanoutSubscribers(processedThisAttempt, FanoutKind, OutcomeProcessed);
+            metrics.RecordNotificationFanoutSubscribers(createdThisAttempt, FanoutKind, OutcomeNotificationCreated);
+            metrics.RecordNotificationFanoutSubscribers(duplicateSkippedThisAttempt, FanoutKind, OutcomeDuplicateSkipped);
             logger.LogError(
                 ex,
                 "Failed notification fanout run {RunId} for event {EventId}: processed {ProcessedCount}, created {CreatedCount}, duplicate skipped {DuplicateSkippedCount}",

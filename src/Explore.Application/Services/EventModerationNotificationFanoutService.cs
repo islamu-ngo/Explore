@@ -42,7 +42,7 @@ public sealed class EventModerationNotificationFanoutService(
         var run = await GetOrCreateRunAsync(request, cancellationToken);
         if (string.Equals(run.Status, StatusCompleted, StringComparison.Ordinal))
         {
-            metrics.RecordNotificationFanoutRun(request.TenantId.ToString(), LightFanoutKind, OutcomeSkippedCompleted);
+            metrics.RecordNotificationFanoutRun(LightFanoutKind, OutcomeSkippedCompleted);
             logger.LogInformation(
                 "Skipping completed light moderation notification fanout run {RunId} for moderation record {ModerationRecordId}",
                 run.Id,
@@ -55,7 +55,7 @@ public sealed class EventModerationNotificationFanoutService(
         run.FailedAt = null;
         run.LastError = null;
         await fanoutRunRepository.Update(run);
-        metrics.RecordNotificationFanoutRun(request.TenantId.ToString(), LightFanoutKind, OutcomeProcessing);
+        metrics.RecordNotificationFanoutRun(LightFanoutKind, OutcomeProcessing);
 
         var processedThisAttempt = 0;
         var createdThisAttempt = 0;
@@ -129,10 +129,10 @@ public sealed class EventModerationNotificationFanoutService(
             run.FailedAt = null;
             run.LastError = null;
             await fanoutRunRepository.Update(run);
-            metrics.RecordNotificationFanoutRun(request.TenantId.ToString(), LightFanoutKind, OutcomeCompleted);
-            metrics.RecordNotificationFanoutSubscribers(processedThisAttempt, request.TenantId.ToString(), LightFanoutKind, OutcomeProcessed);
-            metrics.RecordNotificationFanoutSubscribers(createdThisAttempt, request.TenantId.ToString(), LightFanoutKind, OutcomeNotificationCreated);
-            metrics.RecordNotificationFanoutSubscribers(duplicateSkippedThisAttempt, request.TenantId.ToString(), LightFanoutKind, OutcomeDuplicateSkipped);
+            metrics.RecordNotificationFanoutRun(LightFanoutKind, OutcomeCompleted);
+            metrics.RecordNotificationFanoutSubscribers(processedThisAttempt, LightFanoutKind, OutcomeProcessed);
+            metrics.RecordNotificationFanoutSubscribers(createdThisAttempt, LightFanoutKind, OutcomeNotificationCreated);
+            metrics.RecordNotificationFanoutSubscribers(duplicateSkippedThisAttempt, LightFanoutKind, OutcomeDuplicateSkipped);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -140,10 +140,10 @@ public sealed class EventModerationNotificationFanoutService(
             run.FailedAt = DateTime.UtcNow;
             run.LastError = ex.Message;
             await fanoutRunRepository.Update(run);
-            metrics.RecordNotificationFanoutRun(request.TenantId.ToString(), LightFanoutKind, OutcomeFailed);
-            metrics.RecordNotificationFanoutSubscribers(processedThisAttempt, request.TenantId.ToString(), LightFanoutKind, OutcomeProcessed);
-            metrics.RecordNotificationFanoutSubscribers(createdThisAttempt, request.TenantId.ToString(), LightFanoutKind, OutcomeNotificationCreated);
-            metrics.RecordNotificationFanoutSubscribers(duplicateSkippedThisAttempt, request.TenantId.ToString(), LightFanoutKind, OutcomeDuplicateSkipped);
+            metrics.RecordNotificationFanoutRun(LightFanoutKind, OutcomeFailed);
+            metrics.RecordNotificationFanoutSubscribers(processedThisAttempt, LightFanoutKind, OutcomeProcessed);
+            metrics.RecordNotificationFanoutSubscribers(createdThisAttempt, LightFanoutKind, OutcomeNotificationCreated);
+            metrics.RecordNotificationFanoutSubscribers(duplicateSkippedThisAttempt, LightFanoutKind, OutcomeDuplicateSkipped);
             logger.LogError(
                 ex,
                 "Failed light moderation notification fanout run {RunId} for moderation record {ModerationRecordId}",
@@ -173,7 +173,7 @@ public sealed class EventModerationNotificationFanoutService(
         var run = await GetOrCreateHeavyRunAsync(request, cancellationToken);
         if (string.Equals(run.Status, StatusCompleted, StringComparison.Ordinal))
         {
-            metrics.RecordNotificationFanoutRun(request.TenantId.ToString(), HeavyFanoutKind, OutcomeSkippedCompleted);
+            metrics.RecordNotificationFanoutRun(HeavyFanoutKind, OutcomeSkippedCompleted);
             logger.LogInformation(
                 "Skipping completed heavy moderation notification fanout run {RunId} for moderation record {ModerationRecordId}",
                 run.Id,
@@ -186,7 +186,7 @@ public sealed class EventModerationNotificationFanoutService(
         run.FailedAt = null;
         run.LastError = null;
         await fanoutRunRepository.Update(run);
-        metrics.RecordNotificationFanoutRun(request.TenantId.ToString(), HeavyFanoutKind, OutcomeProcessing);
+        metrics.RecordNotificationFanoutRun(HeavyFanoutKind, OutcomeProcessing);
 
         var processedThisAttempt = 0;
         var createdThisAttempt = 0;
@@ -260,10 +260,10 @@ public sealed class EventModerationNotificationFanoutService(
             run.FailedAt = null;
             run.LastError = null;
             await fanoutRunRepository.Update(run);
-            metrics.RecordNotificationFanoutRun(request.TenantId.ToString(), HeavyFanoutKind, OutcomeCompleted);
-            metrics.RecordNotificationFanoutSubscribers(processedThisAttempt, request.TenantId.ToString(), HeavyFanoutKind, OutcomeProcessed);
-            metrics.RecordNotificationFanoutSubscribers(createdThisAttempt, request.TenantId.ToString(), HeavyFanoutKind, OutcomeNotificationCreated);
-            metrics.RecordNotificationFanoutSubscribers(duplicateSkippedThisAttempt, request.TenantId.ToString(), HeavyFanoutKind, OutcomeDuplicateSkipped);
+            metrics.RecordNotificationFanoutRun(HeavyFanoutKind, OutcomeCompleted);
+            metrics.RecordNotificationFanoutSubscribers(processedThisAttempt, HeavyFanoutKind, OutcomeProcessed);
+            metrics.RecordNotificationFanoutSubscribers(createdThisAttempt, HeavyFanoutKind, OutcomeNotificationCreated);
+            metrics.RecordNotificationFanoutSubscribers(duplicateSkippedThisAttempt, HeavyFanoutKind, OutcomeDuplicateSkipped);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -271,10 +271,10 @@ public sealed class EventModerationNotificationFanoutService(
             run.FailedAt = DateTime.UtcNow;
             run.LastError = ex.Message;
             await fanoutRunRepository.Update(run);
-            metrics.RecordNotificationFanoutRun(request.TenantId.ToString(), HeavyFanoutKind, OutcomeFailed);
-            metrics.RecordNotificationFanoutSubscribers(processedThisAttempt, request.TenantId.ToString(), HeavyFanoutKind, OutcomeProcessed);
-            metrics.RecordNotificationFanoutSubscribers(createdThisAttempt, request.TenantId.ToString(), HeavyFanoutKind, OutcomeNotificationCreated);
-            metrics.RecordNotificationFanoutSubscribers(duplicateSkippedThisAttempt, request.TenantId.ToString(), HeavyFanoutKind, OutcomeDuplicateSkipped);
+            metrics.RecordNotificationFanoutRun(HeavyFanoutKind, OutcomeFailed);
+            metrics.RecordNotificationFanoutSubscribers(processedThisAttempt, HeavyFanoutKind, OutcomeProcessed);
+            metrics.RecordNotificationFanoutSubscribers(createdThisAttempt, HeavyFanoutKind, OutcomeNotificationCreated);
+            metrics.RecordNotificationFanoutSubscribers(duplicateSkippedThisAttempt, HeavyFanoutKind, OutcomeDuplicateSkipped);
             logger.LogError(
                 ex,
                 "Failed heavy moderation notification fanout run {RunId} for moderation record {ModerationRecordId}",
