@@ -11,7 +11,6 @@ using Explore.Application.Contracts.Hateoas;  // For ILinkPolicy, ICollectionLin
 using Explore.Application.DTOs.Actor;
 using Explore.Application.DTOs.ActorSubscription;
 using Explore.Application.DTOs.Ai;
-using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.DTOs.CustomPropertyDefinition;
@@ -41,6 +40,7 @@ using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.OrganizationReview;
+using Explore.Application.DTOs.PublicExperience;
 using Explore.Application.DTOs.Settings;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.SupportAccess;
@@ -71,6 +71,12 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<EventDto>, EventDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<EventListDto>, EventCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<EventDto, EventListDto>, EventResourceAssembler>();
+        services.AddScoped<EventDiscoveryLinkPolicy>();
+        services.AddScoped<ILinkPolicy<EventDiscoveryItemDto>>(provider =>
+            provider.GetRequiredService<EventDiscoveryLinkPolicy>());
+        services.AddScoped<ICollectionLinkPolicy<EventDiscoveryItemDto>>(provider =>
+            provider.GetRequiredService<EventDiscoveryLinkPolicy>());
+        services.AddScoped<IResourceAssembler<EventDiscoveryItemDto>, EventDiscoveryResourceAssembler>();
 
         services.AddScoped<ILinkPolicy<EventReportOptionsDto>, EventReportOptionsDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<EventReportOptionsDto>, EventReportOptionsCollectionLinkPolicy>();
@@ -262,11 +268,6 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<OrganizationReviewDto>, OrganizationReviewDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<OrganizationReviewDto>, OrganizationReviewCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<OrganizationReviewDto, OrganizationReviewDto>, OrganizationReviewResourceAssembler>();
-
-        // AtprotoRecord (ATProto federation)
-        services.AddScoped<ILinkPolicy<AtprotoRecordDto>, AtprotoRecordDetailLinkPolicy>();
-        services.AddScoped<ICollectionLinkPolicy<AtprotoRecordListDto>, AtprotoRecordCollectionLinkPolicy>();
-        services.AddScoped<IResourceAssembler<AtprotoRecordDto, AtprotoRecordListDto>, AtprotoRecordResourceAssembler>();
 
         // IndexedDid (ATProto federation identity)
         services.AddScoped<ILinkPolicy<IndexedDidDto>, IndexedDidDetailLinkPolicy>();

@@ -6,7 +6,6 @@ using Explore.Application.DTOs.Actor;
 using Explore.Application.DTOs.ActorKeyStore;
 using Explore.Application.DTOs.ActorType;
 using Explore.Application.DTOs.Ai;
-using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.AudienceAge;
 using Explore.Application.DTOs.AudienceGender;
 using Explore.Application.DTOs.Category;
@@ -43,6 +42,7 @@ using Explore.Application.DTOs.Permission;
 using Explore.Application.DTOs.PublicExperience;
 using Explore.Application.DTOs.RegistrationMode;
 using Explore.Application.DTOs.Role;
+using Explore.Application.DTOs.Settings;
 using Explore.Application.DTOs.StatusType;
 using Explore.Application.DTOs.Storage;
 using Explore.Application.DTOs.StorageObject;
@@ -148,8 +148,10 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(ActorTypeDto))]
 [JsonSerializable(typeof(ActorTypeListDto))]
 [JsonSerializable(typeof(AddOrganizationMemberDto))]
-[JsonSerializable(typeof(AtprotoRecordDto))]
-[JsonSerializable(typeof(AtprotoRecordListDto))]
+[JsonSerializable(typeof(EventDiscoveryItemDto))]
+[JsonSerializable(typeof(FederatedEventDto))]
+[JsonSerializable(typeof(EventFederationMetadataDto))]
+[JsonSerializable(typeof(SettingGroupResponseDto))]
 [JsonSerializable(typeof(AudienceAgeDto))]
 [JsonSerializable(typeof(AudienceAgeListDto))]
 [JsonSerializable(typeof(AudienceGenderDto))]
@@ -444,8 +446,6 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(List<ActorTypeDto>))]
 [JsonSerializable(typeof(List<ActorTypeListDto>))]
 [JsonSerializable(typeof(List<AddOrganizationMemberDto>))]
-[JsonSerializable(typeof(List<AtprotoRecordDto>))]
-[JsonSerializable(typeof(List<AtprotoRecordListDto>))]
 [JsonSerializable(typeof(List<AudienceAgeDto>))]
 [JsonSerializable(typeof(List<AudienceAgeListDto>))]
 [JsonSerializable(typeof(List<AudienceGenderDto>))]
@@ -592,8 +592,6 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(IReadOnlyList<ActorTypeDto>))]
 [JsonSerializable(typeof(IReadOnlyList<ActorTypeListDto>))]
 [JsonSerializable(typeof(IReadOnlyList<AddOrganizationMemberDto>))]
-[JsonSerializable(typeof(IReadOnlyList<AtprotoRecordDto>))]
-[JsonSerializable(typeof(IReadOnlyList<AtprotoRecordListDto>))]
 [JsonSerializable(typeof(IReadOnlyList<AudienceAgeDto>))]
 [JsonSerializable(typeof(IReadOnlyList<AudienceAgeListDto>))]
 [JsonSerializable(typeof(IReadOnlyList<AudienceGenderDto>))]
@@ -736,7 +734,7 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(PaginatedResult<ActorKeyStoreListDto>))]
 [JsonSerializable(typeof(PaginatedResult<ActorListDto>))]
 [JsonSerializable(typeof(PaginatedResult<ActorTypeListDto>))]
-[JsonSerializable(typeof(PaginatedResult<AtprotoRecordListDto>))]
+[JsonSerializable(typeof(PaginatedResult<EventDiscoveryItemDto>))]
 [JsonSerializable(typeof(PaginatedResult<AudienceAgeListDto>))]
 [JsonSerializable(typeof(PaginatedResult<AudienceGenderListDto>))]
 [JsonSerializable(typeof(PaginatedResult<CategoryListDto>))]
@@ -781,8 +779,8 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(HalResource<ActorTypeDto>))]
 [JsonSerializable(typeof(HalResource<ActorTypeListDto>))]
 [JsonSerializable(typeof(HalResource<AddOrganizationMemberDto>))]
-[JsonSerializable(typeof(HalResource<AtprotoRecordDto>))]
-[JsonSerializable(typeof(HalResource<AtprotoRecordListDto>))]
+[JsonSerializable(typeof(HalResource<EventDiscoveryItemDto>))]
+[JsonSerializable(typeof(HalResource<SettingGroupResponseDto>))]
 [JsonSerializable(typeof(HalResource<AudienceAgeDto>))]
 [JsonSerializable(typeof(HalResource<AudienceAgeListDto>))]
 [JsonSerializable(typeof(HalResource<AudienceGenderDto>))]
@@ -932,8 +930,7 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(HalCollectionResource<ActorTypeDto>))]
 [JsonSerializable(typeof(HalCollectionResource<ActorTypeListDto>))]
 [JsonSerializable(typeof(HalCollectionResource<AddOrganizationMemberDto>))]
-[JsonSerializable(typeof(HalCollectionResource<AtprotoRecordDto>))]
-[JsonSerializable(typeof(HalCollectionResource<AtprotoRecordListDto>))]
+[JsonSerializable(typeof(HalCollectionResource<EventDiscoveryItemDto>))]
 [JsonSerializable(typeof(HalCollectionResource<AudienceAgeDto>))]
 [JsonSerializable(typeof(HalCollectionResource<AudienceAgeListDto>))]
 [JsonSerializable(typeof(HalCollectionResource<AudienceGenderDto>))]
@@ -1081,8 +1078,7 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(HalCollectionEmbedded<ActorTypeDto>))]
 [JsonSerializable(typeof(HalCollectionEmbedded<ActorTypeListDto>))]
 [JsonSerializable(typeof(HalCollectionEmbedded<AddOrganizationMemberDto>))]
-[JsonSerializable(typeof(HalCollectionEmbedded<AtprotoRecordDto>))]
-[JsonSerializable(typeof(HalCollectionEmbedded<AtprotoRecordListDto>))]
+[JsonSerializable(typeof(HalCollectionEmbedded<EventDiscoveryItemDto>))]
 [JsonSerializable(typeof(HalCollectionEmbedded<AudienceAgeDto>))]
 [JsonSerializable(typeof(HalCollectionEmbedded<AudienceAgeListDto>))]
 [JsonSerializable(typeof(HalCollectionEmbedded<AudienceGenderDto>))]

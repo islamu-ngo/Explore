@@ -151,20 +151,24 @@ public class ContractInvariantsTests
     {
         using var document = await GetOpenApiDocumentAsync();
 
-        var content = document.RootElement
+        JsonElement operation = document.RootElement
             .GetProperty("paths")
             .GetProperty("/api/event")
-            .GetProperty("get")
+            .GetProperty("get");
+        var content = operation
             .GetProperty("responses")
             .GetProperty("200")
             .GetProperty("content");
 
         await Assert.That(GetSchemaReference(content.GetProperty("application/hal+json; v=0.1")))
-            .IsEqualTo("#/components/schemas/HalCollectionResourceOfEventListDto")
+            .IsEqualTo("#/components/schemas/HalCollectionResourceOfEventDiscoveryItemDto")
             .Because("The canonical HAL event list response must reference the HAL collection wrapper schema.");
         await Assert.That(GetSchemaReference(content.GetProperty("application/json; v=0.1")))
-            .IsEqualTo("#/components/schemas/HalCollectionResourceOfEventListDto")
+            .IsEqualTo("#/components/schemas/HalCollectionResourceOfEventDiscoveryItemDto")
             .Because("The versioned JSON event list response must stay aligned with the HAL collection wrapper schema.");
+        await Assert.That(GetStringProperty(operation, "x-output-cache-policy"))
+            .IsEqualTo("EventDiscovery")
+            .Because("Federated ingestion must evict only the dedicated event-discovery cache surface.");
     }
 
     [Test]
@@ -172,7 +176,7 @@ public class ContractInvariantsTests
     {
         using var document = await GetOpenApiDocumentAsync();
 
-        var properties = GetSchemaProperties(document, "HalCollectionResourceOfEventListDto");
+        var properties = GetSchemaProperties(document, "HalCollectionResourceOfEventDiscoveryItemDto");
         var expectedProperties = new[] { "_links", "_embedded", "pageNumber", "pageSize", "totalCount", "totalPages" };
 
         var missingProperties = expectedProperties
@@ -183,7 +187,7 @@ public class ContractInvariantsTests
             .IsEmpty()
             .Because($"The event list HAL collection wrapper must expose pagination plus HAL affordances. Missing: {string.Join(", ", missingProperties)}");
         await Assert.That(GetReference(properties.GetProperty("_embedded")))
-            .IsEqualTo("#/components/schemas/HalCollectionEmbeddedOfEventListDto")
+            .IsEqualTo("#/components/schemas/HalCollectionEmbeddedOfEventDiscoveryItemDto")
             .Because("The HAL collection wrapper must reference the typed embedded collection schema.");
         await Assert.That(GetReference(properties.GetProperty("_links").GetProperty("additionalProperties")))
             .IsEqualTo("#/components/schemas/HalLink")
@@ -195,15 +199,27 @@ public class ContractInvariantsTests
     {
         using var document = await GetOpenApiDocumentAsync();
 
-        var embeddedProperties = GetSchemaProperties(document, "HalCollectionEmbeddedOfEventListDto");
+        var embeddedProperties = GetSchemaProperties(document, "HalCollectionEmbeddedOfEventDiscoveryItemDto");
         var items = embeddedProperties.GetProperty("items");
 
         await Assert.That(GetStringProperty(items, "type"))
             .IsEqualTo("array")
             .Because("The event list embedded HAL collection must expose an items array for embedded resources.");
         await Assert.That(GetReference(items.GetProperty("items")))
-            .IsEqualTo("#/components/schemas/HalResourceOfEventListDto")
+            .IsEqualTo("#/components/schemas/HalResourceOfEventDiscoveryItemDto")
             .Because("Embedded event list items must be typed as HAL resources, not as object arrays.");
+    }
+
+    [Test]
+    public async Task OpenApiDocumentAtprotoSettingGroupHalResourceIsFlattened()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+
+        JsonElement properties = GetSchemaProperties(document, "HalResourceOfSettingGroupResponseDto");
+
+        await Assert.That(properties.TryGetProperty("category", out _)).IsTrue();
+        await Assert.That(properties.TryGetProperty("settings", out _)).IsTrue();
+        await Assert.That(properties.TryGetProperty("_links", out _)).IsTrue();
     }
 
     [Test]

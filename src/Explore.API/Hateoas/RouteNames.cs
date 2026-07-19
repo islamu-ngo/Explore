@@ -320,6 +320,12 @@ public static class RouteNames
     public const string ParkEmailDispatch = "ParkEmailDispatch";
     public const string ReplayEmailDispatch = "ReplayEmailDispatch";
     public const string ResolveEmailDispatchWithoutReplay = "ResolveEmailDispatchWithoutReplay";
+    public const string GetEmailDispatchProcessorControl = "GetEmailDispatchProcessorControl";
+    public const string PauseEmailDispatchProcessor = "PauseEmailDispatchProcessor";
+    public const string ResumeEmailDispatchProcessor = "ResumeEmailDispatchProcessor";
+    public const string SetEmailDispatchGlobalRateLimitOverride = "SetEmailDispatchGlobalRateLimitOverride";
+    public const string ClearEmailDispatchGlobalRateLimitOverride = "ClearEmailDispatchGlobalRateLimitOverride";
+    public const string ReconcileUnknownEmailDispatch = "ReconcileUnknownEmailDispatch";
 
     #endregion
 
@@ -528,8 +534,11 @@ public static class RouteNames
 
     #region ATProto Routes
 
-    public const string GetAtprotoRecordEntries = "GetAtprotoRecordEntries";
-    public const string GetAtprotoRecordEntryById = "GetAtprotoRecordEntryById";
+    public const string BootstrapAtprotoSession = "BootstrapAtprotoSession";
+    public const string GetCurrentAtprotoSession = "GetCurrentAtprotoSession";
+    public const string RefreshCurrentAtprotoSession = "RefreshCurrentAtprotoSession";
+    public const string DeleteCurrentAtprotoSession = "DeleteCurrentAtprotoSession";
+    public const string GetAtprotoEventSource = "GetAtprotoEventSource";
 
     public const string GetIndexedDids = "GetIndexedDids";
     public const string GetIndexedDidByDid = "GetIndexedDidByDid";
@@ -630,6 +639,7 @@ public static class RouteNames
     public const string GetTenantScopedSettings = "GetTenantScopedSettings";
     public const string UpdateTenantSettingsBatch = "UpdateTenantSettingsBatch";
     public const string UpdateTenantSetting = "UpdateTenantSetting";
+    public const string ResetTenantSetting = "ResetTenantSetting";
     public const string LockTenantSetting = "LockTenantSetting";
     public const string UnlockTenantSetting = "UnlockTenantSetting";
 
@@ -815,6 +825,7 @@ public static class RouteNames
     public const string GetInstanceModuleSettings = "GetInstanceModuleSettings";
     public const string GetInstanceAtprotoFederationSettings = "GetInstanceAtprotoFederationSettings";
     public const string UpdateInstanceAtprotoFederationSetting = "UpdateInstanceAtprotoFederationSetting";
+    public const string ResetInstanceAtprotoFederationSetting = "ResetInstanceAtprotoFederationSetting";
     public const string LockInstanceAtprotoFederationSetting = "LockInstanceAtprotoFederationSetting";
     public const string UnlockInstanceAtprotoFederationSetting = "UnlockInstanceAtprotoFederationSetting";
     public const string UpdateInstanceModuleSettings = "UpdateInstanceModuleSettings";

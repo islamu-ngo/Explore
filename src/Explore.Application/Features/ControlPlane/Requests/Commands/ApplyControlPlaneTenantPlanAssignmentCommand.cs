@@ -17,7 +17,7 @@ public sealed record ApplyControlPlaneTenantPlanAssignmentCommand(
 
     public string ResourceId => SettingKey;
 
-    public IDictionary<string, object?> ResourceAttributes => new Dictionary<string, object?>
+    public IDictionary<string, object> ResourceAttributes => new Dictionary<string, object>
     {
         ["settingKey"] = SettingKey,
         ["tenantId"] = TenantId,

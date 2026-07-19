@@ -246,8 +246,8 @@ public class ApiContractArchitectureTests
     }
 
     [Test]
-    [DisplayName("Actions with response metadata must declare a 2xx success response")]
-    public async Task ActionsWithResponseMetadata_MustDeclare_SuccessResponse()
+    [DisplayName("Actions with response metadata must declare a successful or redirect response")]
+    public async Task ActionsWithResponseMetadata_MustDeclare_NonErrorResponse()
     {
         var controllerTypes = Types.InAssembly(ApiAssembly)
             .That()
@@ -291,7 +291,7 @@ public class ApiContractArchitectureTests
                     continue;
                 }
 
-                if (!responseMetadata.Any(attribute => IsSuccessStatusCode(attribute.StatusCode)))
+                if (!responseMetadata.Any(attribute => IsNonErrorStatusCode(attribute.StatusCode)))
                 {
                     violations.Add($"{controller.Name}.{action.Name}");
                 }
@@ -299,7 +299,7 @@ public class ApiContractArchitectureTests
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("actions that opt into response metadata must include at least one explicit 2xx success response so OpenAPI consumers can distinguish success from ProblemDetails/error responses.");
+            .Because("actions that opt into response metadata must include at least one explicit 2xx success or 3xx redirect response so OpenAPI consumers can distinguish valid outcomes from ProblemDetails/error responses without inventing a false 2xx contract for redirects.");
     }
 
     [Test]
@@ -571,8 +571,8 @@ public class ApiContractArchitectureTests
             .Any(attribute => attribute.IgnoreApi);
     }
 
-    private static bool IsSuccessStatusCode(int statusCode)
+    private static bool IsNonErrorStatusCode(int statusCode)
     {
-        return statusCode is >= StatusCodes.Status200OK and < StatusCodes.Status300MultipleChoices;
+        return statusCode is >= StatusCodes.Status200OK and < StatusCodes.Status400BadRequest;
     }
 }

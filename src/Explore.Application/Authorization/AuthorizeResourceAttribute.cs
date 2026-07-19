@@ -27,13 +27,4 @@ public sealed class AuthorizeResourceAttribute : Attribute
         Action = action;
     }
 
-    /// <summary>
-    /// Typed constructor using <see cref="PermissionAction"/> enum instead of raw strings.
-    /// Delegates to <see cref="ResourceDescriptorRegistry.ToActionString"/> for conversion.
-    /// </summary>
-    public AuthorizeResourceAttribute(string resource, PermissionAction action)
-    {
-        Resource = resource;
-        Action = ResourceDescriptorRegistry.ToActionString(action);
-    }
 }

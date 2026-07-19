@@ -10,6 +10,9 @@ internal static class HalOpenApiSchemaCatalog
         // Event DTOs
         typeof(Explore.Application.DTOs.Event.EventDto),
         typeof(Explore.Application.DTOs.Event.EventListDto),
+        typeof(Explore.Application.DTOs.PublicExperience.EventDiscoveryItemDto),
+        typeof(Explore.Application.DTOs.PublicExperience.FederatedEventDto),
+        typeof(Explore.Application.DTOs.PublicExperience.EventFederationMetadataDto),
         typeof(Explore.Application.DTOs.EventReporting.EventReportOptionsDto),
         typeof(Explore.Application.DTOs.EventReporting.MyEventReportDto),
         typeof(Explore.Application.DTOs.EventReporting.ModerationReportDetailDto),
@@ -68,8 +71,6 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.OrganizationMember.OrganizationMemberDto),
         typeof(Explore.Application.DTOs.IndexedDid.IndexedDidDto),
         typeof(Explore.Application.DTOs.IndexedDid.IndexedDidListDto),
-        typeof(Explore.Application.DTOs.AtprotoRecord.AtprotoRecordDto),
-        typeof(Explore.Application.DTOs.AtprotoRecord.AtprotoRecordListDto),
         typeof(Explore.Application.DTOs.LocationRoom.LocationRoomDto),
         typeof(Explore.Application.DTOs.LocationRoom.LocationRoomListDto),
         typeof(Explore.Application.DTOs.EventDay.EventDayDto),
@@ -162,6 +163,7 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.Notification.NotificationPreferenceMatrixDto),
         typeof(Explore.Application.DTOs.Notification.WebPushSubscriptionDto),
         typeof(Explore.Application.DTOs.Tenant.TenantStorageSettingsDto),
+        typeof(Explore.Application.DTOs.Settings.SettingGroupResponseDto),
     ];
 
     public static IReadOnlyDictionary<string, Type> DetailResourceMappings { get; } = new Dictionary<string, Type>
@@ -206,8 +208,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfOrganizationMemberDto"] = typeof(Explore.Application.DTOs.OrganizationMember.OrganizationMemberDto),
         ["HalResourceOfIndexedDidDto"] = typeof(Explore.Application.DTOs.IndexedDid.IndexedDidDto),
         ["HalResourceOfIndexedDidListDto"] = typeof(Explore.Application.DTOs.IndexedDid.IndexedDidListDto),
-        ["HalResourceOfAtprotoRecordDto"] = typeof(Explore.Application.DTOs.AtprotoRecord.AtprotoRecordDto),
-        ["HalResourceOfAtprotoRecordListDto"] = typeof(Explore.Application.DTOs.AtprotoRecord.AtprotoRecordListDto),
+        ["HalResourceOfEventDiscoveryItemDto"] = typeof(Explore.Application.DTOs.PublicExperience.EventDiscoveryItemDto),
         ["HalResourceOfLocationRoomDto"] = typeof(Explore.Application.DTOs.LocationRoom.LocationRoomDto),
         ["HalResourceOfLocationRoomListDto"] = typeof(Explore.Application.DTOs.LocationRoom.LocationRoomListDto),
         ["HalResourceOfEventDayDto"] = typeof(Explore.Application.DTOs.EventDay.EventDayDto),
@@ -254,6 +255,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfTenantOnboardingStatusDto"] = typeof(Explore.Application.DTOs.Onboarding.TenantOnboardingStatusDto),
         ["HalResourceOfInstanceStorageSettingsDto"] = typeof(Explore.Application.DTOs.Onboarding.InstanceStorageSettingsDto),
         ["HalResourceOfTenantStorageSettingsDto"] = typeof(Explore.Application.DTOs.Tenant.TenantStorageSettingsDto),
+        ["HalResourceOfSettingGroupResponseDto"] = typeof(Explore.Application.DTOs.Settings.SettingGroupResponseDto),
         ["HalResourceOfEventSessionSpeakerDto"] = typeof(Explore.Application.DTOs.EventSessionSpeaker.EventSessionSpeakerDto),
         ["HalResourceOfEventSessionSpeakerListDto"] = typeof(Explore.Application.DTOs.EventSessionSpeaker.EventSessionSpeakerListDto),
     };
@@ -280,7 +282,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfGroupMemberDto"] = "HalResourceOfGroupMemberDto",
         ["HalCollectionEmbeddedOfOrganizationMemberDto"] = "HalResourceOfOrganizationMemberDto",
         ["HalCollectionEmbeddedOfIndexedDidListDto"] = "HalResourceOfIndexedDidListDto",
-        ["HalCollectionEmbeddedOfAtprotoRecordListDto"] = "HalResourceOfAtprotoRecordListDto",
+        ["HalCollectionEmbeddedOfEventDiscoveryItemDto"] = "HalResourceOfEventDiscoveryItemDto",
         ["HalCollectionEmbeddedOfLocationListDto"] = "HalResourceOfLocationListDto",
         ["HalCollectionEmbeddedOfLocationRoomListDto"] = "HalResourceOfLocationRoomListDto",
         ["HalCollectionEmbeddedOfOrganizationListDto"] = "HalResourceOfOrganizationListDto",

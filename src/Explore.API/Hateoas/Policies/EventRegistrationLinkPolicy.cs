@@ -43,17 +43,6 @@ public sealed class EventRegistrationDetailLinkPolicy : ILinkPolicy<EventRegistr
             "GET",
             dto.EventSessionTitle);
 
-        // ATProto record link (if federated)
-        if (dto.AtprotoRecordId.HasValue)
-        {
-            yield return new LinkDefinition(
-                "atproto-record",
-                RouteNames.GetAtprotoRecordEntryById,
-                new { id = dto.AtprotoRecordId },
-                "GET",
-                "ATProto record");
-        }
-
         // Edit link - requires authentication
         yield return new LinkDefinition(
             LinkRelations.Edit,

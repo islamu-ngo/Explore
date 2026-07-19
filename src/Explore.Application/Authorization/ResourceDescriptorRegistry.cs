@@ -6,7 +6,6 @@ namespace Explore.Application.Authorization;
 using Explore.Application.DTOs.Actor;
 using Explore.Application.DTOs.ActorSubscription;
 using Explore.Application.DTOs.Ai;
-using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.DTOs.EmailDispatch;
@@ -153,11 +152,7 @@ public static class ResourceDescriptorRegistry
 
         // Actor
         [typeof(ActorDto)] = global::Explore.Application.Authorization.ResourceKinds.Actor,
-        [typeof(ActorListDto)] = global::Explore.Application.Authorization.ResourceKinds.Actor,
-
-        // ATProto Record
-        [typeof(AtprotoRecordDto)] = global::Explore.Application.Authorization.ResourceKinds.AtprotoRecord,
-        [typeof(AtprotoRecordListDto)] = global::Explore.Application.Authorization.ResourceKinds.AtprotoRecord
+        [typeof(ActorListDto)] = global::Explore.Application.Authorization.ResourceKinds.Actor
     };
 
     /// <summary>

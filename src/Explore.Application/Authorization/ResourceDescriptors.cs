@@ -1,9 +1,8 @@
-// ABOUTME: Static catalog of concrete resource descriptors for all DTO types participating in authorization.
-// ABOUTME: Each descriptor extracts authorization metadata (ID, attributes, scope) from its DTO instance.
+// ABOUTME: Static catalog of concrete resource descriptors for DTOs and bounded authorization targets.
+// ABOUTME: Each descriptor extracts authorization metadata (ID, attributes, scope) from its source instance.
 
 using Explore.Application.DTOs.ActorSubscription;
 using Explore.Application.DTOs.Ai;
-using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.DTOs.EmailDispatch;
@@ -84,6 +83,12 @@ public static class ResourceDescriptors
         dto => dto.Id.ToString(),
         EventListAttributes,
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<Explore.Domain.Event> EventAuthorizationTarget = new(
+        ResourceKinds.Event,
+        eventEntity => eventEntity.Id.ToString(),
+        EventAuthorizationTargetAttributes,
+        eventEntity => new AuthorizationScope(TenantId: eventEntity.TenantId.ToString()));
 
     public static readonly ResourceDescriptor<OrganizationDto> Organization = new(
         ResourceKinds.Organization,
@@ -513,10 +518,6 @@ public static class ResourceDescriptors
         ResourceKinds.IndexedDid,
         dto => dto.Did);
 
-    public static readonly ResourceDescriptor<AtprotoRecordDto> AtprotoRecord = new(
-        ResourceKinds.AtprotoRecord,
-        dto => dto.Id.ToString());
-
     #endregion
 
     #region Sub-resources piggybacking on parent tenant authorization
@@ -696,6 +697,15 @@ public static class ResourceDescriptors
         AddIfPresent(attributes, "userId", dto.ActorUserId);
         AddIfPresent(attributes, "organizationId", dto.ActorOrganizationId);
         AddIfPresent(attributes, "groupId", dto.ActorGroupId);
+        return attributes;
+    }
+
+    private static Dictionary<string, object> EventAuthorizationTargetAttributes(Explore.Domain.Event eventEntity)
+    {
+        var attributes = BaseEventAttributes(eventEntity.Id, eventEntity.TenantId, eventEntity.ActorId);
+        AddIfPresent(attributes, "userId", eventEntity.Actor?.UserId);
+        AddIfPresent(attributes, "organizationId", eventEntity.Actor?.OrganizationId);
+        AddIfPresent(attributes, "groupId", eventEntity.Actor?.GroupId);
         return attributes;
     }
 
