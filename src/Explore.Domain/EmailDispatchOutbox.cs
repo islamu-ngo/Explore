@@ -81,7 +81,8 @@ public enum EmailDispatchKind
     OrganizerNotification = 7,
     TenantAdministratorInvitation = 8,
     RegistrationCancelled = 9,
-    RegistrationRevoked = 10
+    RegistrationRevoked = 10,
+    EventUpdated = 11
 }
 
 public enum EmailDispatchStatus

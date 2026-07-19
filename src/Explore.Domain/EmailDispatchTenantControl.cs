@@ -17,6 +17,9 @@ public class EmailDispatchTenantControl : ITenantEntity, IAuditableEntity
     public DateTime? PausedAt { get; set; }
     public Guid? PausedBy { get; set; }
 
+    public int? SmtpAvailableTokens { get; set; }
+    public DateTime? SmtpRefillAt { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
