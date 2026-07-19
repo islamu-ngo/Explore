@@ -1,0 +1,541 @@
+// ABOUTME: Integrates the ATProto security gateway with real CarpaNet restore, DPoP, and XRPC paths.
+// ABOUTME: Uses deterministic in-process transports to prove encrypted restore and mismatch zero-write behavior.
+
+using System.Net;
+using System.Net.Http.Headers;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using CarpaNet.OAuth;
+using CarpaNet.OAuth.Crypto;
+using CarpaNet.OAuth.Storage;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Secrets;
+using Explore.Application.Features.Authentication.Atproto.Handlers.Commands;
+using Explore.Application.Features.Authentication.Atproto.Models;
+using Explore.Application.Features.Authentication.Atproto.Requests.Commands;
+using Explore.Atproto.Transport;
+using Explore.Domain;
+using Explore.Domain.Enums;
+using Explore.Domain.Secrets;
+using Explore.Infrastructure.Services.Federation;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using NSubstitute;
+
+namespace Explore.Infrastructure.Tests.Federation;
+
+public sealed class AtprotoOAuthSecurityGatewayTests
+{
+    private const string Did = "did:plc:gateway-user";
+    private const string Pds = "https://pds.example/";
+    private const string Issuer = "https://issuer.example/";
+    private const string OAuthKeyId = "oauth-active";
+    private const string AccessToken = "gateway-access-canary";
+
+    [Test]
+    public async Task VerifiedSessionPersistsEncryptedAndRestoresThroughRealCarpaFactoryAndPdsXrpc()
+    {
+        var fixture = CreateFixture(Did);
+        var session = CreateSession();
+
+        var verified = await fixture.Gateway.VerifyAsync(new AtprotoOAuthVerificationInput(
+            Did,
+            new Uri(Pds),
+            OAuthKeyId,
+            JsonSerializer.SerializeToUtf8Bytes(session)), CancellationToken.None);
+
+        await Assert.That(fixture.Transport.MetadataRequests).IsEqualTo(1);
+        await Assert.That(fixture.Transport.PdsRequests).IsEqualTo(1);
+        await Assert.That(verified.FailureCode).IsNull();
+        await Assert.That(verified.Session).IsNotNull();
+        await Assert.That(verified.Session!.Did).IsEqualTo(Did);
+        await Assert.That(verified.Session.PdsUri.AbsoluteUri).IsEqualTo(Pds);
+        await Assert.That(fixture.Transport.LastPdsPath)
+            .IsEqualTo("/xrpc/com.atproto.server.getSession");
+        await Assert.That(fixture.Transport.LastAuthorizationScheme).IsEqualTo("DPoP");
+        await Assert.That(fixture.Transport.SawDpopProof).IsTrue();
+
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        await fixture.Gateway.PersistAsync(verified.Session, tenantId, userId, CancellationToken.None);
+        var row = fixture.GetPersistedRow() ?? throw new InvalidOperationException("Encrypted session row was not stored.");
+        await Assert.That(Encoding.UTF8.GetString(row.SessionCiphertext)).DoesNotContain(AccessToken);
+
+        var repositoryStore = new RepositoryBackedOAuthSessionStore(
+            fixture.TokenRepository,
+            fixture.Protector,
+            new AtprotoOAuthSessionStoreContext(
+                tenantId,
+                userId,
+                Did,
+                new Uri(Pds),
+                OAuthKeyId));
+        using var lease = await fixture.CoreFactory.CreateAsync(
+            Did,
+            OAuthKeyId,
+            repositoryStore,
+            CancellationToken.None);
+        var restoredPdsSession = await lease.Client.GetAsync<InfrastructureAtprotoGetSessionResponse>(
+            "com.atproto.server.getSession",
+            cancellationToken: CancellationToken.None);
+
+        await Assert.That(lease.Client.AuthenticatedDid).IsEqualTo(Did);
+        await Assert.That(lease.Client.BaseUrl.AbsoluteUri).IsEqualTo(Pds);
+        await Assert.That(restoredPdsSession.Did).IsEqualTo(Did);
+        await Assert.That(fixture.Transport.MetadataRequests).IsEqualTo(2);
+        await Assert.That(fixture.Transport.PdsRequests).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task PdsDidMismatchReturnsTypedFailureBeforeIdentityOrSessionWrites()
+    {
+        var fixture = CreateFixture("did:plc:substituted-user");
+        var externalLogins = Substitute.For<IUserExternalLoginRepository>();
+        var users = Substitute.For<IUserRepository>();
+        var actors = Substitute.For<IActorRepository>();
+        var indexedDids = Substitute.For<IIndexedDidRepository>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var tokenIssuer = Substitute.For<IAtprotoSessionTokenIssuer>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        tenantContext.TenantId.Returns(Guid.NewGuid());
+        var handler = new BootstrapAtprotoSessionCommandHandler(
+            fixture.Gateway,
+            tokenIssuer,
+            externalLogins,
+            users,
+            actors,
+            indexedDids,
+            unitOfWork,
+            tenantContext,
+            TimeProvider.System);
+        var payload = JsonSerializer.SerializeToUtf8Bytes(CreateSession());
+
+        var result = await handler.Handle(new BootstrapAtprotoSessionCommand(
+            Did,
+            Pds,
+            OAuthKeyId,
+            payload), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("pds_identity_mismatch");
+        await Assert.That(fixture.Transport.PdsRequests).IsEqualTo(1);
+        await externalLogins.DidNotReceiveWithAnyArgs().GetByProviderAndKey(default!, default!);
+        await actors.DidNotReceiveWithAnyArgs().Update(default!);
+        await indexedDids.DidNotReceiveWithAnyArgs().Create(default!);
+        await fixture.TokenRepository.DidNotReceiveWithAnyArgs()
+            .CreateAtprotoSessionAsync(default!, default);
+        await tokenIssuer.DidNotReceiveWithAnyArgs().IssueAsync(default, default, default!, default);
+    }
+
+    [Test]
+    public async Task RefreshPersistsCarpaTokenRotationBeforeReturningSuccess()
+    {
+        var fixture = CreateFixture(Did);
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var expired = CreateSession();
+        expired.TokenSet.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+        await fixture.Gateway.PersistAsync(new AtprotoVerifiedOAuthSession(
+            Did,
+            "gateway-user.example",
+            new Uri(Pds),
+            OAuthKeyId,
+            JsonSerializer.SerializeToUtf8Bytes(expired)), tenantId, userId, CancellationToken.None);
+
+        var result = await fixture.Gateway.RefreshAsync(
+            new AtprotoCurrentSessionIdentity(tenantId, userId, Did),
+            CancellationToken.None);
+
+        await Assert.That(fixture.Transport.TokenRequests).IsEqualTo(1);
+        await Assert.That(fixture.Transport.MetadataRequests).IsEqualTo(1);
+        await Assert.That(fixture.Transport.PdsRequests).IsEqualTo(1);
+        await Assert.That(result.Success).IsTrue();
+        var restored = await new RepositoryBackedOAuthSessionStore(
+                fixture.TokenRepository,
+                fixture.Protector,
+                new AtprotoOAuthSessionStoreContext(
+                    tenantId,
+                    userId,
+                    Did,
+                    new Uri(Pds),
+                    OAuthKeyId))
+            .GetAsync(Did, CancellationToken.None);
+        await Assert.That(restored!.TokenSet.AccessToken).IsEqualTo("rotated-access-canary");
+        await Assert.That(restored.TokenSet.RefreshToken).IsEqualTo("rotated-refresh-canary");
+    }
+
+    [Test]
+    public async Task MissingScopedRefreshSessionRequiresReauthenticationWithoutProviderCall()
+    {
+        var fixture = CreateFixture(Did);
+
+        var result = await fixture.Gateway.RefreshAsync(new AtprotoCurrentSessionIdentity(
+            Guid.NewGuid(), Guid.NewGuid(), Did), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("reauthentication_required");
+        await Assert.That(fixture.Transport.MetadataRequests).IsEqualTo(0);
+        await Assert.That(fixture.Transport.PdsRequests).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task RevokeUsesRealCarpaSignOutThenDeletesTheExactSessionIdempotently()
+    {
+        var fixture = CreateFixture(Did);
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        await PersistCurrentSessionAsync(fixture, tenantId, userId);
+        var identity = new AtprotoCurrentSessionIdentity(tenantId, userId, Did);
+
+        var first = await fixture.Gateway.RevokeCurrentAsync(identity, CancellationToken.None);
+        var repeated = await fixture.Gateway.RevokeCurrentAsync(identity, CancellationToken.None);
+
+        await Assert.That(first.Outcome).IsEqualTo(AtprotoSessionRevocationOutcome.Revoked);
+        await Assert.That(repeated.Outcome).IsEqualTo(AtprotoSessionRevocationOutcome.AlreadyAbsent);
+        await Assert.That(fixture.Transport.RevocationRequests).IsEqualTo(1);
+        await Assert.That(fixture.GetPersistedRow()).IsNull();
+    }
+
+    [Test]
+    public async Task RemoteOutageStillDeletesTheLocalSession()
+    {
+        var fixture = CreateFixture(Did);
+        fixture.Transport.FailRevocation = true;
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        await PersistCurrentSessionAsync(fixture, tenantId, userId);
+
+        var result = await fixture.Gateway.RevokeCurrentAsync(
+            new AtprotoCurrentSessionIdentity(tenantId, userId, Did),
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome)
+            .IsEqualTo(AtprotoSessionRevocationOutcome.RemoteFailedLocalCleared);
+        await Assert.That(fixture.Transport.RevocationRequests).IsEqualTo(1);
+        await Assert.That(fixture.GetPersistedRow()).IsNull();
+    }
+
+    [Test]
+    public async Task CallerCancellationStillDeletesTheLocalSession()
+    {
+        var fixture = CreateFixture(Did);
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        await PersistCurrentSessionAsync(fixture, tenantId, userId);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        var result = await fixture.Gateway.RevokeCurrentAsync(
+            new AtprotoCurrentSessionIdentity(tenantId, userId, Did),
+            cancellation.Token);
+
+        await Assert.That(result.Outcome)
+            .IsEqualTo(AtprotoSessionRevocationOutcome.RemoteFailedLocalCleared);
+        await Assert.That(fixture.GetPersistedRow()).IsNull();
+    }
+
+    [Test]
+    public async Task DifferentTenantOrUserCannotRevokeThePersistedSession()
+    {
+        var fixture = CreateFixture(Did);
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        await PersistCurrentSessionAsync(fixture, tenantId, userId);
+
+        var result = await fixture.Gateway.RevokeCurrentAsync(
+            new AtprotoCurrentSessionIdentity(Guid.NewGuid(), Guid.NewGuid(), Did),
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(AtprotoSessionRevocationOutcome.AlreadyAbsent);
+        await Assert.That(fixture.Transport.RevocationRequests).IsEqualTo(0);
+        await Assert.That(fixture.GetPersistedRow()).IsNotNull();
+    }
+
+    private static Task PersistCurrentSessionAsync(GatewayFixture fixture, Guid tenantId, Guid userId) =>
+        fixture.Gateway.PersistAsync(new AtprotoVerifiedOAuthSession(
+            Did,
+            "gateway-user.example",
+            new Uri(Pds),
+            OAuthKeyId,
+            JsonSerializer.SerializeToUtf8Bytes(CreateSession())),
+            tenantId,
+            userId,
+            CancellationToken.None);
+
+    private static GatewayFixture CreateFixture(string pdsResponseDid)
+    {
+        var resolver = Substitute.For<ISecretResolver>();
+        resolver.ResolveAsync(Arg.Any<string>(), null, Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var key = call.ArgAt<string>(0);
+                var value = key == SecretDefinitionRegistry.Keys.Atproto.OAuthClientPrivateJwks
+                    ? CreatePrivateJwks()
+                    : CreateEncryptionRing();
+                return new ResolvedSecret(
+                    key,
+                    value,
+                    SecretSourceType.Infisical,
+                    SecretScope.Instance,
+                    null,
+                    DateTimeOffset.UtcNow);
+            });
+        var environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns(Environments.Production);
+        var transport = new RecordingPrimaryHandlerFactory(pdsResponseDid);
+        var oauthFactory = new AtprotoOAuthClientFactory(
+            resolver,
+            Options.Create(new AtprotoInfrastructureOptions
+            {
+                PublicUrl = "https://events.example.com/",
+                CallbackPath = "/signin-atproto"
+            }),
+            environment,
+            transport.CreateOAuthPrimary);
+        var coreFactory = new AtprotoCoreClientFactory(oauthFactory, transport);
+        var tokenRepository = Substitute.For<IUserAuthenticationTokenRepository>();
+        UserAuthenticationToken? persistedRow = null;
+        tokenRepository.GetAtprotoSessionForUpdateAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                "atproto",
+                Did,
+                Arg.Any<CancellationToken>())
+            .Returns(call => IsExactScope(call, persistedRow) ? persistedRow : null);
+        tokenRepository.GetAtprotoSessionForReadAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                "atproto",
+                Did,
+                Arg.Any<CancellationToken>())
+            .Returns(call => IsExactScope(call, persistedRow) ? persistedRow : null);
+        tokenRepository.CreateAtprotoSessionAsync(
+                Arg.Any<UserAuthenticationToken>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                persistedRow = call.Arg<UserAuthenticationToken>();
+                return persistedRow;
+            });
+        tokenRepository.UpdateAtprotoSessionAsync(
+                Arg.Any<UserAuthenticationToken>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask)
+            .AndDoes(call => persistedRow = call.Arg<UserAuthenticationToken>());
+        tokenRepository.DeleteAtprotoSessionAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                "atproto",
+                Did,
+                Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                if (IsExactScope(call, persistedRow))
+                {
+                    persistedRow = null;
+                }
+
+                return Task.CompletedTask;
+            });
+        var protector = new AtprotoSessionEnvelopeProtector(resolver);
+        var refreshLock = Substitute.For<IAtprotoSessionRefreshLock>();
+        refreshLock.AcquireAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                "atproto",
+                Did,
+                Arg.Any<CancellationToken>())
+            .Returns(new NoopAsyncDisposable());
+        return new(
+            new AtprotoOAuthSecurityGateway(
+                coreFactory,
+                oauthFactory,
+                tokenRepository,
+                protector,
+                refreshLock,
+                Substitute.For<ILogger<AtprotoOAuthSecurityGateway>>()),
+            coreFactory,
+            protector,
+            tokenRepository,
+            transport,
+            () => persistedRow);
+    }
+
+    private static bool IsExactScope(NSubstitute.Core.CallInfo call, UserAuthenticationToken? row) =>
+        row is not null
+        && call.ArgAt<Guid>(0) == row.TenantId
+        && call.ArgAt<Guid>(1) == row.UserId;
+
+    private static OAuthSessionData CreateSession()
+    {
+        using var dpopKey = DPoPKeyPair.Generate();
+        return new OAuthSessionData
+        {
+            DPoPKey = dpopKey.ExportKeyPair(),
+            AuthMethod = "private_key_jwt",
+            TokenSet = new TokenSet
+            {
+                Issuer = Issuer,
+                Sub = Did,
+                Audience = Pds,
+                Scope = InfrastructureAtprotoOAuthTransportFactory.RequiredScope,
+                AccessToken = AccessToken,
+                RefreshToken = "gateway-refresh-canary",
+                ExpiresAt = DateTimeOffset.UtcNow.AddHours(1)
+            },
+            ClientId = "https://events.example.com/oauth/client-metadata.json",
+            RedirectUri = "https://events.example.com/signin-atproto",
+            Scope = InfrastructureAtprotoOAuthTransportFactory.RequiredScope
+        };
+    }
+
+    private static string CreatePrivateJwks()
+    {
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var parameters = key.ExportParameters(true);
+        return JsonSerializer.Serialize(new
+        {
+            keys = new[]
+            {
+                new
+                {
+                    kty = "EC",
+                    crv = "P-256",
+                    x = Base64Url(parameters.Q.X!),
+                    y = Base64Url(parameters.Q.Y!),
+                    d = Base64Url(parameters.D!),
+                    kid = OAuthKeyId,
+                    use = "sig",
+                    alg = "ES256",
+                    status = "active"
+                }
+            }
+        });
+    }
+
+    private static string CreateEncryptionRing() => JsonSerializer.Serialize(new
+    {
+        keys = new[]
+        {
+            new
+            {
+                kid = "encryption-active",
+                k = Base64Url(Enumerable.Repeat((byte)7, 32).ToArray()),
+                status = "active"
+            }
+        }
+    });
+
+    private static string Base64Url(byte[] bytes) =>
+        Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+    private sealed record GatewayFixture(
+        AtprotoOAuthSecurityGateway Gateway,
+        AtprotoCoreClientFactory CoreFactory,
+        AtprotoSessionEnvelopeProtector Protector,
+        IUserAuthenticationTokenRepository TokenRepository,
+        RecordingPrimaryHandlerFactory Transport,
+        Func<UserAuthenticationToken?> GetPersistedRow);
+
+    private sealed class RecordingPrimaryHandlerFactory(string pdsResponseDid) : IAtprotoCorePrimaryHandlerFactory
+    {
+        public int MetadataRequests { get; private set; }
+        public int TokenRequests { get; private set; }
+        public int RevocationRequests { get; private set; }
+        public int PdsRequests { get; private set; }
+        public bool FailRevocation { get; set; }
+        public string? LastPdsPath { get; private set; }
+        public string? LastAuthorizationScheme { get; private set; }
+        public bool SawDpopProof { get; private set; }
+
+        public HttpMessageHandler CreateOAuthPrimary(AtprotoOutboundPolicy policy) =>
+            new RecordingHandler(request =>
+            {
+                if (request.RequestUri?.AbsolutePath == "/oauth/token")
+                {
+                    TokenRequests++;
+                    var response = JsonResponse(JsonSerializer.Serialize(new
+                    {
+                        access_token = "rotated-access-canary",
+                        token_type = "DPoP",
+                        expires_in = 3600,
+                        refresh_token = "rotated-refresh-canary",
+                        scope = InfrastructureAtprotoOAuthTransportFactory.RequiredScope,
+                        sub = Did
+                    }));
+                    response.Headers.Add("DPoP-Nonce", "refresh-response-nonce");
+                    return response;
+                }
+
+                if (request.RequestUri?.AbsolutePath == "/oauth/revoke")
+                {
+                    RevocationRequests++;
+                    if (FailRevocation)
+                    {
+                        throw new HttpRequestException("bounded revocation outage");
+                    }
+
+                    return new HttpResponseMessage(HttpStatusCode.OK);
+                }
+
+                MetadataRequests++;
+                return JsonResponse(AuthorizationServerMetadata());
+            });
+
+        public HttpMessageHandler CreatePdsPrimary(AtprotoOutboundPolicy policy) =>
+            new RecordingHandler(request =>
+            {
+                PdsRequests++;
+                LastPdsPath = request.RequestUri?.AbsolutePath;
+                LastAuthorizationScheme = request.Headers.Authorization?.Scheme;
+                SawDpopProof = request.Headers.Contains("DPoP");
+                return JsonResponse(JsonSerializer.Serialize(new
+                {
+                    did = pdsResponseDid,
+                    handle = "gateway-user.example",
+                    active = true
+                }));
+            });
+
+        private static string AuthorizationServerMetadata() => $$"""
+            {
+              "issuer": "{{Issuer}}",
+              "authorization_endpoint": "{{Issuer}}oauth/authorize",
+              "token_endpoint": "{{Issuer}}oauth/token",
+              "pushed_authorization_request_endpoint": "{{Issuer}}oauth/par",
+              "revocation_endpoint": "{{Issuer}}oauth/revoke",
+              "require_pushed_authorization_requests": true,
+              "token_endpoint_auth_methods_supported": ["private_key_jwt"],
+              "token_endpoint_auth_signing_alg_values_supported": ["ES256"],
+              "dpop_signing_alg_values_supported": ["ES256"],
+              "grant_types_supported": ["authorization_code", "refresh_token"],
+              "response_types_supported": ["code"],
+              "code_challenge_methods_supported": ["S256"],
+              "authorization_response_iss_parameter_supported": true,
+              "client_id_metadata_document_supported": true,
+              "scopes_supported": ["atproto", "transition:generic"]
+            }
+            """;
+
+        private static HttpResponseMessage JsonResponse(string json) => new(HttpStatusCode.OK)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
+    }
+
+    private sealed class RecordingHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory)
+        : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken) => Task.FromResult(responseFactory(request));
+    }
+
+    private sealed class NoopAsyncDisposable : IAsyncDisposable
+    {
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+}

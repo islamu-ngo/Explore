@@ -64,6 +64,7 @@ public sealed class BffProviderReadinessServiceTests
         var availability = Substitute.For<IServiceProviderIsService>();
         availability.IsService(typeof(IOAuthStateStore)).Returns(true);
         availability.IsService(typeof(IOAuthSessionStore)).Returns(true);
+        var transportFactory = Substitute.For<IAtprotoOAuthTransportFactory>();
         var factory = new AtprotoOAuthClientFactory(
             new AtprotoClientKeyProvider(Options.Create(new AtprotoClientKeyOptions
             {
@@ -75,7 +76,8 @@ public sealed class BffProviderReadinessServiceTests
                 CallbackPath = "/signin-atproto"
             }),
             environment,
-            availability);
+            availability,
+            transportFactory);
         var service = CreateService(optionsMonitor: optionsMonitor, atprotoFactory: factory);
 
         var readiness = await service.GetProviderReadinessAsync(
@@ -86,6 +88,8 @@ public sealed class BffProviderReadinessServiceTests
         await Assert.That(readiness.FailureCode).IsNull();
         await Assert.That(service.HasMinimalProviderConfig(AuthSchemeNames.Atproto)).IsTrue();
         optionsMonitor.DidNotReceiveWithAnyArgs().Get(default!);
+        transportFactory.DidNotReceiveWithAnyArgs().CreatePrimaryHandler(default!, default);
+        transportFactory.DidNotReceiveWithAnyArgs().CreateDnsResolver();
     }
 
     [Test]
@@ -147,6 +151,7 @@ public sealed class BffProviderReadinessServiceTests
             optionsMonitor,
             environment,
             NullLogger<BffProviderReadinessService>.Instance,
+            new AtprotoAuthenticationMetrics(),
             atprotoFactory);
     }
 

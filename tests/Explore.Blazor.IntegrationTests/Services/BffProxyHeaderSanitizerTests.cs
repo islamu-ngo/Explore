@@ -25,6 +25,8 @@ public class BffProxyHeaderSanitizerTests
         request.Headers.Add("X-Identity-Token", "x-identity");
         request.Headers.Add("X-Id-Token", "x-id");
         request.Headers.Add("X-Auth-Token", "x-auth");
+        request.Headers.Add(EventBffHeaderNames.AtprotoBootstrapAssertion, "bootstrap-token");
+        request.Headers.Add(EventBffHeaderNames.AtprotoSessionBridgeAssertion, "session-bridge-token");
         request.Headers.Add(EventBffHeaderNames.TenantId, Guid.NewGuid().ToString());
         request.Headers.Add(EventBffHeaderNames.TenantSlug, "attacker-tenant");
         request.Headers.Add(EventBffHeaderNames.SupportAccessSessionId, Guid.NewGuid().ToString());
@@ -48,6 +50,8 @@ public class BffProxyHeaderSanitizerTests
         await Assert.That(request.Headers.Contains("X-Identity-Token")).IsFalse();
         await Assert.That(request.Headers.Contains("X-Id-Token")).IsFalse();
         await Assert.That(request.Headers.Contains("X-Auth-Token")).IsFalse();
+        await Assert.That(request.Headers.Contains(EventBffHeaderNames.AtprotoBootstrapAssertion)).IsFalse();
+        await Assert.That(request.Headers.Contains(EventBffHeaderNames.AtprotoSessionBridgeAssertion)).IsFalse();
         await Assert.That(request.Headers.Contains(EventBffHeaderNames.TenantId)).IsFalse();
         await Assert.That(request.Headers.Contains(EventBffHeaderNames.TenantSlug)).IsFalse();
         await Assert.That(request.Headers.Contains(EventBffHeaderNames.SupportAccessSessionId)).IsFalse();

@@ -2,8 +2,13 @@
 // ABOUTME: Verifies refresh-session response shape and circuit token cleanup without exposing bearer tokens.
 
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
+using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text.Json;
+using Explore.Blazor.Authentication;
+using Explore.Blazor.Client.Configuration;
 using Explore.Blazor.Services;
 using Explore.Blazor.Services.Auth;
 using FluentAssertions;
@@ -11,13 +16,18 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Explore.Blazor.IntegrationTests.Services;
 
 public sealed class BffSessionRefreshServiceTests
 {
+    private static readonly Guid TenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
+    private static readonly Guid UserId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000002");
+
     [Test]
     public async Task RefreshSessionAsync_WithMissingCookieAuthentication_ReturnsUnauthorized()
     {
@@ -85,7 +95,75 @@ public sealed class BffSessionRefreshServiceTests
         root.GetRawText().Should().NotContain(accessToken);
     }
 
-    private static BffSessionRefreshService CreateService(IBffOnboardingStatusProvider? onboardingStatusProvider = null)
+    [Test]
+    public async Task RefreshSessionAsync_WithAtprotoCookie_UsesPrivateBridgeAndStoresOnlyReplacementToken()
+    {
+        var principal = CreateAtprotoPrincipal();
+        var authService = new TestAuthenticationService(AuthenticateResult.Success(CreateTicket(principal, "old-platform-token")));
+        var tokenService = Substitute.For<ICircuitAccessTokenService>();
+        var handler = new AtprotoBridgeHandler(HttpStatusCode.OK);
+        var context = CreateContext(authService: authService, tokenService: tokenService);
+        context.Request.Scheme = "https";
+        context.Request.Host = new HostString("events.example.com");
+        var service = CreateService(bridgeHandler: handler);
+
+        var result = await service.RefreshSessionAsync(context, CancellationToken.None);
+
+        await ExecuteAsync(result, context);
+        await Assert.That(context.Response.StatusCode).IsEqualTo(StatusCodes.Status200OK);
+        await Assert.That(handler.Method).IsEqualTo(HttpMethod.Post);
+        await Assert.That(handler.Authorization).IsEqualTo("Bearer old-platform-token");
+        await Assert.That(handler.TenantSlug).IsEqualTo("default");
+        await Assert.That(handler.PrivateAssertion).IsNotNull();
+        tokenService.Received(1).SetToken("new-platform-token");
+        await Assert.That(authService.SignInProperties!.GetTokenValue("access_token"))
+            .IsEqualTo("new-platform-token");
+
+        context.Response.Body.Position = 0;
+        var responseBody = await new StreamReader(context.Response.Body).ReadToEndAsync();
+        responseBody.Should().NotContain("old-platform-token").And.NotContain("new-platform-token");
+    }
+
+    [Test]
+    public async Task RefreshSessionAsync_WithRejectedAtprotoSession_ClearsCookieAndRequiresReauthentication()
+    {
+        var principal = CreateAtprotoPrincipal();
+        var authService = new TestAuthenticationService(AuthenticateResult.Success(CreateTicket(principal, "old-platform-token")));
+        var tokenService = Substitute.For<ICircuitAccessTokenService>();
+        var context = CreateContext(authService: authService, tokenService: tokenService);
+        context.Request.Scheme = "https";
+        context.Request.Host = new HostString("events.example.com");
+        var service = CreateService(bridgeHandler: new AtprotoBridgeHandler(HttpStatusCode.Unauthorized));
+
+        var result = await service.RefreshSessionAsync(context, CancellationToken.None);
+
+        await ExecuteAsync(result, context);
+        await Assert.That(context.Response.StatusCode).IsEqualTo(StatusCodes.Status401Unauthorized);
+        await Assert.That(authService.SignOutCalled).IsTrue();
+        tokenService.Received(1).ClearToken();
+    }
+
+    [Test]
+    public async Task RevokeAtprotoSessionAsync_WithRemoteOutage_RemainsBestEffortAndUsesPrivateDelete()
+    {
+        var principal = CreateAtprotoPrincipal();
+        var authentication = AuthenticateResult.Success(CreateTicket(principal, "old-platform-token"));
+        var handler = new AtprotoBridgeHandler(HttpStatusCode.ServiceUnavailable);
+        var context = CreateContext();
+        context.Request.Scheme = "https";
+        context.Request.Host = new HostString("events.example.com");
+        var service = CreateService(bridgeHandler: handler);
+
+        await service.RevokeAtprotoSessionAsync(context, authentication, CancellationToken.None);
+
+        await Assert.That(handler.Method).IsEqualTo(HttpMethod.Delete);
+        await Assert.That(handler.Authorization).IsEqualTo("Bearer old-platform-token");
+        await Assert.That(handler.PrivateAssertion).IsNotNull();
+    }
+
+    private static BffSessionRefreshService CreateService(
+        IBffOnboardingStatusProvider? onboardingStatusProvider = null,
+        HttpMessageHandler? bridgeHandler = null)
     {
         onboardingStatusProvider ??= Substitute.For<IBffOnboardingStatusProvider>();
         onboardingStatusProvider.GetStatusAsync(Arg.Any<CancellationToken>())
@@ -97,9 +175,20 @@ public sealed class BffSessionRefreshServiceTests
             onboardingStatusProvider,
             NullLogger<BffAdminClaimsTransformation>.Instance);
 
+        bridgeHandler ??= new AtprotoBridgeHandler(HttpStatusCode.ServiceUnavailable);
+        var bridgeClient = new HttpClient(bridgeHandler) { BaseAddress = new("https://api.example/") };
+        var environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns(Environments.Production);
         return new BffSessionRefreshService(
             adminClaimsTransformation,
-            new BffAccessTokenAssessmentService());
+            new BffAccessTokenAssessmentService(),
+            new FixedHttpClientFactory(bridgeClient),
+            new AtprotoBootstrapAssertionService(CreateKeyProvider(), TimeProvider.System),
+            new AtprotoTenantOriginResolver(
+                Options.Create(new AtprotoAuthenticationOptions { PublicUrl = "https://events.example.com/" }),
+                Options.Create(new TenantConfiguration { DefaultTenantId = TenantId, DefaultTenant = "default" }),
+                environment),
+            new AtprotoAuthenticationMetrics());
     }
 
     private static DefaultHttpContext CreateContext(
@@ -152,6 +241,42 @@ public sealed class BffSessionRefreshServiceTests
         new Claim("sid", sessionId)
     ], "test"));
 
+    private static ClaimsPrincipal CreateAtprotoPrincipal() => new(new ClaimsIdentity([
+        new Claim("sub", UserId.ToString("D")),
+        new Claim("sid", Guid.CreateVersion7().ToString("D")),
+        new Claim("did", "did:plc:alice"),
+        new Claim("tenant_id", TenantId.ToString("D")),
+        new Claim("auth_provider", "atproto")
+    ], "test"));
+
+    private static AtprotoClientKeyProvider CreateKeyProvider()
+    {
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var parameters = key.ExportParameters(true);
+        var ring = JsonSerializer.Serialize(new
+        {
+            keys = new[]
+            {
+                new
+                {
+                    kty = "EC",
+                    crv = "P-256",
+                    x = Encode(parameters.Q.X!),
+                    y = Encode(parameters.Q.Y!),
+                    d = Encode(parameters.D!),
+                    kid = "oauth-active",
+                    use = "sig",
+                    alg = "ES256",
+                    status = "active"
+                }
+            }
+        });
+        return new(Options.Create(new AtprotoClientKeyOptions { OAuthClientPrivateJwks = ring }));
+    }
+
+    private static string Encode(byte[] value) =>
+        Convert.ToBase64String(value).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
     private static string CreateJwt(string sub, DateTime expires, string sessionId)
     {
         var jwt = new JwtSecurityToken(
@@ -163,6 +288,8 @@ public sealed class BffSessionRefreshServiceTests
     private sealed class TestAuthenticationService(AuthenticateResult authenticateResult) : IAuthenticationService
     {
         public bool SignInCalled { get; private set; }
+        public bool SignOutCalled { get; private set; }
+        public AuthenticationProperties? SignInProperties { get; private set; }
 
         public Task<AuthenticateResult> AuthenticateAsync(HttpContext context, string? scheme) =>
             Task.FromResult(authenticateResult);
@@ -180,10 +307,52 @@ public sealed class BffSessionRefreshServiceTests
             AuthenticationProperties? properties)
         {
             SignInCalled = true;
+            SignInProperties = properties;
             return Task.CompletedTask;
         }
 
-        public Task SignOutAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) =>
-            Task.CompletedTask;
+        public Task SignOutAsync(HttpContext context, string? scheme, AuthenticationProperties? properties)
+        {
+            SignOutCalled = true;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FixedHttpClientFactory(HttpClient client) : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => client;
+    }
+
+    private sealed class AtprotoBridgeHandler(HttpStatusCode statusCode) : HttpMessageHandler
+    {
+        public HttpMethod? Method { get; private set; }
+        public string? Authorization { get; private set; }
+        public string? TenantSlug { get; private set; }
+        public string? PrivateAssertion { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            Method = request.Method;
+            Authorization = request.Headers.Authorization?.ToString();
+            TenantSlug = request.Headers.GetValues("X-Tenant-Slug").Single();
+            PrivateAssertion = request.Headers
+                .GetValues(AtprotoBootstrapAssertionService.SessionBridgeHeaderName)
+                .Single();
+            var response = new HttpResponseMessage(statusCode);
+            if (statusCode == HttpStatusCode.OK)
+            {
+                response.Content = JsonContent.Create(new
+                {
+                    userId = UserId,
+                    did = "did:plc:alice",
+                    accessToken = "new-platform-token",
+                    expiresAt = DateTimeOffset.UtcNow.AddMinutes(10)
+                });
+            }
+
+            return Task.FromResult(response);
+        }
     }
 }

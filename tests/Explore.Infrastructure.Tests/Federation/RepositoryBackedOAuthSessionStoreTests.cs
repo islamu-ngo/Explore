@@ -10,6 +10,7 @@ using System.Text.Json.Nodes;
 using CarpaNet.OAuth;
 using CarpaNet.OAuth.Crypto;
 using CarpaNet.OAuth.Storage;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Secrets;
 using Explore.Domain;
@@ -273,7 +274,7 @@ public sealed class RepositoryBackedOAuthSessionStoreTests
         WriteInt32(writer, AtprotoSessionEnvelopeProtector.CurrentEnvelopeVersion);
         WriteString(writer, TenantId.ToString("D"));
         WriteString(writer, UserId.ToString("D"));
-        WriteString(writer, RepositoryBackedOAuthSessionStore.Provider);
+        WriteString(writer, RepositoryBackedAtprotoSession.Provider);
         WriteString(writer, Did);
         WriteString(writer, "https://pds.example/");
         WriteString(writer, "oauth-client-key");
