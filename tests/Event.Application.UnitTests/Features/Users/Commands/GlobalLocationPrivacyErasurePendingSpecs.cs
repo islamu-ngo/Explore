@@ -65,6 +65,78 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
             .IsEqualTo((int)LocationPrivacyStateEnum.Active);
     }
 
+    [Test]
+    public async Task AmbiguousAuthorityAcknowledgement_RetriesWithSameIntentId()
+    {
+        var userId = Guid.CreateVersion7();
+        await using DeletionHarness harness = CreateHarness(userId);
+        LocationPrivacyErasureAuthorityIntent? retained = null;
+        Guid? firstIntentId = null;
+        var appendCount = 0;
+        harness.Authority
+            .AppendAsync(
+                Arg.Any<LocationPrivacyErasureIntent>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                LocationPrivacyErasureIntent intent = call.Arg<LocationPrivacyErasureIntent>();
+                appendCount++;
+                firstIntentId ??= intent.IntentId;
+                if (intent.IntentId != firstIntentId)
+                {
+                    throw new InvalidOperationException("An ambiguous append retry changed IntentId.");
+                }
+
+                retained ??= LocationPrivacyErasureAuthorityIntent.Record(
+                    intent.IntentId,
+                    1,
+                    intent.OwnerUserId,
+                    intent.LocationIds,
+                    intent.Reason,
+                    DateTime.UtcNow,
+                    DateTime.UtcNow);
+                if (appendCount == 1)
+                {
+                    throw new TimeoutException("The authority retained the fact but the acknowledgement was lost.");
+                }
+
+                return retained;
+            });
+        harness.Authority
+            .ReadAfterAsync(Arg.Any<long>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<long>(0) < 1 && retained is not null
+                ? [retained]
+                : []);
+
+        await harness.Handler.Handle(
+            new DeleteUserCommand { UserId = userId },
+            CancellationToken.None);
+
+        await Assert.That(appendCount).IsEqualTo(2);
+        await Assert.That(firstIntentId).IsNotNull();
+        await harness.UserRepository.Received(1).Delete(Arg.Any<User>());
+    }
+
+    [Test]
+    public async Task PreCanceledDeletion_DoesNotReadUserAppendAuthorityOrMutateApplicationState()
+    {
+        var userId = Guid.CreateVersion7();
+        await using DeletionHarness harness = CreateHarness(userId);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            harness.Handler.Handle(
+                new DeleteUserCommand { UserId = userId },
+                cancellation.Token));
+
+        _ = harness.UserRepository.DidNotReceive().GetById(Arg.Any<Guid>());
+        await harness.Authority.DidNotReceive().AppendAsync(
+            Arg.Any<LocationPrivacyErasureIntent>(),
+            Arg.Any<CancellationToken>());
+        await harness.UserRepository.DidNotReceive().Delete(Arg.Any<User>());
+    }
+
     private static DeletionHarness CreateHarness(Guid userId)
     {
         IUserRepository userRepository = Substitute.For<IUserRepository>();
