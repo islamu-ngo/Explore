@@ -1,5 +1,5 @@
 // ABOUTME: Registers BFF-specific rate limiting policies for sensitive browser-facing endpoints.
-// ABOUTME: Keys setup-secret throttling by authenticated user or antiforgery/session cookie before falling back to IP.
+// ABOUTME: Keys setup-secret attempts by session context and anonymous ATProto OAuth endpoints by source IP.
 
 using System.Globalization;
 using System.Threading.RateLimiting;
@@ -9,6 +9,7 @@ namespace Explore.Blazor.Extensions;
 public static class RateLimitingExtensions
 {
     public const string SetupSecretPolicy = "BffSetupSecret";
+    public const string AtprotoAuthenticationPolicy = "BffAtprotoAuthentication";
 
     public static IServiceCollection AddBffRateLimiting(
         this IServiceCollection services,
@@ -22,6 +23,8 @@ public static class RateLimitingExtensions
             {
                 options.AddPolicy(SetupSecretPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(AtprotoAuthenticationPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
             });
 
             return services;
@@ -30,6 +33,9 @@ public static class RateLimitingExtensions
         var section = configuration.GetSection("RateLimiting:SetupSecret");
         var permitLimit = section.GetValue("PermitLimit", 5);
         var windowSeconds = section.GetValue("WindowSeconds", 60);
+        var atprotoSection = configuration.GetSection("RateLimiting:AtprotoAuthentication");
+        var atprotoPermitLimit = Math.Clamp(atprotoSection.GetValue("PermitLimit", 10), 1, 1000);
+        var atprotoWindowSeconds = Math.Clamp(atprotoSection.GetValue("WindowSeconds", 60), 1, 3600);
 
         services.AddRateLimiter(options =>
         {
@@ -44,12 +50,17 @@ public static class RateLimitingExtensions
                         ((int)retryAfter.TotalSeconds).ToString(NumberFormatInfo.InvariantInfo);
                 }
 
+                var isSetupSecret = context.HttpContext.Request.Path.StartsWithSegments(
+                    "/bff/setup-secret",
+                    StringComparison.Ordinal);
                 await context.HttpContext.Response.WriteAsJsonAsync(new Microsoft.AspNetCore.Mvc.ProblemDetails
                 {
                     Type = "https://tools.ietf.org/html/rfc6585#section-4",
                     Title = "Too Many Requests",
                     Status = StatusCodes.Status429TooManyRequests,
-                    Detail = "Too many setup-secret attempts. Please retry after the period indicated in the Retry-After header."
+                    Detail = isSetupSecret
+                        ? "Too many setup-secret attempts. Please retry after the period indicated in the Retry-After header."
+                        : "Too many authentication attempts. Please retry after the period indicated in the Retry-After header."
                 }, cancellationToken);
             };
 
@@ -67,6 +78,18 @@ public static class RateLimitingExtensions
                         AutoReplenishment = true
                     });
             });
+
+            options.AddPolicy(AtprotoAuthenticationPolicy, httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    $"atproto:ip:{httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"}",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = atprotoPermitLimit,
+                        Window = TimeSpan.FromSeconds(atprotoWindowSeconds),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
         });
 
         return services;

@@ -138,7 +138,11 @@ builder.Services.AddHealthChecks()
     .AddCheck<ApiReadinessHealthCheck>(
         "explore-api",
         failureStatus: HealthStatus.Unhealthy,
-        tags: ["ready", "api", "infrastructure"]);
+        tags: ["ready", "api", "infrastructure"])
+    .AddCheck<AtprotoAuthenticationHealthCheck>(
+        "atproto-authentication",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "authentication"]);
 
 // ──────────────────────────────────────────────
 // Middleware Pipeline

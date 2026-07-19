@@ -1,6 +1,7 @@
 // ABOUTME: Centralizes BFF auth provider scheme resolution and readiness checks.
 // ABOUTME: Keeps provider discovery and minimal-config fallback logic out of auth endpoint handlers.
 
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Explore.Blazor.Constants;
@@ -31,6 +32,7 @@ public sealed class BffProviderReadinessService(
     IOptionsMonitor<OpenIdConnectOptions> optionsMonitor,
     IWebHostEnvironment environment,
     ILogger<BffProviderReadinessService> logger,
+    AtprotoAuthenticationMetrics atprotoMetrics,
     AtprotoOAuthClientFactory? atprotoFactory = null)
     : IBffProviderReadinessService
 {
@@ -104,7 +106,12 @@ public sealed class BffProviderReadinessService(
     {
         if (scheme == AuthSchemeNames.Atproto)
         {
+            var startedAt = Stopwatch.GetTimestamp();
             var readiness = atprotoFactory?.GetReadiness() ?? new AtprotoOAuthReadiness(false, "provider_not_configured");
+            atprotoMetrics.RecordReadiness(
+                readiness.IsReady,
+                readiness.FailureCode,
+                Stopwatch.GetElapsedTime(startedAt));
             return new(readiness.IsReady, readiness.FailureCode);
         }
 

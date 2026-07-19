@@ -1,6 +1,7 @@
 // ABOUTME: Registers server-specific services on top of the shared application services.
 // ABOUTME: Shared services live in Explore.Blazor.Client.Extensions.ServiceCollectionExtensions.
 
+using CarpaNet.OAuth.Storage;
 using Explore.Blazor.Authentication;
 using Explore.Blazor.Client.Configuration;
 using Explore.Blazor.Client.Contracts.Interop;
@@ -110,6 +111,17 @@ public static class ServiceRegistrationExtensions
         services.Configure<AtprotoAuthenticationOptions>(configuration.GetSection("Atproto"));
         services.Configure<AtprotoClientKeyOptions>(configuration.GetSection("Atproto"));
         services.AddSingleton<AtprotoClientKeyProvider>();
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<AtprotoBootstrapAssertionService>();
+        services.AddSingleton<AtprotoAtomicCache>();
+        services.AddSingleton<AtprotoTenantOriginResolver>();
+        services.AddScoped<AtprotoOAuthFlowContext>();
+        services.AddScoped<CacheBackedOAuthStateStore>();
+        services.AddScoped<IOAuthStateStore>(provider => provider.GetRequiredService<CacheBackedOAuthStateStore>());
+        services.AddScoped<ApiBackedOAuthSessionStore>();
+        services.AddScoped<IOAuthSessionStore>(provider => provider.GetRequiredService<ApiBackedOAuthSessionStore>());
+        services.AddSingleton<AtprotoTenantSessionHandoffStore>();
+        services.AddSingleton<IAtprotoOAuthTransportFactory, AtprotoOAuthTransportFactory>();
         services.AddSingleton<AtprotoOAuthClientFactory>();
 
         // BFF admin claims enrichment — invoked at cookie/session boundaries, not per request.

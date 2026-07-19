@@ -1,0 +1,40 @@
+// ABOUTME: Reports passive AT Protocol login readiness from registered configuration and local prerequisites.
+// ABOUTME: Treats disabled login as healthy dormancy and never probes a user PDS or exposes configuration values.
+
+using Explore.Blazor.Constants;
+using Explore.Blazor.Services;
+using Explore.Blazor.Services.Auth;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+
+namespace Explore.Blazor.HealthChecks;
+
+public sealed class AtprotoAuthenticationHealthCheck(
+    IDynamicAuthSchemeManager schemeManager,
+    IBffProviderReadinessService readinessService) : IHealthCheck
+{
+    public async Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken cancellationToken = default)
+    {
+        var registered = await schemeManager.GetRegisteredProviderSchemesAsync();
+        if (!registered.Contains(AuthSchemeNames.Atproto, StringComparer.Ordinal))
+        {
+            return HealthCheckResult.Healthy(
+                "AT Protocol login is disabled.",
+                new Dictionary<string, object> { ["enabled"] = false });
+        }
+
+        var readiness = await readinessService.GetProviderReadinessAsync(
+            AuthSchemeNames.Atproto,
+            cancellationToken);
+        var data = new Dictionary<string, object>
+        {
+            ["enabled"] = true,
+            ["failureCode"] = AtprotoAuthenticationMetrics.NormalizeFailureCode(readiness.FailureCode)
+        };
+
+        return readiness.IsReady
+            ? HealthCheckResult.Healthy("AT Protocol login prerequisites are ready.", data)
+            : HealthCheckResult.Unhealthy("AT Protocol login is enabled but unavailable.", data: data);
+    }
+}

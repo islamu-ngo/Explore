@@ -7,6 +7,7 @@
 @using MudBlazor
 @inject NavigationManager Navigation
 @inject IBffAuthApi BffAuthApi
+@inject Explore.Blazor.Client.Services.Http.IBffClient BffClient
 @inject ILogger<LoginRedirect> Logger
 @rendermode InteractiveServer
 
@@ -74,6 +75,9 @@
                                 <MudTextField Variant="Variant.Outlined" T="string"
                                               Label="ATProto handle"
                                               Placeholder="user.bsky.social"
+                                              AutoFocus="true"
+                                              Required="true"
+                                              RequiredError="ATProto handle is required"
                                               Adornment="Adornment.Start"
                                               AdornmentIcon="@Icons.Material.Filled.AlternateEmail"
                                               Immediate="true"
@@ -195,7 +199,7 @@
                     _isAutoRedirecting = true;
                     _hasTriggeredRedirect = true;
                     await Task.Yield();
-                    StartAtprotoChallenge();
+                    await StartAtprotoChallenge();
                     return;
                 }
             }
@@ -222,7 +226,7 @@
             _isAutoRedirecting = true;
             _hasTriggeredRedirect = true;
             await Task.Yield();
-            StartAtprotoChallenge();
+            await StartAtprotoChallenge();
         }
     }
 
@@ -244,17 +248,36 @@
         StartButtonProviderChallenge(provider);
     }
 
-    private void StartAtprotoChallenge()
+    private async Task StartAtprotoChallenge()
     {
         if (string.IsNullOrWhiteSpace(_atprotoHandle))
         {
             return;
         }
 
-        var challengeUrl = $"/auth/challenge?provider=atproto&returnUrl={Uri.EscapeDataString(_returnUrl)}";
-        challengeUrl += $"&login_hint={Uri.EscapeDataString(_atprotoHandle.Trim())}";
+        _errorMessage = null;
+        AtprotoChallengeResponse? response;
+        try
+        {
+            response = await BffClient.SendAsync<AtprotoChallengeRequest, AtprotoChallengeResponse>(
+                HttpMethod.Post,
+                "/auth/atproto/challenge",
+                new(_atprotoHandle.Trim(), _returnUrl));
+        }
+        catch (Exception)
+        {
+            Logger.LogWarning("ATProto challenge request failed (errorCode=atproto_challenge_unavailable)");
+            response = null;
+        }
 
-        Navigation.NavigateTo(challengeUrl, forceLoad: true);
+        if (response is null || string.IsNullOrWhiteSpace(response.AuthorizationUrl))
+        {
+            _errorMessage = "ATProto sign-in could not be started. Check the handle and try again.";
+            return;
+        }
+
+        _atprotoHandle = string.Empty;
+        Navigation.NavigateTo(response.AuthorizationUrl, forceLoad: true);
     }
 
     // HandleAtprotoKeyUp removed in favor of EditForm submission
@@ -311,18 +334,22 @@
             _forcedProviderQuery = providerValue.Trim().ToLowerInvariant();
         }
 
-        if (query.TryGetValue("login_hint", out var loginHintValue))
-        {
-            _atprotoHandle = loginHintValue;
-        }
-
         if (query.TryGetValue("challengeError", out var challengeErrorValue)
             && (string.Equals(challengeErrorValue, "1", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(challengeErrorValue, "true", StringComparison.OrdinalIgnoreCase)))
         {
-            _challengeErrorMessage = "The last login attempt failed. Please choose a provider and try again.";
+            _challengeErrorMessage = query.GetValueOrDefault("errorCode") switch
+            {
+                "atproto_callback_failed" => "ATProto sign-in could not be completed. Please try again.",
+                "atproto_challenge_failed" => "ATProto sign-in could not be started. Please try again.",
+                _ => "The last login attempt failed. Please choose a provider and try again."
+            };
         }
     }
+
+    private sealed record AtprotoChallengeRequest(string Handle, string ReturnPath);
+
+    private sealed record AtprotoChallengeResponse(string AuthorizationUrl);
 
     private static Dictionary<string, string> ParseQuery(string queryString)
     {

@@ -7,6 +7,7 @@ using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.HealthChecks;
 using Explore.Blazor.Services;
+using Explore.Blazor.Services.Auth;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
 using Polly.Timeout;
@@ -62,6 +63,12 @@ public static class HttpClientExtensions
             client.Timeout = TimeSpan.FromSeconds(5);
         }).ConfigureDevCertBypass(environment)
           .AddAdminResilience();
+
+        services.AddHttpClient(ApiBackedOAuthSessionStore.HttpClientName, client =>
+        {
+            client.BaseAddress = new Uri(apiBaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(20);
+        }).ConfigureDevCertBypass(environment);
 
         return services;
     }
