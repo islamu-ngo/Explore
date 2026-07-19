@@ -37,6 +37,24 @@ public sealed class RecipientNotificationMaterializerTests
     }
 
     [Test]
+    public async Task MaterializeInCurrentTransactionAsyncPersistsFanoutOccurrenceAuthority()
+    {
+        Guid occurrenceId = Guid.CreateVersion7();
+        var repository = new RecordingGraphRepository();
+        var materializer = new RecipientNotificationMaterializer(repository, new RecordingUnitOfWork());
+        RecipientNotificationMaterialization original = CreateRequest(includeEmail: true);
+        RecipientNotificationMaterialization request = original with
+        {
+            Intent = original.Intent with { FanoutOccurrenceId = occurrenceId }
+        };
+
+        RecipientNotificationMaterializationResult result =
+            await materializer.MaterializeInCurrentTransactionAsync(request);
+
+        await Assert.That(result.Intent.FanoutOccurrenceId).IsEqualTo(occurrenceId);
+    }
+
+    [Test]
     public async Task MaterializeInCurrentTransactionAsyncPersistsTypedSkippedEmailChannel()
     {
         var repository = new RecordingGraphRepository();
@@ -71,6 +89,31 @@ public sealed class RecipientNotificationMaterializerTests
         await Assert.That(unitOfWork.ExecutionCount).IsEqualTo(2);
         await Assert.That(repository.LoadCount).IsEqualTo(2);
         await Assert.That(repository.RepairCount).IsEqualTo(1);
+        await Assert.That(result.Intent.Id).IsEqualTo(winner.Id);
+    }
+
+    [Test]
+    public async Task MaterializeAsyncOccurrenceConflictRecoversByOccurrenceAndRecipient()
+    {
+        Guid occurrenceId = Guid.CreateVersion7();
+        RecipientNotificationMaterialization original = CreateRequest(includeEmail: true);
+        RecipientNotificationMaterialization request = original with
+        {
+            Intent = original.Intent with { FanoutOccurrenceId = occurrenceId }
+        };
+        NotificationIntent winner = CreateWinningIntent(request);
+        winner.FanoutOccurrenceId = occurrenceId;
+        var repository = new RecordingGraphRepository
+        {
+            CreateFailure = new NotificationIntentDeduplicationConflictException(new InvalidOperationException("23505")),
+            Loaded = winner
+        };
+        var materializer = new RecipientNotificationMaterializer(repository, new RecordingUnitOfWork());
+
+        RecipientNotificationMaterializationResult result = await materializer.MaterializeAsync(request);
+
+        await Assert.That(repository.OccurrenceLoadCount).IsEqualTo(2);
+        await Assert.That(repository.DeduplicationLoadCount).IsEqualTo(0);
         await Assert.That(result.Intent.Id).IsEqualTo(winner.Id);
     }
 
@@ -283,7 +326,9 @@ public sealed class RecipientNotificationMaterializerTests
         public NotificationIntent? Created { get; private set; }
         public Exception? CreateFailure { get; init; }
         public NotificationIntent? Loaded { get; init; }
-        public int LoadCount { get; private set; }
+        public int LoadCount => DeduplicationLoadCount + OccurrenceLoadCount;
+        public int DeduplicationLoadCount { get; private set; }
+        public int OccurrenceLoadCount { get; private set; }
         public int RepairCount { get; private set; }
 
         public Task<NotificationIntent> CreateGraphAsync(
@@ -301,7 +346,17 @@ public sealed class RecipientNotificationMaterializerTests
             string deduplicationKey,
             CancellationToken cancellationToken = default)
         {
-            LoadCount++;
+            DeduplicationLoadCount++;
+            return Task.FromResult(Loaded);
+        }
+
+        public Task<NotificationIntent?> GetGraphByTenantOccurrenceAndRecipientAsync(
+            Guid tenantId,
+            Guid occurrenceId,
+            Guid recipientUserId,
+            CancellationToken cancellationToken = default)
+        {
+            OccurrenceLoadCount++;
             return Task.FromResult(Loaded);
         }
 
@@ -423,6 +478,13 @@ public sealed class RecipientNotificationMaterializerTests
             CancellationToken cancellationToken = default) =>
             Task.FromResult(store.Load(tenantId, deduplicationKey));
 
+        public Task<NotificationIntent?> GetGraphByTenantOccurrenceAndRecipientAsync(
+            Guid tenantId,
+            Guid occurrenceId,
+            Guid recipientUserId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(store.Load(tenantId, occurrenceId, recipientUserId));
+
         public Task RepairMissingRecipientDeliveryRowsAsync(
             NotificationIntent winningIntent,
             IReadOnlyList<NotificationDelivery> expectedDeliveries,
@@ -475,6 +537,17 @@ public sealed class RecipientNotificationMaterializerTests
                 return CommittedIntents.SingleOrDefault(intent =>
                     intent.TenantId == tenantId
                     && intent.DeduplicationKey == deduplicationKey);
+            }
+        }
+
+        public NotificationIntent? Load(Guid tenantId, Guid occurrenceId, Guid recipientUserId)
+        {
+            lock (_lock)
+            {
+                return CommittedIntents.SingleOrDefault(intent =>
+                    intent.TenantId == tenantId
+                    && intent.FanoutOccurrenceId == occurrenceId
+                    && intent.RecipientUserId == recipientUserId);
             }
         }
     }

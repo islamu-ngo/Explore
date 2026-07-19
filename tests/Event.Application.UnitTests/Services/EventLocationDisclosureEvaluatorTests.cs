@@ -72,8 +72,14 @@ public sealed class EventLocationDisclosureEvaluatorTests
     public async Task Evaluate_MissingStaleOrMismatchedAssociation_FailsClosed()
     {
         var valid = CreateFacts();
-        var deleted = CreatePlacement();
+        var deleted = CreatePlacement(locationId: valid.Location!.Id);
         deleted.DetachFinalReference(ActorId, Now.UtcDateTime);
+        var missingPolicyVersion = CreatePlacement(locationId: valid.Location.Id);
+        SetPrivateProperty(missingPolicyVersion, nameof(EventLocation.PolicyVersion), 0);
+        var neitherPhysicalNorTba = CreatePlacement(locationId: valid.Location.Id);
+        SetPrivateProperty(neitherPhysicalNorTba, nameof(EventLocation.LocationId), null!);
+        var bothPhysicalAndTba = CreatePlacement(locationId: valid.Location.Id);
+        SetPrivateProperty(bothPhysicalAndTba, nameof(EventLocation.IsToBeAnnounced), true);
         var wrongLocation = CreateLocation(locationId: Guid.CreateVersion7());
         var wrongRoom = CreateRoom(valid.Location!, locationId: Guid.CreateVersion7());
         var deletedRoom = CreateRoom(valid.Location!);
@@ -85,7 +91,10 @@ public sealed class EventLocationDisclosureEvaluatorTests
             valid with { Request = valid.Request with { TenantId = Guid.CreateVersion7() } },
             valid with { Request = valid.Request with { EventId = Guid.CreateVersion7() } },
             valid with { Request = valid.Request with { EventLocationId = Guid.CreateVersion7() } },
-            valid with { EventLocation = deleted },
+            CreateFacts(placement: deleted, location: valid.Location, room: valid.Room),
+            CreateFacts(placement: missingPolicyVersion, location: valid.Location, room: valid.Room),
+            CreateFacts(placement: neitherPhysicalNorTba, location: valid.Location, room: valid.Room),
+            CreateFacts(placement: bothPhysicalAndTba, location: valid.Location, room: valid.Room),
             valid with { Location = null },
             valid with { Location = wrongLocation },
             valid with { Location = CreateLocation(tenantId: Guid.CreateVersion7()) },
@@ -97,6 +106,7 @@ public sealed class EventLocationDisclosureEvaluatorTests
         foreach (var facts in invalidFacts)
         {
             var result = _evaluator.Evaluate(facts);
+            await Assert.That(result.State).IsEqualTo(EventLocationDisclosureState.Hidden);
             await Assert.That(result.Values).IsNull();
             await Assert.That(result.DisclosedFields).IsEmpty();
             await Assert.That(result.LocationId).IsNull();
@@ -170,19 +180,96 @@ public sealed class EventLocationDisclosureEvaluatorTests
 
     [Test]
     [Category("EventLocationPrivacy")]
-    [Arguments(LocationPrivacyStateEnum.NotProvided)]
-    [Arguments(LocationPrivacyStateEnum.Erased)]
-    public async Task Evaluate_UnusablePrivacyState_IsUnavailable(LocationPrivacyStateEnum state)
+    [Arguments(EventLocationDisclosurePurpose.Public, LocationPrivacyStateEnum.NotProvided)]
+    [Arguments(EventLocationDisclosurePurpose.Public, LocationPrivacyStateEnum.Erased)]
+    [Arguments(EventLocationDisclosurePurpose.Attendee, LocationPrivacyStateEnum.NotProvided)]
+    [Arguments(EventLocationDisclosurePurpose.Attendee, LocationPrivacyStateEnum.Erased)]
+    [Arguments(EventLocationDisclosurePurpose.Management, LocationPrivacyStateEnum.NotProvided)]
+    [Arguments(EventLocationDisclosurePurpose.Management, LocationPrivacyStateEnum.Erased)]
+    public async Task Evaluate_UnusablePrivacyState_IsUnavailable(
+        EventLocationDisclosurePurpose purpose,
+        LocationPrivacyStateEnum state)
     {
         var location = state == LocationPrivacyStateEnum.Erased
             ? CreateErasedPrivateHome()
             : CreateLocation(attachPii: false);
-        var facts = CreateFacts(location: location, room: null, roomId: null);
+        var facts = CreateFacts(
+            purpose: purpose,
+            location: location,
+            room: null,
+            roomId: null,
+            accessState: purpose == EventLocationDisclosurePurpose.Attendee
+                ? EventLocationRegistrationEffectiveState.Confirmed
+                : null,
+            managerAuthorized: purpose == EventLocationDisclosurePurpose.Management);
 
         var result = _evaluator.Evaluate(facts);
 
         await Assert.That(result.State).IsEqualTo(EventLocationDisclosureState.Unavailable);
         await Assert.That(result.Values).IsNull();
+        await Assert.That(result.DisclosedFields).IsEmpty();
+        await Assert.That(result.LocationId).IsNull();
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task EvaluatePiiFromAnotherLocationFailsClosed()
+    {
+        var location = CreateLocation();
+        location.Pii!.LocationId = Guid.CreateVersion7();
+
+        var result = _evaluator.Evaluate(CreateFacts(
+            location: location,
+            room: null,
+            roomId: null));
+
+        await Assert.That(result.State).IsEqualTo(EventLocationDisclosureState.Hidden);
+        await Assert.That(result.Values).IsNull();
+        await Assert.That(result.DisclosedFields).IsEmpty();
+        await Assert.That(result.LocationId).IsNull();
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task Evaluate_MalformedPiiKindAndLifecycleCombinations_AreHidden()
+    {
+        var ownerlessHome = CreatePrivateHome();
+        SetPrivateProperty(ownerlessHome, nameof(Location.OwnerUserId), null!);
+        var ownedNonHome = CreatePrivateHome();
+        SetPrivateProperty(
+            ownedNonHome,
+            nameof(Location.LocationKindId),
+            (int)LocationKindEnum.CommunityVenue);
+        var activeAfterErasure = CreateLocation();
+        SetPrivateProperty(activeAfterErasure, nameof(Location.PiiErasedAtUtc), Now.UtcDateTime);
+        SetPrivateProperty(
+            activeAfterErasure,
+            nameof(Location.PiiErasureReason),
+            LocationPrivacyErasureReasonEnum.AccountDeletion);
+        var blankAddress = CreateLocation();
+        blankAddress.Pii!.Address = " ";
+        var blankPostcode = CreateLocation();
+        blankPostcode.Pii!.Postcode = " ";
+
+        foreach (var location in new[]
+        {
+            ownerlessHome,
+            ownedNonHome,
+            activeAfterErasure,
+            blankAddress,
+            blankPostcode
+        })
+        {
+            var result = _evaluator.Evaluate(CreateFacts(
+                location: location,
+                room: null,
+                roomId: null));
+
+            await Assert.That(result.State).IsEqualTo(EventLocationDisclosureState.Hidden);
+            await Assert.That(result.Values).IsNull();
+            await Assert.That(result.DisclosedFields).IsEmpty();
+            await Assert.That(result.LocationId).IsNull();
+        }
     }
 
     [Test]
@@ -205,12 +292,18 @@ public sealed class EventLocationDisclosureEvaluatorTests
         var valid = CreateFacts();
         EventLocationDisclosureEvaluationFacts[] invalidFacts =
         [
+            valid with { Request = valid.Request with { TenantId = Guid.Empty } },
+            valid with { Request = valid.Request with { EventId = Guid.Empty } },
+            valid with { Request = valid.Request with { EventLocationId = Guid.Empty } },
+            valid with { Request = valid.Request with { RoomId = Guid.Empty } },
+            valid with { Governance = null! },
             valid with { Governance = valid.Governance with { IsResolved = false } },
             valid with { Request = valid.Request with { Purpose = (EventLocationDisclosurePurpose)999 } },
             valid with { Governance = valid.Governance with { MinimumHomeAudience = (LocationDisclosureAudienceEnum)999 } },
             valid with { Governance = valid.Governance with { DefaultRevealOffset = TimeSpan.FromTicks(-1) } },
             valid with { Governance = valid.Governance with { DefaultRevealOffset = TimeSpan.FromDays(31) } },
-            valid with { ServerNowUtc = default }
+            valid with { ServerNowUtc = default },
+            valid with { ServerNowUtc = Now.ToOffset(TimeSpan.FromHours(2)) }
         ];
 
         foreach (var facts in invalidFacts)
@@ -223,7 +316,7 @@ public sealed class EventLocationDisclosureEvaluatorTests
 
     [Test]
     [Category("EventLocationPrivacy")]
-    public async Task Evaluate_InvalidCreatedAtOrGovernedRevealOverflow_NeverMaterializesExactValues()
+    public async Task Evaluate_InvalidRevealPolicy_IsHidden()
     {
         EventLocationDisclosureEvaluationFacts valid = CreateFacts(
             defaultRevealOffset: TimeSpan.FromDays(30));
@@ -253,10 +346,10 @@ public sealed class EventLocationDisclosureEvaluatorTests
                     registrationAccess: null)
             });
 
-            await Assert.That(result.Values!.StreetAddress).IsNull();
-            await Assert.That(result.Values.Postcode).IsNull();
-            await Assert.That(result.Values.Latitude).IsNull();
-            await Assert.That(result.Values.Longitude).IsNull();
+            await Assert.That(result.State).IsEqualTo(EventLocationDisclosureState.Hidden);
+            await Assert.That(result.Values).IsNull();
+            await Assert.That(result.DisclosedFields).IsEmpty();
+            await Assert.That(result.LocationId).IsNull();
         }
     }
 
@@ -304,8 +397,18 @@ public sealed class EventLocationDisclosureEvaluatorTests
         await Assert.That(attendee.LocationId).IsNull();
         await Assert.That(attendee.Values!.RoomDescription).IsNull();
         await Assert.That(management.State).IsEqualTo(EventLocationDisclosureState.Available);
-        await Assert.That(management.LocationId).IsEqualTo(managementFacts.Location!.Id);
+        await Assert.That(management.LocationId).IsNull();
         await Assert.That(management.Values!.RoomDescription).IsEqualTo("Use the north entrance");
+        await Assert.That(management.DisclosedFields).IsEquivalentTo([
+            EventLocationDisclosureField.Country,
+            EventLocationDisclosureField.City,
+            EventLocationDisclosureField.VenueName,
+            EventLocationDisclosureField.RoomName,
+            EventLocationDisclosureField.RoomDescription,
+            EventLocationDisclosureField.StreetAddress,
+            EventLocationDisclosureField.Postcode,
+            EventLocationDisclosureField.Latitude,
+            EventLocationDisclosureField.Longitude]);
     }
 
     [Test]
@@ -479,7 +582,12 @@ public sealed class EventLocationDisclosureEvaluatorTests
     [Arguments(EventLocationRegistrationEffectiveState.Pending, LocationDisclosureAudienceEnum.AnyCurrentRegistrant, true)]
     [Arguments(EventLocationRegistrationEffectiveState.Waitlisted, LocationDisclosureAudienceEnum.AnyCurrentRegistrant, true)]
     [Arguments(EventLocationRegistrationEffectiveState.Pending, LocationDisclosureAudienceEnum.ConfirmedParticipant, false)]
+    [Arguments(EventLocationRegistrationEffectiveState.Waitlisted, LocationDisclosureAudienceEnum.ConfirmedParticipant, false)]
+    [Arguments(EventLocationRegistrationEffectiveState.Pending, LocationDisclosureAudienceEnum.Never, false)]
+    [Arguments(EventLocationRegistrationEffectiveState.Waitlisted, LocationDisclosureAudienceEnum.Never, false)]
+    [Arguments(EventLocationRegistrationEffectiveState.Confirmed, LocationDisclosureAudienceEnum.AnyCurrentRegistrant, true)]
     [Arguments(EventLocationRegistrationEffectiveState.Confirmed, LocationDisclosureAudienceEnum.ConfirmedParticipant, true)]
+    [Arguments(EventLocationRegistrationEffectiveState.Confirmed, LocationDisclosureAudienceEnum.Never, false)]
     public async Task Evaluate_AttendeeExactFields_RespectAudienceCeiling(
         EventLocationRegistrationEffectiveState state,
         LocationDisclosureAudienceEnum audience,
@@ -495,6 +603,25 @@ public sealed class EventLocationDisclosureEvaluatorTests
         await Assert.That(result.Values.Latitude is not null).IsEqualTo(expectsExact);
         await Assert.That(result.Values.Longitude is not null).IsEqualTo(expectsExact);
         await Assert.That(result.Values.VenueName).IsEqualTo("Community Hall");
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    [Arguments(EventLocationRegistrationEffectiveState.Denied)]
+    [Arguments(EventLocationRegistrationEffectiveState.Rejected)]
+    [Arguments(EventLocationRegistrationEffectiveState.Cancelled)]
+    [Arguments(EventLocationRegistrationEffectiveState.Revoked)]
+    [Arguments(EventLocationRegistrationEffectiveState.NonLive)]
+    public async Task EvaluateTerminalOrNonLiveRegistrationAuthorityFailsClosed(
+        EventLocationRegistrationEffectiveState state)
+    {
+        var result = _evaluator.Evaluate(CreateFacts(
+            purpose: EventLocationDisclosurePurpose.Attendee,
+            accessState: state));
+
+        await Assert.That(result.State).IsEqualTo(EventLocationDisclosureState.Hidden);
+        await Assert.That(result.Values).IsNull();
+        await Assert.That(result.DisclosedFields).IsEmpty();
     }
 
     [Test]
@@ -520,6 +647,25 @@ public sealed class EventLocationDisclosureEvaluatorTests
 
     [Test]
     [Category("EventLocationPrivacy")]
+    public async Task EvaluateDefaultRevealOffsetUsesAssociationCreationAndServerUtc()
+    {
+        var before = _evaluator.Evaluate(CreateFacts(
+            purpose: EventLocationDisclosurePurpose.Attendee,
+            serverNowUtc: Now.AddHours(2).AddTicks(-1),
+            accessState: EventLocationRegistrationEffectiveState.Confirmed,
+            defaultRevealOffset: TimeSpan.FromHours(2)));
+        var at = _evaluator.Evaluate(CreateFacts(
+            purpose: EventLocationDisclosurePurpose.Attendee,
+            serverNowUtc: Now.AddHours(2),
+            accessState: EventLocationRegistrationEffectiveState.Confirmed,
+            defaultRevealOffset: TimeSpan.FromHours(2)));
+
+        await Assert.That(before.Values!.StreetAddress).IsNull();
+        await Assert.That(at.Values!.StreetAddress).IsEqualTo("1 Main Street");
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
     [Arguments(EventLocationDisclosureFields.Country, EventLocationDisclosureField.Country)]
     [Arguments(EventLocationDisclosureFields.City, EventLocationDisclosureField.City)]
     [Arguments(EventLocationDisclosureFields.VenueName, EventLocationDisclosureField.VenueName)]
@@ -533,6 +679,101 @@ public sealed class EventLocationDisclosureEvaluatorTests
         var result = _evaluator.Evaluate(CreateFacts(fields: selection));
 
         await Assert.That(result.DisclosedFields).IsEquivalentTo([expected]);
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task EvaluateEveryPurposeEmitsExactlyItsConfiguredFieldVector()
+    {
+        (EventLocationDisclosureFields Selection, EventLocationDisclosureField[] Expected)[] rows =
+        [
+            (EventLocationDisclosureFields.Country, [EventLocationDisclosureField.Country]),
+            (EventLocationDisclosureFields.City, [EventLocationDisclosureField.City]),
+            (EventLocationDisclosureFields.VenueName, [EventLocationDisclosureField.VenueName]),
+            (EventLocationDisclosureFields.RoomName, [EventLocationDisclosureField.RoomName]),
+            (EventLocationDisclosureFields.StreetAddress, [EventLocationDisclosureField.StreetAddress]),
+            (EventLocationDisclosureFields.Postcode, [EventLocationDisclosureField.Postcode]),
+            (EventLocationDisclosureFields.Coordinates,
+                [EventLocationDisclosureField.Latitude, EventLocationDisclosureField.Longitude])
+        ];
+
+        foreach (var purpose in Enum.GetValues<EventLocationDisclosurePurpose>())
+        {
+            foreach (var row in rows)
+            {
+                var includeRoom = row.Selection == EventLocationDisclosureFields.RoomName;
+                var result = _evaluator.Evaluate(CreateFacts(
+                    purpose: purpose,
+                    includeRoom: includeRoom,
+                    roomId: null,
+                    fields: row.Selection,
+                    accessState: purpose == EventLocationDisclosurePurpose.Attendee
+                        ? EventLocationRegistrationEffectiveState.Confirmed
+                        : null,
+                    managerAuthorized: purpose == EventLocationDisclosurePurpose.Management));
+                var expected = purpose == EventLocationDisclosurePurpose.Management && includeRoom
+                    ? row.Expected.Append(EventLocationDisclosureField.RoomDescription)
+                    : row.Expected;
+
+                await Assert.That(result.DisclosedFields).IsEquivalentTo(expected);
+            }
+        }
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task EvaluateNoSelectedOrPurposeGrantedFieldsIsHiddenForEveryPurpose()
+    {
+        foreach (var purpose in Enum.GetValues<EventLocationDisclosurePurpose>())
+        {
+            var result = _evaluator.Evaluate(CreateFacts(
+                purpose: purpose,
+                includeRoom: false,
+                fields: EventLocationDisclosureFields.None,
+                accessState: purpose == EventLocationDisclosurePurpose.Attendee
+                    ? EventLocationRegistrationEffectiveState.Confirmed
+                    : null,
+                managerAuthorized: purpose == EventLocationDisclosurePurpose.Management));
+
+            await Assert.That(result.State).IsEqualTo(EventLocationDisclosureState.Hidden);
+            await Assert.That(result.Values).IsNull();
+            await Assert.That(result.DisclosedFields).IsEmpty();
+        }
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task EvaluateDerivativesRequireSelectedLiveSourceForEveryPurpose()
+    {
+        foreach (var purpose in Enum.GetValues<EventLocationDisclosurePurpose>())
+        {
+            var authorityState = purpose == EventLocationDisclosurePurpose.Attendee
+                ? EventLocationRegistrationEffectiveState.Confirmed
+                : (EventLocationRegistrationEffectiveState?)null;
+            var address = _evaluator.Evaluate(CreateFacts(
+                purpose: purpose,
+                includeRoom: false,
+                fields: EventLocationDisclosureFields.StreetAddress,
+                accessState: authorityState,
+                managerAuthorized: purpose == EventLocationDisclosurePurpose.Management,
+                derivatives: new("formatted", "forged-map", "forged-geohash")));
+            var coordinates = _evaluator.Evaluate(CreateFacts(
+                purpose: purpose,
+                includeRoom: false,
+                fields: EventLocationDisclosureFields.Coordinates,
+                accessState: authorityState,
+                managerAuthorized: purpose == EventLocationDisclosurePurpose.Management,
+                derivatives: new("forged-address", "map", "geohash")));
+
+            await Assert.That(address.DisclosedFields).IsEquivalentTo([
+                EventLocationDisclosureField.StreetAddress,
+                EventLocationDisclosureField.FormattedAddress]);
+            await Assert.That(coordinates.DisclosedFields).IsEquivalentTo([
+                EventLocationDisclosureField.Latitude,
+                EventLocationDisclosureField.Longitude,
+                EventLocationDisclosureField.MapUrl,
+                EventLocationDisclosureField.Geohash]);
+        }
     }
 
     [Test]
@@ -562,13 +803,15 @@ public sealed class EventLocationDisclosureEvaluatorTests
 
     [Test]
     [Category("EventLocationPrivacy")]
-    public async Task Evaluate_WhitespaceSourceValuesAreNotDisclosed()
+    public async Task Evaluate_WhitespacePiiSource_IsHidden()
     {
         var location = CreateLocation(fullName: " ", city: "\t", country: "", address: " ", postcode: " ");
         var result = _evaluator.Evaluate(CreateFacts(location: location, room: null, roomId: null));
 
-        await Assert.That(result.State).IsEqualTo(EventLocationDisclosureState.Unavailable);
+        await Assert.That(result.State).IsEqualTo(EventLocationDisclosureState.Hidden);
         await Assert.That(result.Values).IsNull();
+        await Assert.That(result.DisclosedFields).IsEmpty();
+        await Assert.That(result.LocationId).IsNull();
     }
 
     [Test]
@@ -587,6 +830,46 @@ public sealed class EventLocationDisclosureEvaluatorTests
         await Assert.That(result.Values).IsEqualTo(new EventLocationDisclosureValues(
             VenueName: EventLocationDisclosureContract.PrivateHomePublicLabel));
         await Assert.That(result.DisclosedFields).IsEquivalentTo([EventLocationDisclosureField.VenueName]);
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task EvaluateLocationKindMatrixNeverUsesKindAsDisclosureAuthority()
+    {
+        foreach (var kind in Enum.GetValues<LocationKindEnum>())
+        {
+            var location = kind == LocationKindEnum.PrivateHome
+                ? CreatePrivateHome()
+                : CreateLocation();
+            SetPrivateProperty(location, nameof(Location.LocationKindId), (int)kind);
+            var placement = CreatePlacement(
+                locationId: location.Id,
+                fields: EventLocationDisclosureFields.Country,
+                needsPrivacyReview: kind == LocationKindEnum.Unclassified);
+
+            var result = _evaluator.Evaluate(CreateFacts(
+                placement: placement,
+                location: location,
+                room: null,
+                roomId: null));
+
+            if (kind == LocationKindEnum.Unclassified)
+            {
+                await Assert.That(result.State).IsEqualTo(EventLocationDisclosureState.NeedsPrivacyReview);
+                await Assert.That(result.Values).IsNull();
+            }
+            else if (kind == LocationKindEnum.PrivateHome)
+            {
+                await Assert.That(result.State).IsEqualTo(EventLocationDisclosureState.PrivateVenue);
+                await Assert.That(result.DisclosedFields).IsEquivalentTo([
+                    EventLocationDisclosureField.VenueName]);
+            }
+            else
+            {
+                await Assert.That(result.DisclosedFields).IsEquivalentTo([
+                    EventLocationDisclosureField.Country]);
+            }
+        }
     }
 
     [Test]
@@ -616,6 +899,33 @@ public sealed class EventLocationDisclosureEvaluatorTests
         await Assert.That(confirmed.State).IsEqualTo(EventLocationDisclosureState.Available);
         await Assert.That(confirmed.Values!.VenueName).IsEqualTo("Family residence");
         await Assert.That(confirmed.Values.StreetAddress).IsEqualTo("9 Household Lane");
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    [Arguments(LocationDisclosureAudienceEnum.AnyCurrentRegistrant, EventLocationRegistrationEffectiveState.Pending, true)]
+    [Arguments(LocationDisclosureAudienceEnum.ConfirmedParticipant, EventLocationRegistrationEffectiveState.Pending, false)]
+    [Arguments(LocationDisclosureAudienceEnum.ConfirmedParticipant, EventLocationRegistrationEffectiveState.Confirmed, true)]
+    [Arguments(LocationDisclosureAudienceEnum.Never, EventLocationRegistrationEffectiveState.Confirmed, false)]
+    public async Task EvaluatePrivateHomeUsesMostRestrictivePolicyAndGovernanceAudience(
+        LocationDisclosureAudienceEnum governanceAudience,
+        EventLocationRegistrationEffectiveState state,
+        bool expectsExact)
+    {
+        var location = CreatePrivateHome();
+        var result = _evaluator.Evaluate(CreateFacts(
+            purpose: EventLocationDisclosurePurpose.Attendee,
+            location: location,
+            room: null,
+            roomId: null,
+            audience: LocationDisclosureAudienceEnum.AnyCurrentRegistrant,
+            minimumHomeAudience: governanceAudience,
+            accessState: state));
+
+        await Assert.That(result.Values!.StreetAddress is not null).IsEqualTo(expectsExact);
+        await Assert.That(result.Values.VenueName).IsEqualTo(expectsExact
+            ? "Family residence"
+            : EventLocationDisclosureContract.PrivateHomePublicLabel);
     }
 
     [Test]
@@ -660,6 +970,28 @@ public sealed class EventLocationDisclosureEvaluatorTests
 
     [Test]
     [Category("EventLocationPrivacy")]
+    [Arguments(EventLocationDisclosurePurpose.Attendee)]
+    [Arguments(EventLocationDisclosurePurpose.Management)]
+    public async Task EvaluatePublicExactGovernanceDoesNotNarrowAuthorizedPrivatePurposes(
+        EventLocationDisclosurePurpose purpose)
+    {
+        var result = _evaluator.Evaluate(CreateFacts(
+            purpose: purpose,
+            accessState: purpose == EventLocationDisclosurePurpose.Attendee
+                ? EventLocationRegistrationEffectiveState.Confirmed
+                : null,
+            managerAuthorized: purpose == EventLocationDisclosurePurpose.Management,
+            allowPublicExactAddress: false,
+            allowPublicCoordinates: false));
+
+        await Assert.That(result.Values!.StreetAddress).IsEqualTo("1 Main Street");
+        await Assert.That(result.Values.Postcode).IsEqualTo("1000");
+        await Assert.That(result.Values.Latitude).IsEqualTo(50.85);
+        await Assert.That(result.Values.Longitude).IsEqualTo(4.35);
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
     public async Task Evaluate_UnknownKindPrivacyStateAndAudience_NeverMaterializeExactValues()
     {
         var unknownKind = CreateLocation();
@@ -678,7 +1010,10 @@ public sealed class EventLocationDisclosureEvaluatorTests
         })
         {
             var result = _evaluator.Evaluate(facts);
+            await Assert.That(result.State).IsEqualTo(EventLocationDisclosureState.Hidden);
             await Assert.That(result.Values).IsNull();
+            await Assert.That(result.DisclosedFields).IsEmpty();
+            await Assert.That(result.LocationId).IsNull();
         }
     }
 
@@ -722,6 +1057,21 @@ public sealed class EventLocationDisclosureEvaluatorTests
         await Assert.That(second.LocationId).IsEqualTo(first.LocationId);
         await Assert.That(second.Values).IsEqualTo(first.Values);
         await Assert.That(second.DisclosedFields).IsEquivalentTo(first.DisclosedFields);
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task EvaluatorSurfaceIsSynchronousDependencyFreeAndCancellationFree()
+    {
+        var type = typeof(EventLocationDisclosureEvaluator);
+        var evaluate = type.GetMethod(nameof(EventLocationDisclosureEvaluator.Evaluate))!;
+
+        await Assert.That(type.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public))
+            .IsEmpty();
+        await Assert.That(type.GetConstructors().Single().GetParameters()).IsEmpty();
+        await Assert.That(evaluate.ReturnType).IsEqualTo(typeof(EventLocationDisclosureResult));
+        await Assert.That(evaluate.GetParameters().Select(parameter => parameter.ParameterType))
+            .IsEquivalentTo([typeof(EventLocationDisclosureEvaluationFacts)]);
     }
 
     private static EventLocationDisclosureEvaluationFacts CreateFacts(

@@ -31,4 +31,20 @@ public sealed class NotificationFanoutOccurrencePointerTests
         await Assert.That(json).DoesNotContain("location", StringComparison.OrdinalIgnoreCase);
         await Assert.That(json).DoesNotContain("evidence", StringComparison.OrdinalIgnoreCase);
     }
+
+    [Test]
+    public async Task Deserialize_UnknownMember_Throws()
+    {
+        string json = $$"""
+            {
+              "tenantId": "{{Guid.CreateVersion7()}}",
+              "occurrenceId": "{{Guid.CreateVersion7()}}",
+              "version": 1,
+              "recipientEmail": "recipient@example.test"
+            }
+            """;
+
+        await Assert.That(() => NotificationFanoutOccurrenceOutboxMessageFactory.DeserializePointer(json))
+            .Throws<JsonException>();
+    }
 }

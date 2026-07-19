@@ -3,6 +3,7 @@
 
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.Features.EventSessionGroups.Handlers.Queries;
 using Explore.Application.Features.EventSessionGroups.Requests.Queries;
@@ -22,9 +23,13 @@ public sealed class EventSessionGroupLocationPrivacyHandlerTests
         var eventId = Guid.NewGuid();
         var entity = CreateEntity(eventId);
         var dto = CreateListDto(eventId);
+        dto.Id = entity.Id;
         repository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([entity]);
         mapper.Map<List<EventSessionGroupListDto>>(Arg.Any<List<EventSessionGroup>>()).Returns([dto]);
-        var handler = new GetEventSessionGroupsByEventRequestHandler(repository, mapper);
+        var handler = new GetEventSessionGroupsByEventRequestHandler(
+            repository,
+            mapper,
+            Substitute.For<IEventLocationDisclosureService>());
 
         var result = await handler.Handle(
             new GetEventSessionGroupsByEventRequest { EventId = eventId },
@@ -46,7 +51,10 @@ public sealed class EventSessionGroupLocationPrivacyHandlerTests
         var dto = CreateDetailDto(eventId);
         repository.GetPublicWithDetailsAsync(entity.Id, Arg.Any<CancellationToken>()).Returns(entity);
         mapper.Map<EventSessionGroupDto>(entity).Returns(dto);
-        var handler = new GetEventSessionGroupDetailRequestHandler(repository, mapper);
+        var handler = new GetEventSessionGroupDetailRequestHandler(
+            repository,
+            mapper,
+            Substitute.For<IEventLocationDisclosureService>());
 
         var result = await handler.Handle(
             new GetEventSessionGroupDetailRequest { Id = entity.Id },

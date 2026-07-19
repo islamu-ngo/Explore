@@ -365,7 +365,6 @@ public sealed class EventLocationDisclosureContractTests
             .Throws<ArgumentException>();
         await Assert.That(() => EventLocationDisclosureResult.Management(
             eventLocationId,
-            Guid.CreateVersion7(),
             EventLocationDisclosureState.ToBeAnnounced,
             new EventLocationDisclosureValues(VenueName: "Must not survive")))
             .Throws<ArgumentException>();
@@ -389,10 +388,12 @@ public sealed class EventLocationDisclosureContractTests
 
         var management = EventLocationDisclosureResult.Management(
             eventLocationId,
-            Guid.CreateVersion7(),
             EventLocationDisclosureState.Available,
             new EventLocationDisclosureValues(RoomDescription: "Authorized manager detail"));
 
+        await Assert.That(management.State).IsEqualTo(EventLocationDisclosureState.Available);
+        await Assert.That(management.LocationId).IsNull();
+        await Assert.That(management.Values!.RoomDescription).IsEqualTo("Authorized manager detail");
         await Assert.That(management.DisclosedFields).Contains(EventLocationDisclosureField.RoomDescription);
     }
 

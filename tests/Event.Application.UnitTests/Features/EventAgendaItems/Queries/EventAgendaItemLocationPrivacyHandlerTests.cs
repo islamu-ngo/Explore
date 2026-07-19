@@ -4,6 +4,7 @@
 using System.Text.Json;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.Features.EventAgendaItems.Handlers.Queries;
 using Explore.Application.Features.EventAgendaItems.Requests.Queries;
@@ -24,7 +25,10 @@ public sealed class EventAgendaItemLocationPrivacyHandlerTests
         var dto = CreateDetailDto();
         repository.GetPublicByIdAsync(entity.Id, Arg.Any<CancellationToken>()).Returns(entity);
         mapper.Map<EventAgendaItemDto>(entity).Returns(dto);
-        var handler = new GetEventAgendaItemDetailRequestHandler(repository, mapper);
+        var handler = new GetEventAgendaItemDetailRequestHandler(
+            repository,
+            mapper,
+            Substitute.For<IEventLocationDisclosureService>());
 
         var result = await handler.Handle(
             new GetEventAgendaItemDetailRequest { Id = entity.Id },
@@ -43,7 +47,10 @@ public sealed class EventAgendaItemLocationPrivacyHandlerTests
         var dto = new EventAgendaItemListDto { Id = entity.Id, EventId = entity.EventId, Title = entity.Title };
         repository.GetPublicByEventAsync(entity.EventId, Arg.Any<CancellationToken>()).Returns([entity]);
         mapper.Map<List<EventAgendaItemListDto>>(Arg.Any<List<EventAgendaItem>>()).Returns([dto]);
-        var handler = new GetEventAgendaItemsByEventRequestHandler(repository, mapper);
+        var handler = new GetEventAgendaItemsByEventRequestHandler(
+            repository,
+            mapper,
+            Substitute.For<IEventLocationDisclosureService>());
 
         var result = await handler.Handle(
             new GetEventAgendaItemsByEventRequest { EventId = entity.EventId },
