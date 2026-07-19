@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for event registration cancellation command handling.
 // ABOUTME: Verifies cancellation delegates to the capacity-aware repository path.
 
+using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
@@ -228,6 +229,57 @@ public sealed class DeleteEventRegistrationCommandHandlerTests
                 && request.Email != null
                 && request.Email.Kind == EmailDispatchKind.RegistrationRevoked),
             Arg.Any<CancellationToken>());
+        await intentRepository.DidNotReceiveWithAnyArgs().GetAtprotoLifecycleStateAsync(default, default, default);
+    }
+
+    [Test]
+    public async Task HandleSystemRevocationNeverInfersAttendeeRsvpIntent()
+    {
+        Guid registrationId = Guid.CreateVersion7();
+        Guid registrationIntentId = Guid.CreateVersion7();
+        Guid ownerUserId = Guid.CreateVersion7();
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        var repository = Substitute.For<IEventRegistrationRepository>();
+        var currentUserService = Substitute.For<ICurrentUserService>();
+        var intentRepository = Substitute.For<IEventRegistrationIntentRepository>();
+        currentUserService.UserId.Returns((Guid?)null);
+        repository.GetById(registrationId)
+            .Returns(CreateRegistration(registrationId, registrationIntentId, ownerUserId, tenantId, eventId));
+        intentRepository.GetById(registrationIntentId)
+            .Returns(CreateIntent(registrationIntentId, ownerUserId, tenantId, eventId));
+        repository.CancelAndReleaseCapacityAsync(
+                registrationId,
+                ownerUserId,
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                EventRegistrationActorProvenance.System,
+                null,
+                Arg.Any<CancellationToken>())
+            .Returns(call => Transition(
+                registrationIntentId,
+                call.ArgAt<Guid>(2),
+                call.ArgAt<DateTimeOffset>(3),
+                EventRegistrationTransitionReason.Revoked,
+                EventRegistrationActorProvenance.System,
+                null,
+                ApprovalStatusEnum.Revoked));
+        var handler = CreateHandler(
+            repository,
+            ImmediateUnitOfWork(),
+            currentUserService,
+            intentRepository);
+
+        bool result = await handler.Handle(
+            new DeleteEventRegistrationCommand
+            {
+                Id = registrationId,
+                ExpectedOwnerUserId = ownerUserId
+            },
+            CancellationToken.None);
+
+        await Assert.That(result).IsTrue();
+        await intentRepository.DidNotReceiveWithAnyArgs().GetAtprotoLifecycleStateAsync(default, default, default);
     }
 
     private static DeleteEventRegistrationCommandHandler CreateHandler(
@@ -247,7 +299,8 @@ public sealed class DeleteEventRegistrationCommandHandlerTests
             eventRepository ?? Substitute.For<IEventRepository>(),
             userRepository ?? Substitute.For<IUserRepository>(),
             new RegistrationNotificationDeliveryService(new EventLifecycleEmailOutboxFactory()),
-            materializer ?? Substitute.For<IRecipientNotificationMaterializer>());
+            materializer ?? Substitute.For<IRecipientNotificationMaterializer>(),
+            AtprotoPublicationPlannerTestFactory.Disabled());
     }
 
     private static IUnitOfWork ImmediateUnitOfWork()
@@ -342,7 +395,9 @@ public sealed class DeleteEventRegistrationCommandHandlerTests
             RegistrationScope = null!,
             ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
             TenantId = tenantId,
-            Tenant = null!
+            Tenant = null!,
+            ConcurrencyStamp = Guid.CreateVersion7(),
+            CreatedAt = DateTime.UtcNow
         };
     }
 

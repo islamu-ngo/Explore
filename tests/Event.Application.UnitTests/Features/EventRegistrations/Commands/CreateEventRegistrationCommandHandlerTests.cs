@@ -2,6 +2,7 @@
 // ABOUTME: Verifies handlers call the capacity-aware repository contract and surface waitlist outcomes.
 
 using System.Diagnostics.Metrics;
+using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
@@ -10,11 +11,16 @@ using Explore.Application.Contracts.Webhooks;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.Features.EventRegistrations.Handlers.Commands;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
+using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Notifications;
 using Explore.Application.Services;
+using Explore.Application.Services.Federation;
+using Explore.Application.Settings;
 using Explore.Application.Telemetry;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -104,7 +110,11 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                     request.Email);
             });
 
-        _handler = new CreateEventRegistrationCommandHandler(
+        _handler = CreateHandler(AtprotoPublicationPlannerTestFactory.Disabled());
+    }
+
+    private CreateEventRegistrationCommandHandler CreateHandler(AtprotoEventPublicationPlanner planner) =>
+        new(
             _intentRepository,
             _eventRepository,
             _userRepository,
@@ -119,7 +129,174 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             _recipientNotificationMaterializer,
             _unitOfWork,
             _webhookPublisher,
-            Substitute.For<ILogger<CreateEventRegistrationCommandHandler>>());
+            Substitute.For<ILogger<CreateEventRegistrationCommandHandler>>(),
+            planner);
+
+    [Test]
+    public async Task HandleWithEnabledAtprotoStagesRsvpInsideLocalTransactionWithoutPdsCall()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var eventId = Guid.CreateVersion7();
+        var userId = Guid.CreateVersion7();
+        var sessionId = Guid.CreateVersion7();
+        SetupValidRegistration(tenantId, eventId, userId, sessionId);
+        EventRegistrationIntent? committedIntent = null;
+        _intentRepository.CreateWithChildrenAndCapacityAsync(
+                Arg.Any<EventRegistrationIntent>(),
+                Arg.Any<IReadOnlyList<EventRegistration>>(),
+                Arg.Any<int>(),
+                Arg.Any<int>(),
+                Arg.Any<Guid>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<EventRegistrationActorProvenance>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>(),
+                Arg.Any<IntegrationSyncOutbox?>())
+            .Returns(call =>
+            {
+                committedIntent = call.ArgAt<EventRegistrationIntent>(0);
+                committedIntent.ConcurrencyStamp = Guid.CreateVersion7();
+                committedIntent.CreatedAt = DateTime.UtcNow;
+                return CreationResult(committedIntent, []);
+            });
+        _intentRepository.GetAtprotoLifecycleStateAsync(
+                tenantId,
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => committedIntent);
+        _intentRepository.CountActiveForEventUserAsync(
+                tenantId,
+                eventId,
+                userId,
+                Arg.Any<CancellationToken>())
+            .Returns(1);
+
+        var settings = Substitute.For<IHierarchicalSettingsResolver>();
+        settings.ResolveBatchAsync(
+                Arg.Any<IEnumerable<string>>(),
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<IEnumerable<string>>().Select(key => new ResolvedSetting
+            {
+                Key = key,
+                Value = key == GovernanceSettingKeys.Federation.AtprotoEventValidationProfile
+                    ? "\"platform\""
+                    : "true",
+                Source = SettingSource.UserPreference
+            }).ToArray());
+        var records = Substitute.For<IAtprotoRecordRepository>();
+        var settledEvent = new AtprotoRecord
+        {
+            Id = Guid.CreateVersion7(),
+            Did = "did:plc:organizer",
+            Collection = AtprotoEventPublicationPlanner.EventCollection,
+            RecordKey = "event-key",
+            Uri = "at://did:plc:organizer/community.lexicon.calendar.event/event-key",
+            Cid = "bafy-event",
+            UpdatedAt = DateTime.UtcNow
+        };
+        records.GetOwnedRecordForSourceAsync(
+                tenantId,
+                AtprotoEventPublicationPlanner.EventSourceType,
+                eventId,
+                Arg.Any<CancellationToken>())
+            .Returns(new AtprotoOutboundRecordOwnership
+            {
+                AtprotoRecordId = settledEvent.Id,
+                TenantId = tenantId,
+                UserId = Guid.CreateVersion7(),
+                SourceEntityType = AtprotoEventPublicationPlanner.EventSourceType,
+                SourceEntityId = eventId,
+                SourceVersion = Guid.CreateVersion7(),
+                AtprotoRecord = settledEvent
+            });
+        var sessions = Substitute.For<IUserAuthenticationTokenRepository>();
+        sessions.GetAtprotoSessionsForReadAsync(
+                tenantId,
+                userId,
+                RepositoryBackedAtprotoSession.Provider,
+                Arg.Any<CancellationToken>())
+            .Returns([
+                new UserAuthenticationToken
+                {
+                    Id = Guid.CreateVersion7(),
+                    TenantId = tenantId,
+                    Tenant = null!,
+                    UserId = userId,
+                    User = null!,
+                    Provider = RepositoryBackedAtprotoSession.Provider,
+                    SubjectDid = "did:plc:attendee",
+                    SessionCiphertext = [1],
+                    EncryptionKeyId = "enc",
+                    OAuthClientKeyId = "oauth",
+                    PdsHost = "https://pds.example/"
+                }
+            ]);
+        var logins = Substitute.For<IUserExternalLoginRepository>();
+        logins.GetByProviderAndKey(RepositoryBackedAtprotoSession.Provider, "did:plc:attendee")
+            .Returns(new UserExternalLogin
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = tenantId,
+                Tenant = null!,
+                UserId = userId,
+                User = null!,
+                Provider = RepositoryBackedAtprotoSession.Provider,
+                ProviderKey = "did:plc:attendee"
+            });
+        var payloads = Substitute.For<IAtprotoPublicationPayloadBuilder>();
+        payloads.BuildRsvp(Arg.Any<Explore.Application.Features.Federation.Atproto.Models.AtprotoRsvpPublicationSnapshot>())
+            .Returns(AtprotoPublicationPayloadBuildResult.Valid(new("{}", "hash")));
+        var outbox = Substitute.For<IPdsSyncOutboxRepository>();
+        var pdsGateway = Substitute.For<IAtprotoPdsDeliveryGateway>();
+        var insideTransaction = false;
+        var addedInsideTransaction = false;
+        _unitOfWork.ExecuteSerializableAsync(
+                Arg.Any<Func<CancellationToken, Task<EventRegistrationIntentCreationResult>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                insideTransaction = true;
+                try
+                {
+                    return await call.ArgAt<Func<CancellationToken, Task<EventRegistrationIntentCreationResult>>>(0)(
+                        call.ArgAt<CancellationToken>(1));
+                }
+                finally
+                {
+                    insideTransaction = false;
+                }
+            });
+        outbox.AddAsync(Arg.Any<PdsSyncOutbox>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                addedInsideTransaction = insideTransaction;
+                return Task.CompletedTask;
+            });
+        var planner = new AtprotoEventPublicationPlanner(
+            new AtprotoEventGovernanceResolver(settings),
+            _eventRepository,
+            _intentRepository,
+            records,
+            sessions,
+            logins,
+            payloads,
+            outbox,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<AtprotoEventPublicationPlanner>.Instance);
+
+        var result = await CreateHandler(planner).Handle(
+            CreateSessionRegistrationCommand(eventId, userId, sessionId),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(addedInsideTransaction).IsTrue();
+        await outbox.Received(1).AddAsync(
+            Arg.Is<PdsSyncOutbox>(row =>
+                row.Operation == PdsSyncOperation.Create
+                && row.Collection == AtprotoEventPublicationPlanner.RsvpCollection
+                && row.DependsOnAtprotoRecordId == settledEvent.Id),
+            Arg.Any<CancellationToken>());
+        await pdsGateway.DidNotReceiveWithAnyArgs().DeliverAsync(default!, default);
     }
 
     [Test]
@@ -1005,6 +1182,21 @@ public sealed class CreateEventRegistrationCommandHandlerTests
         IReadOnlyList<Guid> waitlistedSessionIds,
         bool WasExisting = false)
     {
+        if (intent.Id == Guid.Empty)
+        {
+            intent.Id = Guid.CreateVersion7();
+        }
+
+        if (intent.ConcurrencyStamp == Guid.Empty)
+        {
+            intent.ConcurrencyStamp = Guid.CreateVersion7();
+        }
+
+        if (intent.CreatedAt == default)
+        {
+            intent.CreatedAt = DateTime.UtcNow;
+        }
+
         return new EventRegistrationIntentCreationResult(
             intent,
             waitlistedSessionIds,

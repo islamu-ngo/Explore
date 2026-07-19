@@ -9,6 +9,7 @@ using Explore.Application.Notifications;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using Explore.Domain.Services.Scheduling;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
@@ -49,6 +50,301 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
         await Assert.That(approvedCount).IsEqualTo(1);
         await Assert.That(waitlistedCount).IsEqualTo(scenario.UserIds.Count - 1);
         await Assert.That(currentAttendees).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task AtprotoReconciliation_CompletedCreateThenOwnershipTombstoneAllowsSamePayloadRecreateAndDeduplicatesIdentity()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        RegistrationScenario scenario = await SeedRegistrationScenarioAsync(context, userCount: 1, sessionCapacity: 10);
+        Guid attendeeId = scenario.UserIds.Single();
+        EventRegistrationIntent eventIntent = NewIntent(scenario, attendeeId, RegistrationScopeEnum.Event);
+        EventRegistrationIntent sessionIntent = NewIntent(scenario, attendeeId, RegistrationScopeEnum.SessionSelection);
+        PrepareAtprotoIntent(eventIntent);
+        PrepareAtprotoIntent(sessionIntent);
+        context.EventRegistrationIntents.AddRange(eventIntent, sessionIntent);
+        await context.SaveChangesAsync();
+        var intentRepository = new EventRegistrationIntentRepository(context);
+
+        IReadOnlyList<EventRegistrationIntent> beforeEventSettlement =
+            await intentRepository.GetAtprotoReconciliationCandidatesAsync(null, 100, CancellationToken.None);
+        await Assert.That(beforeEventSettlement).IsEmpty();
+
+        AtprotoRecord eventRecord = await AddSettledEventOwnershipAsync(context, scenario);
+        IReadOnlyList<EventRegistrationIntent> afterEventSettlement =
+            await intentRepository.GetAtprotoReconciliationCandidatesAsync(null, 100, CancellationToken.None);
+        await Assert.That(afterEventSettlement).Count().IsEqualTo(1);
+        await Assert.That(afterEventSettlement.Single().UserId).IsEqualTo(attendeeId);
+
+        var rsvpRecord = new AtprotoRecord
+        {
+            Id = Guid.CreateVersion7(),
+            Did = "did:plc:attendee",
+            Collection = "community.lexicon.calendar.rsvp",
+            RecordKey = "stable-rsvp",
+            Uri = "at://did:plc:attendee/community.lexicon.calendar.rsvp/stable-rsvp",
+            Cid = "bafy-rsvp",
+            RecordJson = "{\"status\":\"community.lexicon.calendar.rsvp#going\"}",
+            RecordHash = new string('a', 64),
+            Direction = AtprotoRecordDirection.Outbound,
+            Provenance = AtprotoRecordProvenance.LocalLifecycle,
+            UpdatedAt = DateTime.UtcNow
+        };
+        context.AtprotoRecords.Add(rsvpRecord);
+        context.AtprotoOutboundRecordOwnerships.Add(new AtprotoOutboundRecordOwnership
+        {
+            AtprotoRecordId = rsvpRecord.Id,
+            TenantId = scenario.TenantId,
+            UserId = attendeeId,
+            SourceEntityType = "EventRegistrationIntent",
+            SourceEntityId = eventIntent.Id,
+            SourceVersion = eventIntent.ConcurrencyStamp,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+        PdsSyncOutbox completed = NewRsvpOutbox(
+            scenario,
+            attendeeId,
+            eventIntent,
+            eventRecord,
+            new string('b', 64),
+            PdsSyncStatus.Completed);
+        context.PdsSyncOutbox.Add(completed);
+        await context.SaveChangesAsync();
+
+        await Assert.That(await intentRepository.GetAtprotoReconciliationCandidatesAsync(
+            null, 100, CancellationToken.None)).IsEmpty();
+
+        rsvpRecord.TombstonedAt = DateTime.UtcNow;
+        rsvpRecord.Cid = null;
+        rsvpRecord.RecordJson = null;
+        rsvpRecord.RecordHash = null;
+        await context.SaveChangesAsync();
+        await Assert.That(await intentRepository.GetAtprotoReconciliationCandidatesAsync(
+            null, 100, CancellationToken.None)).Count().IsEqualTo(1);
+
+        PdsSyncOutbox recreate = NewRsvpOutbox(
+            scenario,
+            attendeeId,
+            eventIntent,
+            eventRecord,
+            completed.PayloadHash,
+            PdsSyncStatus.Pending);
+        var outboxRepository = new PdsSyncOutboxRepository(context);
+        await outboxRepository.AddAsync(recreate, CancellationToken.None);
+        await Assert.That(recreate.Id.Version).IsEqualTo(7);
+        await Assert.That(await intentRepository.GetAtprotoReconciliationCandidatesAsync(
+            null, 100, CancellationToken.None)).IsEmpty();
+
+    }
+
+    [Test]
+    public async Task AtprotoActiveAttemptUniqueness_ConcurrentExactAttemptsPersistExactlyOneActiveRow()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+        RegistrationScenario scenario = await SeedRegistrationScenarioAsync(seedContext, userCount: 1, sessionCapacity: 10);
+        Guid userId = scenario.UserIds.Single();
+        Guid sourceVersion = await seedContext.Events
+            .Where(value => value.Id == scenario.EventId)
+            .Select(value => value.ConcurrencyStamp)
+            .SingleAsync();
+        string payloadHash = new('e', 64);
+
+        bool[] results = await Task.WhenAll(
+            PersistExactActiveAttemptAsync(scenario, userId, sourceVersion, payloadHash),
+            PersistExactActiveAttemptAsync(scenario, userId, sourceVersion, payloadHash));
+
+        await using var verifyContext = fixture.CreateDbContext();
+        int activeCount = await verifyContext.PdsSyncOutbox
+            .IgnoreQueryFilters()
+            .CountAsync(value =>
+                value.TenantId == scenario.TenantId
+                && value.SourceEntityType == "Event"
+                && value.SourceEntityId == scenario.EventId
+                && value.SourceVersion == sourceVersion
+                && value.Operation == PdsSyncOperation.Create
+                && value.PayloadHash == payloadHash
+                && (value.Status == PdsSyncStatus.Pending || value.Status == PdsSyncStatus.Processing)
+                && value.SupersededAt == null);
+
+        await Assert.That(results.Count(result => result)).IsEqualTo(1);
+        await Assert.That(activeCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task AtprotoReconciliation_RepeatedSweepAndRestartSuppressExactTerminalAttemptUntilStrongRefChanges()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        RegistrationScenario scenario = await SeedRegistrationScenarioAsync(context, userCount: 1, sessionCapacity: 10);
+        Guid attendeeId = scenario.UserIds.Single();
+        EventRegistrationIntent intent = NewIntent(scenario, attendeeId, RegistrationScopeEnum.Event);
+        PrepareAtprotoIntent(intent);
+        context.EventRegistrationIntents.Add(intent);
+        AtprotoRecord eventRecord = await AddSettledEventOwnershipAsync(context, scenario);
+        await context.SaveChangesAsync();
+
+        string staleHash = new('c', 64);
+        string changedHash = new('d', 64);
+        PdsSyncOutbox deadLetter = NewRsvpOutbox(
+            scenario,
+            attendeeId,
+            intent,
+            eventRecord,
+            staleHash,
+            PdsSyncStatus.DeadLettered);
+        context.PdsSyncOutbox.Add(deadLetter);
+        await context.SaveChangesAsync();
+        var repository = new PdsSyncOutboxRepository(context);
+
+        await Assert.That(await repository.HasTerminalRsvpPublicationAttemptAsync(
+            scenario.TenantId,
+            attendeeId,
+            scenario.EventId,
+            intent.ConcurrencyStamp,
+            PdsSyncOperation.Create,
+            staleHash,
+            "EventRegistrationIntent",
+            "community.lexicon.calendar.rsvp",
+            CancellationToken.None)).IsTrue();
+        await Assert.That(await repository.HasTerminalRsvpPublicationAttemptAsync(
+            scenario.TenantId,
+            attendeeId,
+            scenario.EventId,
+            intent.ConcurrencyStamp,
+            PdsSyncOperation.Create,
+            changedHash,
+            "EventRegistrationIntent",
+            "community.lexicon.calendar.rsvp",
+            CancellationToken.None)).IsFalse();
+
+        var candidateRepository = new EventRegistrationIntentRepository(context);
+        await Assert.That(await candidateRepository.GetAtprotoReconciliationCandidatesAsync(
+            null, 100, CancellationToken.None)).IsEmpty();
+        await Assert.That(await candidateRepository.GetAtprotoReconciliationCandidatesAsync(
+            null, 100, CancellationToken.None)).IsEmpty();
+        await using (ExploreDbContext restartedContext = fixture.CreateDbContext())
+        {
+            await Assert.That(await new EventRegistrationIntentRepository(restartedContext)
+                .GetAtprotoReconciliationCandidatesAsync(null, 100, CancellationToken.None)).IsEmpty();
+        }
+
+        eventRecord.Cid = "bafy-event-changed";
+        await context.SaveChangesAsync();
+        await Assert.That(await candidateRepository.GetAtprotoReconciliationCandidatesAsync(
+            null, 100, CancellationToken.None)).Count().IsEqualTo(1);
+
+        PdsSyncOutbox changedAttempt = NewRsvpOutbox(
+            scenario,
+            attendeeId,
+            intent,
+            eventRecord,
+            changedHash,
+            PdsSyncStatus.Pending);
+        await repository.SupersedePriorRsvpAsync(
+            scenario.TenantId,
+            attendeeId,
+            scenario.EventId,
+            "community.lexicon.calendar.rsvp",
+            changedAttempt.Id,
+            DateTime.UtcNow,
+            CancellationToken.None);
+        await repository.AddAsync(changedAttempt, CancellationToken.None);
+
+        await Assert.That(deadLetter.Status).IsEqualTo(PdsSyncStatus.Superseded);
+        await Assert.That(changedAttempt.Id.Version).IsEqualTo(7);
+        await Assert.That(await new EventRegistrationIntentRepository(context)
+            .GetAtprotoReconciliationCandidatesAsync(null, 100, CancellationToken.None)).IsEmpty();
+    }
+
+    [Test]
+    public async Task AtprotoReconciliation_HighDuplicationDoesNotStarveLaterIdentityAcrossPages()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        RegistrationScenario scenario = await SeedRegistrationScenarioAsync(context, userCount: 2, sessionCapacity: 10);
+        Guid duplicateUserId = scenario.UserIds[0];
+        Guid laterUserId = scenario.UserIds[1];
+        var days = Enumerable.Range(0, 8)
+            .Select(index => new EventDay
+            {
+                Id = Guid.CreateVersion7(),
+                EventId = scenario.EventId,
+                Event = null!,
+                LocalDate = new DateOnly(2026, 8, 2).AddDays(index),
+                Label = $"ATProto duplicate day {index}",
+                IsPublished = true,
+                SortOrder = index + 1,
+                AllowsDayScopeRegistration = true,
+                TenantId = scenario.TenantId,
+                Tenant = null!
+            })
+            .ToArray();
+        context.EventDays.AddRange(days);
+        await context.SaveChangesAsync();
+
+        var duplicateIntents = new List<EventRegistrationIntent>();
+        foreach (Guid dayId in new[] { scenario.EventDayId }.Concat(days.Select(day => day.Id)))
+        {
+            EventRegistrationIntent intent = NewIntent(scenario, duplicateUserId, RegistrationScopeEnum.Day);
+            intent.Id = Guid.CreateVersion7();
+            intent.SelectedEventDayId = dayId;
+            PrepareAtprotoIntent(intent);
+            duplicateIntents.Add(intent);
+        }
+
+        EventRegistrationIntent laterIntent = NewIntent(scenario, laterUserId, RegistrationScopeEnum.Event);
+        laterIntent.Id = Guid.CreateVersion7();
+        PrepareAtprotoIntent(laterIntent);
+        context.EventRegistrationIntents.AddRange(duplicateIntents);
+        context.EventRegistrationIntents.Add(laterIntent);
+        await context.SaveChangesAsync();
+        await AddSettledEventOwnershipAsync(context, scenario);
+        var repository = new EventRegistrationIntentRepository(context);
+
+        IReadOnlyList<EventRegistrationIntent> firstPage =
+            await repository.GetAtprotoReconciliationCandidatesAsync(null, 1, CancellationToken.None);
+        IReadOnlyList<EventRegistrationIntent> secondPage =
+            await repository.GetAtprotoReconciliationCandidatesAsync(firstPage.Single().Id, 1, CancellationToken.None);
+
+        await Assert.That(firstPage).Count().IsEqualTo(1);
+        await Assert.That(firstPage.Single().UserId).IsEqualTo(duplicateUserId);
+        await Assert.That(secondPage).Count().IsEqualTo(1);
+        await Assert.That(secondPage.Single().UserId).IsEqualTo(laterUserId);
+    }
+
+    [Test]
+    public async Task AtprotoPublication_LocalMutationAndOutboxRollbackTogether()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+        RegistrationScenario scenario = await SeedRegistrationScenarioAsync(seedContext, userCount: 1, sessionCapacity: 10);
+        Guid userId = scenario.UserIds.Single();
+
+        await using var context = CreateRetryingDbContext();
+        Explore.Domain.Event eventEntity = await context.Events.SingleAsync(value => value.Id == scenario.EventId);
+        PdsSyncOutbox outbox = NewEventOutbox(scenario, userId, eventEntity);
+        var outboxRepository = new PdsSyncOutboxRepository(context);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => new EfCoreUnitOfWork(context)
+            .ExecuteInTransactionAsync(async token =>
+            {
+                eventEntity.EventStatusId = (int)EventStatusEnum.Published;
+                eventEntity.UpdatedAt = DateTime.UtcNow;
+                await context.SaveChangesAsync(token);
+                await outboxRepository.AddAsync(outbox, token);
+                throw new InvalidOperationException("rollback-probe");
+            }));
+
+        await using var verifyContext = fixture.CreateDbContext();
+        await Assert.That(await verifyContext.Events
+            .Where(value => value.Id == scenario.EventId)
+            .Select(value => value.EventStatusId)
+            .SingleAsync()).IsEqualTo((int)EventStatusEnum.Draft);
+        await Assert.That(await verifyContext.PdsSyncOutbox
+            .IgnoreQueryFilters()
+            .AnyAsync(value => value.Id == outbox.Id)).IsFalse();
     }
 
     [Test]
@@ -782,6 +1078,151 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
             TenantId = scenario.TenantId,
             Tenant = null!
         };
+    }
+
+    private static void PrepareAtprotoIntent(EventRegistrationIntent intent)
+    {
+        intent.ApprovalStatusId = (int)ApprovalStatusEnum.Approved;
+        intent.ApprovalStatus = null!;
+        intent.ConcurrencyStamp = Guid.CreateVersion7();
+        intent.CreatedAt = DateTime.UtcNow;
+    }
+
+    private static async Task<AtprotoRecord> AddSettledEventOwnershipAsync(
+        ExploreDbContext context,
+        RegistrationScenario scenario)
+    {
+        var source = await context.Events
+            .Where(value => value.Id == scenario.EventId)
+            .Select(value => new { value.Actor.UserId, value.ConcurrencyStamp })
+            .SingleAsync();
+        DateTime now = DateTime.UtcNow;
+        string recordKey = $"event-{scenario.EventId:N}";
+        var record = new AtprotoRecord
+        {
+            Id = Guid.CreateVersion7(),
+            Did = "did:plc:event-owner",
+            Collection = "community.lexicon.calendar.event",
+            RecordKey = recordKey,
+            Uri = $"at://did:plc:event-owner/community.lexicon.calendar.event/{recordKey}",
+            Cid = "bafy-event-settled",
+            RecordJson = "{\"name\":\"Registration Intent Event\"}",
+            RecordHash = new string('f', 64),
+            Direction = AtprotoRecordDirection.Outbound,
+            Provenance = AtprotoRecordProvenance.LocalLifecycle,
+            UpdatedAt = now
+        };
+        context.AtprotoRecords.Add(record);
+        context.AtprotoOutboundRecordOwnerships.Add(new AtprotoOutboundRecordOwnership
+        {
+            AtprotoRecordId = record.Id,
+            TenantId = scenario.TenantId,
+            UserId = source.UserId!.Value,
+            SourceEntityType = "Event",
+            SourceEntityId = scenario.EventId,
+            SourceVersion = source.ConcurrencyStamp,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        await context.SaveChangesAsync();
+        return record;
+    }
+
+    private static PdsSyncOutbox NewRsvpOutbox(
+        RegistrationScenario scenario,
+        Guid attendeeId,
+        EventRegistrationIntent intent,
+        AtprotoRecord eventRecord,
+        string payloadHash,
+        PdsSyncStatus status)
+    {
+        DateTime now = DateTime.UtcNow;
+        var outbox = new PdsSyncOutbox
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = scenario.TenantId,
+            UserId = attendeeId,
+            Did = "did:plc:attendee",
+            Collection = "community.lexicon.calendar.rsvp",
+            RecordKey = "stable-rsvp",
+            Operation = PdsSyncOperation.Create,
+            Payload = "{\"status\":\"community.lexicon.calendar.rsvp#going\"}",
+            PayloadHash = payloadHash,
+            IdempotencyKey = $"rsvp:{Guid.CreateVersion7():N}",
+            PdsHost = "https://pds.example",
+            SourceEntityType = "EventRegistrationIntent",
+            SourceEntityId = intent.Id,
+            SourceVersion = intent.ConcurrencyStamp,
+            DependsOnAtprotoRecordId = eventRecord.Id,
+            DependsOnCid = eventRecord.Cid,
+            Status = status,
+            CreatedAt = now,
+            MaxRetries = 10
+        };
+        if (status == PdsSyncStatus.Completed)
+        {
+            outbox.ProcessedAt = now;
+            outbox.SettledUri = $"at://{outbox.Did}/{outbox.Collection}/{outbox.RecordKey}";
+            outbox.SettledCid = "bafy-rsvp";
+        }
+        else if (status == PdsSyncStatus.DeadLettered)
+        {
+            outbox.RetryCount = 1;
+            outbox.LastError = "payload_changed";
+            outbox.DeadLetteredAt = now;
+        }
+
+        return outbox;
+    }
+
+    private static PdsSyncOutbox NewEventOutbox(
+        RegistrationScenario scenario,
+        Guid userId,
+        Explore.Domain.Event eventEntity,
+        Guid? sourceVersion = null,
+        string? payloadHash = null)
+    {
+        string hash = payloadHash ?? new string('9', 64);
+        return new PdsSyncOutbox
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = scenario.TenantId,
+            UserId = userId,
+            Did = "did:plc:rollback-owner",
+            Collection = "community.lexicon.calendar.event",
+            RecordKey = $"event-{scenario.EventId:N}",
+            Operation = PdsSyncOperation.Create,
+            Payload = "{\"name\":\"Rollback probe\"}",
+            PayloadHash = hash,
+            IdempotencyKey = $"event:{Guid.CreateVersion7():N}",
+            PdsHost = "https://pds.example",
+            SourceEntityType = "Event",
+            SourceEntityId = scenario.EventId,
+            SourceVersion = sourceVersion ?? eventEntity.ConcurrencyStamp,
+            Status = PdsSyncStatus.Pending,
+            CreatedAt = DateTime.UtcNow,
+            MaxRetries = 10
+        };
+    }
+
+    private async Task<bool> PersistExactActiveAttemptAsync(
+        RegistrationScenario scenario,
+        Guid userId,
+        Guid sourceVersion,
+        string payloadHash)
+    {
+        await using ExploreDbContext context = fixture.CreateDbContext();
+        Explore.Domain.Event eventEntity = await context.Events.SingleAsync(value => value.Id == scenario.EventId);
+        PdsSyncOutbox outbox = NewEventOutbox(scenario, userId, eventEntity, sourceVersion, payloadHash);
+        try
+        {
+            await new PdsSyncOutboxRepository(context).AddAsync(outbox, CancellationToken.None);
+            return true;
+        }
+        catch (DbUpdateException)
+        {
+            return false;
+        }
     }
 
     private static EventRegistration NewRegistrationChild(

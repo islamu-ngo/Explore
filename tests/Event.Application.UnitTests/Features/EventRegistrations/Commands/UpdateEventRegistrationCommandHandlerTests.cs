@@ -26,7 +26,6 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
     private readonly IApprovalStatusRepository _approvalStatusRepository = Substitute.For<IApprovalStatusRepository>();
     private readonly IEventRegistrationIntentRepository _intentRepository = Substitute.For<IEventRegistrationIntentRepository>();
     private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
-    private readonly IAtprotoRecordRepository _atprotoRecordRepository = Substitute.For<IAtprotoRecordRepository>();
     private readonly IUnitOfWork _unitOfWork = new ImmediateUnitOfWork();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
     private readonly IRecipientNotificationMaterializer _recipientNotificationMaterializer = Substitute.For<IRecipientNotificationMaterializer>();
@@ -82,7 +81,6 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
             _approvalStatusRepository,
             _intentRepository,
             _eventRepository,
-            _atprotoRecordRepository,
             _unitOfWork,
             _currentUserService,
             new RegistrationNotificationDeliveryService(new EventLifecycleEmailOutboxFactory()),

@@ -2,6 +2,7 @@
 // ABOUTME: Verifies light-only restoration, irreversible rejection, audit writes, and cache invalidation.
 
 using System.Diagnostics.Metrics;
+using Event.Application.UnitTests.Common;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
@@ -46,7 +47,8 @@ public sealed class UnmoderateEventCommandHandlerTests
             _currentUserService,
             _cache,
             CreateMetrics(),
-            NullLogger<UnmoderateEventCommandHandler>.Instance);
+            NullLogger<UnmoderateEventCommandHandler>.Instance,
+            AtprotoPublicationPlannerTestFactory.Disabled());
     }
 
     [Test]
@@ -145,10 +147,10 @@ public sealed class UnmoderateEventCommandHandlerTests
 
     private static Explore.Domain.Event CreateEvent(EventStatusEnum status) => new()
     {
-        Id = Guid.NewGuid(),
-        TenantId = Guid.NewGuid(),
+        Id = Guid.CreateVersion7(),
+        TenantId = Guid.CreateVersion7(),
         Tenant = null!,
-        ActorId = Guid.NewGuid(),
+        ActorId = Guid.CreateVersion7(),
         Actor = null!,
         Title = "Community Iftar",
         EventStatusId = (int)status,
@@ -156,7 +158,8 @@ public sealed class UnmoderateEventCommandHandlerTests
         VisibilityTypeId = 1,
         VisibilityType = null!,
         EventFormatId = 1,
-        EventFormat = null!
+        EventFormat = null!,
+        ConcurrencyStamp = Guid.CreateVersion7()
     };
 
     private static BusinessMetrics CreateMetrics()
