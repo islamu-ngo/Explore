@@ -1,10 +1,9 @@
-// ABOUTME: AutoMapper profile for Actor, ActorKeyStore, StorageObject, IndexedDid, SyncState, and AtprotoRecord entities.
+// ABOUTME: AutoMapper profile for Actor, ActorKeyStore, StorageObject, IndexedDid, and SyncState entities.
 // ABOUTME: Split from monolithic MappingProfile.cs for domain-cohesion.
 
 using AutoMapper;
 using Explore.Application.DTOs.Actor;
 using Explore.Application.DTOs.ActorKeyStore;
-using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.SyncState;
@@ -58,8 +57,5 @@ public class ActorFederationMappingProfile : Profile
         CreateMap<Domain.SyncState, SyncStateListDto>().ReverseMap();
         CreateMap<CreateSyncStateDto, Domain.SyncState>();
         CreateMap<UpdateSyncStateDto, Domain.SyncState>();
-
-        CreateMap<Domain.AtprotoRecord, AtprotoRecordDto>().ReverseMap();
-        CreateMap<Domain.AtprotoRecord, AtprotoRecordListDto>();
     }
 }

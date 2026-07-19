@@ -102,7 +102,7 @@ public sealed class AtprotoDependencyBoundaryTests
                          .Where(file => !IsBuildOutput(file)))
             {
                 var source = await File.ReadAllTextAsync(file);
-                if (Regex.IsMatch(source, @"\b(?:using\s+)?CarpaNet(?:\.|\b)", RegexOptions.CultureInvariant))
+                if (ContainsCarpaNetReference(source))
                 {
                     violations.Add(Path.GetRelativePath(repoRoot, file).Replace('\\', '/'));
                 }
@@ -111,6 +111,22 @@ public sealed class AtprotoDependencyBoundaryTests
 
         await Assert.That(violations).IsEmpty()
             .Because($"CarpaNet belongs only to the BFF and Infrastructure. Violations: {string.Join(", ", violations)}");
+    }
+
+    [Test]
+    public async Task CarpaNetReferenceScanner_IgnoresCommentsButDetectsCodeReferences()
+    {
+        const string commentOnly = """
+            // ABOUTME: Keeps CarpaNet credential types inside Infrastructure.
+            /* using CarpaNet.OAuth; */
+            namespace Explore.Application;
+            """;
+        const string usingReference = "using CarpaNet.OAuth;";
+        const string qualifiedReference = "// CarpaNet is contained below.\nglobal::CarpaNet.ATDid value = default;";
+
+        await Assert.That(ContainsCarpaNetReference(commentOnly)).IsFalse();
+        await Assert.That(ContainsCarpaNetReference(usingReference)).IsTrue();
+        await Assert.That(ContainsCarpaNetReference(qualifiedReference)).IsTrue();
     }
 
     [Test]
@@ -170,6 +186,29 @@ public sealed class AtprotoDependencyBoundaryTests
         await Assert.That(violations).Contains("PackageReference:CarpaNet");
     }
 
+    [Test]
+    public async Task JetstreamSocketMustStayContainedBehindExactCollectionAdapter()
+    {
+        string federationRoot = ContextSystemHelpers.RepoPath(
+            "Explore.Infrastructure",
+            "Services",
+            "Federation");
+        string[] sourceFiles = Directory.EnumerateFiles(federationRoot, "*.cs", SearchOption.AllDirectories).ToArray();
+        string[] jetstreamClientOwners = sourceFiles
+            .Where(path => File.ReadAllText(path).Contains("new JetstreamClient", StringComparison.Ordinal))
+            .Select(Path.GetFileName)
+            .ToArray()!;
+        string source = await File.ReadAllTextAsync(Path.Combine(federationRoot, "AtprotoJetstreamEventSource.cs"));
+        string constants = await File.ReadAllTextAsync(Path.Combine(federationRoot, "AtprotoJetstreamEnvelopeParser.cs"));
+
+        await Assert.That(jetstreamClientOwners).IsEquivalentTo(["AtprotoJetstreamEventSource.cs"]);
+        await Assert.That(source).Contains("WantedCollections = subscription.WantedCollections");
+        await Assert.That(source).DoesNotContain("new ClientWebSocket");
+        await Assert.That(constants).Contains("community.lexicon.calendar.event");
+        await Assert.That(constants).Contains("community.lexicon.calendar.rsvp");
+        await Assert.That(constants).DoesNotContain("community.lexicon.calendar.*");
+    }
+
     private static string[] ValidateProjectConfiguration(XDocument document, string projectName)
     {
         var violations = new List<string>();
@@ -201,4 +240,22 @@ public sealed class AtprotoDependencyBoundaryTests
     private static bool IsBuildOutput(string file) =>
         file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
         || file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
+
+    private static bool ContainsCarpaNetReference(string source)
+    {
+        string withoutBlockComments = Regex.Replace(
+            source,
+            @"/\*.*?\*/",
+            string.Empty,
+            RegexOptions.Singleline | RegexOptions.CultureInvariant);
+        string withoutComments = Regex.Replace(
+            withoutBlockComments,
+            @"//.*$",
+            string.Empty,
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
+        return Regex.IsMatch(
+            withoutComments,
+            @"\b(?:using\s+)?CarpaNet(?:\.|\b)",
+            RegexOptions.CultureInvariant);
+    }
 }

@@ -1,5 +1,5 @@
 // ABOUTME: Repository contract for the single global fenced Jetstream lease and atomic cursor materialization.
-// ABOUTME: Advances a cursor only with its canonical record, tombstone, presentations, or quarantine outcome.
+// ABOUTME: Applies records or quarantine atomically while allowing invalid cursor evidence to retain the last safe checkpoint.
 
 using Explore.Domain;
 using Explore.Domain.Federation;
@@ -13,6 +13,12 @@ public sealed record AtprotoJetstreamClaim(
     Guid LeaseToken,
     long LeaseFence);
 
+public sealed record AtprotoEventProjectionInvalidation(
+    string Did,
+    string Collection,
+    string RecordKey,
+    long SourceVersion);
+
 public sealed record AtprotoJetstreamApplyRequest(
     AtprotoJetstreamClaim Claim,
     long ExpectedCursor,
@@ -20,7 +26,10 @@ public sealed record AtprotoJetstreamApplyRequest(
     AtprotoRecord? Record,
     IReadOnlyList<AtprotoRecordTenantPresentation> Presentations,
     AtprotoJetstreamQuarantine? Quarantine,
-    DateTime ObservedAt);
+    DateTime ObservedAt,
+    bool AdvanceCursor = true,
+    AtprotoEventProjection? EventProjection = null,
+    AtprotoEventProjectionInvalidation? EventProjectionInvalidation = null);
 
 public interface IAtprotoJetstreamRepository
 {

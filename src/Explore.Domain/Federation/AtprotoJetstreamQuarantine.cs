@@ -1,5 +1,5 @@
 // ABOUTME: Stores bounded, payload-free evidence for rejected Jetstream envelopes at a specific cursor.
-// ABOUTME: Supports atomic quarantine and cursor advancement without retaining raw provider content.
+// ABOUTME: Supports atomic quarantine without retaining raw content or trusting an invalid cursor as a checkpoint.
 
 namespace Explore.Domain.Federation;
 

@@ -110,7 +110,8 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository
         CancellationToken cancellationToken = default)
     {
         if (request.ObservedAt.Kind != DateTimeKind.Utc || request.NextCursor <= request.ExpectedCursor ||
-            (request.Record is null) == (request.Quarantine is null))
+            (request.Record is null) == (request.Quarantine is null) ||
+            (!request.AdvanceCursor && request.Quarantine?.ReasonCode != "invalid_cursor"))
         {
             return false;
         }
@@ -139,14 +140,25 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository
                 return false;
             }
 
-            if (request.Quarantine is not null)
+            if (request.EventProjectionInvalidation is not null)
             {
-                request.Quarantine.ConsumerStateId = state.Id;
-                request.Quarantine.Cursor = request.NextCursor;
-                await _dbContext.AtprotoJetstreamQuarantines.AddAsync(request.Quarantine, cancellationToken);
+                await InvalidateEventProjectionAsync(request, cancellationToken);
             }
 
-            state.Cursor = request.NextCursor;
+            if (request.Quarantine is not null)
+            {
+                bool alreadyQuarantined = await _dbContext.AtprotoJetstreamQuarantines.AnyAsync(value =>
+                    value.ConsumerStateId == state.Id && value.Cursor == request.NextCursor,
+                    cancellationToken);
+                if (!alreadyQuarantined)
+                {
+                    request.Quarantine.ConsumerStateId = state.Id;
+                    request.Quarantine.Cursor = request.NextCursor;
+                    await _dbContext.AtprotoJetstreamQuarantines.AddAsync(request.Quarantine, cancellationToken);
+                }
+            }
+
+            state.Cursor = request.AdvanceCursor ? request.NextCursor : request.ExpectedCursor;
             state.LastEventAt = request.ObservedAt;
             state.UpdatedAt = request.ObservedAt;
             await _dbContext.SaveChangesAsync(cancellationToken);
@@ -183,7 +195,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository
         }
         else
         {
-            canonical.Direction = canonical.Direction == AtprotoRecordDirection.Outbound
+            canonical.Direction = canonical.Direction is AtprotoRecordDirection.Outbound or AtprotoRecordDirection.Reconciled
                 ? AtprotoRecordDirection.Reconciled
                 : AtprotoRecordDirection.Inbound;
             canonical.Provenance = canonical.Direction == AtprotoRecordDirection.Reconciled
@@ -204,6 +216,11 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository
 
         canonical.SourceCursor = request.NextCursor;
         canonical.UpdatedAt = request.ObservedAt;
+
+        if (canonical.Collection == "community.lexicon.calendar.event")
+        {
+            await ApplyEventProjectionAsync(canonical, request, cancellationToken);
+        }
 
         foreach (var supplied in request.Presentations)
         {
@@ -251,5 +268,79 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository
         }
 
         return true;
+    }
+
+    private async Task ApplyEventProjectionAsync(
+        AtprotoRecord canonical,
+        AtprotoJetstreamApplyRequest request,
+        CancellationToken cancellationToken)
+    {
+        AtprotoEventProjection? existing = await _dbContext.AtprotoEventProjections
+            .SingleOrDefaultAsync(value => value.AtprotoRecordId == canonical.Id, cancellationToken);
+        if (canonical.TombstonedAt is not null)
+        {
+            if (existing is not null)
+            {
+                _dbContext.AtprotoEventProjections.Remove(existing);
+            }
+            return;
+        }
+
+        AtprotoEventProjection? supplied = request.EventProjection;
+        if (supplied is null || supplied.SourceVersion != canonical.SourceVersion)
+        {
+            return;
+        }
+
+        if (existing is null)
+        {
+            supplied.AtprotoRecordId = canonical.Id;
+            await _dbContext.AtprotoEventProjections.AddAsync(supplied, cancellationToken);
+            return;
+        }
+
+        existing.Name = supplied.Name;
+        existing.Description = supplied.Description;
+        existing.CreatedAt = supplied.CreatedAt;
+        existing.StartsAt = supplied.StartsAt;
+        existing.EndsAt = supplied.EndsAt;
+        existing.Mode = supplied.Mode;
+        existing.Status = supplied.Status;
+        existing.RsvpExpected = supplied.RsvpExpected;
+        existing.LocationSummary = supplied.LocationSummary;
+        existing.SourceUrl = supplied.SourceUrl;
+        existing.SourceVersion = supplied.SourceVersion;
+        existing.MaterializedAt = supplied.MaterializedAt;
+    }
+
+    private async Task InvalidateEventProjectionAsync(
+        AtprotoJetstreamApplyRequest request,
+        CancellationToken cancellationToken)
+    {
+        AtprotoEventProjectionInvalidation invalidation = request.EventProjectionInvalidation!;
+        AtprotoRecord? canonical = await _dbContext.AtprotoRecords.SingleOrDefaultAsync(value =>
+            value.Did == invalidation.Did
+            && value.Collection == invalidation.Collection
+            && value.RecordKey == invalidation.RecordKey,
+            cancellationToken);
+        if (canonical is null || invalidation.SourceVersion <= canonical.SourceVersion)
+        {
+            return;
+        }
+
+        AtprotoEventProjection? projection = await _dbContext.AtprotoEventProjections
+            .SingleOrDefaultAsync(value => value.AtprotoRecordId == canonical.Id, cancellationToken);
+        if (projection is not null)
+        {
+            _dbContext.AtprotoEventProjections.Remove(projection);
+        }
+
+        await _dbContext.AtprotoRecordTenantPresentations
+            .IgnoreTenantFilter(TenantFilterBypassReasons.AtprotoJetstreamGlobalMaterialization)
+            .Where(value => value.AtprotoRecordId == canonical.Id)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.IsVisible, false)
+                .SetProperty(value => value.SourceVersion, invalidation.SourceVersion)
+                .SetProperty(value => value.EvaluatedAt, request.ObservedAt), cancellationToken);
     }
 }
