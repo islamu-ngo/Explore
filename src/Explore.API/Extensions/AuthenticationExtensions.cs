@@ -1,6 +1,7 @@
 // ABOUTME: Registers multi-auth (JWT Bearer + API Key) authentication and authorization for the API.
 // ABOUTME: Dispatches X-API-Key requests to the ApiKey handler; all others go through Keycloak JWT Bearer.
 
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -11,6 +12,7 @@ using Explore.API.ExceptionHandling;
 using Explore.API.Mcp;
 using Explore.Application.Authorization;
 using Explore.Application.Constants;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Management;
 using Explore.Domain.Constants;
@@ -46,6 +48,15 @@ public static class AuthenticationExtensions
         services.AddSingleton<IJwtAuthorityRefreshNotifier>(sp =>
             sp.GetRequiredService<DynamicJwtConfigurationService>());
         services.AddSingleton<IPostConfigureOptions<JwtBearerOptions>, DynamicJwtBearerPostConfigureOptions>();
+        services.AddOptions<AtprotoJwtOptions>()
+            .Bind(configuration.GetSection(AtprotoJwtOptions.SectionName))
+            .Validate(
+                options => options.SessionLifetime >= TimeSpan.FromMinutes(1)
+                           && options.SessionLifetime <= TimeSpan.FromHours(1),
+                "ATProto session lifetime must be between one minute and one hour.")
+            .ValidateOnStart();
+        services.AddScoped<AtprotoJwtService>();
+        services.AddScoped<IAtprotoSessionTokenIssuer>(provider => provider.GetRequiredService<AtprotoJwtService>());
         if (!skipAuthorityWarmup)
         {
             services.AddHostedService<JwtAuthorityWarmupHostedService>();
@@ -192,6 +203,12 @@ public static class AuthenticationExtensions
                 })
             .AddScheme<AuthenticationSchemeOptions, ManagedControlPlaneAuthenticationHandler>(
                 ManagedControlPlaneAuthenticationDefaults.Scheme,
+                _ => { })
+            .AddScheme<AuthenticationSchemeOptions, AtprotoBootstrapAuthenticationHandler>(
+                ApiAuthenticationSchemeNames.AtprotoBootstrap,
+                _ => { })
+            .AddScheme<AuthenticationSchemeOptions, AtprotoSessionAuthenticationHandler>(
+                ApiAuthenticationSchemeNames.AtprotoSession,
                 _ => { });
 
         services.AddAuthorizationBuilder()
@@ -253,6 +270,13 @@ public static class AuthenticationExtensions
 
     internal static string SelectDefaultAuthenticationScheme(HttpContext context)
     {
+        if (HttpMethods.IsPost(context.Request.Method)
+            && string.Equals(context.Request.Path.Value, AtprotoJwtOptions.BridgePath, StringComparison.Ordinal)
+            && context.Request.Headers.ContainsKey(AtprotoJwtOptions.BootstrapHeaderName))
+        {
+            return ApiAuthenticationSchemeNames.AtprotoBootstrap;
+        }
+
         bool requiresManagedCredential = context.GetEndpoint()?.Metadata
             .GetOrderedMetadata<IAuthorizeData>()
             .Any(authorize => authorize.Policy is ManagedControlPlaneAuthorizationPolicies.Read
@@ -264,9 +288,43 @@ public static class AuthenticationExtensions
             return ManagedControlPlaneAuthenticationDefaults.Scheme;
         }
 
-        return ApiKeyHeaderReader.HasNonEmptyApiKey(context.Request)
-            ? ApiAuthenticationSchemeNames.ApiKey
+        if (ApiKeyHeaderReader.HasNonEmptyApiKey(context.Request))
+        {
+            return ApiAuthenticationSchemeNames.ApiKey;
+        }
+
+        return IsAtprotoSessionBearer(context.Request)
+            ? ApiAuthenticationSchemeNames.AtprotoSession
             : JwtBearerDefaults.AuthenticationScheme;
+    }
+
+    internal static bool IsAtprotoSessionBearer(HttpRequest request)
+    {
+        var authorization = request.Headers.Authorization;
+        if (authorization.Count != 1
+            || authorization[0] is not { } value
+            || !value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var token = value["Bearer ".Length..].Trim();
+        if (!AtprotoJwtService.IsBoundedCompactJwt(token, AtprotoJwtOptions.MaximumSessionTokenBytes))
+        {
+            return false;
+        }
+
+        try
+        {
+            return string.Equals(
+                new JwtSecurityTokenHandler().ReadJwtToken(token).Issuer,
+                AtprotoJwtOptions.SessionIssuer,
+                StringComparison.Ordinal);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     private static bool ApiKeyCallerHasMcpReadAndEventReadAuthorityOrIsUser(ClaimsPrincipal principal)

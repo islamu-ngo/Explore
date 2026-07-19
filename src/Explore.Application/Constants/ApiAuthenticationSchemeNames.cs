@@ -8,4 +8,8 @@ public static class ApiAuthenticationSchemeNames
     public const string MultiAuth = "MultiAuth";
 
     public const string ApiKey = "ApiKey";
+
+    public const string AtprotoBootstrap = "AtprotoBootstrap";
+
+    public const string AtprotoSession = "AtprotoSession";
 }

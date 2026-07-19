@@ -15,6 +15,8 @@ public static class BffProxyHeaderSanitizer
         "Proxy-Authorization",
         "Cookie",
         EventBffHeaderNames.SetupSecret,
+        EventBffHeaderNames.AtprotoBootstrapAssertion,
+        EventBffHeaderNames.AtprotoSessionBridgeAssertion,
         EventBffHeaderNames.ApiKey,
         "Access-Token",
         "Refresh-Token",
