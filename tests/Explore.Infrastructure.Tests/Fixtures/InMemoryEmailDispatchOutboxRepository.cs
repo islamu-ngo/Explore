@@ -24,34 +24,35 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
         throw new NotSupportedException();
     }
 
-    public Task<IReadOnlyList<EmailDispatchOutbox>> GetPendingBatch(
-        int batchSize,
-        DateTime now,
+    public Task<IReadOnlyList<EmailDispatchOutbox>> ClaimPendingBatchAsync(
+        EmailDispatchBatchClaimRequest request,
         CancellationToken cancellationToken)
     {
         lock (_gate)
         {
-            IReadOnlyList<EmailDispatchOutbox> rows = dispatch.Status == EmailDispatchStatus.Pending
-                ? [dispatch]
-                : [];
-            return Task.FromResult(rows);
+            if (!TryClaim(request.LeaseToken, request.ClaimedAt))
+            {
+                return Task.FromResult<IReadOnlyList<EmailDispatchOutbox>>([]);
+            }
+
+            return Task.FromResult<IReadOnlyList<EmailDispatchOutbox>>([dispatch]);
         }
     }
 
-    public Task<IReadOnlyList<EmailDispatchOutbox>> GetPendingBatch(
-        int batchSize,
-        int maxRowsPerTenant,
-        bool includeOptionalReminders,
-        DateTime now,
+    public Task<EmailDispatchOutbox?> TryClaimSpecificAsync(
+        EmailDispatchSpecificClaimRequest request,
         CancellationToken cancellationToken)
     {
         lock (_gate)
         {
-            IReadOnlyList<EmailDispatchOutbox> rows = dispatch.Status == EmailDispatchStatus.Pending &&
-                (includeOptionalReminders || dispatch.Kind != EmailDispatchKind.EventReminder)
-                    ? [dispatch]
-                    : [];
-            return Task.FromResult(rows);
+            if (request.TenantId != dispatch.TenantId ||
+                request.PublishEventId != dispatch.PublishEventId ||
+                !TryClaim(request.LeaseToken, request.ClaimedAt))
+            {
+                return Task.FromResult<EmailDispatchOutbox?>(null);
+            }
+
+            return Task.FromResult<EmailDispatchOutbox?>(dispatch);
         }
     }
 
@@ -164,6 +165,41 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
         }
     }
 
+    public Task<int> CountUnknownAsync(CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            return Task.FromResult(dispatch.Status == EmailDispatchStatus.Unknown ? 1 : 0);
+        }
+    }
+
+    public Task<int> CountParkedAsync(CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            return Task.FromResult(dispatch.Status == EmailDispatchStatus.Parked ? 1 : 0);
+        }
+    }
+
+    public Task<bool> IsOptionalReminderDeferralActiveAsync(CancellationToken cancellationToken) =>
+        Task.FromResult(false);
+
+    public Task<EmailDispatchProcessorState?> GetProcessorState(CancellationToken cancellationToken) =>
+        Task.FromResult<EmailDispatchProcessorState?>(null);
+
+    public Task<EmailDispatchProcessorState> SetProcessorPauseState(
+        bool isPaused,
+        string? pauseReason,
+        Guid? changedBy,
+        DateTime changedAt,
+        CancellationToken cancellationToken) => throw new NotSupportedException();
+
+    public Task<EmailDispatchProcessorState> SetGlobalSmtpRateLimitOverride(
+        int? rateLimitPerMinute,
+        Guid? changedBy,
+        DateTime changedAt,
+        CancellationToken cancellationToken) => throw new NotSupportedException();
+
     public Task<bool> IsTenantPaused(Guid tenantId, CancellationToken cancellationToken)
     {
         return Task.FromResult(false);
@@ -209,7 +245,6 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
 
             if (dispatch.Status is not (EmailDispatchStatus.DeadLettered
                 or EmailDispatchStatus.Parked
-                or EmailDispatchStatus.Unknown
                 or EmailDispatchStatus.RetryScheduled))
             {
                 return Task.FromResult(false);
@@ -256,6 +291,41 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
             dispatch.LastError = reason;
             dispatch.LastFailureAt = resolvedAt;
             dispatch.UpdatedAt = resolvedAt;
+            dispatch.UpdatedBy = changedBy;
+            return Task.FromResult(true);
+        }
+    }
+
+    public Task<bool> TryReconcileUnknown(
+        Guid tenantId,
+        Guid outboxId,
+        EmailDispatchUnknownReconciliationOutcome outcome,
+        string reason,
+        string? providerMessageId,
+        Guid? changedBy,
+        DateTime reconciledAt,
+        CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            if (dispatch.TenantId != tenantId || dispatch.Id != outboxId || dispatch.Status != EmailDispatchStatus.Unknown)
+            {
+                return Task.FromResult(false);
+            }
+
+            dispatch.Status = outcome == EmailDispatchUnknownReconciliationOutcome.Delivered
+                ? EmailDispatchStatus.Sent
+                : EmailDispatchStatus.Pending;
+            dispatch.SentAt = outcome == EmailDispatchUnknownReconciliationOutcome.Delivered ? reconciledAt : null;
+            dispatch.UnknownAt = null;
+            dispatch.ProviderMessageId = outcome == EmailDispatchUnknownReconciliationOutcome.Delivered
+                ? providerMessageId
+                : null;
+            dispatch.LastFailureCategory = outcome == EmailDispatchUnknownReconciliationOutcome.Delivered
+                ? "operator_reconciled_delivered"
+                : "operator_reconciled_not_delivered";
+            dispatch.LastError = reason;
+            dispatch.UpdatedAt = reconciledAt;
             dispatch.UpdatedBy = changedBy;
             return Task.FromResult(true);
         }
@@ -390,127 +460,101 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
         }
     }
 
-    public Task<bool> TryMarkAsProcessing(
-        Guid id,
-        Guid leaseToken,
-        DateTime startedAt,
-        CancellationToken cancellationToken)
+    private bool TryClaim(Guid leaseToken, DateTime startedAt)
     {
-        lock (_gate)
+        if (dispatch.Status != EmailDispatchStatus.Pending)
         {
-            if (id != dispatch.Id || dispatch.Status != EmailDispatchStatus.Pending)
-            {
-                return Task.FromResult(false);
-            }
-
-            dispatch.Status = EmailDispatchStatus.Processing;
-            dispatch.ProcessingLeaseToken = leaseToken;
-            dispatch.ProcessingStartedAt = startedAt;
-            return Task.FromResult(true);
+            return false;
         }
+
+        dispatch.Status = EmailDispatchStatus.Processing;
+        dispatch.ProcessingLeaseToken = leaseToken;
+        dispatch.ProcessingStartedAt = startedAt;
+        return true;
     }
 
-    public Task<int> MarkStaleProcessingAsUnknown(
-        DateTime processingStartedBefore,
-        DateTime recoveredAt,
-        string failureCategory,
-        string errorMessage,
-        int batchSize,
+    public Task<EmailDispatchStaleRecoveryResult> RecoverStaleProcessing(
+        EmailDispatchStaleRecoveryRequest request,
         CancellationToken cancellationToken)
     {
         lock (_gate)
         {
-            if (batchSize <= 0 ||
-                dispatch.Status != EmailDispatchStatus.Processing ||
-                dispatch.ProcessingStartedAt is null ||
-                dispatch.ProcessingStartedAt > processingStartedBefore)
+            if (request.BatchSize <= 0
+                || dispatch.Status != EmailDispatchStatus.Processing
+                || dispatch.ProcessingStartedAt is null
+                || dispatch.ProcessingStartedAt > request.ProcessingStartedBefore)
             {
-                return Task.FromResult(0);
+                return Task.FromResult(new EmailDispatchStaleRecoveryResult(0, 0));
             }
 
-            dispatch.Status = EmailDispatchStatus.Unknown;
-            dispatch.UnknownAt = recoveredAt;
-            dispatch.NextAttemptAt = null;
+            var fenced = Attempts.Any(attempt =>
+                    attempt.EmailDispatchOutboxId == dispatch.Id
+                    && attempt.AttemptNumber == dispatch.AttemptCount
+                    && attempt.FailureCategory == "provider_handoff_started")
+                || Receipts.Any(receipt =>
+                    receipt.EmailDispatchOutboxId == dispatch.Id
+                    && receipt.Status == EmailDispatchReceiptStatus.Processing);
+            dispatch.Status = fenced ? EmailDispatchStatus.Unknown : EmailDispatchStatus.RetryScheduled;
+            dispatch.UnknownAt = fenced ? request.RecoveredAt : null;
+            dispatch.NextAttemptAt = fenced ? null : request.RecoveredAt;
             dispatch.ProcessingStartedAt = null;
             dispatch.ProcessingLeaseToken = null;
-            dispatch.LastFailureCategory = failureCategory;
-            dispatch.LastError = errorMessage;
-
-            foreach (var attempt in Attempts.Where(value =>
-                         value.EmailDispatchOutboxId == dispatch.Id &&
-                         value.AttemptNumber == dispatch.AttemptCount))
+            dispatch.LastFailureCategory = fenced
+                ? request.UnknownFailureCategory
+                : request.RetryFailureCategory;
+            dispatch.LastError = fenced ? request.UnknownErrorMessage : request.RetryErrorMessage;
+            if (fenced)
             {
-                attempt.Outcome = EmailDispatchAttemptOutcome.Unknown;
-                attempt.CompletedAt = recoveredAt;
-                attempt.FailureCategory = failureCategory;
-                attempt.SanitizedErrorMessage = errorMessage;
-                attempt.ProviderMessageId = null;
+                foreach (var attempt in Attempts.Where(attempt =>
+                             attempt.EmailDispatchOutboxId == dispatch.Id
+                             && attempt.AttemptNumber == dispatch.AttemptCount))
+                {
+                    attempt.Outcome = EmailDispatchAttemptOutcome.Unknown;
+                    attempt.CompletedAt = request.RecoveredAt;
+                    attempt.FailureCategory = request.UnknownFailureCategory;
+                    attempt.SanitizedErrorMessage = request.UnknownErrorMessage;
+                }
+
+                foreach (var receipt in Receipts.Where(receipt =>
+                             receipt.EmailDispatchOutboxId == dispatch.Id
+                             && receipt.Status == EmailDispatchReceiptStatus.Processing))
+                {
+                    receipt.Status = EmailDispatchReceiptStatus.Unknown;
+                    receipt.FailedAt = request.RecoveredAt;
+                    receipt.FailureCode = request.UnknownFailureCategory;
+                    receipt.FailureMessage = request.UnknownErrorMessage;
+                }
             }
 
-            foreach (var receipt in Receipts.Where(value => value.EmailDispatchOutboxId == dispatch.Id))
-            {
-                receipt.Status = EmailDispatchReceiptStatus.Unknown;
-                receipt.CompletedAt = null;
-                receipt.FailedAt = recoveredAt;
-                receipt.FailureCode = failureCategory;
-                receipt.FailureMessage = errorMessage;
-                receipt.ProviderMessageId = null;
-            }
-
-            return Task.FromResult(1);
+            return Task.FromResult(new EmailDispatchStaleRecoveryResult(fenced ? 0 : 1, fenced ? 1 : 0));
         }
     }
 
-    public Task MarkAsSent(
-        Guid id,
-        DateTime sentAt,
-        string? providerMessageId,
+    public Task<EmailDispatchPreHandoffReleaseOutcome> ReleaseClaimBeforeProviderHandoff(
+        EmailDispatchPreHandoffRelease request,
         CancellationToken cancellationToken)
     {
         lock (_gate)
         {
-            dispatch.Status = EmailDispatchStatus.Sent;
-            dispatch.SentAt = sentAt;
-            dispatch.ProviderMessageId = providerMessageId;
-            dispatch.AttemptCount++;
-            dispatch.ProcessingLeaseToken = null;
-            dispatch.ProcessingStartedAt = null;
+            if (dispatch.TenantId == request.TenantId
+                && dispatch.Id == request.OutboxId
+                && dispatch.Status == EmailDispatchStatus.Processing
+                && dispatch.ProcessingLeaseToken == request.ProcessingLeaseToken
+                && dispatch.AttemptCount == request.AttemptNumber)
+            {
+                dispatch.Status = EmailDispatchStatus.RetryScheduled;
+                dispatch.NextAttemptAt = request.ReleasedAt;
+                dispatch.ProcessingStartedAt = null;
+                dispatch.ProcessingLeaseToken = null;
+                dispatch.LastFailureCategory = request.FailureCategory;
+                dispatch.LastError = request.FailureMessage;
+                return Task.FromResult(EmailDispatchPreHandoffReleaseOutcome.Released);
+            }
+
+            return Task.FromResult(dispatch.AttemptCount > request.AttemptNumber
+                ? EmailDispatchPreHandoffReleaseOutcome.ProviderHandoffFenced
+                : EmailDispatchPreHandoffReleaseOutcome.LostClaim);
         }
-
-        return Task.CompletedTask;
-    }
-
-    public Task MarkAsFailed(
-        Guid id,
-        string failureCategory,
-        string errorMessage,
-        bool isRetryable,
-        TimeSpan retryDelay,
-        int maxAttempts,
-        DateTime failedAt,
-        CancellationToken cancellationToken)
-    {
-        throw new NotSupportedException();
-    }
-
-    public Task MarkAsUnknown(
-        Guid id,
-        string failureCategory,
-        string errorMessage,
-        DateTime unknownAt,
-        CancellationToken cancellationToken)
-    {
-        throw new NotSupportedException();
-    }
-
-    public Task MarkAsSkipped(
-        Guid id,
-        string reasonCategory,
-        string reasonMessage,
-        DateTime skippedAt,
-        CancellationToken cancellationToken)
-    {
-        throw new NotSupportedException();
     }
 
     public Task MarkRabbitMqPublishSucceeded(Guid id, DateTime publishedAt, CancellationToken cancellationToken)
@@ -527,37 +571,21 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
         throw new NotSupportedException();
     }
 
-    public Task RecordAttempt(EmailDispatchAttempt attempt, CancellationToken cancellationToken)
-    {
-        lock (_gate)
-        {
-            var existing = Attempts.SingleOrDefault(value =>
-                value.EmailDispatchOutboxId == attempt.EmailDispatchOutboxId &&
-                value.AttemptNumber == attempt.AttemptNumber);
-            if (existing is null)
-            {
-                attempt.Id = attempt.Id == Guid.Empty ? Guid.CreateVersion7() : attempt.Id;
-                Attempts.Add(attempt);
-            }
-            else
-            {
-                existing.Outcome = attempt.Outcome;
-                existing.CompletedAt = attempt.CompletedAt;
-                existing.FailureCategory = attempt.FailureCategory;
-                existing.SanitizedErrorMessage = attempt.SanitizedErrorMessage;
-                existing.ProviderMessageId = attempt.ProviderMessageId;
-            }
-        }
-
-        return Task.CompletedTask;
-    }
-
     public Task SettleProviderAccepted(
         EmailDispatchAcceptedSettlement settlement,
         CancellationToken cancellationToken)
     {
         lock (_gate)
         {
+            if (dispatch.TenantId != settlement.TenantId
+                || dispatch.Id != settlement.OutboxId
+                || dispatch.Status != EmailDispatchStatus.Processing
+                || dispatch.ProcessingLeaseToken != settlement.ProcessingLeaseToken
+                || dispatch.AttemptCount != settlement.AttemptNumber)
+            {
+                throw new InvalidOperationException("The email dispatch settlement claim fence is stale.");
+            }
+
             var attempt = Attempts.Single(value =>
                 value.EmailDispatchOutboxId == settlement.OutboxId &&
                 value.AttemptNumber == settlement.AttemptNumber);
@@ -582,6 +610,49 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
         return Task.CompletedTask;
     }
 
+    public Task<EmailDispatchFailureSettlementOutcome> SettleProviderFailure(
+        EmailDispatchFailureSettlement settlement,
+        CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            if (dispatch.TenantId != settlement.TenantId
+                || dispatch.Id != settlement.OutboxId
+                || dispatch.Status != EmailDispatchStatus.Processing
+                || dispatch.ProcessingLeaseToken != settlement.ProcessingLeaseToken
+                || dispatch.AttemptCount != settlement.AttemptNumber)
+            {
+                return Task.FromResult(EmailDispatchFailureSettlementOutcome.StaleClaim);
+            }
+
+            var exhausted = settlement.AttemptNumber >= settlement.MaxAttempts;
+            dispatch.Status = exhausted ? EmailDispatchStatus.DeadLettered : EmailDispatchStatus.RetryScheduled;
+            dispatch.DeadLetteredAt = exhausted ? settlement.SettledAt : null;
+            dispatch.NextAttemptAt = exhausted ? null : settlement.SettledAt.Add(settlement.RetryDelay);
+            dispatch.ProcessingLeaseToken = null;
+            dispatch.ProcessingStartedAt = null;
+            dispatch.LastFailureCategory = settlement.FailureCategory;
+            dispatch.LastError = settlement.FailureMessage;
+
+            var attempt = Attempts.Single(value =>
+                value.EmailDispatchOutboxId == settlement.OutboxId
+                && value.AttemptNumber == settlement.AttemptNumber);
+            attempt.Outcome = EmailDispatchAttemptOutcome.Failed;
+            attempt.CompletedAt = settlement.SettledAt;
+            attempt.FailureCategory = settlement.FailureCategory;
+            attempt.SanitizedErrorMessage = settlement.FailureMessage;
+
+            var receipt = Receipts.Single(value => value.EmailDispatchOutboxId == settlement.OutboxId);
+            receipt.Status = EmailDispatchReceiptStatus.Failed;
+            receipt.FailedAt = settlement.SettledAt;
+            receipt.FailureCode = settlement.FailureCategory;
+            receipt.FailureMessage = settlement.FailureMessage;
+            return Task.FromResult(exhausted
+                ? EmailDispatchFailureSettlementOutcome.DeadLettered
+                : EmailDispatchFailureSettlementOutcome.RetryScheduled);
+        }
+    }
+
     public Task<EmailDispatchAcceptedReconciliationOutcome> ReconcileProviderAccepted(
         EmailDispatchAcceptedSettlement settlement,
         CancellationToken cancellationToken)
@@ -596,6 +667,13 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
                     value.Status == EmailDispatchReceiptStatus.Completed))
             {
                 return Task.FromResult(EmailDispatchAcceptedReconciliationOutcome.Sent);
+            }
+
+            if (dispatch.Status != EmailDispatchStatus.Processing
+                || dispatch.ProcessingLeaseToken != settlement.ProcessingLeaseToken
+                || dispatch.AttemptCount != settlement.AttemptNumber)
+            {
+                return Task.FromResult(EmailDispatchAcceptedReconciliationOutcome.StaleClaim);
             }
 
             var attempt = Attempts.Single(value =>
@@ -624,58 +702,6 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
         }
 
         return Task.FromResult(EmailDispatchAcceptedReconciliationOutcome.Unknown);
-    }
-
-    public Task<bool> TryClaimReceipt(EmailDispatchReceipt receipt, CancellationToken cancellationToken)
-    {
-        lock (_gate)
-        {
-            if (Receipts.Any(value => value.PublishEventId == receipt.PublishEventId))
-            {
-                return Task.FromResult(false);
-            }
-
-            receipt.Id = receipt.Id == Guid.Empty ? Guid.CreateVersion7() : receipt.Id;
-            Receipts.Add(receipt);
-            return Task.FromResult(true);
-        }
-    }
-
-    public Task MarkReceiptCompleted(
-        Guid receiptId,
-        DateTime completedAt,
-        string? providerMessageId,
-        CancellationToken cancellationToken)
-    {
-        lock (_gate)
-        {
-            var receipt = Receipts.Single(value => value.Id == receiptId);
-            receipt.Status = EmailDispatchReceiptStatus.Completed;
-            receipt.CompletedAt = completedAt;
-            receipt.ProviderMessageId = providerMessageId;
-        }
-
-        return Task.CompletedTask;
-    }
-
-    public Task MarkReceiptFailed(
-        Guid receiptId,
-        string failureCode,
-        string failureMessage,
-        DateTime failedAt,
-        CancellationToken cancellationToken)
-    {
-        throw new NotSupportedException();
-    }
-
-    public Task MarkReceiptSkipped(
-        Guid receiptId,
-        string reasonCode,
-        string reasonMessage,
-        DateTime skippedAt,
-        CancellationToken cancellationToken)
-    {
-        throw new NotSupportedException();
     }
 
     private bool IsRetentionEligible(DateTime cutoffUtc) =>

@@ -16,6 +16,27 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 public sealed class EmailDispatchAdminHateoasTests
 {
     [Test]
+    public async Task ProcessorControlExposesOnlyCurrentPauseAndRateAffordances()
+    {
+        var policy = new EmailDispatchProcessorControlDetailLinkPolicy();
+        var activeLinks = policy.GetLinks(new EmailDispatchProcessorControlDto(), user: null).ToList();
+        var pausedLinks = policy.GetLinks(new EmailDispatchProcessorControlDto
+        {
+            IsPaused = true,
+            GlobalSmtpRateLimitPerMinuteOverride = 60
+        }, user: null).ToList();
+
+        await Assert.That(activeLinks.Any(link => link.Rel == "pause")).IsTrue();
+        await Assert.That(activeLinks.Any(link => link.Rel == "resume")).IsFalse();
+        await Assert.That(activeLinks.Any(link => link.Rel == "clear-rate-limit")).IsFalse();
+        await Assert.That(pausedLinks.Any(link => link.Rel == "pause")).IsFalse();
+        await Assert.That(pausedLinks.Any(link => link.Rel == "resume")).IsTrue();
+        await Assert.That(pausedLinks.Any(link => link.Rel == "clear-rate-limit")).IsTrue();
+        await Assert.That(pausedLinks.Single(link => link.Rel == "resume").PermissionResourceKind)
+            .IsEqualTo(ResourceKinds.InstanceSetting);
+    }
+
+    [Test]
     public async Task DeferredStatusRows_ExposeReplayAndParkLinks()
     {
         var tenantId = Guid.NewGuid();
@@ -81,15 +102,27 @@ public sealed class EmailDispatchAdminHateoasTests
     }
 
     [Test]
-    public async Task ProcessingStatusRows_ExposeParkButNotReplayLink()
+    public async Task ProcessingStatusRows_ExposeNoMutationLinks()
     {
         var policy = new EmailDispatchStatusCollectionLinkPolicy();
 
         var links = policy.GetItemLinks(CreateStatus(Guid.NewGuid(), Guid.NewGuid(), "Processing"), user: null).ToList();
 
         await Assert.That(links.Any(link => link.Rel == "replay")).IsFalse();
-        await Assert.That(links.Any(link => link.Rel == "park")).IsTrue();
+        await Assert.That(links.Any(link => link.Rel == "park")).IsFalse();
         await Assert.That(links.Any(link => link.Rel == "resolve-without-replay")).IsFalse();
+    }
+
+    [Test]
+    public async Task UnknownStatusRowsExposeReconcileAndResolveButNotReplay()
+    {
+        var policy = new EmailDispatchStatusCollectionLinkPolicy();
+
+        var links = policy.GetItemLinks(CreateStatus(Guid.NewGuid(), Guid.NewGuid(), "Unknown"), user: null).ToList();
+
+        await Assert.That(links.Any(link => link.Rel == "reconcile")).IsTrue();
+        await Assert.That(links.Any(link => link.Rel == "resolve-without-replay")).IsTrue();
+        await Assert.That(links.Any(link => link.Rel == "replay")).IsFalse();
     }
 
     [Test]

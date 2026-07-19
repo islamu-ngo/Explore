@@ -62,6 +62,18 @@ public sealed class EmailDispatchRabbitMqDeadLetterReplayDecisionTests
     }
 
     [Test]
+    public async Task DecideWhenRowUnknownRequiresExplicitReconciliation()
+    {
+        var pointer = CreatePointer();
+        var dispatch = CreateDispatch(pointer, EmailDispatchStatus.Unknown);
+
+        var decision = EmailDispatchRabbitMqDeadLetterReplayDecision.Decide(pointer, dispatch);
+
+        await Assert.That(decision.Action).IsEqualTo(EmailDispatchRabbitMqDeadLetterReplayAction.Park);
+        await Assert.That(decision.FailureCategory).IsEqualTo("unknown_requires_reconciliation");
+    }
+
+    [Test]
     public async Task DecideWhenRowPendingReplaysWithoutDurableReset()
     {
         var pointer = CreatePointer();

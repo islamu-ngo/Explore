@@ -13,6 +13,7 @@ namespace ApplicationUnitTests.Features.EmailDispatch.Commands;
 public sealed class ReplayEmailDispatchCommandHandlerTests
 {
     private readonly IEmailDispatchOutboxRepository _repository = Substitute.For<IEmailDispatchOutboxRepository>();
+    private readonly IUnitOfWork _unitOfWork = CreateUnitOfWork();
 
     [Test]
     public async Task HandleWhenOutboxIdMissingReturnsValidationFailure()
@@ -110,7 +111,17 @@ public sealed class ReplayEmailDispatchCommandHandlerTests
             Arg.Any<CancellationToken>());
     }
 
-    private ReplayEmailDispatchCommandHandler CreateHandler() => new(_repository);
+    private ReplayEmailDispatchCommandHandler CreateHandler() => new(_repository, _unitOfWork);
+
+    private static IUnitOfWork CreateUnitOfWork()
+    {
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task<bool>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<Func<CancellationToken, Task<bool>>>(0)(call.ArgAt<CancellationToken>(1)));
+        return unitOfWork;
+    }
 
     private static EmailDispatchOutbox CreateOutbox(Guid tenantId, Guid outboxId, EmailDispatchStatus status) => new()
     {

@@ -2,16 +2,20 @@
 // ABOUTME: Verifies Basic Dispatch Mode health reports enabled and intentionally disabled states safely.
 
 using System.Diagnostics.Metrics;
+using System.Text;
+using System.Text.Json.Nodes;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Configuration;
 using Explore.API.HealthChecks;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Telemetry;
 using Explore.Infrastructure;
+using Explore.ServiceDefaults.HealthChecks;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Http;
 using NSubstitute;
 using TUnit.Core;
 
@@ -65,13 +69,17 @@ public sealed class EmailDispatchHealthCheckTests
         result.Data.Should().ContainKey("processingLeaseTimeoutSeconds").WhoseValue.Should().Be(30);
         result.Data.Should().ContainKey("dueDispatchWarningThreshold").WhoseValue.Should().Be(10);
         result.Data.Should().ContainKey("staleProcessingWarningThreshold").WhoseValue.Should().Be(2);
+        result.Data.Should().ContainKey("unknownWarningThreshold").WhoseValue.Should().Be(1);
         result.Data.Should().ContainKey("deadLetterWarningThreshold").WhoseValue.Should().Be(2);
         result.Data.Should().ContainKey("dueDispatchCount").WhoseValue.Should().Be(1);
         result.Data.Should().ContainKey("retryScheduledCount").WhoseValue.Should().Be(1);
         result.Data.Should().ContainKey("staleProcessingCount").WhoseValue.Should().Be(0);
         result.Data.Should().ContainKey("deadLetteredCount").WhoseValue.Should().Be(0);
+        result.Data.Should().ContainKey("unknownCount").WhoseValue.Should().Be(0);
+        result.Data.Should().ContainKey("parkedCount").WhoseValue.Should().Be(0);
+        result.Data.Should().ContainKey("optionalReminderDeferralActive").WhoseValue.Should().Be(false);
         result.Data.Should().ContainKey("processingStartedBefore").WhoseValue.Should().BeOfType<DateTime>();
-        result.Data.Should().ContainKey("oldestPendingAgeSeconds");
+        result.Data.Should().ContainKey("oldestActivePendingAgeSeconds");
         result.Data.Should().ContainKey("tenantBacklogSample");
         result.Data.Should().ContainKey("consumerId").WhoseValue.Should().Be("test-consumer");
         result.Data.Should().ContainKey("tickerQEnabled").WhoseValue.Should().Be(true);
@@ -102,6 +110,9 @@ public sealed class EmailDispatchHealthCheckTests
         await setup.Repository.DidNotReceiveWithAnyArgs().CountRetryScheduledAsync(default);
         await setup.Repository.DidNotReceiveWithAnyArgs().CountStaleProcessingAsync(default, default);
         await setup.Repository.DidNotReceiveWithAnyArgs().CountDeadLetteredAsync(default);
+        await setup.Repository.DidNotReceiveWithAnyArgs().CountUnknownAsync(default);
+        await setup.Repository.DidNotReceiveWithAnyArgs().CountParkedAsync(default);
+        await setup.Repository.DidNotReceiveWithAnyArgs().IsOptionalReminderDeferralActiveAsync(default);
     }
 
     [Test]
@@ -130,6 +141,9 @@ public sealed class EmailDispatchHealthCheckTests
         await setup.Repository.DidNotReceiveWithAnyArgs().CountRetryScheduledAsync(default);
         await setup.Repository.DidNotReceiveWithAnyArgs().CountStaleProcessingAsync(default, default);
         await setup.Repository.DidNotReceiveWithAnyArgs().CountDeadLetteredAsync(default);
+        await setup.Repository.DidNotReceiveWithAnyArgs().CountUnknownAsync(default);
+        await setup.Repository.DidNotReceiveWithAnyArgs().CountParkedAsync(default);
+        await setup.Repository.DidNotReceiveWithAnyArgs().IsOptionalReminderDeferralActiveAsync(default);
     }
 
     [Test]
@@ -158,6 +172,9 @@ public sealed class EmailDispatchHealthCheckTests
         await setup.Repository.DidNotReceiveWithAnyArgs().CountRetryScheduledAsync(default);
         await setup.Repository.DidNotReceiveWithAnyArgs().CountStaleProcessingAsync(default, default);
         await setup.Repository.DidNotReceiveWithAnyArgs().CountDeadLetteredAsync(default);
+        await setup.Repository.DidNotReceiveWithAnyArgs().CountUnknownAsync(default);
+        await setup.Repository.DidNotReceiveWithAnyArgs().CountParkedAsync(default);
+        await setup.Repository.DidNotReceiveWithAnyArgs().IsOptionalReminderDeferralActiveAsync(default);
     }
 
     [Test]
@@ -229,6 +246,32 @@ public sealed class EmailDispatchHealthCheckTests
     }
 
     [Test]
+    public async Task CheckHealthAsyncWhenUnknownAtThresholdReturnsDegradedWhileParkedRowsRemainInformational()
+    {
+        var setup = CreateHealthCheck(
+            new EmailDispatchProcessorSettings
+            {
+                Enabled = true,
+                Mode = EmailDispatchProcessorMode.TickerQ,
+                HealthUnknownWarningThreshold = 1,
+                ConsumerId = "unknown-health"
+            },
+            new TickerQSchedulerOptions { Enabled = true },
+            unknownCount: 1,
+            parkedCount: 5,
+            optionalReminderDeferralActive: true);
+        using var services = setup.Services;
+
+        var result = await setup.HealthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        result.Status.Should().Be(HealthStatus.Degraded);
+        result.Description.Should().Contain("reconciliation");
+        result.Data.Should().ContainKey("unknownCount").WhoseValue.Should().Be(1);
+        result.Data.Should().ContainKey("parkedCount").WhoseValue.Should().Be(5);
+        result.Data.Should().ContainKey("optionalReminderDeferralActive").WhoseValue.Should().Be(true);
+    }
+
+    [Test]
     public async Task CheckHealthAsyncWhenDueRetryBacklogAtThresholdReturnsDegraded()
     {
         var setup = CreateHealthCheck(
@@ -277,9 +320,65 @@ public sealed class EmailDispatchHealthCheckTests
 
         result.Status.Should().Be(HealthStatus.Degraded);
         result.Description.Should().Contain("oldest pending");
-        result.Data["oldestPendingAgeSeconds"].Should().BeOfType<double>().Which.Should().BeGreaterThan(60);
+        result.Data["oldestActivePendingAgeSeconds"].Should().BeOfType<double>().Which.Should().BeGreaterThan(60);
         result.Data["tenantBacklogSample"].Should().BeAssignableTo<IReadOnlyDictionary<Guid, int>>()
             .Which.Should().ContainSingle().Which.Key.Should().Be(tenantId);
+    }
+
+    [Test]
+    public async Task PublicHealthSerializationRedactsTenantBacklogAndSensitiveEmailIdentifiers()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var setup = CreateHealthCheck(
+            new EmailDispatchProcessorSettings
+            {
+                Enabled = true,
+                Mode = EmailDispatchProcessorMode.TickerQ,
+                ConsumerId = "public-health"
+            },
+            new TickerQSchedulerOptions { Enabled = true },
+            dueDispatchByTenant: new Dictionary<Guid, int> { [tenantId] = 2 });
+        using var services = setup.Services;
+        var result = await setup.HealthCheck.CheckHealthAsync(new HealthCheckContext());
+        var sensitiveData = result.Data.ToDictionary(entry => entry.Key, entry => entry.Value);
+        sensitiveData["tenantId"] = tenantId;
+        sensitiveData["recipientAddress"] = "person@example.test";
+        sensitiveData["subject"] = "Private subject";
+        sensitiveData["body"] = "Private body";
+        sensitiveData["reportEvidence"] = "Private evidence";
+        sensitiveData["eventTitle"] = "Private event";
+        sensitiveData["userId"] = 42;
+        sensitiveData["providerId"] = 17;
+        var report = new HealthReport(
+            new Dictionary<string, HealthReportEntry>
+            {
+                ["email-dispatch"] = new(
+                    result.Status,
+                    result.Description,
+                    TimeSpan.Zero,
+                    result.Exception,
+                    sensitiveData)
+            },
+            TimeSpan.Zero);
+        var context = new DefaultHttpContext();
+        context.Response.Body = new MemoryStream();
+
+        await HealthCheckResponseWriter.WriteAsync(context, report);
+
+        context.Response.Body.Position = 0;
+        using var reader = new StreamReader(context.Response.Body, Encoding.UTF8, leaveOpen: true);
+        var json = await reader.ReadToEndAsync();
+        var serializedData = JsonNode.Parse(json)!["checks"]!.AsArray()[0]!["data"]!.AsObject();
+        serializedData["tenantId"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
+        serializedData["userId"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
+        serializedData["providerId"]!.GetValue<string>().Should().Be(HealthCheckResponseWriter.RedactedValue);
+        json.Should().NotContain(tenantId.ToString());
+        json.Should().NotContain("person@example.test");
+        json.Should().NotContain("Private subject");
+        json.Should().NotContain("Private body");
+        json.Should().NotContain("Private evidence");
+        json.Should().NotContain("Private event");
+        json.Should().Contain(HealthCheckResponseWriter.RedactedValue);
     }
 
     private static (
@@ -292,6 +391,9 @@ public sealed class EmailDispatchHealthCheckTests
             int retryScheduledCount = 0,
             int staleProcessingCount = 0,
             int deadLetteredCount = 0,
+            int unknownCount = 0,
+            int parkedCount = 0,
+            bool optionalReminderDeferralActive = false,
             DateTime? oldestDueCreatedAt = null,
             IReadOnlyDictionary<Guid, int>? dueDispatchByTenant = null)
     {
@@ -304,6 +406,12 @@ public sealed class EmailDispatchHealthCheckTests
             .Returns(Task.FromResult(staleProcessingCount));
         repository.CountDeadLetteredAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(deadLetteredCount));
+        repository.CountUnknownAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(unknownCount));
+        repository.CountParkedAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(parkedCount));
+        repository.IsOptionalReminderDeferralActiveAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(optionalReminderDeferralActive));
         repository.GetOldestDueCreatedAtAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(oldestDueCreatedAt));
         repository.CountDueDispatchByTenantAsync(

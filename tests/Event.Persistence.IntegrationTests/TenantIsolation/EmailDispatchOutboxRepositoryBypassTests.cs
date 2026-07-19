@@ -3,6 +3,7 @@
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence.Repositories;
@@ -49,22 +50,17 @@ public class EmailDispatchOutboxRepositoryBypassTests(PostgreSqlContainerFixture
             .ToListAsync();
 
         var repository = new EmailDispatchOutboxRepository(tenantBContext);
-        var pendingBatch = await repository.GetPendingBatch(10, now, CancellationToken.None);
         var rabbitMqBatch = await repository.GetRabbitMqPublishBatch(
             10,
             now,
             retryAttemptsBefore,
             CancellationToken.None);
         var leaseToken = Guid.CreateVersion7();
-        var claimed = await repository.TryMarkAsProcessing(
-            eligible.Id,
-            leaseToken,
-            now,
+        var claimed = await repository.TryClaimSpecificAsync(
+            CreateSpecificClaimRequest(eligible, leaseToken, now),
             CancellationToken.None);
-        var futureClaimed = await repository.TryMarkAsProcessing(
-            retryFuture.Id,
-            Guid.CreateVersion7(),
-            now,
+        var futureClaimed = await repository.TryClaimSpecificAsync(
+            CreateSpecificClaimRequest(retryFuture, Guid.CreateVersion7(), now),
             CancellationToken.None);
 
         await using var verifyContext = fixture.CreateDbContext();
@@ -79,13 +75,11 @@ public class EmailDispatchOutboxRepositoryBypassTests(PostgreSqlContainerFixture
             .ToDictionaryAsync(dispatch => dispatch.Id);
 
         await Assert.That(visibleWithoutBypass).IsEquivalentTo([ambientPaused.Id]);
-        await Assert.That(pendingBatch.Select(dispatch => dispatch.Id))
-            .IsEquivalentTo([eligible.Id, retryDue.Id, throttled.Id, ambientPaused.Id]);
         await Assert.That(rabbitMqBatch.Select(dispatch => dispatch.Id))
             .IsEquivalentTo([eligible.Id, retryDue.Id]);
 
-        await Assert.That(claimed).IsTrue();
-        await Assert.That(futureClaimed).IsFalse();
+        await Assert.That(claimed).IsNotNull();
+        await Assert.That(futureClaimed).IsNull();
         await Assert.That(rows[eligible.Id].TenantId).IsEqualTo(tenantA.Id);
         await Assert.That(rows[eligible.Id].Status).IsEqualTo(EmailDispatchStatus.Processing);
         await Assert.That(rows[eligible.Id].ProcessingLeaseToken).IsEqualTo(leaseToken);
@@ -93,6 +87,20 @@ public class EmailDispatchOutboxRepositoryBypassTests(PostgreSqlContainerFixture
         await Assert.That(rows[retryFuture.Id].Status).IsEqualTo(EmailDispatchStatus.RetryScheduled);
         await Assert.That(rows[ambientPaused.Id].Status).IsEqualTo(EmailDispatchStatus.Pending);
     }
+
+    private static EmailDispatchSpecificClaimRequest CreateSpecificClaimRequest(
+        EmailDispatchOutbox dispatch,
+        Guid leaseToken,
+        DateTime claimedAt) =>
+        new(
+            dispatch.TenantId,
+            dispatch.PublishEventId,
+            leaseToken,
+            20,
+            5,
+            100,
+            50,
+            claimedAt);
 
     [Test]
     public async Task TenantOperationBypasses_WithAmbientTenant_ReturnAndUpdateOnlyExplicitTenantRows()
@@ -206,69 +214,6 @@ public class EmailDispatchOutboxRepositoryBypassTests(PostgreSqlContainerFixture
         await Assert.That(rows[tenantAReplayable.Id].Status).IsEqualTo(EmailDispatchStatus.Pending);
         await Assert.That(rows[tenantAReplayable.Id].UnknownAt).IsNull();
         await Assert.That(rows[tenantBStatus.Id].Status).IsEqualTo(EmailDispatchStatus.Pending);
-    }
-
-    [Test]
-    public async Task ReceiptClaimBypass_WithAmbientTenant_UsesTenantAndPublishEventIdempotency()
-    {
-        await fixture.ResetAsync();
-        await using var seedContext = fixture.CreateDbContext();
-
-        var tenantA = CreateTenant("email-receipt-a");
-        var tenantB = CreateTenant("email-receipt-b");
-        seedContext.Tenants.AddRange(tenantA, tenantB);
-        await seedContext.SaveChangesAsync();
-
-        var now = new DateTime(2026, 1, 6, 12, 0, 0, DateTimeKind.Utc);
-        var tenantADispatch = CreateDispatch(tenantA.Id, "receipt-a", EmailDispatchStatus.Pending, now.AddMinutes(-2));
-        var tenantBDispatch = CreateDispatch(tenantB.Id, "receipt-b", EmailDispatchStatus.Pending, now.AddMinutes(-1));
-        var tenantBReceipt = CreateReceipt(
-            tenantB.Id,
-            tenantBDispatch.PublishEventId,
-            tenantBDispatch.Id,
-            "existing-b",
-            now);
-        seedContext.EmailDispatchOutbox.AddRange(tenantADispatch, tenantBDispatch);
-        seedContext.EmailDispatchReceipts.Add(tenantBReceipt);
-        await seedContext.SaveChangesAsync();
-
-        await using var tenantBContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantB.Id));
-        var visibleReceiptsWithoutBypass = await tenantBContext.EmailDispatchReceipts
-            .AsNoTracking()
-            .Select(receipt => receipt.Id)
-            .ToListAsync();
-
-        var repository = new EmailDispatchOutboxRepository(tenantBContext);
-        var tenantAReceipt = CreateReceipt(
-            tenantA.Id,
-            tenantADispatch.PublishEventId,
-            tenantADispatch.Id,
-            "consumer-a",
-            now);
-        var claimed = await repository.TryClaimReceipt(tenantAReceipt, CancellationToken.None);
-        var duplicateClaimed = await repository.TryClaimReceipt(
-            CreateReceipt(
-                tenantA.Id,
-                tenantADispatch.PublishEventId,
-                tenantADispatch.Id,
-                "consumer-a-duplicate",
-                now),
-            CancellationToken.None);
-
-        await using var verifyContext = fixture.CreateDbContext();
-        var receiptCountsByTenant = await verifyContext.EmailDispatchReceipts
-            .AsNoTracking()
-            .Where(receipt => receipt.PublishEventId == tenantADispatch.PublishEventId
-                || receipt.PublishEventId == tenantBDispatch.PublishEventId)
-            .GroupBy(receipt => receipt.TenantId)
-            .Select(group => new { TenantId = group.Key, Count = group.Count() })
-            .ToDictionaryAsync(group => group.TenantId, group => group.Count);
-
-        await Assert.That(visibleReceiptsWithoutBypass).IsEquivalentTo([tenantBReceipt.Id]);
-        await Assert.That(claimed).IsTrue();
-        await Assert.That(duplicateClaimed).IsFalse();
-        await Assert.That(receiptCountsByTenant[tenantA.Id]).IsEqualTo(1);
-        await Assert.That(receiptCountsByTenant[tenantB.Id]).IsEqualTo(1);
     }
 
     private static Tenant CreateTenant(string slugPrefix)
@@ -401,28 +346,6 @@ public class EmailDispatchOutboxRepositoryBypassTests(PostgreSqlContainerFixture
             IsPaused = isPaused,
             PauseReason = isPaused ? "paused for maintenance" : null,
             PausedAt = isPaused ? now : null,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
-    }
-
-    private static EmailDispatchReceipt CreateReceipt(
-        Guid tenantId,
-        Guid publishEventId,
-        Guid outboxId,
-        string consumerId,
-        DateTime now)
-    {
-        return new EmailDispatchReceipt
-        {
-            Id = Guid.CreateVersion7(),
-            TenantId = tenantId,
-            PublishEventId = publishEventId,
-            EmailDispatchOutboxId = outboxId,
-            Status = EmailDispatchReceiptStatus.Processing,
-            ConsumerId = consumerId,
-            FirstSeenAt = now,
-            ProcessingStartedAt = now,
             CreatedAt = now,
             UpdatedAt = now,
         };

@@ -15,16 +15,15 @@ public sealed class BusinessMetricsEmailDispatchTests
     {
         using var metricsCapture = new MetricsCapture();
         var metrics = CreateMetrics();
-        var tenantId = Guid.NewGuid().ToString();
 
-        metrics.RecordEmailDispatchAttempt(tenantId, "retry_scheduled", "smtp_send_failed");
+        metrics.RecordEmailDispatchAttempt("retry_scheduled", "smtp_send_failed");
 
-        var measurement = await metricsCapture.SingleByTenantAsync("explore.email_dispatch.attempts", tenantId);
+        var measurement = await metricsCapture.SingleAsync("explore.email_dispatch.attempts");
 
         await Assert.That(measurement.Value).IsEqualTo(1);
-        await Assert.That(measurement.Tags["tenant_id"]?.ToString()).IsEqualTo(tenantId);
         await Assert.That(measurement.Tags["outcome"]?.ToString()).IsEqualTo("retry_scheduled");
         await Assert.That(measurement.Tags["failure_category"]?.ToString()).IsEqualTo("smtp_send_failed");
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("tenant_id");
     }
 
     [Test]
@@ -33,12 +32,11 @@ public sealed class BusinessMetricsEmailDispatchTests
         using var metricsCapture = new MetricsCapture();
         var metrics = CreateMetrics();
 
-        var tenantId = Guid.NewGuid().ToString();
+        metrics.RecordEmailDispatchAttempt("sent");
 
-        metrics.RecordEmailDispatchAttempt(tenantId, "sent");
+        var measurement = await metricsCapture.SingleAsync("explore.email_dispatch.attempts");
 
-        var measurement = await metricsCapture.SingleByTenantAsync("explore.email_dispatch.attempts", tenantId);
-
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("tenant_id");
         await Assert.That(measurement.Tags.Keys).DoesNotContain("recipient");
         await Assert.That(measurement.Tags.Keys).DoesNotContain("recipient_email");
         await Assert.That(measurement.Tags.Keys).DoesNotContain("subject");
@@ -55,14 +53,13 @@ public sealed class BusinessMetricsEmailDispatchTests
     {
         using var metricsCapture = new MetricsCapture();
         var metrics = CreateMetrics();
-        var tenantId = Guid.NewGuid().ToString();
 
-        metrics.RecordEmailDispatchRabbitMqConsume(tenantId, "acked", "none");
+        metrics.RecordEmailDispatchRabbitMqConsume("acked", "none");
 
-        var measurement = await metricsCapture.SingleByTenantAsync("explore.email_dispatch.rabbitmq.consumes", tenantId);
+        var measurement = await metricsCapture.SingleAsync("explore.email_dispatch.rabbitmq.consumes");
 
         await Assert.That(measurement.Value).IsEqualTo(1);
-        await Assert.That(measurement.Tags["tenant_id"]?.ToString()).IsEqualTo(tenantId);
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("tenant_id");
         await Assert.That(measurement.Tags["outcome"]?.ToString()).IsEqualTo("acked");
         await Assert.That(measurement.Tags["failure_category"]?.ToString()).IsEqualTo("none");
     }
@@ -73,12 +70,11 @@ public sealed class BusinessMetricsEmailDispatchTests
         using var metricsCapture = new MetricsCapture();
         var metrics = CreateMetrics();
 
-        var tenantId = Guid.NewGuid().ToString();
+        metrics.RecordEmailDispatchRabbitMqConsume("rejected", "missing_outbox");
 
-        metrics.RecordEmailDispatchRabbitMqConsume(tenantId, "rejected", "missing_row");
+        var measurement = await metricsCapture.SingleAsync("explore.email_dispatch.rabbitmq.consumes");
 
-        var measurement = await metricsCapture.SingleByTenantAsync("explore.email_dispatch.rabbitmq.consumes", tenantId);
-
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("tenant_id");
         await Assert.That(measurement.Tags.Keys).DoesNotContain("recipient");
         await Assert.That(measurement.Tags.Keys).DoesNotContain("recipient_email");
         await Assert.That(measurement.Tags.Keys).DoesNotContain("subject");
@@ -97,18 +93,67 @@ public sealed class BusinessMetricsEmailDispatchTests
     {
         using var metricsCapture = new MetricsCapture();
         var metrics = CreateMetrics();
-        var tenantId = Guid.CreateVersion7().ToString();
 
-        metrics.RecordEmailDispatchTenantBacklog(tenantId, 17);
+        metrics.RecordEmailDispatchTenantBacklog(3, 17);
         metrics.RecordEmailDispatchOldestPendingAge(125.5);
+        metrics.RecordEmailDispatchOptionalReminderDeferral(true);
+        metricsCapture.Observe();
 
-        var backlog = await metricsCapture.SingleByTenantAsync("explore.email_dispatch.tenant_backlog", tenantId);
+        var backlog = await metricsCapture.SingleAsync("explore.email_dispatch.tenant_backlog");
         var oldest = await metricsCapture.SingleAsync("explore.email_dispatch.oldest_pending_age");
+        var deferral = await metricsCapture.SingleAsync("explore.email_dispatch.optional_reminder_deferral");
 
         await Assert.That(backlog.Value).IsEqualTo(17);
-        await Assert.That(backlog.Tags.Keys).IsEquivalentTo(["tenant_id"]);
+        await Assert.That(backlog.Tags.Keys).IsEquivalentTo(["sample_rank"]);
+        await Assert.That(backlog.Tags["sample_rank"]).IsEqualTo(3);
         await Assert.That(oldest.DoubleValue).IsEqualTo(125.5);
         await Assert.That(oldest.Tags).IsEmpty();
+        await Assert.That(deferral.Value).IsEqualTo(1);
+        await Assert.That(deferral.Tags).IsEmpty();
+    }
+
+    [Test]
+    public async Task OptionalReminderDeferralGaugeExportsCurrentState()
+    {
+        using var metricsCapture = new MetricsCapture();
+        var metrics = CreateMetrics();
+
+        metrics.RecordEmailDispatchOptionalReminderDeferral(false);
+        metricsCapture.Observe();
+        metrics.RecordEmailDispatchOptionalReminderDeferral(true);
+        metricsCapture.Observe();
+
+        var measurement = metricsCapture.Latest("explore.email_dispatch.optional_reminder_deferral");
+
+        await Assert.That(measurement.Value).IsEqualTo(1);
+        await Assert.That(measurement.Tags).IsEmpty();
+    }
+
+    [Test]
+    public async Task EmailDispatchOutcomeTagsUseClosedVocabulariesWithOtherFallback()
+    {
+        using var metricsCapture = new MetricsCapture();
+        var metrics = CreateMetrics();
+        metrics.RecordEmailDispatchAttempt("recipient@example.test", "raw-provider-error-123");
+        metrics.RecordEmailDispatchOperationalOutcome("skipped", "recipient_email_unverified");
+        metrics.RecordEmailDispatchRabbitMqPublish("tenant-123", "provider-message-456");
+        metrics.RecordEmailDispatchRabbitMqConsume("user-123", "delivery-456");
+
+        var attempt = await metricsCapture.SingleAsync("explore.email_dispatch.attempts");
+        var operational = await metricsCapture.SingleAsync("explore.email_dispatch.operational_outcomes");
+        var publish = await metricsCapture.SingleAsync("explore.email_dispatch.rabbitmq.publishes");
+        var consume = await metricsCapture.SingleAsync("explore.email_dispatch.rabbitmq.consumes");
+
+        await Assert.That(attempt.Tags["outcome"]).IsEqualTo("other");
+        await Assert.That(attempt.Tags["failure_category"]).IsEqualTo("other");
+        await Assert.That(operational.Tags["outcome"]).IsEqualTo("skipped");
+        await Assert.That(operational.Tags["reason"]).IsEqualTo("recipient_email_unverified");
+        await Assert.That(publish.Tags["outcome"]).IsEqualTo("other");
+        await Assert.That(publish.Tags["failure_category"]).IsEqualTo("other");
+        await Assert.That(publish.Tags.Keys).DoesNotContain("tenant_id");
+        await Assert.That(consume.Tags["outcome"]).IsEqualTo("other");
+        await Assert.That(consume.Tags["failure_category"]).IsEqualTo("other");
+        await Assert.That(consume.Tags.Keys).DoesNotContain("tenant_id");
     }
 
     private static BusinessMetrics CreateMetrics()
@@ -160,37 +205,16 @@ public sealed class BusinessMetricsEmailDispatchTests
             _listener.Start();
         }
 
-        public async Task<Measurement> SingleByTenantAsync(string instrumentName, string tenantId)
+        public void Observe()
         {
-            for (var attempt = 0; attempt < 20; attempt++)
-            {
-                Measurement[] snapshot;
-                lock (_measurementsLock)
-                {
-                    snapshot = [.. _measurements];
-                }
+            _listener.RecordObservableInstruments();
+        }
 
-                var matches = snapshot
-                    .Where(measurement => measurement.InstrumentName == instrumentName)
-                    .Where(measurement => measurement.Tags.TryGetValue("tenant_id", out var value)
-                        && string.Equals(value?.ToString(), tenantId, StringComparison.Ordinal))
-                    .ToList();
-
-                if (matches.Count > 0)
-                {
-                    return matches.Single();
-                }
-
-                await Task.Delay(10);
-            }
-
+        public Measurement Latest(string instrumentName)
+        {
             lock (_measurementsLock)
             {
-                return _measurements
-                    .Where(measurement => measurement.InstrumentName == instrumentName)
-                    .Where(measurement => measurement.Tags.TryGetValue("tenant_id", out var value)
-                        && string.Equals(value?.ToString(), tenantId, StringComparison.Ordinal))
-                    .Single();
+                return _measurements.Last(value => value.InstrumentName == instrumentName);
             }
         }
 

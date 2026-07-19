@@ -2,6 +2,7 @@
 // ABOUTME: Verifies retired broker events fail closed while local fanout and provider sync still route.
 
 using System.Text.Json;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Management.Handlers.Commands;
@@ -19,6 +20,38 @@ namespace Explore.Infrastructure.Tests.Infrastructure;
 
 public sealed class CompositeOutboxMessageDispatcherTests
 {
+    [Test]
+    public async Task DispatchAsync_WithFanoutOccurrencePointer_RoutesToDurableHandoff()
+    {
+        var occurrence = CreateOccurrence();
+        var occurrenceRepository = Substitute.For<INotificationFanoutOccurrenceRepository>();
+        var runRepository = Substitute.For<INotificationFanoutRunRepository>();
+        occurrenceRepository.GetByPointerAsync(
+                Arg.Any<NotificationFanoutOccurrenceRequested>(),
+                false,
+                Arg.Any<CancellationToken>())
+            .Returns(occurrence);
+        runRepository.EnsurePendingOccurrenceRunAsync(
+                occurrence.TenantId,
+                occurrence.Id,
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns(CreateRun(occurrence));
+        var dispatcher = CreateDispatcher(
+            Substitute.For<IEventPublishedNotificationFanoutService>(),
+            Substitute.For<IEventModerationNotificationFanoutService>(),
+            occurrenceRepository: occurrenceRepository,
+            runRepository: runRepository);
+
+        await dispatcher.DispatchAsync(NotificationFanoutOccurrenceOutboxMessageFactory.Create(occurrence));
+
+        await runRepository.Received(1).EnsurePendingOccurrenceRunAsync(
+            occurrence.TenantId,
+            occurrence.Id,
+            Arg.Is<Guid>(runId => runId != Guid.Empty && runId != occurrence.Id),
+            Arg.Any<CancellationToken>());
+    }
+
     [Test]
     public async Task DispatchAsync_WithInternalFanoutEvent_RoutesToFanoutServiceOnly()
     {
@@ -216,13 +249,62 @@ public sealed class CompositeOutboxMessageDispatcherTests
         IEventPublishedNotificationFanoutService fanoutService,
         IEventModerationNotificationFanoutService moderationFanoutService,
         IReportProviderSyncDispatcher? reportProviderSyncDispatcher = null,
-        IMediator? mediator = null)
+        IMediator? mediator = null,
+        INotificationFanoutOccurrenceRepository? occurrenceRepository = null,
+        INotificationFanoutRunRepository? runRepository = null)
     {
         return new CompositeOutboxMessageDispatcher(
+            new NotificationFanoutOccurrenceHandoffService(
+                occurrenceRepository ?? Substitute.For<INotificationFanoutOccurrenceRepository>(),
+                runRepository ?? Substitute.For<INotificationFanoutRunRepository>()),
             fanoutService,
             moderationFanoutService,
             reportProviderSyncDispatcher ?? Substitute.For<IReportProviderSyncDispatcher>(),
             mediator ?? Substitute.For<IMediator>(),
             NullLogger<CompositeOutboxMessageDispatcher>.Instance);
     }
+
+    private static NotificationFanoutOccurrence CreateOccurrence()
+    {
+        DateTime occurredAt = DateTime.UtcNow;
+        Guid eventId = Guid.CreateVersion7();
+        return NotificationFanoutOccurrence.Create(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            eventId,
+            sessionId: null,
+            occurredAt,
+            audienceCutoffAt: occurredAt,
+            Guid.CreateVersion7(),
+            "{\"fields\":[\"startTime\"]}",
+            "{\"startTime\":\"2026-08-01T08:00:00Z\"}",
+            "{\"startTime\":\"2026-08-01T09:00:00Z\"}",
+            "event.updated",
+            templateVersion: 1,
+            (int)Explore.Domain.Enums.NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional,
+            policyVersion: 1,
+            priority: 30,
+            notBefore: occurredAt,
+            sourceType: "event",
+            sourceId: eventId,
+            coalescingKey: $"event:{eventId:N}:schedule",
+            coalescingWindowEndsAt: occurredAt);
+    }
+
+    private static NotificationFanoutRun CreateRun(NotificationFanoutOccurrence occurrence) =>
+        new()
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = occurrence.TenantId,
+            Tenant = null!,
+            FanoutOccurrenceId = occurrence.Id,
+            FanoutKind = "recipient_occurrence",
+            NotificationEntityTypeId = (int)Explore.Domain.Enums.NotificationEntityTypeEnum.Event,
+            NotificationEntityType = null!,
+            EntityId = occurrence.EventId,
+            SourceActorId = Guid.CreateVersion7(),
+            SourceActor = null!,
+            Status = "pending",
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
 }

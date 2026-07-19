@@ -20,6 +20,27 @@ public sealed class EmailDispatchAuthorizationMetadataTests
         yield return (typeof(ParkEmailDispatchCommand), AuthorizationActions.EmailDispatches.Park);
         yield return (typeof(ReplayEmailDispatchCommand), AuthorizationActions.EmailDispatches.Replay);
         yield return (typeof(ResolveEmailDispatchWithoutReplayCommand), AuthorizationActions.EmailDispatches.Resolve);
+        yield return (typeof(ReconcileUnknownEmailDispatchCommand), AuthorizationActions.EmailDispatches.Reconcile);
+    }
+
+    public static IEnumerable<(Type RequestType, string ExpectedAction)> ProcessorControlRequests()
+    {
+        yield return (typeof(GetEmailDispatchProcessorControlQuery), AuthorizationActions.InstanceSettings.View);
+        yield return (typeof(SetEmailDispatchProcessorPauseStateCommand), AuthorizationActions.InstanceSettings.Update);
+        yield return (typeof(SetEmailDispatchGlobalRateLimitOverrideCommand), AuthorizationActions.InstanceSettings.Update);
+    }
+
+    [Test]
+    [MethodDataSource(nameof(ProcessorControlRequests))]
+    public async Task ProcessorControlRequestsRequireInstanceSettingAuthorization(
+        (Type RequestType, string ExpectedAction) testCase)
+    {
+        var attribute = testCase.RequestType.GetCustomAttribute<AuthorizeResourceAttribute>();
+
+        await Assert.That(attribute).IsNotNull();
+        await Assert.That(attribute!.Resource).IsEqualTo(ResourceKinds.InstanceSetting);
+        await Assert.That(attribute.Action).IsEqualTo(testCase.ExpectedAction);
+        await Assert.That(typeof(ISecureRequest).IsAssignableFrom(testCase.RequestType)).IsTrue();
     }
 
     [Test]
@@ -43,6 +64,7 @@ public sealed class EmailDispatchAuthorizationMetadataTests
         yield return (new ParkEmailDispatchCommand { TenantId = TenantId, OutboxId = OutboxId, Reason = "unsafe" }, OutboxId.ToString("D"), null);
         yield return (new ReplayEmailDispatchCommand { TenantId = TenantId, OutboxId = OutboxId }, OutboxId.ToString("D"), null);
         yield return (new ResolveEmailDispatchWithoutReplayCommand { TenantId = TenantId, OutboxId = OutboxId, Reason = "reviewed" }, OutboxId.ToString("D"), null);
+        yield return (new ReconcileUnknownEmailDispatchCommand { TenantId = TenantId, OutboxId = OutboxId, Reason = "provider evidence" }, OutboxId.ToString("D"), null);
     }
 
     [Test]
@@ -54,7 +76,7 @@ public sealed class EmailDispatchAuthorizationMetadataTests
         await Assert.That(testCase.Request.ResourceAttributes).IsNotNull();
         await Assert.That(testCase.Request.ResourceAttributes!["tenantId"]).IsEqualTo(TenantId.ToString("D"));
 
-        if (testCase.Request is ParkEmailDispatchCommand or ReplayEmailDispatchCommand or ResolveEmailDispatchWithoutReplayCommand)
+        if (testCase.Request is ParkEmailDispatchCommand or ReplayEmailDispatchCommand or ResolveEmailDispatchWithoutReplayCommand or ReconcileUnknownEmailDispatchCommand)
         {
             await Assert.That(testCase.Request.ResourceAttributes["outboxId"]).IsEqualTo(OutboxId.ToString("D"));
         }
