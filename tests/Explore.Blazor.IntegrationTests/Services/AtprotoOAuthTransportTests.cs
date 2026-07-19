@@ -752,7 +752,12 @@ public sealed class AtprotoOAuthTransportTests
             CallbackPath = "/signin-atproto"
         });
         var unavailableServices = Substitute.For<IServiceProviderIsService>();
-        var unavailable = new AtprotoOAuthClientFactory(keyProvider, options, environment, unavailableServices);
+        var unavailable = new AtprotoOAuthClientFactory(
+            keyProvider,
+            options,
+            environment,
+            unavailableServices,
+            new AtprotoOAuthTransportFactory());
         unavailable.GetReadiness().FailureCode.Should().Be("state_store_unavailable");
 
         var availableServices = Substitute.For<IServiceProviderIsService>();
@@ -762,7 +767,8 @@ public sealed class AtprotoOAuthTransportTests
             keyProvider,
             options,
             environment,
-            availableServices);
+            availableServices,
+            new AtprotoOAuthTransportFactory());
         ready.GetReadiness().IsReady.Should().BeTrue();
         var stateStore = new MemoryOAuthStateStore();
         var sessionStore = new MemoryOAuthSessionStore();
@@ -792,6 +798,7 @@ public sealed class AtprotoOAuthTransportTests
             CallbackPath = "/signin-atproto"
         }));
         services.AddSingleton(environment);
+        services.AddSingleton<IAtprotoOAuthTransportFactory, AtprotoOAuthTransportFactory>();
         services.AddScoped<IOAuthStateStore>(_ => new MemoryOAuthStateStore());
         services.AddScoped<IOAuthSessionStore>(_ => new MemoryOAuthSessionStore());
         services.AddSingleton<AtprotoOAuthClientFactory>();

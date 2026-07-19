@@ -2,6 +2,7 @@
 // ABOUTME: Makes the rotation-pinned signing key and durable state/session prerequisites explicit and fail-closed.
 
 using System.Text.Json;
+using CarpaNet.Identity;
 using CarpaNet.OAuth;
 using CarpaNet.OAuth.Storage;
 using Explore.Atproto.Transport;
@@ -21,7 +22,8 @@ public sealed class AtprotoOAuthClientFactory(
     AtprotoClientKeyProvider keyProvider,
     IOptions<AtprotoAuthenticationOptions> configuredOptions,
     IWebHostEnvironment environment,
-    IServiceProviderIsService serviceAvailability)
+    IServiceProviderIsService serviceAvailability,
+    IAtprotoOAuthTransportFactory transportFactory)
 {
     private const string RequiredScope = "atproto transition:generic";
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
@@ -81,7 +83,7 @@ public sealed class AtprotoOAuthClientFactory(
         _ = TryGetClientIdentity(options, environment, out var identity);
         var policy = CreatePolicy(environment, options);
         var registry = new AtprotoAuthorizationServerRegistry();
-        var primary = AtprotoHardenedHttpClient.CreatePrimaryHandler(policy, ConnectTimeout);
+        var primary = transportFactory.CreatePrimaryHandler(policy, ConnectTimeout);
         var bounded = new AtprotoBoundedResponseHandler(MaximumResponseBytes, primary);
         var metadata = new AtprotoAuthorizationServerMetadataHandler(registry, policy, bounded);
         var assertions = new AtprotoPrivateKeyJwtHandler(
@@ -93,6 +95,10 @@ public sealed class AtprotoOAuthClientFactory(
             pinnedKeyId,
             metadata);
         var httpClient = new HttpClient(assertions, disposeHandler: true) { Timeout = RequestTimeout };
+        var identityResolver = new IdentityResolver(
+            httpClient,
+            dnsResolver: transportFactory.CreateDnsResolver(),
+            cache: new MemoryIdentityCache());
         var config = new OAuthClientConfig
         {
             ClientId = identity.ClientId,
@@ -101,10 +107,12 @@ public sealed class AtprotoOAuthClientFactory(
             HttpClient = httpClient,
             StateStore = stateStore,
             SessionStore = sessionStore,
-            JsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            JsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web),
+            StateExpiration = TimeSpan.FromSeconds(Math.Clamp(options.StateLifetimeSeconds, 30, 600)),
+            IdentityResolver = identityResolver
         };
 
-        return new(new OAuthSession(config), httpClient, pinnedKeyId);
+        return new(new OAuthSession(config), httpClient, identityResolver, pinnedKeyId);
     }
 
     private static bool TryGetClientIdentity(
@@ -126,10 +134,29 @@ public sealed class AtprotoOAuthClientFactory(
         && options.AllowDevelopmentLoopback);
 }
 
-public sealed class AtprotoOAuthSessionLease(OAuthSession session, HttpClient httpClient, string pinnedKeyId) : IDisposable
+public sealed class AtprotoOAuthSessionLease(
+    OAuthSession session,
+    HttpClient httpClient,
+    IdentityResolver identityResolver,
+    string pinnedKeyId) : IDisposable
 {
     public OAuthSession Session { get; } = session;
     public string PinnedKeyId { get; } = pinnedKeyId;
+
+    public async Task<AtprotoResolvedIdentity> ResolveIdentityAsync(
+        string handle,
+        CancellationToken cancellationToken)
+    {
+        var document = await identityResolver.ResolveAsync(handle, cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(document.Id)
+            || string.IsNullOrWhiteSpace(document.PdsEndpoint)
+            || !Uri.TryCreate(document.PdsEndpoint, UriKind.Absolute, out var pdsUri))
+        {
+            throw new InvalidOperationException("ATProto identity has no canonical PDS binding.");
+        }
+
+        return new(document.Id, pdsUri);
+    }
 
     public void Dispose()
     {
@@ -137,3 +164,5 @@ public sealed class AtprotoOAuthSessionLease(OAuthSession session, HttpClient ht
         httpClient.Dispose();
     }
 }
+
+public sealed record AtprotoResolvedIdentity(string Did, Uri PdsUri);
