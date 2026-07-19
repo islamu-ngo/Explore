@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Services;
+using Explore.Domain;
 using Explore.Domain.Enums;
 
 namespace Event.Application.UnitTests.Services;
@@ -218,12 +219,174 @@ public sealed class EventLocationRegistrationAccessServiceTests
 
     [Test]
     [Category("EventLocationPrivacy")]
-    public async Task PersistenceRepositoryContracts_DoNotReturnRegistrationAccessDto()
+    public async Task ResolveMany_EventScope_CoversCurrentPlacementsIncludingLaterAddedCrossDaySessions()
     {
-        var offenders = typeof(IEventRegistrationRepository).Assembly.GetTypes()
-            .Where(type => type.IsInterface && type.Namespace == "Explore.Application.Contracts.Persistence")
-            .SelectMany(type => type.GetMethods().Select(method => $"{type.Name}.{method.Name}:{method.ReturnType}"))
-            .Where(signature => signature.Contains(nameof(EventLocationRegistrationAccess), StringComparison.Ordinal))
+        var graph = CreateLoadedGraph(RegistrationScopeEnum.Event);
+        var laterDayId = Guid.CreateVersion7();
+        var laterLocationId = Guid.CreateVersion7();
+        var laterSession = AddSession(graph, laterDayId, laterLocationId);
+
+        var result = _service.ResolveMany(
+            graph.TenantId,
+            graph.Event.Id,
+            graph.User.Id,
+            Now,
+            [graph.RegisteredLocationId, laterLocationId, laterLocationId],
+            graph.Registrations);
+
+        await Assert.That(result.Count).IsEqualTo(2);
+        await Assert.That(result[graph.RegisteredLocationId].CoversRequestedEventLocation).IsTrue();
+        await Assert.That(result[laterLocationId].CoversRequestedEventLocation).IsTrue();
+        await Assert.That(result[laterLocationId].CoversWholeEvent).IsTrue();
+        await Assert.That(result[laterLocationId].CoveredEventSessionIds).Contains(laterSession.Id);
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task ResolveMany_DayScope_CoversOnlyCurrentPlacementsOnSelectedDay()
+    {
+        var graph = CreateLoadedGraph(RegistrationScopeEnum.Day);
+        var laterLocationId = Guid.CreateVersion7();
+        var otherDayLocationId = Guid.CreateVersion7();
+        var laterSession = AddSession(graph, graph.DayId, laterLocationId);
+        AddSession(graph, Guid.CreateVersion7(), otherDayLocationId);
+
+        var result = _service.ResolveMany(
+            graph.TenantId,
+            graph.Event.Id,
+            graph.User.Id,
+            Now,
+            [graph.RegisteredLocationId, laterLocationId, otherDayLocationId],
+            graph.Registrations);
+
+        await Assert.That(result[graph.RegisteredLocationId].CoversRequestedEventLocation).IsTrue();
+        await Assert.That(result[laterLocationId].CoversRequestedEventLocation).IsTrue();
+        await Assert.That(result[laterLocationId].CoveredEventSessionIds).Contains(laterSession.Id);
+        await Assert.That(result[otherDayLocationId].CoversRequestedEventLocation).IsFalse();
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task ResolveMany_SessionSelection_DoesNotCoverUnselectedCurrentSession()
+    {
+        var graph = CreateLoadedGraph(RegistrationScopeEnum.SessionSelection);
+        var unselectedLocationId = Guid.CreateVersion7();
+        AddSession(graph, graph.DayId, unselectedLocationId);
+
+        var result = _service.ResolveMany(
+            graph.TenantId,
+            graph.Event.Id,
+            graph.User.Id,
+            Now,
+            [graph.RegisteredLocationId, unselectedLocationId],
+            graph.Registrations);
+
+        await Assert.That(result[graph.RegisteredLocationId].CoversRequestedEventLocation).IsTrue();
+        await Assert.That(result[unselectedLocationId].CoversRequestedEventLocation).IsFalse();
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task ResolveMany_OverlappingIntents_SelectsStrongestValidAuthorityPerPlacement()
+    {
+        var broad = CreateLoadedGraph(
+            RegistrationScopeEnum.Event,
+            childApprovalStatusId: (int)ApprovalStatusEnum.Pending,
+            parentApprovalStatusId: (int)ApprovalStatusEnum.Pending);
+        var selected = AddRegistrationIntent(
+            broad,
+            RegistrationScopeEnum.SessionSelection,
+            broad.RegisteredSession,
+            (int)ApprovalStatusEnum.Approved,
+            (int)ApprovalStatusEnum.Approved);
+        var broadOnlyLocationId = Guid.CreateVersion7();
+        AddSession(broad, broad.DayId, broadOnlyLocationId);
+
+        var result = _service.ResolveMany(
+            broad.TenantId,
+            broad.Event.Id,
+            broad.User.Id,
+            Now,
+            [broad.RegisteredLocationId, broadOnlyLocationId],
+            [.. broad.Registrations, selected]);
+
+        await Assert.That(result[broad.RegisteredLocationId].IntentId)
+            .IsEqualTo(selected.EventRegistrationIntentId!.Value);
+        await Assert.That(result[broad.RegisteredLocationId].EffectiveState)
+            .IsEqualTo(EventLocationRegistrationEffectiveState.Confirmed);
+        await Assert.That(result[broadOnlyLocationId].EffectiveState)
+            .IsEqualTo(EventLocationRegistrationEffectiveState.Pending);
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    [Arguments("registration-tenant")]
+    [Arguments("registration-event")]
+    [Arguments("registration-user")]
+    [Arguments("intent-tenant")]
+    [Arguments("intent-event")]
+    [Arguments("intent-user")]
+    [Arguments("event-tenant")]
+    [Arguments("session-tenant")]
+    [Arguments("session-event")]
+    [Arguments("placement-tenant")]
+    [Arguments("placement-event")]
+    [Arguments("placement-id")]
+    [Arguments("parent-deleted")]
+    [Arguments("child-deleted")]
+    [Arguments("session-deleted")]
+    [Arguments("placement-deleted")]
+    public async Task ResolveMany_MalformedForeignOrDeletedLoadedGraph_ReturnsNoAuthority(string mutation)
+    {
+        var graph = CreateLoadedGraph(RegistrationScopeEnum.Event);
+        var registration = graph.Registrations[0];
+        var intent = registration.EventRegistrationIntent!;
+        var session = registration.EventSession;
+        var placement = session.EventLocation!;
+        var foreignId = Guid.CreateVersion7();
+        switch (mutation)
+        {
+            case "registration-tenant": registration.TenantId = foreignId; break;
+            case "registration-event": registration.EventId = foreignId; break;
+            case "registration-user": registration.UserId = foreignId; break;
+            case "intent-tenant": intent.TenantId = foreignId; break;
+            case "intent-event": intent.EventId = foreignId; break;
+            case "intent-user": intent.UserId = foreignId; break;
+            case "event-tenant": graph.Event.TenantId = foreignId; break;
+            case "session-tenant": session.TenantId = foreignId; break;
+            case "session-event": session.EventId = foreignId; break;
+            case "placement-tenant":
+                typeof(EventLocation).GetField("_tenantId", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .SetValue(placement, foreignId);
+                break;
+            case "placement-event": SetProperty(placement, nameof(EventLocation.EventId), foreignId); break;
+            case "placement-id": SetProperty(placement, nameof(EventLocation.Id), foreignId); break;
+            case "parent-deleted": intent.IsDeleted = true; break;
+            case "child-deleted": registration.IsDeleted = true; break;
+            case "session-deleted": session.IsDeleted = true; break;
+            case "placement-deleted": placement.DetachFinalReference(graph.User.Id, Now.UtcDateTime); break;
+        }
+
+        var result = _service.ResolveMany(
+            graph.TenantId,
+            graph.Event.Id,
+            graph.User.Id,
+            Now,
+            [graph.RegisteredLocationId],
+            graph.Registrations);
+
+        await Assert.That(!result.TryGetValue(graph.RegisteredLocationId, out var access)
+            || !access.CoversRequestedEventLocation).IsTrue();
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task EventRegistrationRepositoryContract_ReturnsEntitiesWithoutAuthorityOrQueryableLeak()
+    {
+        var offenders = typeof(IEventRegistrationRepository).GetMethods()
+            .Select(method => $"{method.Name}:{method.ReturnType}")
+            .Where(signature => signature.Contains(nameof(EventLocationRegistrationAccess), StringComparison.Ordinal)
+                || signature.Contains(nameof(IQueryable), StringComparison.Ordinal))
             .ToArray();
 
         await Assert.That(offenders).IsEmpty();
@@ -383,8 +546,127 @@ public sealed class EventLocationRegistrationAccessServiceTests
         return access;
     }
 
+    private static LoadedGraph CreateLoadedGraph(
+        RegistrationScopeEnum scope,
+        int? childApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+        int? parentApprovalStatusId = (int)ApprovalStatusEnum.Approved)
+    {
+        var tenantId = Guid.CreateVersion7();
+        var user = new User
+        {
+            Id = Guid.CreateVersion7(),
+            Pii = new UserPii { Email = "access@example.test", FirstName = "Access", LastName = "Test" }
+        };
+        var @event = new Explore.Domain.Event
+        {
+            Id = Guid.CreateVersion7(),
+            Title = "Access test",
+            Actor = null!,
+            TenantId = tenantId,
+            Tenant = null!,
+            VisibilityType = null!,
+            EventStatus = null!,
+            EventFormat = null!
+        };
+        var dayId = Guid.CreateVersion7();
+        var locationId = Guid.CreateVersion7();
+        var graph = new LoadedGraph(tenantId, user, @event, dayId, locationId);
+        var session = AddSession(graph, dayId, locationId);
+        graph.RegisteredSession = session;
+        graph.Registrations.Add(AddRegistrationIntent(
+            graph,
+            scope,
+            session,
+            childApprovalStatusId,
+            parentApprovalStatusId));
+        return graph;
+    }
+
+    private static EventSession AddSession(LoadedGraph graph, Guid dayId, Guid eventLocationId)
+    {
+        var eventLocation = EventLocation.CreatePhysical(
+            graph.TenantId,
+            graph.Event.Id,
+            Guid.CreateVersion7(),
+            graph.User.Id,
+            Now.UtcDateTime);
+        SetProperty(eventLocation, nameof(EventLocation.Id), eventLocationId);
+        var session = new EventSession
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = graph.Event.Id,
+            Event = graph.Event,
+            EventDayId = dayId,
+            TenantId = graph.TenantId,
+            Tenant = null!,
+            RegistrationModeId = (int)RegistrationModeEnum.Open
+        };
+        session.AssignEventLocation(eventLocation);
+        graph.Event.Sessions.Add(session);
+        return session;
+    }
+
+    private static EventRegistration AddRegistrationIntent(
+        LoadedGraph graph,
+        RegistrationScopeEnum scope,
+        EventSession session,
+        int? childApprovalStatusId,
+        int? parentApprovalStatusId)
+    {
+        var intent = new EventRegistrationIntent
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = graph.Event.Id,
+            Event = graph.Event,
+            UserId = graph.User.Id,
+            User = graph.User,
+            RegistrationScopeId = (int)scope,
+            RegistrationScope = null!,
+            SelectedEventDayId = scope == RegistrationScopeEnum.Day ? graph.DayId : null,
+            ApprovalStatusId = parentApprovalStatusId,
+            TenantId = graph.TenantId,
+            Tenant = null!
+        };
+        return new EventRegistration
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = graph.Event.Id,
+            Event = graph.Event,
+            UserId = graph.User.Id,
+            User = graph.User,
+            EventSessionId = session.Id,
+            EventSession = session,
+            EventRegistrationIntentId = intent.Id,
+            EventRegistrationIntent = intent,
+            ApprovalStatusId = childApprovalStatusId,
+            TenantId = graph.TenantId,
+            Tenant = null!
+        };
+    }
+
+    private sealed class LoadedGraph(
+        Guid tenantId,
+        User user,
+        Explore.Domain.Event @event,
+        Guid dayId,
+        Guid registeredLocationId)
+    {
+        public Guid TenantId { get; } = tenantId;
+        public User User { get; } = user;
+        public Explore.Domain.Event Event { get; } = @event;
+        public Guid DayId { get; } = dayId;
+        public Guid RegisteredLocationId { get; } = registeredLocationId;
+        public EventSession RegisteredSession { get; set; } = null!;
+        public List<EventRegistration> Registrations { get; } = [];
+    }
+
     private static void SetBackingField<T>(EventLocationRegistrationAccess access, string propertyName, T value)
         => typeof(EventLocationRegistrationAccess)
             .GetField($"<{propertyName}>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(access, value);
+
+    private static void SetProperty<T>(EventLocation eventLocation, string propertyName, T value)
+        => typeof(EventLocation)
+            .GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public)!
+            .SetValue(eventLocation, value);
 }

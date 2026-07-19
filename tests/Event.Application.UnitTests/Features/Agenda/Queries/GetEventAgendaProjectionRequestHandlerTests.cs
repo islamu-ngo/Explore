@@ -1,7 +1,9 @@
 // ABOUTME: Unit tests for public event agenda projection assembly.
 // ABOUTME: Verifies sessions, agenda items, and public lifecycle guards.
 using Event.Application.UnitTests.Common;
+using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Agenda;
 using Explore.Application.Features.Agenda.Handlers.Queries;
 using Explore.Application.Features.Agenda.Requests.Queries;
@@ -20,6 +22,7 @@ public class GetEventAgendaProjectionRequestHandlerTests
     private readonly IEventDayRepository _eventDayRepository;
     private readonly IEventSessionRepository _eventSessionRepository;
     private readonly IEventAgendaItemRepository _eventAgendaItemRepository;
+    private readonly IEventLocationDisclosureService _disclosureService;
     private readonly GetEventAgendaProjectionRequestHandler _handler;
 
     public GetEventAgendaProjectionRequestHandlerTests()
@@ -28,12 +31,14 @@ public class GetEventAgendaProjectionRequestHandlerTests
         _eventDayRepository = Substitute.For<IEventDayRepository>();
         _eventSessionRepository = Substitute.For<IEventSessionRepository>();
         _eventAgendaItemRepository = Substitute.For<IEventAgendaItemRepository>();
+        _disclosureService = Substitute.For<IEventLocationDisclosureService>();
 
         _handler = new GetEventAgendaProjectionRequestHandler(
             _eventRepository,
             _eventDayRepository,
             _eventSessionRepository,
-            _eventAgendaItemRepository
+            _eventAgendaItemRepository,
+            _disclosureService
         );
     }
 
@@ -177,6 +182,7 @@ public class GetEventAgendaProjectionRequestHandlerTests
     {
         var eventId = Guid.NewGuid();
         var localDate = new DateOnly(2026, 7, 15);
+        var tenantId = Guid.NewGuid();
         var parentEvent = DataBuilder.Event.Generate();
         parentEvent.Id = eventId;
         parentEvent.EventStatusId = (int)EventStatusEnum.Published;
@@ -186,8 +192,15 @@ public class GetEventAgendaProjectionRequestHandlerTests
 
         var calculator = Substitute.For<IEventScheduleProjectionCalculator>();
         var session = DataBuilder.EventSession.Generate();
+        session.TenantId = tenantId;
         session.EventId = eventId;
-        session.LocationId = Guid.NewGuid();
+        var eventLocation = EventLocation.CreatePhysical(
+            tenantId,
+            eventId,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            DateTime.UtcNow);
+        session.AssignEventLocation(eventLocation);
         session.RoomId = Guid.NewGuid();
         session.StartTime = new DateTimeOffset(2026, 7, 15, 8, 0, 0, TimeSpan.Zero);
         session.EndTime = session.StartTime.Value.AddHours(1);
@@ -197,6 +210,16 @@ public class GetEventAgendaProjectionRequestHandlerTests
 
         _eventSessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([session]);
         _eventAgendaItemRepository.GetPublicByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
+        _disclosureService.ResolveManyAsync(
+                Arg.Any<IReadOnlyCollection<EventLocationDisclosureRequest>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, EventLocationDisclosureResult>
+            {
+                [eventLocation.Id] = EventLocationDisclosureResult.Public(
+                    eventLocation.Id,
+                    EventLocationDisclosureState.Available,
+                    new EventLocationDisclosureValues(VenueName: "Conference Hall"))
+            });
 
         var result = await _handler.Handle(
             new GetEventAgendaProjectionRequest { EventId = eventId },
@@ -204,6 +227,18 @@ public class GetEventAgendaProjectionRequestHandlerTests
         var entry = result!.Days.Single().Entries.Single();
 
         await Assert.That(entry.LocationId is null && entry.RoomId is null).IsTrue();
+        await Assert.That(entry.EventLocation?.Fields?.VenueName).IsEqualTo("Conference Hall");
+        await _disclosureService.Received(1).ResolveManyAsync(
+            Arg.Is<IReadOnlyCollection<EventLocationDisclosureRequest>>(requests =>
+                requests.Count == 1 &&
+                requests.Single() == new EventLocationDisclosureRequest(
+                    tenantId,
+                    eventId,
+                    eventLocation.Id,
+                    session.RoomId,
+                    RequesterUserId: null,
+                    EventLocationDisclosurePurpose.Public)),
+            CancellationToken.None);
     }
 
     [Test]

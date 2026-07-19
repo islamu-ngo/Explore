@@ -2,6 +2,7 @@
 // ABOUTME: Protects local-day grouping, section assignment, and readiness warnings.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Features.EventPrograms.Handlers.Queries;
 using Explore.Application.Features.EventPrograms.Requests.Queries;
 using Explore.Domain;
@@ -18,6 +19,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
     private readonly IEventSessionRepository _eventSessionRepository = Substitute.For<IEventSessionRepository>();
     private readonly IEventSessionGroupRepository _eventSessionGroupRepository = Substitute.For<IEventSessionGroupRepository>();
     private readonly IEventAgendaItemRepository _eventAgendaItemRepository = Substitute.For<IEventAgendaItemRepository>();
+    private readonly IEventLocationDisclosureService _disclosureService = Substitute.For<IEventLocationDisclosureService>();
 
     [Test]
     public async Task Handle_WhenEventHasGroupedSessions_ReturnsSectionsDaysItemsAndMetadata()
@@ -254,7 +256,8 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
             _eventRepository,
             _eventSessionRepository,
             _eventSessionGroupRepository,
-            _eventAgendaItemRepository);
+            _eventAgendaItemRepository,
+            _disclosureService);
     }
 
     private static Tenant CreateTenant(Guid tenantId)

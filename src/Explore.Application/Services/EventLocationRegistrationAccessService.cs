@@ -140,6 +140,7 @@ public sealed class EventLocationRegistrationAccessService : IEventLocationRegis
     {
         var intent = registration.EventRegistrationIntent;
         var session = registration.EventSession;
+        var @event = registration.Event;
         return registration.TenantId == tenantId
             && registration.EventId == eventId
             && registration.UserId == userId
@@ -149,12 +150,15 @@ public sealed class EventLocationRegistrationAccessService : IEventLocationRegis
             && intent.TenantId == tenantId
             && intent.EventId == eventId
             && intent.UserId == userId
+            && @event is not null
+            && @event.Id == eventId
+            && @event.TenantId == tenantId
+            && !@event.IsDeleted
             && session is not null
             && session.Id == registration.EventSessionId
             && session.TenantId == tenantId
             && session.EventId == eventId
-            && session.EventLocationId is { } eventLocationId
-            && eventLocationId != Guid.Empty;
+            && HasValidPlacementIdentity(session, tenantId, eventId);
     }
 
     private static LoadedIntentSource CreateLoadedIntentSource(
@@ -162,28 +166,59 @@ public sealed class EventLocationRegistrationAccessService : IEventLocationRegis
     {
         var rows = registrations.ToArray();
         var intent = rows[0].EventRegistrationIntent!;
+        var scope = (RegistrationScopeEnum)intent.RegistrationScopeId;
         var intentFact = new EventLocationRegistrationIntentFact(
             intent.Id,
             intent.EventId,
-            (RegistrationScopeEnum)intent.RegistrationScopeId,
+            scope,
             intent.SelectedEventDayId,
             intent.ApprovalStatusId,
             intent.IsDeleted,
             ExpiresAtUtc: null);
-        var coverage = rows
-            .Select(registration => new EventLocationRegistrationCoverageFact(
-                intent.Id,
-                registration.EventId,
-                registration.EventSession.EventDayId,
-                registration.EventSessionId,
-                registration.EventSession.EventLocationId!.Value,
-                registration.ApprovalStatusId,
-                registration.EventSession.RegistrationModeId,
-                registration.IsDeleted || registration.EventSession.IsDeleted,
-                ExpiresAtUtc: null))
+
+        var childrenBySession = rows
+            .GroupBy(registration => registration.EventSessionId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderBy(registration => registration.IsDeleted)
+                    .ThenByDescending(registration => registration.CoverageEstablishedAt)
+                    .ThenByDescending(registration => registration.Id)
+                    .First());
+        var sessions = scope == RegistrationScopeEnum.SessionSelection
+            ? rows.Select(registration => registration.EventSession)
+            : rows.SelectMany(registration => registration.Event.Sessions);
+        var coverage = sessions
+            .Where(session => HasValidPlacementIdentity(session, intent.TenantId, intent.EventId))
+            .DistinctBy(session => session.Id)
+            .Select(session =>
+            {
+                childrenBySession.TryGetValue(session.Id, out var child);
+                return new EventLocationRegistrationCoverageFact(
+                    intent.Id,
+                    session.EventId,
+                    session.EventDayId,
+                    session.Id,
+                    session.EventLocationId!.Value,
+                    child?.ApprovalStatusId ?? intent.ApprovalStatusId,
+                    session.RegistrationModeId,
+                    session.IsDeleted || session.EventLocation!.IsDeleted || child?.IsDeleted == true,
+                    ExpiresAtUtc: null);
+            })
             .ToImmutableArray();
         return new(intentFact, coverage);
     }
+
+    private static bool HasValidPlacementIdentity(EventSession session, Guid tenantId, Guid eventId)
+        => session.Id != Guid.Empty
+            && session.TenantId == tenantId
+            && session.EventId == eventId
+            && session.EventLocationId is { } eventLocationId
+            && eventLocationId != Guid.Empty
+            && session.EventLocation is { } eventLocation
+            && eventLocation.Id == eventLocationId
+            && eventLocation.TenantId == tenantId
+            && eventLocation.EventId == eventId;
 
     private static bool HasValidIdentity(EventLocationRegistrationAccessRequest request)
     {

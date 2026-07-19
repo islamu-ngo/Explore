@@ -6,6 +6,7 @@ using Explore.Application.Exceptions;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Registration;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -85,9 +86,15 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
         }
 
         return await _dbContext.EventRegistrations
-            .AsNoTracking()
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .AsNoTrackingWithIdentityResolution()
+            .AsSingleQuery()
             .Include(registration => registration.EventRegistrationIntent)
             .Include(registration => registration.EventSession)
+                .ThenInclude(session => session.EventLocation)
+            .Include(registration => registration.Event)
+                .ThenInclude(@event => @event.Sessions)
+                    .ThenInclude(session => session.EventLocation)
             .Where(registration => registration.TenantId == tenantId
                 && registration.EventId == eventId
                 && registration.UserId == userId
@@ -98,7 +105,9 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
                 && registration.EventRegistrationIntent.UserId == userId
                 && registration.EventSession.TenantId == tenantId
                 && registration.EventSession.EventId == eventId
-                && registration.EventSession.EventLocationId != null)
+                && registration.EventSession.EventLocationId != null
+                && registration.Event.TenantId == tenantId
+                && registration.Event.Id == eventId)
             .OrderBy(registration => registration.EventRegistrationIntentId)
             .ThenBy(registration => registration.EventSessionId)
             .ThenBy(registration => registration.Id)

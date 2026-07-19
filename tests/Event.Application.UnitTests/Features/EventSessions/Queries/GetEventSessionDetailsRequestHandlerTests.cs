@@ -21,14 +21,19 @@ public class GetEventSessionDetailsRequestHandlerTests
 {
     private readonly IEventSessionRepository _eventSessionRepository;
     private readonly IMapper _mapper;
+    private readonly IEventLocationDisclosureService _disclosureService;
     private readonly GetEventSessionDetailsRequestHandler _handler;
 
     public GetEventSessionDetailsRequestHandlerTests()
     {
         _eventSessionRepository = Substitute.For<IEventSessionRepository>();
         _mapper = Substitute.For<IMapper>();
+        _disclosureService = Substitute.For<IEventLocationDisclosureService>();
 
-        _handler = new GetEventSessionDetailsRequestHandler(_eventSessionRepository, _mapper);
+        _handler = new GetEventSessionDetailsRequestHandler(
+            _eventSessionRepository,
+            _mapper,
+            _disclosureService);
     }
 
     [Test]
@@ -130,6 +135,7 @@ public sealed class PublicEventSessionListLocationPrivacyTests
 {
     private readonly IEventSessionRepository _repository = Substitute.For<IEventSessionRepository>();
     private readonly IMapper _mapper = Substitute.For<IMapper>();
+    private readonly IEventLocationDisclosureService _disclosureService = Substitute.For<IEventLocationDisclosureService>();
 
     [Test]
     public async Task ByEvent_DoesNotExposePhysicalLocationDetails()
@@ -137,9 +143,10 @@ public sealed class PublicEventSessionListLocationPrivacyTests
         var eventId = Guid.NewGuid();
         var sessions = new List<EventSession> { DataBuilder.EventSession.Generate() };
         var mapped = new List<EventSessionListDto> { CreatePhysicalSessionDto(eventId) };
+        mapped[0].Id = sessions[0].Id;
         _repository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns(sessions);
         _mapper.Map<List<EventSessionListDto>>(sessions).Returns(mapped);
-        var handler = new GetSessionsByEventRequestHandler(_repository, _mapper);
+        var handler = new GetSessionsByEventRequestHandler(_repository, _mapper, _disclosureService);
 
         var result = await handler.Handle(
             new GetSessionsByEventRequest { EventId = eventId },
@@ -153,6 +160,7 @@ public sealed class PublicEventSessionListLocationPrivacyTests
     {
         var sessions = new List<EventSession> { DataBuilder.EventSession.Generate() };
         var mapped = new List<EventSessionListDto> { CreatePhysicalSessionDto(Guid.NewGuid()) };
+        mapped[0].Id = sessions[0].Id;
         _repository.GetPublicSessionsWithDetailsPagedAsync(1, 20, Arg.Any<CancellationToken>())
             .Returns((sessions, 1));
         _mapper.Map<List<EventSessionListDto>>(sessions).Returns(mapped);
@@ -160,7 +168,8 @@ public sealed class PublicEventSessionListLocationPrivacyTests
             _repository,
             _mapper,
             Substitute.For<ICustomPropertyQuotaResolver>(),
-            Substitute.For<ITenantContext>());
+            Substitute.For<ITenantContext>(),
+            _disclosureService);
 
         var result = await handler.Handle(new GetEventSessionListRequest(), CancellationToken.None);
 

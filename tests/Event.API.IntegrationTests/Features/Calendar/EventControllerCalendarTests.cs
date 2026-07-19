@@ -7,6 +7,7 @@ using Explore.API.Hateoas;
 using Explore.API.Services.Calendar;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.PublicExperience;
 using Explore.Application.Features.Events.Requests.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -33,6 +34,7 @@ public sealed class EventControllerCalendarTests
             _mediator,
             Substitute.For<ILogger<EventController>>(),
             Substitute.For<IResourceAssembler<EventDto, EventListDto>>(),
+            Substitute.For<IResourceAssembler<EventDiscoveryItemDto>>(),
             new IcalNetEventCalendarFileBuilder(),
             _publicUrlBuilder)
         {

@@ -4,6 +4,7 @@
 using AutoMapper;
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.Features.EventAgendaItems.Handlers.Queries;
 using Explore.Application.Features.EventAgendaItems.Requests.Queries;
@@ -18,14 +19,19 @@ public class GetEventAgendaItemDetailRequestHandlerTests
 {
     private readonly IEventAgendaItemRepository _eventAgendaItemRepository;
     private readonly IMapper _mapper;
+    private readonly IEventLocationDisclosureService _disclosureService;
     private readonly GetEventAgendaItemDetailRequestHandler _handler;
 
     public GetEventAgendaItemDetailRequestHandlerTests()
     {
         _eventAgendaItemRepository = Substitute.For<IEventAgendaItemRepository>();
         _mapper = Substitute.For<IMapper>();
+        _disclosureService = Substitute.For<IEventLocationDisclosureService>();
 
-        _handler = new GetEventAgendaItemDetailRequestHandler(_eventAgendaItemRepository, _mapper);
+        _handler = new GetEventAgendaItemDetailRequestHandler(
+            _eventAgendaItemRepository,
+            _mapper,
+            _disclosureService);
     }
 
     [Test]

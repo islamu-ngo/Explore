@@ -3,6 +3,7 @@
 
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.Features.EventSessionAgendaItems.Handlers.Queries;
 using Explore.Application.Features.EventSessionAgendaItems.Requests.Queries;
@@ -15,12 +16,13 @@ public sealed class EventSessionAgendaItemQueryHandlerCancellationTests
 {
     private readonly IEventSessionAgendaItemRepository _repository = Substitute.For<IEventSessionAgendaItemRepository>();
     private readonly IMapper _mapper = Substitute.For<IMapper>();
+    private readonly IEventLocationDisclosureService _disclosureService = Substitute.For<IEventLocationDisclosureService>();
 
     [Test]
     public async Task GetAgendaItemsBySession_ForwardsCancellationToken()
     {
         var agendaItems = new List<EventSessionAgendaItem>();
-        var handler = new GetAgendaItemsBySessionRequestHandler(_repository, _mapper);
+        var handler = new GetAgendaItemsBySessionRequestHandler(_repository, _mapper, _disclosureService);
         var request = new GetAgendaItemsBySessionRequest { EventSessionId = Guid.NewGuid() };
         using var cancellation = new CancellationTokenSource();
 
@@ -36,7 +38,7 @@ public sealed class EventSessionAgendaItemQueryHandlerCancellationTests
     public async Task GetEventSessionAgendaItemList_ForwardsCancellationToken()
     {
         var agendaItems = new List<EventSessionAgendaItem>();
-        var handler = new GetEventSessionAgendaItemListRequestHandler(_repository, _mapper);
+        var handler = new GetEventSessionAgendaItemListRequestHandler(_repository, _mapper, _disclosureService);
         var request = new GetEventSessionAgendaItemListRequest { PageNumber = 2, PageSize = 10 };
         using var cancellation = new CancellationTokenSource();
 
@@ -51,7 +53,7 @@ public sealed class EventSessionAgendaItemQueryHandlerCancellationTests
     [Test]
     public async Task GetEventSessionAgendaItemDetails_ForwardsCancellationToken()
     {
-        var handler = new GetEventSessionAgendaItemDetailsRequestHandler(_repository, _mapper);
+        var handler = new GetEventSessionAgendaItemDetailsRequestHandler(_repository, _mapper, _disclosureService);
         var request = new GetEventSessionAgendaItemDetailsRequest { Id = Guid.NewGuid() };
         using var cancellation = new CancellationTokenSource();
 
@@ -66,12 +68,13 @@ public sealed class EventSessionAgendaItemQueryHandlerCancellationTests
     [Category("EventLocationPrivacy")]
     public async Task GetAgendaItemsBySession_RedactsPhysicalLocation()
     {
-        var agendaItems = new List<EventSessionAgendaItem>();
+        var entity = CreateAgendaItem();
+        var agendaItems = new List<EventSessionAgendaItem> { entity };
         var mapped = new List<EventSessionAgendaItemListDto>
         {
-            new() { Title = "Public agenda", LocationFullName = "Private venue" }
+            new() { Id = entity.Id, Title = "Public agenda", LocationFullName = "Private venue" }
         };
-        var handler = new GetAgendaItemsBySessionRequestHandler(_repository, _mapper);
+        var handler = new GetAgendaItemsBySessionRequestHandler(_repository, _mapper, _disclosureService);
         var request = new GetAgendaItemsBySessionRequest { EventSessionId = Guid.NewGuid() };
         _repository.GetPublicBySessionAsync(request.EventSessionId, Arg.Any<CancellationToken>()).Returns(agendaItems);
         _mapper.Map<List<EventSessionAgendaItemListDto>>(agendaItems).Returns(mapped);
@@ -85,12 +88,13 @@ public sealed class EventSessionAgendaItemQueryHandlerCancellationTests
     [Category("EventLocationPrivacy")]
     public async Task GetEventSessionAgendaItemList_RedactsPhysicalLocation()
     {
-        var agendaItems = new List<EventSessionAgendaItem>();
+        var entity = CreateAgendaItem();
+        var agendaItems = new List<EventSessionAgendaItem> { entity };
         var mapped = new List<EventSessionAgendaItemListDto>
         {
-            new() { Title = "Public agenda", LocationFullName = "Private venue" }
+            new() { Id = entity.Id, Title = "Public agenda", LocationFullName = "Private venue" }
         };
-        var handler = new GetEventSessionAgendaItemListRequestHandler(_repository, _mapper);
+        var handler = new GetEventSessionAgendaItemListRequestHandler(_repository, _mapper, _disclosureService);
         var request = new GetEventSessionAgendaItemListRequest { PageNumber = 1, PageSize = 20 };
         _repository.GetPublicAgendaItemsWithDetailsPagedAsync(1, 20, Arg.Any<CancellationToken>()).Returns((agendaItems, 1));
         _mapper.Map<List<EventSessionAgendaItemListDto>>(agendaItems).Returns(mapped);
@@ -104,14 +108,14 @@ public sealed class EventSessionAgendaItemQueryHandlerCancellationTests
     [Category("EventLocationPrivacy")]
     public async Task GetEventSessionAgendaItemDetails_RedactsPhysicalLocation()
     {
-        var entity = new EventSessionAgendaItem { Title = "Public agenda", EventSession = null!, Tenant = null! };
+        var entity = CreateAgendaItem();
         var mapped = new EventSessionAgendaItemDto
         {
             Title = "Public agenda",
             LocationId = Guid.NewGuid(),
             LocationFullName = "Private venue"
         };
-        var handler = new GetEventSessionAgendaItemDetailsRequestHandler(_repository, _mapper);
+        var handler = new GetEventSessionAgendaItemDetailsRequestHandler(_repository, _mapper, _disclosureService);
         var request = new GetEventSessionAgendaItemDetailsRequest { Id = Guid.NewGuid() };
         _repository.GetPublicByIdWithDetailsAsync(request.Id, Arg.Any<CancellationToken>()).Returns(entity);
         _mapper.Map<EventSessionAgendaItemDto>(entity).Returns(mapped);
@@ -121,4 +125,17 @@ public sealed class EventSessionAgendaItemQueryHandlerCancellationTests
         await Assert.That(result!.LocationId).IsNull();
         await Assert.That(result.LocationFullName).IsNull();
     }
+
+    private static EventSessionAgendaItem CreateAgendaItem() => new()
+    {
+        Id = Guid.NewGuid(),
+        Title = "Public agenda",
+        EventSession = new EventSession
+        {
+            EventId = Guid.NewGuid(),
+            Event = null!,
+            Tenant = null!
+        },
+        Tenant = null!
+    };
 }
