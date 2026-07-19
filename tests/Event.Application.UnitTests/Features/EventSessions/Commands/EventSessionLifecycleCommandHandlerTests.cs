@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for event-session draft, schedule, and publish lifecycle command handlers.
 // ABOUTME: Verifies policy readiness, concurrency gates, schedule projection, guarded writes, and cache invalidation.
 
+using Event.Application.UnitTests.Common;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSession;
@@ -27,6 +28,16 @@ public sealed class EventSessionLifecycleCommandHandlerTests
         var eventRepository = Substitute.For<IEventRepository>();
         var cache = Substitute.For<HybridCache>();
         var parentEvent = CreateEvent(EventStatusEnum.Published);
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork
+            .ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task<EventSession>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task<EventSession>>>()(
+                call.Arg<CancellationToken>()));
+        var eventLocationAttachmentService = EventLocationAttachmentServiceTestFixture.ForExistingEvent(
+            eventRepository,
+            Guid.NewGuid());
         eventRepository.GetById(parentEvent.Id).Returns(parentEvent);
         eventSessionRepository.Create(Arg.Any<EventSession>())
             .Returns(callInfo => callInfo.Arg<EventSession>());
@@ -35,6 +46,8 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             eventRepository,
             CreatePolicyProvider(CreateSessionDraftPolicy()),
             new EventLifecycleReadinessEvaluator(),
+            unitOfWork,
+            eventLocationAttachmentService,
             cache);
 
         var result = await handler.Handle(new CreateDraftEventSessionCommand
@@ -374,7 +387,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             .Returns(call =>
             {
                 var operation = call.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>();
-                return operation(CancellationToken.None);
+                return operation(call.Arg<CancellationToken>());
             });
 
         return unitOfWork;

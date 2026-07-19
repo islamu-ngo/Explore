@@ -6,6 +6,7 @@ using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.Secrets;
+using Explore.Persistence;
 using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -23,6 +24,7 @@ public class DatabaseSeederTests(PostgreSqlContainerFixture fixture)
     private static readonly IHostEnvironment DevelopmentEnvironment = new TestHostEnvironment();
 
     [Test]
+    [Category("EventLocationPrivacy")]
     public async Task SeedAsync_InDevelopment_IsIdempotentAcrossStartups()
     {
         await fixture.ResetAsync();
@@ -30,6 +32,12 @@ public class DatabaseSeederTests(PostgreSqlContainerFixture fixture)
         await using (var context = fixture.CreateDbContext())
         {
             await DatabaseSeeder.SeedAsync(context, DevelopmentEnvironment);
+        }
+
+        CatalogLocationAuthoritySnapshot firstSeed;
+        await using (var context = fixture.CreateDbContext())
+        {
+            firstSeed = await GetCatalogLocationAuthoritySnapshotAsync(context);
         }
 
         await using (var context = fixture.CreateDbContext())
@@ -53,7 +61,127 @@ public class DatabaseSeederTests(PostgreSqlContainerFixture fixture)
         await Assert.That(visibleCatalogCount).IsEqualTo(SeedIds.IslamicEventCatalogIds.Length);
         await Assert.That(unfilteredCatalogCount).IsEqualTo(SeedIds.IslamicEventCatalogIds.Length);
         await Assert.That(softDeletedCatalogCount).IsEqualTo(0);
+
+        CatalogLocationAuthoritySnapshot secondSeed = await GetCatalogLocationAuthoritySnapshotAsync(verifyContext);
+        await Assert.That(firstSeed.SessionCount).IsEqualTo(9);
+        await Assert.That(firstSeed.GroupCount).IsEqualTo(9);
+        await Assert.That(firstSeed.EventAgendaItemCount).IsEqualTo(9);
+        await Assert.That(firstSeed.SessionAgendaItemCount).IsEqualTo(9);
+        await Assert.That(firstSeed.MismatchCount).IsEqualTo(0);
+        await Assert.That(firstSeed.DuplicateActivePairCount).IsEqualTo(0);
+        await Assert.That(firstSeed.ActiveEventLocationCount)
+            .IsEqualTo(firstSeed.CarrierEventLocationIds.Distinct().Count());
+        await Assert.That(firstSeed.InitialAuditCount).IsEqualTo(firstSeed.ActiveEventLocationCount);
+        await Assert.That(firstSeed.InitialAuditMismatchCount).IsEqualTo(0);
+        await Assert.That(secondSeed.MismatchCount).IsEqualTo(0);
+        await Assert.That(secondSeed.ActiveEventLocationCount).IsEqualTo(firstSeed.ActiveEventLocationCount);
+        await Assert.That(secondSeed.InitialAuditCount).IsEqualTo(firstSeed.InitialAuditCount);
+        await Assert.That(secondSeed.ActiveEventLocationIds.SequenceEqual(firstSeed.ActiveEventLocationIds)).IsTrue();
+        await Assert.That(secondSeed.CarrierEventLocationIds.SequenceEqual(firstSeed.CarrierEventLocationIds)).IsTrue();
     }
+
+    private static async Task<CatalogLocationAuthoritySnapshot> GetCatalogLocationAuthoritySnapshotAsync(
+        ExploreDbContext context)
+    {
+        Guid[] sessionIds = SeedData.IslamicEventSessions.Select(item => item.Id).ToArray();
+        Guid[] groupIds = SeedData.IslamicSessionGroups.Select(item => item.Id).ToArray();
+        Guid[] eventAgendaItemIds = SeedData.IslamicEventAgendaItems.Select(item => item.Id).ToArray();
+        Guid[] sessionAgendaItemIds = SeedData.IslamicSessionAgendaItems.Select(item => item.Id).ToArray();
+
+        var sessions = await context.EventSessions
+            .IgnoreQueryFilters()
+            .Where(item => sessionIds.Contains(item.Id))
+            .Select(item => new CarrierIdentity(item.TenantId, item.EventId, item.LocationId, item.EventLocationId))
+            .ToListAsync();
+        var groups = await context.EventSessionGroups
+            .IgnoreQueryFilters()
+            .Where(item => groupIds.Contains(item.Id))
+            .Select(item => new CarrierIdentity(item.TenantId, item.EventId, item.LocationId, item.EventLocationId))
+            .ToListAsync();
+        var eventAgendaItems = await context.EventAgendaItems
+            .IgnoreQueryFilters()
+            .Where(item => eventAgendaItemIds.Contains(item.Id))
+            .Select(item => new CarrierIdentity(item.TenantId, item.EventId, item.LocationId, item.EventLocationId))
+            .ToListAsync();
+        var sessionAgendaItems = await context.EventSessionAgendaItems
+            .IgnoreQueryFilters()
+            .Where(item => sessionAgendaItemIds.Contains(item.Id))
+            .Select(item => new CarrierIdentity(
+                item.TenantId,
+                item.EventSession.EventId,
+                item.LocationId,
+                item.EventLocationId))
+            .ToListAsync();
+
+        CarrierIdentity[] carriers = sessions
+            .Concat(groups)
+            .Concat(eventAgendaItems)
+            .Concat(sessionAgendaItems)
+            .ToArray();
+        EventLocation[] eventLocations = await context.EventLocations
+            .IgnoreQueryFilters()
+            .Where(item => !item.IsDeleted && SeedIds.IslamicEventCatalogIds.Contains(item.EventId))
+            .ToArrayAsync();
+        IReadOnlyDictionary<Guid, EventLocation> eventLocationById = eventLocations.ToDictionary(item => item.Id);
+        int mismatchCount = carriers.Count(carrier =>
+            carrier.EventLocationId is not { } eventLocationId
+            || !eventLocationById.TryGetValue(eventLocationId, out EventLocation? eventLocation)
+            || eventLocation.TenantId != carrier.TenantId
+            || eventLocation.EventId != carrier.EventId
+            || eventLocation.LocationId != carrier.LocationId
+            || eventLocation.IsToBeAnnounced != !carrier.LocationId.HasValue);
+        int duplicateActivePairCount = eventLocations
+            .GroupBy(item => new { item.TenantId, item.EventId, item.LocationId, item.IsToBeAnnounced })
+            .Count(group => group.Count() > 1);
+        Guid[] eventLocationIds = eventLocations.Select(item => item.Id).ToArray();
+        EventLocationDisclosureAudit[] initialAudits = await context.EventLocationDisclosureAudits
+            .IgnoreQueryFilters()
+            .Where(item => eventLocationIds.Contains(item.EventLocationId)
+                && item.PreviousPolicyVersion == 0
+                && item.NewPolicyVersion == 1
+                && item.Reason == EventLocationDisclosureAuditReasonEnum.AssociationCreated)
+            .ToArrayAsync();
+        int initialAuditMismatchCount = initialAudits.Count(audit =>
+            audit.ActorUserId != SeedIds.AdminUserId
+            || !eventLocationById.TryGetValue(audit.EventLocationId, out EventLocation? eventLocation)
+            || audit.TenantId != eventLocation.TenantId);
+
+        return new(
+            sessions.Count,
+            groups.Count,
+            eventAgendaItems.Count,
+            sessionAgendaItems.Count,
+            mismatchCount,
+            duplicateActivePairCount,
+            eventLocations.Length,
+            initialAudits.Length,
+            initialAuditMismatchCount,
+            eventLocations.Select(item => item.Id).Order().ToArray(),
+            carriers
+                .Where(item => item.EventLocationId.HasValue)
+                .Select(item => item.EventLocationId!.Value)
+                .Order()
+                .ToArray());
+    }
+
+    private sealed record CarrierIdentity(
+        Guid TenantId,
+        Guid EventId,
+        Guid? LocationId,
+        Guid? EventLocationId);
+
+    private sealed record CatalogLocationAuthoritySnapshot(
+        int SessionCount,
+        int GroupCount,
+        int EventAgendaItemCount,
+        int SessionAgendaItemCount,
+        int MismatchCount,
+        int DuplicateActivePairCount,
+        int ActiveEventLocationCount,
+        int InitialAuditCount,
+        int InitialAuditMismatchCount,
+        Guid[] ActiveEventLocationIds,
+        Guid[] CarrierEventLocationIds);
 
     [Test]
     public async Task LookupSeedAsync_RepairsCanonicalNotificationDeliveryRowsByStableId()

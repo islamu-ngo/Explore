@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for grouped EventAgendaItem update command handling.
 // ABOUTME: Covers validation, optimistic concurrency, schedule projection, relationship checks, and cache invalidation.
 
+using Event.Application.UnitTests.Common;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventAgendaItem;
@@ -8,6 +9,7 @@ using Explore.Application.Exceptions;
 using Explore.Application.Features.EventAgendaItems.Handlers.Commands;
 using Explore.Application.Features.EventAgendaItems.Requests.Commands;
 using Explore.Application.Models.Common;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Services.Scheduling;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -26,11 +28,20 @@ public class UpdateEventAgendaItemCommandHandlerTests
     private readonly ILocationRoomRepository _locationRoomRepository = Substitute.For<ILocationRoomRepository>();
     private readonly IScheduleItemKindRepository _scheduleItemKindRepository = Substitute.For<IScheduleItemKindRepository>();
     private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator = new EventScheduleProjectionCalculator();
+    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
     private readonly UpdateEventAgendaItemCommandHandler _handler;
 
     public UpdateEventAgendaItemCommandHandlerTests()
     {
+        _eventLocationAttachmentService = EventLocationAttachmentServiceTestFixture.ForExistingEvent(
+            _eventRepository,
+            Guid.NewGuid());
+        _unitOfWork
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task>>()(call.Arg<CancellationToken>()));
+
         _handler = new UpdateEventAgendaItemCommandHandler(
             _eventAgendaItemRepository,
             _eventRepository,
@@ -39,6 +50,8 @@ public class UpdateEventAgendaItemCommandHandlerTests
             _locationRoomRepository,
             _scheduleItemKindRepository,
             _scheduleProjectionCalculator,
+            _unitOfWork,
+            _eventLocationAttachmentService,
             _cache
         );
     }

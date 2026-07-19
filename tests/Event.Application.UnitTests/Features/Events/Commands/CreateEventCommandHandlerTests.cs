@@ -2,6 +2,7 @@
 // ABOUTME: Verifies event graph creation, validation failures, cache invalidation, and schedule invariants.
 
 using System.Diagnostics.Metrics;
+using Event.Application.UnitTests.Common;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
@@ -13,6 +14,7 @@ using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Application.Services.Lifecycle;
 using Explore.Application.Telemetry;
 using Explore.Domain;
@@ -127,7 +129,8 @@ public class CreateEventCommandHandlerTests
         _eventRepository.Create(Arg.Any<Explore.Domain.Event>()).Returns(callInfo =>
         {
             var entity = callInfo.Arg<Explore.Domain.Event>();
-            entity.Id = Guid.NewGuid();
+            entity.Id = Guid.CreateVersion7();
+            entity.ConcurrencyStamp = Guid.CreateVersion7();
             return entity;
         });
         _eventSessionRepository.Create(Arg.Any<EventSession>())
@@ -157,11 +160,19 @@ public class CreateEventCommandHandlerTests
             .Returns(callInfo =>
             {
                 var op = callInfo.Arg<Func<CancellationToken, Task<Guid>>>();
-                return op(CancellationToken.None);
+                return op(callInfo.Arg<CancellationToken>());
             });
 
         var meterFactory = Substitute.For<IMeterFactory>();
         meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter("test"));
+        var eventLocationRepository = Substitute.For<IEventLocationRepository>();
+        eventLocationRepository.AddAsync(Arg.Any<EventLocation>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<EventLocation>(0));
+        var eventLocationAttachmentService = new EventLocationAttachmentService(
+            eventLocationRepository,
+            _userContext,
+            _tenantContext,
+            TimeProvider.System);
 
         _handler = new CreateEventCommandHandler(
             _eventRepository,
@@ -210,7 +221,9 @@ public class CreateEventCommandHandlerTests
             _unitOfWork,
             _outboxRepository,
             _lifecyclePolicyProvider,
-            _lifecycleReadinessEvaluator
+            _lifecycleReadinessEvaluator,
+            eventLocationAttachmentService,
+            AtprotoPublicationPlannerTestFactory.Disabled()
         );
     }
 
@@ -257,6 +270,7 @@ public class CreateEventCommandHandlerTests
     {
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
         var command = new CreateEventCommand
         {
             Request = new CreateEventRequest
@@ -272,6 +286,7 @@ public class CreateEventCommandHandlerTests
         };
 
         _userContext.GetRequiredUserId().Returns(userId);
+        _tenantContext.TenantId.Returns(tenantId);
         _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
             .Returns(EventActorResult.Success(actorId, isUserReported: true));
 
@@ -338,7 +353,8 @@ public class CreateEventCommandHandlerTests
             .Returns(callInfo =>
             {
                 var evt = callInfo.Arg<Explore.Domain.Event>();
-                evt.Id = Guid.NewGuid();
+                evt.Id = Guid.CreateVersion7();
+                evt.ConcurrencyStamp = Guid.CreateVersion7();
                 evt.FirstSessionStartUtc = DateTime.UtcNow;
                 return evt;
             });
@@ -393,7 +409,8 @@ public class CreateEventCommandHandlerTests
             .Returns(callInfo =>
             {
                 var entity = callInfo.Arg<Explore.Domain.Event>();
-                entity.Id = Guid.NewGuid();
+                entity.Id = Guid.CreateVersion7();
+                entity.ConcurrencyStamp = Guid.CreateVersion7();
                 return entity;
             });
         _lifecyclePolicyProvider.GetEffectivePolicyAsync(
@@ -505,7 +522,8 @@ public class CreateEventCommandHandlerTests
             .Returns(callInfo =>
             {
                 var evt = callInfo.Arg<Explore.Domain.Event>();
-                evt.Id = Guid.NewGuid();
+                evt.Id = Guid.CreateVersion7();
+                evt.ConcurrencyStamp = Guid.CreateVersion7();
                 evt.FirstSessionStartUtc = DateTime.UtcNow;
                 return evt;
             });

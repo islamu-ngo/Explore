@@ -15,12 +15,14 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Application.Services.Lifecycle;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Federation;
 using Explore.Domain.Services.Scheduling;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -76,6 +78,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly IOutboxRepository _outboxRepository;
     private readonly IEventLifecyclePolicyProvider _lifecyclePolicyProvider;
     private readonly IEventLifecycleReadinessEvaluator _lifecycleReadinessEvaluator;
+    private readonly EventLocationAttachmentService _eventLocationAttachmentService;
+    private readonly AtprotoEventPublicationPlanner _atprotoPublicationPlanner;
 
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
@@ -124,7 +128,9 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         IUnitOfWork unitOfWork,
         IOutboxRepository outboxRepository,
         IEventLifecyclePolicyProvider lifecyclePolicyProvider,
-        IEventLifecycleReadinessEvaluator lifecycleReadinessEvaluator)
+        IEventLifecycleReadinessEvaluator lifecycleReadinessEvaluator,
+        EventLocationAttachmentService eventLocationAttachmentService,
+        AtprotoEventPublicationPlanner atprotoPublicationPlanner)
     {
         _eventRepository = eventRepository;
         _eventSessionRepository = eventSessionRepository;
@@ -173,6 +179,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         _outboxRepository = outboxRepository;
         _lifecyclePolicyProvider = lifecyclePolicyProvider;
         _lifecycleReadinessEvaluator = lifecycleReadinessEvaluator;
+        _eventLocationAttachmentService = eventLocationAttachmentService;
+        _atprotoPublicationPlanner = atprotoPublicationPlanner;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
@@ -202,6 +210,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         var timezoneId = ResolveTimezoneId(dto);
         var createdAt = DateTimeOffset.UtcNow;
         var eventEntity = BuildEventEntity(dto, actorResult, timezoneId, currentUserId, createdAt);
+        var federationOutboxId = Guid.CreateVersion7();
+        var federationCreatedAt = DateTime.UtcNow;
 
         if (eventEntity.EventStatusId == (int)EventStatusEnum.Published)
         {
@@ -236,6 +246,16 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
                 if (eventEntity.EventStatusId == (int)EventStatusEnum.Published)
                 {
+                    await _atprotoPublicationPlanner.PlanEventAsync(
+                        new AtprotoEventPublicationInput(
+                            eventEntity.TenantId,
+                            currentUserId,
+                            eventEntity.Id,
+                            eventEntity.ConcurrencyStamp,
+                            PdsSyncOperation.Create,
+                            federationOutboxId,
+                            federationCreatedAt),
+                        ct);
                     var publishedAt = DateTimeOffset.UtcNow;
                     await _outboxRepository.Create(EventPublishedOutboxMessageFactory.CreateNotificationFanoutOutboxMessage(eventEntity, publishedAt));
                 }
@@ -584,6 +604,13 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                     : sessionDto.Slug
             };
 
+            EventLocation eventLocation = await _eventLocationAttachmentService.ResolveAsync(
+                eventEntity.Id,
+                session.LocationId,
+                currentEventLocationId: null,
+                ct);
+            session.AssignEventLocation(eventLocation);
+
             session.Reschedule(sessionDto.StartTime, sessionDto.EndTime, timezoneId, _scheduleProjectionCalculator);
             session.EventDayId = session.LocalStartDate is not null
                 ? ResolveDayId(sessionDto.DayTempKey, session.LocalStartDate.Value, dayMaps)
@@ -624,6 +651,13 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             RegistrationModeId = dto.IsRegistrationRequired ? 1 : null,
             Slug = SlugGenerator.FromTitle($"{eventEntity.Title}-session-1", "session")
         };
+
+        EventLocation eventLocation = await _eventLocationAttachmentService.ResolveAsync(
+            eventEntity.Id,
+            session.LocationId,
+            currentEventLocationId: null,
+            ct);
+        session.AssignEventLocation(eventLocation);
 
         session.ReprojectLocalTimes(timezoneId, _scheduleProjectionCalculator);
         await PersistSessionWithRoomGuardAsync(session, ct);
@@ -728,6 +762,13 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 KindId = itemDto.KindId,
                 SortOrder = itemDto.SortOrder
             };
+
+            EventLocation eventLocation = await _eventLocationAttachmentService.ResolveAsync(
+                eventEntity.Id,
+                agendaItem.LocationId,
+                currentEventLocationId: null,
+                ct);
+            agendaItem.AssignEventLocation(eventLocation);
 
             agendaItem.Reschedule(itemDto.StartTime, itemDto.EndTime, timezoneId, _scheduleProjectionCalculator);
             agendaItem.EventDayId = ResolveDayId(itemDto.DayTempKey, agendaItem.LocalStartDate, dayMaps);

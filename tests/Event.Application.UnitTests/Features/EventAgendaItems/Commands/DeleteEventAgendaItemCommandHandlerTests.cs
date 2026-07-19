@@ -1,3 +1,9 @@
+// ABOUTME: Unit tests for transactional event agenda item deletion.
+// ABOUTME: Verifies missing-item handling and EventLocation detachment coordination.
+
+using Event.Application.UnitTests.Common;
+using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.EventAgendaItems.Handlers.Commands;
 using Explore.Application.Features.EventAgendaItems.Requests.Commands;
@@ -11,12 +17,23 @@ namespace Event.Application.UnitTests.Features.EventAgendaItems.Commands;
 public class DeleteEventAgendaItemCommandHandlerTests
 {
     private readonly IEventAgendaItemRepository _eventAgendaItemRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly DeleteEventAgendaItemCommandHandler _handler;
 
     public DeleteEventAgendaItemCommandHandlerTests()
     {
         _eventAgendaItemRepository = Substitute.For<IEventAgendaItemRepository>();
-        _handler = new DeleteEventAgendaItemCommandHandler(_eventAgendaItemRepository);
+        _unitOfWork = Substitute.For<IUnitOfWork>();
+        _unitOfWork
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task>>()(call.Arg<CancellationToken>()));
+        var eventLocationAttachmentService = EventLocationAttachmentServiceTestFixture.ForCreateEvent(
+            Guid.NewGuid(),
+            Guid.NewGuid());
+        _handler = new DeleteEventAgendaItemCommandHandler(
+            _eventAgendaItemRepository,
+            _unitOfWork,
+            eventLocationAttachmentService);
     }
 
     [Test]

@@ -2,10 +2,12 @@
 // ABOUTME: Protects tenant derivation, same-event assignment validation, and primary group reassignment behavior.
 
 using AutoMapper;
+using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.Features.EventSessionGroups.Handlers.Commands;
 using Explore.Application.Features.EventSessionGroups.Requests.Commands;
+using Explore.Application.Services;
 using Explore.Domain;
 using NSubstitute;
 using TUnit.Assertions;
@@ -21,7 +23,25 @@ public class EventSessionGroupCommandHandlerTests
     private readonly IEventSessionRepository _sessionRepository = Substitute.For<IEventSessionRepository>();
     private readonly ILocationRepository _locationRepository = Substitute.For<ILocationRepository>();
     private readonly ILocationRoomRepository _roomRepository = Substitute.For<ILocationRoomRepository>();
+    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly IMapper _mapper = Substitute.For<IMapper>();
+
+    public EventSessionGroupCommandHandlerTests()
+    {
+        _eventLocationAttachmentService = EventLocationAttachmentServiceTestFixture.ForExistingEvent(
+            _eventRepository,
+            Guid.NewGuid());
+        _unitOfWork
+            .ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task<EventSessionGroup>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task<EventSessionGroup>>>()(
+                call.Arg<CancellationToken>()));
+        _unitOfWork
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task>>()(call.Arg<CancellationToken>()));
+    }
 
     [Test]
     public async Task Create_DerivesTenantFromParentEvent()
@@ -57,6 +77,8 @@ public class EventSessionGroupCommandHandlerTests
             _eventRepository,
             _locationRepository,
             _roomRepository,
+            _unitOfWork,
+            _eventLocationAttachmentService,
             _mapper);
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -87,6 +109,8 @@ public class EventSessionGroupCommandHandlerTests
             _eventRepository,
             _locationRepository,
             _roomRepository,
+            _unitOfWork,
+            _eventLocationAttachmentService,
             _mapper);
 
         var result = await handler.Handle(new CreateEventSessionGroupCommand
@@ -126,7 +150,9 @@ public class EventSessionGroupCommandHandlerTests
             _groupRepository,
             _eventRepository,
             _locationRepository,
-            _roomRepository);
+            _roomRepository,
+            _unitOfWork,
+            _eventLocationAttachmentService);
 
         var result = await handler.Handle(new UpdateEventSessionGroupCommand
         {

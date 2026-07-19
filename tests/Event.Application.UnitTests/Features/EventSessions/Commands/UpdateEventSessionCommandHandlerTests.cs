@@ -8,6 +8,7 @@ using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Features.EventSessions.Handlers.Commands;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Models.Common;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
@@ -30,6 +31,7 @@ public class UpdateEventSessionCommandHandlerTests
     private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
     private readonly IEventDayRepository _eventDayRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly HybridCache _cache;
     private readonly UpdateEventSessionCommandHandler _handler;
 
@@ -45,13 +47,18 @@ public class UpdateEventSessionCommandHandlerTests
         _scheduleProjectionCalculator = new EventScheduleProjectionCalculator();
         _eventDayRepository = Substitute.For<IEventDayRepository>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
+        _eventLocationAttachmentService = EventLocationAttachmentServiceTestFixture.ForExistingEvent(
+            _eventRepository,
+            Guid.NewGuid());
         _cache = Substitute.For<HybridCache>();
         _unitOfWork
-            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>())
+            .ExecuteSerializableAsync(
+                Arg.Any<Func<CancellationToken, Task<bool>>>(),
+                Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var operation = call.Arg<Func<CancellationToken, Task>>();
-                return operation!(CancellationToken.None);
+                var operation = call.Arg<Func<CancellationToken, Task<bool>>>();
+                return operation!(call.Arg<CancellationToken>());
             });
 
         _handler = new UpdateEventSessionCommandHandler(
@@ -65,6 +72,7 @@ public class UpdateEventSessionCommandHandlerTests
             _scheduleProjectionCalculator,
             _eventDayRepository,
             _unitOfWork,
+            _eventLocationAttachmentService,
             _cache
         );
     }

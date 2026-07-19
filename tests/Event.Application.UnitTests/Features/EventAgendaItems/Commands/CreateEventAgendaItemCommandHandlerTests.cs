@@ -1,9 +1,13 @@
+// ABOUTME: Unit tests for event-level agenda item creation and schedule projection.
+// ABOUTME: Verifies tenant ownership, day linkage, and transactional EventLocation attachment.
+
 using AutoMapper;
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.Features.EventAgendaItems.Handlers.Commands;
 using Explore.Application.Features.EventAgendaItems.Requests.Commands;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Interfaces;
 using Explore.Domain.Services.Scheduling;
@@ -19,6 +23,8 @@ public class CreateEventAgendaItemCommandHandlerTests
     private readonly IEventRepository _eventRepository;
     private readonly IEventDayRepository _eventDayRepository;
     private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly IMapper _mapper;
     private readonly CreateEventAgendaItemCommandHandler _handler;
 
@@ -28,7 +34,18 @@ public class CreateEventAgendaItemCommandHandlerTests
         _eventRepository = Substitute.For<IEventRepository>();
         _eventDayRepository = Substitute.For<IEventDayRepository>();
         _scheduleProjectionCalculator = new EventScheduleProjectionCalculator();
+        _unitOfWork = Substitute.For<IUnitOfWork>();
+        _eventLocationAttachmentService = EventLocationAttachmentServiceTestFixture.ForExistingEvent(
+            _eventRepository,
+            Guid.NewGuid());
         _mapper = Substitute.For<IMapper>();
+
+        _unitOfWork
+            .ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task<EventAgendaItem>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task<EventAgendaItem>>>()(
+                call.Arg<CancellationToken>()));
 
         _eventAgendaItemRepository.Create(Arg.Any<EventAgendaItem>())
             .Returns(callInfo => callInfo.Arg<EventAgendaItem>());
@@ -38,6 +55,8 @@ public class CreateEventAgendaItemCommandHandlerTests
             _eventRepository,
             _eventDayRepository,
             _scheduleProjectionCalculator,
+            _unitOfWork,
+            _eventLocationAttachmentService,
             _mapper
         );
     }
@@ -76,6 +95,7 @@ public class CreateEventAgendaItemCommandHandlerTests
         var agendaItem = new EventAgendaItem
         {
             Id = agendaItemId,
+            EventId = eventId,
             Title = "Keynote Address",
             Event = null!,
             Tenant = null!
@@ -123,7 +143,14 @@ public class CreateEventAgendaItemCommandHandlerTests
         _eventRepository.Exists(eventId).Returns(true);
 
         EventAgendaItem? capturedItem = null;
-        var agendaItem = new EventAgendaItem { Id = Guid.NewGuid(), Title = "Keynote", Event = null!, Tenant = null! };
+        var agendaItem = new EventAgendaItem
+        {
+            Id = Guid.NewGuid(),
+            EventId = eventId,
+            Title = "Keynote",
+            Event = null!,
+            Tenant = null!
+        };
         _mapper.Map<EventAgendaItem>(command.EventAgendaItemDto).Returns(agendaItem);
         _eventAgendaItemRepository.When(r => r.Create(Arg.Any<EventAgendaItem>()))
             .Do(callInfo => capturedItem = callInfo.Arg<EventAgendaItem>());
@@ -170,7 +197,14 @@ public class CreateEventAgendaItemCommandHandlerTests
         _eventRepository.Exists(eventId).Returns(true);
 
         EventAgendaItem? capturedItem = null;
-        var agendaItem = new EventAgendaItem { Id = Guid.NewGuid(), Title = "Linked Item", Event = null!, Tenant = null! };
+        var agendaItem = new EventAgendaItem
+        {
+            Id = Guid.NewGuid(),
+            EventId = eventId,
+            Title = "Linked Item",
+            Event = null!,
+            Tenant = null!
+        };
         _mapper.Map<EventAgendaItem>(command.EventAgendaItemDto).Returns(agendaItem);
         _eventAgendaItemRepository.When(r => r.Create(Arg.Any<EventAgendaItem>()))
             .Do(callInfo => capturedItem = callInfo.Arg<EventAgendaItem>());
@@ -246,7 +280,14 @@ public class CreateEventAgendaItemCommandHandlerTests
         _eventRepository.Exists(eventId).Returns(true);
 
         EventAgendaItem? capturedItem = null;
-        var agendaItem = new EventAgendaItem { Id = Guid.NewGuid(), Title = "Rescheduled Item", Event = null!, Tenant = null! };
+        var agendaItem = new EventAgendaItem
+        {
+            Id = Guid.NewGuid(),
+            EventId = eventId,
+            Title = "Rescheduled Item",
+            Event = null!,
+            Tenant = null!
+        };
         _mapper.Map<EventAgendaItem>(command.EventAgendaItemDto).Returns(agendaItem);
         _eventAgendaItemRepository.When(r => r.Create(Arg.Any<EventAgendaItem>()))
             .Do(callInfo => capturedItem = callInfo.Arg<EventAgendaItem>());
