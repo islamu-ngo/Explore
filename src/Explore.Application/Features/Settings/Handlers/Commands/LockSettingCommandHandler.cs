@@ -99,7 +99,7 @@ public class LockSettingCommandHandler
             "Setting locked: {SettingKey} at {Scope} scope. Actor: {ActorId}",
             request.Key, request.Scope, actorId);
 
-        _ = _mediator.Publish(new SettingChangedNotification(
+        await _mediator.Publish(new SettingChangedNotification(
             request.Key, null, null, lockSource,
             _tenantContext.TenantId, actorId, DateTime.UtcNow), CancellationToken.None);
 

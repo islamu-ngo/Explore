@@ -16,4 +16,5 @@ public sealed class InstanceGovernanceSettings
     public required AiAssistantGovernanceSettingsDto AiAssistant { get; init; }
     public required McpGovernanceSettingsDto Mcp { get; init; }
     public required RenderPolicySettingsDto RenderPolicy { get; init; }
+    public LocationPrivacyGovernanceSettingsDto? LocationPrivacy { get; init; }
 }

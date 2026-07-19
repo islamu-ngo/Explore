@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using Explore.Application.DTOs.Location;
 using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.EventSession;
@@ -47,6 +48,7 @@ public class EventSessionDto
     // Room (child of Location)
     public Guid? RoomId { get; set; }
     public string? RoomName { get; set; }
+    public EventLocationPublicDto? EventLocation { get; set; }
 
     // Session Details
     public string? Title { get; set; }

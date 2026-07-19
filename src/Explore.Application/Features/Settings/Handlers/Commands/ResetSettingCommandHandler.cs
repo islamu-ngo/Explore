@@ -6,6 +6,7 @@ namespace Explore.Application.Features.Settings.Handlers.Commands;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.Settings.Requests.Commands;
 using Explore.Application.Notifications;
@@ -26,6 +27,7 @@ public class ResetSettingCommandHandler
     private readonly ICerbosConfigResolver? _cerbosConfigResolver;
     private readonly IMediator _mediator;
     private readonly ILogger<ResetSettingCommandHandler> _logger;
+    private readonly ILocationPrivacyGovernanceMutationService? _locationPrivacyMutations;
 
     public ResetSettingCommandHandler(
         IHierarchicalSettingsResolver resolver,
@@ -35,7 +37,8 @@ public class ResetSettingCommandHandler
         IAdminContext adminContext,
         IMediator mediator,
         ILogger<ResetSettingCommandHandler> logger,
-        ICerbosConfigResolver? cerbosConfigResolver = null)
+        ICerbosConfigResolver? cerbosConfigResolver = null,
+        ILocationPrivacyGovernanceMutationService? locationPrivacyMutations = null)
     {
         _resolver = resolver;
         _userPreferenceRepository = userPreferenceRepository;
@@ -45,6 +48,7 @@ public class ResetSettingCommandHandler
         _cerbosConfigResolver = cerbosConfigResolver;
         _mediator = mediator;
         _logger = logger;
+        _locationPrivacyMutations = locationPrivacyMutations;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -121,13 +125,20 @@ public class ResetSettingCommandHandler
             _resolver.InvalidateCache(request.Scope, scopeId);
             CerbosSettingsCacheInvalidation.InvalidateIfCerbosSettingChanged(
                 _cerbosConfigResolver, request.Key, request.Scope, scopeId);
+            if (_locationPrivacyMutations?.Handles(request.Key) == true)
+            {
+                await _locationPrivacyMutations.InvalidateScopeAsync(
+                    request.Scope,
+                    request.Scope == SettingScope.Tenant ? _tenantContext.TenantId : null,
+                    CancellationToken.None);
+            }
         }
 
         _logger.LogInformation(
             "Setting reset: {SettingKey} at {Scope} scope. Actor: {ActorId}",
             request.Key, request.Scope, actorId);
 
-        _ = _mediator.Publish(new SettingChangedNotification(
+        await _mediator.Publish(new SettingChangedNotification(
             request.Key, oldValue, null,
             SettingCommandHelper.MapScopeToSource(request.Scope),
             _tenantContext.TenantId, actorId, DateTime.UtcNow), CancellationToken.None);

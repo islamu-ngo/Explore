@@ -1,6 +1,8 @@
 // ABOUTME: Unified schedule entry DTO merging EventSession and EventAgendaItem into a single timeline item.
 // ABOUTME: Discriminated by EntryType so the UI renders sessions and agenda items differently in the same grid.
 
+using Explore.Application.DTOs.Location;
+
 namespace Explore.Application.DTOs.Agenda;
 
 public class AgendaScheduleEntryDto
@@ -26,6 +28,7 @@ public class AgendaScheduleEntryDto
 
     public Guid? RoomId { get; set; }
     public Guid? LocationId { get; set; }
+    public EventLocationPublicDto? EventLocation { get; set; }
 
     // Session-specific fields (null for agenda items)
     public int? MaxAudienceAttendees { get; set; }

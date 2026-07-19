@@ -1,6 +1,8 @@
 // ABOUTME: List read-model DTO for event-level agenda items in collection responses.
 // ABOUTME: Lightweight projection with key fields for agenda grid rendering and admin lists.
 
+using Explore.Application.DTOs.Location;
+
 namespace Explore.Application.DTOs.EventAgendaItem;
 
 public class EventAgendaItemListDto
@@ -17,4 +19,5 @@ public class EventAgendaItemListDto
     public string? KindFullName { get; set; }
     public int SortOrder { get; set; }
     public Guid ConcurrencyStamp { get; set; }
+    public EventLocationPublicDto? EventLocation { get; set; }
 }

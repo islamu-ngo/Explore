@@ -1,4 +1,7 @@
-using System;
+// ABOUTME: Public session-agenda list DTO with purpose-scoped EventLocation disclosure.
+// ABOUTME: Carries no physical Location identifier outside the constrained nested contract.
+
+using Explore.Application.DTOs.Location;
 
 namespace Explore.Application.DTOs.EventSessionAgendaItem;
 
@@ -23,4 +26,5 @@ public class EventSessionAgendaItemListDto
     // Details
     public required string Title { get; set; }
     public string? LocationFullName { get; set; }
+    public EventLocationPublicDto? EventLocation { get; set; }
 }

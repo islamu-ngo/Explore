@@ -28,11 +28,17 @@ public class EventSessionMappingProfile : Profile
             .ForMember(dest => dest.Color, opt => opt.MapFrom(src => src.EventSessionGroup.Color));
         CreateMap<EventSessionGroup, EventSessionGroupDto>()
             .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
-            .ForMember(dest => dest.LocationName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null))
-            .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Room != null ? src.Room.Name : null));
+            .ForMember(dest => dest.LocationId, opt => opt.Ignore())
+            .ForMember(dest => dest.LocationName, opt => opt.Ignore())
+            .ForMember(dest => dest.RoomId, opt => opt.Ignore())
+            .ForMember(dest => dest.RoomName, opt => opt.Ignore())
+            .ForMember(dest => dest.EventLocation, opt => opt.Ignore());
         CreateMap<EventSessionGroup, EventSessionGroupListDto>()
-            .ForMember(dest => dest.LocationName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null))
-            .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Room != null ? src.Room.Name : null));
+            .ForMember(dest => dest.LocationId, opt => opt.Ignore())
+            .ForMember(dest => dest.LocationName, opt => opt.Ignore())
+            .ForMember(dest => dest.RoomId, opt => opt.Ignore())
+            .ForMember(dest => dest.RoomName, opt => opt.Ignore())
+            .ForMember(dest => dest.EventLocation, opt => opt.Ignore());
         CreateMap<CreateEventSessionGroupRequestDto, EventSessionGroup>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.Event, opt => opt.Ignore())
@@ -56,8 +62,14 @@ public class EventSessionMappingProfile : Profile
             .ForMember(dest => dest.EventSessionStatusFullName, opt => opt.MapFrom(src => src.EventSessionStatus != null ? src.EventSessionStatus.FullName : null))
             .ForMember(dest => dest.EventSessionStatusMasterCode, opt => opt.MapFrom(src => src.EventSessionStatus != null ? src.EventSessionStatus.MasterCode : null))
             .ForMember(dest => dest.IsScheduled, opt => opt.MapFrom(src => src.StartTime.HasValue && src.EndTime.HasValue))
-            .ForMember(dest => dest.LocationFullName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null))
-            .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Room != null ? src.Room.Name : null))
+            .ForMember(dest => dest.LocationId, opt => opt.Ignore())
+            .ForMember(dest => dest.LocationFullName, opt => opt.Ignore())
+            .ForMember(dest => dest.LocationAddress, opt => opt.Ignore())
+            .ForMember(dest => dest.LocationCity, opt => opt.Ignore())
+            .ForMember(dest => dest.LocationCountry, opt => opt.Ignore())
+            .ForMember(dest => dest.RoomId, opt => opt.Ignore())
+            .ForMember(dest => dest.RoomName, opt => opt.Ignore())
+            .ForMember(dest => dest.EventLocation, opt => opt.Ignore())
             .ForMember(dest => dest.FeaturedImageUri, opt => opt.MapFrom(src => src.FeaturedImage != null ? src.FeaturedImage.Uri : null))
             .ForMember(dest => dest.FormattedEndTime, opt => opt.MapFrom(src => FormatEndTime(src)))
             .ForMember(dest => dest.SessionGroups, opt => opt.MapFrom(src => src.SessionGroups
@@ -71,8 +83,12 @@ public class EventSessionMappingProfile : Profile
             .ForMember(dest => dest.EventSessionStatusFullName, opt => opt.MapFrom(src => src.EventSessionStatus != null ? src.EventSessionStatus.FullName : null))
             .ForMember(dest => dest.EventSessionStatusMasterCode, opt => opt.MapFrom(src => src.EventSessionStatus != null ? src.EventSessionStatus.MasterCode : null))
             .ForMember(dest => dest.IsScheduled, opt => opt.MapFrom(src => src.StartTime.HasValue && src.EndTime.HasValue))
-            .ForMember(dest => dest.LocationFullName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null))
-            .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Room != null ? src.Room.Name : null))
+            .ForMember(dest => dest.LocationId, opt => opt.Ignore())
+            .ForMember(dest => dest.LocationFullName, opt => opt.Ignore())
+            .ForMember(dest => dest.LocationCity, opt => opt.Ignore())
+            .ForMember(dest => dest.RoomId, opt => opt.Ignore())
+            .ForMember(dest => dest.RoomName, opt => opt.Ignore())
+            .ForMember(dest => dest.EventLocation, opt => opt.Ignore())
             .ForMember(dest => dest.FeaturedImageUri, opt => opt.MapFrom(src => src.FeaturedImage != null ? src.FeaturedImage.Uri : null))
             .ForMember(dest => dest.FormattedEndTime, opt => opt.MapFrom(src => FormatEndTime(src)))
             .ForMember(dest => dest.SessionGroups, opt => opt.MapFrom(src => src.SessionGroups
@@ -86,10 +102,15 @@ public class EventSessionMappingProfile : Profile
         // Event Session Agenda Item
         CreateMap<EventSessionAgendaItem, EventSessionAgendaItemDto>()
             .ForMember(dest => dest.EventId, opt => opt.MapFrom(src => src.EventSession.EventId))
-            .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null));
+            .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
+            .ForMember(dest => dest.LocationId, opt => opt.Ignore())
+            .ForMember(dest => dest.LocationFullName, opt => opt.Ignore())
+            .ForMember(dest => dest.EventLocation, opt => opt.Ignore());
         CreateMap<EventSessionAgendaItem, EventSessionAgendaItemListDto>()
             .ForMember(dest => dest.EventId, opt => opt.MapFrom(src => src.EventSession.EventId))
-            .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null));
+            .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
+            .ForMember(dest => dest.LocationFullName, opt => opt.Ignore())
+            .ForMember(dest => dest.EventLocation, opt => opt.Ignore());
         CreateMap<CreateEventSessionAgendaItemDto, EventSessionAgendaItem>();
         CreateMap<UpdateEventSessionAgendaItemDto, EventSessionAgendaItem>();
 

@@ -6,6 +6,7 @@ namespace Explore.Application.Features.Settings.Handlers.Commands;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Settings.Requests.Commands;
 using Explore.Application.Notifications;
 using Explore.Application.Responses;
@@ -26,6 +27,7 @@ public class UpdateSettingCommandHandler
     private readonly ICerbosConfigResolver? _cerbosConfigResolver;
     private readonly IMediator _mediator;
     private readonly ILogger<UpdateSettingCommandHandler> _logger;
+    private readonly ILocationPrivacyGovernanceMutationService? _locationPrivacyMutations;
 
     public UpdateSettingCommandHandler(
         IHierarchicalSettingsResolver resolver,
@@ -35,7 +37,8 @@ public class UpdateSettingCommandHandler
         IAdminContext adminContext,
         IMediator mediator,
         ILogger<UpdateSettingCommandHandler> logger,
-        ICerbosConfigResolver? cerbosConfigResolver = null)
+        ICerbosConfigResolver? cerbosConfigResolver = null,
+        ILocationPrivacyGovernanceMutationService? locationPrivacyMutations = null)
     {
         _resolver = resolver;
         _userPreferenceRepository = userPreferenceRepository;
@@ -45,6 +48,7 @@ public class UpdateSettingCommandHandler
         _cerbosConfigResolver = cerbosConfigResolver;
         _mediator = mediator;
         _logger = logger;
+        _locationPrivacyMutations = locationPrivacyMutations;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -129,8 +133,39 @@ public class UpdateSettingCommandHandler
         }
         else
         {
-            await _resolver.SetValueAsync(
-                request.Key, serializedValue!, request.Scope, scopeId, actorId, cancellationToken);
+            if (_locationPrivacyMutations?.Handles(request.Key) == true)
+            {
+                LocationPrivacyGovernanceMutationResult mutation = await _locationPrivacyMutations.ExecuteAsync(
+                    request.Key,
+                    serializedValue!,
+                    request.Scope,
+                    request.Scope == SettingScope.Tenant ? _tenantContext.TenantId : null,
+                    actorId,
+                    async token =>
+                    {
+                        await _resolver.SetValueAsync(
+                            request.Key,
+                            serializedValue!,
+                            request.Scope,
+                            scopeId,
+                            actorId,
+                            token);
+                        return oldValue;
+                    },
+                    cancellationToken);
+                if (!mutation.Accepted)
+                {
+                    response.Success = false;
+                    response.Message = mutation.Error;
+                    return response;
+                }
+            }
+            else
+            {
+                await _resolver.SetValueAsync(
+                    request.Key, serializedValue!, request.Scope, scopeId, actorId, cancellationToken);
+            }
+
             _resolver.InvalidateCache(request.Scope, scopeId);
             CerbosSettingsCacheInvalidation.InvalidateIfCerbosSettingChanged(
                 _cerbosConfigResolver, request.Key, request.Scope, scopeId);
@@ -140,7 +175,7 @@ public class UpdateSettingCommandHandler
             "Setting updated: {SettingKey} at {Scope} scope. Actor: {ActorId}",
             request.Key, request.Scope, actorId);
 
-        _ = _mediator.Publish(new SettingChangedNotification(
+        await _mediator.Publish(new SettingChangedNotification(
             request.Key, oldValue, serializedValue,
             SettingCommandHelper.MapScopeToSource(request.Scope),
             _tenantContext.TenantId, actorId, DateTime.UtcNow), CancellationToken.None);

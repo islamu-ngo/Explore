@@ -1,4 +1,7 @@
-using System;
+// ABOUTME: Public session-agenda detail DTO with purpose-scoped EventLocation disclosure.
+// ABOUTME: Retains legacy location fields only as a null compatibility seam during contract migration.
+
+using Explore.Application.DTOs.Location;
 
 namespace Explore.Application.DTOs.EventSessionAgendaItem;
 
@@ -14,5 +17,6 @@ public class EventSessionAgendaItemDto
     public string? Description { get; set; }
     public Guid? LocationId { get; set; }
     public string? LocationFullName { get; set; }
+    public EventLocationPublicDto? EventLocation { get; set; }
     public Guid TenantId { get; set; }
 }

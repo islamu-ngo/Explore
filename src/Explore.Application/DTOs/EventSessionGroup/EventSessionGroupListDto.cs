@@ -1,6 +1,8 @@
 // ABOUTME: Lightweight list DTO for event program sections/tracks/devrooms.
 // ABOUTME: Used by program summary and event-scoped group picker surfaces.
 
+using Explore.Application.DTOs.Location;
+
 namespace Explore.Application.DTOs.EventSessionGroup;
 
 public class EventSessionGroupListDto
@@ -13,6 +15,7 @@ public class EventSessionGroupListDto
     public string? LocationName { get; set; }
     public Guid? RoomId { get; set; }
     public string? RoomName { get; set; }
+    public EventLocationPublicDto? EventLocation { get; set; }
     public string? Color { get; set; }
     public int SortOrder { get; set; }
     public bool IsPublished { get; set; }

@@ -6,6 +6,7 @@ namespace Explore.Application.Features.Settings.Handlers.Commands;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Settings;
 using Explore.Application.Features.Settings.Requests.Commands;
 using Explore.Application.Notifications;
@@ -26,6 +27,7 @@ public class UpdateSettingBatchCommandHandler
     private readonly ICerbosConfigResolver? _cerbosConfigResolver;
     private readonly IMediator _mediator;
     private readonly ILogger<UpdateSettingBatchCommandHandler> _logger;
+    private readonly ILocationPrivacyGovernanceMutationService? _locationPrivacyMutations;
 
     public UpdateSettingBatchCommandHandler(
         IHierarchicalSettingsResolver resolver,
@@ -35,7 +37,8 @@ public class UpdateSettingBatchCommandHandler
         IAdminContext adminContext,
         IMediator mediator,
         ILogger<UpdateSettingBatchCommandHandler> logger,
-        ICerbosConfigResolver? cerbosConfigResolver = null)
+        ICerbosConfigResolver? cerbosConfigResolver = null,
+        ILocationPrivacyGovernanceMutationService? locationPrivacyMutations = null)
     {
         _resolver = resolver;
         _userPreferenceRepository = userPreferenceRepository;
@@ -45,6 +48,7 @@ public class UpdateSettingBatchCommandHandler
         _cerbosConfigResolver = cerbosConfigResolver;
         _mediator = mediator;
         _logger = logger;
+        _locationPrivacyMutations = locationPrivacyMutations;
     }
 
     public async Task<BatchUpdateResponseDto> Handle(
@@ -160,6 +164,20 @@ public class UpdateSettingBatchCommandHandler
                 continue;
             }
 
+            if (request.Scope == SettingScope.Tenant
+                && _locationPrivacyMutations?.Handles(key) == true)
+            {
+                string? governanceError = await _locationPrivacyMutations.ValidateTenantValueAsync(
+                    key,
+                    serialized!,
+                    cancellationToken);
+                if (governanceError is not null)
+                {
+                    validationResults.Add((key, value, definition, null, governanceError, null));
+                    continue;
+                }
+            }
+
             validationResults.Add((key, value, definition, serialized,
                 null, currentResolved.Value));
         }
@@ -207,11 +225,45 @@ public class UpdateSettingBatchCommandHandler
             }
             else
             {
-                await _resolver.SetValueAsync(
-                    key, serializedValue!, request.Scope, scopeId, actorId, cancellationToken);
+                if (_locationPrivacyMutations?.Handles(key) == true)
+                {
+                    LocationPrivacyGovernanceMutationResult mutation = await _locationPrivacyMutations.ExecuteAsync(
+                        key,
+                        serializedValue!,
+                        request.Scope,
+                        request.Scope == SettingScope.Tenant ? _tenantContext.TenantId : null,
+                        actorId,
+                        async token =>
+                        {
+                            await _resolver.SetValueAsync(
+                                key,
+                                serializedValue!,
+                                request.Scope,
+                                scopeId,
+                                actorId,
+                                token);
+                            return oldValue;
+                        },
+                        cancellationToken);
+                    if (!mutation.Accepted)
+                    {
+                        results.Add(new SettingUpdateResultDto
+                        {
+                            Key = key,
+                            Applied = false,
+                            SkipReason = mutation.Error
+                        });
+                        continue;
+                    }
+                }
+                else
+                {
+                    await _resolver.SetValueAsync(
+                        key, serializedValue!, request.Scope, scopeId, actorId, cancellationToken);
+                }
             }
 
-            _ = _mediator.Publish(new SettingChangedNotification(
+            await _mediator.Publish(new SettingChangedNotification(
                 key, oldValue, serializedValue,
                 SettingCommandHelper.MapScopeToSource(request.Scope),
                 _tenantContext.TenantId, actorId, DateTime.UtcNow), CancellationToken.None);

@@ -1,6 +1,8 @@
 // ABOUTME: Server-backed event program summary read model for progressive-disclosure shells.
 // ABOUTME: Groups EventSession program items by section, local day, and readiness guidance.
 
+using Explore.Application.DTOs.Location;
+
 namespace Explore.Application.DTOs.EventProgram;
 
 public class EventProgramSummaryDto
@@ -28,6 +30,7 @@ public class EventProgramSessionGroupSectionDto
     public string? Color { get; set; }
     public string? LocationName { get; set; }
     public string? RoomName { get; set; }
+    public EventLocationPublicDto? EventLocation { get; set; }
     public List<EventProgramDayGroupDto> Days { get; set; } = [];
 }
 
@@ -54,6 +57,7 @@ public class EventProgramItemDto
     public Guid? SessionGroupId { get; set; }
     public string? LocationName { get; set; }
     public string? RoomName { get; set; }
+    public EventLocationPublicDto? EventLocation { get; set; }
     public int? Capacity { get; set; }
     public string? RegistrationModeName { get; set; }
     public List<EventProgramReadinessWarningDto> ReadinessWarnings { get; set; } = [];

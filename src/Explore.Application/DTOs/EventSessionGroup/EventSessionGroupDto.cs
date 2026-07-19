@@ -1,6 +1,8 @@
 // ABOUTME: Detail read-model DTO for an event program section, track, devroom, or stage.
 // ABOUTME: Exposes grouping metadata without leaking internal EventSessionGroup naming into UI copy.
 
+using Explore.Application.DTOs.Location;
+
 namespace Explore.Application.DTOs.EventSessionGroup;
 
 public class EventSessionGroupDto
@@ -15,6 +17,7 @@ public class EventSessionGroupDto
     public string? LocationName { get; set; }
     public Guid? RoomId { get; set; }
     public string? RoomName { get; set; }
+    public EventLocationPublicDto? EventLocation { get; set; }
     public string? Color { get; set; }
     public int SortOrder { get; set; }
     public bool IsPublished { get; set; }
