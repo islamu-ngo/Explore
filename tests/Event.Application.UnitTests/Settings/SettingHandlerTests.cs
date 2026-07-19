@@ -7,6 +7,7 @@ using System.Text.Json;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Settings;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.Settings.Handlers.Commands;
@@ -163,9 +164,12 @@ public class SettingHandlerTests
     // UpdateSettingCommandHandler
     // ──────────────────────────────────────────────
 
-    private UpdateSettingCommandHandler CreateUpdateHandler(ICerbosConfigResolver? cerbosConfigResolver = null) =>
+    private UpdateSettingCommandHandler CreateUpdateHandler(
+        ICerbosConfigResolver? cerbosConfigResolver = null,
+        ILocationPrivacyGovernanceMutationService? locationPrivacyMutations = null) =>
         new(_resolver, _userPrefRepo, _tenantContext, _currentUserService,
-            _adminContext, _mediator, Substitute.For<ILogger<UpdateSettingCommandHandler>>(), cerbosConfigResolver);
+            _adminContext, _mediator, Substitute.For<ILogger<UpdateSettingCommandHandler>>(),
+            cerbosConfigResolver, locationPrivacyMutations);
 
     [Test]
     public async Task Update_UnknownKey_Fails()
@@ -321,6 +325,63 @@ public class SettingHandlerTests
         await _resolver.Received(1).SetValueAsync(
             TestKey, Arg.Any<string>(), SettingScope.Tenant, TestTenantId,
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Update_LocationPrivacySingleKey_InvalidatesCorrectionReceiptAfterMutationCommit()
+    {
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        string key = GovernanceSettingKeys.LocationPrivacy.AllowPublicExactAddress;
+        SetupResolverMetadata(key, false);
+        var calls = new List<string>();
+        var corrected = new LocationPrivacyProjectionIdentity(
+            TestTenantId,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7());
+        var locationPrivacyMutations = Substitute.For<ILocationPrivacyGovernanceMutationService>();
+        locationPrivacyMutations.Handles(key).Returns(true);
+        locationPrivacyMutations.ExecuteAsync(
+                key,
+                Arg.Any<string>(),
+                SettingScope.Tenant,
+                TestTenantId,
+                Arg.Any<Guid>(),
+                Arg.Any<Func<CancellationToken, Task<string?>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                calls.Add("committed");
+                return new LocationPrivacyGovernanceMutationResult(true, null, "true", [corrected]);
+            });
+        locationPrivacyMutations.InvalidateMutationAsync(
+                SettingScope.Tenant,
+                TestTenantId,
+                Arg.Any<IReadOnlyList<LocationPrivacyProjectionIdentity>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                calls.Add("invalidated");
+                return Task.CompletedTask;
+            });
+        var handler = CreateUpdateHandler(locationPrivacyMutations: locationPrivacyMutations);
+
+        BaseCommandResponse<Guid> result = await handler.Handle(new UpdateSettingCommand
+        {
+            Key = key,
+            Value = "false",
+            Scope = SettingScope.Tenant
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(calls.Count).IsEqualTo(2);
+        await Assert.That(calls[0]).IsEqualTo("committed");
+        await Assert.That(calls[1]).IsEqualTo("invalidated");
+        await locationPrivacyMutations.Received(1).InvalidateMutationAsync(
+            SettingScope.Tenant,
+            TestTenantId,
+            Arg.Is<IReadOnlyList<LocationPrivacyProjectionIdentity>>(items =>
+                items.Count == 1 && items[0] == corrected),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]

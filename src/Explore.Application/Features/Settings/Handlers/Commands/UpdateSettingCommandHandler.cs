@@ -159,6 +159,12 @@ public class UpdateSettingCommandHandler
                     response.Message = mutation.Error;
                     return response;
                 }
+
+                await _locationPrivacyMutations.InvalidateMutationAsync(
+                    request.Scope,
+                    request.Scope == SettingScope.Tenant ? _tenantContext.TenantId : null,
+                    mutation.CorrectedProjections,
+                    CancellationToken.None);
             }
             else
             {

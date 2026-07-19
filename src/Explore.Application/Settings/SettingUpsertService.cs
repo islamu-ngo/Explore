@@ -44,7 +44,7 @@ public class SettingUpsertService
         Guid? actorId = null,
         CancellationToken cancellationToken = default)
     {
-        string? oldValue = await PersistAsync(new SystemSetting
+        SettingPersistenceResult persistence = await PersistAsync(new SystemSetting
         {
             SettingKey = settingKey,
             Value = value,
@@ -59,8 +59,9 @@ public class SettingUpsertService
             UpdatedBy = actorId
         }, actorId, cancellationToken);
 
+        await InvalidateCommittedMutationAsync(persistence.Mutation);
         await _mediator.Publish(new SettingChangedNotification(
-            settingKey, oldValue, value, SettingSource.SystemDefault, null, actorId, DateTime.UtcNow), CancellationToken.None);
+            settingKey, persistence.PreviousStoredValue, value, SettingSource.SystemDefault, null, actorId, DateTime.UtcNow), CancellationToken.None);
     }
 
     /// <summary>
@@ -82,9 +83,37 @@ public class SettingUpsertService
         bool isLocked,
         Guid? actorId,
         CancellationToken cancellationToken = default)
+        => _ = await UpsertValueCoreAsync(
+            settingKey,
+            value,
+            isLocked,
+            actorId,
+            invalidateAfterCommit: true,
+            cancellationToken);
+
+    internal Task<DeferredSettingUpsertResult> UpsertValueWithDeferredInvalidationAsync(
+        string settingKey,
+        string value,
+        Guid? actorId,
+        CancellationToken cancellationToken = default) =>
+        UpsertValueCoreAsync(
+            settingKey,
+            value,
+            isLocked: false,
+            actorId,
+            invalidateAfterCommit: false,
+            cancellationToken);
+
+    private async Task<DeferredSettingUpsertResult> UpsertValueCoreAsync(
+        string settingKey,
+        string value,
+        bool isLocked,
+        Guid? actorId,
+        bool invalidateAfterCommit,
+        CancellationToken cancellationToken)
     {
         var definition = Domain.Settings.SettingRegistry.Get(settingKey);
-        string? oldValue = await PersistAsync(new SystemSetting
+        SettingPersistenceResult persistence = await PersistAsync(new SystemSetting
         {
             SettingKey = settingKey,
             Value = value,
@@ -99,18 +128,33 @@ public class SettingUpsertService
             UpdatedBy = actorId
         }, actorId, cancellationToken);
 
-        await _mediator.Publish(new SettingChangedNotification(
-            settingKey, oldValue, value, SettingSource.SystemDefault, null, actorId, DateTime.UtcNow), CancellationToken.None);
+        var notification = new SettingChangedNotification(
+            settingKey,
+            persistence.PreviousStoredValue,
+            value,
+            SettingSource.SystemDefault,
+            null,
+            actorId,
+            DateTime.UtcNow);
+
+        if (invalidateAfterCommit)
+        {
+            await InvalidateCommittedMutationAsync(persistence.Mutation);
+            await _mediator.Publish(notification, CancellationToken.None);
+        }
+
+        return new(notification, persistence.Mutation);
     }
 
-    private async Task<string?> PersistAsync(
+    private async Task<SettingPersistenceResult> PersistAsync(
         SystemSetting setting,
         Guid? actorId,
         CancellationToken cancellationToken)
     {
         if (_locationPrivacyMutations?.Handles(setting.SettingKey) != true)
         {
-            return await _systemSettingRepository.UpsertAsync(setting, cancellationToken);
+            string? previousStoredValue = await _systemSettingRepository.UpsertAsync(setting, cancellationToken);
+            return new(previousStoredValue, null);
         }
 
         LocationPrivacyGovernanceMutationResult mutation = await _locationPrivacyMutations.ExecuteAsync(
@@ -126,6 +170,29 @@ public class SettingUpsertService
             throw new InvalidOperationException(mutation.Error);
         }
 
-        return mutation.PreviousStoredValue;
+        return new(mutation.PreviousStoredValue, mutation);
     }
+
+    private async Task InvalidateCommittedMutationAsync(
+        LocationPrivacyGovernanceMutationResult? mutation)
+    {
+        if (mutation is not { Accepted: true } || _locationPrivacyMutations is null)
+        {
+            return;
+        }
+
+        await _locationPrivacyMutations.InvalidateMutationAsync(
+            Domain.Settings.SettingScope.Instance,
+            tenantId: null,
+            mutation.CorrectedProjections,
+            CancellationToken.None);
+    }
+
+    private sealed record SettingPersistenceResult(
+        string? PreviousStoredValue,
+        LocationPrivacyGovernanceMutationResult? Mutation);
 }
+
+internal sealed record DeferredSettingUpsertResult(
+    SettingChangedNotification Notification,
+    LocationPrivacyGovernanceMutationResult? Mutation);

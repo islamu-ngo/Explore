@@ -22,14 +22,15 @@ public class InstanceGovernanceSettingServiceTests
     private readonly SettingUpsertService _upsertService;
     private readonly IModuleCapabilityService _moduleCapabilityService;
     private readonly ISystemSettingRepository _systemSettingRepository;
+    private readonly IMediator _mediator;
     private readonly InstanceGovernanceSettingService _service;
 
     public InstanceGovernanceSettingServiceTests()
     {
         _resolver = Substitute.For<IHierarchicalSettingsResolver>();
         _systemSettingRepository = Substitute.For<ISystemSettingRepository>();
-        var mediator = Substitute.For<IMediator>();
-        _upsertService = new SettingUpsertService(_systemSettingRepository, mediator);
+        _mediator = Substitute.For<IMediator>();
+        _upsertService = new SettingUpsertService(_systemSettingRepository, _mediator);
         _moduleCapabilityService = Substitute.For<IModuleCapabilityService>();
         var logger = Substitute.For<ILogger<InstanceGovernanceSettingService>>();
 
@@ -100,6 +101,34 @@ public class InstanceGovernanceSettingServiceTests
         await _systemSettingRepository.Received(1).UpsertAsync(Arg.Is<SystemSetting>(
             s => s.SettingKey == GovernanceSettingKeys.Routing.DefaultPublicHomePage
                  && s.Value == "\"EventList\""), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ApplySettingsAsync_LocationPrivacy_DoesNotPublishBeforeTransactionOwnerCommits()
+    {
+        _systemSettingRepository.GetByKey(Arg.Any<string>()).Returns((SystemSetting?)null);
+
+        InstanceGovernanceSettings settings = CreateValidSettings();
+
+        InstanceGovernanceSettingApplyResult result =
+            await _service.ApplySettingsAsync(Guid.NewGuid(), settings, Guid.NewGuid());
+
+        string[] locationPrivacyKeys =
+        [
+            GovernanceSettingKeys.LocationPrivacy.AllowHomeLocations,
+            GovernanceSettingKeys.LocationPrivacy.AllowPublicExactAddress,
+            GovernanceSettingKeys.LocationPrivacy.AllowPublicCoordinates,
+            GovernanceSettingKeys.LocationPrivacy.MinimumHomeAudience,
+            GovernanceSettingKeys.LocationPrivacy.DefaultRevealOffset
+        ];
+        int publishedLocationChanges = _mediator.ReceivedCalls()
+            .Count(call => call.GetArguments().FirstOrDefault() is
+                Explore.Application.Notifications.SettingChangedNotification notification &&
+                locationPrivacyKeys.Contains(notification.Key, StringComparer.Ordinal));
+
+        await Assert.That(publishedLocationChanges).IsEqualTo(0);
+        await Assert.That(result.DeferredNotifications.Select(notification => notification.Key))
+            .IsEquivalentTo(locationPrivacyKeys);
     }
 
     [Test]
@@ -376,6 +405,7 @@ public class InstanceGovernanceSettingServiceTests
                 DefaultPublicHomePage = "EventList"
             },
             AdminPortal = new AdminPortalSettingsDto(),
+            LocationPrivacy = new LocationPrivacyGovernanceSettingsDto(),
             RenderPolicy = new RenderPolicySettingsDto
             {
                 RenderPolicyVersion = 1,

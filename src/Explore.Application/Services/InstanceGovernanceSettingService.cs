@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Instance;
+using Explore.Application.Notifications;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
 using Explore.Domain.Constants;
@@ -158,8 +159,13 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         return settings;
     }
 
-    public async Task ApplySettingsAsync(Guid? defaultTenantId, InstanceGovernanceSettings settings, Guid? actorUserId)
+    public async Task<InstanceGovernanceSettingApplyResult> ApplySettingsAsync(
+        Guid? defaultTenantId,
+        InstanceGovernanceSettings settings,
+        Guid? actorUserId)
     {
+        var locationPrivacyMutations = new List<LocationPrivacyGovernanceMutationResult>();
+        var deferredNotifications = new List<SettingChangedNotification>();
         var isMultiTenant = settings.DeploymentMode.Mode == DeploymentMode.MultiTenant;
 
         await _upsertService.UpsertValueAsync(
@@ -181,8 +187,14 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         await ApplyDomainSettingsAsync(settings.Domains, actorUserId);
         if (settings.LocationPrivacy is not null)
         {
-            await ApplyLocationPrivacySettingsAsync(settings.LocationPrivacy, actorUserId);
+            await ApplyLocationPrivacySettingsAsync(
+                settings.LocationPrivacy,
+                actorUserId,
+                locationPrivacyMutations,
+                deferredNotifications);
         }
+
+        return new(locationPrivacyMutations, deferredNotifications);
     }
 
     public async Task ApplyModuleSettingsAsync(Guid? defaultTenantId, ModuleSettingsDto modules, Guid? actorUserId)
@@ -653,28 +665,41 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
 
     private async Task ApplyLocationPrivacySettingsAsync(
         LocationPrivacyGovernanceSettingsDto settings,
-        Guid? actorUserId)
+        Guid? actorUserId,
+        ICollection<LocationPrivacyGovernanceMutationResult> mutations,
+        ICollection<SettingChangedNotification> notifications)
     {
-        await _upsertService.UpsertValueAsync(
+        await AddMutationAsync(
             GovernanceSettingKeys.LocationPrivacy.AllowHomeLocations,
             SettingValueSerializer.Serialize(settings.AllowHomeLocations),
             actorUserId);
-        await _upsertService.UpsertValueAsync(
+        await AddMutationAsync(
             GovernanceSettingKeys.LocationPrivacy.AllowPublicExactAddress,
             SettingValueSerializer.Serialize(settings.AllowPublicExactAddress),
             actorUserId);
-        await _upsertService.UpsertValueAsync(
+        await AddMutationAsync(
             GovernanceSettingKeys.LocationPrivacy.AllowPublicCoordinates,
             SettingValueSerializer.Serialize(settings.AllowPublicCoordinates),
             actorUserId);
-        await _upsertService.UpsertValueAsync(
+        await AddMutationAsync(
             GovernanceSettingKeys.LocationPrivacy.MinimumHomeAudience,
             SettingValueSerializer.Serialize(settings.MinimumHomeAudience),
             actorUserId);
-        await _upsertService.UpsertValueAsync(
+        await AddMutationAsync(
             GovernanceSettingKeys.LocationPrivacy.DefaultRevealOffset,
             SettingValueSerializer.Serialize(settings.DefaultRevealOffset),
             actorUserId);
+
+        async Task AddMutationAsync(string key, string value, Guid? actorId)
+        {
+            DeferredSettingUpsertResult result =
+                await _upsertService.UpsertValueWithDeferredInvalidationAsync(key, value, actorId);
+            notifications.Add(result.Notification);
+            if (result.Mutation is not null)
+            {
+                mutations.Add(result.Mutation);
+            }
+        }
     }
 
     private async Task ApplyRenderPolicySettingsInternalAsync(RenderPolicySettingsDto rp, Guid? actorUserId)

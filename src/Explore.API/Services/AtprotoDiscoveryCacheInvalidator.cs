@@ -1,0 +1,17 @@
+// ABOUTME: Evicts all public response-cache entries that can contain tenant-governed ATProto events.
+// ABOUTME: Uses shared output-cache tags so tombstones and capability changes cannot serve stale discovery.
+
+using Explore.Application.Contracts.Infrastructure;
+using Microsoft.AspNetCore.OutputCaching;
+
+namespace Explore.API.Services;
+
+public sealed class AtprotoDiscoveryCacheInvalidator(IOutputCacheStore outputCacheStore)
+    : IAtprotoDiscoveryCacheInvalidator
+{
+    public async ValueTask InvalidateAsync(CancellationToken cancellationToken = default)
+    {
+        await outputCacheStore.EvictByTagAsync("event-discovery", cancellationToken);
+        await outputCacheStore.EvictByTagAsync("public-home-discovery", cancellationToken);
+    }
+}

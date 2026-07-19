@@ -119,6 +119,25 @@ public class SettingsController : ControllerBase
         return HandleCommandResponse(response);
     }
 
+    [HttpDelete("tenant/keys/{key}", Name = RouteNames.ResetTenantSetting)]
+    [EndpointSummary("Reset Tenant Setting")]
+    [EndpointDescription("Removes the tenant override for a setting, restoring the effective instance value. Requires tenant administrator.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> ResetTenantSetting(
+        string key, CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new ResetSettingCommand
+        {
+            Key = key,
+            Scope = SettingScope.Tenant
+        }, cancellationToken);
+
+        return HandleCommandResponse(response);
+    }
+
     [HttpDelete("user/keys/{key}", Name = RouteNames.ResetUserSetting)]
     [EndpointSummary("Reset User Setting")]
     [EndpointDescription("Removes the user's override for a setting, restoring it to the next higher scope's value.")]
@@ -300,6 +319,32 @@ public class SettingsController : ControllerBase
         return HandleCommandResponse(response);
     }
 
+    [HttpDelete("instance/atproto-federation/{key}", Name = RouteNames.ResetInstanceAtprotoFederationSetting)]
+    [EndpointSummary("Reset Instance ATProto Federation Setting")]
+    [EndpointDescription("Removes an instance ATProto override and restores its registered default. Requires instance administrator.")]
+    [EndpointClassification(EndpointClass.Admin)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> ResetInstanceSetting(
+        string key, CancellationToken cancellationToken = default)
+    {
+        if (!AtprotoFederationSettingDefinitions.IsAdministratorKey(key))
+        {
+            return this.ToNotFoundProblem(AtprotoAdministratorSettingNotFoundProblem);
+        }
+
+        var response = await _mediator.Send(new ResetSettingCommand
+        {
+            Key = key,
+            Scope = SettingScope.Instance
+        }, cancellationToken);
+
+        return HandleCommandResponse(response);
+    }
+
     [HttpPost("instance/atproto-federation/{key}/lock", Name = RouteNames.LockInstanceAtprotoFederationSetting)]
     [EndpointSummary("Lock Instance ATProto Federation Setting")]
     [EndpointDescription("Locks the ATProto capability or validation profile at instance scope. Requires instance administrator.")]
@@ -365,4 +410,5 @@ public class SettingsController : ControllerBase
 
         return this.ToCommandValidationProblem(response, SettingsValidationProblem);
     }
+
 }

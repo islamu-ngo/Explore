@@ -2,6 +2,7 @@
 // ABOUTME: Ensures read-after-write consistency by evicting stale system settings from IMemoryCache.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Domain.Constants;
 using Explore.Domain.Settings;
 using MediatR;
 
@@ -10,13 +11,17 @@ namespace Explore.Application.Notifications.Handlers;
 public sealed class SettingCacheInvalidationHandler : INotificationHandler<SettingChangedNotification>
 {
     private readonly IHierarchicalSettingsResolver _resolver;
+    private readonly IEnumerable<IAtprotoDiscoveryCacheInvalidator> _atprotoDiscoveryCacheInvalidators;
 
-    public SettingCacheInvalidationHandler(IHierarchicalSettingsResolver resolver)
+    public SettingCacheInvalidationHandler(
+        IHierarchicalSettingsResolver resolver,
+        IEnumerable<IAtprotoDiscoveryCacheInvalidator> atprotoDiscoveryCacheInvalidators)
     {
         _resolver = resolver;
+        _atprotoDiscoveryCacheInvalidators = atprotoDiscoveryCacheInvalidators;
     }
 
-    public Task Handle(SettingChangedNotification notification, CancellationToken cancellationToken)
+    public async Task Handle(SettingChangedNotification notification, CancellationToken cancellationToken)
     {
         _resolver.InvalidateCache(SettingScope.Instance);
 
@@ -25,6 +30,15 @@ public sealed class SettingCacheInvalidationHandler : INotificationHandler<Setti
             _resolver.InvalidateCache(SettingScope.Tenant, notification.TenantId.Value);
         }
 
-        return Task.CompletedTask;
+        if (string.Equals(
+                notification.Key,
+                GovernanceSettingKeys.Federation.AtprotoEventsEnabled,
+                StringComparison.Ordinal))
+        {
+            foreach (IAtprotoDiscoveryCacheInvalidator invalidator in _atprotoDiscoveryCacheInvalidators)
+            {
+                await invalidator.InvalidateAsync(cancellationToken);
+            }
+        }
     }
 }

@@ -1,7 +1,9 @@
 // ABOUTME: Cache invalidation tests for event write handlers that mutate public event lists.
 // ABOUTME: Verifies tenant-scoped list tag eviction instead of legacy fixed-key removal.
 
+using Event.Application.UnitTests.Common;
 using Explore.Application.Caching;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
@@ -20,14 +22,17 @@ public class EventListCacheInvalidationCommandHandlerTests
     [Test]
     public async Task UpdateEvent_WhenEventIsUpdated_InvalidatesTenantEventListTag()
     {
-        var tenantId = Guid.NewGuid();
-        var eventId = Guid.NewGuid();
+        var tenantId = Guid.CreateVersion7();
+        var eventId = Guid.CreateVersion7();
         var eventRepository = Substitute.For<IEventRepository>();
         var cache = Substitute.For<HybridCache>();
         var @event = CreateEvent(eventId, tenantId);
-        var concurrencyStamp = Guid.NewGuid();
+        var concurrencyStamp = Guid.CreateVersion7();
         @event.ConcurrencyStamp = concurrencyStamp;
         eventRepository.GetScheduleGraphForUpdateAsync(eventId, Arg.Any<CancellationToken>()).Returns(@event);
+        var unitOfWork = ImmediateUnitOfWork();
+        var userContext = Substitute.For<IUserContext>();
+        userContext.GetRequiredUserId().Returns(Guid.CreateVersion7());
 
         var handler = new UpdateEventCommandHandler(
             eventRepository,
@@ -40,7 +45,10 @@ public class EventListCacheInvalidationCommandHandlerTests
             Substitute.For<IEventSeriesRepository>(),
             Substitute.For<IEventRegistrationPolicyRepository>(),
             new EventScheduleProjectionCalculator(),
-            cache);
+            cache,
+            unitOfWork,
+            userContext,
+            AtprotoPublicationPlannerTestFactory.Disabled());
 
         var result = await handler.Handle(new UpdateEventCommand
         {
@@ -59,10 +67,10 @@ public class EventListCacheInvalidationCommandHandlerTests
     [Test]
     public async Task DeleteEvent_WhenEventIsDeleted_InvalidatesTenantEventListTag()
     {
-        var tenantId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
-        var eventId = Guid.NewGuid();
-        var actorId = Guid.NewGuid();
+        var tenantId = Guid.CreateVersion7();
+        var userId = Guid.CreateVersion7();
+        var eventId = Guid.CreateVersion7();
+        var actorId = Guid.CreateVersion7();
         var eventRepository = Substitute.For<IEventRepository>();
         var sessionRepository = Substitute.For<IEventSessionRepository>();
         var actorRepository = Substitute.For<IActorRepository>();
@@ -75,6 +83,7 @@ public class EventListCacheInvalidationCommandHandlerTests
         sessionRepository.GetSessionsByEvent(eventId).Returns([]);
         actorRepository.GetById(actorId).Returns(CreateActor(actorId, tenantId, userId));
         currentUserService.UserId.Returns(userId);
+        var unitOfWork = ImmediateUnitOfWork();
 
         var handler = new DeleteEventCommandHandler(
             eventRepository,
@@ -85,7 +94,9 @@ public class EventListCacheInvalidationCommandHandlerTests
             Substitute.For<IRoleRepository>(),
             currentUserService,
             Substitute.For<ILogger<DeleteEventCommandHandler>>(),
-            cache);
+            cache,
+            unitOfWork,
+            AtprotoPublicationPlannerTestFactory.Disabled());
 
         var result = await handler.Handle(new DeleteEventCommand
         {
@@ -106,7 +117,8 @@ public class EventListCacheInvalidationCommandHandlerTests
         Tenant = CreateTenant(tenantId),
         VisibilityType = null!,
         EventStatus = null!,
-        EventFormat = null!
+        EventFormat = null!,
+        ConcurrencyStamp = Guid.CreateVersion7()
     };
 
     private static Actor CreateActor(Guid actorId, Guid tenantId, Guid userId) => new()
@@ -126,4 +138,14 @@ public class EventListCacheInvalidationCommandHandlerTests
         Slug = "tenant",
         TenantStatus = null!
     };
+
+    private static IUnitOfWork ImmediateUnitOfWork()
+    {
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task>>()(CancellationToken.None));
+        return unitOfWork;
+    }
 }

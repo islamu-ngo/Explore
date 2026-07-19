@@ -2,6 +2,7 @@
 // ABOUTME: Uses focused sub-resource DTOs instead of a monolithic god object.
 
 using Explore.Application.DTOs.Instance;
+using Explore.Application.Notifications;
 
 namespace Explore.Application.Contracts.Services;
 
@@ -11,7 +12,10 @@ public interface IInstanceGovernanceSettingService
 
     Task<InstanceGovernanceSettings> ReadEffectiveSettingsForTenantAsync(Guid tenantId);
 
-    Task ApplySettingsAsync(Guid? defaultTenantId, InstanceGovernanceSettings settings, Guid? actorUserId);
+    Task<InstanceGovernanceSettingApplyResult> ApplySettingsAsync(
+        Guid? defaultTenantId,
+        InstanceGovernanceSettings settings,
+        Guid? actorUserId);
 
     Task ApplyModuleSettingsAsync(Guid? defaultTenantId, ModuleSettingsDto modules, Guid? actorUserId);
 
@@ -30,3 +34,7 @@ public interface IInstanceGovernanceSettingService
 
     Task ApplyRenderPolicySettingsAsync(RenderPolicySettingsDto renderPolicy, Guid? actorUserId);
 }
+
+public sealed record InstanceGovernanceSettingApplyResult(
+    IReadOnlyList<LocationPrivacyGovernanceMutationResult> LocationPrivacyMutations,
+    IReadOnlyList<SettingChangedNotification> DeferredNotifications);

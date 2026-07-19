@@ -33,6 +33,13 @@ public static class CachingExtensions
                 .SetVaryByQuery("*")
                 .Tag("list-data"));
 
+            options.AddPolicy("EventDiscovery", builder => builder
+                .Expire(TimeSpan.FromSeconds(30))
+                .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host", "Authorization")
+                .SetVaryByQuery("*")
+                .Tag("list-data")
+                .Tag("event-discovery"));
+
             // DetailData: varies by Authorization for auth-aware HATEOAS links
             options.AddPolicy("DetailData", builder => builder
                 .Expire(TimeSpan.FromSeconds(60))

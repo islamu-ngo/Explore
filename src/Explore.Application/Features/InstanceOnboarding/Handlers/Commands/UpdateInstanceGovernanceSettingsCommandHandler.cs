@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Instance.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -26,6 +27,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
     private readonly ILogger<UpdateInstanceGovernanceSettingsCommandHandler> _logger;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILocationPrivacyGovernanceMutationService? _locationPrivacyMutations;
+    private readonly IMediator _mediator;
 
     public UpdateInstanceGovernanceSettingsCommandHandler(
         IAdminContext adminContext,
@@ -35,6 +37,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
         IDeploymentModeProvider deploymentModeProvider,
         ILogger<UpdateInstanceGovernanceSettingsCommandHandler> logger,
         IUnitOfWork unitOfWork,
+        IMediator mediator,
         ILocationPrivacyGovernanceMutationService? locationPrivacyMutations = null)
     {
         _adminContext = adminContext;
@@ -44,6 +47,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
         _deploymentModeProvider = deploymentModeProvider;
         _logger = logger;
         _unitOfWork = unitOfWork;
+        _mediator = mediator;
         _locationPrivacyMutations = locationPrivacyMutations;
     }
 
@@ -115,7 +119,8 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
         LogOnboardingGuardrailRejectionIfNeeded(request.UserId, request.Settings.RenderPolicy);
 
         // Atomic: persist settings + update bootstrap in one transaction.
-        var bootstrapId = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        InstanceGovernanceSettingApplyResult settingChanges = new([], []);
+        Guid bootstrapId = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
             Guid? defaultTenantId = null;
             if (isSingleTenant)
@@ -124,7 +129,10 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
                 defaultTenantId = defaultTenant.Id;
             }
 
-            await _governanceSettingService.ApplySettingsAsync(defaultTenantId, request.Settings, request.UserId);
+            settingChanges = await _governanceSettingService.ApplySettingsAsync(
+                defaultTenantId,
+                request.Settings,
+                request.UserId) ?? new([], []);
 
             if (bootstrap != null)
             {
@@ -136,13 +144,24 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
             return Guid.Empty;
         }, cancellationToken);
 
+        foreach (SettingChangedNotification notification in settingChanges.DeferredNotifications)
+        {
+            await _mediator.Publish(notification, CancellationToken.None);
+        }
+
         // Invalidate the cached deployment mode so all in-process caches reflect the new value immediately.
         await _deploymentModeProvider.InvalidateCacheAsync();
         if (request.Settings.LocationPrivacy is not null && _locationPrivacyMutations is not null)
         {
-            await _locationPrivacyMutations.InvalidateScopeAsync(
+            LocationPrivacyProjectionIdentity[] corrected = settingChanges.LocationPrivacyMutations
+                .Where(result => result.Accepted)
+                .SelectMany(result => result.CorrectedProjections)
+                .Distinct()
+                .ToArray();
+            await _locationPrivacyMutations.InvalidateMutationAsync(
                 Explore.Domain.Settings.SettingScope.Instance,
                 tenantId: null,
+                corrected,
                 CancellationToken.None);
         }
 
