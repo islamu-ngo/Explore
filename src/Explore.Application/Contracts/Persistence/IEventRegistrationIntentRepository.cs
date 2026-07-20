@@ -18,6 +18,12 @@ public interface IEventRegistrationIntentRepository : IGenericRepository<EventRe
         Guid userId,
         CancellationToken cancellationToken);
 
+    Task<EventSession?> GetEarliestApprovedReminderSessionAsync(
+        Guid tenantId,
+        Guid registrationIntentId,
+        DateTimeOffset strictlyAfterUtc,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<EventRegistrationIntent>> GetAtprotoReconciliationCandidatesAsync(
         Guid? afterIntentId,
         int batchSize,

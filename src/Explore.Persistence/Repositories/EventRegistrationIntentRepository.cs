@@ -52,6 +52,74 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
                 && intent.UserId == userId,
                 cancellationToken);
 
+    public async Task<EventSession?> GetEarliestApprovedReminderSessionAsync(
+        Guid tenantId,
+        Guid registrationIntentId,
+        DateTimeOffset strictlyAfterUtc,
+        CancellationToken cancellationToken)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            throw new ArgumentException("TenantId is required.", nameof(tenantId));
+        }
+
+        if (registrationIntentId == Guid.Empty)
+        {
+            throw new ArgumentException("RegistrationIntentId is required.", nameof(registrationIntentId));
+        }
+
+        DateTimeOffset cutoffUtc = strictlyAfterUtc.ToUniversalTime();
+        var parentAuthority = await _dbContext.EventRegistrationIntents
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .Where(intent =>
+                intent.TenantId == tenantId
+                && intent.Id == registrationIntentId
+                && !intent.IsDeleted
+                && intent.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
+                && _dbContext.Events
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                    .Any(@event => @event.TenantId == tenantId
+                        && @event.Id == intent.EventId
+                        && !@event.IsDeleted
+                        && @event.EventStatusId == (int)EventStatusEnum.Published))
+            .Select(intent => new { intent.EventId, intent.UserId })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (parentAuthority is null)
+        {
+            return null;
+        }
+
+        IQueryable<Guid> coveredSessionIds = _dbContext.EventRegistrations
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .Where(child =>
+                child.TenantId == tenantId
+                && child.EventRegistrationIntentId == registrationIntentId
+                && child.EventId == parentAuthority.EventId
+                && child.UserId == parentAuthority.UserId
+                && !child.IsDeleted
+                && child.ApprovalStatusId == (int)ApprovalStatusEnum.Approved)
+            .Select(child => child.EventSessionId)
+            .Distinct();
+
+        return await _dbContext.EventSessions
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .Where(session =>
+                session.TenantId == tenantId
+                && session.EventId == parentAuthority.EventId
+                && !session.IsDeleted
+                && session.EventSessionStatusId == (int)EventSessionStatusEnum.Published
+                && session.StartTime.HasValue
+                && session.StartTime.Value > cutoffUtc
+                && coveredSessionIds.Contains(session.Id))
+            .OrderBy(session => session.StartTime)
+            .ThenBy(session => session.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<EventRegistrationIntent>> GetAtprotoReconciliationCandidatesAsync(
         Guid? afterIntentId,
         int batchSize,

@@ -146,10 +146,11 @@ public sealed class EventLifecycleEmailOutboxFactory
         Guid registrationIntentId,
         string recipientEmail,
         string eventTitle,
-        DateTimeOffset startsAt)
+        DateTimeOffset startsAtUtc,
+        string timeZoneId = "UTC")
     {
         var title = NormalizeTitle(eventTitle);
-        var startsAtText = startsAt.ToUniversalTime().ToString("yyyy-MM-dd HH:mm 'UTC'");
+        string startsAtText = EventReminderAuthorityReference.FormatDisplay(startsAtUtc, timeZoneId);
         return CreateRegistrationLifecycleEmail(
             tenantId,
             userId,

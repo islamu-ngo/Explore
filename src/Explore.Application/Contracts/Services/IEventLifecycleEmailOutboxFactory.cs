@@ -62,7 +62,8 @@ public interface IEventLifecycleEmailOutboxFactory
         Guid registrationIntentId,
         string recipientEmail,
         string eventTitle,
-        DateTimeOffset startsAt);
+        DateTimeOffset startsAtUtc,
+        string timeZoneId = "UTC");
 
     EmailDispatchOutbox CreateEventCancelled(
         Guid tenantId,

@@ -90,6 +90,12 @@ public static class ApplicationServicesRegistration
                 options => EventReportSubmissionOptions.IsValidCaseSlaHours(options.CaseSlaHours),
                 $"Reporting:CaseSlaHours must be between {EventReportSubmissionOptions.MinCaseSlaHours} and {EventReportSubmissionOptions.MaxCaseSlaHours} hours.")
             .ValidateOnStart();
+        services.AddOptions<EventReminderOptions>()
+            .Bind(configuration.GetSection(EventReminderOptions.SectionName))
+            .Validate(
+                options => EventReminderOptions.IsValidLeadTimeHours(options.EventReminderLeadTimeHours),
+                $"EmailDispatch:EventReminderLeadTimeHours must be between {EventReminderOptions.MinLeadTimeHours} and {EventReminderOptions.MaxLeadTimeHours} hours.")
+            .ValidateOnStart();
         services.Configure<NotificationRoutingOptions>(configuration.GetSection(NotificationRoutingOptions.SectionName));
         services.Configure<AccountAuthorityLifecycleEmailOptions>(configuration.GetSection(AccountAuthorityLifecycleEmailOptions.SectionName));
         services.AddSingleton<IAiToolContractRegistry>(_ => AiToolContractRegistry.CreateDefault());

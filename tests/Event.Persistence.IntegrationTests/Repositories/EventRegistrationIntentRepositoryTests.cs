@@ -714,6 +714,101 @@ public sealed class EventRegistrationIntentRepositoryTests(PostgreSqlContainerFi
     }
 
     [Test]
+    public async Task GetEarliestApprovedReminderSessionAsyncUsesApprovedParentCoverageAndStableStartIdOrder()
+    {
+        await fixture.ResetAsync();
+        await using ExploreDbContext context = fixture.CreateDbContext();
+        RegistrationScenario scenario = await SeedRegistrationScenarioAsync(context, userCount: 3, sessionCapacity: 10);
+        DateTimeOffset cutoff = new(2026, 7, 20, 8, 0, 0, TimeSpan.Zero);
+        Guid lowerSessionId = Guid.Parse("10000000-0000-7000-8000-000000000001");
+        Guid upperSessionId = Guid.Parse("10000000-0000-7000-8000-000000000002");
+        EventSession lower = NewSession(
+            scenario.TenantId, scenario.EventId, scenario.EventDayId, "Lower id", 10,
+            cutoff.AddDays(2), cutoff.AddDays(2).AddHours(1));
+        lower.Id = lowerSessionId;
+        lower.EventSessionStatusId = (int)EventSessionStatusEnum.Published;
+        EventSession upper = NewSession(
+            scenario.TenantId, scenario.EventId, scenario.EventDayId, "Upper id", 10,
+            cutoff.AddDays(2), cutoff.AddDays(2).AddHours(1));
+        upper.Id = upperSessionId;
+        upper.EventSessionStatusId = (int)EventSessionStatusEnum.Published;
+        EventSession started = NewSession(
+            scenario.TenantId, scenario.EventId, scenario.EventDayId, "Started", 10,
+            cutoff.AddMinutes(-1), cutoff.AddMinutes(30));
+        started.EventSessionStatusId = (int)EventSessionStatusEnum.Published;
+        EventSession unpublished = NewSession(
+            scenario.TenantId, scenario.EventId, scenario.EventDayId, "Unpublished", 10,
+            cutoff.AddMinutes(1), cutoff.AddHours(1));
+        EventSession unrelated = NewSession(
+            scenario.TenantId, scenario.EventId, scenario.EventDayId, "Unrelated", 10,
+            cutoff.AddMinutes(2), cutoff.AddHours(1));
+        unrelated.EventSessionStatusId = (int)EventSessionStatusEnum.Published;
+        EventSession daySession = await context.EventSessions.SingleAsync(value => value.Id == scenario.SecondarySessionId);
+        daySession.EventSessionStatusId = (int)EventSessionStatusEnum.Published;
+        context.EventSessions.AddRange(lower, upper, started, unpublished, unrelated);
+
+        EventRegistrationIntent eventIntent = NewIntent(scenario, scenario.UserIds[0], RegistrationScopeEnum.Event);
+        EventRegistrationIntent dayIntent = NewIntent(scenario, scenario.UserIds[1], RegistrationScopeEnum.Day);
+        EventRegistrationIntent selectionIntent = NewIntent(scenario, scenario.UserIds[2], RegistrationScopeEnum.SessionSelection);
+        eventIntent.ApprovalStatusId = (int)ApprovalStatusEnum.Approved;
+        dayIntent.ApprovalStatusId = (int)ApprovalStatusEnum.Approved;
+        selectionIntent.ApprovalStatusId = (int)ApprovalStatusEnum.Approved;
+        context.EventRegistrationIntents.AddRange(eventIntent, dayIntent, selectionIntent);
+
+        EventRegistration EventChild(EventRegistrationIntent intent, Guid sessionId, bool deleted = false) => new()
+        {
+            Id = Guid.CreateVersion7(),
+            EventId = intent.EventId,
+            Event = null!,
+            UserId = intent.UserId,
+            User = null!,
+            EventSessionId = sessionId,
+            EventSession = null!,
+            EventRegistrationIntentId = intent.Id,
+            EventRegistrationIntent = null,
+            ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+            TenantId = intent.TenantId,
+            Tenant = null!,
+            CoverageEstablishedAt = cutoff.UtcDateTime,
+            IsDeleted = deleted,
+            DeletedAt = deleted ? cutoff.UtcDateTime : null
+        };
+
+        EventRegistration dayChild = EventChild(dayIntent, daySession.Id);
+        context.EventRegistrations.AddRange(
+            EventChild(eventIntent, lower.Id),
+            EventChild(eventIntent, lower.Id, deleted: true),
+            EventChild(eventIntent, upper.Id),
+            EventChild(eventIntent, started.Id),
+            EventChild(eventIntent, unpublished.Id),
+            dayChild,
+            EventChild(selectionIntent, upper.Id));
+        await context.SaveChangesAsync();
+        var repository = new EventRegistrationIntentRepository(context);
+
+        EventSession? eventScope = await repository.GetEarliestApprovedReminderSessionAsync(
+            scenario.TenantId, eventIntent.Id, cutoff, CancellationToken.None);
+        EventSession? dayScope = await repository.GetEarliestApprovedReminderSessionAsync(
+            scenario.TenantId, dayIntent.Id, cutoff, CancellationToken.None);
+        EventSession? explicitScope = await repository.GetEarliestApprovedReminderSessionAsync(
+            scenario.TenantId, selectionIntent.Id, cutoff, CancellationToken.None);
+
+        await Assert.That(eventScope!.Id).IsEqualTo(lowerSessionId);
+        await Assert.That(dayScope!.Id).IsEqualTo(daySession.Id);
+        await Assert.That(explicitScope!.Id).IsEqualTo(upperSessionId);
+
+        dayIntent.ApprovalStatusId = (int)ApprovalStatusEnum.Waitlisted;
+        await context.SaveChangesAsync();
+        await Assert.That(await repository.GetEarliestApprovedReminderSessionAsync(
+            scenario.TenantId, dayIntent.Id, cutoff, CancellationToken.None)).IsNull();
+        dayIntent.ApprovalStatusId = (int)ApprovalStatusEnum.Approved;
+        dayChild.ApprovalStatusId = (int)ApprovalStatusEnum.Waitlisted;
+        await context.SaveChangesAsync();
+        await Assert.That(await repository.GetEarliestApprovedReminderSessionAsync(
+            scenario.TenantId, dayIntent.Id, cutoff, CancellationToken.None)).IsNull();
+    }
+
+    [Test]
     [Category("EventLocationPrivacy")]
     public async Task GetRegisteredUserFanoutBatchAsyncReturnsOnlyLiveApprovalStates()
     {
