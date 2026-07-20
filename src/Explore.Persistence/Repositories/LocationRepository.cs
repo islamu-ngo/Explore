@@ -82,7 +82,7 @@ public class LocationRepository : GenericRepository<Location, Guid>, ILocationRe
         }
 
         return await _dbContext.Locations
-            .IgnoreTenantFilter(TenantFilterBypassReasons.GlobalLocationPrivacyErasure)
+            .IgnoreTenantFilter(TenantFilterBypassReasons.UserPrivacyErasure)
             .Where(location => location.OwnerUserId == ownerUserId
                 && location.LocationKindId == (int)LocationKindEnum.PrivateHome)
             .OrderBy(location => location.TenantId)

@@ -44,7 +44,7 @@ public partial class ExploreDbContext
 
             if (entry.Entity is Explore.Domain.EventLocationDisclosureAudit
                     or Explore.Domain.EventLocationExactReadAudit
-                    or Explore.Domain.LocationPrivacyErasureReplayCheckpoint
+                    or Explore.Domain.PrivacyErasureReplayCheckpoint
                 && entry.State is EntityState.Modified or EntityState.Deleted)
             {
                 throw new InvalidOperationException("Event location privacy evidence is append-only and cannot be modified or deleted.");

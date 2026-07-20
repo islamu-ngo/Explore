@@ -1,0 +1,45 @@
+// ABOUTME: Maps the fenced User privacy-erasure saga and its fixed-size receipt hash.
+// ABOUTME: Enforces intent idempotency, sequence fencing, typed policy identity, and UTC receipt bounds.
+
+using Explore.Domain;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Explore.Persistence.Configurations.Entities;
+
+public sealed class PrivacyErasureSagaConfiguration : IEntityTypeConfiguration<PrivacyErasureSaga>
+{
+    public void Configure(EntityTypeBuilder<PrivacyErasureSaga> builder)
+    {
+        builder.ToTable("privacy_erasure_sagas", table =>
+        {
+            table.HasCheckConstraint("ck_privacy_erasure_sagas_subject_kind", "subject_kind = 1");
+            table.HasCheckConstraint(
+                "ck_privacy_erasure_sagas_subject_nonempty",
+                "subject_id <> '00000000-0000-0000-0000-000000000000'::uuid");
+            table.HasCheckConstraint("ck_privacy_erasure_sagas_policy_version", "policy_version > 0");
+            table.HasCheckConstraint("ck_privacy_erasure_sagas_fence", "fence_token > 0");
+            table.HasCheckConstraint("ck_privacy_erasure_sagas_receipt_hash", "octet_length(receipt_hash) = 32");
+            table.HasCheckConstraint(
+                "ck_privacy_erasure_sagas_receipt_window",
+                "receipt_expires_at_utc > fenced_at_utc");
+            table.HasCheckConstraint(
+                "ck_privacy_erasure_sagas_concurrency_uuid_v7",
+                "substring(concurrency_token::text, 15, 1) = '7' AND " +
+                "substring(concurrency_token::text, 20, 1) IN ('8', '9', 'a', 'b')");
+        });
+
+        builder.HasKey(item => item.IntentId);
+        builder.Property(item => item.SubjectKind).HasConversion<short>();
+        builder.Property(item => item.ReceiptHash).HasMaxLength(32).IsFixedLength();
+        builder.Property(item => item.ConcurrencyToken).IsConcurrencyToken();
+        builder.HasIndex(item => item.ReceiptHash).IsUnique();
+        builder.HasIndex(item => new { item.IntentId, item.SubjectKind, item.PolicyVersion })
+            .IsUnique();
+        builder.HasOne<PrivacyErasureIntent>()
+            .WithOne()
+            .HasForeignKey<PrivacyErasureSaga>(item => item.IntentId)
+            .HasPrincipalKey<PrivacyErasureIntent>(item => item.IntentId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}

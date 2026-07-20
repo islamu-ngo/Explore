@@ -185,7 +185,11 @@ public partial class ExploreDbContext
     public DbSet<EventLocation> EventLocations { get; set; }
     public DbSet<EventLocationDisclosureAudit> EventLocationDisclosureAudits { get; set; }
     public DbSet<EventLocationExactReadAudit> EventLocationExactReadAudits { get; set; }
-    public DbSet<LocationPrivacyErasureReplayCheckpoint> LocationPrivacyErasureReplayCheckpoints { get; set; }
+    public DbSet<PrivacyErasureReplayCheckpoint> PrivacyErasureReplayCheckpoints { get; set; }
+    public DbSet<PrivacyErasureIntent> PrivacyErasureIntents { get; set; }
+    public DbSet<PrivacyErasureCounter> PrivacyErasureCounters { get; set; }
+    public DbSet<PrivacyErasureSaga> PrivacyErasureSagas { get; set; }
+    public DbSet<PrivacyErasurePolicyCoverage> PrivacyErasurePolicyCoverage { get; set; }
 
     // ===== Storage =====
     public DbSet<StorageObject> StorageObjects { get; set; }

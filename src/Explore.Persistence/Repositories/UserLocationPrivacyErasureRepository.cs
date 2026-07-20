@@ -9,8 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
 
-public sealed class GlobalLocationPrivacyErasureRepository(ExploreDbContext dbContext)
-    : IGlobalLocationPrivacyErasureRepository
+public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbContext)
+    : IUserLocationPrivacyErasureRepository
 {
     public async Task<IReadOnlyList<Location>> GetOwnedPrivateHomesAsync(
         Guid ownerUserId,
@@ -18,7 +18,7 @@ public sealed class GlobalLocationPrivacyErasureRepository(ExploreDbContext dbCo
     {
         RequireId(ownerUserId, nameof(ownerUserId));
         List<Location> homes = await dbContext.Locations
-            .IgnoreTenantFilter(TenantFilterBypassReasons.GlobalLocationPrivacyErasure)
+            .IgnoreTenantFilter(TenantFilterBypassReasons.UserPrivacyErasure)
             .Where(location => location.OwnerUserId == ownerUserId
                 && location.LocationKindId == (int)LocationKindEnum.PrivateHome)
             .OrderBy(location => location.TenantId)
@@ -31,7 +31,7 @@ public sealed class GlobalLocationPrivacyErasureRepository(ExploreDbContext dbCo
 
         Guid[] locationIds = homes.Select(home => home.Id).ToArray();
         List<LocationRoom> rooms = await dbContext.LocationRooms
-            .IgnoreTenantFilter(TenantFilterBypassReasons.GlobalLocationPrivacyErasure)
+            .IgnoreTenantFilter(TenantFilterBypassReasons.UserPrivacyErasure)
             .IncludeDeleted()
             .Where(room => locationIds.Contains(room.LocationId))
             .OrderBy(room => room.LocationId)
@@ -63,7 +63,7 @@ public sealed class GlobalLocationPrivacyErasureRepository(ExploreDbContext dbCo
         }
 
         return await dbContext.EventLocations
-            .IgnoreTenantFilter(TenantFilterBypassReasons.GlobalLocationPrivacyErasure)
+            .IgnoreTenantFilter(TenantFilterBypassReasons.UserPrivacyErasure)
             .Where(eventLocation => eventLocation.LocationId.HasValue
                 && normalizedIds.Contains(eventLocation.LocationId.Value))
             .OrderBy(eventLocation => eventLocation.TenantId)
@@ -78,7 +78,7 @@ public sealed class GlobalLocationPrivacyErasureRepository(ExploreDbContext dbCo
     {
         RequireId(ownerUserId, nameof(ownerUserId));
         return await dbContext.Actors
-            .IgnoreTenantFilter(TenantFilterBypassReasons.GlobalLocationPrivacyErasure)
+            .IgnoreTenantFilter(TenantFilterBypassReasons.UserPrivacyErasure)
             .IncludeDeleted()
             .Include(actor => actor.Pii)
             .Where(actor => actor.UserId == ownerUserId)

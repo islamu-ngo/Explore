@@ -7,15 +7,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
 
-public sealed class LocationPrivacyErasureReplayCheckpointRepository(ExploreDbContext dbContext)
-    : ILocationPrivacyErasureReplayCheckpointRepository
+public sealed class PrivacyErasureReplayCheckpointRepository(ExploreDbContext dbContext)
+    : IPrivacyErasureReplayCheckpointRepository
 {
-    public async Task<LocationPrivacyErasureReplayCheckpoint> AppendAsync(
-        LocationPrivacyErasureReplayCheckpoint checkpoint,
+    public async Task<PrivacyErasureReplayCheckpoint> AppendAsync(
+        PrivacyErasureReplayCheckpoint checkpoint,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
-        LocationPrivacyErasureReplayCheckpoint? latest =
+        PrivacyErasureReplayCheckpoint? latest =
             await GetLatestAsync(cancellationToken);
         bool startsChain = latest is null
             && checkpoint.AuthoritySequence == 1
@@ -29,14 +29,14 @@ public sealed class LocationPrivacyErasureReplayCheckpointRepository(ExploreDbCo
                 "A local erasure checkpoint must append the next contiguous authority sequence.");
         }
 
-        dbContext.LocationPrivacyErasureReplayCheckpoints.Add(checkpoint);
+        dbContext.PrivacyErasureReplayCheckpoints.Add(checkpoint);
         await dbContext.SaveChangesAsync(cancellationToken);
         return checkpoint;
     }
 
-    public Task<LocationPrivacyErasureReplayCheckpoint?> GetLatestAsync(
+    public Task<PrivacyErasureReplayCheckpoint?> GetLatestAsync(
         CancellationToken cancellationToken) =>
-        dbContext.LocationPrivacyErasureReplayCheckpoints
+        dbContext.PrivacyErasureReplayCheckpoints
             .AsNoTracking()
             .OrderByDescending(item => item.AuthoritySequence)
             .ThenByDescending(item => item.Id)
