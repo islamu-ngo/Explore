@@ -164,8 +164,7 @@ public sealed class CompositeOutboxMessageDispatcherTests
         {
             TenantId = Guid.NewGuid(),
             ModerationRecordId = Guid.NewGuid(),
-            SourceActorId = Guid.NewGuid(),
-            RedactedAt = DateTimeOffset.UtcNow
+            Version = EventHeavyRedactedNotificationFanoutRequested.CurrentVersion
         };
 
         await dispatcher.DispatchAsync(new OutboxMessage
@@ -181,10 +180,112 @@ public sealed class CompositeOutboxMessageDispatcherTests
             Arg.Is<EventHeavyRedactedNotificationFanoutRequested>(payload =>
                 payload.TenantId == request.TenantId
                 && payload.ModerationRecordId == request.ModerationRecordId
-                && payload.SourceActorId == request.SourceActorId),
+                && payload.Version == request.Version),
             Arg.Any<CancellationToken>());
         await moderationFanoutService.DidNotReceiveWithAnyArgs().FanoutLightModerationAsync(default!, default);
         await fanoutService.DidNotReceiveWithAnyArgs().FanoutAsync(default!, default);
+    }
+
+    [Test]
+    public async Task DispatchAsync_WithHistoricalHeavyPayload_ScrubsAtRestBeforeCanonicalDispatch()
+    {
+        var moderationFanoutService = Substitute.For<IEventModerationNotificationFanoutService>();
+        var outboxRepository = Substitute.For<IOutboxRepository>();
+        outboxRepository.TryReplaceProcessingPayloadAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        var dispatcher = CreateDispatcher(
+            Substitute.For<IEventPublishedNotificationFanoutService>(),
+            moderationFanoutService,
+            outboxRepository: outboxRepository);
+        Guid tenantId = Guid.CreateVersion7();
+        Guid moderationRecordId = Guid.CreateVersion7();
+        string historicalPayload = JsonSerializer.Serialize(new
+        {
+            TenantId = tenantId,
+            ModerationRecordId = moderationRecordId,
+            SourceActorId = Guid.CreateVersion7(),
+            RedactedAt = DateTimeOffset.UtcNow
+        });
+        var message = new OutboxMessage
+        {
+            Id = Guid.CreateVersion7(),
+            AggregateType = "Event",
+            EventType = EventModerationOutboxMessageFactory.EventHeavyRedactedNotificationFanoutRequestedEventType,
+            Payload = historicalPayload
+        };
+
+        await dispatcher.DispatchAsync(message);
+
+        await outboxRepository.Received(1).TryReplaceProcessingPayloadAsync(
+            message.Id,
+            historicalPayload,
+            Arg.Is<string>(payload => payload.Contains("Version", StringComparison.Ordinal)
+                && !payload.Contains("SourceActorId", StringComparison.Ordinal)
+                && !payload.Contains("RedactedAt", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+        await moderationFanoutService.Received(1).FanoutHeavyRedactionAsync(
+            Arg.Is<EventHeavyRedactedNotificationFanoutRequested>(payload => payload.TenantId == tenantId
+                && payload.ModerationRecordId == moderationRecordId
+                && payload.Version == EventHeavyRedactedNotificationFanoutRequested.CurrentVersion),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task DispatchAsync_WithUnknownHeavyPayloadMember_ScrubsAndRejectsWithoutFanout()
+    {
+        var moderationFanoutService = Substitute.For<IEventModerationNotificationFanoutService>();
+        var outboxRepository = Substitute.For<IOutboxRepository>();
+        outboxRepository.TryReplaceProcessingPayloadAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        var dispatcher = CreateDispatcher(
+            Substitute.For<IEventPublishedNotificationFanoutService>(),
+            moderationFanoutService,
+            outboxRepository: outboxRepository);
+        string unsafePayload = JsonSerializer.Serialize(new
+        {
+            TenantId = Guid.CreateVersion7(),
+            ModerationRecordId = Guid.CreateVersion7(),
+            Version = EventHeavyRedactedNotificationFanoutRequested.CurrentVersion,
+            EventTitle = "private-title-canary",
+            EventSlug = "private-slug-canary",
+            EventUrl = "https://private.example/events/canary",
+            Description = "private-description-canary",
+            ImageUrl = "private-image-canary",
+            OrganizerId = "private-organizer-canary",
+            Evidence = "private-evidence-canary",
+            DecisionNote = "private-decision-note-canary",
+            ReasonCode = "private-reason-canary",
+            ModeratorUserId = "private-moderator-canary",
+            Provider = "private-provider-canary",
+            StoragePath = "private-storage-path-canary",
+            StorageKey = "private-storage-key-canary",
+            RawError = "private-raw-error-canary",
+            RecipientEmail = "attendee-pii-canary@example.test"
+        });
+        var message = new OutboxMessage
+        {
+            Id = Guid.CreateVersion7(),
+            AggregateType = "Event",
+            EventType = EventModerationOutboxMessageFactory.EventHeavyRedactedNotificationFanoutRequestedEventType,
+            Payload = unsafePayload
+        };
+
+        await Assert.That(async () => await dispatcher.DispatchAsync(message)).Throws<JsonException>();
+
+        await outboxRepository.Received(1).TryReplaceProcessingPayloadAsync(
+            message.Id,
+            unsafePayload,
+            EventHeavyRedactedNotificationFanoutPayloadParser.SafeInvalidPayload,
+            Arg.Any<CancellationToken>());
+        await moderationFanoutService.DidNotReceiveWithAnyArgs().FanoutHeavyRedactionAsync(default!, default);
     }
 
     [Test]
@@ -306,6 +407,7 @@ public sealed class CompositeOutboxMessageDispatcherTests
         IMediator? mediator = null,
         INotificationFanoutOccurrenceRepository? occurrenceRepository = null,
         INotificationFanoutRunRepository? runRepository = null,
+        IOutboxRepository? outboxRepository = null,
         HybridCache? cache = null)
     {
         var correctionPlanner = Substitute.For<IAtprotoLocationPrivacyCorrectionPlanner>();
@@ -323,6 +425,7 @@ public sealed class CompositeOutboxMessageDispatcherTests
             new LocationPrivacyCorrectionDispatcher(
                 cache ?? new RecordingHybridCache(),
                 correctionPlanner),
+            outboxRepository ?? Substitute.For<IOutboxRepository>(),
             mediator ?? Substitute.For<IMediator>(),
             NullLogger<CompositeOutboxMessageDispatcher>.Instance);
     }

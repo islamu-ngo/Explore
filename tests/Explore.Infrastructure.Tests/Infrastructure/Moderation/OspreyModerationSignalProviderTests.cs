@@ -187,6 +187,7 @@ public sealed class OspreyModerationSignalProviderTests
         Guid.CreateVersion7(),
         Guid.CreateVersion7(),
         Guid.CreateVersion7(),
+        Guid.CreateVersion7(),
         "spam",
         "safety",
         "submitted",

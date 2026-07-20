@@ -33,6 +33,12 @@ public interface IOutboxRepository
     /// </summary>
     Task<DateTime?> TryClaimForProcessing(Guid id, DateTime claimedAt, CancellationToken ct = default);
 
+    Task<bool> TryReplaceProcessingPayloadAsync(
+        Guid id,
+        string expectedPayload,
+        string replacementPayload,
+        CancellationToken ct = default);
+
     /// <summary>
     /// Marks a message as successfully dispatched only while the exact claim is current.
     /// </summary>

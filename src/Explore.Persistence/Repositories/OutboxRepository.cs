@@ -74,6 +74,23 @@ public class OutboxRepository : GenericRepository<OutboxMessage, Guid>, IOutboxR
         return rowsAffected == 1 ? leaseExpiresAt : null;
     }
 
+    public async Task<bool> TryReplaceProcessingPayloadAsync(
+        Guid id,
+        string expectedPayload,
+        string replacementPayload,
+        CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(expectedPayload);
+        ArgumentException.ThrowIfNullOrWhiteSpace(replacementPayload);
+        int rowsAffected = await _dbContext.OutboxMessages
+            .Where(message => message.Id == id
+                && message.Status == OutboxMessageStatus.Processing
+                && message.Payload == expectedPayload)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(message => message.Payload, replacementPayload), ct);
+        return rowsAffected == 1;
+    }
+
     public async Task<bool> MarkAsCompleted(
         Guid id,
         DateTime processingLeaseExpiresAt,

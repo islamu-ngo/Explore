@@ -48,8 +48,7 @@ public static class EventModerationOutboxMessageFactory
         {
             TenantId = @event.TenantId,
             ModerationRecordId = moderationRecord.Id,
-            SourceActorId = @event.ActorId,
-            RedactedAt = moderationRecord.CreatedAt
+            Version = EventHeavyRedactedNotificationFanoutRequested.CurrentVersion
         };
 
         return new OutboxMessage

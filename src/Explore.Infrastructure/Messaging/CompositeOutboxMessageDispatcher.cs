@@ -3,6 +3,7 @@
 
 using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Management.Handlers.Commands;
@@ -22,6 +23,7 @@ public sealed class CompositeOutboxMessageDispatcher(
     IEventModerationNotificationFanoutService moderationNotificationFanoutService,
     IReportProviderSyncDispatcher reportProviderSyncDispatcher,
     LocationPrivacyCorrectionDispatcher locationPrivacyCorrectionDispatcher,
+    IOutboxRepository outboxRepository,
     IMediator mediator,
     ILogger<CompositeOutboxMessageDispatcher> logger) : IOutboxMessageDispatcher
 {
@@ -136,14 +138,41 @@ public sealed class CompositeOutboxMessageDispatcher(
             throw new InvalidOperationException($"Outbox message {message.Id} has no payload for heavy redaction notification fanout.");
         }
 
-        var request = JsonSerializer.Deserialize<EventHeavyRedactedNotificationFanoutRequested>(message.Payload)
-            ?? throw new JsonException($"Failed to deserialize heavy redaction notification fanout payload for message {message.Id}.");
+        EventHeavyRedactedNotificationFanoutPayloadParseResult parsed;
+        try
+        {
+            parsed = EventHeavyRedactedNotificationFanoutPayloadParser.Parse(message.Payload);
+        }
+        catch (JsonException)
+        {
+            await outboxRepository.TryReplaceProcessingPayloadAsync(
+                message.Id,
+                message.Payload,
+                EventHeavyRedactedNotificationFanoutPayloadParser.SafeInvalidPayload,
+                cancellationToken);
+            throw new JsonException("The heavy moderation fanout payload is invalid.");
+        }
+
+        if (parsed.WasLegacy)
+        {
+            bool scrubbed = await outboxRepository.TryReplaceProcessingPayloadAsync(
+                message.Id,
+                message.Payload,
+                parsed.CanonicalPayload,
+                cancellationToken);
+            if (!scrubbed)
+            {
+                throw new InvalidOperationException("The retained heavy moderation fanout payload could not be safely replaced.");
+            }
+
+            message.Payload = parsed.CanonicalPayload;
+        }
 
         logger.LogInformation(
             "Dispatching internal heavy redaction notification fanout for moderation record {ModerationRecordId} from outbox message {MessageId}",
-            request.ModerationRecordId,
+            parsed.Request.ModerationRecordId,
             message.Id);
 
-        await moderationNotificationFanoutService.FanoutHeavyRedactionAsync(request, cancellationToken);
+        await moderationNotificationFanoutService.FanoutHeavyRedactionAsync(parsed.Request, cancellationToken);
     }
 }
