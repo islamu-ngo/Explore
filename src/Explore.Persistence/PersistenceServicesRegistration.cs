@@ -4,13 +4,18 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Explore.Application.Configuration;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Application.Contracts.Services;
 using Explore.Domain;
 using Explore.Persistence.Caching;
 using Explore.Persistence.Extensions;
+using Explore.Persistence.Privacy.ErasureAuthority;
+using Explore.Persistence.Privacy.ErasureAuthority.Repositories;
 using Explore.Persistence.Repositories;
 using Explore.Persistence.Security;
 using Explore.Persistence.Services;
@@ -38,6 +43,9 @@ public static class PersistenceServicesRegistration
         bool skipLookupCacheInitializer = false,
         string? environmentName = null)
     {
+        PrivacyErasureDurabilityOptions erasureDurability =
+            PrivacyErasureDurabilityOptions.FromConfiguration(configuration);
+
         // Skip DbContext registration when running integration tests (they register their own)
         if (!skipDbContextRegistration)
         {
@@ -249,8 +257,18 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IEventLocationRepository, EventLocationRepository>();
         services.AddScoped<IEventLocationDisclosureAuditRepository, EventLocationDisclosureAuditRepository>();
         services.AddScoped<IEventLocationExactReadAuditRepository, EventLocationExactReadAuditRepository>();
-        services.AddScoped<ILocationPrivacyErasureReplayCheckpointRepository, LocationPrivacyErasureReplayCheckpointRepository>();
-        services.AddScoped<IGlobalLocationPrivacyErasureRepository, GlobalLocationPrivacyErasureRepository>();
+        services.AddScoped<IPrivacyErasureReplayCheckpointRepository, PrivacyErasureReplayCheckpointRepository>();
+        services.AddScoped<IUserLocationPrivacyErasureRepository, UserLocationPrivacyErasureRepository>();
+        services.AddScoped<IPrivacyErasureLedgerRepository, ApplicationDatabasePrivacyErasureLedgerRepository>();
+        if (erasureDurability.Mode == PrivacyErasureDurabilityMode.RetainedAuthority)
+        {
+            string connectionString =
+                PrivacyErasureDurabilityOptions.GetRetainedAuthorityConnectionString(configuration);
+            services.AddDbContext<PrivacyErasureAuthorityDbContext>(options =>
+                options.UseNpgsql(connectionString)
+                    .UseSnakeCaseNamingConvention());
+            services.AddScoped<IPrivacyErasureAuthority, EfCorePrivacyErasureAuthorityRepository>();
+        }
 
         // Storage Repository
         services.AddScoped<IStorageObjectRepository, StorageObjectRepository>();

@@ -10,6 +10,7 @@ using Azure.AI.OpenAI;
 using Azure.Identity;
 using Cerbos.Sdk;
 using Cerbos.Sdk.Builder;
+using Explore.Application.Configuration;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
@@ -33,7 +34,6 @@ using Explore.Infrastructure.Mail.Unsubscribe;
 using Explore.Infrastructure.Management;
 using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.NotificationFanout;
-using Explore.Infrastructure.Privacy.ErasureAuthority;
 using Explore.Infrastructure.Services;
 using Explore.Infrastructure.Services.Federation;
 using Explore.Infrastructure.Services.Keycloak;
@@ -75,10 +75,12 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IAtprotoPublicationPayloadBuilder, AtprotoPublicationPayloadBuilder>();
         services.AddScoped<IAtprotoPdsDeliveryGateway, AtprotoPdsDeliveryGateway>();
 
-        services.AddOptions<LocationPrivacyErasureAuthorityOptions>()
-            .Bind(configuration.GetSection(LocationPrivacyErasureAuthorityOptions.SectionName));
-        services.AddSingleton<ILocationPrivacyErasureAuthority, PostgreSqlLocationPrivacyErasureAuthority>();
-        services.AddScoped<ILocationErasureReplayService, LocationErasureReplayService>();
+        PrivacyErasureDurabilityOptions erasureDurability =
+            PrivacyErasureDurabilityOptions.FromConfiguration(configuration);
+        if (erasureDurability.Mode == PrivacyErasureDurabilityMode.RetainedAuthority)
+        {
+            services.AddScoped<IPrivacyErasureReplayService, PrivacyErasureReplayService>();
+        }
 
         services.AddOptions<ManagedControlPlaneOptions>()
             .Bind(configuration.GetSection(ManagedControlPlaneOptions.SectionName))

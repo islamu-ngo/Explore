@@ -1,11 +1,11 @@
-// ABOUTME: Guards API startup ordering for retained location-erasure replay.
+// ABOUTME: Guards API startup ordering for retained platform privacy-erasure replay.
 // ABOUTME: Ensures the host is built, replayed, and only then started.
 
 using TUnit.Core;
 
 namespace Event.Architecture.Tests;
 
-public sealed class LocationPrivacyStartupGateArchitectureTests
+public sealed class PrivacyErasureStartupGateArchitectureTests
 {
     [Test]
     public async Task ApiHost_BuildsBeforeStartingTheHost()
@@ -21,7 +21,7 @@ public sealed class LocationPrivacyStartupGateArchitectureTests
     {
         string program = ReadRepositoryFile("src/Explore.API/Program.cs");
         int build = program.IndexOf("var app = builder.Build();", StringComparison.Ordinal);
-        int replay = program.IndexOf("await LocationPrivacyStartupGate.RunAsync", StringComparison.Ordinal);
+        int replay = program.IndexOf("await PrivacyErasureStartupGate.RunAsync", StringComparison.Ordinal);
         int run = program.IndexOf("app.Run();", StringComparison.Ordinal);
 
         await Assert.That(replay).IsGreaterThan(build);

@@ -5,6 +5,7 @@ using AutoMapper.Internal;
 using Explore.Application.Analytics;
 using Explore.Application.Authorization;
 using Explore.Application.Behaviors;
+using Explore.Application.Configuration;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Notifications;
@@ -40,6 +41,14 @@ public static class ApplicationServicesRegistration
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        PrivacyErasureDurabilityOptions erasureDurability =
+            PrivacyErasureDurabilityOptions.FromConfiguration(configuration);
+        services.AddOptions<PrivacyErasureDurabilityOptions>()
+            .Configure(options =>
+            {
+                options.Mode = erasureDurability.Mode;
+            });
+
         services.AddAutoMapper(cfg =>
         {
 #if USE_COMMERCIAL_LUCKYPENNY_LIBS
@@ -114,7 +123,15 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IEventLocationManagementAuthorizationService, EventLocationManagementAuthorizationService>();
         services.AddScoped<IEventLocationDisclosureService, EventLocationDisclosureService>();
         services.AddScoped<IFanoutAttendeeLocationAuthorizationService, FanoutAttendeeLocationAuthorizationService>();
-        services.AddScoped<IGlobalLocationPrivacyErasureService, GlobalLocationPrivacyErasureService>();
+        services.AddScoped<PrivacyErasureApplier>();
+        if (erasureDurability.Mode == PrivacyErasureDurabilityMode.RetainedAuthority)
+        {
+            services.AddScoped<IPrivacyErasureService, RetainedAuthorityPrivacyErasureWorkflow>();
+        }
+        else
+        {
+            services.AddScoped<IPrivacyErasureService, ApplicationDatabasePrivacyErasureWorkflow>();
+        }
         services.AddSingleton<EventLocationDisclosureEvaluator>();
         services.AddScoped<PublicEventLocationDisclosureEvaluator>();
         services.AddScoped<AtprotoEventPublicationSnapshotFactory>();

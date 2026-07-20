@@ -599,10 +599,10 @@ if (!builder.Environment.IsEnvironment("Testing") && !isOpenApiGeneration)
 }
 
 if ((!builder.Environment.IsEnvironment("Testing") ||
-     app.Configuration.GetValue<bool>("Testing:EnableLocationPrivacyStartupGate")) &&
+     app.Configuration.GetValue<bool>("Testing:EnablePrivacyErasureStartupGate")) &&
     !isOpenApiGeneration)
 {
-    await LocationPrivacyStartupGate.RunAsync(app.Services, shutdownCts.Token);
+    await PrivacyErasureStartupGate.RunAsync(app.Services, shutdownCts.Token);
 }
 
 // Setup secret bootstrap logging — resolve provider and log the secret for first-run setup.

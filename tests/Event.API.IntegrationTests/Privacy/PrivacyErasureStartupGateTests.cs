@@ -3,18 +3,30 @@
 
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.BackgroundServices;
+using Explore.Application.Configuration;
 using Explore.Application.Contracts.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Privacy;
 
-public sealed class LocationPrivacyStartupGateTests
+public sealed class PrivacyErasureStartupGateTests
 {
+    [Test]
+    public async Task ApplicationDatabaseMode_DoesNotResolveReplayService()
+    {
+        await using ServiceProvider services = new ServiceCollection()
+            .AddSingleton<IOptions<PrivacyErasureDurabilityOptions>>(Options.Create(new PrivacyErasureDurabilityOptions()))
+            .BuildServiceProvider();
+
+        await PrivacyErasureStartupGate.RunAsync(services, CancellationToken.None);
+    }
+
     [Test]
     public async Task ReplayFailure_PreventsHostedWorkerInvocation()
     {
@@ -32,13 +44,17 @@ public sealed class LocationPrivacyStartupGateTests
     public async Task Cancellation_PropagatesWithoutStartingHostedWorker()
     {
         await using ServiceProvider services = new ServiceCollection()
-            .AddScoped<ILocationErasureReplayService, ReplayCancellation>()
+            .AddSingleton<IOptions<PrivacyErasureDurabilityOptions>>(Options.Create(new PrivacyErasureDurabilityOptions
+            {
+                Mode = PrivacyErasureDurabilityMode.RetainedAuthority
+            }))
+            .AddScoped<IPrivacyErasureReplayService, ReplayCancellation>()
             .BuildServiceProvider();
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            LocationPrivacyStartupGate.RunAsync(services, cancellation.Token));
+            PrivacyErasureStartupGate.RunAsync(services, cancellation.Token));
     }
 
     private sealed class ReplayFailureFactory : AuthenticatedWebApplicationFactory
@@ -47,7 +63,10 @@ public sealed class LocationPrivacyStartupGateTests
 
         public ReplayFailureFactory()
         {
-            AdditionalConfiguration["Testing:EnableLocationPrivacyStartupGate"] = "true";
+            AdditionalConfiguration["Testing:EnablePrivacyErasureStartupGate"] = "true";
+            AdditionalConfiguration["PrivacyErasure:Durability:Mode"] = "RetainedAuthority";
+            AdditionalConfiguration["ConnectionStrings:PrivacyErasureAuthority"] =
+                "Host=unused;Database=unused;Username=unused";
         }
 
         public bool HostedWorkerStarted => _marker.Started;
@@ -57,15 +76,19 @@ public sealed class LocationPrivacyStartupGateTests
             base.ConfigureWebHost(builder);
             builder.ConfigureTestServices(services =>
             {
-                services.RemoveAll<ILocationErasureReplayService>();
-                services.AddScoped<ILocationErasureReplayService, ReplayFailure>();
+                services.PostConfigure<PrivacyErasureDurabilityOptions>(options =>
+                {
+                    options.Mode = PrivacyErasureDurabilityMode.RetainedAuthority;
+                });
+                services.RemoveAll<IPrivacyErasureReplayService>();
+                services.AddScoped<IPrivacyErasureReplayService, ReplayFailure>();
                 services.AddSingleton(_marker);
                 services.AddHostedService<StartupMarkerHostedService>();
             });
         }
     }
 
-    private sealed class ReplayFailure : ILocationErasureReplayService
+    private sealed class ReplayFailure : IPrivacyErasureReplayService
     {
         public const string RawProviderMessage = "provider-endpoint-and-secret-canary";
 
@@ -73,7 +96,7 @@ public sealed class LocationPrivacyStartupGateTests
             throw new IOException(RawProviderMessage);
     }
 
-    private sealed class ReplayCancellation : ILocationErasureReplayService
+    private sealed class ReplayCancellation : IPrivacyErasureReplayService
     {
         public Task ReplayAsync(CancellationToken cancellationToken)
         {
