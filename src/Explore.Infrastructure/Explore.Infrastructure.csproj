@@ -65,7 +65,6 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Localization\Bundles\*.json" />
-    <EmbeddedResource Include="Privacy\ErasureAuthority\LocationPrivacyErasureAuthoritySchema.sql" />
   </ItemGroup>
 
 </Project>
