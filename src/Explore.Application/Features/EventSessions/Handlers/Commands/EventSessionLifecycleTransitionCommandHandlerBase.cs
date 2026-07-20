@@ -1,5 +1,5 @@
 // ABOUTME: Shared handler base for explicit event-session terminal lifecycle transitions.
-// ABOUTME: Centralizes concurrency, parent-event checks, persistence, schedule refresh, and cache invalidation.
+// ABOUTME: Centralizes atomic transition hooks, schedule refresh, and post-commit cache invalidation.
 
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
@@ -27,6 +27,17 @@ public abstract class EventSessionLifecycleTransitionCommandHandlerBase<TCommand
     protected abstract string AlreadyInTargetStatusFailureCode { get; }
     protected abstract string InvalidStatusFailureCode { get; }
 
+    protected virtual TransitionAttempt CreateTransitionAttempt() =>
+        new(DateTime.UtcNow, Guid.Empty, Guid.Empty);
+
+    protected virtual Task AfterTransitionInCurrentTransactionAsync(
+        EventSession session,
+        Event parentEvent,
+        int previousStatusId,
+        Guid expectedConcurrencyStamp,
+        TransitionAttempt attempt,
+        CancellationToken cancellationToken) => Task.CompletedTask;
+
     public async Task<BaseCommandResponse<Guid>> Handle(TCommand request, CancellationToken cancellationToken)
     {
         var validator = new EventSessionLifecycleRequestDtoValidator();
@@ -39,7 +50,10 @@ public abstract class EventSessionLifecycleTransitionCommandHandlerBase<TCommand
                 validationResult.Errors.Select(error => error.ErrorMessage));
         }
 
-        return await unitOfWork.ExecuteInTransactionAsync(async token =>
+        TransitionAttempt attempt = CreateTransitionAttempt();
+        Guid? eventIdToInvalidate = null;
+        Guid? tenantIdToInvalidate = null;
+        BaseCommandResponse<Guid> response = await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
             var session = await eventSessionRepository.GetById(request.Id);
             if (session is null)
@@ -83,16 +97,33 @@ public abstract class EventSessionLifecycleTransitionCommandHandlerBase<TCommand
                     InvalidStatusFailureCode);
             }
 
+            int previousStatusId = session.EventSessionStatusId;
             session.EventSessionStatusId = (int)TargetStatus;
-            session.UpdatedAt = DateTime.UtcNow;
+            session.UpdatedAt = attempt.OccurredAt;
 
             await eventSessionRepository.Update(session);
             await RefreshParentScheduleSummaryAsync(parentEvent.Id, token);
-            await cache.RemoveAsync($"event:detail:{parentEvent.Id}", token);
-            await cache.RemoveByTagAsync(CacheTags.EventListByTenant(parentEvent.TenantId), token);
+            await AfterTransitionInCurrentTransactionAsync(
+                session,
+                parentEvent,
+                previousStatusId,
+                request.Request.ExpectedConcurrencyStamp,
+                attempt,
+                token);
+            eventIdToInvalidate = parentEvent.Id;
+            tenantIdToInvalidate = parentEvent.TenantId;
 
             return Success(session.Id, $"Event session {PastTenseActionName} successfully.");
         }, cancellationToken);
+
+        if (!response.Success || !eventIdToInvalidate.HasValue || !tenantIdToInvalidate.HasValue)
+        {
+            return response;
+        }
+
+        await cache.RemoveAsync($"event:detail:{eventIdToInvalidate.Value}", cancellationToken);
+        await cache.RemoveByTagAsync(CacheTags.EventListByTenant(tenantIdToInvalidate.Value), cancellationToken);
+        return response;
     }
 
     protected abstract bool CanTransition(int currentSessionStatusId, int parentEventStatusId);
@@ -134,4 +165,9 @@ public abstract class EventSessionLifecycleTransitionCommandHandlerBase<TCommand
         Errors = errors.ToList(),
         FailureCode = failureCode
     };
+
+    protected sealed record TransitionAttempt(
+        DateTime OccurredAt,
+        Guid OccurrenceId,
+        Guid PointerOutboxMessageId);
 }

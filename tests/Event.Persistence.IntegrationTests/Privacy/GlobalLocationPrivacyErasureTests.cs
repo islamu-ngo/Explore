@@ -7,6 +7,7 @@ using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Infrastructure.Privacy.ErasureAuthority;
+using Explore.Infrastructure.Services.Privacy;
 using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
@@ -119,7 +120,7 @@ public sealed class GlobalLocationPrivacyErasureTests(GlobalLocationPrivacyPostg
 
     [Test]
     [Timeout(240_000)]
-    public async Task AuthorityFirstRollback_LeavesPendingFactThenSequenceZeroReplayCommitsTombstonesCheckpointAndPiiFreeOutbox()
+    public async Task AuthorityFirstRollback_SequenceZeroAndRestoredBehindReplay_AreIdempotent()
     {
         ErasureGraph graph;
         await using (var seedContext = fixture.CreateDbContext())
@@ -201,7 +202,7 @@ public sealed class GlobalLocationPrivacyErasureTests(GlobalLocationPrivacyPostg
         await using (var replayContext = fixture.CreateDbContext())
         await using (ErasureRuntime replayRuntime = CreateRuntime(replayContext, authority))
         {
-            await replayRuntime.Service.ReplayPendingAsync(CancellationToken.None);
+            await replayRuntime.ReplayService.ReplayAsync(CancellationToken.None);
         }
 
         int checkpointCount;
@@ -284,16 +285,79 @@ public sealed class GlobalLocationPrivacyErasureTests(GlobalLocationPrivacyPostg
         await using (var restartedContext = fixture.CreateDbContext())
         await using (ErasureRuntime restartedRuntime = CreateRuntime(restartedContext, authority))
         {
-            await restartedRuntime.Service.ReplayPendingAsync(CancellationToken.None);
+            await restartedRuntime.ReplayService.ReplayAsync(CancellationToken.None);
         }
 
-        await using var finalContext = fixture.CreateDbContext();
-        await Assert.That(await finalContext.LocationPrivacyErasureReplayCheckpoints.CountAsync())
-            .IsEqualTo(checkpointCount);
-        await Assert.That(await finalContext.OutboxMessages.CountAsync(message =>
+        await using (var finalContext = fixture.CreateDbContext())
+        {
+            await Assert.That(await finalContext.LocationPrivacyErasureReplayCheckpoints.CountAsync())
+                .IsEqualTo(checkpointCount);
+            await Assert.That(await finalContext.OutboxMessages.CountAsync(message =>
+                message.EventType == LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType
+                || message.EventType == LocationPrivacyOutboxMessageFactory.LocationPrivacyCorrectionRequestedEventType))
+                .IsEqualTo(outboxCount);
+        }
+
+        ErasureGraph restoredGraph;
+        long checkpointBeforeRestore;
+        await using (var seedContext = fixture.CreateDbContext())
+        {
+            restoredGraph = await SeedErasureGraphAsync(seedContext);
+            checkpointBeforeRestore = await seedContext.LocationPrivacyErasureReplayCheckpoints
+                .MaxAsync(checkpoint => (long?)checkpoint.AuthoritySequence)
+                ?? 0;
+        }
+
+        LocationPrivacyErasureAuthorityIntent retainedAfterRestore = await authority.AppendAsync(
+            new LocationPrivacyErasureIntent(
+                Guid.CreateVersion7(),
+                restoredGraph.OwnerUserId,
+                restoredGraph.LocationIds,
+                LocationPrivacyErasureReasonEnum.AccountDeletion));
+        await Assert.That(retainedAfterRestore.AuthoritySequence).IsEqualTo(checkpointBeforeRestore + 1);
+
+        await using (var restoredContext = fixture.CreateDbContext())
+        await using (ErasureRuntime restored = CreateRuntime(restoredContext, authority))
+        {
+            await restored.ReplayService.ReplayAsync(CancellationToken.None);
+        }
+
+        int checkpointCountAfterRestore;
+        int outboxCountAfterRestore;
+        await using (var verifiedContext = fixture.CreateDbContext())
+        {
+            Location[] homes = await verifiedContext.Locations
+                .IgnoreQueryFilters()
+                .Include(location => location.Pii)
+                .Where(location => restoredGraph.LocationIds.Contains(location.Id))
+                .ToArrayAsync();
+            checkpointCountAfterRestore = await verifiedContext.LocationPrivacyErasureReplayCheckpoints.CountAsync();
+            outboxCountAfterRestore = await verifiedContext.OutboxMessages.CountAsync(message =>
+                message.EventType == LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType
+                || message.EventType == LocationPrivacyOutboxMessageFactory.LocationPrivacyCorrectionRequestedEventType);
+
+            await Assert.That(homes.All(home =>
+                home.LocationPrivacyStateId == (int)LocationPrivacyStateEnum.Erased
+                && home.OwnerUserId is null
+                && home.Pii == null)).IsTrue();
+            await Assert.That(await verifiedContext.LocationPrivacyErasureReplayCheckpoints
+                .AnyAsync(checkpoint => checkpoint.AuthoritySequence == retainedAfterRestore.AuthoritySequence
+                    && checkpoint.IntentId == retainedAfterRestore.IntentId)).IsTrue();
+        }
+
+        await using (var restartedContext = fixture.CreateDbContext())
+        await using (ErasureRuntime restarted = CreateRuntime(restartedContext, authority))
+        {
+            await restarted.ReplayService.ReplayAsync(CancellationToken.None);
+        }
+
+        await using var postRestoreContext = fixture.CreateDbContext();
+        await Assert.That(await postRestoreContext.LocationPrivacyErasureReplayCheckpoints.CountAsync())
+            .IsEqualTo(checkpointCountAfterRestore);
+        await Assert.That(await postRestoreContext.OutboxMessages.CountAsync(message =>
             message.EventType == LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType
             || message.EventType == LocationPrivacyOutboxMessageFactory.LocationPrivacyCorrectionRequestedEventType))
-            .IsEqualTo(outboxCount);
+            .IsEqualTo(outboxCountAfterRestore);
     }
 
     private static ErasureRuntime CreateRuntime(
@@ -315,7 +379,10 @@ public sealed class GlobalLocationPrivacyErasureTests(GlobalLocationPrivacyPostg
             cacheProvider.GetRequiredService<HybridCache>(),
             TimeProvider.System,
             NullLogger<GlobalLocationPrivacyErasureService>.Instance);
-        return new ErasureRuntime(service, cacheProvider);
+        return new ErasureRuntime(
+            service,
+            new LocationErasureReplayService(service),
+            cacheProvider);
     }
 
     private static async Task<ErasureGraph> SeedErasureGraphAsync(ExploreDbContext context)
@@ -531,6 +598,7 @@ public sealed class GlobalLocationPrivacyErasureTests(GlobalLocationPrivacyPostg
 
     private sealed record ErasureRuntime(
         GlobalLocationPrivacyErasureService Service,
+        LocationErasureReplayService ReplayService,
         ServiceProvider CacheProvider) : IAsyncDisposable
     {
         public ValueTask DisposeAsync() => CacheProvider.DisposeAsync();

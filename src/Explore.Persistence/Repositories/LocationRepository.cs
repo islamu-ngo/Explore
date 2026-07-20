@@ -34,6 +34,26 @@ public class LocationRepository : GenericRepository<Location, Guid>, ILocationRe
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetExistingTenantLocationIdsAsync(
+        Guid tenantId,
+        IReadOnlyCollection<Guid> candidateLocationIds,
+        CancellationToken cancellationToken = default)
+    {
+        var boundedLocationIds = candidateLocationIds
+            .Where(locationId => locationId != Guid.Empty)
+            .Distinct()
+            .ToArray();
+        if (boundedLocationIds.Length == 0)
+            return [];
+
+        return await _dbContext.Locations
+            .AsNoTracking()
+            .IgnoreAutoIncludes()
+            .Where(location => location.TenantId == tenantId && boundedLocationIds.Contains(location.Id))
+            .Select(location => location.Id)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<List<Location>> GetLocationsByCity(string city, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Locations

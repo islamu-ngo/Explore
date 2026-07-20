@@ -8,6 +8,7 @@ using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Features.EventSessions.Handlers.Commands;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Models.Common;
+using Explore.Application.Notifications;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -21,6 +22,8 @@ namespace Event.Application.UnitTests.Features.EventSessions.Commands;
 
 public class UpdateEventSessionCommandHandlerTests
 {
+    private static readonly DateTimeOffset Now = new(2026, 7, 19, 20, 45, 0, TimeSpan.Zero);
+
     private readonly IEventSessionRepository _eventSessionRepository;
     private readonly IEventRepository _eventRepository;
     private readonly ILocationRepository _locationRepository;
@@ -33,6 +36,7 @@ public class UpdateEventSessionCommandHandlerTests
     private readonly IUnitOfWork _unitOfWork;
     private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly HybridCache _cache;
+    private readonly FanoutFixture _fanout;
     private readonly UpdateEventSessionCommandHandler _handler;
 
     public UpdateEventSessionCommandHandlerTests()
@@ -51,6 +55,7 @@ public class UpdateEventSessionCommandHandlerTests
             _eventRepository,
             Guid.NewGuid());
         _cache = Substitute.For<HybridCache>();
+        _fanout = new FanoutFixture();
         _unitOfWork
             .ExecuteSerializableAsync(
                 Arg.Any<Func<CancellationToken, Task<bool>>>(),
@@ -73,7 +78,9 @@ public class UpdateEventSessionCommandHandlerTests
             _eventDayRepository,
             _unitOfWork,
             _eventLocationAttachmentService,
-            _cache
+            _cache,
+            _fanout.Coordinator,
+            new FixedTimeProvider(Now)
         );
     }
 
@@ -111,6 +118,243 @@ public class UpdateEventSessionCommandHandlerTests
         await Assert.That(result.Errors).Contains(EventSessionIslamicAspectValidationRules.SchedulingStateMessage);
         await _eventSessionRepository.DidNotReceive()
             .UpdateWithRoomOverlapGuardAsync(Arg.Any<EventSession>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenPublishedScheduleChanges_CreatesOneImmutableSessionOccurrence()
+    {
+        Guid eventId = Guid.NewGuid();
+        Guid sessionId = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
+        Guid concurrencyStamp = Guid.NewGuid();
+        DateTimeOffset previousStart = Now.AddDays(1);
+        DateTimeOffset previousEnd = previousStart.AddHours(1);
+        DateTimeOffset newStart = previousStart.AddHours(1);
+        DateTimeOffset newEnd = previousEnd.AddHours(2);
+        var parentEvent = DataBuilder.Event.Generate();
+        parentEvent.Id = eventId;
+        parentEvent.TenantId = tenantId;
+        parentEvent.Title = "Parent event";
+        parentEvent.EventTimeZoneId = "Europe/Brussels";
+        var session = new EventSession
+        {
+            Id = sessionId,
+            EventId = eventId,
+            TenantId = tenantId,
+            Title = "Published session",
+            StartTime = previousStart,
+            EndTime = previousEnd,
+            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
+            ConcurrencyStamp = concurrencyStamp,
+            Event = null!,
+            Tenant = null!
+        };
+        _eventRepository.Exists(eventId).Returns(true);
+        _eventRepository.GetById(eventId).Returns(parentEvent);
+        _eventSessionRepository.GetById(sessionId).Returns(session);
+
+        var result = await _handler.Handle(
+            CreateScheduleCommand(sessionId, eventId, concurrencyStamp, newStart, newEnd, session.Title),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(_fanout.CreatedOccurrences).Count().IsEqualTo(1);
+        await Assert.That(_fanout.OutboxPointers).Count().IsEqualTo(1);
+        NotificationFanoutOccurrence occurrence = _fanout.CreatedOccurrences[0];
+        await Assert.That(occurrence.EventId).IsEqualTo(eventId);
+        await Assert.That(occurrence.SessionId).IsEqualTo(sessionId);
+        await Assert.That(occurrence.AggregateVersion).IsEqualTo(concurrencyStamp);
+        await Assert.That(occurrence.AudienceCutoffAt).IsEqualTo(Now.UtcDateTime);
+        NotificationFanoutRecipientTemplate template = new NotificationFanoutRecipientTemplateFactory().Parse(occurrence);
+        await Assert.That(template.ChangeSet.Fields).IsEquivalentTo([
+            NotificationFanoutChangeField.StartTime,
+            NotificationFanoutChangeField.EndTime]);
+        await Assert.That(template.Before.StartsAt).IsEqualTo(previousStart);
+        await Assert.That(template.Before.EndsAt).IsEqualTo(previousEnd);
+        await Assert.That(template.After.StartsAt).IsEqualTo(newStart);
+        await Assert.That(template.After.EndsAt).IsEqualTo(newEnd);
+    }
+
+    [Test]
+    public async Task Handle_WhenDraftScheduleChanges_CreatesNoAttendeeOccurrence()
+    {
+        Guid eventId = Guid.NewGuid();
+        Guid sessionId = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
+        Guid concurrencyStamp = Guid.NewGuid();
+        DateTimeOffset previousStart = Now.AddDays(1);
+        var parentEvent = DataBuilder.Event.Generate();
+        parentEvent.Id = eventId;
+        parentEvent.TenantId = tenantId;
+        var session = new EventSession
+        {
+            Id = sessionId,
+            EventId = eventId,
+            TenantId = tenantId,
+            Title = "Draft session",
+            StartTime = previousStart,
+            EndTime = previousStart.AddHours(1),
+            EventSessionStatusId = (int)EventSessionStatusEnum.Draft,
+            ConcurrencyStamp = concurrencyStamp,
+            Event = null!,
+            Tenant = null!
+        };
+        _eventRepository.Exists(eventId).Returns(true);
+        _eventRepository.GetById(eventId).Returns(parentEvent);
+        _eventSessionRepository.GetById(sessionId).Returns(session);
+
+        var result = await _handler.Handle(
+            CreateScheduleCommand(
+                sessionId,
+                eventId,
+                concurrencyStamp,
+                previousStart.AddHours(1),
+                previousStart.AddHours(2),
+                session.Title),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(_fanout.CreatedOccurrences).IsEmpty();
+        await Assert.That(_fanout.OutboxPointers).IsEmpty();
+    }
+
+    [Test]
+    public async Task Handle_WhenPublishedSessionMovesToAnotherEvent_RejectsBeforeMutation()
+    {
+        Guid sourceEventId = Guid.NewGuid();
+        Guid targetEventId = Guid.NewGuid();
+        Guid sessionId = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
+        Guid concurrencyStamp = Guid.NewGuid();
+        var targetEvent = DataBuilder.Event.Generate();
+        targetEvent.Id = targetEventId;
+        targetEvent.TenantId = tenantId;
+        var session = new EventSession
+        {
+            Id = sessionId,
+            EventId = sourceEventId,
+            TenantId = tenantId,
+            Title = "Published session",
+            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
+            ConcurrencyStamp = concurrencyStamp,
+            Event = null!,
+            Tenant = null!
+        };
+        _eventRepository.Exists(targetEventId).Returns(true);
+        _eventRepository.GetById(targetEventId).Returns(targetEvent);
+        _eventSessionRepository.GetById(sessionId).Returns(session);
+        var command = new UpdateEventSessionCommand
+        {
+            EventSessionId = sessionId,
+            ExpectedConcurrencyStamp = concurrencyStamp,
+            EventSessionDto = new UpdateEventSessionDto
+            {
+                Event = new UpdateEventSessionEventDto { EventId = targetEventId }
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("event_session_update_invalid_status");
+        await Assert.That(result.Errors).Contains(
+            "Published event sessions cannot be moved to another event until attendee transfer notifications are supported.");
+        await Assert.That(session.EventId).IsEqualTo(sourceEventId);
+        await _eventSessionRepository.DidNotReceive().MoveToEventAsync(
+            Arg.Any<EventSession>(),
+            Arg.Any<Guid>(),
+            Arg.Any<EventLocation>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<CancellationToken>());
+        await _eventSessionRepository.DidNotReceive().UpdateWithRoomOverlapGuardAsync(
+            Arg.Any<EventSession>(),
+            Arg.Any<CancellationToken>());
+        await Assert.That(_fanout.CreatedOccurrences).IsEmpty();
+        await Assert.That(_fanout.OutboxPointers).IsEmpty();
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenSerializableAttemptRetries_ReloadsAuthoritativeSession()
+    {
+        Guid eventId = Guid.NewGuid();
+        Guid sessionId = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
+        Guid concurrencyStamp = Guid.NewGuid();
+        DateTimeOffset staleStart = Now.AddDays(2);
+        DateTimeOffset authoritativeStart = Now.AddDays(1);
+        DateTimeOffset newStart = Now.AddDays(3);
+        var parentEvent = DataBuilder.Event.Generate();
+        parentEvent.Id = eventId;
+        parentEvent.TenantId = tenantId;
+        parentEvent.EventTimeZoneId = "Europe/Brussels";
+        EventSession firstAttemptSession = CreatePublishedSession(staleStart);
+        EventSession retrySession = CreatePublishedSession(authoritativeStart);
+        _eventRepository.Exists(eventId).Returns(true);
+        _eventRepository.GetById(eventId).Returns(parentEvent);
+        _eventSessionRepository.GetById(sessionId).Returns(firstAttemptSession, retrySession);
+        int updateAttempts = 0;
+        _eventSessionRepository
+            .When(repository => repository.UpdateWithRoomOverlapGuardAsync(
+                Arg.Any<EventSession>(),
+                Arg.Any<CancellationToken>()))
+            .Do(_ =>
+            {
+                if (++updateAttempts == 1)
+                {
+                    throw new TimeoutException("Simulated transient database failure.");
+                }
+            });
+        _unitOfWork
+            .ExecuteSerializableAsync(
+                Arg.Any<Func<CancellationToken, Task<bool>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                Func<CancellationToken, Task<bool>> operation = call.Arg<Func<CancellationToken, Task<bool>>>();
+                try
+                {
+                    return await operation(call.Arg<CancellationToken>());
+                }
+                catch (TimeoutException)
+                {
+                    return await operation(call.Arg<CancellationToken>());
+                }
+            });
+
+        var result = await _handler.Handle(
+            CreateScheduleCommand(
+                sessionId,
+                eventId,
+                concurrencyStamp,
+                newStart,
+                newStart.AddHours(1),
+                "Published session"),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _eventSessionRepository.Received(2).GetById(sessionId);
+        await Assert.That(updateAttempts).IsEqualTo(2);
+        await Assert.That(_fanout.CreatedOccurrences).Count().IsEqualTo(1);
+        NotificationFanoutRecipientTemplate template = new NotificationFanoutRecipientTemplateFactory()
+            .Parse(_fanout.CreatedOccurrences[0]);
+        await Assert.That(template.Before.StartsAt).IsEqualTo(authoritativeStart);
+        await Assert.That(template.After.StartsAt).IsEqualTo(newStart);
+
+        EventSession CreatePublishedSession(DateTimeOffset start) => new()
+        {
+            Id = sessionId,
+            EventId = eventId,
+            TenantId = tenantId,
+            Title = "Published session",
+            StartTime = start,
+            EndTime = start.AddHours(1),
+            EventSessionStatusId = (int)EventSessionStatusEnum.Published,
+            ConcurrencyStamp = concurrencyStamp,
+            Event = null!,
+            Tenant = null!
+        };
     }
 
     [Test]
@@ -307,4 +551,53 @@ public class UpdateEventSessionCommandHandlerTests
                 }
             }
         };
+
+    private sealed class FanoutFixture
+    {
+        public FanoutFixture()
+        {
+            OccurrenceRepository.GetPendingForEventCoordinationAsync(
+                    Arg.Any<Guid>(),
+                    Arg.Any<Guid>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(Array.Empty<NotificationFanoutOccurrence>());
+            OccurrenceRepository.SessionBelongsToEventForCoordinationAsync(
+                    Arg.Any<Guid>(),
+                    Arg.Any<Guid>(),
+                    Arg.Any<Guid>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(true);
+            OccurrenceRepository.Create(Arg.Any<NotificationFanoutOccurrence>())
+                .Returns(call =>
+                {
+                    NotificationFanoutOccurrence occurrence = call.Arg<NotificationFanoutOccurrence>();
+                    CreatedOccurrences.Add(occurrence);
+                    return occurrence;
+                });
+            OutboxRepository.Create(Arg.Any<OutboxMessage>())
+                .Returns(call =>
+                {
+                    OutboxMessage message = call.Arg<OutboxMessage>();
+                    OutboxPointers.Add(message);
+                    return message;
+                });
+            Coordinator = new NotificationFanoutOccurrenceCoordinator(
+                OccurrenceRepository,
+                Substitute.For<INotificationFanoutEmailSuppressionRepository>(),
+                OutboxRepository,
+                new NotificationFanoutRecipientTemplateFactory());
+        }
+
+        public INotificationFanoutOccurrenceRepository OccurrenceRepository { get; } =
+            Substitute.For<INotificationFanoutOccurrenceRepository>();
+        public IOutboxRepository OutboxRepository { get; } = Substitute.For<IOutboxRepository>();
+        public NotificationFanoutOccurrenceCoordinator Coordinator { get; }
+        public List<NotificationFanoutOccurrence> CreatedOccurrences { get; } = [];
+        public List<OutboxMessage> OutboxPointers { get; } = [];
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
 }

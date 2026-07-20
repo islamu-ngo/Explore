@@ -53,14 +53,43 @@ public sealed class UpcomingEventListTests : IDisposable
     }
 
     [Test]
-    public async Task FederatedEventWithUnsafeSourceHrefRendersWithoutLink()
+    public async Task FederatedEventWithSafeInternalSourceHrefPreservesExactLink()
     {
         var federatedEvent = CreateEvents(1).Single();
         federatedEvent.AdditionalProperties["eventDiscoverySource"] = "atproto";
         federatedEvent.AdditionalProperties["_links"] = System.Text.Json.JsonSerializer.SerializeToElement(
             new Dictionary<string, HalLink>
             {
-                ["source"] = new() { Href = "javascript:alert(document.cookie)", Method = "GET" }
+                ["source"] = new() { Href = "/api/event/source?page=2", Method = "GET" }
+            });
+
+        var cut = context.RenderMudComponent<UpcomingEventList>(parameters => parameters
+            .Add(component => component.Events, new[] { federatedEvent }));
+        var row = cut.Find("[data-testid='upcoming-event-row']");
+
+        await Assert.That(row.GetAttribute("href")).IsEqualTo("/api/event/source?page=2");
+        await Assert.That(row.GetAttribute("aria-label")).IsEqualTo("View AT Protocol source: Upcoming event 1");
+    }
+
+    [Test]
+    [Arguments("javascript:alert(document.cookie)")]
+    [Arguments("//example.test/source?access_token=credential-canary")]
+    [Arguments("/api\\event")]
+    [Arguments("/api/\u0001")]
+    [Arguments("https://user:pass@example.test/source")]
+    [Arguments("not-a-uri")]
+    [Arguments("/api/event/source?access_token=credential-canary")]
+    [Arguments("/api/event/source?ACCESS_TOKEN=credential-canary")]
+    [Arguments("/api/event/source?access%5Ftoken=credential-canary")]
+    [Arguments("/api/%")]
+    public async Task FederatedEventWithHostileSourceHrefRendersWithoutLink(string hostileHref)
+    {
+        var federatedEvent = CreateEvents(1).Single();
+        federatedEvent.AdditionalProperties["eventDiscoverySource"] = "atproto";
+        federatedEvent.AdditionalProperties["_links"] = System.Text.Json.JsonSerializer.SerializeToElement(
+            new Dictionary<string, HalLink>
+            {
+                ["source"] = new() { Href = hostileHref, Method = "GET" }
             });
 
         var cut = context.RenderMudComponent<UpcomingEventList>(parameters => parameters
@@ -69,7 +98,7 @@ public sealed class UpcomingEventListTests : IDisposable
 
         await Assert.That(row.HasAttribute("href")).IsFalse();
         await Assert.That(row.GetAttribute("role")).IsEqualTo("article");
-        await Assert.That(cut.Markup).DoesNotContain("javascript:");
+        await Assert.That(cut.Markup).DoesNotContain("credential-canary");
     }
 
     public void Dispose()

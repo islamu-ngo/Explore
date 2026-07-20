@@ -402,8 +402,7 @@ public sealed class LocationPrivacyGovernanceMutationService(
             eventLocation.TenantId,
             eventLocation.EventId,
             eventLocation.Id,
-            eventLocation.PolicyVersion,
-            Reason: "governance_tightening")),
+            eventLocation.PolicyVersion)),
             Status = OutboxMessageStatus.Pending,
             CreatedAt = createdAtUtc,
             MaxRetries = 5
@@ -439,6 +438,5 @@ public sealed class LocationPrivacyGovernanceMutationService(
         Guid TenantId,
         Guid EventId,
         Guid EventLocationId,
-        int PolicyVersion,
-        string Reason);
+        int PolicyVersion);
 }

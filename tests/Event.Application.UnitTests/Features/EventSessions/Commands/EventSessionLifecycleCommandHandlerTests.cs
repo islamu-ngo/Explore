@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for event-session draft, schedule, and publish lifecycle command handlers.
-// ABOUTME: Verifies policy readiness, concurrency gates, schedule projection, guarded writes, and cache invalidation.
+// ABOUTME: Verifies lifecycle policy, atomic attendee fanout, retry-safe scheduling, and cache sequencing.
 
 using Event.Application.UnitTests.Common;
 using Explore.Application.Caching;
@@ -7,7 +7,9 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.Features.EventSessions.Handlers.Commands;
 using Explore.Application.Features.EventSessions.Requests.Commands;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Application.Services.Lifecycle;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -21,6 +23,8 @@ namespace Event.Application.UnitTests.Features.EventSessions.Commands;
 
 public sealed class EventSessionLifecycleCommandHandlerTests
 {
+    private static readonly DateTimeOffset Now = new(2026, 7, 19, 19, 15, 0, TimeSpan.Zero);
+
     [Test]
     public async Task CreateDraft_WhenParentEventExists_CreatesUnscheduledDraftSession()
     {
@@ -83,6 +87,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
         var session = CreateSession(parentEvent, EventSessionStatusEnum.Draft);
         eventRepository.GetById(parentEvent.Id).Returns(parentEvent);
         eventSessionRepository.GetById(session.Id).Returns(session);
+        var fanout = new FanoutFixture();
         var handler = new ScheduleEventSessionCommandHandler(
             eventSessionRepository,
             eventRepository,
@@ -90,7 +95,10 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             new EventScheduleProjectionCalculator(),
             CreatePolicyProvider(CreateSessionSchedulePolicy()),
             new EventLifecycleReadinessEvaluator(),
-            cache);
+            CreateUnitOfWork(),
+            cache,
+            fanout.Coordinator,
+            new FixedTimeProvider(Now));
         var start = new DateTimeOffset(2026, 7, 1, 8, 0, 0, TimeSpan.Zero);
         var end = start.AddHours(2);
 
@@ -110,6 +118,8 @@ public sealed class EventSessionLifecycleCommandHandlerTests
         await Assert.That(session.EndTime).IsEqualTo(end);
         await Assert.That(session.LocalStartDate).IsNotNull();
         await eventSessionRepository.Received(1).UpdateWithRoomOverlapGuardAsync(session, Arg.Any<CancellationToken>());
+        await Assert.That(fanout.CreatedOccurrences).IsEmpty();
+        await Assert.That(fanout.OutboxPointers).IsEmpty();
         await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(parentEvent.TenantId), Arg.Any<CancellationToken>());
     }
 
@@ -134,7 +144,10 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             new EventScheduleProjectionCalculator(),
             CreatePolicyProvider(CreateSessionSchedulePolicy()),
             new EventLifecycleReadinessEvaluator(),
-            cache);
+            CreateUnitOfWork(),
+            cache,
+            new FanoutFixture().Coordinator,
+            new FixedTimeProvider(Now));
         var start = new DateTimeOffset(2026, 7, 1, 8, 0, 0, TimeSpan.Zero);
         var end = start.AddHours(2);
 
@@ -169,7 +182,10 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             new EventScheduleProjectionCalculator(),
             CreatePolicyProvider(CreateSessionSchedulePolicy()),
             new EventLifecycleReadinessEvaluator(),
-            Substitute.For<HybridCache>());
+            CreateUnitOfWork(),
+            Substitute.For<HybridCache>(),
+            new FanoutFixture().Coordinator,
+            new FixedTimeProvider(Now));
 
         var result = await handler.Handle(new ScheduleEventSessionCommand
         {
@@ -185,6 +201,209 @@ public sealed class EventSessionLifecycleCommandHandlerTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_session_schedule_concurrency_conflict");
         await eventSessionRepository.DidNotReceive().UpdateWithRoomOverlapGuardAsync(Arg.Any<EventSession>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Schedule_WhenPublishedSessionIsRescheduled_FreezesOneOccurrenceBeforeCommit()
+    {
+        var eventSessionRepository = Substitute.For<IEventSessionRepository>();
+        var eventRepository = Substitute.For<IEventRepository>();
+        var eventDayRepository = Substitute.For<IEventDayRepository>();
+        var cache = Substitute.For<HybridCache>();
+        Explore.Domain.Event parentEvent = CreateEvent(EventStatusEnum.Published);
+        parentEvent.EventTimeZoneId = "Europe/Brussels";
+        EventSession session = CreateSession(parentEvent, EventSessionStatusEnum.Published);
+        DateTimeOffset previousStart = new(2026, 8, 1, 10, 0, 0, TimeSpan.Zero);
+        DateTimeOffset previousEnd = previousStart.AddHours(1);
+        DateTimeOffset newStart = previousStart.AddHours(1);
+        DateTimeOffset newEnd = previousEnd.AddHours(1);
+        session.StartTime = previousStart;
+        session.EndTime = previousEnd;
+        Guid expectedConcurrencyStamp = session.ConcurrencyStamp;
+        parentEvent.Sessions.Add(session);
+        eventSessionRepository.GetById(session.Id).Returns(session);
+        eventRepository.GetById(parentEvent.Id).Returns(parentEvent);
+        eventRepository.GetScheduleGraphForUpdateAsync(parentEvent.Id, Arg.Any<CancellationToken>()).Returns(parentEvent);
+        bool transactionCompleted = false;
+        bool occurrenceCreatedBeforeCommit = false;
+        bool cacheObservedCommit = false;
+        cache.RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                cacheObservedCommit = transactionCompleted;
+                return ValueTask.CompletedTask;
+            });
+        var fanout = new FanoutFixture(() => occurrenceCreatedBeforeCommit = !transactionCompleted);
+        var handler = new ScheduleEventSessionCommandHandler(
+            eventSessionRepository,
+            eventRepository,
+            eventDayRepository,
+            new EventScheduleProjectionCalculator(),
+            CreatePolicyProvider(CreateSessionSchedulePolicy()),
+            new EventLifecycleReadinessEvaluator(),
+            CreateUnitOfWork(() => transactionCompleted = true),
+            cache,
+            fanout.Coordinator,
+            new FixedTimeProvider(Now));
+
+        BaseCommandResponse<Guid> result = await handler.Handle(new ScheduleEventSessionCommand
+        {
+            Id = session.Id,
+            Request = new ScheduleEventSessionRequestDto
+            {
+                ExpectedConcurrencyStamp = expectedConcurrencyStamp,
+                StartTime = newStart,
+                EndTime = newEnd
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(fanout.CreatedOccurrences).Count().IsEqualTo(1);
+        await Assert.That(fanout.OutboxPointers).Count().IsEqualTo(1);
+        NotificationFanoutOccurrence occurrence = fanout.CreatedOccurrences[0];
+        session.Reschedule(newStart.AddHours(1), newEnd.AddHours(1), "Europe/Brussels", new EventScheduleProjectionCalculator());
+        NotificationFanoutRecipientTemplate template = new NotificationFanoutRecipientTemplateFactory().Parse(occurrence);
+        await Assert.That(occurrence.EventId).IsEqualTo(parentEvent.Id);
+        await Assert.That(occurrence.SessionId).IsEqualTo(session.Id);
+        await Assert.That(occurrence.AggregateVersion).IsEqualTo(expectedConcurrencyStamp);
+        await Assert.That(occurrence.AudienceCutoffAt).IsEqualTo(Now.UtcDateTime);
+        await Assert.That(template.ChangeSet.Fields).IsEquivalentTo([
+            NotificationFanoutChangeField.StartTime,
+            NotificationFanoutChangeField.EndTime]);
+        await Assert.That(template.Before.StartsAt).IsEqualTo(previousStart);
+        await Assert.That(template.Before.EndsAt).IsEqualTo(previousEnd);
+        await Assert.That(template.After.StartsAt).IsEqualTo(newStart);
+        await Assert.That(template.After.EndsAt).IsEqualTo(newEnd);
+        await Assert.That(occurrenceCreatedBeforeCommit).IsTrue();
+        await Assert.That(cacheObservedCommit).IsTrue();
+    }
+
+    [Test]
+    public async Task Schedule_WhenPublishedScheduleIsUnchanged_CreatesNoOccurrence()
+    {
+        var eventSessionRepository = Substitute.For<IEventSessionRepository>();
+        var eventRepository = Substitute.For<IEventRepository>();
+        Explore.Domain.Event parentEvent = CreateEvent(EventStatusEnum.Published);
+        EventSession session = CreateSession(parentEvent, EventSessionStatusEnum.Published);
+        DateTimeOffset start = new(2026, 8, 1, 10, 0, 0, TimeSpan.Zero);
+        session.StartTime = start;
+        session.EndTime = start.AddHours(1);
+        parentEvent.Sessions.Add(session);
+        eventSessionRepository.GetById(session.Id).Returns(session);
+        eventRepository.GetById(parentEvent.Id).Returns(parentEvent);
+        eventRepository.GetScheduleGraphForUpdateAsync(parentEvent.Id, Arg.Any<CancellationToken>()).Returns(parentEvent);
+        var fanout = new FanoutFixture();
+        var handler = new ScheduleEventSessionCommandHandler(
+            eventSessionRepository,
+            eventRepository,
+            Substitute.For<IEventDayRepository>(),
+            new EventScheduleProjectionCalculator(),
+            CreatePolicyProvider(CreateSessionSchedulePolicy()),
+            new EventLifecycleReadinessEvaluator(),
+            CreateUnitOfWork(),
+            Substitute.For<HybridCache>(),
+            fanout.Coordinator,
+            new FixedTimeProvider(Now));
+
+        BaseCommandResponse<Guid> result = await handler.Handle(new ScheduleEventSessionCommand
+        {
+            Id = session.Id,
+            Request = new ScheduleEventSessionRequestDto
+            {
+                ExpectedConcurrencyStamp = session.ConcurrencyStamp,
+                StartTime = session.StartTime.Value,
+                EndTime = session.EndTime.Value
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(fanout.CreatedOccurrences).IsEmpty();
+        await Assert.That(fanout.OutboxPointers).IsEmpty();
+    }
+
+    [Test]
+    public async Task Schedule_WhenSerializableAttemptRetries_ReloadsAuthoritativePublishedSession()
+    {
+        var eventSessionRepository = Substitute.For<IEventSessionRepository>();
+        var eventRepository = Substitute.For<IEventRepository>();
+        Explore.Domain.Event parentEvent = CreateEvent(EventStatusEnum.Published);
+        parentEvent.EventTimeZoneId = "Europe/Brussels";
+        DateTimeOffset staleStart = new(2026, 8, 2, 10, 0, 0, TimeSpan.Zero);
+        DateTimeOffset authoritativeStart = new(2026, 8, 1, 10, 0, 0, TimeSpan.Zero);
+        DateTimeOffset newStart = new(2026, 8, 3, 10, 0, 0, TimeSpan.Zero);
+        EventSession firstAttemptSession = CreateSession(parentEvent, EventSessionStatusEnum.Published);
+        EventSession retrySession = CreateSession(parentEvent, EventSessionStatusEnum.Published);
+        retrySession.Id = firstAttemptSession.Id;
+        retrySession.ConcurrencyStamp = firstAttemptSession.ConcurrencyStamp;
+        firstAttemptSession.StartTime = staleStart;
+        firstAttemptSession.EndTime = staleStart.AddHours(1);
+        retrySession.StartTime = authoritativeStart;
+        retrySession.EndTime = authoritativeStart.AddHours(1);
+        eventSessionRepository.GetById(firstAttemptSession.Id).Returns(firstAttemptSession, retrySession);
+        eventRepository.GetById(parentEvent.Id).Returns(parentEvent);
+        eventRepository.GetScheduleGraphForUpdateAsync(parentEvent.Id, Arg.Any<CancellationToken>()).Returns(parentEvent);
+        int updateAttempts = 0;
+        eventSessionRepository
+            .When(repository => repository.UpdateWithRoomOverlapGuardAsync(
+                Arg.Any<EventSession>(),
+                Arg.Any<CancellationToken>()))
+            .Do(_ =>
+            {
+                if (++updateAttempts == 1)
+                {
+                    throw new TimeoutException("Simulated transient database failure.");
+                }
+            });
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork
+            .ExecuteSerializableAsync(
+                Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                Func<CancellationToken, Task<BaseCommandResponse<Guid>>> operation =
+                    call.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>();
+                try
+                {
+                    return await operation(call.Arg<CancellationToken>());
+                }
+                catch (TimeoutException)
+                {
+                    return await operation(call.Arg<CancellationToken>());
+                }
+            });
+        var fanout = new FanoutFixture();
+        var handler = new ScheduleEventSessionCommandHandler(
+            eventSessionRepository,
+            eventRepository,
+            Substitute.For<IEventDayRepository>(),
+            new EventScheduleProjectionCalculator(),
+            CreatePolicyProvider(CreateSessionSchedulePolicy()),
+            new EventLifecycleReadinessEvaluator(),
+            unitOfWork,
+            Substitute.For<HybridCache>(),
+            fanout.Coordinator,
+            new FixedTimeProvider(Now));
+
+        BaseCommandResponse<Guid> result = await handler.Handle(new ScheduleEventSessionCommand
+        {
+            Id = firstAttemptSession.Id,
+            Request = new ScheduleEventSessionRequestDto
+            {
+                ExpectedConcurrencyStamp = firstAttemptSession.ConcurrencyStamp,
+                StartTime = newStart,
+                EndTime = newStart.AddHours(1)
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await eventSessionRepository.Received(2).GetById(firstAttemptSession.Id);
+        await Assert.That(updateAttempts).IsEqualTo(2);
+        await Assert.That(fanout.CreatedOccurrences).Count().IsEqualTo(1);
+        NotificationFanoutRecipientTemplate template = new NotificationFanoutRecipientTemplateFactory()
+            .Parse(fanout.CreatedOccurrences[0]);
+        await Assert.That(template.Before.StartsAt).IsEqualTo(authoritativeStart);
+        await Assert.That(template.After.StartsAt).IsEqualTo(newStart);
     }
 
     [Test]
@@ -266,18 +485,84 @@ public sealed class EventSessionLifecycleCommandHandlerTests
         var eventRepository = Substitute.For<IEventRepository>();
         var cache = Substitute.For<HybridCache>();
         var parentEvent = CreateEvent(EventStatusEnum.Published);
+        parentEvent.EventTimeZoneId = "Europe/Brussels";
         var session = CreateSession(parentEvent, EventSessionStatusEnum.Published);
+        session.StartTime = Now.AddDays(1);
+        session.EndTime = Now.AddDays(1).AddHours(1);
+        Guid expectedConcurrencyStamp = session.ConcurrencyStamp;
         parentEvent.Sessions.Add(session);
         eventSessionRepository.GetById(session.Id).Returns(session);
         eventRepository.GetById(parentEvent.Id).Returns(parentEvent);
         eventRepository.GetScheduleGraphForUpdateAsync(parentEvent.Id, Arg.Any<CancellationToken>()).Returns(parentEvent);
+        bool transactionCompleted = false;
+        bool occurrenceCreatedBeforeCommit = false;
+        bool cacheObservedCommit = false;
+        cache.RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                cacheObservedCommit = transactionCompleted;
+                return ValueTask.CompletedTask;
+            });
+        var fanout = new FanoutFixture(() => occurrenceCreatedBeforeCommit = !transactionCompleted);
+        var handler = new CancelEventSessionCommandHandler(
+            eventSessionRepository,
+            eventRepository,
+            CreateUnitOfWork(() => transactionCompleted = true),
+            cache,
+            fanout.Coordinator,
+            new FixedTimeProvider(Now));
+
+        var result = await handler.Handle(new CancelEventSessionCommand
+        {
+            Id = session.Id,
+            Request = new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = expectedConcurrencyStamp }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(session.EventSessionStatusId).IsEqualTo((int)EventSessionStatusEnum.Cancelled);
+        await eventSessionRepository.Received(1).Update(session);
+        await eventRepository.Received(1).Update(parentEvent);
+        await Assert.That(fanout.CreatedOccurrences).Count().IsEqualTo(1);
+        await Assert.That(fanout.OutboxPointers).Count().IsEqualTo(1);
+        NotificationFanoutOccurrence occurrence = fanout.CreatedOccurrences[0];
+        await Assert.That(occurrence.EventId).IsEqualTo(parentEvent.Id);
+        await Assert.That(occurrence.SessionId).IsEqualTo(session.Id);
+        await Assert.That(occurrence.AggregateVersion).IsEqualTo(expectedConcurrencyStamp);
+        await Assert.That(occurrence.AudienceCutoffAt).IsEqualTo(Now.UtcDateTime);
+        NotificationFanoutRecipientTemplate template = new NotificationFanoutRecipientTemplateFactory().Parse(occurrence);
+        await Assert.That(template.IsCancellation).IsTrue();
+        await Assert.That(template.IsSessionScoped).IsTrue();
+        await Assert.That(template.Before.EventTitle).IsEqualTo(parentEvent.Title);
+        await Assert.That(template.Before.SessionTitle).IsEqualTo(session.Title);
+        await Assert.That(template.Before.StartsAt).IsEqualTo(session.StartTime);
+        await Assert.That(template.Before.EndsAt).IsEqualTo(session.EndTime);
+        await Assert.That(template.Before.Timezone).IsEqualTo("Europe/Brussels");
+        await Assert.That(occurrenceCreatedBeforeCommit).IsTrue();
+        await Assert.That(cacheObservedCommit).IsTrue();
+        await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(parentEvent.TenantId), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Cancel_WhenSessionWasNotPublished_DoesNotCreateAttendeeOccurrence()
+    {
+        var eventSessionRepository = Substitute.For<IEventSessionRepository>();
+        var eventRepository = Substitute.For<IEventRepository>();
+        var parentEvent = CreateEvent(EventStatusEnum.Published);
+        var session = CreateSession(parentEvent, EventSessionStatusEnum.Approved);
+        parentEvent.Sessions.Add(session);
+        eventSessionRepository.GetById(session.Id).Returns(session);
+        eventRepository.GetById(parentEvent.Id).Returns(parentEvent);
+        eventRepository.GetScheduleGraphForUpdateAsync(parentEvent.Id, Arg.Any<CancellationToken>()).Returns(parentEvent);
+        var fanout = new FanoutFixture();
         var handler = new CancelEventSessionCommandHandler(
             eventSessionRepository,
             eventRepository,
             CreateUnitOfWork(),
-            cache);
+            Substitute.For<HybridCache>(),
+            fanout.Coordinator,
+            new FixedTimeProvider(Now));
 
-        var result = await handler.Handle(new CancelEventSessionCommand
+        BaseCommandResponse<Guid> result = await handler.Handle(new CancelEventSessionCommand
         {
             Id = session.Id,
             Request = new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = session.ConcurrencyStamp }
@@ -285,9 +570,41 @@ public sealed class EventSessionLifecycleCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(session.EventSessionStatusId).IsEqualTo((int)EventSessionStatusEnum.Cancelled);
-        await eventSessionRepository.Received(1).Update(session);
-        await eventRepository.Received(1).Update(parentEvent);
-        await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(parentEvent.TenantId), Arg.Any<CancellationToken>());
+        await Assert.That(fanout.CreatedOccurrences).IsEmpty();
+        await Assert.That(fanout.OutboxPointers).IsEmpty();
+    }
+
+    [Test]
+    public async Task Cancel_WhenSessionAlreadyCancelled_CreatesNoWork()
+    {
+        var eventSessionRepository = Substitute.For<IEventSessionRepository>();
+        var eventRepository = Substitute.For<IEventRepository>();
+        var cache = Substitute.For<HybridCache>();
+        var parentEvent = CreateEvent(EventStatusEnum.Published);
+        var session = CreateSession(parentEvent, EventSessionStatusEnum.Cancelled);
+        eventSessionRepository.GetById(session.Id).Returns(session);
+        eventRepository.GetById(parentEvent.Id).Returns(parentEvent);
+        var fanout = new FanoutFixture();
+        var handler = new CancelEventSessionCommandHandler(
+            eventSessionRepository,
+            eventRepository,
+            CreateUnitOfWork(),
+            cache,
+            fanout.Coordinator,
+            new FixedTimeProvider(Now));
+
+        BaseCommandResponse<Guid> result = await handler.Handle(new CancelEventSessionCommand
+        {
+            Id = session.Id,
+            Request = new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = session.ConcurrencyStamp }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("event_session_cancel_already_cancelled");
+        await eventSessionRepository.DidNotReceive().Update(Arg.Any<EventSession>());
+        await Assert.That(fanout.CreatedOccurrences).IsEmpty();
+        await Assert.That(fanout.OutboxPointers).IsEmpty();
+        await cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -379,18 +696,79 @@ public sealed class EventSessionLifecycleCommandHandlerTests
         return provider;
     }
 
-    private static IUnitOfWork CreateUnitOfWork()
+    private static IUnitOfWork CreateUnitOfWork(Action? onCompleted = null)
     {
         var unitOfWork = Substitute.For<IUnitOfWork>();
         unitOfWork
             .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
+            .Returns(async call =>
             {
                 var operation = call.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>();
-                return operation(call.Arg<CancellationToken>());
+                BaseCommandResponse<Guid> response = await operation(call.Arg<CancellationToken>());
+                onCompleted?.Invoke();
+                return response;
+            });
+        unitOfWork
+            .ExecuteSerializableAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var operation = call.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>();
+                BaseCommandResponse<Guid> response = await operation(call.Arg<CancellationToken>());
+                onCompleted?.Invoke();
+                return response;
             });
 
         return unitOfWork;
+    }
+
+    private sealed class FanoutFixture
+    {
+        public FanoutFixture(Action? onOccurrenceCreated = null)
+        {
+            OccurrenceRepository.GetPendingForEventCoordinationAsync(
+                    Arg.Any<Guid>(),
+                    Arg.Any<Guid>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(Array.Empty<NotificationFanoutOccurrence>());
+            OccurrenceRepository.SessionBelongsToEventForCoordinationAsync(
+                    Arg.Any<Guid>(),
+                    Arg.Any<Guid>(),
+                    Arg.Any<Guid>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(true);
+            OccurrenceRepository.Create(Arg.Any<NotificationFanoutOccurrence>())
+                .Returns(call =>
+                {
+                    NotificationFanoutOccurrence occurrence = call.Arg<NotificationFanoutOccurrence>();
+                    onOccurrenceCreated?.Invoke();
+                    CreatedOccurrences.Add(occurrence);
+                    return occurrence;
+                });
+            OutboxRepository.Create(Arg.Any<OutboxMessage>())
+                .Returns(call =>
+                {
+                    OutboxMessage message = call.Arg<OutboxMessage>();
+                    OutboxPointers.Add(message);
+                    return message;
+                });
+            Coordinator = new NotificationFanoutOccurrenceCoordinator(
+                OccurrenceRepository,
+                Substitute.For<INotificationFanoutEmailSuppressionRepository>(),
+                OutboxRepository,
+                new NotificationFanoutRecipientTemplateFactory());
+        }
+
+        public INotificationFanoutOccurrenceRepository OccurrenceRepository { get; } =
+            Substitute.For<INotificationFanoutOccurrenceRepository>();
+        public IOutboxRepository OutboxRepository { get; } = Substitute.For<IOutboxRepository>();
+        public NotificationFanoutOccurrenceCoordinator Coordinator { get; }
+        public List<NotificationFanoutOccurrence> CreatedOccurrences { get; } = [];
+        public List<OutboxMessage> OutboxPointers { get; } = [];
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
     }
 
     private static EventLifecyclePolicy CreateSessionDraftPolicy() => new()

@@ -114,7 +114,7 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
 
         await Assert.That(appendCount).IsEqualTo(2);
         await Assert.That(firstIntentId).IsNotNull();
-        await harness.UserRepository.Received(1).Delete(Arg.Any<User>());
+        await Assert.That(harness.User.IsDeleted).IsTrue();
     }
 
     [Test]
@@ -134,6 +134,8 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
         await harness.Authority.DidNotReceive().AppendAsync(
             Arg.Any<LocationPrivacyErasureIntent>(),
             Arg.Any<CancellationToken>());
+        await Assert.That(harness.User.IsDeleted).IsFalse();
+        await harness.UserRepository.DidNotReceive().Update(Arg.Any<User>());
         await harness.UserRepository.DidNotReceive().Delete(Arg.Any<User>());
     }
 
@@ -227,7 +229,7 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
             Substitute.For<ILogger<GlobalLocationPrivacyErasureService>>());
         var handler = new DeleteUserCommandHandler(service);
 
-        return new DeletionHarness(handler, userRepository, erasureRepository, authority);
+        return new DeletionHarness(handler, user, userRepository, erasureRepository, authority);
     }
 
     private static Location CreatePrivateHome(Guid tenantId, Guid ownerUserId, string name)
@@ -254,6 +256,7 @@ public sealed class GlobalLocationPrivacyErasurePendingSpecs
 
     private sealed record DeletionHarness(
         DeleteUserCommandHandler Handler,
+        User User,
         IUserRepository UserRepository,
         IGlobalLocationPrivacyErasureRepository ErasureRepository,
         ILocationPrivacyErasureAuthority Authority) : IAsyncDisposable

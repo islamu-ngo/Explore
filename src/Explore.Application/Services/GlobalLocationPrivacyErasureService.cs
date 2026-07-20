@@ -77,6 +77,8 @@ public sealed class GlobalLocationPrivacyErasureService(
                 throw new InvalidOperationException(
                     "The application erasure checkpoint is not continuous with the retained authority.");
             }
+
+            await InvalidateRetainedIntentAsync(checkpointEvidence[0], cancellationToken);
         }
 
         long afterSequence = latest?.AuthoritySequence ?? 0;
@@ -270,7 +272,29 @@ public sealed class GlobalLocationPrivacyErasureService(
         catch (Exception)
         {
             logger.LogWarning("Post-commit privacy-erasure cache invalidation failed.");
+            throw new InvalidOperationException(
+                "Post-commit privacy-erasure cache invalidation failed.");
         }
+    }
+
+    private async Task InvalidateRetainedIntentAsync(
+        LocationPrivacyErasureAuthorityIntent intent,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        IReadOnlyList<EventLocation> eventLocations =
+            await erasureRepository.GetEventLocationsAsync(intent.LocationIds, cancellationToken);
+        var applied = new AppliedErasure(
+            intent.OwnerUserId,
+            eventLocations.Select(eventLocation => eventLocation.TenantId).Distinct().ToArray(),
+            eventLocations
+                .Select(eventLocation => new CorrectedEventLocation(
+                    eventLocation.TenantId,
+                    eventLocation.EventId,
+                    eventLocation.Id))
+                .ToArray());
+
+        await InvalidateAfterCommitAsync(applied);
     }
 
     private async Task<LocationPrivacyErasureAuthorityIntent>

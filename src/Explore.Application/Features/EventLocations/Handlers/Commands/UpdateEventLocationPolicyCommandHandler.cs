@@ -116,11 +116,11 @@ public sealed class UpdateEventLocationPolicyCommandHandler(
         string code,
         string message,
         IEnumerable<string>? errors = null) => new()
-    {
-        Id = eventLocationId,
-        Success = false,
-        FailureCode = code,
-        Message = message,
-        Errors = errors?.ToList() ?? [message]
-    };
+        {
+            Id = eventLocationId,
+            Success = false,
+            FailureCode = code,
+            Message = message,
+            Errors = errors?.ToList() ?? [message]
+        };
 }

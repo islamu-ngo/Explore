@@ -89,6 +89,8 @@ public sealed class LocationPrivacyGovernanceMutationServiceTests
         await Assert.That(savedMessages.Single().EventType).IsEqualTo("location.privacy.corrected");
         await Assert.That(savedMessages.Single().CreatedAt).IsEqualTo(now.UtcDateTime);
         await Assert.That(savedMessages.Single().Payload).DoesNotContain("PRIVATE CANARY");
+        await Assert.That(savedMessages.Single().Payload).DoesNotContain("Reason");
+        await Assert.That(savedMessages.Single().Payload).DoesNotContain("governance_tightening");
         await cache.DidNotReceive().RemoveByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
 
         await service.InvalidateMutationAsync(

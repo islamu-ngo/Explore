@@ -159,8 +159,10 @@ public sealed partial class GetHomeDiscoveryQueryHandler(
                 .ToHashSet();
             var tenantLocationIds = referencedLocationIds.Count == 0
                 ? new HashSet<Guid>()
-                : (await locationRepository.GetLocationsByTenant(tenantContext.TenantId, cancellationToken))
-                    .Select(location => location.Id)
+                : (await locationRepository.GetExistingTenantLocationIdsAsync(
+                        tenantContext.TenantId,
+                        referencedLocationIds,
+                        cancellationToken))
                     .ToHashSet();
             var validationErrors = PublicDiscoveryAreasConfigValidator.Validate(config, tenantLocationIds);
             if (validationErrors.Count > 0)
@@ -415,12 +417,7 @@ public sealed partial class GetHomeDiscoveryQueryHandler(
         Source = source.Source,
         Event = source.Event is null ? null : MapEvent(source.Event),
         FederatedEvent = source.FederatedEvent,
-        Federation = source.Federation,
-        DistanceMeters = source.DistanceMeters,
-        NearestSessionId = source.NearestSessionId,
-        NearestLocationId = source.NearestLocationId,
-        NearestLocationName = source.NearestLocationName,
-        NearestOccurrenceStartsAtUtc = source.NearestOccurrenceStartsAtUtc
+        Federation = source.Federation
     };
 
     private static string Bound(string value, int maximumLength) =>

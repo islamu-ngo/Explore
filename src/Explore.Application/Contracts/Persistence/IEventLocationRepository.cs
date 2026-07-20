@@ -14,6 +14,9 @@ public interface IEventLocationRepository
     Task<IReadOnlyList<EventLocation>> GetByIdsAsync(
         IReadOnlyCollection<Guid> ids,
         CancellationToken cancellationToken);
+    Task<IReadOnlyList<EventLocation>> GetByEventIdAsync(
+        Guid eventId,
+        CancellationToken cancellationToken);
     Task<EventLocation?> FindActivePhysicalAsync(
         Guid eventId,
         Guid locationId,

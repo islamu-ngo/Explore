@@ -78,6 +78,21 @@ public sealed class EventLocationRepository(ExploreDbContext dbContext) : IEvent
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<EventLocation>> GetByEventIdAsync(
+        Guid eventId,
+        CancellationToken cancellationToken)
+    {
+        RequireId(eventId, nameof(eventId));
+        RequireTenant();
+        return await dbContext.EventLocations
+            .AsNoTracking()
+            .Include(item => item.Location)
+            .Include(item => item.FullDetailsAudience)
+            .Where(item => item.EventId == eventId)
+            .OrderBy(item => item.Id)
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<EventLocation?> FindActivePhysicalAsync(
         Guid eventId,
         Guid locationId,

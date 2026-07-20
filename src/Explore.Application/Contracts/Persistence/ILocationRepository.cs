@@ -8,6 +8,10 @@ namespace Explore.Application.Contracts.Persistence;
 public interface ILocationRepository : IGenericRepository<Location, Guid>
 {
     Task<List<Location>> GetLocationsByTenant(Guid tenantId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Guid>> GetExistingTenantLocationIdsAsync(
+        Guid tenantId,
+        IReadOnlyCollection<Guid> candidateLocationIds,
+        CancellationToken cancellationToken = default);
     Task<List<Location>> GetLocationsByCity(string city, CancellationToken cancellationToken = default);
     Task<List<Location>> GetLocationsByCountry(string country, CancellationToken cancellationToken = default);
     Task<List<Location>> GetOwnedPrivateHomesForGlobalErasureAsync(

@@ -259,6 +259,11 @@ public sealed class EventLocationAttachmentServiceTests
             CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
+        public Task<IReadOnlyList<EventLocation>> GetByEventIdAsync(
+            Guid eventId,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
         public Task<EventLocation?> FindActivePhysicalAsync(
             Guid eventId,
             Guid locationId,

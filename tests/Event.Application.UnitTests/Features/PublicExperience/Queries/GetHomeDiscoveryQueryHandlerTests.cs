@@ -17,7 +17,6 @@ using Explore.Application.Models.PublicExperience;
 using Explore.Application.Responses;
 using Explore.Application.Serialization;
 using Explore.Application.Settings;
-using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
@@ -65,8 +64,11 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
             4.35m,
             [locationId],
             IsDefault: true));
-        _locationRepository.GetLocationsByTenant(TenantId, Arg.Any<CancellationToken>())
-            .Returns([CreateLocation(locationId)]);
+        _locationRepository.GetExistingTenantLocationIdsAsync(
+                TenantId,
+                Arg.Any<IReadOnlyCollection<Guid>>(),
+                Arg.Any<CancellationToken>())
+            .Returns([locationId]);
         var requests = CaptureSuccessfulRequests();
 
         var result = await CreateHandler().Handle(new GetHomeDiscoveryQuery(areaId, "area"), CancellationToken.None);
@@ -80,6 +82,45 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
     }
 
     [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task AreaOnlyHomeDiscoveryDropsUpstreamProximityFieldsFromResultAndJson()
+    {
+        ConfigureAreas();
+        var source = new EventDiscoveryItemDto
+        {
+            Event = CreateEvent("Area-only event"),
+            DistanceMeters = 125,
+            NearestSessionId = Guid.NewGuid(),
+            NearestLocationId = Guid.NewGuid(),
+            NearestLocationName = "Exact venue",
+            NearestOccurrenceStartsAtUtc = _timeProvider.GetUtcNow().AddHours(1)
+        };
+        _eventDiscoveryHandler.Handle(Arg.Any<GetPublicEventDiscoveryRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call => PaginatedResult<EventDiscoveryItemDto>.Create(
+                [source],
+                totalCount: 1,
+                pageNumber: 1,
+                pageSize: call.Arg<GetPublicEventDiscoveryRequest>()!.Criteria.PageSize));
+
+        var result = await CreateHandler().Handle(
+            new GetHomeDiscoveryQuery(Mode: "all"),
+            CancellationToken.None);
+        var item = result.Hero.Single();
+        var json = JsonSerializer.Serialize(result, ExploreJsonContext.Default.HomeDiscoveryDto);
+
+        await Assert.That(item.DistanceMeters).IsNull();
+        await Assert.That(item.NearestSessionId).IsNull();
+        await Assert.That(item.NearestLocationId).IsNull();
+        await Assert.That(item.NearestLocationName).IsNull();
+        await Assert.That(item.NearestOccurrenceStartsAtUtc).IsNull();
+        await Assert.That(json).DoesNotContain("\"distanceMeters\"");
+        await Assert.That(json).DoesNotContain("\"nearestSessionId\"");
+        await Assert.That(json).DoesNotContain("\"nearestLocationId\"");
+        await Assert.That(json).DoesNotContain("\"nearestLocationName\"");
+        await Assert.That(json).DoesNotContain("\"nearestOccurrenceStartsAtUtc\"");
+    }
+
+    [Test]
     public async Task InvalidRequestedAreaFallsBackToDefaultActiveArea()
     {
         var defaultAreaId = Guid.NewGuid();
@@ -89,7 +130,6 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
             "Brussels",
             "BE",
             IsDefault: true));
-        _locationRepository.GetLocationsByTenant(TenantId, Arg.Any<CancellationToken>()).Returns([]);
         CaptureSuccessfulRequests();
 
         var result = await CreateHandler().Handle(new GetHomeDiscoveryQuery(Guid.NewGuid(), "area"), CancellationToken.None);
@@ -101,10 +141,43 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
     }
 
     [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task UnknownConfiguredLocationFailsClosedWithoutDiscoveryLocationFilter()
+    {
+        var staleLocationId = Guid.NewGuid();
+        ConfigureAreas(new PublicDiscoveryAreaConfig(
+            Guid.NewGuid(),
+            "Stale area",
+            "Brussels",
+            "BE",
+            LocationIds: [staleLocationId],
+            IsDefault: true));
+        _locationRepository.GetExistingTenantLocationIdsAsync(
+                TenantId,
+                Arg.Any<IReadOnlyCollection<Guid>>(),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
+        var requests = CaptureSuccessfulRequests();
+
+        var result = await CreateHandler().Handle(
+            new GetHomeDiscoveryQuery(Mode: "area"),
+            CancellationToken.None);
+
+        await Assert.That(result.Context.AvailableAreas).IsEmpty();
+        await Assert.That(result.Context.SelectedAreaId).IsNull();
+        await Assert.That(result.Hero).IsEmpty();
+        await Assert.That(requests.Any(request => request.LocationIds is { Count: > 0 })).IsFalse();
+        await _locationRepository.Received(1).GetExistingTenantLocationIdsAsync(
+            TenantId,
+            Arg.Is<IReadOnlyCollection<Guid>>(locationIds =>
+                locationIds != null && locationIds.Count == 1 && locationIds.Contains(staleLocationId)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task OnlineModeIncludesHybridInventoryAndScopesContextualQueries()
     {
         ConfigureAreas();
-        _locationRepository.GetLocationsByTenant(TenantId, Arg.Any<CancellationToken>()).Returns([]);
         var hybridEvent = CreateEvent("Hybrid event");
         hybridEvent.EventFormatId = (int)EventFormatEnum.Hybrid;
         hybridEvent.EventFormatFullName = "Hybrid";
@@ -135,7 +208,6 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
     public async Task MatchingEventsRemainAvailableAcrossSemanticSectionsWithoutUpcomingCutoff()
     {
         ConfigureAreas();
-        _locationRepository.GetLocationsByTenant(TenantId, Arg.Any<CancellationToken>()).Returns([]);
         var requests = new List<GetEventListRequest>();
         var shared = CreateEvent("Shared");
         var heroOnly = CreateEvent("Hero only");
@@ -164,7 +236,6 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
     public async Task OneSectionFailureDoesNotBlankSuccessfulSections()
     {
         ConfigureAreas();
-        _locationRepository.GetLocationsByTenant(TenantId, Arg.Any<CancellationToken>()).Returns([]);
         var recent = CreateEvent("Recent");
         _eventDiscoveryHandler.Handle(Arg.Any<GetPublicEventDiscoveryRequest>(), Arg.Any<CancellationToken>())
             .Returns(call =>
@@ -188,7 +259,6 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
     public async Task OneSectionTimeoutDoesNotBlankSuccessfulSections()
     {
         ConfigureAreas();
-        _locationRepository.GetLocationsByTenant(TenantId, Arg.Any<CancellationToken>()).Returns([]);
         var recent = CreateEvent("Recent");
         var callCount = 0;
         _eventDiscoveryHandler.Handle(Arg.Any<GetPublicEventDiscoveryRequest>(), Arg.Any<CancellationToken>())
@@ -237,8 +307,11 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
             4.35m,
             [locationId],
             IsDefault: true));
-        _locationRepository.GetLocationsByTenant(TenantId, Arg.Any<CancellationToken>())
-            .Returns([CreateLocation(locationId)]);
+        _locationRepository.GetExistingTenantLocationIdsAsync(
+                TenantId,
+                Arg.Any<IReadOnlyCollection<Guid>>(),
+                Arg.Any<CancellationToken>())
+            .Returns([locationId]);
         ConfigureSetting(
             GovernanceSettingKeys.PublicExperience.EventSectionPresets,
             JsonSerializer.Serialize(new PublicEventSectionPresetsConfig(Presets:
@@ -276,7 +349,6 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
     public async Task UnsupportedCuratedPresetIsOmitted()
     {
         ConfigureAreas();
-        _locationRepository.GetLocationsByTenant(TenantId, Arg.Any<CancellationToken>()).Returns([]);
         var presets = new PublicEventSectionPresetsConfig(Presets:
         [
             new PublicEventSectionPresetConfig(
@@ -335,22 +407,6 @@ public sealed class GetHomeDiscoveryQueryHandlerTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<string?>(value));
     }
-
-    private static Location CreateLocation(Guid id) => new()
-    {
-        Id = id,
-        TenantId = TenantId,
-        FullName = "Venue",
-        City = "Brussels",
-        Country = "BE",
-        Pii = new LocationPii
-        {
-            LocationId = id,
-            Address = string.Empty,
-            Postcode = string.Empty
-        },
-        Tenant = null!
-    };
 
     private static EventListDto CreateEvent(string title) => new()
     {

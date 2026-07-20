@@ -2,6 +2,7 @@
 // ABOUTME: Materializes response shapes only from validated disclosure results to prevent contradictory states.
 
 using System.Text.Json.Serialization;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.LocationPrivacy;
 
 namespace Explore.Application.DTOs.Location;
@@ -138,7 +139,8 @@ public sealed record EventLocationManagementDto
         EventLocationDisclosurePolicyDto policy,
         bool needsPrivacyReview,
         int policyVersion,
-        Guid concurrencyStamp)
+        Guid concurrencyStamp,
+        AuthorizationCheck? updateAuthorization)
     {
         EventLocationId = eventLocationId;
         LocationId = locationId;
@@ -148,6 +150,7 @@ public sealed record EventLocationManagementDto
         NeedsPrivacyReview = needsPrivacyReview;
         PolicyVersion = policyVersion;
         ConcurrencyStamp = concurrencyStamp;
+        UpdateAuthorization = updateAuthorization;
     }
 
     public Guid EventLocationId { get; }
@@ -165,12 +168,30 @@ public sealed record EventLocationManagementDto
     public int PolicyVersion { get; }
     public Guid ConcurrencyStamp { get; }
 
+    [JsonIgnore]
+    public AuthorizationCheck? UpdateAuthorization { get; }
+
     public static EventLocationManagementDto FromDisclosureResult(
         EventLocationDisclosureResult result,
         EventLocationDisclosurePolicyDto policy,
         bool needsPrivacyReview,
         int policyVersion,
-        Guid concurrencyStamp)
+        Guid concurrencyStamp) =>
+        FromDisclosureResult(
+            result,
+            policy,
+            needsPrivacyReview,
+            policyVersion,
+            concurrencyStamp,
+            updateAuthorization: null);
+
+    public static EventLocationManagementDto FromDisclosureResult(
+        EventLocationDisclosureResult result,
+        EventLocationDisclosurePolicyDto policy,
+        bool needsPrivacyReview,
+        int policyVersion,
+        Guid concurrencyStamp,
+        AuthorizationCheck? updateAuthorization)
     {
         ArgumentNullException.ThrowIfNull(result);
         ArgumentNullException.ThrowIfNull(policy);
@@ -187,7 +208,8 @@ public sealed record EventLocationManagementDto
             policy,
             needsPrivacyReview,
             policyVersion,
-            concurrencyStamp);
+            concurrencyStamp,
+            updateAuthorization);
     }
 
     private static EventLocationManagementFieldsDto? MapFields(EventLocationDisclosureValues? values)

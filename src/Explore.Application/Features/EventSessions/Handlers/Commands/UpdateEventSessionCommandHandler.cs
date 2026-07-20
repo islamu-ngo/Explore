@@ -7,6 +7,7 @@ using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSessions.Requests.Commands;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Domain;
@@ -31,6 +32,8 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
     private readonly IUnitOfWork _unitOfWork;
     private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly HybridCache _cache;
+    private readonly NotificationFanoutOccurrenceCoordinator _fanoutCoordinator;
+    private readonly TimeProvider _timeProvider;
 
     public UpdateEventSessionCommandHandler(
         IEventSessionRepository eventSessionRepository,
@@ -44,7 +47,9 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         IEventDayRepository eventDayRepository,
         IUnitOfWork unitOfWork,
         EventLocationAttachmentService eventLocationAttachmentService,
-        HybridCache cache)
+        HybridCache cache,
+        NotificationFanoutOccurrenceCoordinator fanoutCoordinator,
+        TimeProvider timeProvider)
     {
         _eventSessionRepository = eventSessionRepository;
         _eventRepository = eventRepository;
@@ -58,6 +63,8 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         _unitOfWork = unitOfWork;
         _eventLocationAttachmentService = eventLocationAttachmentService;
         _cache = cache;
+        _fanoutCoordinator = fanoutCoordinator;
+        _timeProvider = timeProvider;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventSessionCommand request, CancellationToken cancellationToken)
@@ -80,60 +87,82 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
             return response;
         }
 
-        var eventSession = await _eventSessionRepository.GetById(request.EventSessionId);
-        if (eventSession == null)
-        {
-            response.Success = false;
-            response.Message = "Event session not found.";
-            return response;
-        }
-
-        if (eventSession.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
-        {
-            throw new ConcurrencyConflictException(
-                ConcurrencyConflictException.ConcurrentUpdate,
-                "The event session was modified by another request. Reload and retry.",
-                nameof(EventSession),
-                eventSession.Id.ToString());
-        }
-
-        var previousEventId = eventSession.EventId;
-        var parentEventId = request.EventSessionDto.Event?.EventId ?? eventSession.EventId;
-        var parentEvent = await _eventRepository.GetById(parentEventId);
-        if (parentEvent == null || parentEvent.TenantId != eventSession.TenantId)
-        {
-            response.Success = false;
-            response.Message = "Event does not belong to the same tenant as the session.";
-            return response;
-        }
-
-        if (!HasValidFinalIslamicSchedulingState(eventSession, request.EventSessionDto))
-        {
-            response.Success = false;
-            response.Message = "Event session update failed.";
-            response.Errors = [EventSessionIslamicAspectValidationRules.SchedulingStateMessage];
-            return response;
-        }
-
-        var placement = await ResolveFinalPlacementAsync(
-            eventSession,
-            request.EventSessionDto,
-            cancellationToken);
-        if (!placement.Success)
-        {
-            response.Success = false;
-            response.Message = "Event session update failed.";
-            response.Errors = [placement.Message];
-            return response;
-        }
-
-        Guid? previousEventLocationId = eventSession.EventLocationId;
-        var eventChanged = previousEventId != parentEvent.Id;
+        DateTime occurredAt = _timeProvider.GetUtcNow().UtcDateTime;
+        Guid occurrenceId = Guid.CreateVersion7();
+        Guid pointerOutboxMessageId = Guid.CreateVersion7();
+        BaseCommandResponse<Guid>? transactionFailure = null;
+        Guid updatedSessionId = Guid.Empty;
+        Guid previousEventIdForCache = Guid.Empty;
+        Guid parentEventIdForCache = Guid.Empty;
+        Guid tenantIdForCache = Guid.Empty;
+        bool eventChangedForCache = false;
 
         try
         {
-            await _unitOfWork.ExecuteSerializableAsync(async token =>
+            bool updated = await _unitOfWork.ExecuteSerializableAsync(async token =>
             {
+                transactionFailure = null;
+                EventSession? eventSession = await _eventSessionRepository.GetById(request.EventSessionId);
+                if (eventSession is null)
+                {
+                    transactionFailure = CreateFailureResponse("Event session not found.");
+                    return false;
+                }
+
+                if (eventSession.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
+                {
+                    throw new ConcurrencyConflictException(
+                        ConcurrencyConflictException.ConcurrentUpdate,
+                        "The event session was modified by another request. Reload and retry.",
+                        nameof(EventSession),
+                        eventSession.Id.ToString());
+                }
+
+                Guid previousEventId = eventSession.EventId;
+                Guid parentEventId = request.EventSessionDto.Event?.EventId ?? previousEventId;
+                Event? parentEvent = await _eventRepository.GetById(parentEventId);
+                if (parentEvent is null || parentEvent.TenantId != eventSession.TenantId)
+                {
+                    transactionFailure = CreateFailureResponse("Event does not belong to the same tenant as the session.");
+                    return false;
+                }
+
+                bool eventChanged = previousEventId != parentEvent.Id;
+                if (eventChanged && eventSession.EventSessionStatusId == (int)EventSessionStatusEnum.Published)
+                {
+                    transactionFailure = CreateFailureResponse(
+                        "Event session update failed.",
+                        "Published event sessions cannot be moved to another event until attendee transfer notifications are supported.",
+                        "event_session_update_invalid_status");
+                    return false;
+                }
+
+                if (!HasValidFinalIslamicSchedulingState(eventSession, request.EventSessionDto))
+                {
+                    transactionFailure = CreateFailureResponse(
+                        "Event session update failed.",
+                        EventSessionIslamicAspectValidationRules.SchedulingStateMessage);
+                    return false;
+                }
+
+                var placement = await ResolveFinalPlacementAsync(
+                    eventSession,
+                    request.EventSessionDto,
+                    token);
+                if (!placement.Success)
+                {
+                    transactionFailure = CreateFailureResponse("Event session update failed.", placement.Message);
+                    return false;
+                }
+
+                Guid? previousEventLocationId = eventSession.EventLocationId;
+                Guid? previousLocationId = eventSession.LocationId;
+                Guid? previousRoomId = eventSession.RoomId;
+                DateTimeOffset? previousStartTime = eventSession.StartTime;
+                DateTimeOffset? previousEndTime = eventSession.EndTime;
+                string previousSessionTitle = eventSession.Title;
+                int previousStatusId = eventSession.EventSessionStatusId;
+                string timezone = parentEvent.GetEffectiveScheduleTimeZoneId();
                 EventLocation eventLocation = await _eventLocationAttachmentService.ResolveAsync(
                     parentEvent.Id,
                     placement.LocationId,
@@ -167,9 +196,82 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
                 await ApplyScheduleAsync(eventSession, parentEvent, eventChanged, request.EventSessionDto.Schedule, token);
                 await _eventSessionRepository.UpdateWithRoomOverlapGuardAsync(eventSession, token);
                 await ApplyIslamicAspectAsync(eventSession.Id, request.EventSessionDto.IslamicAspect, eventSession.EndTimeType, token);
+                NotificationFanoutChangeField[] changedFields = GetMaterialFanoutChanges(
+                    previousStartTime,
+                    previousEndTime,
+                    previousLocationId,
+                    previousRoomId,
+                    eventSession);
+                if (previousStatusId == (int)EventSessionStatusEnum.Published
+                    && changedFields.Length > 0)
+                {
+                    bool locationChanged = changedFields.Any(field =>
+                        field is NotificationFanoutChangeField.Location or NotificationFanoutChangeField.Room);
+                    NotificationFanoutLocationSnapshotV1? beforeLocation = locationChanged
+                        ? await CreateLocationSnapshotAsync(
+                            eventSession.TenantId,
+                            previousEventLocationId,
+                            previousLocationId,
+                            previousRoomId)
+                        : null;
+                    NotificationFanoutLocationSnapshotV1? afterLocation = locationChanged
+                        ? await CreateLocationSnapshotAsync(
+                            eventSession.TenantId,
+                            eventSession.EventLocationId,
+                            eventSession.LocationId,
+                            eventSession.RoomId)
+                        : null;
+                    var before = new NotificationFanoutSnapshotV1(
+                        parentEvent.Title,
+                        previousSessionTitle,
+                        previousStartTime,
+                        previousEndTime,
+                        timezone,
+                        beforeLocation);
+                    var after = new NotificationFanoutSnapshotV1(
+                        parentEvent.Title,
+                        eventSession.Title,
+                        eventSession.StartTime,
+                        eventSession.EndTime,
+                        timezone,
+                        afterLocation);
+                    await _fanoutCoordinator.CoordinateInCurrentTransactionAsync(
+                        new NotificationFanoutOccurrenceCandidate(
+                            occurrenceId,
+                            pointerOutboxMessageId,
+                            eventSession.TenantId,
+                            parentEvent.Id,
+                            eventSession.Id,
+                            occurredAt,
+                            occurredAt,
+                            request.ExpectedConcurrencyStamp,
+                            NotificationFanoutTemplateJson.Serialize(new NotificationFanoutChangeSetV1(changedFields)),
+                            NotificationFanoutTemplateJson.Serialize(before),
+                            NotificationFanoutTemplateJson.Serialize(after),
+                            NotificationFanoutRecipientTemplateFactory.SessionUpdatedTemplateKey,
+                            NotificationFanoutRecipientTemplateFactory.CurrentTemplateVersion,
+                            (int)NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional,
+                            NotificationFanoutRecipientTemplateFactory.CurrentPolicyVersion,
+                            occurredAt,
+                            "event_session_update_command",
+                            eventSession.Id),
+                        token);
+                }
+
                 await _eventLocationAttachmentService.DetachIfUnreferencedAsync(previousEventLocationId, token);
+                updatedSessionId = eventSession.Id;
+                previousEventIdForCache = previousEventId;
+                parentEventIdForCache = parentEvent.Id;
+                tenantIdForCache = parentEvent.TenantId;
+                eventChangedForCache = eventChanged;
                 return true;
             }, cancellationToken);
+
+            if (!updated)
+            {
+                return transactionFailure
+                    ?? throw new InvalidOperationException("Event session update ended without a failure response.");
+            }
         }
         catch (RoomScheduleConflictException ex)
         {
@@ -180,19 +282,104 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
             return response;
         }
 
-        if (eventChanged)
+        if (eventChangedForCache)
         {
-            await _cache.RemoveAsync($"event:detail:{previousEventId}", cancellationToken);
+            await _cache.RemoveAsync($"event:detail:{previousEventIdForCache}", cancellationToken);
         }
 
-        await _cache.RemoveAsync($"event:detail:{parentEvent.Id}", cancellationToken);
-        await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(parentEvent.TenantId), cancellationToken);
+        await _cache.RemoveAsync($"event:detail:{parentEventIdForCache}", cancellationToken);
+        await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(tenantIdForCache), cancellationToken);
 
         response.Success = true;
-        response.Id = eventSession.Id;
+        response.Id = updatedSessionId;
         response.Message = "Event session updated successfully.";
 
         return response;
+    }
+
+    private static BaseCommandResponse<Guid> CreateFailureResponse(
+        string message,
+        string? error = null,
+        string? failureCode = null) => new()
+        {
+            Success = false,
+            Message = message,
+            Errors = error is null ? null : [error],
+            FailureCode = failureCode
+        };
+
+    private static NotificationFanoutChangeField[] GetMaterialFanoutChanges(
+        DateTimeOffset? previousStartTime,
+        DateTimeOffset? previousEndTime,
+        Guid? previousLocationId,
+        Guid? previousRoomId,
+        EventSession eventSession)
+    {
+        var changedFields = new List<NotificationFanoutChangeField>(4);
+        if (previousStartTime != eventSession.StartTime)
+        {
+            changedFields.Add(NotificationFanoutChangeField.StartTime);
+        }
+
+        if (previousEndTime != eventSession.EndTime)
+        {
+            changedFields.Add(NotificationFanoutChangeField.EndTime);
+        }
+
+        if (previousLocationId != eventSession.LocationId)
+        {
+            changedFields.Add(NotificationFanoutChangeField.Location);
+        }
+
+        if (previousRoomId != eventSession.RoomId)
+        {
+            changedFields.Add(NotificationFanoutChangeField.Room);
+        }
+
+        return changedFields.ToArray();
+    }
+
+    private async Task<NotificationFanoutLocationSnapshotV1?> CreateLocationSnapshotAsync(
+        Guid tenantId,
+        Guid? eventLocationId,
+        Guid? locationId,
+        Guid? roomId)
+    {
+        if (!eventLocationId.HasValue)
+        {
+            return null;
+        }
+
+        Location? location = locationId.HasValue
+            ? await _locationRepository.GetById(locationId.Value)
+            : null;
+        if (locationId.HasValue
+            && (location is null || location.TenantId != tenantId))
+        {
+            throw new InvalidOperationException("Fanout location snapshot crossed its tenant boundary.");
+        }
+
+        LocationRoom? room = roomId.HasValue
+            ? await _locationRoomRepository.GetById(roomId.Value)
+            : null;
+        if (roomId.HasValue
+            && (room is null
+                || room.TenantId != tenantId
+                || !locationId.HasValue
+                || room.LocationId != locationId.Value))
+        {
+            throw new InvalidOperationException("Fanout room snapshot does not belong to its tenant and location.");
+        }
+
+        return new NotificationFanoutLocationSnapshotV1(
+            eventLocationId.Value,
+            roomId,
+            location?.Country,
+            location?.City,
+            location?.FullName,
+            room?.Name,
+            location?.Address,
+            location?.Postcode);
     }
 
     private async Task ApplyScheduleAsync(
