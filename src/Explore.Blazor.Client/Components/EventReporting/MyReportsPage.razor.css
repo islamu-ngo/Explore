@@ -49,6 +49,61 @@
     text-align: end;
 }
 
+.my-reports-page__consent {
+    display: grid;
+    gap: var(--isl-space-3);
+}
+
+.my-reports-page__consent-summary {
+    display: grid;
+    gap: var(--isl-space-1);
+    margin: 0;
+}
+
+.my-reports-page__consent-summary-item {
+    display: grid;
+    gap: var(--isl-space-3);
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.my-reports-page__consent-summary-item dt {
+    color: var(--isl-color-text-secondary);
+}
+
+.my-reports-page__consent-summary-item dd {
+    font-weight: var(--isl-typography-button-weight);
+    margin: 0;
+}
+
+.my-reports-page__consent-editor {
+    border: 0;
+    display: grid;
+    gap: var(--isl-space-3);
+    margin: 0;
+    min-inline-size: 0;
+    padding: 0;
+}
+
+.my-reports-page__consent-legend {
+    font-weight: var(--isl-typography-h6-weight);
+    margin-block-end: var(--isl-space-2);
+}
+
+.my-reports-page__consent-option {
+    display: grid;
+    gap: var(--isl-space-1);
+}
+
+.my-reports-page__consent-error {
+    margin-block-start: var(--isl-space-1);
+}
+
+.my-reports-page__consent-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2);
+}
+
 .my-reports-page__pagination {
     align-items: center;
     border-block-start: 1px solid var(--mud-palette-lines-default);

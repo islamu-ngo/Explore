@@ -12,6 +12,8 @@ public sealed class EventReportingService(
     ILogger<EventReportingService> logger)
     : IEventReportingService
 {
+    private const string UpdateCommunicationConsentRelation = "update-communication-consent";
+
     public async Task<HalResourceOfEventReportOptionsDto?> GetOptionsAsync(
         Guid eventId,
         CancellationToken cancellationToken = default)
@@ -133,6 +135,102 @@ public sealed class EventReportingService(
             logger.LogWarning(ex, "Could not load reporter-owned event report {ReportId}", reportId);
             return null;
         }
+    }
+
+    public async Task<EventReportConsentUpdateResult> UpdateCommunicationConsentAsync(
+        HalResourceOfMyEventReportDto report,
+        bool reportCaseUpdatesConsent,
+        bool reportFollowUpContactConsent,
+        CancellationToken cancellationToken = default)
+    {
+        if (report.Id is not { } reportId
+            || reportId == Guid.Empty
+            || !HasMatchingConsentUpdateLink(report, reportId))
+        {
+            logger.LogWarning("Rejected event-report consent update without a matching HAL affordance");
+            return EventReportConsentUpdateResult.Failed();
+        }
+
+        try
+        {
+            var updated = await apiClient.UpdateMyEventReportCommunicationConsentAsync(
+                reportId,
+                new UpdateMyReportCommunicationConsentDto
+                {
+                    ReportCaseUpdatesConsent = reportCaseUpdatesConsent,
+                    ReportFollowUpContactConsent = reportFollowUpContactConsent
+                },
+                cancellationToken: cancellationToken);
+
+            if (updated.Id != reportId)
+            {
+                logger.LogWarning(
+                    "Event-report consent update returned a mismatched report resource for report {ReportId}",
+                    reportId);
+                return EventReportConsentUpdateResult.Failed();
+            }
+
+            return EventReportConsentUpdateResult.Successful(updated);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (ApiException ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Event-report consent update failed with API status {StatusCode} for report {ReportId}",
+                ex.StatusCode,
+                reportId);
+            return EventReportConsentUpdateResult.Failed();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unexpected event-report consent update failure for report {ReportId}", reportId);
+            return EventReportConsentUpdateResult.Failed();
+        }
+    }
+
+    private static bool HasMatchingConsentUpdateLink(HalResourceOfMyEventReportDto report, Guid reportId)
+    {
+        if (report._links?.TryGetValue(UpdateCommunicationConsentRelation, out var link) != true
+            || !string.Equals(link.Method, "PUT", StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(link.Href)
+            || !string.Equals(link.Href, link.Href.Trim(), StringComparison.Ordinal)
+            || !Uri.TryCreate(link.Href, UriKind.RelativeOrAbsolute, out var uri))
+        {
+            return false;
+        }
+
+        var hrefWithoutQueryOrFragment = link.Href.Split(['?', '#'], 2)[0];
+        string path;
+        if (uri.IsAbsoluteUri)
+        {
+            if (uri.Scheme is not ("http" or "https"))
+            {
+                return false;
+            }
+
+            var schemeSeparator = hrefWithoutQueryOrFragment.IndexOf("://", StringComparison.Ordinal);
+            var pathStart = schemeSeparator < 0
+                ? -1
+                : hrefWithoutQueryOrFragment.IndexOf('/', schemeSeparator + 3);
+            if (pathStart < 0)
+            {
+                return false;
+            }
+
+            path = hrefWithoutQueryOrFragment[pathStart..];
+        }
+        else
+        {
+            path = hrefWithoutQueryOrFragment;
+        }
+
+        var expectedPath = $"/api/event-reports/my/{reportId:D}/communication-consent";
+        return string.Equals(path.TrimEnd('/'), expectedPath, StringComparison.OrdinalIgnoreCase)
+               && path.Length - path.TrimEnd('/').Length <= 1;
     }
 
     private static string? TryGetProblemCode(ProblemDetails problem)

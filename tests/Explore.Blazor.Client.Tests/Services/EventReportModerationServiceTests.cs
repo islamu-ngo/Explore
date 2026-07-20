@@ -266,7 +266,8 @@ public sealed class EventReportModerationServiceTests
             ReasonId = 1,
             ReasonCode = "spam",
             ReasonName = "Spam",
-            ReporterContactConsent = true,
+            ReportCaseUpdatesConsent = true,
+            ReportFollowUpContactConsent = false,
             SubmittedAtUtc = DateTimeOffset.UtcNow,
             CurrentCase = new CurrentCase2
             {

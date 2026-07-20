@@ -3,9 +3,12 @@
 
 using Explore.API.Hateoas;
 using Explore.API.Hateoas.Policies;
+using Explore.Application.Authorization;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.EventReporting;
 using Explore.Application.Hateoas;
 using Microsoft.AspNetCore.Routing;
+using NSubstitute;
 
 namespace Event.Api.IntegrationTests.Features.Hateoas;
 
@@ -64,6 +67,9 @@ public sealed class EventReportHateoasTests
     {
         var reportId = Guid.CreateVersion7();
         var eventId = Guid.CreateVersion7();
+        var userId = Guid.CreateVersion7();
+        var currentUserService = Substitute.For<ICurrentUserService>();
+        currentUserService.UserId.Returns(userId);
         var dto = new MyEventReportDto
         {
             Id = reportId,
@@ -73,10 +79,12 @@ public sealed class EventReportHateoasTests
             StatusName = "Submitted",
             ReasonCode = "spam",
             ReasonName = "Spam",
-            SubmittedAtUtc = DateTime.UtcNow
+            SubmittedAtUtc = DateTime.UtcNow,
+            ReportCaseUpdatesConsent = true,
+            ReportFollowUpContactConsent = false
         };
 
-        var links = new MyEventReportDetailLinkPolicy()
+        var links = new MyEventReportDetailLinkPolicy(currentUserService)
             .GetLinks(dto, user: null)
             .ToList();
 
@@ -89,6 +97,52 @@ public sealed class EventReportHateoasTests
         await Assert.That(@event.RouteName).IsEqualTo(RouteNames.GetEventById);
         await Assert.That(new RouteValueDictionary(@event.RouteValues)["id"]).IsEqualTo(eventId);
         await Assert.That(@event.RequiresAuth).IsFalse();
+
+        var updateConsent = links.Single(link => link.Rel == LinkRelations.UpdateCommunicationConsent);
+        await Assert.That(updateConsent.RouteName).IsEqualTo(RouteNames.UpdateMyEventReportCommunicationConsent);
+        await Assert.That(new RouteValueDictionary(updateConsent.RouteValues)["reportId"]).IsEqualTo(reportId);
+        await Assert.That(updateConsent.Method).IsEqualTo("PUT");
+        await Assert.That(updateConsent.RequiresAuth).IsTrue();
+        await Assert.That(updateConsent.PermissionResourceKind).IsEqualTo(ResourceKinds.User);
+        await Assert.That(updateConsent.PermissionAction).IsEqualTo(AuthorizationActions.Users.Update);
+        await Assert.That(updateConsent.PermissionResourceId).IsEqualTo(userId.ToString());
+    }
+
+    [Test]
+    public async Task MyReportCollectionItem_UsesTheSameOwnerConsentAffordance()
+    {
+        var reportId = Guid.CreateVersion7();
+        var userId = Guid.CreateVersion7();
+        var currentUserService = Substitute.For<ICurrentUserService>();
+        currentUserService.UserId.Returns(userId);
+        var dto = CreateMyReport(reportId);
+
+        var updateConsent = new MyEventReportCollectionLinkPolicy(currentUserService)
+            .GetItemLinks(dto, user: null)
+            .Single(link => link.Rel == LinkRelations.UpdateCommunicationConsent);
+
+        await Assert.That(updateConsent.RouteName).IsEqualTo(RouteNames.UpdateMyEventReportCommunicationConsent);
+        await Assert.That(new RouteValueDictionary(updateConsent.RouteValues)["reportId"]).IsEqualTo(reportId);
+        await Assert.That(updateConsent.Method).IsEqualTo("PUT");
+        await Assert.That(updateConsent.PermissionResourceKind).IsEqualTo(ResourceKinds.User);
+        await Assert.That(updateConsent.PermissionResourceId).IsEqualTo(userId.ToString());
+    }
+
+    [Test]
+    public async Task MyReportStatus_WhenCurrentUserCannotBeResolved_OmitsConsentAffordance()
+    {
+        var currentUserService = Substitute.For<ICurrentUserService>();
+        currentUserService.UserId.Returns((Guid?)null);
+
+        var detailLinks = new MyEventReportDetailLinkPolicy(currentUserService)
+            .GetLinks(CreateMyReport(Guid.CreateVersion7()), user: null)
+            .ToList();
+        var collectionLinks = new MyEventReportCollectionLinkPolicy(currentUserService)
+            .GetItemLinks(CreateMyReport(Guid.CreateVersion7()), user: null)
+            .ToList();
+
+        await Assert.That(detailLinks.Any(link => link.Rel == LinkRelations.UpdateCommunicationConsent)).IsFalse();
+        await Assert.That(collectionLinks.Any(link => link.Rel == LinkRelations.UpdateCommunicationConsent)).IsFalse();
     }
 
     [Test]
@@ -212,10 +266,26 @@ public sealed class EventReportHateoasTests
             PriorityName = "Normal",
             ReasonCode = "spam",
             ReasonName = "Spam",
+            ReportCaseUpdatesConsent = true,
+            ReportFollowUpContactConsent = false,
             SubmittedAtUtc = DateTime.UtcNow,
             CurrentCase = CreateCase(reportId, caseStatusCode),
             DecisionCount = decisionCount
         };
+
+    private static MyEventReportDto CreateMyReport(Guid reportId) => new()
+    {
+        Id = reportId,
+        EventId = Guid.CreateVersion7(),
+        StatusId = 1,
+        StatusCode = "submitted",
+        StatusName = "Submitted",
+        ReasonCode = "spam",
+        ReasonName = "Spam",
+        SubmittedAtUtc = DateTime.UtcNow,
+        ReportCaseUpdatesConsent = true,
+        ReportFollowUpContactConsent = false
+    };
 
     private static ModerationReportDetailDto CreateDetail(
         Guid reportId,
@@ -241,6 +311,8 @@ public sealed class EventReportHateoasTests
             PriorityName = "Normal",
             ReasonCode = "spam",
             ReasonName = "Spam",
+            ReportCaseUpdatesConsent = true,
+            ReportFollowUpContactConsent = false,
             SubmittedAtUtc = DateTime.UtcNow,
             ConcurrencyStamp = Guid.CreateVersion7(),
             CurrentCase = CreateCase(reportId, caseStatusCode),

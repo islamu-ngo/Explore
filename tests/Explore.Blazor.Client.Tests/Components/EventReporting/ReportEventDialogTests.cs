@@ -3,7 +3,9 @@
 
 using System.Reflection;
 using Explore.Blazor.Client.Components.EventReporting;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.EventReporting;
+using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Components.EventReporting;
 
@@ -41,6 +43,77 @@ public sealed class ReportEventDialogTests : IDisposable
 
         await service.DidNotReceive().SubmitAsync(Arg.Any<SubmitEventReportDto>(), Arg.Any<CancellationToken>());
         await Assert.That(GetPrivateField<string?>(cut.Instance, "_errorMessage")).IsEqualTo("Add details before submitting.");
+    }
+
+    [Test]
+    public async Task Render_CommunicationChoicesAreIndependentUncheckedAndDescribed()
+    {
+        var eventId = Guid.NewGuid();
+        RegisterReportingService(eventId);
+
+        var cut = RenderDialog(eventId);
+        cut.WaitForState(() => !GetPrivateField<bool>(cut.Instance, "_isLoadingOptions"), TimeSpan.FromSeconds(3));
+
+        var choices = cut.FindComponents<MudCheckBox<bool>>();
+        await Assert.That(choices.Count).IsEqualTo(2);
+        await Assert.That(choices.All(choice => choice.Instance.Value is false)).IsTrue();
+        await Assert.That(cut.Markup).Contains("Email preferences");
+        await Assert.That(cut.Markup).Contains("Case updates");
+        await Assert.That(cut.Markup).Contains("acknowledgement, status updates, and the final outcome");
+        await Assert.That(cut.Markup).Contains("Follow-up contact");
+        await Assert.That(cut.Markup).Contains("clarification or additional evidence");
+
+        var describedInputs = cut.FindAll("input[type='checkbox'][aria-describedby]");
+        await Assert.That(describedInputs.Count).IsEqualTo(2);
+        foreach (var input in describedInputs)
+        {
+            var descriptionId = input.GetAttribute("aria-describedby");
+            await Assert.That(descriptionId).IsNotNull();
+            await Assert.That(cut.FindAll($"#{descriptionId}").Count).IsEqualTo(1);
+        }
+    }
+
+    [Test]
+    [Arguments(false, false)]
+    [Arguments(true, false)]
+    [Arguments(false, true)]
+    [Arguments(true, true)]
+    public async Task SubmitAsync_MapsCommunicationChoicesIndependently(
+        bool caseUpdatesConsent,
+        bool followUpContactConsent)
+    {
+        var eventId = Guid.NewGuid();
+        var service = RegisterReportingService(eventId);
+        SubmitEventReportDto? capturedRequest = null;
+        service.SubmitAsync(Arg.Do<SubmitEventReportDto>(request => capturedRequest = request), Arg.Any<CancellationToken>())
+            .Returns(EventReportSubmissionResult.Failed("Keep the dialog open for inspection."));
+        var cut = RenderDialog(eventId);
+        cut.WaitForState(() => !GetPrivateField<bool>(cut.Instance, "_isLoadingOptions"), TimeSpan.FromSeconds(3));
+        SetPrivateField(cut.Instance, "_reporterText", "This event appears to be spam.");
+        SetPrivateField(cut.Instance, "_reportCaseUpdatesConsent", caseUpdatesConsent);
+        SetPrivateField(cut.Instance, "_reportFollowUpContactConsent", followUpContactConsent);
+
+        await InvokePrivateTaskAsync(cut.Instance, "SubmitAsync");
+
+        await Assert.That(capturedRequest).IsNotNull();
+        await Assert.That(capturedRequest!.ReportCaseUpdatesConsent).IsEqualTo(caseUpdatesConsent);
+        await Assert.That(capturedRequest.ReportFollowUpContactConsent).IsEqualTo(followUpContactConsent);
+    }
+
+    [Test]
+    public async Task SubmitAsync_WhenValidationErrorRepeats_RendersOneAssertiveAlertPath()
+    {
+        var eventId = Guid.NewGuid();
+        RegisterReportingService(eventId);
+        var announcer = _ctx.Services.GetRequiredService<IAccessibilityAnnouncerService>();
+        var cut = RenderDialog(eventId);
+        cut.WaitForState(() => !GetPrivateField<bool>(cut.Instance, "_isLoadingOptions"), TimeSpan.FromSeconds(3));
+
+        await InvokePrivateTaskAsync(cut.Instance, "SubmitAsync");
+        await InvokePrivateTaskAsync(cut.Instance, "SubmitAsync");
+
+        await Assert.That(cut.FindAll("[role='alert']").Count).IsEqualTo(1);
+        await announcer.DidNotReceive().AnnounceAssertiveAsync(Arg.Any<string>());
     }
 
     public void Dispose() => _ctx.Dispose();

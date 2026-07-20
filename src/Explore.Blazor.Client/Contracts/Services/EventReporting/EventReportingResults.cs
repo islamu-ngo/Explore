@@ -34,3 +34,15 @@ public sealed record EventReportPageResult(
     public static EventReportPageResult Empty(int pageNumber, int pageSize)
         => new([], Math.Max(1, pageNumber), Math.Max(1, pageSize), 0, 0, false, false);
 }
+
+public sealed record EventReportConsentUpdateResult(
+    bool Success,
+    HalResourceOfMyEventReportDto? Report,
+    string Message)
+{
+    public static EventReportConsentUpdateResult Successful(HalResourceOfMyEventReportDto report)
+        => new(true, report, "Email preferences saved.");
+
+    public static EventReportConsentUpdateResult Failed()
+        => new(false, null, "Email preferences could not be saved.");
+}

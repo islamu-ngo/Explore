@@ -2,6 +2,7 @@
 // ABOUTME: Verifies HAL pagination mapping and resilient fallbacks around generated API calls.
 
 using Explore.Blazor.Client.Contracts.Services.EventReporting;
+using Explore.Blazor.Client.Helpers;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -89,6 +90,239 @@ public sealed class EventReportingServiceTests
         var result = await CreateService().GetMyReportAsync(reportId, CancellationToken.None);
 
         await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task UpdateCommunicationConsentAsync_WhenAffordanceMatches_SendsExplicitChoicesAndReturnsResource()
+    {
+        var report = CreateReportResource("submitted", "Submitted", "spam", "Spam");
+        var reportId = report.Id!.Value;
+        HalLinkTestFactory.WithLinks(
+            report,
+            new HalLinkTestLink(
+                "update-communication-consent",
+                $"/api/event-reports/my/{reportId}/communication-consent",
+                "PUT"));
+        UpdateMyReportCommunicationConsentDto? capturedRequest = null;
+        var updated = CreateReportResource("submitted", "Submitted", "spam", "Spam");
+        updated.Id = reportId;
+        updated.ReportCaseUpdatesConsent = false;
+        updated.ReportFollowUpContactConsent = true;
+        HalLinkTestFactory.WithLinks(
+            updated,
+            new HalLinkTestLink(
+                "update-communication-consent",
+                $"/api/event-reports/my/{reportId}/communication-consent",
+                "PUT"));
+        _apiClient.UpdateMyEventReportCommunicationConsentAsync(
+                reportId,
+                Arg.Do<UpdateMyReportCommunicationConsentDto>(request => capturedRequest = request),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(updated);
+
+        var result = await CreateService().UpdateCommunicationConsentAsync(
+            report,
+            reportCaseUpdatesConsent: false,
+            reportFollowUpContactConsent: true,
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Report).IsSameReferenceAs(updated);
+        await Assert.That(capturedRequest).IsNotNull();
+        await Assert.That(capturedRequest!.ReportCaseUpdatesConsent).IsFalse();
+        await Assert.That(capturedRequest.ReportFollowUpContactConsent).IsTrue();
+        await Assert.That(result.Report!.HasLink("update-communication-consent")).IsTrue();
+    }
+
+    [Test]
+    public async Task UpdateCommunicationConsentAsync_WhenAffordanceTargetsAnotherReport_FailsClosed()
+    {
+        var report = CreateReportResource("submitted", "Submitted", "spam", "Spam");
+        HalLinkTestFactory.WithLinks(
+            report,
+            new HalLinkTestLink(
+                "update-communication-consent",
+                $"/api/event-reports/my/{Guid.NewGuid()}/communication-consent",
+                "PUT"));
+
+        var result = await CreateService().UpdateCommunicationConsentAsync(
+            report,
+            reportCaseUpdatesConsent: true,
+            reportFollowUpContactConsent: true,
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await _apiClient.DidNotReceive().UpdateMyEventReportCommunicationConsentAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<UpdateMyReportCommunicationConsentDto>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [Arguments(false, "PUT")]
+    [Arguments(true, "POST")]
+    [Arguments(true, "put")]
+    [Arguments(true, "Put")]
+    public async Task UpdateCommunicationConsentAsync_WhenRelationOrPutMethodIsMissing_FailsClosed(
+        bool includeRelation,
+        string method)
+    {
+        var report = CreateReportResource("submitted", "Submitted", "spam", "Spam");
+        if (includeRelation)
+        {
+            HalLinkTestFactory.WithLinks(
+                report,
+                new HalLinkTestLink(
+                    "update-communication-consent",
+                    $"/api/event-reports/my/{report.Id}/communication-consent",
+                    method));
+        }
+
+        var result = await CreateService().UpdateCommunicationConsentAsync(
+            report,
+            reportCaseUpdatesConsent: true,
+            reportFollowUpContactConsent: true,
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await _apiClient.DidNotReceive().UpdateMyEventReportCommunicationConsentAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<UpdateMyReportCommunicationConsentDto>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateCommunicationConsentAsync_WhenExpectedIdAppearsInAnExtraSegment_FailsClosed()
+    {
+        var report = CreateReportResource("submitted", "Submitted", "spam", "Spam");
+        var reportId = report.Id!.Value;
+        HalLinkTestFactory.WithLinks(
+            report,
+            new HalLinkTestLink(
+                "update-communication-consent",
+                $"/api/{reportId}/event-reports/my/{Guid.NewGuid()}/communication-consent",
+                "PUT"));
+
+        var result = await CreateService().UpdateCommunicationConsentAsync(
+            report,
+            reportCaseUpdatesConsent: true,
+            reportFollowUpContactConsent: true,
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await _apiClient.DidNotReceive().UpdateMyEventReportCommunicationConsentAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<UpdateMyReportCommunicationConsentDto>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateCommunicationConsentAsync_WhenHrefIsMalformed_FailsClosed()
+    {
+        var report = CreateReportResource("submitted", "Submitted", "spam", "Spam");
+        HalLinkTestFactory.WithLinks(
+            report,
+            new HalLinkTestLink(
+                "update-communication-consent",
+                "https://[invalid/api/event-reports/my/report/communication-consent",
+                "PUT"));
+
+        var result = await CreateService().UpdateCommunicationConsentAsync(
+            report,
+            reportCaseUpdatesConsent: true,
+            reportFollowUpContactConsent: true,
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await _apiClient.DidNotReceive().UpdateMyEventReportCommunicationConsentAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<UpdateMyReportCommunicationConsentDto>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateCommunicationConsentAsync_WhenCanonicalHrefHasSafeSuffixes_Dispatches()
+    {
+        var reportId = Guid.NewGuid();
+        var hrefs = new[]
+        {
+            $"/api/event-reports/my/{reportId}/communication-consent?source=my-reports",
+            $"/api/event-reports/my/{reportId}/communication-consent/#preferences",
+            $"https://event.example/api/event-reports/my/{reportId}/communication-consent?source=my-reports#preferences"
+        };
+        var updated = CreateReportResource("submitted", "Submitted", "spam", "Spam");
+        updated.Id = reportId;
+        _apiClient.UpdateMyEventReportCommunicationConsentAsync(
+                reportId,
+                Arg.Any<UpdateMyReportCommunicationConsentDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(updated);
+
+        foreach (var href in hrefs)
+        {
+            var report = CreateReportResource("submitted", "Submitted", "spam", "Spam");
+            report.Id = reportId;
+            HalLinkTestFactory.WithLinks(
+                report,
+                new HalLinkTestLink("update-communication-consent", href, "PUT"));
+
+            var result = await CreateService().UpdateCommunicationConsentAsync(
+                report,
+                reportCaseUpdatesConsent: true,
+                reportFollowUpContactConsent: false,
+                CancellationToken.None);
+
+            await Assert.That(result.Success).IsTrue();
+        }
+
+        await _apiClient.Received(hrefs.Length).UpdateMyEventReportCommunicationConsentAsync(
+            reportId,
+            Arg.Any<UpdateMyReportCommunicationConsentDto>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateCommunicationConsentAsync_WhenReturnedResourceIdDiffers_Fails()
+    {
+        var report = CreateReportResource("submitted", "Submitted", "spam", "Spam");
+        var reportId = report.Id!.Value;
+        HalLinkTestFactory.WithLinks(
+            report,
+            new HalLinkTestLink(
+                "update-communication-consent",
+                $"/api/event-reports/my/{reportId}/communication-consent",
+                "PUT"));
+        var mismatched = CreateReportResource("submitted", "Submitted", "spam", "Spam");
+        _apiClient.UpdateMyEventReportCommunicationConsentAsync(
+                reportId,
+                Arg.Any<UpdateMyReportCommunicationConsentDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(mismatched);
+
+        var result = await CreateService().UpdateCommunicationConsentAsync(
+            report,
+            reportCaseUpdatesConsent: false,
+            reportFollowUpContactConsent: false,
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Report).IsNull();
     }
 
     private EventReportingService CreateService() => new(_apiClient, _logger);

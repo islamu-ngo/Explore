@@ -28,6 +28,30 @@
     margin-block-start: calc(var(--isl-space-4, 1rem) * -1);
 }
 
+.report-event-dialog__consent-group {
+    border: 0;
+    display: grid;
+    gap: var(--isl-space-3, 0.75rem);
+    margin: 0;
+    min-inline-size: 0;
+    padding: 0;
+}
+
+.report-event-dialog__consent-legend {
+    color: var(--isl-color-text);
+    font-weight: var(--isl-typography-h6-weight);
+    padding: 0;
+}
+
+.report-event-dialog__consent-option {
+    display: grid;
+    gap: var(--isl-space-1, 0.25rem);
+}
+
+.report-event-dialog__consent-option ::deep .report-event-dialog__consent-description {
+    padding-inline-start: var(--isl-space-10, 2.5rem);
+}
+
 @media (max-width: 600px) {
     .report-event-dialog__body {
         min-width: 0;

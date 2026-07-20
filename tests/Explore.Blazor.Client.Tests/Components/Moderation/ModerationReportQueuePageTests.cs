@@ -106,7 +106,8 @@ public sealed class ModerationReportQueuePageTests : IDisposable
             ReasonId = 1,
             ReasonCode = "spam",
             ReasonName = "Spam",
-            ReporterContactConsent = true,
+            ReportCaseUpdatesConsent = true,
+            ReportFollowUpContactConsent = false,
             SubmittedAtUtc = DateTimeOffset.UtcNow,
             CurrentCase = new CurrentCase2
             {
@@ -151,7 +152,8 @@ public sealed class ModerationReportQueuePageTests : IDisposable
             ReasonId = 1,
             ReasonCode = "spam",
             ReasonName = "Spam",
-            ReporterContactConsent = true,
+            ReportCaseUpdatesConsent = true,
+            ReportFollowUpContactConsent = false,
             SubmittedAtUtc = DateTimeOffset.UtcNow,
             ConcurrencyStamp = Guid.NewGuid(),
             CurrentCase = new CurrentCase

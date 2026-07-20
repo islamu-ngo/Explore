@@ -5,7 +5,9 @@ namespace Explore.API.Hateoas.Policies;
 
 using System.Security.Claims;
 using Explore.API.Hateoas;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.EventReporting;
 using Explore.Application.Hateoas;
 
@@ -78,7 +80,8 @@ public sealed class EventReportOptionsCollectionLinkPolicy : ICollectionLinkPoli
     }
 }
 
-public sealed class MyEventReportDetailLinkPolicy : ILinkPolicy<MyEventReportDto>
+public sealed class MyEventReportDetailLinkPolicy(ICurrentUserService currentUserService)
+    : ILinkPolicy<MyEventReportDto>
 {
     public IEnumerable<LinkDefinition> GetLinks(MyEventReportDto dto, ClaimsPrincipal? user)
     {
@@ -96,10 +99,28 @@ public sealed class MyEventReportDetailLinkPolicy : ILinkPolicy<MyEventReportDto
             new { id = dto.EventId },
             "GET",
             "Event details");
+
+        if (currentUserService.UserId is not { } userId)
+        {
+            yield break;
+        }
+
+        yield return new LinkDefinition(
+            LinkRelations.UpdateCommunicationConsent,
+            RouteNames.UpdateMyEventReportCommunicationConsent,
+            new { reportId = dto.Id },
+            "PUT",
+            "Update communication consent",
+            RequiresAuth: true)
+            .RequirePermission(
+                AuthorizationActions.Users.Update,
+                ResourceKinds.User,
+                userId.ToString());
     }
 }
 
-public sealed class MyEventReportCollectionLinkPolicy : ICollectionLinkPolicy<MyEventReportDto>
+public sealed class MyEventReportCollectionLinkPolicy(ICurrentUserService currentUserService)
+    : ICollectionLinkPolicy<MyEventReportDto>
 {
     public IEnumerable<LinkDefinition> GetItemLinks(MyEventReportDto dto, ClaimsPrincipal? user)
     {
@@ -117,6 +138,23 @@ public sealed class MyEventReportCollectionLinkPolicy : ICollectionLinkPolicy<My
             new { id = dto.EventId },
             "GET",
             "Event details");
+
+        if (currentUserService.UserId is not { } userId)
+        {
+            yield break;
+        }
+
+        yield return new LinkDefinition(
+            LinkRelations.UpdateCommunicationConsent,
+            RouteNames.UpdateMyEventReportCommunicationConsent,
+            new { reportId = dto.Id },
+            "PUT",
+            "Update communication consent",
+            RequiresAuth: true)
+            .RequirePermission(
+                AuthorizationActions.Users.Update,
+                ResourceKinds.User,
+                userId.ToString());
     }
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)

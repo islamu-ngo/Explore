@@ -9,9 +9,11 @@ using Explore.API.Attributes;
 using Explore.API.Controllers;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.EventReporting;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventReporting;
 using Explore.Application.Features.EventReporting.Requests.Commands;
 using Explore.Application.Features.EventReporting.Requests.Queries;
@@ -54,6 +56,8 @@ public sealed class EventReportsControllerTests
         var submit = typeof(EventReportsController).GetMethod(nameof(EventReportsController.Submit))!;
         var getMyReports = typeof(EventReportsController).GetMethod(nameof(EventReportsController.GetMyReports))!;
         var getMyReport = typeof(EventReportsController).GetMethod(nameof(EventReportsController.GetMyReport))!;
+        var updateCommunicationConsent = typeof(EventReportsController)
+            .GetMethod(nameof(EventReportsController.UpdateCommunicationConsent))!;
 
         await AssertRoute(getOptions, typeof(HttpGetAttribute), "events/{eventId:guid}/options", RouteNames.GetEventReportOptions);
         await Assert.That(getOptions.GetCustomAttribute<AllowAnonymousAttribute>()).IsNotNull();
@@ -78,6 +82,19 @@ public sealed class EventReportsControllerTests
         await Assert.That(getMyReport.GetCustomAttribute<AllowAnonymousAttribute>()).IsNull();
         await Assert.That(getMyReport.GetCustomAttribute<EndpointClassificationAttribute>()?.Class).IsEqualTo(EndpointClass.Authenticated);
         await Assert.That(GetRateLimitPolicy(getMyReport)).IsEqualTo(RateLimitingExtensions.AuthenticatedPolicy);
+
+        await AssertRoute(
+            updateCommunicationConsent,
+            typeof(HttpPutAttribute),
+            "my/{reportId:guid}/communication-consent",
+            RouteNames.UpdateMyEventReportCommunicationConsent);
+        await Assert.That(updateCommunicationConsent.GetCustomAttribute<AuthorizeAttribute>()).IsNotNull();
+        await Assert.That(updateCommunicationConsent.GetCustomAttribute<AllowAnonymousAttribute>()).IsNull();
+        await Assert.That(updateCommunicationConsent.GetCustomAttribute<EndpointClassificationAttribute>()?.Class)
+            .IsEqualTo(EndpointClass.Authenticated);
+        await Assert.That(GetRateLimitPolicy(updateCommunicationConsent)).IsEqualTo(RateLimitingExtensions.WritePolicy);
+        await Assert.That(GetResponseStatusCodes(updateCommunicationConsent))
+            .Contains(StatusCodes.Status403Forbidden);
     }
 
     [Test]
@@ -142,6 +159,8 @@ public sealed class EventReportsControllerTests
         await _mediator.Received(1).Send(
             Arg.Is<SubmitEventReportCommand>(command =>
                 ReferenceEquals(command.Request, dto) &&
+                command.Request.ReportCaseUpdatesConsent &&
+                !command.Request.ReportFollowUpContactConsent &&
                 command.ReporterIpHash == expectedIpHash &&
                 command.ReporterUserAgentHash == expectedUserAgentHash &&
                 command.ReporterIpHash != "203.0.113.5" &&
@@ -172,6 +191,116 @@ public sealed class EventReportsControllerTests
         await Assert.That(problemDetails).IsNotNull();
         await Assert.That(problemDetails!.Title).IsEqualTo("Event report conflict");
         await Assert.That(problemDetails.Extensions["code"]).IsEqualTo(EventReportFailureCodes.Duplicate);
+    }
+
+    [Test]
+    public async Task UpdateCommunicationConsent_DispatchesOwnedUpdateAndReturnsRefreshedHalResource()
+    {
+        var report = CreateMyReportDto();
+        var request = new UpdateMyReportCommunicationConsentDto
+        {
+            ReportCaseUpdatesConsent = false,
+            ReportFollowUpContactConsent = true
+        };
+        var halResource = new HalResource<MyEventReportDto>(report);
+        _mediator.Send(
+                Arg.Any<UpdateMyReportCommunicationConsentCommand>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid>
+            {
+                Success = true,
+                Id = report.Id,
+                Message = "Event report communication consent updated successfully."
+            });
+        _mediator.Send(Arg.Any<GetMyReportRequest>(), Arg.Any<CancellationToken>())
+            .Returns(report);
+        _myReportAssembler.ToResource(report, Arg.Any<HttpContext>()).Returns(halResource);
+        var controller = CreateController(null, null, "corr-report-consent");
+
+        var actionResult = await controller.UpdateCommunicationConsent(
+            report.Id,
+            request,
+            CancellationToken.None);
+
+        var ok = actionResult.Result as OkObjectResult;
+        await Assert.That(ok).IsNotNull();
+        await Assert.That(ok!.Value).IsEqualTo(halResource);
+        await _mediator.Received(1).Send(
+            Arg.Is<UpdateMyReportCommunicationConsentCommand>(command =>
+                command.ReportId == report.Id
+                && ReferenceEquals(command.Request, request)
+                && !command.Request.ReportCaseUpdatesConsent
+                && command.Request.ReportFollowUpContactConsent),
+            Arg.Any<CancellationToken>());
+        await _mediator.Received(1).Send(
+            Arg.Is<GetMyReportRequest>(query => query.ReportId == report.Id),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateCommunicationConsent_WhenOwnershipFails_ReturnsGenericNotFoundWithoutRefresh()
+    {
+        var reportId = Guid.CreateVersion7();
+        _mediator.Send(
+                Arg.Any<UpdateMyReportCommunicationConsentCommand>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Id = reportId,
+                Message = "Event report was not found.",
+                Errors = ["Event report was not found."],
+                FailureCode = EventReportFailureCodes.ReportNotFound
+            });
+        var controller = CreateController(null, null, "corr-report-consent-denied");
+
+        var actionResult = await controller.UpdateCommunicationConsent(
+            reportId,
+            new UpdateMyReportCommunicationConsentDto
+            {
+                ReportCaseUpdatesConsent = false,
+                ReportFollowUpContactConsent = false
+            },
+            CancellationToken.None);
+
+        var objectResult = actionResult.Result as ObjectResult;
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(StatusCodes.Status404NotFound);
+        await _mediator.DidNotReceive().Send(
+            Arg.Any<GetMyReportRequest>(),
+            Arg.Any<CancellationToken>());
+        await _myReportAssembler.DidNotReceive().ToResource(
+            Arg.Any<MyEventReportDto>(),
+            Arg.Any<HttpContext>());
+    }
+
+    [Test]
+    public async Task UpdateCommunicationConsent_WhenProviderDenies_PropagatesAuthorizationFailureWithoutRefresh()
+    {
+        var reportId = Guid.CreateVersion7();
+        _mediator.Send(
+                Arg.Any<UpdateMyReportCommunicationConsentCommand>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<BaseCommandResponse<Guid>>(new AuthorizationException(
+                ResourceKinds.User,
+                AuthorizationActions.Users.Update)));
+        var controller = CreateController(null, null, "corr-report-consent-provider-denied");
+
+        await Assert.ThrowsAsync<AuthorizationException>(() => controller.UpdateCommunicationConsent(
+            reportId,
+            new UpdateMyReportCommunicationConsentDto
+            {
+                ReportCaseUpdatesConsent = false,
+                ReportFollowUpContactConsent = false
+            },
+            CancellationToken.None));
+
+        await _mediator.DidNotReceive().Send(
+            Arg.Any<GetMyReportRequest>(),
+            Arg.Any<CancellationToken>());
+        await _myReportAssembler.DidNotReceive().ToResource(
+            Arg.Any<MyEventReportDto>(),
+            Arg.Any<HttpContext>());
     }
 
     private EventReportsController CreateController(string? ipAddress, string? userAgent, string correlationId)
@@ -221,7 +350,8 @@ public sealed class EventReportsControllerTests
         EventId = Guid.CreateVersion7(),
         ReasonCode = "spam",
         ReporterText = "This event appears to be spam.",
-        ReporterContactConsent = true,
+        ReportCaseUpdatesConsent = true,
+        ReportFollowUpContactConsent = false,
         ReporterLocale = "en"
     };
 
@@ -235,7 +365,8 @@ public sealed class EventReportsControllerTests
         ReasonCode = "spam",
         ReasonName = "Spam",
         SubmittedAtUtc = DateTime.UtcNow,
-        ReporterContactConsent = true
+        ReportCaseUpdatesConsent = true,
+        ReportFollowUpContactConsent = false
     };
 
     private static async Task AssertRoute(MethodInfo method, Type attributeType, string? template, string routeName)
@@ -248,4 +379,9 @@ public sealed class EventReportsControllerTests
 
     private static string? GetRateLimitPolicy(MethodInfo method)
         => method.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName;
+
+    private static int[] GetResponseStatusCodes(MethodInfo method)
+        => method.GetCustomAttributes<ProducesResponseTypeAttribute>()
+            .Select(attribute => attribute.StatusCode)
+            .ToArray();
 }

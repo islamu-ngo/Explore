@@ -183,6 +183,51 @@ public sealed class EventReportsController : ExploreControllerBase
         return Ok(resource);
     }
 
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPut(
+        "my/{reportId:guid}/communication-consent",
+        Name = RouteNames.UpdateMyEventReportCommunicationConsent)]
+    [EndpointSummary("Update My Event Report Communication Consent")]
+    [EndpointDescription("Updates case-update and follow-up communication consent on the authenticated reporter's own event report.")]
+    [Consumes(HateoasConstants.JsonMediaType)]
+    [ProducesResponseType(typeof(HalResource<MyEventReportDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    public async Task<ActionResult<HalResource<MyEventReportDto>>> UpdateCommunicationConsent(
+        Guid reportId,
+        [FromBody] UpdateMyReportCommunicationConsentDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(
+            new UpdateMyReportCommunicationConsentCommand
+            {
+                ReportId = reportId,
+                Request = request
+            },
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            return this.ToEventReportProblem(response);
+        }
+
+        var report = await _mediator.Send(
+            new GetMyReportRequest { ReportId = reportId },
+            cancellationToken);
+        if (report is null)
+        {
+            return this.ToNotFoundProblem(MyEventReportNotFoundProblem);
+        }
+
+        var resource = await _myReportResourceAssembler.ToResource(report, HttpContext);
+        return Ok(resource);
+    }
+
     private string? ComputeReporterFingerprintHash(string? value, string kind)
     {
         if (string.IsNullOrWhiteSpace(value))

@@ -38,7 +38,10 @@
             {
                 @if (!string.IsNullOrWhiteSpace(_errorMessage))
                 {
-                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="report-event-dialog__alert">
+                    <MudAlert Severity="Severity.Error"
+                              Variant="Variant.Outlined"
+                              Class="report-event-dialog__alert"
+                              role="alert">
                         @_errorMessage
                     </MudAlert>
                 }
@@ -82,11 +85,42 @@
                     </MudText>
                 </div>
 
-                <MudCheckBox T="bool"
-                             @bind-Value="_reporterContactConsent"
-                             Disabled="_isSubmitting"
-                             Color="Color.Primary"
-                             Label="I can be contacted about this report if more context is needed." />
+                <fieldset class="report-event-dialog__consent-group">
+                    <legend class="report-event-dialog__consent-legend">Email preferences</legend>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Both choices are optional. You can submit the report without selecting either one.
+                    </MudText>
+
+                    <div class="report-event-dialog__consent-option">
+                        <MudCheckBox T="bool"
+                                     @bind-Value="_reportCaseUpdatesConsent"
+                                     Disabled="_isSubmitting"
+                                     Color="Color.Primary"
+                                     Label="Case updates"
+                                     aria-describedby="@CaseUpdatesDescriptionId" />
+                        <MudText id="@CaseUpdatesDescriptionId"
+                                 Typo="Typo.caption"
+                                 Color="Color.Secondary"
+                                 Class="report-event-dialog__consent-description">
+                            Receive an acknowledgement, status updates, and the final outcome by email.
+                        </MudText>
+                    </div>
+
+                    <div class="report-event-dialog__consent-option">
+                        <MudCheckBox T="bool"
+                                     @bind-Value="_reportFollowUpContactConsent"
+                                     Disabled="_isSubmitting"
+                                     Color="Color.Primary"
+                                     Label="Follow-up contact"
+                                     aria-describedby="@FollowUpContactDescriptionId" />
+                        <MudText id="@FollowUpContactDescriptionId"
+                                 Typo="Typo.caption"
+                                 Color="Color.Secondary"
+                                 Class="report-event-dialog__consent-description">
+                            Allow the moderation team to email me for clarification or additional evidence.
+                        </MudText>
+                    </div>
+                </fieldset>
             }
         </div>
     </DialogContent>

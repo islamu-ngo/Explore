@@ -23,4 +23,10 @@ public interface IEventReportingService
     Task<HalResourceOfMyEventReportDto?> GetMyReportAsync(
         Guid reportId,
         CancellationToken cancellationToken = default);
+
+    Task<EventReportConsentUpdateResult> UpdateCommunicationConsentAsync(
+        HalResourceOfMyEventReportDto report,
+        bool reportCaseUpdatesConsent,
+        bool reportFollowUpContactConsent,
+        CancellationToken cancellationToken = default);
 }

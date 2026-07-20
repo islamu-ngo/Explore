@@ -71,6 +71,7 @@
                     <MudTh>Reason</MudTh>
                     <MudTh>Status</MudTh>
                     <MudTh>Submitted</MudTh>
+                    <MudTh>Email preferences</MudTh>
                     <MudTh></MudTh>
                 </HeaderContent>
                 <RowTemplate>
@@ -89,6 +90,98 @@
                         </MudChip>
                     </MudTd>
                     <MudTd DataLabel="Submitted">@FormatDate(context.SubmittedAtUtc)</MudTd>
+                    <MudTd DataLabel="Email preferences">
+                        @{
+                            var consentEditor = GetConsentEditor(context);
+                        }
+                        <div class="my-reports-page__consent">
+                            <dl id="@(context.Id is { } summaryReportId ? GetConsentSummaryId(summaryReportId) : null)"
+                                class="my-reports-page__consent-summary"
+                                tabindex="-1"
+                                aria-label="Current email preferences">
+                                <div class="my-reports-page__consent-summary-item">
+                                    <dt>Case updates</dt>
+                                    <dd>@FormatConsent(context.ReportCaseUpdatesConsent)</dd>
+                                </div>
+                                <div class="my-reports-page__consent-summary-item">
+                                    <dt>Follow-up contact</dt>
+                                    <dd>@FormatConsent(context.ReportFollowUpContactConsent)</dd>
+                                </div>
+                            </dl>
+
+                            @if (consentEditor?.IsEditing == true
+                                 && CanEditCommunicationConsent(context)
+                                 && context.Id is { } reportId)
+                            {
+                                <fieldset class="my-reports-page__consent-editor"
+                                          disabled="@consentEditor.IsSaving"
+                                          aria-busy="@consentEditor.IsSaving.ToString().ToLowerInvariant()">
+                                    <legend class="my-reports-page__consent-legend">Change email preferences</legend>
+                                    <div class="my-reports-page__consent-option">
+                                        <MudCheckBox T="bool"
+                                                     @bind-Value="consentEditor.ReportCaseUpdatesConsent"
+                                                     Disabled="consentEditor.IsSaving"
+                                                     Color="Color.Primary"
+                                                     Label="Case updates"
+                                                     aria-describedby="@GetCaseUpdatesDescriptionId(reportId)" />
+                                        <MudText id="@GetCaseUpdatesDescriptionId(reportId)"
+                                                 Typo="Typo.caption"
+                                                 Color="Color.Secondary">
+                                            Receive acknowledgement, status, and final outcome emails for this report.
+                                        </MudText>
+                                    </div>
+                                    <div class="my-reports-page__consent-option">
+                                        <MudCheckBox T="bool"
+                                                     @bind-Value="consentEditor.ReportFollowUpContactConsent"
+                                                     Disabled="consentEditor.IsSaving"
+                                                     Color="Color.Primary"
+                                                     Label="Follow-up contact"
+                                                     aria-describedby="@GetFollowUpDescriptionId(reportId)" />
+                                        <MudText id="@GetFollowUpDescriptionId(reportId)"
+                                                 Typo="Typo.caption"
+                                                 Color="Color.Secondary">
+                                            Allow clarification or additional-evidence emails for this report.
+                                        </MudText>
+                                    </div>
+
+                                    @if (!string.IsNullOrWhiteSpace(consentEditor.Error))
+                                    {
+                                        <MudAlert Severity="Severity.Error"
+                                                  Variant="Variant.Outlined"
+                                                  Class="my-reports-page__consent-error"
+                                                  role="alert">
+                                            @consentEditor.Error
+                                        </MudAlert>
+                                    }
+
+                                    <div class="my-reports-page__consent-actions">
+                                        <AppButton Size="Size.Small"
+                                                   OnClick="@(_ => SaveConsentAsync(context))"
+                                                   Disabled="@(consentEditor.IsSaving || !consentEditor.IsChanged(context))">
+                                            @(consentEditor.IsSaving ? "Saving email preferences..." : "Save email preferences")
+                                        </AppButton>
+                                        <AppButton Size="Size.Small"
+                                                   Variant="Variant.Text"
+                                                   Color="Color.Secondary"
+                                                   OnClick="@(_ => CancelConsentEditAsync(context))"
+                                                   Disabled="consentEditor.IsSaving">
+                                            Cancel
+                                        </AppButton>
+                                    </div>
+                                </fieldset>
+                            }
+                            else if (CanEditCommunicationConsent(context) && context.Id is { } editableReportId)
+                            {
+                                <AppButton id="@GetConsentEditButtonId(editableReportId)"
+                                           Size="Size.Small"
+                                           Variant="Variant.Text"
+                                           Color="Color.Primary"
+                                           OnClick="@(_ => StartConsentEdit(context))">
+                                    Edit email preferences
+                                </AppButton>
+                            }
+                        </div>
+                    </MudTd>
                     <MudTd Class="my-reports-page__row-action">
                         <MudButton Elevation="0"
                                    Variant="Variant.Text"

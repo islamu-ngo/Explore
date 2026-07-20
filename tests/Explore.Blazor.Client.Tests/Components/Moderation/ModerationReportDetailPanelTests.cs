@@ -21,6 +21,10 @@ public sealed class ModerationReportDetailPanelTests : IDisposable
         await Assert.That(cut.Markup.Contains("Available Workflow", StringComparison.Ordinal)).IsFalse();
         await Assert.That(cut.Markup.Contains(">Triage<", StringComparison.Ordinal)).IsFalse();
         await Assert.That(cut.Markup).Contains("Reporter evidence text");
+        await Assert.That(cut.Markup).Contains("Case updates consent");
+        await Assert.That(cut.Markup).Contains("Follow-up contact consent");
+        await Assert.That(cut.Markup).Contains("Granted");
+        await Assert.That(cut.Markup).Contains("Not granted");
     }
 
     [Test]
@@ -97,7 +101,8 @@ public sealed class ModerationReportDetailPanelTests : IDisposable
             ReasonId = 1,
             ReasonCode = "spam",
             ReasonName = "Spam",
-            ReporterContactConsent = true,
+            ReportCaseUpdatesConsent = true,
+            ReportFollowUpContactConsent = false,
             ReporterLocale = "en",
             SubmittedAtUtc = DateTimeOffset.UtcNow,
             ConcurrencyStamp = Guid.NewGuid(),

@@ -24,7 +24,8 @@ public partial class ReportEventDialog : ComponentBase
     private string? _selectedReasonCode;
     private string? _reporterText;
     private string? _errorMessage;
-    private bool _reporterContactConsent;
+    private bool _reportCaseUpdatesConsent;
+    private bool _reportFollowUpContactConsent;
     private bool _isLoadingOptions = true;
     private bool _isSubmitting;
 
@@ -36,6 +37,8 @@ public partial class ReportEventDialog : ComponentBase
     private int MaxReporterTextLength => Math.Max(1, _options?.MaxReporterTextLength ?? 2_000);
     private int ReporterTextLength => _reporterText?.Length ?? 0;
     private bool HasReporterText => !string.IsNullOrWhiteSpace(_reporterText);
+    private string CaseUpdatesDescriptionId => $"report-case-updates-description-{EventId:N}";
+    private string FollowUpContactDescriptionId => $"report-follow-up-description-{EventId:N}";
 
     private Color CounterColor => ReporterTextLength > MaxReporterTextLength ? Color.Error : Color.Secondary;
 
@@ -74,11 +77,12 @@ public partial class ReportEventDialog : ComponentBase
     {
         if (!CanSubmit)
         {
-            _errorMessage = ReporterTextLength > MaxReporterTextLength
+            var errorMessage = ReporterTextLength > MaxReporterTextLength
                 ? $"Details must be {MaxReporterTextLength} characters or fewer."
                 : !HasReporterText
                     ? "Add details before submitting."
-                : "Choose a reason before submitting.";
+                    : "Choose a reason before submitting.";
+            _errorMessage = errorMessage;
             return;
         }
 
@@ -90,7 +94,8 @@ public partial class ReportEventDialog : ComponentBase
             EventId = EventId,
             ReasonCode = _selectedReasonCode,
             ReporterText = _reporterText!.Trim(),
-            ReporterContactConsent = _reporterContactConsent,
+            ReportCaseUpdatesConsent = _reportCaseUpdatesConsent,
+            ReportFollowUpContactConsent = _reportFollowUpContactConsent,
             ReporterLocale = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName
         };
 

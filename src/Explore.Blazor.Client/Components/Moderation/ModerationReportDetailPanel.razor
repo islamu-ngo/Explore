@@ -58,8 +58,12 @@
                         <dd>@Report.ReporterKindName</dd>
                     </div>
                     <div>
-                        <dt>Contact consent</dt>
-                        <dd>@(Report.ReporterContactConsent == true ? "Granted" : "Not granted")</dd>
+                        <dt>Case updates consent</dt>
+                        <dd>@(Report.ReportCaseUpdatesConsent ? "Granted" : "Not granted")</dd>
+                    </div>
+                    <div>
+                        <dt>Follow-up contact consent</dt>
+                        <dd>@(Report.ReportFollowUpContactConsent ? "Granted" : "Not granted")</dd>
                     </div>
                     <div>
                         <dt>Locale</dt>

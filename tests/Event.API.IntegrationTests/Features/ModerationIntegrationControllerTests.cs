@@ -92,6 +92,12 @@ public sealed class ModerationIntegrationControllerTests
         await _mediator.Received(1).Send(
             Arg.Is<RecordOspreySignalCallbackCommand>(command => ReferenceEquals(command.Request, request)),
             Arg.Any<CancellationToken>());
+        await _mediator.DidNotReceive().Send(
+            Arg.Any<ExecuteReportDecisionCommand>(),
+            Arg.Any<CancellationToken>());
+        await _mediator.DidNotReceive().Send(
+            Arg.Any<ProcessCoopDecisionCallbackCommand>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
