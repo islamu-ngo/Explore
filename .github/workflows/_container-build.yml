@@ -57,7 +57,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
@@ -223,7 +223,7 @@ jobs:
           severity: CRITICAL,HIGH
 
       - name: Generate GHCR artifact attestation
-        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
         with:
           subject-name: ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}
           subject-digest: ${{ steps.build.outputs.digest }}
