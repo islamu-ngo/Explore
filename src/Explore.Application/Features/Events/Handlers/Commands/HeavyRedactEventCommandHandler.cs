@@ -186,14 +186,11 @@ public sealed class HeavyRedactEventCommandHandler(
             wasIdempotent ? "idempotent" : "succeeded",
             irreversible: true);
         logger.LogInformation(
-            "Heavy event moderation {Outcome} for event {EventId} in tenant {TenantId}; moderation record {ModerationRecordId}, moderator {ModeratorUserId}, reason {ReasonCode}, correlation {CorrelationId}, scanned {ScannedCount}, deleted {DeletedCount}, missing-key deleted {MissingKeyDeletedCount}.",
+            "Heavy event moderation {Outcome} for event {EventId} in tenant {TenantId}; moderation record {ModerationRecordId}, scanned {ScannedCount}, deleted {DeletedCount}, missing-key deleted {MissingKeyDeletedCount}.",
             wasIdempotent ? "idempotent" : "succeeded",
             eventId,
             tenantId,
             moderationRecordForLog?.Id,
-            moderatorUserId,
-            moderationRecordForLog?.ReasonCode ?? request.ReasonCode,
-            moderationRecordForLog?.CorrelationId ?? request.CorrelationId,
             deletionResult.ScannedCount,
             deletionResult.DeletedCount,
             deletionResult.MissingKeyDeletedCount);
