@@ -27,6 +27,7 @@ public sealed class HeavyRedactEventCommandHandler(
     IEventModerationRecordRepository moderationRecordRepository,
     INotificationFanoutOccurrenceRepository fanoutOccurrenceRepository,
     NotificationFanoutOccurrenceCoordinator fanoutCoordinator,
+    IEventLifecycleScheduler eventLifecycleScheduler,
     IStorageObjectDeletionService storageObjectDeletionService,
     IUnitOfWork unitOfWork,
     ICurrentUserService currentUserService,
@@ -293,6 +294,15 @@ public sealed class HeavyRedactEventCommandHandler(
                 RequestedNotBefore: occurredAt,
                 FanoutSourceType,
                 moderationRecord.Id),
+            cancellationToken);
+        await eventLifecycleScheduler.SuppressEventRemindersInCurrentTransactionAsync(
+            new EventReminderSuppressionInput(
+                @event.TenantId,
+                @event.Id,
+                RegistrationIntentId: null,
+                SessionId: null,
+                occurredAt,
+                "event_heavy_moderation_unavailable"),
             cancellationToken);
     }
 }

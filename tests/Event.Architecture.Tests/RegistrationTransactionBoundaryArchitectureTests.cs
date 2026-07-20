@@ -79,4 +79,54 @@ public sealed class RegistrationTransactionBoundaryArchitectureTests
         await Assert.That(violations).IsEmpty()
             .Because("Application owns the serializable unit of work; repositories only participate in the caller transaction.");
     }
+
+    [Test]
+    public async Task RegistrationReminderPreparationIsTransactionBoundAndPointerTriggerIsPostCommit()
+    {
+        string handlersRoot = ContextSystemHelpers.RepoPath(
+            "Explore.Application",
+            "Features",
+            "EventRegistrations",
+            "Handlers",
+            "Commands");
+        var violations = new List<string>();
+
+        foreach (string fileName in HandlerFiles.Take(2))
+        {
+            string content = await File.ReadAllTextAsync(Path.Combine(handlersRoot, fileName));
+            int transactionIndex = content.IndexOf("ExecuteSerializableAsync", StringComparison.Ordinal);
+            int graphIdsIndex = content.IndexOf("EventReminderGraphIds.Create()", StringComparison.Ordinal);
+            int triggerIndex = content.IndexOf("TriggerPreparedEventReminderAsync", StringComparison.Ordinal);
+            int prepareIndex = content.IndexOf("PrepareEventReminderInCurrentTransactionAsync", StringComparison.Ordinal);
+
+            if (graphIdsIndex < 0 || graphIdsIndex > transactionIndex)
+            {
+                violations.Add($"{fileName} must generate reminder graph ids before the retryable transaction delegate.");
+            }
+
+            if (prepareIndex < 0)
+            {
+                violations.Add($"{fileName} must prepare reminder persistence through the transaction-bound scheduler seam.");
+            }
+
+            if (triggerIndex < 0 || triggerIndex < transactionIndex)
+            {
+                violations.Add($"{fileName} must invoke the pointer trigger only after ExecuteSerializableAsync returns.");
+            }
+        }
+
+        string schedulerPath = ContextSystemHelpers.RepoPath(
+            "Explore.Application",
+            "Services",
+            "EventLifecycleScheduler.cs");
+        string scheduler = await File.ReadAllTextAsync(schedulerPath);
+        if (!scheduler.Contains("MaterializeInCurrentTransactionAsync", StringComparison.Ordinal)
+            || scheduler.Contains("notificationMaterializer.MaterializeAsync", StringComparison.Ordinal))
+        {
+            violations.Add("EventLifecycleScheduler must materialize reminder delivery only through the caller transaction seam.");
+        }
+
+        await Assert.That(violations).IsEmpty()
+            .Because("reminder delivery is durable transaction state while TickerQ is a post-commit pointer accelerator.");
+    }
 }

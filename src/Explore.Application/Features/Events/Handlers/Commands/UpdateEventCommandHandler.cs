@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Exceptions;
@@ -42,6 +43,7 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
     private readonly IUserContext _userContext;
     private readonly AtprotoEventPublicationPlanner _atprotoPublicationPlanner;
     private readonly NotificationFanoutOccurrenceCoordinator _fanoutCoordinator;
+    private readonly IEventLifecycleScheduler _eventLifecycleScheduler;
     private readonly TimeProvider _timeProvider;
 
     public UpdateEventCommandHandler(
@@ -60,6 +62,7 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         IUserContext userContext,
         AtprotoEventPublicationPlanner atprotoPublicationPlanner,
         NotificationFanoutOccurrenceCoordinator fanoutCoordinator,
+        IEventLifecycleScheduler eventLifecycleScheduler,
         TimeProvider timeProvider)
     {
         _eventRepository = eventRepository;
@@ -77,6 +80,7 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         _userContext = userContext;
         _atprotoPublicationPlanner = atprotoPublicationPlanner;
         _fanoutCoordinator = fanoutCoordinator;
+        _eventLifecycleScheduler = eventLifecycleScheduler;
         _timeProvider = timeProvider;
     }
 
@@ -138,8 +142,9 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
                 update.Timezone,
                 update.EventTimeZone,
                 out string requestedTimezone);
-            NotificationFanoutSessionDisplayTimeV1[] beforeSessionTimes = timezoneRequested
-                && !string.Equals(previousTimezone, requestedTimezone, StringComparison.Ordinal)
+            bool timezoneChanged = timezoneRequested
+                && !string.Equals(previousTimezone, requestedTimezone, StringComparison.Ordinal);
+            NotificationFanoutSessionDisplayTimeV1[] beforeSessionTimes = timezoneChanged
                     ? CapturePublishedSessionDisplayTimes(eventEntity, previousTimezone)
                     : [];
 
@@ -184,8 +189,7 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
                     token);
             }
 
-            if (eventEntity.EventStatusId == (int)EventStatusEnum.Published
-                && beforeSessionTimes.Length > 0)
+            if (eventEntity.EventStatusId == (int)EventStatusEnum.Published && timezoneChanged)
             {
                 string currentTimezone = eventEntity.GetEffectiveScheduleTimeZoneId();
                 NotificationFanoutSessionDisplayTimeV1[] afterSessionTimes = CapturePublishedSessionDisplayTimes(
@@ -232,6 +236,17 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
                             eventEntity.Id),
                         token);
                 }
+
+                await _eventLifecycleScheduler.ReprojectEventRemindersInCurrentTransactionAsync(
+                    new EventReminderReprojectionInput(
+                        eventEntity.TenantId,
+                        eventEntity.Id,
+                        RegistrationIntentId: null,
+                        SessionId: null,
+                        eventEntity.Title,
+                        occurredAt,
+                        currentTimezone),
+                    token);
             }
 
             eventIdForCache = eventEntity.Id;

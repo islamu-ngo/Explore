@@ -13,6 +13,7 @@ using Explore.Application.Features.Events.Moderation;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Models.Storage;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Application.Telemetry;

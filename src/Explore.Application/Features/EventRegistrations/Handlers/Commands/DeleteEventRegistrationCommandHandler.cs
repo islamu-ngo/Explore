@@ -22,6 +22,7 @@ public class DeleteEventRegistrationCommandHandler : IRequestHandler<DeleteEvent
     private readonly IUserRepository _userRepository;
     private readonly IRegistrationNotificationDeliveryService _notificationDeliveryService;
     private readonly IRecipientNotificationMaterializer _recipientNotificationMaterializer;
+    private readonly IEventLifecycleScheduler _eventLifecycleScheduler;
     private readonly AtprotoEventPublicationPlanner _atprotoPublicationPlanner;
 
     public DeleteEventRegistrationCommandHandler(
@@ -33,6 +34,7 @@ public class DeleteEventRegistrationCommandHandler : IRequestHandler<DeleteEvent
         IUserRepository userRepository,
         IRegistrationNotificationDeliveryService notificationDeliveryService,
         IRecipientNotificationMaterializer recipientNotificationMaterializer,
+        IEventLifecycleScheduler eventLifecycleScheduler,
         AtprotoEventPublicationPlanner atprotoPublicationPlanner)
     {
         _eventRegistrationRepository = eventRegistrationRepository;
@@ -43,6 +45,7 @@ public class DeleteEventRegistrationCommandHandler : IRequestHandler<DeleteEvent
         _userRepository = userRepository;
         _notificationDeliveryService = notificationDeliveryService;
         _recipientNotificationMaterializer = recipientNotificationMaterializer;
+        _eventLifecycleScheduler = eventLifecycleScheduler;
         _atprotoPublicationPlanner = atprotoPublicationPlanner;
     }
 
@@ -124,6 +127,19 @@ public class DeleteEventRegistrationCommandHandler : IRequestHandler<DeleteEvent
                             materialization,
                             ct);
                     }
+                }
+                if (result.Changed && registrationIntent is not null && parentEvent is not null)
+                {
+                    await _eventLifecycleScheduler.ReprojectEventRemindersInCurrentTransactionAsync(
+                        new EventReminderReprojectionInput(
+                            registrationIntent.TenantId,
+                            registrationIntent.EventId,
+                            registrationIntent.Id,
+                            SessionId: null,
+                            parentEvent.Title,
+                            occurredAt,
+                            parentEvent.GetEffectiveScheduleTimeZoneId()),
+                        ct);
                 }
 
                 return result;

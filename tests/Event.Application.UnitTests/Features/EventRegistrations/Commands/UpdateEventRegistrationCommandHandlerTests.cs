@@ -5,6 +5,7 @@ using Explore.Application.Caching;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventRegistrations.Handlers.Commands;
@@ -29,6 +30,7 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
     private readonly IUnitOfWork _unitOfWork = new ImmediateUnitOfWork();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
     private readonly IRecipientNotificationMaterializer _recipientNotificationMaterializer = Substitute.For<IRecipientNotificationMaterializer>();
+    private readonly IEventLifecycleScheduler _eventLifecycleScheduler = Substitute.For<IEventLifecycleScheduler>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
     private readonly UpdateEventRegistrationCommandHandler _handler;
 
@@ -85,6 +87,7 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
             _currentUserService,
             new RegistrationNotificationDeliveryService(new EventLifecycleEmailOutboxFactory()),
             _recipientNotificationMaterializer,
+            _eventLifecycleScheduler,
             _cache);
     }
 

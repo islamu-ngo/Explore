@@ -2,6 +2,7 @@
 // ABOUTME: Adds an immutable attendee occurrence only when a published session is cancelled.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Notifications;
 using Explore.Application.Services;
@@ -17,6 +18,7 @@ public sealed class CancelEventSessionCommandHandler(
     IUnitOfWork unitOfWork,
     HybridCache cache,
     NotificationFanoutOccurrenceCoordinator fanoutCoordinator,
+    IEventLifecycleScheduler eventLifecycleScheduler,
     TimeProvider timeProvider)
     : EventSessionLifecycleTransitionCommandHandlerBase<CancelEventSessionCommand>(
         eventSessionRepository,
@@ -36,7 +38,7 @@ public sealed class CancelEventSessionCommandHandler(
         Guid.CreateVersion7(),
         Guid.CreateVersion7());
 
-    protected override Task AfterTransitionInCurrentTransactionAsync(
+    protected override async Task AfterTransitionInCurrentTransactionAsync(
         EventSession session,
         Event parentEvent,
         int previousStatusId,
@@ -46,7 +48,7 @@ public sealed class CancelEventSessionCommandHandler(
     {
         if (previousStatusId != (int)EventSessionStatusEnum.Published)
         {
-            return Task.CompletedTask;
+            return;
         }
 
         string snapshot = NotificationFanoutTemplateJson.Serialize(new NotificationFanoutSnapshotV1(
@@ -56,7 +58,7 @@ public sealed class CancelEventSessionCommandHandler(
             session.EndTime,
             parentEvent.GetEffectiveScheduleTimeZoneId(),
             Location: null));
-        return fanoutCoordinator.CoordinateInCurrentTransactionAsync(
+        await fanoutCoordinator.CoordinateInCurrentTransactionAsync(
             new NotificationFanoutOccurrenceCandidate(
                 attempt.OccurrenceId,
                 attempt.PointerOutboxMessageId,
@@ -77,6 +79,16 @@ public sealed class CancelEventSessionCommandHandler(
                 attempt.OccurredAt,
                 "event_session_cancel_command",
                 session.Id),
+            cancellationToken);
+        await eventLifecycleScheduler.ReprojectEventRemindersInCurrentTransactionAsync(
+            new EventReminderReprojectionInput(
+                session.TenantId,
+                parentEvent.Id,
+                RegistrationIntentId: null,
+                session.Id,
+                parentEvent.Title,
+                attempt.OccurredAt,
+                parentEvent.GetEffectiveScheduleTimeZoneId()),
             cancellationToken);
     }
 

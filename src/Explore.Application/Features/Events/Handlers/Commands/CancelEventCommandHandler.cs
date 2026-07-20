@@ -4,6 +4,7 @@
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Features.Federation.Atproto.Services;
@@ -26,6 +27,7 @@ public sealed class CancelEventCommandHandler(
     IUserContext userContext,
     AtprotoEventPublicationPlanner atprotoPublicationPlanner,
     NotificationFanoutOccurrenceCoordinator fanoutCoordinator,
+    IEventLifecycleScheduler eventLifecycleScheduler,
     TimeProvider timeProvider) : IRequestHandler<CancelEventCommand, BaseCommandResponse<Guid>>
 {
     private const string ConcurrencyConflictCode = "event_cancel_concurrency_conflict";
@@ -109,6 +111,15 @@ public sealed class CancelEventCommandHandler(
                     occurredAt,
                     FanoutSourceType,
                     @event.Id),
+                token);
+            await eventLifecycleScheduler.SuppressEventRemindersInCurrentTransactionAsync(
+                new EventReminderSuppressionInput(
+                    @event.TenantId,
+                    @event.Id,
+                    RegistrationIntentId: null,
+                    SessionId: null,
+                    occurredAt,
+                    "event_cancelled"),
                 token);
             cancelledTenantId = @event.TenantId;
 

@@ -3,6 +3,7 @@
 
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSessions.Requests.Commands;
@@ -28,6 +29,7 @@ public sealed class ScheduleEventSessionCommandHandler(
     IUnitOfWork unitOfWork,
     HybridCache cache,
     NotificationFanoutOccurrenceCoordinator fanoutCoordinator,
+    IEventLifecycleScheduler eventLifecycleScheduler,
     TimeProvider timeProvider) : IRequestHandler<ScheduleEventSessionCommand, BaseCommandResponse<Guid>>
 {
     private const string ConcurrencyConflictCode = "event_session_schedule_concurrency_conflict";
@@ -152,6 +154,19 @@ public sealed class ScheduleEventSessionCommandHandler(
                             "event_session_schedule_command",
                             session.Id),
                         token);
+                    if (previousStartTime != session.StartTime)
+                    {
+                        await eventLifecycleScheduler.ReprojectEventRemindersInCurrentTransactionAsync(
+                            new EventReminderReprojectionInput(
+                                session.TenantId,
+                                parentEvent.Id,
+                                RegistrationIntentId: null,
+                                session.Id,
+                                parentEvent.Title,
+                                occurredAt,
+                                parentEvent.GetEffectiveScheduleTimeZoneId()),
+                            token);
+                    }
                 }
 
                 parentEventIdForCache = parentEvent.Id;

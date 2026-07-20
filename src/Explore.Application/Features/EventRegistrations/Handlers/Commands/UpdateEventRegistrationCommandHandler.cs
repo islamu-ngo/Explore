@@ -12,6 +12,7 @@ using Explore.Application.Exceptions;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Services.Registration;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -30,6 +31,7 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
     private readonly ICurrentUserService _currentUserService;
     private readonly IRegistrationNotificationDeliveryService _notificationDeliveryService;
     private readonly IRecipientNotificationMaterializer _recipientNotificationMaterializer;
+    private readonly IEventLifecycleScheduler _eventLifecycleScheduler;
     private readonly HybridCache _cache;
 
     public UpdateEventRegistrationCommandHandler(
@@ -43,6 +45,7 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
         ICurrentUserService currentUserService,
         IRegistrationNotificationDeliveryService notificationDeliveryService,
         IRecipientNotificationMaterializer recipientNotificationMaterializer,
+        IEventLifecycleScheduler eventLifecycleScheduler,
         HybridCache cache)
     {
         _eventRegistrationRepository = eventRegistrationRepository;
@@ -55,6 +58,7 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
         _currentUserService = currentUserService;
         _notificationDeliveryService = notificationDeliveryService;
         _recipientNotificationMaterializer = recipientNotificationMaterializer;
+        _eventLifecycleScheduler = eventLifecycleScheduler;
         _cache = cache;
     }
 
@@ -77,6 +81,7 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
         var occurredAt = DateTimeOffset.UtcNow;
         var notificationIntentId = Guid.CreateVersion7();
         var emailDispatchOutboxId = Guid.CreateVersion7();
+        EventReminderGraphIds reminderGraphIds = EventReminderGraphIds.Create();
         var outcome = await _unitOfWork.ExecuteSerializableAsync(
             ct => ExecuteUpdateAsync(
                 request,
@@ -84,6 +89,7 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
                 occurredAt,
                 notificationIntentId,
                 emailDispatchOutboxId,
+                reminderGraphIds,
                 ct),
             cancellationToken);
 
@@ -96,6 +102,13 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
                 cancellationToken);
         }
 
+        if (outcome.PreparedReminder is not null)
+        {
+            await _eventLifecycleScheduler.TriggerPreparedEventReminderAsync(
+                outcome.PreparedReminder,
+                cancellationToken);
+        }
+
         return outcome.Response;
     }
 
@@ -105,6 +118,7 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
         DateTimeOffset occurredAt,
         Guid notificationIntentId,
         Guid emailDispatchOutboxId,
+        EventReminderGraphIds reminderGraphIds,
         CancellationToken cancellationToken)
     {
         var response = new BaseCommandResponse<Guid>();
@@ -245,6 +259,7 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
             actorUserId,
             cancellationToken);
 
+        EventReminderPreparedSchedule? preparedReminder = null;
         if (registrationIntent is not null
             && transition.Changed
             && transition.PreviousStatus != transition.FinalStatus)
@@ -267,6 +282,33 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
                     materialization,
                     cancellationToken);
             }
+
+            preparedReminder = await _eventLifecycleScheduler.PrepareEventReminderInCurrentTransactionAsync(
+                new EventReminderPreparationInput(
+                    registrationIntent,
+                    transition,
+                    recipient,
+                    parentEvent.Title,
+                    occurredAt,
+                    reminderGraphIds,
+                    parentEvent.GetEffectiveScheduleTimeZoneId()),
+                cancellationToken);
+        }
+
+        if (registrationIntent is not null && RequiresReminderReprojection(transition))
+        {
+            Explore.Domain.Event parentEvent = await _eventRepository.GetById(registrationIntent.EventId)
+                ?? throw new InvalidOperationException("Registration reminder event was not found.");
+            await _eventLifecycleScheduler.ReprojectEventRemindersInCurrentTransactionAsync(
+                new EventReminderReprojectionInput(
+                    registrationIntent.TenantId,
+                    registrationIntent.EventId,
+                    registrationIntent.Id,
+                    SessionId: null,
+                    parentEvent.Title,
+                    occurredAt,
+                    parentEvent.GetEffectiveScheduleTimeZoneId()),
+                cancellationToken);
         }
 
         response.Success = true;
@@ -278,7 +320,8 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
             transition,
             oldEventId,
             eventRegistration.EventId,
-            eventRegistration.TenantId);
+            eventRegistration.TenantId,
+            preparedReminder);
     }
 
     private static void ApplyUser(EventRegistration registration, UpdateEventRegistrationUserDto? group)
@@ -288,6 +331,12 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
             registration.UserId = group.UserId;
         }
     }
+
+    private static bool RequiresReminderReprojection(EventRegistrationTransitionResult transition) =>
+        transition.Changed
+        && (transition.PreviousStatus == (int)ApprovalStatusEnum.Approved
+            || transition.ChildTransitions.Any(child =>
+                child.PreviousStatus == (int)ApprovalStatusEnum.Approved));
 
     private static void ApplySession(
         EventRegistration registration,
@@ -346,5 +395,6 @@ public class UpdateEventRegistrationCommandHandler : IRequestHandler<UpdateEvent
         EventRegistrationTransitionResult? Transition = null,
         Guid OldEventId = default,
         Guid NewEventId = default,
-        Guid TenantId = default);
+        Guid TenantId = default,
+        EventReminderPreparedSchedule? PreparedReminder = null);
 }

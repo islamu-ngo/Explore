@@ -3,6 +3,7 @@
 
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Exceptions;
@@ -33,6 +34,7 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
     private readonly EventLocationAttachmentService _eventLocationAttachmentService;
     private readonly HybridCache _cache;
     private readonly NotificationFanoutOccurrenceCoordinator _fanoutCoordinator;
+    private readonly IEventLifecycleScheduler _eventLifecycleScheduler;
     private readonly TimeProvider _timeProvider;
 
     public UpdateEventSessionCommandHandler(
@@ -49,6 +51,7 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         EventLocationAttachmentService eventLocationAttachmentService,
         HybridCache cache,
         NotificationFanoutOccurrenceCoordinator fanoutCoordinator,
+        IEventLifecycleScheduler eventLifecycleScheduler,
         TimeProvider timeProvider)
     {
         _eventSessionRepository = eventSessionRepository;
@@ -64,6 +67,7 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         _eventLocationAttachmentService = eventLocationAttachmentService;
         _cache = cache;
         _fanoutCoordinator = fanoutCoordinator;
+        _eventLifecycleScheduler = eventLifecycleScheduler;
         _timeProvider = timeProvider;
     }
 
@@ -256,6 +260,19 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
                             "event_session_update_command",
                             eventSession.Id),
                         token);
+                    if (previousStartTime != eventSession.StartTime)
+                    {
+                        await _eventLifecycleScheduler.ReprojectEventRemindersInCurrentTransactionAsync(
+                            new EventReminderReprojectionInput(
+                                eventSession.TenantId,
+                                parentEvent.Id,
+                                RegistrationIntentId: null,
+                                eventSession.Id,
+                                parentEvent.Title,
+                                occurredAt,
+                                parentEvent.GetEffectiveScheduleTimeZoneId()),
+                            token);
+                    }
                 }
 
                 await _eventLocationAttachmentService.DetachIfUnreferencedAsync(previousEventLocationId, token);
