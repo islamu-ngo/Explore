@@ -4,6 +4,7 @@
 using Explore.Domain;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using TUnit.Core;
 
 namespace Event.Persistence.IntegrationTests.Repositories;
@@ -24,7 +25,7 @@ public sealed class EventLocationPrivacyModelTests
         [
             typeof(EventLocationDisclosureAudit),
             typeof(EventLocationExactReadAudit),
-            typeof(LocationPrivacyErasureReplayCheckpoint)
+            typeof(PrivacyErasureReplayCheckpoint)
         ];
 
         foreach (Type evidenceType in evidenceTypes)

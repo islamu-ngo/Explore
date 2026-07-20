@@ -57,7 +57,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             ?? throw new InvalidOperationException("PDS source-attempt index was not created."));
 
         await Assert.That(await context.Database.GetAppliedMigrationsAsync())
-            .Contains("20260719130000_IncludePdsPayloadHashInSourceVersionUniqueness");
+            .Contains("20260719221539_init");
         await Assert.That(modelIndexProperties).IsEquivalentTo([
             nameof(PdsSyncOutbox.TenantId),
             nameof(PdsSyncOutbox.SourceEntityType),

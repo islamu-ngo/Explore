@@ -27,9 +27,6 @@ namespace Event.Persistence.IntegrationTests.Repositories;
 [NotInParallel("PersistenceDb")]
 public sealed class CoopIncomingWebhookEffectOutboxTests(PostgreSqlContainerFixture fixture)
 {
-    private const string PreviousMigration = "20260716132239_AddEventLocationPrivacyExpand";
-    private const string PointerMigration = "20260717104030_AddIncomingWebhookEffectOutbox";
-
     [Test]
     public async Task ProcessAsync_ValidCoopDecision_CommitsPointerWithoutAppliedEffectReceipt()
     {
@@ -487,7 +484,7 @@ public sealed class CoopIncomingWebhookEffectOutboxTests(PostgreSqlContainerFixt
     }
 
     [Test]
-    public async Task Migration_UpDownUp_CreatesDropsAndRecreatesEffectPointerTable()
+    public async Task CurrentBaseline_CreatesEffectPointerTable()
     {
         var databaseName = "coop_pointer_migration_" + Guid.NewGuid().ToString("N");
         var connectionString = await CreateDatabaseAsync(databaseName);
@@ -501,16 +498,7 @@ public sealed class CoopIncomingWebhookEffectOutboxTests(PostgreSqlContainerFixt
             await using var context = new ExploreDbContext(options);
             var migrator = context.GetService<IMigrator>();
 
-            await migrator.MigrateAsync(PreviousMigration);
-            await Assert.That(await EffectPointerTableExistsAsync(context)).IsFalse();
-
-            await migrator.MigrateAsync(PointerMigration);
-            await Assert.That(await EffectPointerTableExistsAsync(context)).IsTrue();
-
-            await migrator.MigrateAsync(PreviousMigration);
-            await Assert.That(await EffectPointerTableExistsAsync(context)).IsFalse();
-
-            await migrator.MigrateAsync(PointerMigration);
+            await migrator.MigrateAsync("20260719221539_init");
             await Assert.That(await EffectPointerTableExistsAsync(context)).IsTrue();
         }
         finally

@@ -2,6 +2,7 @@
 // ABOUTME: Models the success-path state transitions needed by Mailpit and RabbitMQ runtime tests.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Domain;
 
 namespace Explore.Infrastructure.Tests.Fixtures;
@@ -53,6 +54,117 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
             }
 
             return Task.FromResult<EmailDispatchOutbox?>(dispatch);
+        }
+    }
+
+    public Task<EventReminderStateChangeResult> SuppressEventRemindersInCurrentTransactionAsync(
+        EventReminderSupersessionRequest request,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (request.TenantId == Guid.Empty
+            || request.EventId == Guid.Empty
+            || request.SupersededAt.Kind != DateTimeKind.Utc
+            || string.IsNullOrWhiteSpace(request.ReasonCode)
+            || request.ReasonCode.Length > 200)
+        {
+            throw new ArgumentException(
+                "Reminder supersession requires exact tenant/event authority, a UTC time, and a bounded reason.",
+                nameof(request));
+        }
+
+        lock (_gate)
+        {
+            if (!IsEligibleReminder(
+                    request.TenantId,
+                    request.EventId,
+                    request.RegistrationIntentId,
+                    request.SessionId,
+                    requireSchedule: false,
+                    out _))
+            {
+                return Task.FromResult(NoReminderRowsChanged);
+            }
+
+            dispatch.Status = EmailDispatchStatus.Skipped;
+            dispatch.NextAttemptAt = null;
+            dispatch.ProcessingStartedAt = null;
+            dispatch.ProcessingLeaseToken = null;
+            dispatch.LastFailureCategory = request.ReasonCode;
+            dispatch.LastError = "The reminder was superseded before SMTP provider handoff.";
+            dispatch.LastFailureAt = request.SupersededAt;
+            dispatch.UpdatedAt = request.SupersededAt;
+            return Task.FromResult(OneReminderOutboxRowChanged);
+        }
+    }
+
+    public Task<EventReminderStateChangeResult> RescheduleEventRemindersInCurrentTransactionAsync(
+        EventReminderRescheduleRequest request,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (request.TenantId == Guid.Empty
+            || request.EventId == Guid.Empty
+            || request.ChangedAt.Kind != DateTimeKind.Utc
+            || request.LeadTime <= TimeSpan.Zero)
+        {
+            throw new ArgumentException(
+                "Reminder rescheduling requires exact tenant/event authority, positive lead time, and a UTC time.",
+                nameof(request));
+        }
+
+        lock (_gate)
+        {
+            if (!IsEligibleReminder(
+                    request.TenantId,
+                    request.EventId,
+                    request.RegistrationIntentId,
+                    request.SessionId,
+                    requireSchedule: true,
+                    out EventReminderSchedule schedule))
+            {
+                return Task.FromResult(NoReminderRowsChanged);
+            }
+
+            string title = string.IsNullOrWhiteSpace(request.EventTitle)
+                ? "the event"
+                : request.EventTitle.Trim();
+            string timeZoneId = Explore.Domain.Services.Scheduling.ScheduleTimeZoneResolver.NormalizeOrUtc(
+                request.EventTimeZoneId);
+            string startsAt = EventReminderAuthorityReference.FormatDisplay(schedule.StartsAtUtc, timeZoneId);
+            DateTime calculatedDueAt = schedule.StartsAtUtc.UtcDateTime.Subtract(request.LeadTime);
+
+            if (schedule.StartsAtUtc.UtcDateTime <= request.ChangedAt)
+            {
+                dispatch.Status = EmailDispatchStatus.Skipped;
+                dispatch.NextAttemptAt = null;
+                dispatch.ProcessingStartedAt = null;
+                dispatch.ProcessingLeaseToken = null;
+                dispatch.LastFailureCategory = "event_reminder_schedule_changed";
+                dispatch.LastError = "The reminder was superseded before SMTP provider handoff.";
+                dispatch.LastFailureAt = request.ChangedAt;
+                dispatch.UpdatedAt = request.ChangedAt;
+                return Task.FromResult(OneReminderOutboxRowChanged);
+            }
+
+            dispatch.Status = EmailDispatchStatus.Pending;
+            dispatch.NextAttemptAt = calculatedDueAt > request.ChangedAt ? calculatedDueAt : request.ChangedAt;
+            dispatch.ProcessingStartedAt = null;
+            dispatch.ProcessingLeaseToken = null;
+            dispatch.Subject = $"Reminder: {title}";
+            dispatch.PlainTextBody =
+                $"Assalamu alaykum,\n\nThis is a reminder that {title} starts at {startsAt}.\n\nEvent Platform";
+            dispatch.HtmlBody =
+                $"<p>Assalamu alaykum,</p><p>This is a reminder that <strong>{System.Net.WebUtility.HtmlEncode(title)}</strong> starts at {System.Net.WebUtility.HtmlEncode(startsAt)}.</p><p>Event Platform</p>";
+            dispatch.CorrelationId = EventReminderAuthorityReference.Format(
+                schedule.SessionId,
+                schedule.StartsAtUtc,
+                timeZoneId);
+            dispatch.LastFailureCategory = null;
+            dispatch.LastError = null;
+            dispatch.LastFailureAt = null;
+            dispatch.UpdatedAt = request.ChangedAt;
+            return Task.FromResult(OneReminderOutboxRowChanged);
         }
     }
 
@@ -472,6 +584,63 @@ public sealed class InMemoryEmailDispatchOutboxRepository(EmailDispatchOutbox di
         dispatch.ProcessingStartedAt = startedAt;
         return true;
     }
+
+    private static readonly EventReminderStateChangeResult NoReminderRowsChanged = new(0, 0, 0, 0);
+    private static readonly EventReminderStateChangeResult OneReminderOutboxRowChanged = new(1, 0, 0, 0);
+
+    private bool IsEligibleReminder(
+        Guid tenantId,
+        Guid eventId,
+        Guid? registrationIntentId,
+        Guid? sessionId,
+        bool requireSchedule,
+        out EventReminderSchedule schedule)
+    {
+        schedule = default;
+        if (dispatch.TenantId != tenantId
+            || dispatch.EventId != eventId
+            || dispatch.Kind != EmailDispatchKind.EventReminder
+            || dispatch.IsDeleted
+            || dispatch.ContentRedactedAt is not null
+            || dispatch.Status is not (
+                EmailDispatchStatus.Pending
+                or EmailDispatchStatus.RetryScheduled
+                or EmailDispatchStatus.Processing)
+            || registrationIntentId.HasValue && dispatch.RegistrationIntentId != registrationIntentId
+            || dispatch.Status == EmailDispatchStatus.Processing && HasProviderHandoffFence())
+        {
+            return false;
+        }
+
+        if (!sessionId.HasValue && !requireSchedule)
+        {
+            return true;
+        }
+
+        if (!EventReminderAuthorityReference.TryParse(
+                dispatch.CorrelationId,
+                out Guid scheduledSessionId,
+                out DateTimeOffset scheduledStartUtc,
+                out _)
+            || sessionId.HasValue && scheduledSessionId != sessionId)
+        {
+            return false;
+        }
+
+        schedule = new EventReminderSchedule(scheduledSessionId, scheduledStartUtc);
+        return true;
+    }
+
+    private bool HasProviderHandoffFence() =>
+        Attempts.Any(attempt =>
+            attempt.EmailDispatchOutboxId == dispatch.Id
+            && attempt.AttemptNumber == dispatch.AttemptCount
+            && attempt.FailureCategory == "provider_handoff_started")
+        || Receipts.Any(receipt =>
+            receipt.EmailDispatchOutboxId == dispatch.Id
+            && receipt.Status == EmailDispatchReceiptStatus.Processing);
+
+    private readonly record struct EventReminderSchedule(Guid SessionId, DateTimeOffset StartsAtUtc);
 
     public Task<EmailDispatchStaleRecoveryResult> RecoverStaleProcessing(
         EmailDispatchStaleRecoveryRequest request,

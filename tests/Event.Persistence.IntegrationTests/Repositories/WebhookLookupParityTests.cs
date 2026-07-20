@@ -78,18 +78,13 @@ public sealed class WebhookLookupParityTests
     }
 
     [Test]
-    public async Task EnumRuntimeSeederAndRequiredLiteralMigrations_ContainExactStableIdsAndCodes()
+    public async Task EnumRuntimeSeederAndCurrentBaseline_ContainExactStableLookups()
     {
         var root = FindRepositoryRoot();
         var seeder = await File.ReadAllTextAsync(
             Path.Combine(root, "src/Explore.Persistence/Seed/LookupTableSeeder.cs"));
-        var migrationDirectory = Path.Combine(root, "src/Explore.Persistence/Migrations");
-        var migrationPaths = Directory.GetFiles(migrationDirectory, "*Webhook*.cs")
-            .Where(path => !path.EndsWith(".Designer.cs", StringComparison.Ordinal))
-            .ToArray();
-        await Assert.That(migrationPaths.Any(path =>
-            path.EndsWith("FreezeWebhookDeliverySchema.cs", StringComparison.Ordinal))).IsTrue();
-        var migrationSource = string.Join('\n', migrationPaths.Select(File.ReadAllText));
+        var migrationSource = await File.ReadAllTextAsync(
+            Path.Combine(root, "src/Explore.Persistence/Migrations/20260719221539_init.cs"));
 
         foreach (var lookupCase in LookupCases)
         {
@@ -110,12 +105,7 @@ public sealed class WebhookLookupParityTests
 
                 var seedPattern = $"Id = (int){lookupCase.EnumType.Name}.{name}, MasterCode = \"{code}\"";
                 await Assert.That(seeder).Contains(seedPattern);
-                await Assert.That(migrationSource).Contains($"table: \"{lookupCase.TableName}\"");
-                if (lookupCase.RequiresLiteralMigrationRows &&
-                    !(lookupCase.RuntimeSeedOnlyIds?.Contains(id) ?? false))
-                {
-                    await Assert.That(migrationSource).Contains($"{id}, \"{code}\"");
-                }
+                await Assert.That(migrationSource).Contains($"name: \"{lookupCase.TableName}\"");
             }
         }
     }

@@ -6,6 +6,8 @@ using System.Text;
 using Explore.Domain;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using TUnit.Core;
 
 namespace Event.Persistence.IntegrationTests.Repositories;
@@ -81,21 +83,19 @@ public sealed class WebhookExactPayloadPersistenceTests
     }
 
     [Test]
-    public async Task Migration_ClassifiesCanonicalizedJsonWithoutClaimingExactLegacyBytes()
+    public async Task CurrentBaseline_RequiresHonestPayloadEvidenceFields()
     {
-        var root = FindRepositoryRoot();
-        var bindingMigration = await File.ReadAllTextAsync(Path.Combine(
-            root,
-            "src/Explore.Persistence/Migrations/20260713185132_AddWebhookProviderBindingFoundation.cs"));
-        var freezeMigration = await File.ReadAllTextAsync(Directory.GetFiles(
-            Path.Combine(root, "src/Explore.Persistence/Migrations"),
-            "*FreezeWebhookDeliverySchema.cs").Single());
+        await using var context = CreateModelContext();
+        var model = context.GetService<IDesignTimeModel>().Model;
+        var outbound = model.FindEntityType(typeof(WebhookMessage))!;
+        var inbound = model.FindEntityType(typeof(IncomingWebhookMessage))!;
 
-        await Assert.That(bindingMigration).Contains("convert_to(payload_json::text, 'UTF8')");
-        await Assert.That(bindingMigration).Contains("payload_provenance_id = 2");
-        await Assert.That(freezeMigration).Contains("{ 2, \"LEGACY_JSON_CANONICALIZED\"");
-        await Assert.That(freezeMigration).Contains("payload_byte_length = octet_length(payload_bytes)");
-        await Assert.That(freezeMigration).Contains("payload_provenance_id = 2");
+        await Assert.That(outbound.GetCheckConstraints().Select(constraint => constraint.Name))
+            .Contains("ck_webhook_messages_payload_provenance");
+        await Assert.That(outbound.GetCheckConstraints().Select(constraint => constraint.Name))
+            .Contains("ck_webhook_messages_payload_byte_length");
+        await Assert.That(inbound.GetCheckConstraints().Select(constraint => constraint.Name))
+            .Contains("ck_incoming_webhook_messages_payload_byte_length");
     }
 
     private static ExploreDbContext CreateModelContext()
@@ -105,18 +105,6 @@ public sealed class WebhookExactPayloadPersistenceTests
             .UseSnakeCaseNamingConvention()
             .Options;
         return new ExploreDbContext(options);
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "AGENTS.md")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName
-            ?? throw new DirectoryNotFoundException("Repository root containing AGENTS.md was not found.");
     }
 
     private static string Sha256(ReadOnlySpan<byte> bytes) =>

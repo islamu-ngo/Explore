@@ -217,7 +217,7 @@ public sealed class EventLocationPrivacyRepositoryTests(ProjectionTestContainerF
         await ClearPrivacyStateAsync(context);
         EventLocationGraph graph = await SeedGraphAsync(context, "append-only");
         var auditRepository = new EventLocationDisclosureAuditRepository(context);
-        var checkpointRepository = new LocationPrivacyErasureReplayCheckpointRepository(context);
+        var checkpointRepository = new PrivacyErasureReplayCheckpointRepository(context);
 
         context.ChangeTracker.Clear();
         EventLocation eventLocation = await new EventLocationRepository(context)
@@ -248,30 +248,30 @@ public sealed class EventLocationPrivacyRepositoryTests(ProjectionTestContainerF
         await Assert.That(eventLocation.FullDetailsAudienceId)
             .IsEqualTo((int)LocationDisclosureAudienceEnum.AnyCurrentRegistrant);
 
-        LocationPrivacyErasureAuthorityIntent firstIntent = CreateAuthorityIntent(1);
-        LocationPrivacyErasureReplayCheckpoint firstCheckpoint =
-            LocationPrivacyErasureReplayCheckpoint.Start(firstIntent, DateTime.UtcNow);
+        PrivacyErasureIntent firstIntent = CreateAuthorityIntent(1);
+        PrivacyErasureReplayCheckpoint firstCheckpoint =
+            PrivacyErasureReplayCheckpoint.Start(firstIntent, DateTime.UtcNow);
         await checkpointRepository.AppendAsync(firstCheckpoint, CancellationToken.None);
 
-        LocationPrivacyErasureAuthorityIntent secondIntent = CreateAuthorityIntent(2);
-        LocationPrivacyErasureReplayCheckpoint secondCheckpoint =
-            LocationPrivacyErasureReplayCheckpoint.Advance(firstCheckpoint, secondIntent, DateTime.UtcNow);
+        PrivacyErasureIntent secondIntent = CreateAuthorityIntent(2);
+        PrivacyErasureReplayCheckpoint secondCheckpoint =
+            PrivacyErasureReplayCheckpoint.Advance(firstCheckpoint, secondIntent, DateTime.UtcNow);
         await checkpointRepository.AppendAsync(secondCheckpoint, CancellationToken.None);
 
-        LocationPrivacyErasureAuthorityIntent disconnectedIntent = CreateAuthorityIntent(1);
-        LocationPrivacyErasureReplayCheckpoint disconnectedCheckpoint =
-            LocationPrivacyErasureReplayCheckpoint.Start(disconnectedIntent, DateTime.UtcNow);
+        PrivacyErasureIntent disconnectedIntent = CreateAuthorityIntent(1);
+        PrivacyErasureReplayCheckpoint disconnectedCheckpoint =
+            PrivacyErasureReplayCheckpoint.Start(disconnectedIntent, DateTime.UtcNow);
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             checkpointRepository.AppendAsync(disconnectedCheckpoint, CancellationToken.None));
 
         context.ChangeTracker.Clear();
-        LocationPrivacyErasureReplayCheckpoint? latest =
+        PrivacyErasureReplayCheckpoint? latest =
             await checkpointRepository.GetLatestAsync(CancellationToken.None);
         await Assert.That(latest?.Id).IsEqualTo(secondCheckpoint.Id);
         await Assert.That(graph.EventLocationId.Version).IsEqualTo(7);
         await Assert.That(firstAudit.Id.Version).IsEqualTo(7);
         await Assert.That(firstCheckpoint.Id.Version).IsEqualTo(7);
-        await Assert.That(context.ChangeTracker.Entries<LocationPrivacyErasureReplayCheckpoint>()).IsEmpty();
+        await Assert.That(context.ChangeTracker.Entries<PrivacyErasureReplayCheckpoint>()).IsEmpty();
     }
 
     [Test]
@@ -299,8 +299,8 @@ public sealed class EventLocationPrivacyRepositoryTests(ProjectionTestContainerF
             DateTime.UtcNow,
             Guid.CreateVersion7(),
             null);
-        LocationPrivacyErasureReplayCheckpoint checkpoint =
-            LocationPrivacyErasureReplayCheckpoint.Start(CreateAuthorityIntent(1), DateTime.UtcNow);
+        PrivacyErasureReplayCheckpoint checkpoint =
+            PrivacyErasureReplayCheckpoint.Start(CreateAuthorityIntent(1), DateTime.UtcNow);
 
         context.AddRange(policyAudit, exactReadAudit, checkpoint);
         await context.SaveChangesAsync();
@@ -667,15 +667,16 @@ public sealed class EventLocationPrivacyRepositoryTests(ProjectionTestContainerF
         return new ExploreDbContext(options);
     }
 
-    private static LocationPrivacyErasureAuthorityIntent CreateAuthorityIntent(long sequence)
+    private static PrivacyErasureIntent CreateAuthorityIntent(long sequence)
     {
         DateTime now = DateTime.UtcNow;
-        return LocationPrivacyErasureAuthorityIntent.Record(
+        return PrivacyErasureIntent.Record(
             Guid.CreateVersion7(),
             sequence,
+            PrivacyErasureSubjectKind.User,
             Guid.CreateVersion7(),
-            [Guid.CreateVersion7()],
-            LocationPrivacyErasureReasonEnum.AccountDeletion,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
             now,
             now);
     }

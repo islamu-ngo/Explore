@@ -8,13 +8,10 @@ using Explore.Application.Contracts.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
-using Explore.Persistence.Migrations;
 using Explore.Persistence.Repositories;
 using Explore.Persistence.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.EntityFrameworkCore.Migrations;
-using Microsoft.EntityFrameworkCore.Migrations.Operations;
 
 namespace Event.Persistence.IntegrationTests.Repositories;
 
@@ -428,16 +425,17 @@ public sealed class WebPushFoundationPersistenceTests(PostgreSqlContainerFixture
     }
 
     [Test]
-    public async Task Migration_UpdatesExistingPreferenceCategoriesWithIntendedPushDefaults()
+    public async Task CurrentBaseline_PersistsIntendedPushDefaults()
     {
-        var operations = TestableAddWebPushNotificationFoundation.BuildUpOperations();
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var categories = await context.NotificationPreferenceCategories.AsNoTracking().ToArrayAsync();
 
-        var repairSql = operations
-            .OfType<SqlOperation>()
-            .Single(operation => operation.Sql.Contains("default_push_enabled", StringComparison.OrdinalIgnoreCase));
-
-        await Assert.That(repairSql.Sql).Contains("default_push_enabled = default_in_app_enabled");
-        await Assert.That(repairSql.Sql).Contains("master_code <> 'MARKETING'");
+        await Assert.That(categories
+            .Where(category => category.MasterCode != NotificationPreferenceCategoryCodes.Marketing)
+            .All(category => category.DefaultPushEnabled == category.DefaultInAppEnabled)).IsTrue();
+        await Assert.That(categories.Single(category =>
+            category.MasterCode == NotificationPreferenceCategoryCodes.Marketing).DefaultPushEnabled).IsFalse();
     }
 
     private static Tenant CreateTenant(string slugPrefix)
@@ -524,13 +522,4 @@ public sealed class WebPushFoundationPersistenceTests(PostgreSqlContainerFixture
 
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;
 
-    private sealed class TestableAddWebPushNotificationFoundation : AddWebPushNotificationFoundation
-    {
-        public static List<MigrationOperation> BuildUpOperations()
-        {
-            var builder = new MigrationBuilder("Npgsql.EntityFrameworkCore.PostgreSQL");
-            new TestableAddWebPushNotificationFoundation().Up(builder);
-            return builder.Operations;
-        }
-    }
 }

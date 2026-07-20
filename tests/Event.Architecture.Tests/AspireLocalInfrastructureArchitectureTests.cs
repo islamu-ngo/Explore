@@ -56,7 +56,7 @@ public sealed class AspireLocalInfrastructureArchitectureTests
     }
 
     [Test]
-    public async Task EventLocationPrivacyMigrationStage_MustBeForwardedWithoutDefault_ToMigrationWorkerAndApi()
+    public async Task EventLocationPrivacyStage_MustBeForwardedWithoutDefault_ToMigrationWorkerAndApi()
     {
         var appHost = await File.ReadAllTextAsync(Path.Combine(RepoRoot, "src", "Explore.AppHost", "AppHost.cs"));
         const string configurationRead =
