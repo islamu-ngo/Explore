@@ -239,6 +239,7 @@ public sealed class ModerationProviderResolverTests
         Guid.CreateVersion7(),
         Guid.CreateVersion7(),
         Guid.CreateVersion7(),
+        Guid.CreateVersion7(),
         EventReportExternalProvider.Coop,
         "safety",
         "open",

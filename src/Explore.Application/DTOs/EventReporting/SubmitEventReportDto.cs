@@ -12,6 +12,7 @@ public sealed class SubmitEventReportDto
     public string? SubcategoryCode { get; set; }
     public string ReporterText { get; set; } = string.Empty;
     public EventReportSeverityHint? SeverityHint { get; set; }
-    public bool ReporterContactConsent { get; set; }
+    public required bool ReportCaseUpdatesConsent { get; set; }
+    public required bool ReportFollowUpContactConsent { get; set; }
     public string? ReporterLocale { get; set; }
 }

@@ -47,6 +47,22 @@ public sealed class EventReportRepository : GenericRepository<EventReport, Guid>
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task PersistDecisionCaptureAsync(
+        EventReport report,
+        EventReportDecision decision,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+        ArgumentNullException.ThrowIfNull(decision);
+        if (_dbContext.Entry(report).State == EntityState.Detached)
+        {
+            throw new InvalidOperationException("Decision capture requires the tracked report aggregate.");
+        }
+
+        await _dbContext.EventReportDecisions.AddAsync(decision, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<EventReport?> GetByIdWithEvidenceAsync(
         Guid tenantId,
         Guid reportId,
@@ -325,8 +341,11 @@ public sealed class EventReportRepository : GenericRepository<EventReport, Guid>
         return query
             .Include(report => report.Targets)
             .Include(report => report.Cases)
+                .ThenInclude(reportCase => reportCase.CurrentDecision)
+                    .ThenInclude(decision => decision!.Execution)
             .Include(report => report.Signals)
             .Include(report => report.Decisions)
+                .ThenInclude(decision => decision.Execution)
             .Include(report => report.ExternalLinks);
     }
 

@@ -147,7 +147,8 @@ public sealed class AssignEventReportCommandHandlerTests
             subcategoryCode: null,
             EventReportPriority.Normal,
             severityHint: null,
-            reporterContactConsent: false,
+            reportCaseUpdatesConsent: false,
+            reportFollowUpContactConsent: false,
             reporterLocale: null,
             reporterIpHash: null,
             reporterUserAgentHash: null);

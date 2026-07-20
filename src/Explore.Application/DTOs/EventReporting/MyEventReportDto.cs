@@ -17,5 +17,6 @@ public sealed class MyEventReportDto
     public DateTime SubmittedAtUtc { get; init; }
     public DateTime? LastUpdatedAtUtc { get; init; }
     public DateTime? ClosedAtUtc { get; init; }
-    public bool ReporterContactConsent { get; init; }
+    public required bool ReportCaseUpdatesConsent { get; init; }
+    public required bool ReportFollowUpContactConsent { get; init; }
 }

@@ -82,6 +82,10 @@ public sealed class RecordOspreySignalCallbackCommandHandlerTests
         await Assert.That(signal.RecommendedAction).IsEqualTo(EventReportRecommendedAction.HeavyRedact);
         await Assert.That(report.Priority).IsEqualTo(EventReportPriority.Urgent);
         await Assert.That(reportCase.Priority).IsEqualTo(EventReportPriority.Urgent);
+        await Assert.That(report.Status).IsEqualTo(EventReportStatus.Submitted);
+        await Assert.That(reportCase.Status).IsEqualTo(EventReportCaseStatus.Open);
+        await Assert.That(reportCase.CurrentDecisionId).IsNull();
+        await Assert.That(report.Decisions).IsEmpty();
         await Assert.That(link.Provider).IsEqualTo(EventReportExternalProvider.Osprey);
         await Assert.That(link.ProviderTargetScope).IsEqualTo(EventReportProviderTargetScope.Instance);
         await Assert.That(link.ProviderTargetId).IsEqualTo("instance");
@@ -330,7 +334,8 @@ public sealed class RecordOspreySignalCallbackCommandHandlerTests
             subcategoryCode: null,
             EventReportPriority.Normal,
             severityHint: null,
-            reporterContactConsent: false,
+            reportCaseUpdatesConsent: false,
+            reportFollowUpContactConsent: false,
             reporterLocale: null,
             reporterIpHash: null,
             reporterUserAgentHash: null);

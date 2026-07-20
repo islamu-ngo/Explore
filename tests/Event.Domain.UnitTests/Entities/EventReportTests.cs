@@ -38,7 +38,8 @@ public class EventReportTests
             subcategoryCode: "duplicate_listing",
             EventReportPriority.Normal,
             EventReportSeverityHint.Medium,
-            reporterContactConsent: true,
+            reportCaseUpdatesConsent: false,
+            reportFollowUpContactConsent: true,
             reporterLocale: "en-US",
             reporterIpHash: new string('a', 64),
             reporterUserAgentHash: new string('b', 64));
@@ -55,9 +56,49 @@ public class EventReportTests
         await Assert.That(report.Status).IsEqualTo(EventReportStatus.Submitted);
         await Assert.That(report.Priority).IsEqualTo(EventReportPriority.Normal);
         await Assert.That(report.SeverityHint).IsEqualTo(EventReportSeverityHint.Medium);
-        await Assert.That(report.ReporterContactConsent).IsTrue();
+        await Assert.That(report.ReportCaseUpdatesConsent).IsFalse();
+        await Assert.That(report.ReportFollowUpContactConsent).IsTrue();
         await Assert.That(report.ReporterLocale).IsEqualTo("en-US");
         await Assert.That(ReportMetadataProperties()).DoesNotContain("TextBodyEncrypted");
+    }
+
+    [Test]
+    public async Task ChangeReporterCommunicationConsent_WhenValuesChange_UpdatesBothPurposesAndAuditTime()
+    {
+        var report = CreateReport();
+        var now = new DateTime(2026, 7, 19, 18, 0, 0, DateTimeKind.Utc);
+
+        report.ChangeReporterCommunicationConsent(
+            reportCaseUpdatesConsent: true,
+            reportFollowUpContactConsent: true,
+            now);
+
+        await Assert.That(report.ReportCaseUpdatesConsent).IsTrue();
+        await Assert.That(report.ReportFollowUpContactConsent).IsTrue();
+        await Assert.That(report.UpdatedAt).IsEqualTo(now);
+
+        var withdrawnAt = now.AddMinutes(5);
+        report.ChangeReporterCommunicationConsent(
+            reportCaseUpdatesConsent: false,
+            reportFollowUpContactConsent: false,
+            withdrawnAt);
+
+        await Assert.That(report.ReportCaseUpdatesConsent).IsFalse();
+        await Assert.That(report.ReportFollowUpContactConsent).IsFalse();
+        await Assert.That(report.UpdatedAt).IsEqualTo(withdrawnAt);
+    }
+
+    [Test]
+    public async Task ChangeReporterCommunicationConsent_WhenValuesAreUnchanged_DoesNotRewriteAuditTime()
+    {
+        var report = CreateReport();
+
+        report.ChangeReporterCommunicationConsent(
+            reportCaseUpdatesConsent: false,
+            reportFollowUpContactConsent: false,
+            new DateTime(2026, 7, 19, 18, 0, 0, DateTimeKind.Utc));
+
+        await Assert.That(report.UpdatedAt).IsNull();
     }
 
     [Test]
@@ -76,7 +117,8 @@ public class EventReportTests
                 subcategoryCode: null,
                 EventReportPriority.Normal,
                 severityHint: null,
-                reporterContactConsent: false,
+                reportCaseUpdatesConsent: false,
+                reportFollowUpContactConsent: false,
                 reporterLocale: null,
                 reporterIpHash: null,
                 reporterUserAgentHash: null);
@@ -294,7 +336,8 @@ public class EventReportTests
             subcategoryCode: null,
             EventReportPriority.Normal,
             severityHint: null,
-            reporterContactConsent: false,
+            reportCaseUpdatesConsent: false,
+            reportFollowUpContactConsent: false,
             reporterLocale: null,
             reporterIpHash: null,
             reporterUserAgentHash: null);

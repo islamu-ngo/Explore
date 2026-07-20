@@ -23,6 +23,7 @@ public static class EventReportOutboxMessageFactory
             ReportId = report.Id,
             EventId = report.EventId,
             CaseId = reportCase.Id,
+            CaseConcurrencyStamp = reportCase.ConcurrencyStamp,
             ReasonCode = report.ReasonCode,
             QueueCode = reportCase.QueueCode,
             SubmittedAtUtc = report.CreatedAt,

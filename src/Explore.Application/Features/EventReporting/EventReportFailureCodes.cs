@@ -25,4 +25,12 @@ public static class EventReportFailureCodes
     public const string DecisionNotFound = "event_report_decision_not_found";
     public const string DecisionInvalid = "event_report_decision_invalid";
     public const string DecisionExecutionFailed = "event_report_decision_execution_failed";
+    public const string DecisionExecutionInProgress = "event_report_decision_execution_in_progress";
+    public const string DecisionExecutionMissing = "event_report_decision_execution_missing";
+    public const string DecisionExecutionInvalidState = "event_report_decision_execution_invalid_state";
+    public const string DecisionEnforcementReceiptMissing = "event_report_decision_enforcement_receipt_missing";
+    public const string DecisionEnforcementReceiptMismatch = "event_report_decision_enforcement_receipt_mismatch";
+    public const string DecisionCompletionFailed = "event_report_decision_completion_failed";
+    public const string DecisionOrganizerUnavailable = "event_report_decision_organizer_unavailable";
+    public const string DecisionRecipientAuthorityChanged = "event_report_decision_recipient_authority_changed";
 }

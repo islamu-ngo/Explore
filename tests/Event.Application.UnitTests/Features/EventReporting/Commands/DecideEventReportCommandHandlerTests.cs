@@ -16,7 +16,6 @@ namespace Event.Application.UnitTests.Features.EventReporting.Commands;
 public sealed class DecideEventReportCommandHandlerTests
 {
     private readonly IEventReportRepository _eventReportRepository = Substitute.For<IEventReportRepository>();
-    private readonly IGenericRepository<EventReportDecision, Guid> _decisionRepository = Substitute.For<IGenericRepository<EventReportDecision, Guid>>();
     private readonly ITenantUserRepository _tenantUserRepository = Substitute.For<ITenantUserRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
@@ -32,8 +31,11 @@ public sealed class DecideEventReportCommandHandlerTests
                 return operation(CancellationToken.None);
             });
 
-        _eventReportRepository.Update(Arg.Any<EventReport>()).Returns(Task.CompletedTask);
-        _decisionRepository.Create(Arg.Any<EventReportDecision>()).Returns(call => call.Arg<EventReportDecision>());
+        _eventReportRepository.PersistDecisionCaptureAsync(
+                Arg.Any<EventReport>(),
+                Arg.Any<EventReportDecision>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
     }
 
     [Test]
@@ -43,15 +45,12 @@ public sealed class DecideEventReportCommandHandlerTests
         var moderatorUserId = Guid.CreateVersion7();
         var report = CreateUnderReviewReport(tenantId);
         var caseItem = CreateAssignedCase(tenantId, report.Id, moderatorUserId);
-        var createdDecisions = new List<EventReportDecision>();
         report.Cases.Add(caseItem);
 
         _tenantContext.TenantId.Returns(tenantId);
         _currentUserService.UserId.Returns(moderatorUserId);
         _tenantUserRepository.IsActiveTenantUserAsync(tenantId, moderatorUserId, Arg.Any<CancellationToken>()).Returns(true);
         _eventReportRepository.GetByIdForUpdateAsync(tenantId, report.Id, Arg.Any<CancellationToken>()).Returns(report);
-        _decisionRepository.Create(Arg.Do<EventReportDecision>(createdDecisions.Add)).Returns(call => call.Arg<EventReportDecision>());
-
         var result = await CreateHandler().Handle(new DecideEventReportCommand
         {
             EventId = report.EventId,
@@ -67,9 +66,7 @@ public sealed class DecideEventReportCommandHandlerTests
         await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
         await Assert.That(report.Status).IsEqualTo(EventReportStatus.UnderReview);
         await Assert.That(caseItem.Status).IsEqualTo(EventReportCaseStatus.DecisionReady);
-        await Assert.That(createdDecisions).Count().IsEqualTo(1);
-
-        var decision = createdDecisions.Single();
+        var decision = report.Decisions.Single();
         await Assert.That(decision.Id).IsEqualTo(result.Id);
         await Assert.That(decision.TenantId).IsEqualTo(tenantId);
         await Assert.That(decision.ReportId).IsEqualTo(report.Id);
@@ -79,11 +76,14 @@ public sealed class DecideEventReportCommandHandlerTests
         await Assert.That(decision.ReasonCode).IsEqualTo("policy_violation");
         await Assert.That(decision.SafeNote).IsEqualTo("Visible title violates listing rules.");
         await Assert.That(decision.ModeratorUserId).IsEqualTo(moderatorUserId);
-        await _eventReportRepository.Received(1).Update(report);
+        await _eventReportRepository.Received(1).PersistDecisionCaptureAsync(
+            report,
+            decision,
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task Handle_WithDuplicateDecision_MarksReportDuplicate()
+    public async Task Handle_WithDuplicateDecision_CapturesIdentityWithoutMutatingReportOutcome()
     {
         var tenantId = Guid.CreateVersion7();
         var moderatorUserId = Guid.CreateVersion7();
@@ -109,9 +109,10 @@ public sealed class DecideEventReportCommandHandlerTests
         }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await Assert.That(report.Status).IsEqualTo(EventReportStatus.Duplicate);
-        await Assert.That(report.DuplicateGroupId).IsEqualTo(duplicateGroupId);
+        await Assert.That(report.Status).IsEqualTo(EventReportStatus.UnderReview);
+        await Assert.That(report.DuplicateGroupId).IsNull();
         await Assert.That(caseItem.Status).IsEqualTo(EventReportCaseStatus.DecisionReady);
+        await Assert.That(report.Decisions.Single().DuplicateGroupId).IsEqualTo(duplicateGroupId);
     }
 
     [Test]
@@ -161,13 +162,14 @@ public sealed class DecideEventReportCommandHandlerTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo(EventReportFailureCodes.AssignmentMismatch);
         await Assert.That(caseItem.Status).IsEqualTo(EventReportCaseStatus.Assigned);
-        await _decisionRepository.DidNotReceive().Create(Arg.Any<EventReportDecision>());
-        await _eventReportRepository.DidNotReceive().Update(Arg.Any<EventReport>());
+        await _eventReportRepository.DidNotReceive().PersistDecisionCaptureAsync(
+            Arg.Any<EventReport>(),
+            Arg.Any<EventReportDecision>(),
+            Arg.Any<CancellationToken>());
     }
 
     private DecideEventReportCommandHandler CreateHandler() => new(
         _eventReportRepository,
-        _decisionRepository,
         _tenantUserRepository,
         _unitOfWork,
         _tenantContext,
@@ -186,7 +188,8 @@ public sealed class DecideEventReportCommandHandlerTests
             subcategoryCode: null,
             EventReportPriority.Normal,
             severityHint: null,
-            reporterContactConsent: false,
+            reportCaseUpdatesConsent: false,
+            reportFollowUpContactConsent: false,
             reporterLocale: null,
             reporterIpHash: null,
             reporterUserAgentHash: null);

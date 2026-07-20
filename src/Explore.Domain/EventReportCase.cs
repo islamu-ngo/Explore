@@ -15,6 +15,8 @@ public class EventReportCase : ITenantEntity, IAuditableEntity, IConcurrencyAwar
     public Tenant Tenant { get; private set; } = null!;
     public Guid ReportId { get; private set; }
     public EventReport Report { get; private set; } = null!;
+    public Guid? CurrentDecisionId { get; private set; }
+    public EventReportDecision? CurrentDecision { get; private set; }
     public string QueueCode { get; private set; } = null!;
     public EventReportCaseStatus Status { get; private set; }
     public EventReportPriority Priority { get; private set; }
@@ -83,6 +85,47 @@ public class EventReportCase : ITenantEntity, IAuditableEntity, IConcurrencyAwar
     {
         EnsureNotClosed();
 
+        Status = EventReportCaseStatus.DecisionReady;
+        UpdatedAt = utcNow;
+    }
+
+    public bool CanSelectNewDecision()
+    {
+        if (CurrentDecisionId is null)
+        {
+            return Status != EventReportCaseStatus.Closed;
+        }
+
+        if (CurrentDecision is null
+            || CurrentDecision.Execution.State != EventReportDecisionExecutionState.Completed)
+        {
+            return false;
+        }
+
+        return (CurrentDecision.DecisionKind == EventReportDecisionKind.Escalate
+                && Status == EventReportCaseStatus.WaitingExternal)
+            || (CurrentDecision.DecisionKind == EventReportDecisionKind.NeedsMoreInfo
+                && Status == EventReportCaseStatus.WaitingReporter);
+    }
+
+    public void SelectDecision(EventReportDecision decision, DateTime utcNow)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        EnsureNotClosed();
+        if (decision.TenantId != TenantId
+            || decision.ReportId != ReportId
+            || decision.CaseId != Id)
+        {
+            throw new InvalidOperationException("The selected decision must belong to this tenant, report, and case.");
+        }
+
+        if (!CanSelectNewDecision())
+        {
+            throw new InvalidOperationException("The current report decision does not permit a replacement decision.");
+        }
+
+        CurrentDecisionId = decision.Id;
+        CurrentDecision = decision;
         Status = EventReportCaseStatus.DecisionReady;
         UpdatedAt = utcNow;
     }

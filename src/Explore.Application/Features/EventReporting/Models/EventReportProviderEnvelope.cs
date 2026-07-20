@@ -17,6 +17,7 @@ public sealed record EventReportProviderEnvelope(
     Guid ReportId,
     Guid EventId,
     Guid CaseId,
+    Guid CaseConcurrencyStamp,
     string ReasonCode,
     string QueueCode,
     string ReportStatusCode,

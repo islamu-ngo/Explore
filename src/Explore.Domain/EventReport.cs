@@ -48,6 +48,7 @@ public class EventReport : ITenantEntity, IAuditableEntity, ISoftDeletable, ICon
                 EventReportStatus.UnderReview,
                 EventReportStatus.Actioned,
                 EventReportStatus.Dismissed,
+                EventReportStatus.Duplicate,
                 EventReportStatus.Closed
             ],
             [EventReportStatus.Actioned] = [EventReportStatus.Closed],
@@ -73,7 +74,8 @@ public class EventReport : ITenantEntity, IAuditableEntity, ISoftDeletable, ICon
     public EventReportPriority Priority { get; private set; }
     public EventReportSeverityHint? SeverityHint { get; private set; }
     public Guid? DuplicateGroupId { get; private set; }
-    public bool ReporterContactConsent { get; private set; }
+    public bool ReportCaseUpdatesConsent { get; private set; }
+    public bool ReportFollowUpContactConsent { get; private set; }
     public string? ReporterLocale { get; private set; }
     public string? ReporterIpHash { get; private set; }
     public string? ReporterUserAgentHash { get; private set; }
@@ -106,7 +108,8 @@ public class EventReport : ITenantEntity, IAuditableEntity, ISoftDeletable, ICon
         string? subcategoryCode,
         EventReportPriority priority,
         EventReportSeverityHint? severityHint,
-        bool reporterContactConsent,
+        bool reportCaseUpdatesConsent,
+        bool reportFollowUpContactConsent,
         string? reporterLocale,
         string? reporterIpHash,
         string? reporterUserAgentHash,
@@ -147,7 +150,8 @@ public class EventReport : ITenantEntity, IAuditableEntity, ISoftDeletable, ICon
             Status = EventReportStatus.Submitted,
             Priority = priority,
             SeverityHint = severityHint,
-            ReporterContactConsent = reporterContactConsent,
+            ReportCaseUpdatesConsent = reportCaseUpdatesConsent,
+            ReportFollowUpContactConsent = reportFollowUpContactConsent,
             ReporterLocale = EventReportGuards.NormalizeOptional(reporterLocale, MaxLocaleLength, nameof(reporterLocale)),
             ReporterIpHash = EventReportGuards.NormalizeOptional(reporterIpHash, MaxHashLength, nameof(reporterIpHash)),
             ReporterUserAgentHash = EventReportGuards.NormalizeOptional(reporterUserAgentHash, MaxHashLength, nameof(reporterUserAgentHash)),
@@ -155,6 +159,22 @@ public class EventReport : ITenantEntity, IAuditableEntity, ISoftDeletable, ICon
             CreatedBy = reporterUserId,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
+    }
+
+    public void ChangeReporterCommunicationConsent(
+        bool reportCaseUpdatesConsent,
+        bool reportFollowUpContactConsent,
+        DateTime utcNow)
+    {
+        if (ReportCaseUpdatesConsent == reportCaseUpdatesConsent
+            && ReportFollowUpContactConsent == reportFollowUpContactConsent)
+        {
+            return;
+        }
+
+        ReportCaseUpdatesConsent = reportCaseUpdatesConsent;
+        ReportFollowUpContactConsent = reportFollowUpContactConsent;
+        UpdatedAt = utcNow;
     }
 
     public void UpdateStatus(EventReportStatus nextStatus, DateTime utcNow)

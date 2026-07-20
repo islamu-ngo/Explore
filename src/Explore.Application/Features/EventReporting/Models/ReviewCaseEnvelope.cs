@@ -10,6 +10,7 @@ public sealed record ReviewCaseEnvelope(
     Guid ReportId,
     Guid EventId,
     Guid CaseId,
+    Guid CaseConcurrencyStamp,
     EventReportExternalProvider Provider,
     string QueueCode,
     string CaseStatusCode,

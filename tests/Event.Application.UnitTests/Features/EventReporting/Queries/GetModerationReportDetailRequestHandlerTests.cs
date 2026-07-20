@@ -46,6 +46,8 @@ public sealed class GetModerationReportDetailRequestHandlerTests
         await Assert.That(result.ReporterKindCode).IsEqualTo("authenticated_user");
         await Assert.That(result.SourceKindCode).IsEqualTo("user_report");
         await Assert.That(result.ReasonName).IsEqualTo("Spam");
+        await Assert.That(result.ReportCaseUpdatesConsent).IsFalse();
+        await Assert.That(result.ReportFollowUpContactConsent).IsTrue();
         await Assert.That(result.CurrentCase).IsNotNull();
         await Assert.That(result.CurrentCase!.StatusCode).IsEqualTo("decision_ready");
         await Assert.That(result.Targets).Count().IsEqualTo(1);
@@ -140,7 +142,8 @@ public sealed class GetModerationReportDetailRequestHandlerTests
             "organizer",
             EventReportPriority.Urgent,
             EventReportSeverityHint.Critical,
-            reporterContactConsent: true,
+            reportCaseUpdatesConsent: false,
+            reportFollowUpContactConsent: true,
             reporterLocale: "en",
             reporterIpHash: "ip-hash",
             reporterUserAgentHash: "ua-hash");

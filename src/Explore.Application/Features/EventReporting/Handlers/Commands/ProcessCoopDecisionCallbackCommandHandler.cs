@@ -17,7 +17,6 @@ namespace Explore.Application.Features.EventReporting.Handlers.Commands;
 
 public sealed class ProcessCoopDecisionCallbackCommandHandler(
     IEventReportRepository eventReportRepository,
-    IGenericRepository<EventReportDecision, Guid> decisionRepository,
     IUnitOfWork unitOfWork,
     ITenantContext tenantContext,
     IMediator mediator) : IRequestHandler<ProcessCoopDecisionCallbackCommand, BaseCommandResponse<Guid>>
@@ -62,7 +61,15 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
                 EventReportFailureCodes.DuplicateGroupRequired);
         }
 
-        var stage = await CaptureDecisionAsync(decision, cancellationToken);
+        Guid decisionId = Guid.CreateVersion7();
+        Guid executionId = Guid.CreateVersion7();
+        DateTime capturedAtUtc = DateTime.UtcNow;
+        var stage = await CaptureDecisionAsync(
+            decision,
+            decisionId,
+            executionId,
+            capturedAtUtc,
+            cancellationToken);
         if (!stage.Response.Success || !stage.ShouldExecute)
         {
             return stage.Response;
@@ -89,6 +96,9 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
 
     private async Task<CoopDecisionStageResult> CaptureDecisionAsync(
         NormalizedCoopDecision decision,
+        Guid decisionId,
+        Guid executionId,
+        DateTime capturedAtUtc,
         CancellationToken cancellationToken)
     {
         return await unitOfWork.ExecuteInTransactionAsync(async token =>
@@ -110,36 +120,67 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
             var existingDecision = FindExistingDecision(report!, decision);
             if (existingDecision is not null)
             {
-                if (reportCase.Status == EventReportCaseStatus.Closed)
+                bool exactReplay = existingDecision.CaseId == decision.CaseId
+                    && existingDecision.DecisionKind == decision.DecisionKind
+                    && existingDecision.DuplicateGroupId == decision.DuplicateGroupId
+                    && existingDecision.ModeratorUserId is null
+                    && string.Equals(existingDecision.ReasonCode, decision.ReasonCode, StringComparison.Ordinal)
+                    && string.Equals(existingDecision.SafeNote, decision.SafeNote, StringComparison.Ordinal);
+                if (!exactReplay)
+                {
+                    return CoopDecisionStageResult.NoExecution(Failure(
+                        existingDecision.Id,
+                        "Coop decision replay does not match the captured decision.",
+                        ["The provider decision id cannot be reused for another case or outcome."],
+                        EventReportFailureCodes.DecisionInvalid));
+                }
+
+                if (existingDecision.Execution.State == EventReportDecisionExecutionState.Completed)
                 {
                     return CoopDecisionStageResult.NoExecution(Success(existingDecision.Id, "Coop decision was already executed."));
                 }
 
-                if (reportCase.Status != EventReportCaseStatus.DecisionReady)
+                if (reportCase.CurrentDecisionId == existingDecision.Id
+                    && reportCase.Status == EventReportCaseStatus.DecisionReady)
                 {
-                    reportCase.MarkDecisionReady(DateTime.UtcNow);
-                    await eventReportRepository.Update(report!);
+                    return CoopDecisionStageResult.Execute(
+                        Success(existingDecision.Id, "Coop decision was already recorded."),
+                        existingDecision.Id,
+                        reportCase.ConcurrencyStamp);
                 }
 
-                return CoopDecisionStageResult.Execute(
-                    Success(existingDecision.Id, "Coop decision was already recorded."),
+                return CoopDecisionStageResult.NoExecution(Failure(
                     existingDecision.Id,
-                    reportCase.ConcurrencyStamp);
+                    "Coop decision is no longer the current executable decision.",
+                    ["A stale provider decision cannot replace or reopen the current case decision."],
+                    EventReportFailureCodes.DecisionInvalid));
             }
 
-            if (reportCase.Status == EventReportCaseStatus.Closed)
+            if (!decision.ExpectedCaseConcurrencyStamp.HasValue)
             {
-                return CoopDecisionStageResult.NoExecution(Success(decision.ReportId, "Coop decision arrived after the report case was already closed."));
+                return CoopDecisionStageResult.NoExecution(Failure(
+                    decision.ReportId,
+                    "A new Coop decision requires the current case concurrency stamp.",
+                    ["ExpectedCaseConcurrencyStamp is required for a new provider decision."],
+                    EventReportFailureCodes.CaseConcurrencyConflict));
             }
 
-            if (decision.ExpectedCaseConcurrencyStamp.HasValue &&
-                reportCase.ConcurrencyStamp != decision.ExpectedCaseConcurrencyStamp.Value)
+            if (reportCase.ConcurrencyStamp != decision.ExpectedCaseConcurrencyStamp.Value)
             {
                 return CoopDecisionStageResult.NoExecution(Failure(
                     decision.ReportId,
                     "Event report case was changed by another request.",
                     ["Refresh the report case and try again."],
                     EventReportFailureCodes.CaseConcurrencyConflict));
+            }
+
+            if (!reportCase.CanSelectNewDecision())
+            {
+                return CoopDecisionStageResult.NoExecution(Failure(
+                    decision.ReportId,
+                    "The report case cannot accept this new Coop decision.",
+                    ["Only an undecided case or a completed nonterminal current decision can be replaced."],
+                    EventReportFailureCodes.CaseInvalidStatus));
             }
 
             if (report!.IsTerminal)
@@ -151,9 +192,6 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
                     EventReportFailureCodes.ReportInvalidStatus));
             }
 
-            var now = DateTime.UtcNow;
-            ApplyReportDecisionStatus(report, decision, now);
-            reportCase.MarkDecisionReady(now);
             var providerDecision = EventReportDecision.Create(
                 decision.TenantId,
                 decision.CaseId,
@@ -164,13 +202,17 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
                 decision.SafeNote,
                 moderatorUserId: null,
                 decision.ExternalDecisionId,
-                now,
+                capturedAtUtc,
                 decision.ProviderTargetScope,
-                decision.ProviderTargetId);
+                decision.ProviderTargetId,
+                decisionId,
+                executionId,
+                decision.DuplicateGroupId);
 
-            MarkCoopLinkSynced(report, decision, now);
-            await eventReportRepository.Update(report);
-            await decisionRepository.Create(providerDecision);
+            reportCase.SelectDecision(providerDecision, capturedAtUtc);
+            report.Decisions.Add(providerDecision);
+            MarkCoopLinkSynced(report, decision, capturedAtUtc);
+            await eventReportRepository.PersistDecisionCaptureAsync(report, providerDecision, token);
 
             return CoopDecisionStageResult.Execute(
                 Success(providerDecision.Id, "Coop decision recorded successfully."),
@@ -243,33 +285,6 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
             IsSameTarget(candidate.ProviderTargetScope, candidate.ProviderTargetId, decision.ProviderTargetScope, decision.ProviderTargetId));
     }
 
-    private static void ApplyReportDecisionStatus(
-        EventReport report,
-        NormalizedCoopDecision decision,
-        DateTime utcNow)
-    {
-        switch (decision.DecisionKind)
-        {
-            case EventReportDecisionKind.NoViolation:
-                report.UpdateStatus(EventReportStatus.Dismissed, utcNow);
-                break;
-            case EventReportDecisionKind.Duplicate:
-                report.MarkDuplicate(decision.DuplicateGroupId!.Value, utcNow);
-                break;
-            case EventReportDecisionKind.Escalate:
-                report.UpdateStatus(EventReportStatus.Escalated, utcNow);
-                break;
-            case EventReportDecisionKind.NeedsMoreInfo:
-            case EventReportDecisionKind.LightModerate:
-            case EventReportDecisionKind.HeavyRedact:
-            case EventReportDecisionKind.WarnOrganizer:
-                report.UpdateStatus(EventReportStatus.UnderReview, utcNow);
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(decision), decision.DecisionKind, "Unsupported Coop decision kind.");
-        }
-    }
-
     private static void MarkCoopLinkSynced(
         EventReport report,
         NormalizedCoopDecision decision,
@@ -312,17 +327,15 @@ public sealed class ProcessCoopDecisionCallbackCommandHandler(
         var eventId = ProcessCoopDecisionCallbackCommandValidator.ResolveEventId(request);
         var caseId = ProcessCoopDecisionCallbackCommandValidator.ResolveCaseId(request);
         var actionId = ProcessCoopDecisionCallbackCommandValidator.FirstNonBlank(request.Action?.Id) ?? "coop_decision";
-        var providerDecisionId = NormalizeOptional(ProcessCoopDecisionCallbackCommandValidator.FirstNonBlank(
+        var externalDecisionId = ProcessCoopDecisionCallbackCommandValidator.FirstNonBlank(
             request.ProviderDecisionId,
-            request.ProviderDecisionIdSnake));
+            request.ProviderDecisionIdSnake)
+            ?? throw new InvalidOperationException("Validated Coop callbacks require a provider decision identifier.");
         var providerCaseId = NormalizeOptional(ProcessCoopDecisionCallbackCommandValidator.FirstNonBlank(
             request.ProviderCaseId,
             request.ProviderCaseIdSnake,
             request.Item?.Id));
         var providerUrl = NormalizeOptional(ProcessCoopDecisionCallbackCommandValidator.FirstNonBlank(request.ProviderUrl, request.ProviderUrlSnake));
-        var externalDecisionId = providerDecisionId
-            ?? NormalizeOptional(ProcessCoopDecisionCallbackCommandValidator.FirstNonBlank(request.CorrelationId, request.CorrelationIdSnake))
-            ?? $"coop:{reportId:N}:{caseId:N}:{NormalizeCode(actionId)}";
         var correlationId = NormalizeCorrelationId(
             NormalizeOptional(ProcessCoopDecisionCallbackCommandValidator.FirstNonBlank(request.CorrelationId, request.CorrelationIdSnake))
             ?? externalDecisionId);

@@ -39,6 +39,19 @@ public sealed class EventReportCaseConfiguration : IEntityTypeConfiguration<Even
             .HasForeignKey(e => e.AssignedModeratorUserId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(e => e.CurrentDecision)
+            .WithMany()
+            .HasForeignKey(e => new
+            {
+                e.TenantId,
+                e.ReportId,
+                CaseId = e.Id,
+                e.CurrentDecisionId
+            })
+            .HasPrincipalKey(e => new { e.TenantId, e.ReportId, e.CaseId, e.Id })
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
+
         builder.HasIndex(e => new { e.TenantId, e.QueueCode, e.Status, e.Priority, e.CreatedAt })
             .HasDatabaseName("ix_event_report_cases_tenant_queue_status_priority_created")
             .IsDescending(false, false, false, false, true);
@@ -51,6 +64,10 @@ public sealed class EventReportCaseConfiguration : IEntityTypeConfiguration<Even
         builder.HasIndex(e => new { e.TenantId, e.SlaDueAt })
             .HasFilter("sla_due_at IS NOT NULL")
             .HasDatabaseName("ix_event_report_cases_tenant_sla_due_at");
+
+        builder.HasIndex(e => new { e.TenantId, e.ReportId, e.Id, e.CurrentDecisionId })
+            .HasFilter("current_decision_id IS NOT NULL")
+            .HasDatabaseName("ix_event_report_cases_current_decision");
 
         builder.ToTable("event_report_cases", t =>
         {

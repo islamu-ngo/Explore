@@ -137,6 +137,7 @@ public sealed class CoopReviewQueueProvider(
             ItemType = NormalizeRequired(currentOptions.ItemType, "event_report", MaxItemTypeLength),
             IdempotencyKey = NormalizeRequired(envelope.IdempotencyKey, "event-report-provider-sync", MaxIdempotencyKeyLength),
             CorrelationId = NormalizeOptional(envelope.CorrelationId, MaxCorrelationIdLength),
+            ExpectedCaseConcurrencyStamp = envelope.CaseConcurrencyStamp,
             Item = new CoopItem
             {
                 Id = envelope.ReportId.ToString("N"),
@@ -305,6 +306,9 @@ public sealed class CoopReviewQueueProvider(
 
         [JsonPropertyName("correlation_id")]
         public string? CorrelationId { get; init; }
+
+        [JsonPropertyName("expected_case_concurrency_stamp")]
+        public Guid ExpectedCaseConcurrencyStamp { get; init; }
     }
 
     private sealed class CoopItem

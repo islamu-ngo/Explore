@@ -19,6 +19,7 @@ public sealed class EventReportProviderContractTests
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
             "spam",
             "safety",
             "submitted",
@@ -34,6 +35,7 @@ public sealed class EventReportProviderContractTests
         await Assert.That(json).Contains("reasonCode");
         await Assert.That(json).Contains("queueCode");
         await Assert.That(json).Contains("idempotencyKey");
+        await Assert.That(json).Contains("caseConcurrencyStamp");
         await Assert.That(json).Contains("evidenceMode");
         await Assert.That(json).DoesNotContain("reporterIpHash");
         await Assert.That(json).DoesNotContain("reporterUserAgentHash");

@@ -48,8 +48,9 @@ public sealed class ProcessCoopDecisionCallbackCommandValidator : AbstractValida
                 .When(command => command.Request.Action is not null);
 
             RuleFor(command => FirstNonBlank(command.Request.ProviderDecisionId, command.Request.ProviderDecisionIdSnake))
-                .MaximumLength(MaxProviderIdLength)
-                .When(command => !string.IsNullOrWhiteSpace(FirstNonBlank(command.Request.ProviderDecisionId, command.Request.ProviderDecisionIdSnake)));
+                .NotEmpty()
+                .WithMessage("ProviderDecisionId is required.")
+                .MaximumLength(MaxProviderIdLength);
 
             RuleFor(command => FirstNonBlank(command.Request.ProviderCaseId, command.Request.ProviderCaseIdSnake))
                 .MaximumLength(MaxProviderIdLength)

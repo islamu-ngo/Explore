@@ -9,6 +9,7 @@ public sealed record EventReportProviderSyncRequested
     public required Guid ReportId { get; init; }
     public required Guid EventId { get; init; }
     public required Guid CaseId { get; init; }
+    public required Guid CaseConcurrencyStamp { get; init; }
     public required string ReasonCode { get; init; }
     public required string QueueCode { get; init; }
     public required DateTime SubmittedAtUtc { get; init; }

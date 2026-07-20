@@ -15,11 +15,14 @@ public sealed class EventReportDecisionConfiguration : IEntityTypeConfiguration<
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
         builder.HasAlternateKey(e => new { e.TenantId, e.ReportId, e.Id })
             .HasName("ak_event_report_decisions_tenant_id_report_id_id");
+        builder.HasAlternateKey(e => new { e.TenantId, e.ReportId, e.CaseId, e.Id })
+            .HasName("ak_event_report_decisions_tenant_report_case_id");
 
         builder.Property(e => e.DecisionSource).HasConversion<int>().IsRequired();
         builder.Property(e => e.ProviderTargetScope).HasConversion<int>().IsRequired();
         builder.Property(e => e.ProviderTargetId).HasMaxLength(200).IsRequired();
         builder.Property(e => e.DecisionKind).HasConversion<int>().IsRequired();
+        builder.Property(e => e.DuplicateGroupId);
         builder.Property(e => e.ReasonCode).HasMaxLength(100).IsRequired();
         builder.Property(e => e.SafeNote).HasMaxLength(1000);
         builder.Property(e => e.ExternalDecisionId).HasMaxLength(200);
@@ -65,6 +68,7 @@ public sealed class EventReportDecisionConfiguration : IEntityTypeConfiguration<
             t.HasCheckConstraint("ck_event_report_decisions_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");
             t.HasCheckConstraint("ck_event_report_decisions_provider_target_id_not_blank", "length(btrim(provider_target_id)) > 0");
             t.HasCheckConstraint("ck_event_report_decisions_kind", "decision_kind BETWEEN 1 AND 7");
+            t.HasCheckConstraint("ck_event_report_decisions_duplicate_group_shape", "(decision_kind = 2 AND duplicate_group_id IS NOT NULL) OR (decision_kind <> 2 AND duplicate_group_id IS NULL)");
             t.HasCheckConstraint("ck_event_report_decisions_reason_code_not_blank", "length(btrim(reason_code)) > 0");
             t.HasCheckConstraint("ck_event_report_decisions_safe_note_not_blank", "safe_note IS NULL OR length(btrim(safe_note)) > 0");
             t.HasCheckConstraint("ck_event_report_decisions_external_decision_id_not_blank", "external_decision_id IS NULL OR length(btrim(external_decision_id)) > 0");

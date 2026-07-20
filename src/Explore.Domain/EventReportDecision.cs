@@ -24,11 +24,13 @@ public class EventReportDecision : ITenantEntity, IAuditableEntity
     public EventReportProviderTargetScope ProviderTargetScope { get; private set; }
     public string ProviderTargetId { get; private set; } = null!;
     public EventReportDecisionKind DecisionKind { get; private set; }
+    public Guid? DuplicateGroupId { get; private set; }
     public string ReasonCode { get; private set; } = null!;
     public string? SafeNote { get; private set; }
     public Guid? ModeratorUserId { get; private set; }
     public User? ModeratorUser { get; private set; }
     public string? ExternalDecisionId { get; private set; }
+    public EventReportDecisionExecution Execution { get; private set; } = null!;
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
@@ -46,7 +48,10 @@ public class EventReportDecision : ITenantEntity, IAuditableEntity
         string? externalDecisionId,
         DateTime? createdAt = null,
         EventReportProviderTargetScope providerTargetScope = EventReportProviderTargetScope.Local,
-        string providerTargetId = "local")
+        string providerTargetId = "local",
+        Guid? decisionId = null,
+        Guid? executionId = null,
+        Guid? duplicateGroupId = null)
     {
         EventReportGuards.RequireGuid(tenantId, nameof(tenantId), "Tenant id is required.");
         EventReportGuards.RequireGuid(caseId, nameof(caseId), "Case id is required.");
@@ -60,14 +65,27 @@ public class EventReportDecision : ITenantEntity, IAuditableEntity
             throw new ArgumentException("Moderator user id cannot be empty.", nameof(moderatorUserId));
         }
 
+        if (decisionId == Guid.Empty || executionId == Guid.Empty)
+        {
+            throw new ArgumentException("Decision and execution identifiers cannot be empty.");
+        }
+
         if (decisionSource == EventReportDecisionSource.LocalModerator && moderatorUserId is null)
         {
             throw new ArgumentException("Local moderator decisions require a moderator user id.", nameof(moderatorUserId));
         }
 
-        return new EventReportDecision
+        if ((decisionKind == EventReportDecisionKind.Duplicate && (duplicateGroupId is null || duplicateGroupId == Guid.Empty))
+            || (decisionKind != EventReportDecisionKind.Duplicate && duplicateGroupId is not null))
         {
-            Id = Guid.CreateVersion7(),
+            throw new ArgumentException(
+                "Duplicate decisions require one non-empty duplicate group id, and other decisions cannot carry one.",
+                nameof(duplicateGroupId));
+        }
+
+        var decision = new EventReportDecision
+        {
+            Id = decisionId ?? Guid.CreateVersion7(),
             TenantId = tenantId,
             CaseId = caseId,
             ReportId = reportId,
@@ -75,6 +93,7 @@ public class EventReportDecision : ITenantEntity, IAuditableEntity
             ProviderTargetScope = providerTargetScope,
             ProviderTargetId = EventReportGuards.NormalizeRequired(providerTargetId, MaxProviderTargetIdLength, nameof(providerTargetId)),
             DecisionKind = decisionKind,
+            DuplicateGroupId = duplicateGroupId,
             ReasonCode = EventReportGuards.NormalizeRequired(reasonCode, MaxReasonCodeLength, nameof(reasonCode)),
             SafeNote = EventReportGuards.NormalizeOptional(safeNote, MaxSafeNoteLength, nameof(safeNote)),
             ModeratorUserId = moderatorUserId,
@@ -82,5 +101,13 @@ public class EventReportDecision : ITenantEntity, IAuditableEntity
             CreatedAt = createdAt ?? DateTime.UtcNow,
             CreatedBy = moderatorUserId
         };
+
+        decision.Execution = EventReportDecisionExecution.Create(
+            tenantId,
+            reportId,
+            decision.Id,
+            decision.CreatedAt,
+            executionId);
+        return decision;
     }
 }

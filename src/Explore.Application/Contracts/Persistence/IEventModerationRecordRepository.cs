@@ -21,4 +21,10 @@ public interface IEventModerationRecordRepository : IGenericRepository<EventMode
         Guid tenantId,
         Guid eventId,
         CancellationToken cancellationToken);
+
+    Task<EventModerationRecord?> GetBySourceReportDecisionAsync(
+        Guid tenantId,
+        Guid reportId,
+        Guid decisionId,
+        CancellationToken cancellationToken);
 }

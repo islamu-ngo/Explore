@@ -59,7 +59,8 @@ public sealed class GetMyReportRequestHandlerTests
         await Assert.That(result.SubcategoryCode).IsEqualTo("organizer");
         await Assert.That(result.SubmittedAtUtc).IsEqualTo(createdAt);
         await Assert.That(result.LastUpdatedAtUtc).IsEqualTo(updatedAt);
-        await Assert.That(result.ReporterContactConsent).IsTrue();
+        await Assert.That(result.ReportCaseUpdatesConsent).IsFalse();
+        await Assert.That(result.ReportFollowUpContactConsent).IsTrue();
 
         var serialized = JsonSerializer.Serialize(result);
         await Assert.That(serialized).DoesNotContain("encrypted-sensitive-reporter-text");
@@ -170,6 +171,7 @@ public sealed class GetMyReportRequestHandlerTests
             "organizer",
             EventReportPriority.Normal,
             null,
+            false,
             true,
             "en",
             "ip-hash",

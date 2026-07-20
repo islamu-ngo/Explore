@@ -54,4 +54,19 @@ public class EventModerationRecordRepository : GenericRepository<EventModeration
             .ThenByDescending(record => record.Id)
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    public Task<EventModerationRecord?> GetBySourceReportDecisionAsync(
+        Guid tenantId,
+        Guid reportId,
+        Guid decisionId,
+        CancellationToken cancellationToken)
+    {
+        return _dbContext.EventModerationRecords
+            .AsNoTracking()
+            .SingleOrDefaultAsync(record =>
+                record.TenantId == tenantId
+                && record.SourceReportId == reportId
+                && record.SourceReportDecisionId == decisionId,
+                cancellationToken);
+    }
 }

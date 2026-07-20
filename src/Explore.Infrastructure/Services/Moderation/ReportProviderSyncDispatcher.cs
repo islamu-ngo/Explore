@@ -143,6 +143,7 @@ public sealed class ReportProviderSyncDispatcher(
             request.ReportId,
             request.EventId,
             request.CaseId,
+            request.CaseConcurrencyStamp,
             report.ReasonCode,
             reportCase.QueueCode,
             ToCode(report.Status),

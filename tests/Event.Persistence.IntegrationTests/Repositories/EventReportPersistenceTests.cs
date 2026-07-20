@@ -3,9 +3,11 @@
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
+using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using TUnit.Core;
 
@@ -23,6 +25,7 @@ public sealed class EventReportPersistenceTests(PostgreSqlContainerFixture fixtu
         var (tenant, @event, user, actor) = await SetupEventAsync(context, "report-graph");
         var report = CreateReport(tenant.Id, @event.Id, user.Id, actor.Id);
         var reportCase = EventReportCase.Create(tenant.Id, report.Id, "default", EventReportPriority.Normal, DateTime.UtcNow.AddHours(24));
+        Guid preSaveCaseConcurrencyStamp = reportCase.ConcurrencyStamp;
         var decision = EventReportDecision.Create(
             tenant.Id,
             reportCase.Id,
@@ -73,15 +76,152 @@ public sealed class EventReportPersistenceTests(PostgreSqlContainerFixture fixtu
             .Include(e => e.Cases)
             .Include(e => e.Signals)
             .Include(e => e.Decisions)
+                .ThenInclude(e => e.Execution)
             .Include(e => e.ExternalLinks)
             .SingleAsync(e => e.Id == report.Id);
 
         await Assert.That(persisted.Targets.Count).IsEqualTo(1);
         await Assert.That(persisted.EvidenceItems.Count).IsEqualTo(1);
         await Assert.That(persisted.Cases.Count).IsEqualTo(1);
+        await Assert.That(persisted.Cases.Single().ConcurrencyStamp).IsEqualTo(preSaveCaseConcurrencyStamp);
         await Assert.That(persisted.Signals.Count).IsEqualTo(1);
         await Assert.That(persisted.Decisions.Count).IsEqualTo(1);
+        await Assert.That(persisted.Decisions.Single().Execution.State)
+            .IsEqualTo(EventReportDecisionExecutionState.Requested);
+        await Assert.That(persisted.Decisions.Single().Execution.DecisionId).IsEqualTo(decision.Id);
+        await Assert.That(persisted.Decisions.Single().Execution.ReportId).IsEqualTo(report.Id);
         await Assert.That(persisted.ExternalLinks.Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task ExactEnforcementClaimReplay_WhenRequestedLeaseHasExpired_ReturnsUnavailable()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var (tenant, @event, user, actor) = await SetupEventAsync(context, "report-expired-enforcement-lease");
+        var report = CreateReport(tenant.Id, @event.Id, user.Id, actor.Id);
+        var reportCase = EventReportCase.Create(tenant.Id, report.Id, "default", EventReportPriority.Normal, null);
+        var decision = EventReportDecision.Create(
+            tenant.Id,
+            reportCase.Id,
+            report.Id,
+            EventReportDecisionSource.LocalModerator,
+            EventReportDecisionKind.NoViolation,
+            "not_violation",
+            null,
+            user.Id,
+            null);
+        context.EventReports.Add(report);
+        context.EventReportCases.Add(reportCase);
+        context.EventReportDecisions.Add(decision);
+        await context.SaveChangesAsync();
+
+        var repository = new EventReportDecisionExecutionRepository(context);
+        Guid leaseToken = Guid.CreateVersion7();
+        DateTime claimedAtUtc = DateTime.UtcNow.AddMinutes(-5);
+        DateTime expiredAtUtc = claimedAtUtc.AddMinutes(1);
+
+        EventReportDecisionExecutionClaimOutcome claimed = await repository.TryClaimEnforcementAsync(
+            tenant.Id,
+            decision.Id,
+            leaseToken,
+            claimedAtUtc,
+            expiredAtUtc,
+            CancellationToken.None);
+        EventReportDecisionExecutionClaimOutcome reconciled = await repository.TryClaimEnforcementAsync(
+            tenant.Id,
+            decision.Id,
+            leaseToken,
+            claimedAtUtc,
+            expiredAtUtc,
+            CancellationToken.None);
+
+        await Assert.That(claimed).IsEqualTo(EventReportDecisionExecutionClaimOutcome.Claimed);
+        await Assert.That(reconciled).IsEqualTo(EventReportDecisionExecutionClaimOutcome.Unavailable);
+    }
+
+    [Test]
+    public async Task ExactCompletionClaimReplay_WhenRequestedLeaseHasExpired_ReturnsUnavailable()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var (tenant, @event, user, actor) = await SetupEventAsync(context, "report-expired-completion-lease");
+        var report = CreateReport(tenant.Id, @event.Id, user.Id, actor.Id);
+        var reportCase = EventReportCase.Create(tenant.Id, report.Id, "default", EventReportPriority.Normal, null);
+        var decision = EventReportDecision.Create(
+            tenant.Id,
+            reportCase.Id,
+            report.Id,
+            EventReportDecisionSource.LocalModerator,
+            EventReportDecisionKind.NoViolation,
+            "not_violation",
+            null,
+            user.Id,
+            null);
+        DateTime enforcementClaimedAtUtc = DateTime.UtcNow.AddMinutes(-10);
+        Guid enforcementLeaseToken = Guid.CreateVersion7();
+        decision.Execution.ClaimEnforcement(
+            enforcementLeaseToken,
+            enforcementClaimedAtUtc,
+            enforcementClaimedAtUtc.AddMinutes(2));
+        decision.Execution.RecordEnforcementReceipt(
+            enforcementLeaseToken,
+            EventReportDecisionEnforcementReceiptKind.NoAction,
+            null,
+            enforcementClaimedAtUtc.AddMinutes(1));
+        context.EventReports.Add(report);
+        context.EventReportCases.Add(reportCase);
+        context.EventReportDecisions.Add(decision);
+        await context.SaveChangesAsync();
+
+        var repository = new EventReportDecisionExecutionRepository(context);
+        Guid completionLeaseToken = Guid.CreateVersion7();
+        DateTime completionClaimedAtUtc = DateTime.UtcNow.AddMinutes(-5);
+        DateTime expiredAtUtc = completionClaimedAtUtc.AddMinutes(1);
+
+        EventReportDecisionExecutionClaimOutcome claimed = await repository.TryClaimCompletionAsync(
+            tenant.Id,
+            decision.Id,
+            completionLeaseToken,
+            completionClaimedAtUtc,
+            expiredAtUtc,
+            CancellationToken.None);
+        EventReportDecisionExecutionClaimOutcome reconciled = await repository.TryClaimCompletionAsync(
+            tenant.Id,
+            decision.Id,
+            completionLeaseToken,
+            completionClaimedAtUtc,
+            expiredAtUtc,
+            CancellationToken.None);
+
+        await Assert.That(claimed).IsEqualTo(EventReportDecisionExecutionClaimOutcome.Claimed);
+        await Assert.That(reconciled).IsEqualTo(EventReportDecisionExecutionClaimOutcome.Unavailable);
+    }
+
+    [Test]
+    public async Task CommunicationConsent_WhenChanged_PersistsBothPurposesAndRotatesConcurrencyStamp()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var (tenant, @event, user, actor) = await SetupEventAsync(context, "report-consent");
+        var report = CreateReport(tenant.Id, @event.Id, user.Id, actor.Id);
+        context.EventReports.Add(report);
+        await context.SaveChangesAsync();
+        var previousConcurrencyStamp = report.ConcurrencyStamp;
+        var changedAt = new DateTime(2026, 7, 19, 18, 30, 0, DateTimeKind.Utc);
+
+        report.ChangeReporterCommunicationConsent(
+            reportCaseUpdatesConsent: true,
+            reportFollowUpContactConsent: false,
+            changedAt);
+        await context.SaveChangesAsync();
+
+        await using var verifyContext = fixture.CreateTenantFilteredDbContext(new StaticTenantContext(tenant.Id));
+        var persisted = await verifyContext.EventReports.AsNoTracking().SingleAsync(value => value.Id == report.Id);
+        await Assert.That(persisted.ReportCaseUpdatesConsent).IsTrue();
+        await Assert.That(persisted.ReportFollowUpContactConsent).IsFalse();
+        await Assert.That(persisted.UpdatedAt).IsEqualTo(changedAt);
+        await Assert.That(persisted.ConcurrencyStamp).IsNotEqualTo(previousConcurrencyStamp);
     }
 
     [Test]
@@ -173,7 +313,8 @@ public sealed class EventReportPersistenceTests(PostgreSqlContainerFixture fixtu
             "misleading",
             EventReportPriority.Normal,
             EventReportSeverityHint.Medium,
-            reporterContactConsent: true,
+            reportCaseUpdatesConsent: false,
+            reportFollowUpContactConsent: true,
             "en",
             "iphash-" + Guid.NewGuid().ToString("N")[..16],
             "uahash-" + Guid.NewGuid().ToString("N")[..16]);

@@ -28,7 +28,8 @@ internal static class MyEventReportDtoMapper
             SubmittedAtUtc = report.CreatedAt,
             LastUpdatedAtUtc = report.UpdatedAt,
             ClosedAtUtc = report.ClosedAt,
-            ReporterContactConsent = report.ReporterContactConsent
+            ReportCaseUpdatesConsent = report.ReportCaseUpdatesConsent,
+            ReportFollowUpContactConsent = report.ReportFollowUpContactConsent
         };
     }
 

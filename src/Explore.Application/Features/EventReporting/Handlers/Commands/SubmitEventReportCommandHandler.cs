@@ -2,11 +2,13 @@
 // ABOUTME: Persists report metadata, target, encrypted evidence, local case, and outbox intent atomically.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.EventReporting.Policies;
 using Explore.Application.Features.EventReporting.Requests.Commands;
 using Explore.Application.Features.EventReporting.Validators;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Application.Telemetry;
@@ -24,7 +26,11 @@ public sealed class SubmitEventReportCommandHandler(
     IGenericRepository<EventReportEvidence, Guid> evidenceRepository,
     IGenericRepository<EventReportCase, Guid> caseRepository,
     IActorRepository actorRepository,
+    IUserRepository userRepository,
     IOutboxRepository outboxRepository,
+    INotificationPreferenceResolver notificationPreferenceResolver,
+    IRecipientNotificationMaterializer recipientNotificationMaterializer,
+    ReportReceiptNotificationFactory reportReceiptNotificationFactory,
     IUnitOfWork unitOfWork,
     ITenantContext tenantContext,
     ICurrentUserService currentUserService,
@@ -108,6 +114,33 @@ public sealed class SubmitEventReportCommandHandler(
                 ["Reporter actor is required."],
                 EventReportFailureCodes.ReporterActorUnresolved,
                 "actor_unresolved");
+        }
+
+        User? reporterUser = null;
+        NotificationPreferenceDecision? receiptEmailPreference = null;
+        if (reporterUserId.HasValue)
+        {
+            reporterUser = await userRepository.GetUserWithDetails(reporterUserId.Value, cancellationToken);
+            if (reporterUser is null || reporterUser.Id != reporterUserId.Value || reporterUser.IsDeleted)
+            {
+                return Failure(
+                    tenantId,
+                    Guid.Empty,
+                    "Reporter user could not be resolved.",
+                    ["Persisted reporter user is required."],
+                    EventReportFailureCodes.UserUnresolved,
+                    "user_unresolved");
+            }
+
+            receiptEmailPreference = await notificationPreferenceResolver.ResolveAsync(
+                new NotificationPreferenceResolveRequest(
+                    tenantId,
+                    reporterUserId.Value,
+                    OrganizationId: null,
+                    GroupId: null,
+                    NotificationPreferenceCategoryCodes.TrustSafety,
+                    NotificationPreferenceChannelCodes.Email),
+                cancellationToken);
         }
 
         if (!EventReportReasonCodePolicy.TryNormalize(request.Request.ReasonCode, out var reasonCode, out var reasonError))
@@ -210,7 +243,8 @@ public sealed class SubmitEventReportCommandHandler(
             request.Request.SubcategoryCode,
             priority,
             request.Request.SeverityHint,
-            request.Request.ReporterContactConsent && reporterUserId.HasValue,
+            reportCaseUpdatesConsent: request.Request.ReportCaseUpdatesConsent && reporterUserId.HasValue,
+            reportFollowUpContactConsent: request.Request.ReportFollowUpContactConsent && reporterUserId.HasValue,
             request.Request.ReporterLocale,
             request.ReporterIpHash,
             request.ReporterUserAgentHash,
@@ -232,14 +266,33 @@ public sealed class SubmitEventReportCommandHandler(
             now.AddHours(options.CaseSlaHours),
             now);
         var outboxMessage = EventReportOutboxMessageFactory.CreateProviderSyncRequestedMessage(report, reportCase, request.CorrelationId);
+        RecipientNotificationMaterialization? receiptMaterialization = reporterUser is null
+            ? null
+            : reportReceiptNotificationFactory.Create(
+                report,
+                options.CaseSlaHours,
+                RecipientEmailAddressResolver.Resolve(reporterUser, reporterUser.Id),
+                receiptEmailPreference!.IsEnabled,
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                now);
 
-        await unitOfWork.ExecuteInTransactionAsync(async _ =>
+        await unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
         {
             await eventReportRepository.Create(report);
             await targetRepository.Create(target);
             await evidenceRepository.Create(evidence);
             await caseRepository.Create(reportCase);
             await outboxRepository.Create(outboxMessage);
+            if (receiptMaterialization is not null)
+            {
+                await recipientNotificationMaterializer.MaterializeInCurrentTransactionAsync(
+                    receiptMaterialization,
+                    transactionCancellationToken);
+            }
         }, cancellationToken);
 
         metrics.RecordEventReportSubmission(tenantId.ToString(), "succeeded");
@@ -257,7 +310,10 @@ public sealed class SubmitEventReportCommandHandler(
             ReporterTextRetentionDays = Math.Max(1, options.ReporterTextRetentionDays),
             MaxReporterTextLength = Math.Max(1, options.MaxReporterTextLength),
             DefaultQueueCode = string.IsNullOrWhiteSpace(options.DefaultQueueCode) ? "default" : options.DefaultQueueCode.Trim(),
-            CaseSlaHours = Math.Max(1, options.CaseSlaHours),
+            CaseSlaHours = Math.Clamp(
+                options.CaseSlaHours,
+                EventReportSubmissionOptions.MinCaseSlaHours,
+                EventReportSubmissionOptions.MaxCaseSlaHours),
             ReporterFingerprintPepper = string.IsNullOrWhiteSpace(options.ReporterFingerprintPepper)
                 ? null
                 : options.ReporterFingerprintPepper.Trim()

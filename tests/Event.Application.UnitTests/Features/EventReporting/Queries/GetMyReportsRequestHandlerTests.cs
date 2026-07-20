@@ -98,6 +98,7 @@ public sealed class GetMyReportsRequestHandlerTests
             null,
             EventReportPriority.Normal,
             null,
+            false,
             true,
             "en",
             "ip-hash",

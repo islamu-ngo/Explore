@@ -26,7 +26,8 @@ public sealed class ModerationReportQueueItemDto
     public required string ReasonCode { get; init; }
     public required string ReasonName { get; init; }
     public string? SubcategoryCode { get; init; }
-    public bool ReporterContactConsent { get; init; }
+    public required bool ReportCaseUpdatesConsent { get; init; }
+    public required bool ReportFollowUpContactConsent { get; init; }
     public DateTime SubmittedAtUtc { get; init; }
     public DateTime? LastUpdatedAtUtc { get; init; }
     public DateTime? ClosedAtUtc { get; init; }

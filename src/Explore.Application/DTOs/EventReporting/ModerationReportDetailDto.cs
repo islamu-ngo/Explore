@@ -27,7 +27,8 @@ public sealed class ModerationReportDetailDto
     public required string ReasonName { get; init; }
     public string? SubcategoryCode { get; init; }
     public Guid? DuplicateGroupId { get; init; }
-    public bool ReporterContactConsent { get; init; }
+    public required bool ReportCaseUpdatesConsent { get; init; }
+    public required bool ReportFollowUpContactConsent { get; init; }
     public string? ReporterLocale { get; init; }
     public DateTime SubmittedAtUtc { get; init; }
     public DateTime? LastUpdatedAtUtc { get; init; }

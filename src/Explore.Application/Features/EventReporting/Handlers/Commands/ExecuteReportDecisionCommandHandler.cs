@@ -1,11 +1,14 @@
-// ABOUTME: Executes captured report decisions and closes or requeues the local report case.
-// ABOUTME: Reuses existing event moderation commands so enforcement records share the canonical audit path.
+// ABOUTME: Executes one captured report decision through durable claim, receipt, and completion phases.
+// ABOUTME: Commits truthful organizer/reporter notifications atomically after exact enforcement succeeds.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Features.EventReporting.Requests.Commands;
 using Explore.Application.Features.EventReporting.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -15,13 +18,26 @@ namespace Explore.Application.Features.EventReporting.Handlers.Commands;
 
 public sealed class ExecuteReportDecisionCommandHandler(
     IEventReportRepository eventReportRepository,
+    IEventReportDecisionExecutionRepository executionRepository,
+    IEventModerationRecordRepository moderationRecordRepository,
+    IEventRoleAssignmentRepository eventRoleAssignmentRepository,
     ITenantUserRepository tenantUserRepository,
+    IUserRepository userRepository,
+    INotificationPreferenceResolver notificationPreferenceResolver,
+    IRecipientNotificationMaterializer recipientNotificationMaterializer,
+    ReportOutcomeNotificationFactory reportOutcomeNotificationFactory,
+    ReportNeedsMoreInformationNotificationFactory reportNeedsMoreInformationNotificationFactory,
+    EventOrganizerWarningNotificationFactory organizerWarningNotificationFactory,
     IUnitOfWork unitOfWork,
     ITenantContext tenantContext,
     ICurrentUserService currentUserService,
     IMediator mediator) : IRequestHandler<ExecuteReportDecisionCommand, BaseCommandResponse<Guid>>
 {
-    public async Task<BaseCommandResponse<Guid>> Handle(ExecuteReportDecisionCommand request, CancellationToken cancellationToken)
+    private static readonly TimeSpan ProcessingLeaseDuration = TimeSpan.FromMinutes(10);
+
+    public async Task<BaseCommandResponse<Guid>> Handle(
+        ExecuteReportDecisionCommand request,
+        CancellationToken cancellationToken)
     {
         var validationResult = await new ExecuteReportDecisionCommandValidator().ValidateAsync(request, cancellationToken);
         if (!validationResult.IsValid)
@@ -38,9 +54,9 @@ public sealed class ExecuteReportDecisionCommandHandler(
             return Failure(request.DecisionId, "Tenant context could not be resolved.", ["Tenant context is required."], EventReportFailureCodes.TenantUnresolved);
         }
 
-        var tenantId = tenantContext.TenantId;
-        var preflightReport = await eventReportRepository.GetByIdAsync(tenantId, request.ReportId, cancellationToken);
-        var preflight = ValidateTarget(preflightReport, request);
+        Guid tenantId = tenantContext.TenantId;
+        EventReport? preflightReport = await eventReportRepository.GetByIdAsync(tenantId, request.ReportId, cancellationToken);
+        TargetValidation preflight = ValidateTarget(preflightReport, request);
         if (!preflight.Response.Success)
         {
             return preflight.Response;
@@ -59,61 +75,318 @@ public sealed class ExecuteReportDecisionCommandHandler(
             }
         }
 
-        if (preflight.Case!.Status == EventReportCaseStatus.Closed)
+        if (preflight.Execution!.State == EventReportDecisionExecutionState.Completed)
         {
             return Success(request.DecisionId, "Event report decision was already executed.");
         }
 
-        if (preflight.Case.ConcurrencyStamp != request.ExpectedCaseConcurrencyStamp)
+        Guid enforcementLeaseToken = Guid.CreateVersion7();
+        DateTime enforcementClaimedAtUtc = DateTime.UtcNow;
+        ExecutionClaimResult claim = await ClaimExecutionAsync(
+            tenantId,
+            request,
+            enforcementLeaseToken,
+            enforcementClaimedAtUtc,
+            cancellationToken);
+        if (!claim.Response.Success || claim.IsCompleted)
         {
-            return Failure(request.DecisionId, "Event report case was changed by another request.", ["Refresh the report case and try again."], EventReportFailureCodes.CaseConcurrencyConflict);
+            return claim.Response;
         }
 
-        var enforcementResponse = await ExecuteEnforcementAsync(preflight.Decision!, request, cancellationToken);
-        if (!enforcementResponse.Success)
+        if (claim.EnforcementClaimed)
         {
-            return Failure(
+            BaseCommandResponse<Guid> enforcement = await EnsureEnforcementReceiptAsync(
+                tenantId,
+                request,
+                claim.Decision!,
+                enforcementLeaseToken,
+                cancellationToken);
+            if (!enforcement.Success)
+            {
+                return enforcement;
+            }
+        }
+
+        Guid completionLeaseToken = Guid.CreateVersion7();
+        DateTime completionClaimedAtUtc = DateTime.UtcNow;
+        EventReportDecisionExecutionClaimOutcome completionClaim = await executionRepository.TryClaimCompletionAsync(
+            tenantId,
+            request.DecisionId,
+            completionLeaseToken,
+            completionClaimedAtUtc,
+            completionClaimedAtUtc.Add(ProcessingLeaseDuration),
+            cancellationToken);
+        switch (completionClaim)
+        {
+            case EventReportDecisionExecutionClaimOutcome.Completed:
+                return Success(request.DecisionId, "Event report decision was already executed.");
+            case EventReportDecisionExecutionClaimOutcome.Claimed:
+            case EventReportDecisionExecutionClaimOutcome.SameLease:
+                break;
+            case EventReportDecisionExecutionClaimOutcome.CompletionPending:
+            case EventReportDecisionExecutionClaimOutcome.Unavailable:
+                return Failure(
+                    request.DecisionId,
+                    "Event report decision execution is already in progress.",
+                    ["Another executor currently owns the decision completion lease."],
+                    EventReportFailureCodes.DecisionExecutionInProgress);
+            default:
+                throw new ArgumentOutOfRangeException(
+                    nameof(completionClaim),
+                    completionClaim,
+                    "Unsupported report-decision completion claim outcome.");
+        }
+
+        DateTime preparationAuthorityAtUtc = DateTime.UtcNow;
+        PreparedCompletion prepared;
+        try
+        {
+            prepared = await PrepareCompletionAsync(
+                tenantId,
+                request,
+                preparationAuthorityAtUtc,
+                cancellationToken);
+        }
+        catch (DecisionCompletionPreparationException ex)
+        {
+            await executionRepository.TryReleaseCompletionClaimAsync(
+                tenantId,
                 request.DecisionId,
-                "Event report decision enforcement failed.",
-                enforcementResponse.Errors ?? ["Decision enforcement failed."],
-                enforcementResponse.FailureCode ?? EventReportFailureCodes.DecisionExecutionFailed);
+                completionLeaseToken,
+                ex.FailureCode,
+                DateTime.UtcNow,
+                cancellationToken);
+            return Failure(request.DecisionId, ex.Message, [ex.Message], ex.FailureCode);
         }
 
-        return await unitOfWork.ExecuteInTransactionAsync(async token =>
+        DateTime completedAtUtc = DateTime.UtcNow;
+        try
         {
-            var report = await eventReportRepository.GetByIdForUpdateAsync(tenantId, request.ReportId, token);
-            var target = ValidateTarget(report, request);
+            return await CompleteDecisionAsync(
+                tenantId,
+                request,
+                completionLeaseToken,
+                completedAtUtc,
+                prepared,
+                cancellationToken);
+        }
+        catch (DecisionCompletionPreparationException ex)
+        {
+            await executionRepository.TryReleaseCompletionClaimAsync(
+                tenantId,
+                request.DecisionId,
+                completionLeaseToken,
+                ex.FailureCode,
+                DateTime.UtcNow,
+                cancellationToken);
+            return Failure(request.DecisionId, ex.Message, [ex.Message], ex.FailureCode);
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            await executionRepository.TryReleaseCompletionClaimAsync(
+                tenantId,
+                request.DecisionId,
+                completionLeaseToken,
+                EventReportFailureCodes.DecisionCompletionFailed,
+                DateTime.UtcNow,
+                CancellationToken.None);
+            throw;
+        }
+    }
+
+    private async Task<ExecutionClaimResult> ClaimExecutionAsync(
+        Guid tenantId,
+        ExecuteReportDecisionCommand request,
+        Guid leaseToken,
+        DateTime claimedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        return await unitOfWork.ExecuteSerializableAsync(async token =>
+        {
+            EventReport? report = await eventReportRepository.GetByIdAsync(tenantId, request.ReportId, token);
+            TargetValidation target = ValidateTarget(report, request);
             if (!target.Response.Success)
             {
-                return target.Response;
+                return ExecutionClaimResult.Failed(target.Response);
             }
 
-            if (target.Case!.Status == EventReportCaseStatus.Closed)
+            EventReportDecisionExecution execution = target.Execution!;
+            if (execution.State == EventReportDecisionExecutionState.Completed)
             {
-                return Success(request.DecisionId, "Event report decision was already executed.");
+                return ExecutionClaimResult.Completed(Success(request.DecisionId, "Event report decision was already executed."));
             }
 
             if (target.Case.ConcurrencyStamp != request.ExpectedCaseConcurrencyStamp)
             {
-                return Failure(request.DecisionId, "Event report case was changed by another request.", ["Refresh the report case and try again."], EventReportFailureCodes.CaseConcurrencyConflict);
+                return ExecutionClaimResult.Failed(Failure(
+                    request.DecisionId,
+                    "Event report case was changed by another request.",
+                    ["Refresh the report case and try again."],
+                    EventReportFailureCodes.CaseConcurrencyConflict));
             }
 
-            ApplyCompletion(target.Report!, target.Case, target.Decision!, DateTime.UtcNow);
-            await eventReportRepository.Update(target.Report!);
+            if (execution.State == EventReportDecisionExecutionState.CompletionPending)
+            {
+                return ExecutionClaimResult.CompletionPending(target.Decision!);
+            }
 
-            return Success(request.DecisionId, "Event report decision executed successfully.");
+            EventReportDecisionExecutionClaimOutcome outcome = await executionRepository.TryClaimEnforcementAsync(
+                tenantId,
+                request.DecisionId,
+                leaseToken,
+                claimedAtUtc,
+                claimedAtUtc.Add(ProcessingLeaseDuration),
+                token);
+            return outcome switch
+            {
+                EventReportDecisionExecutionClaimOutcome.Claimed
+                    or EventReportDecisionExecutionClaimOutcome.SameLease =>
+                    ExecutionClaimResult.Enforcement(target.Decision!),
+                EventReportDecisionExecutionClaimOutcome.CompletionPending =>
+                    ExecutionClaimResult.CompletionPending(target.Decision!),
+                EventReportDecisionExecutionClaimOutcome.Completed =>
+                    ExecutionClaimResult.Completed(Success(request.DecisionId, "Event report decision was already executed.")),
+                EventReportDecisionExecutionClaimOutcome.Unavailable => ExecutionClaimResult.Failed(Failure(
+                    request.DecisionId,
+                    "Event report decision execution is already in progress.",
+                    ["Another executor currently owns the enforcement lease."],
+                    EventReportFailureCodes.DecisionExecutionInProgress)),
+                _ => throw new ArgumentOutOfRangeException(
+                    nameof(outcome),
+                    outcome,
+                    "Unsupported report-decision enforcement claim outcome.")
+            };
         }, cancellationToken);
     }
 
-    private async Task<BaseCommandResponse<Guid>> ExecuteEnforcementAsync(
+    private async Task<BaseCommandResponse<Guid>> EnsureEnforcementReceiptAsync(
+        Guid tenantId,
+        ExecuteReportDecisionCommand request,
+        EventReportDecision decision,
+        Guid leaseToken,
+        CancellationToken cancellationToken)
+    {
+        EventReportDecisionEnforcementReceiptKind receiptKind = MapReceiptKind(decision.DecisionKind);
+        if (receiptKind is not (EventReportDecisionEnforcementReceiptKind.LightModeration
+            or EventReportDecisionEnforcementReceiptKind.HeavyRedaction))
+        {
+            return await RecordReceiptAsync(tenantId, request, leaseToken, receiptKind, null, cancellationToken);
+        }
+
+        EventModerationRecord? moderationRecord = await moderationRecordRepository.GetBySourceReportDecisionAsync(
+            tenantId,
+            request.ReportId,
+            request.DecisionId,
+            cancellationToken);
+        if (moderationRecord is null)
+        {
+            BaseCommandResponse<Guid> enforcementResponse;
+            try
+            {
+                enforcementResponse = await ExecuteModerationEnforcementAsync(decision, request, cancellationToken);
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                await executionRepository.TryReleaseEnforcementClaimAsync(
+                    tenantId,
+                    request.DecisionId,
+                    leaseToken,
+                    EventReportFailureCodes.DecisionExecutionFailed,
+                    DateTime.UtcNow,
+                    CancellationToken.None);
+                throw;
+            }
+
+            moderationRecord = await moderationRecordRepository.GetBySourceReportDecisionAsync(
+                tenantId,
+                request.ReportId,
+                request.DecisionId,
+                cancellationToken);
+            if (moderationRecord is null)
+            {
+                string failureCode = enforcementResponse.FailureCode ?? EventReportFailureCodes.DecisionEnforcementReceiptMissing;
+                await executionRepository.TryReleaseEnforcementClaimAsync(
+                    tenantId,
+                    request.DecisionId,
+                    leaseToken,
+                    failureCode,
+                    DateTime.UtcNow,
+                    cancellationToken);
+                return Failure(
+                    request.DecisionId,
+                    "Event report decision enforcement did not produce its exact receipt.",
+                    enforcementResponse.Errors ?? ["The exact decision-bound moderation receipt was not found."],
+                    failureCode);
+            }
+        }
+
+        if (!IsExpectedModerationReceipt(moderationRecord, decision, request))
+        {
+            await executionRepository.TryReleaseEnforcementClaimAsync(
+                tenantId,
+                request.DecisionId,
+                leaseToken,
+                EventReportFailureCodes.DecisionEnforcementReceiptMismatch,
+                DateTime.UtcNow,
+                cancellationToken);
+            return Failure(
+                request.DecisionId,
+                "Event report decision enforcement receipt does not match the captured decision.",
+                ["The decision-bound moderation receipt kind or authority fields do not match."],
+                EventReportFailureCodes.DecisionEnforcementReceiptMismatch);
+        }
+
+        return await RecordReceiptAsync(
+            tenantId,
+            request,
+            leaseToken,
+            receiptKind,
+            moderationRecord.Id,
+            cancellationToken);
+    }
+
+    private async Task<BaseCommandResponse<Guid>> RecordReceiptAsync(
+        Guid tenantId,
+        ExecuteReportDecisionCommand request,
+        Guid leaseToken,
+        EventReportDecisionEnforcementReceiptKind receiptKind,
+        Guid? receiptId,
+        CancellationToken cancellationToken)
+    {
+        EventReportDecisionExecutionTransitionOutcome recorded = await executionRepository.TryRecordEnforcementReceiptAsync(
+            tenantId,
+            request.DecisionId,
+            leaseToken,
+            receiptKind,
+            receiptId,
+            DateTime.UtcNow,
+            cancellationToken);
+        return recorded switch
+        {
+            EventReportDecisionExecutionTransitionOutcome.Applied
+                or EventReportDecisionExecutionTransitionOutcome.AlreadyApplied =>
+                Success(request.DecisionId, "Event report decision enforcement receipt recorded."),
+            EventReportDecisionExecutionTransitionOutcome.Conflict => Failure(
+                request.DecisionId,
+                "Event report decision enforcement lease was lost before receipt persistence.",
+                ["Retry the decision execution so the durable receipt can be reconciled."],
+                EventReportFailureCodes.DecisionExecutionInProgress),
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(recorded),
+                recorded,
+                "Unsupported report-decision enforcement transition outcome.")
+        };
+    }
+
+    private Task<BaseCommandResponse<Guid>> ExecuteModerationEnforcementAsync(
         EventReportDecision decision,
         ExecuteReportDecisionCommand request,
         CancellationToken cancellationToken)
     {
-        var correlationId = NormalizeCorrelationId(request);
+        string correlationId = NormalizeCorrelationId(request);
         return decision.DecisionKind switch
         {
-            EventReportDecisionKind.LightModerate => await mediator.Send(new ModerateEventCommand
+            EventReportDecisionKind.LightModerate => mediator.Send(new ModerateEventCommand
             {
                 Id = request.EventId,
                 ReasonCode = decision.ReasonCode,
@@ -121,7 +394,7 @@ public sealed class ExecuteReportDecisionCommandHandler(
                 SourceReportId = request.ReportId,
                 SourceReportDecisionId = request.DecisionId
             }, cancellationToken),
-            EventReportDecisionKind.HeavyRedact => await mediator.Send(new HeavyRedactEventCommand
+            EventReportDecisionKind.HeavyRedact => mediator.Send(new HeavyRedactEventCommand
             {
                 Id = request.EventId,
                 ReasonCode = decision.ReasonCode,
@@ -129,8 +402,350 @@ public sealed class ExecuteReportDecisionCommandHandler(
                 SourceReportId = request.ReportId,
                 SourceReportDecisionId = request.DecisionId
             }, cancellationToken),
-            _ => Success(request.DecisionId, "No event moderation enforcement required.")
+            _ => Task.FromResult(Success(request.DecisionId, "No event moderation command is required."))
         };
+    }
+
+    private async Task<PreparedCompletion> PrepareCompletionAsync(
+        Guid tenantId,
+        ExecuteReportDecisionCommand request,
+        DateTime completionAuthorityAtUtc,
+        CancellationToken cancellationToken)
+    {
+        EventReport? report = await eventReportRepository.GetByIdAsync(tenantId, request.ReportId, cancellationToken);
+        TargetValidation target = ValidateTarget(report, request);
+        if (!target.Response.Success)
+        {
+            throw new DecisionCompletionPreparationException(
+                target.Response.FailureCode ?? EventReportFailureCodes.DecisionExecutionInvalidState,
+                target.Response.Message ?? "The report decision target is no longer valid.");
+        }
+
+        EventReportDecision decision = target.Decision!;
+        await ValidateRecordedReceiptAsync(
+            tenantId,
+            request,
+            decision,
+            target.Execution!,
+            cancellationToken);
+        List<PreparedRecipientIds> organizerRecipients = [];
+        if (decision.DecisionKind == EventReportDecisionKind.WarnOrganizer)
+        {
+            IReadOnlyList<EventRoleAssignment> owners = await eventRoleAssignmentRepository.GetEffectiveOwnersForEventAsync(
+                tenantId,
+                request.EventId,
+                completionAuthorityAtUtc,
+                cancellationToken);
+            List<Guid> activeOwnerUserIds = [];
+            foreach (EventRoleAssignment owner in owners.GroupBy(value => value.UserId).Select(group => group.First()))
+            {
+                if (!owner.User.IsDeleted
+                    && await tenantUserRepository.IsActiveTenantUserAsync(tenantId, owner.UserId, cancellationToken))
+                {
+                    activeOwnerUserIds.Add(owner.UserId);
+                }
+            }
+
+            if (activeOwnerUserIds.Count == 0)
+            {
+                throw new DecisionCompletionPreparationException(
+                    EventReportFailureCodes.DecisionOrganizerUnavailable,
+                    "No active event owner is available to receive the required organizer warning.");
+            }
+
+            foreach (Guid ownerUserId in activeOwnerUserIds.Distinct().Order())
+            {
+                organizerRecipients.Add(PreparedRecipientIds.Create(ownerUserId));
+            }
+        }
+
+        PreparedRecipientIds? reporterRecipient;
+        if (decision.DecisionKind == EventReportDecisionKind.NeedsMoreInfo)
+        {
+            reporterRecipient = await PrepareRequiredReporterRecipientAsync(
+                tenantId,
+                report!,
+                cancellationToken);
+        }
+        else
+        {
+            reporterRecipient = HasFinalReporterOutcome(decision.DecisionKind)
+                && report!.ReporterUserId is { } reporterUserId
+                    ? PreparedRecipientIds.Create(reporterUserId)
+                    : null;
+        }
+
+        return new PreparedCompletion(organizerRecipients, reporterRecipient);
+    }
+
+    private async Task<PreparedRecipientIds> PrepareRequiredReporterRecipientAsync(
+        Guid tenantId,
+        EventReport report,
+        CancellationToken cancellationToken)
+    {
+        if (report.ReporterUserId is not { } reporterUserId
+            || reporterUserId == Guid.Empty
+            || !await tenantUserRepository.IsActiveTenantUserAsync(tenantId, reporterUserId, cancellationToken))
+        {
+            throw RequiredReporterUnavailable();
+        }
+
+        User? reporter = await userRepository.GetUserWithDetails(reporterUserId, cancellationToken);
+        if (reporter is null || reporter.IsDeleted)
+        {
+            throw RequiredReporterUnavailable();
+        }
+
+        return PreparedRecipientIds.Create(reporterUserId);
+    }
+
+    private async Task ValidateRecordedReceiptAsync(
+        Guid tenantId,
+        ExecuteReportDecisionCommand request,
+        EventReportDecision decision,
+        EventReportDecisionExecution execution,
+        CancellationToken cancellationToken)
+    {
+        EventReportDecisionEnforcementReceiptKind expectedKind = MapReceiptKind(decision.DecisionKind);
+        if (execution.State != EventReportDecisionExecutionState.CompletionPending
+            || execution.EnforcementReceiptKind != expectedKind)
+        {
+            throw new DecisionCompletionPreparationException(
+                EventReportFailureCodes.DecisionEnforcementReceiptMismatch,
+                "The durable enforcement receipt does not match the captured decision.");
+        }
+
+        if (expectedKind is not (EventReportDecisionEnforcementReceiptKind.LightModeration
+            or EventReportDecisionEnforcementReceiptKind.HeavyRedaction))
+        {
+            if (execution.EnforcementReceiptId is not null || execution.ModerationRecordId is not null)
+            {
+                throw new DecisionCompletionPreparationException(
+                    EventReportFailureCodes.DecisionEnforcementReceiptMismatch,
+                    "The durable enforcement receipt contains an unexpected moderation record.");
+            }
+
+            return;
+        }
+
+        EventModerationRecord? moderationRecord = await moderationRecordRepository.GetBySourceReportDecisionAsync(
+            tenantId,
+            request.ReportId,
+            request.DecisionId,
+            cancellationToken);
+        if (moderationRecord is null
+            || moderationRecord.Id != execution.EnforcementReceiptId
+            || moderationRecord.Id != execution.ModerationRecordId
+            || !IsExpectedModerationReceipt(moderationRecord, decision, request))
+        {
+            throw new DecisionCompletionPreparationException(
+                EventReportFailureCodes.DecisionEnforcementReceiptMismatch,
+                "The exact decision-bound moderation receipt is missing or no longer matches enforcement.");
+        }
+    }
+
+    private async Task<BaseCommandResponse<Guid>> CompleteDecisionAsync(
+        Guid tenantId,
+        ExecuteReportDecisionCommand request,
+        Guid completionLeaseToken,
+        DateTime completedAtUtc,
+        PreparedCompletion prepared,
+        CancellationToken cancellationToken)
+    {
+        return await unitOfWork.ExecuteSerializableAsync(async token =>
+        {
+            EventReport? report = await eventReportRepository.GetByIdForUpdateAsync(tenantId, request.ReportId, token);
+            TargetValidation target = ValidateTarget(report, request);
+            if (!target.Response.Success)
+            {
+                throw new DecisionCompletionPreparationException(
+                    target.Response.FailureCode ?? EventReportFailureCodes.DecisionExecutionInvalidState,
+                    target.Response.Message ?? "The report decision target is no longer valid.");
+            }
+
+            EventReportDecisionExecution execution = target.Execution!;
+            if (execution.State == EventReportDecisionExecutionState.Completed)
+            {
+                return Success(request.DecisionId, "Event report decision was already executed.");
+            }
+
+            if (execution.State != EventReportDecisionExecutionState.CompletionPending
+                || execution.ProcessingLeaseToken != completionLeaseToken
+                || execution.ProcessingLeaseExpiresAtUtc is not { } expiresAtUtc
+                || expiresAtUtc <= DateTime.UtcNow)
+            {
+                throw new DecisionCompletionPreparationException(
+                    EventReportFailureCodes.DecisionExecutionInProgress,
+                    "The report-decision completion lease is no longer active.");
+            }
+
+            if (target.Case.ConcurrencyStamp != request.ExpectedCaseConcurrencyStamp)
+            {
+                throw new DecisionCompletionPreparationException(
+                    EventReportFailureCodes.CaseConcurrencyConflict,
+                    "The report case changed after enforcement and cannot be completed from stale state.");
+            }
+
+            await ValidateRecordedReceiptAsync(
+                tenantId,
+                request,
+                target.Decision!,
+                execution,
+                token);
+            DateTime authorityAtUtc = DateTime.UtcNow;
+            CurrentRecipientMaterializations currentRecipients = await ResolveCurrentRecipientsAsync(
+                tenantId,
+                request,
+                report!,
+                target.Decision!,
+                prepared,
+                authorityAtUtc,
+                completedAtUtc,
+                token);
+            ApplyCompletion(report!, target.Case, target.Decision!, completedAtUtc);
+            execution.Complete(completionLeaseToken, completedAtUtc);
+
+            foreach (RecipientNotificationMaterialization warning in currentRecipients.OrganizerWarnings)
+            {
+                await recipientNotificationMaterializer.MaterializeInCurrentTransactionAsync(warning, token);
+            }
+
+            if (currentRecipients.ReporterNotification is not null)
+            {
+                await recipientNotificationMaterializer.MaterializeInCurrentTransactionAsync(currentRecipients.ReporterNotification, token);
+            }
+
+            await eventReportRepository.Update(report!);
+            return Success(request.DecisionId, "Event report decision executed successfully.");
+        }, cancellationToken);
+    }
+
+    private async Task<CurrentRecipientMaterializations> ResolveCurrentRecipientsAsync(
+        Guid tenantId,
+        ExecuteReportDecisionCommand request,
+        EventReport report,
+        EventReportDecision decision,
+        PreparedCompletion prepared,
+        DateTime authorityAtUtc,
+        DateTime materializedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        List<RecipientNotificationMaterialization> organizerWarnings = [];
+        if (decision.DecisionKind == EventReportDecisionKind.WarnOrganizer)
+        {
+            IReadOnlyList<EventRoleAssignment> owners = await eventRoleAssignmentRepository.GetEffectiveOwnersForEventAsync(
+                tenantId,
+                request.EventId,
+                authorityAtUtc,
+                cancellationToken);
+            List<Guid> activeOwnerUserIds = [];
+            foreach (Guid userId in owners
+                         .Where(owner => !owner.User.IsDeleted)
+                         .Select(owner => owner.UserId)
+                         .Distinct()
+                         .Order())
+            {
+                if (await tenantUserRepository.IsActiveTenantUserAsync(tenantId, userId, cancellationToken))
+                {
+                    activeOwnerUserIds.Add(userId);
+                }
+            }
+
+            IReadOnlyList<Guid> preparedOwnerUserIds = prepared.OrganizerRecipients
+                .Select(recipient => recipient.UserId)
+                .Order()
+                .ToArray();
+            if (!activeOwnerUserIds.SequenceEqual(preparedOwnerUserIds))
+            {
+                throw new DecisionCompletionPreparationException(
+                    EventReportFailureCodes.DecisionRecipientAuthorityChanged,
+                    "Event-owner authority changed while the organizer warning was being prepared.");
+            }
+
+            foreach (EventRoleAssignment owner in owners
+                         .Where(owner => activeOwnerUserIds.Contains(owner.UserId))
+                         .GroupBy(owner => owner.UserId)
+                         .Select(group => group.First())
+                         .OrderBy(owner => owner.UserId))
+            {
+                PreparedRecipientIds ids = prepared.OrganizerRecipients.Single(value => value.UserId == owner.UserId);
+                NotificationPreferenceDecision preference = await notificationPreferenceResolver.ResolveAsync(
+                    new NotificationPreferenceResolveRequest(
+                        tenantId,
+                        owner.UserId,
+                        OrganizationId: null,
+                        GroupId: null,
+                        NotificationPreferenceCategoryCodes.TrustSafety,
+                        NotificationPreferenceChannelCodes.Email),
+                    cancellationToken);
+                organizerWarnings.Add(organizerWarningNotificationFactory.Create(
+                    report,
+                    decision,
+                    owner.UserId,
+                    RecipientEmailAddressResolver.Resolve(owner.User, owner.UserId),
+                    preference.IsEnabled,
+                    ids.IntentId,
+                    ids.InAppNotificationId,
+                    ids.InAppDeliveryId,
+                    ids.EmailDeliveryId,
+                    ids.EmailDispatchOutboxId,
+                    materializedAtUtc));
+            }
+        }
+
+        RecipientNotificationMaterialization? reporterNotification = null;
+        if (prepared.ReporterRecipient is { } reporterIds
+            && report.ReporterUserId == reporterIds.UserId
+            && await tenantUserRepository.IsActiveTenantUserAsync(tenantId, reporterIds.UserId, cancellationToken))
+        {
+            User? reporter = await userRepository.GetUserWithDetails(reporterIds.UserId, cancellationToken);
+            if (reporter is not null && !reporter.IsDeleted)
+            {
+                NotificationPreferenceDecision preference = await notificationPreferenceResolver.ResolveAsync(
+                    new NotificationPreferenceResolveRequest(
+                        tenantId,
+                        reporterIds.UserId,
+                        OrganizationId: null,
+                        GroupId: null,
+                        NotificationPreferenceCategoryCodes.TrustSafety,
+                        NotificationPreferenceChannelCodes.Email),
+                    cancellationToken);
+                RecipientEmailAddressResolution emailAddress = RecipientEmailAddressResolver.Resolve(
+                    reporter,
+                    reporterIds.UserId);
+                reporterNotification = decision.DecisionKind == EventReportDecisionKind.NeedsMoreInfo
+                    ? reportNeedsMoreInformationNotificationFactory.Create(
+                        report,
+                        decision,
+                        emailAddress,
+                        preference.IsEnabled,
+                        reporterIds.IntentId,
+                        reporterIds.InAppNotificationId,
+                        reporterIds.InAppDeliveryId,
+                        reporterIds.EmailDeliveryId,
+                        reporterIds.EmailDispatchOutboxId,
+                        materializedAtUtc)
+                    : reportOutcomeNotificationFactory.Create(
+                        report,
+                        decision,
+                        emailAddress,
+                        preference.IsEnabled,
+                        reporterIds.IntentId,
+                        reporterIds.InAppNotificationId,
+                        reporterIds.InAppDeliveryId,
+                        reporterIds.EmailDeliveryId,
+                        reporterIds.EmailDispatchOutboxId,
+                        materializedAtUtc);
+            }
+        }
+
+        if (decision.DecisionKind == EventReportDecisionKind.NeedsMoreInfo
+            && reporterNotification is null)
+        {
+            throw RequiredReporterUnavailable();
+        }
+
+        return new CurrentRecipientMaterializations(organizerWarnings, reporterNotification);
     }
 
     private static void ApplyCompletion(
@@ -142,8 +757,14 @@ public sealed class ExecuteReportDecisionCommandHandler(
         switch (decision.DecisionKind)
         {
             case EventReportDecisionKind.NoViolation:
+                report.UpdateStatus(EventReportStatus.Dismissed, utcNow);
+                reportCase.Close(utcNow);
+                break;
             case EventReportDecisionKind.Duplicate:
-            case EventReportDecisionKind.Escalate:
+                report.MarkDuplicate(
+                    decision.DuplicateGroupId
+                    ?? throw new InvalidOperationException("Duplicate report decisions require a persisted duplicate group."),
+                    utcNow);
                 reportCase.Close(utcNow);
                 break;
             case EventReportDecisionKind.LightModerate:
@@ -156,56 +777,119 @@ public sealed class ExecuteReportDecisionCommandHandler(
                 report.UpdateStatus(EventReportStatus.UnderReview, utcNow);
                 reportCase.MarkWaitingReporter(utcNow);
                 break;
+            case EventReportDecisionKind.Escalate:
+                report.UpdateStatus(EventReportStatus.Escalated, utcNow);
+                reportCase.MarkWaitingExternal(utcNow);
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(decision), decision.DecisionKind, "Unsupported event report decision kind.");
         }
     }
 
-    private static (BaseCommandResponse<Guid> Response, EventReport? Report, EventReportCase? Case, EventReportDecision? Decision) ValidateTarget(
+    private static EventReportDecisionEnforcementReceiptKind MapReceiptKind(
+        EventReportDecisionKind decisionKind) => decisionKind switch
+        {
+            EventReportDecisionKind.NoViolation or EventReportDecisionKind.Duplicate =>
+                EventReportDecisionEnforcementReceiptKind.NoAction,
+            EventReportDecisionKind.LightModerate => EventReportDecisionEnforcementReceiptKind.LightModeration,
+            EventReportDecisionKind.HeavyRedact => EventReportDecisionEnforcementReceiptKind.HeavyRedaction,
+            EventReportDecisionKind.WarnOrganizer => EventReportDecisionEnforcementReceiptKind.OrganizerWarning,
+            EventReportDecisionKind.Escalate or EventReportDecisionKind.NeedsMoreInfo =>
+                EventReportDecisionEnforcementReceiptKind.NonTerminal,
+            _ => throw new ArgumentOutOfRangeException(nameof(decisionKind), decisionKind, "Unsupported report decision kind.")
+        };
+
+    private static bool IsExpectedModerationReceipt(
+        EventModerationRecord record,
+        EventReportDecision decision,
+        ExecuteReportDecisionCommand request)
+    {
+        EventModerationActionKind expectedKind = decision.DecisionKind switch
+        {
+            EventReportDecisionKind.LightModerate => EventModerationActionKind.LightModerated,
+            EventReportDecisionKind.HeavyRedact => EventModerationActionKind.HeavyRedacted,
+            _ => throw new ArgumentOutOfRangeException(nameof(decision), decision.DecisionKind, "A moderation receipt was not expected.")
+        };
+        return record.EventId == request.EventId
+            && record.SourceReportId == request.ReportId
+            && record.SourceReportDecisionId == request.DecisionId
+            && record.ActionKind == expectedKind
+            && record.ReasonCode == decision.ReasonCode
+            && record.IsIrreversible == (expectedKind == EventModerationActionKind.HeavyRedacted);
+    }
+
+    private static bool HasFinalReporterOutcome(EventReportDecisionKind decisionKind) => decisionKind is
+        EventReportDecisionKind.NoViolation
+        or EventReportDecisionKind.Duplicate
+        or EventReportDecisionKind.LightModerate
+        or EventReportDecisionKind.HeavyRedact
+        or EventReportDecisionKind.WarnOrganizer;
+
+    private static DecisionCompletionPreparationException RequiredReporterUnavailable() => new(
+        EventReportFailureCodes.DecisionRecipientAuthorityChanged,
+        "An active persisted reporter is required before requesting more information.");
+
+    private static TargetValidation ValidateTarget(
         EventReport? report,
         ExecuteReportDecisionCommand request)
     {
         if (report is null)
         {
-            return (Failure(request.DecisionId, "Event report was not found.", ["Event report was not found."], EventReportFailureCodes.ReportNotFound), null, null, null);
+            return TargetValidation.Invalid(Failure(request.DecisionId, "Event report was not found.", ["Event report was not found."], EventReportFailureCodes.ReportNotFound));
         }
 
         if (report.EventId != request.EventId)
         {
-            return (Failure(request.DecisionId, "Event report does not belong to the requested event.", ["Event report does not belong to the requested event."], EventReportFailureCodes.EventMismatch), null, null, null);
+            return TargetValidation.Invalid(Failure(request.DecisionId, "Event report does not belong to the requested event.", ["Event report does not belong to the requested event."], EventReportFailureCodes.EventMismatch));
         }
 
-        var reportCase = report.Cases.FirstOrDefault(candidate => candidate.Id == request.CaseId);
+        EventReportCase? reportCase = report.Cases.FirstOrDefault(candidate => candidate.Id == request.CaseId);
         if (reportCase is null)
         {
-            return (Failure(request.DecisionId, "Event report case was not found.", ["Event report case was not found."], EventReportFailureCodes.CaseNotFound), null, null, null);
+            return TargetValidation.Invalid(Failure(request.DecisionId, "Event report case was not found.", ["Event report case was not found."], EventReportFailureCodes.CaseNotFound));
         }
 
-        if (reportCase.Status is not (EventReportCaseStatus.DecisionReady or EventReportCaseStatus.Closed))
-        {
-            return (Failure(request.DecisionId, "Only decision-ready report cases can be executed.", ["Only decision-ready report cases can be executed."], EventReportFailureCodes.CaseInvalidStatus), null, null, null);
-        }
-
-        var decision = report.Decisions.FirstOrDefault(candidate => candidate.Id == request.DecisionId);
+        EventReportDecision? decision = report.Decisions.FirstOrDefault(candidate => candidate.Id == request.DecisionId);
         if (decision is null)
         {
-            return (Failure(request.DecisionId, "Event report decision was not found.", ["Event report decision was not found."], EventReportFailureCodes.DecisionNotFound), null, null, null);
+            return TargetValidation.Invalid(Failure(request.DecisionId, "Event report decision was not found.", ["Event report decision was not found."], EventReportFailureCodes.DecisionNotFound));
         }
 
         if (decision.ReportId != report.Id || decision.CaseId != reportCase.Id)
         {
-            return (Failure(request.DecisionId, "Event report decision does not belong to the requested report case.", ["Event report decision does not belong to the requested report case."], EventReportFailureCodes.DecisionInvalid), null, null, null);
+            return TargetValidation.Invalid(Failure(request.DecisionId, "Event report decision does not belong to the requested report case.", ["Event report decision does not belong to the requested report case."], EventReportFailureCodes.DecisionInvalid));
         }
 
-        return (Success(request.DecisionId, "Event report decision target is valid."), report, reportCase, decision);
+        if (decision.Execution is null
+            || decision.Execution.TenantId != report.TenantId
+            || decision.Execution.ReportId != report.Id
+            || decision.Execution.DecisionId != decision.Id)
+        {
+            return TargetValidation.Invalid(Failure(
+                request.DecisionId,
+                "Event report decision execution state was not found.",
+                ["The decision does not have its required durable execution state."],
+                EventReportFailureCodes.DecisionExecutionMissing));
+        }
+
+        if (decision.Execution.State != EventReportDecisionExecutionState.Completed
+            && (reportCase.CurrentDecisionId != decision.Id
+                || reportCase.Status != EventReportCaseStatus.DecisionReady))
+        {
+            return TargetValidation.Invalid(Failure(
+                request.DecisionId,
+                "Only the current decision-ready report decision can be executed.",
+                ["The decision is stale or the report case is not decision-ready."],
+                EventReportFailureCodes.DecisionExecutionInvalidState));
+        }
+
+        return TargetValidation.Valid(report, reportCase, decision, decision.Execution);
     }
 
-    private static string NormalizeCorrelationId(ExecuteReportDecisionCommand request)
-    {
-        return string.IsNullOrWhiteSpace(request.CorrelationId)
+    private static string NormalizeCorrelationId(ExecuteReportDecisionCommand request) =>
+        string.IsNullOrWhiteSpace(request.CorrelationId)
             ? $"report-decision:{request.DecisionId:N}"
             : request.CorrelationId.Trim();
-    }
 
     private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()
     {
@@ -214,13 +898,76 @@ public sealed class ExecuteReportDecisionCommandHandler(
         Message = message
     };
 
-    private static BaseCommandResponse<Guid> Failure(Guid id, string message, IEnumerable<string> errors, string? failureCode = null) => new()
-    {
-        Success = false,
-        Id = id,
-        Message = message,
-        Errors = errors.ToList(),
-        FailureCode = failureCode
-    };
+    private static BaseCommandResponse<Guid> Failure(
+        Guid id,
+        string message,
+        IEnumerable<string> errors,
+        string? failureCode = null) => new()
+        {
+            Success = false,
+            Id = id,
+            Message = message,
+            Errors = errors.ToList(),
+            FailureCode = failureCode
+        };
 
+    private sealed record TargetValidation(
+        BaseCommandResponse<Guid> Response,
+        EventReport? Report,
+        EventReportCase? Case,
+        EventReportDecision? Decision,
+        EventReportDecisionExecution? Execution)
+    {
+        public static TargetValidation Invalid(BaseCommandResponse<Guid> response) => new(response, null, null, null, null);
+
+        public static TargetValidation Valid(
+            EventReport report,
+            EventReportCase reportCase,
+            EventReportDecision decision,
+            EventReportDecisionExecution execution) =>
+            new(Success(decision.Id, "Event report decision target is valid."), report, reportCase, decision, execution);
+    }
+
+    private sealed record ExecutionClaimResult(
+        BaseCommandResponse<Guid> Response,
+        EventReportDecision? Decision,
+        bool EnforcementClaimed,
+        bool IsCompleted)
+    {
+        public static ExecutionClaimResult Failed(BaseCommandResponse<Guid> response) => new(response, null, false, false);
+        public static ExecutionClaimResult Completed(BaseCommandResponse<Guid> response) => new(response, null, false, true);
+        public static ExecutionClaimResult CompletionPending(EventReportDecision decision) => new(Success(decision.Id, "Decision enforcement was already receipted."), decision, false, false);
+        public static ExecutionClaimResult Enforcement(EventReportDecision decision) => new(Success(decision.Id, "Decision enforcement claimed."), decision, true, false);
+    }
+
+    private sealed record PreparedCompletion(
+        IReadOnlyList<PreparedRecipientIds> OrganizerRecipients,
+        PreparedRecipientIds? ReporterRecipient);
+
+    private sealed record PreparedRecipientIds(
+        Guid UserId,
+        Guid IntentId,
+        Guid InAppNotificationId,
+        Guid InAppDeliveryId,
+        Guid EmailDeliveryId,
+        Guid EmailDispatchOutboxId)
+    {
+        public static PreparedRecipientIds Create(Guid userId) => new(
+            userId,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7());
+    }
+
+    private sealed record CurrentRecipientMaterializations(
+        IReadOnlyList<RecipientNotificationMaterialization> OrganizerWarnings,
+        RecipientNotificationMaterialization? ReporterNotification);
+
+    private sealed class DecisionCompletionPreparationException(string failureCode, string message)
+        : Exception(message)
+    {
+        public string FailureCode { get; } = failureCode;
+    }
 }

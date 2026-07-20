@@ -124,6 +124,7 @@ public sealed class CompositeEventReportProvider : IEventReportProvider
             envelope.ReportId,
             envelope.EventId,
             envelope.CaseId,
+            envelope.CaseConcurrencyStamp,
             target.Provider,
             envelope.QueueCode,
             envelope.CaseStatusCode,

@@ -14,7 +14,6 @@ namespace Explore.Application.Features.EventReporting.Handlers.Commands;
 
 public sealed class DecideEventReportCommandHandler(
     IEventReportRepository eventReportRepository,
-    IGenericRepository<EventReportDecision, Guid> decisionRepository,
     ITenantUserRepository tenantUserRepository,
     IUnitOfWork unitOfWork,
     ITenantContext tenantContext,
@@ -48,6 +47,10 @@ public sealed class DecideEventReportCommandHandler(
             return Failure(request.ReportId, "Moderator is not active in the current tenant.", ["Moderator must be an active tenant user."], EventReportFailureCodes.ModeratorUnavailable);
         }
 
+        Guid decisionId = Guid.CreateVersion7();
+        Guid executionId = Guid.CreateVersion7();
+        DateTime capturedAtUtc = DateTime.UtcNow;
+
         return await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
             var report = await eventReportRepository.GetByIdForUpdateAsync(tenantId, request.ReportId, token);
@@ -67,14 +70,52 @@ public sealed class DecideEventReportCommandHandler(
                 return Failure(request.ReportId, "Event report case was not found.", ["Event report case was not found."], EventReportFailureCodes.CaseNotFound);
             }
 
+            EventReportDecision? exactRetry = report.Decisions.FirstOrDefault(candidate => candidate.Id == decisionId);
+            if (exactRetry is not null)
+            {
+                bool exactAuthority = reportCase.CurrentDecisionId == exactRetry.Id
+                    && exactRetry.TenantId == tenantId
+                    && exactRetry.ReportId == report.Id
+                    && exactRetry.CaseId == reportCase.Id
+                    && exactRetry.DecisionSource == EventReportDecisionSource.LocalModerator
+                    && exactRetry.DecisionKind == request.DecisionKind
+                    && exactRetry.ModeratorUserId == moderatorUserId;
+                if (!exactAuthority)
+                {
+                    return Failure(
+                        request.ReportId,
+                        "The reconciled report decision no longer owns this case.",
+                        ["Refresh the report case before recording another decision."],
+                        EventReportFailureCodes.DecisionInvalid);
+                }
+
+                if (exactRetry.Execution.State == EventReportDecisionExecutionState.Completed
+                    || reportCase.Status == EventReportCaseStatus.DecisionReady)
+                {
+                    return Success(exactRetry.Id, "Event report decision was already recorded.");
+                }
+
+                return Failure(
+                    request.ReportId,
+                    "The reconciled report decision is not executable from the current case state.",
+                    ["Refresh the report case before retrying."],
+                    EventReportFailureCodes.DecisionExecutionInvalidState);
+            }
+
             if (reportCase.ConcurrencyStamp != request.ExpectedCaseConcurrencyStamp)
             {
                 return Failure(request.ReportId, "Event report case was changed by another request.", ["Refresh the report case and try again."], EventReportFailureCodes.CaseConcurrencyConflict);
             }
 
-            if (reportCase.Status != EventReportCaseStatus.Assigned)
+            bool initialDecision = reportCase.CurrentDecisionId is null;
+            if ((initialDecision && reportCase.Status != EventReportCaseStatus.Assigned)
+                || !reportCase.CanSelectNewDecision())
             {
-                return Failure(request.ReportId, "Only assigned report cases can receive a decision.", ["Only assigned report cases can receive a decision."], EventReportFailureCodes.CaseInvalidStatus);
+                return Failure(
+                    request.ReportId,
+                    "The report case cannot receive a new current decision.",
+                    ["Only an undecided assigned case or a completed nonterminal decision can receive a new decision."],
+                    EventReportFailureCodes.CaseInvalidStatus);
             }
 
             if (reportCase.AssignedModeratorUserId != moderatorUserId)
@@ -92,10 +133,6 @@ public sealed class DecideEventReportCommandHandler(
                 return Failure(request.ReportId, "Duplicate report decisions require a duplicate group.", ["DuplicateGroupId is required."], EventReportFailureCodes.DuplicateGroupRequired);
             }
 
-            var now = DateTime.UtcNow;
-            ApplyReportDecisionStatus(report, request, now);
-            reportCase.MarkDecisionReady(now);
-
             var decision = EventReportDecision.Create(
                 tenantId,
                 reportCase.Id,
@@ -106,37 +143,17 @@ public sealed class DecideEventReportCommandHandler(
                 request.SafeNote,
                 moderatorUserId,
                 externalDecisionId: null,
-                now);
+                capturedAtUtc,
+                decisionId: decisionId,
+                executionId: executionId,
+                duplicateGroupId: request.DuplicateGroupId);
 
-            await eventReportRepository.Update(report);
-            await decisionRepository.Create(decision);
+            reportCase.SelectDecision(decision, capturedAtUtc);
+            report.Decisions.Add(decision);
+            await eventReportRepository.PersistDecisionCaptureAsync(report, decision, token);
 
             return Success(decision.Id, "Event report decision recorded successfully.");
         }, cancellationToken);
-    }
-
-    private static void ApplyReportDecisionStatus(EventReport report, DecideEventReportCommand request, DateTime utcNow)
-    {
-        switch (request.DecisionKind)
-        {
-            case EventReportDecisionKind.NoViolation:
-                report.UpdateStatus(EventReportStatus.Dismissed, utcNow);
-                break;
-            case EventReportDecisionKind.Duplicate:
-                report.MarkDuplicate(request.DuplicateGroupId!.Value, utcNow);
-                break;
-            case EventReportDecisionKind.Escalate:
-                report.UpdateStatus(EventReportStatus.Escalated, utcNow);
-                break;
-            case EventReportDecisionKind.NeedsMoreInfo:
-            case EventReportDecisionKind.LightModerate:
-            case EventReportDecisionKind.HeavyRedact:
-            case EventReportDecisionKind.WarnOrganizer:
-                report.UpdateStatus(EventReportStatus.UnderReview, utcNow);
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(request), request.DecisionKind, "Unsupported event report decision kind.");
-        }
     }
 
     private static BaseCommandResponse<Guid> Success(Guid id, string message) => new()

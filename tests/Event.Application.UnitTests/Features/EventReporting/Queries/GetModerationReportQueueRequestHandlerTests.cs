@@ -93,6 +93,8 @@ public sealed class GetModerationReportQueueRequestHandlerTests
         await Assert.That(row.PriorityCode).IsEqualTo("high");
         await Assert.That(row.ReasonCode).IsEqualTo("spam");
         await Assert.That(row.ReasonName).IsEqualTo("Spam");
+        await Assert.That(row.ReportCaseUpdatesConsent).IsFalse();
+        await Assert.That(row.ReportFollowUpContactConsent).IsTrue();
         await Assert.That(row.CurrentCase).IsNotNull();
         await Assert.That(row.CurrentCase!.QueueCode).IsEqualTo("safety");
         await Assert.That(row.CurrentCase.StatusCode).IsEqualTo("assigned");
@@ -168,7 +170,8 @@ public sealed class GetModerationReportQueueRequestHandlerTests
             "organizer",
             priority,
             EventReportSeverityHint.High,
-            reporterContactConsent: true,
+            reportCaseUpdatesConsent: false,
+            reportFollowUpContactConsent: true,
             reporterLocale: "en",
             reporterIpHash: "ip-hash",
             reporterUserAgentHash: "ua-hash");

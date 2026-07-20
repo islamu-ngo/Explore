@@ -19,6 +19,11 @@ public interface IEventReportRepository : IGenericRepository<EventReport, Guid>
         Guid reportId,
         CancellationToken cancellationToken);
 
+    Task PersistDecisionCaptureAsync(
+        EventReport report,
+        EventReportDecision decision,
+        CancellationToken cancellationToken);
+
     Task<EventReport?> GetByIdWithEvidenceAsync(
         Guid tenantId,
         Guid reportId,

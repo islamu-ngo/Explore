@@ -60,6 +60,7 @@ public sealed class CoopReviewQueueProviderTests
         await Assert.That(handler.RequestBody).Contains("\"case_status\":\"open\"");
         await Assert.That(handler.RequestBody).Contains("\"priority\":\"normal\"");
         await Assert.That(handler.RequestBody).Contains("\"reason_code\":\"spam\"");
+        await Assert.That(handler.RequestBody).Contains($"\"expected_case_concurrency_stamp\":\"{envelope.CaseConcurrencyStamp}\"");
         await Assert.That(handler.RequestBody).Contains("\"mode\":\"safe_summary_only\"");
         await Assert.That(handler.RequestBody).Contains("\"content_included\":false");
         await Assert.That(handler.RequestBody).DoesNotContain("reporter_text\":\"");
@@ -174,6 +175,7 @@ public sealed class CoopReviewQueueProviderTests
 
     private static ReviewCaseEnvelope CreateEnvelope(
         EventReportProviderEvidenceMode evidenceMode = EventReportProviderEvidenceMode.MetadataOnly) => new(
+        Guid.CreateVersion7(),
         Guid.CreateVersion7(),
         Guid.CreateVersion7(),
         Guid.CreateVersion7(),

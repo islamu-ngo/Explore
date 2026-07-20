@@ -24,6 +24,8 @@ public sealed class EventReportConfiguration : IEntityTypeConfiguration<EventRep
         builder.Property(e => e.SubcategoryCode).HasMaxLength(100);
         builder.Property(e => e.Status).HasConversion<int>().IsRequired();
         builder.Property(e => e.Priority).HasConversion<int>().IsRequired();
+        builder.Property(e => e.ReportCaseUpdatesConsent).IsRequired();
+        builder.Property(e => e.ReportFollowUpContactConsent).IsRequired();
         builder.Property(e => e.ReporterLocale).HasMaxLength(10);
         builder.Property(e => e.ReporterIpHash).HasMaxLength(64);
         builder.Property(e => e.ReporterUserAgentHash).HasMaxLength(64);

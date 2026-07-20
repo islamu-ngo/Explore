@@ -200,7 +200,8 @@ public sealed class EventModerationRecordRepositoryTests(PostgreSqlContainerFixt
             "misleading",
             EventReportPriority.Normal,
             EventReportSeverityHint.Medium,
-            reporterContactConsent: true,
+            reportCaseUpdatesConsent: false,
+            reportFollowUpContactConsent: true,
             "en",
             "iphash-" + Guid.NewGuid().ToString("N")[..16],
             "uahash-" + Guid.NewGuid().ToString("N")[..16]);
