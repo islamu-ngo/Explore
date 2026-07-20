@@ -23,6 +23,11 @@ public interface IPdsSyncOutboxRepository
 
     Task AddAsync(PdsSyncOutbox outbox, CancellationToken cancellationToken = default);
 
+    Task<bool> ExistsAsync(
+        Guid tenantId,
+        Guid outboxId,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<PdsSyncOutbox>> GetCurrentEventDeliveryStatesAsync(
         Guid tenantId,
         IReadOnlyCollection<Guid> eventIds,

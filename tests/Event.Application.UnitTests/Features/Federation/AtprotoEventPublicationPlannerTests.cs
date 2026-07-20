@@ -398,6 +398,85 @@ public sealed class AtprotoEventPublicationPlannerTests
         await gateway.DidNotReceiveWithAnyArgs().DeliverAsync(default!, default);
     }
 
+    [Test]
+    [Category("EventLocationPrivacyExternal")]
+    public async Task PlanLocationPrivacyCorrectionAsync_WithOlderRemoteState_EnqueuesCurrentProjection()
+    {
+        PlannerFixture fixture = CreateFixture(true, true, true, true, true);
+        PdsSyncOutbox prior = UnsettledCreate(PdsSyncStatus.Pending, leaseExpiresAt: null);
+        fixture.Outbox.GetLatestUnsettledMutationAsync(
+                TenantId,
+                AtprotoEventPublicationPlanner.EventSourceType,
+                EventId,
+                AtprotoEventPublicationPlanner.EventCollection,
+                Arg.Any<CancellationToken>())
+            .Returns(prior);
+        PdsSyncOutbox? saved = null;
+        fixture.Outbox.AddAsync(Arg.Do<PdsSyncOutbox>(value => saved = value), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        AtprotoPublicationPlanningResult result = await fixture.Planner.PlanLocationPrivacyCorrectionAsync(
+            new(TenantId, EventId, OutboxId, CreatedAt),
+            CancellationToken.None);
+
+        await Assert.That(result.Enqueued).IsTrue();
+        await Assert.That(saved).IsNotNull();
+        await Assert.That(saved!.Id).IsEqualTo(OutboxId);
+        await Assert.That(saved.Operation).IsEqualTo(PdsSyncOperation.Update);
+        await Assert.That(saved.SourceVersion).IsEqualTo(SourceVersion);
+        await Assert.That(saved.Payload).IsEqualTo(Payload);
+    }
+
+    [Test]
+    [Category("EventLocationPrivacyExternal")]
+    public async Task PlanLocationPrivacyCorrectionAsync_WhenReceiptAlreadyExists_IsIdempotent()
+    {
+        PlannerFixture fixture = CreateFixture(true, true, true, true, true);
+        fixture.Outbox.ExistsAsync(TenantId, OutboxId, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        AtprotoPublicationPlanningResult first = await fixture.Planner.PlanLocationPrivacyCorrectionAsync(
+            new(TenantId, EventId, OutboxId, CreatedAt),
+            CancellationToken.None);
+        AtprotoPublicationPlanningResult replay = await fixture.Planner.PlanLocationPrivacyCorrectionAsync(
+            new(TenantId, EventId, OutboxId, CreatedAt),
+            CancellationToken.None);
+
+        await Assert.That(first.Enqueued).IsFalse();
+        await Assert.That(first.ReasonCode).IsEqualTo("correction_already_planned");
+        await Assert.That(replay.ReasonCode).IsEqualTo("correction_already_planned");
+        await fixture.Outbox.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+    }
+
+    [Test]
+    [Category("EventLocationPrivacyExternal")]
+    public async Task PlanLocationPrivacyCorrectionAsync_WhenSourceIsMissing_EnqueuesRemoteDelete()
+    {
+        PlannerFixture fixture = CreateFixture(true, true, true, true, true);
+        PdsSyncOutbox prior = UnsettledCreate(PdsSyncStatus.Pending, leaseExpiresAt: null);
+        fixture.Events.GetAtprotoLifecycleStateAsync(TenantId, EventId, Arg.Any<CancellationToken>())
+            .Returns((Explore.Domain.Event?)null);
+        fixture.Outbox.GetLatestUnsettledMutationAsync(
+                TenantId,
+                AtprotoEventPublicationPlanner.EventSourceType,
+                EventId,
+                AtprotoEventPublicationPlanner.EventCollection,
+                Arg.Any<CancellationToken>())
+            .Returns(prior);
+        PdsSyncOutbox? saved = null;
+        fixture.Outbox.AddAsync(Arg.Do<PdsSyncOutbox>(value => saved = value), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        AtprotoPublicationPlanningResult result = await fixture.Planner.PlanLocationPrivacyCorrectionAsync(
+            new(TenantId, EventId, OutboxId, CreatedAt),
+            CancellationToken.None);
+
+        await Assert.That(result.Enqueued).IsTrue();
+        await Assert.That(saved).IsNotNull();
+        await Assert.That(saved!.Operation).IsEqualTo(PdsSyncOperation.Delete);
+        await Assert.That(saved.Payload).IsNull();
+    }
+
     private static PlannerFixture CreateFixture(
         bool enabled,
         bool consent,

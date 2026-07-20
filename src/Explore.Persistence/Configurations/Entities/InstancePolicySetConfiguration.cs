@@ -95,7 +95,6 @@ public class InstancePolicySetConfiguration : IEntityTypeConfiguration<InstanceP
             ConfigurePolicySlot(delegation, d => d.LockTenantSmtp);
             ConfigurePolicySlot(delegation, d => d.LockTenantStorage);
             ConfigurePolicySlot(delegation, d => d.LockTenantAnalytics);
-            ConfigurePolicySlot(delegation, d => d.DecentralizationEnabled);
             ConfigurePolicySlot(delegation, d => d.AuthorizationProvider);
         });
     }

@@ -442,8 +442,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             [
                 GovernanceSettingKeys.Tenants.SelfServiceRegistration,
                 GovernanceSettingKeys.Tenants.WhiteLabelingEnabled,
-                GovernanceSettingKeys.Security.AuthorizationProvider,
-                GovernanceSettingKeys.Federation.DecentralizationEnabled
+                GovernanceSettingKeys.Security.AuthorizationProvider
             ])
             .Distinct();
     }
@@ -475,8 +474,6 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             ? SettingValueSerializer.Deserialize(wl.Value, false) : false;
         var authProvider = resolved.TryGetValue(GovernanceSettingKeys.Security.AuthorizationProvider, out var ap)
             ? NormalizeAuthorizationProvider(SettingValueSerializer.DeserializeString(ap.Value, "local")) : "local";
-        var decentralization = resolved.TryGetValue(GovernanceSettingKeys.Federation.DecentralizationEnabled, out var de)
-            ? SettingValueSerializer.Deserialize(de.Value, false) : false;
 
         return new TenantDelegationSettingsDto
         {
@@ -488,8 +485,6 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             LockTenantStorage = delegation.LockStorage,
             LockTenantAnalytics = delegation.LockAnalytics,
             LockTenantAiAssistant = delegation.LockAiAssistant,
-            DecentralizationEnabled = decentralization,
-            LockDecentralizationEnabled = IsLocked(resolved, GovernanceSettingKeys.Federation.DecentralizationEnabled),
             AuthorizationProvider = authProvider
         };
     }
@@ -640,11 +635,6 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             GovernanceSettingKeys.Security.AuthorizationProvider,
             SettingValueSerializer.Serialize(NormalizeAuthorizationProvider(d.AuthorizationProvider)),
             isLocked: true, actorUserId);
-
-        await _upsertService.UpsertValueAsync(
-            GovernanceSettingKeys.Federation.DecentralizationEnabled,
-            SettingValueSerializer.Serialize(d.DecentralizationEnabled),
-            isLocked: d.LockDecentralizationEnabled, actorUserId);
 
         await _upsertService.UpsertValueAsync(
             GovernanceSettingKeys.TenantDelegation.LockSmtp,

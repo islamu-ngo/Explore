@@ -27,6 +27,21 @@ public sealed class PdsSyncOutboxRepository : IPdsSyncOutboxRepository
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public Task<bool> ExistsAsync(
+        Guid tenantId,
+        Guid outboxId,
+        CancellationToken cancellationToken = default)
+    {
+        if (tenantId == Guid.Empty || outboxId == Guid.Empty)
+        {
+            throw new ArgumentException("Tenant and PDS outbox identifiers must be non-empty.");
+        }
+
+        return CrossTenantOutbox()
+            .AsNoTracking()
+            .AnyAsync(value => value.TenantId == tenantId && value.Id == outboxId, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<PdsSyncOutbox>> GetCurrentEventDeliveryStatesAsync(
         Guid tenantId,
         IReadOnlyCollection<Guid> eventIds,

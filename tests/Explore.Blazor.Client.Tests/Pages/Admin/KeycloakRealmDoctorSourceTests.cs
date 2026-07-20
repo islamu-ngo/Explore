@@ -6,6 +6,16 @@ namespace Explore.Blazor.Client.Tests.Pages.Admin;
 public class KeycloakRealmDoctorSourceTests
 {
     [Test]
+    public async Task InstanceAuthProviderSection_ShouldDescribeAtprotoLoginWithoutLegacyDecentralizationCopy()
+    {
+        var source = await ReadInstanceAuthProviderSectionAsync();
+
+        await Assert.That(source).Contains(
+            "Users authenticate with linked AT Protocol identities through the server-side OAuth flow.");
+        await Assert.That(source).DoesNotContain("decentralization", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Test]
     public async Task InstanceAuthProviderSection_ShouldExpose_ReadOnlyKeycloakDoctor()
     {
         var source = await ReadInstanceAuthProviderSectionAsync();

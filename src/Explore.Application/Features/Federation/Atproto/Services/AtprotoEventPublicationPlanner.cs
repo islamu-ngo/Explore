@@ -60,6 +60,19 @@ public interface IAtprotoDeliveryGate
         CancellationToken cancellationToken);
 }
 
+public sealed record AtprotoLocationPrivacyCorrectionInput(
+    Guid TenantId,
+    Guid EventId,
+    Guid CorrectionId,
+    DateTime CreatedAtUtc);
+
+public interface IAtprotoLocationPrivacyCorrectionPlanner
+{
+    Task<AtprotoPublicationPlanningResult> PlanLocationPrivacyCorrectionAsync(
+        AtprotoLocationPrivacyCorrectionInput correction,
+        CancellationToken cancellationToken);
+}
+
 public sealed class AtprotoEventPublicationPlanner(
     AtprotoEventGovernanceResolver governanceResolver,
     IEventRepository eventRepository,
@@ -69,7 +82,9 @@ public sealed class AtprotoEventPublicationPlanner(
     IUserExternalLoginRepository externalLoginRepository,
     IAtprotoPublicationPayloadBuilder payloadBuilder,
     IPdsSyncOutboxRepository outboxRepository,
-    ILogger<AtprotoEventPublicationPlanner> logger) : IAtprotoDeliveryGate
+    ILogger<AtprotoEventPublicationPlanner> logger) :
+    IAtprotoDeliveryGate,
+    IAtprotoLocationPrivacyCorrectionPlanner
 {
     public const string EventCollection = "community.lexicon.calendar.event";
     public const string EventSourceType = "Event";
@@ -99,6 +114,48 @@ public sealed class AtprotoEventPublicationPlanner(
     private AtprotoPublicationPlanningResult Skipped(
         AtprotoRsvpPublicationInput request,
         string reasonCode) => Skipped(RsvpSourceType, request.Operation, reasonCode);
+
+    public async Task<AtprotoPublicationPlanningResult> PlanLocationPrivacyCorrectionAsync(
+        AtprotoLocationPrivacyCorrectionInput correction,
+        CancellationToken cancellationToken)
+    {
+        if (correction.TenantId == Guid.Empty
+            || correction.EventId == Guid.Empty
+            || correction.CorrectionId == Guid.Empty
+            || correction.CreatedAtUtc.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException(
+                "ATProto location-privacy correction is invalid.",
+                nameof(correction));
+        }
+
+        if (await outboxRepository.ExistsAsync(
+                correction.TenantId,
+                correction.CorrectionId,
+                cancellationToken))
+        {
+            return Skipped(EventSourceType, PdsSyncOperation.Update, "correction_already_planned");
+        }
+
+        Explore.Domain.Event? eventEntity = await eventRepository.GetAtprotoLifecycleStateAsync(
+            correction.TenantId,
+            correction.EventId,
+            cancellationToken);
+        PdsSyncOperation operation = eventEntity is null
+            ? PdsSyncOperation.Delete
+            : PdsSyncOperation.Update;
+
+        return await PlanEventAsync(
+            new AtprotoEventPublicationInput(
+                correction.TenantId,
+                Guid.Empty,
+                correction.EventId,
+                eventEntity?.ConcurrencyStamp ?? correction.CorrectionId,
+                operation,
+                correction.CorrectionId,
+                correction.CreatedAtUtc),
+            cancellationToken);
+    }
 
     public async Task<AtprotoPublicationPlanningResult> PlanEventAsync(
         AtprotoEventPublicationInput request,

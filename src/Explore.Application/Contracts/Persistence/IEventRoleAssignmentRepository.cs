@@ -40,4 +40,10 @@ public interface IEventRoleAssignmentRepository : IGenericRepository<EventRoleAs
         Guid eventId,
         bool includeInactive,
         CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<EventRoleAssignment>> GetEffectiveOwnersForEventAsync(
+        Guid tenantId,
+        Guid eventId,
+        DateTime utcNow,
+        CancellationToken cancellationToken);
 }

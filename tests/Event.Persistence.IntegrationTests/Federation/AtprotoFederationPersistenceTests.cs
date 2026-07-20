@@ -488,6 +488,29 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
     }
 
     [Test]
+    [Category("EventLocationPrivacyExternal")]
+    public async Task PdsCorrectionReceiptExistence_IsTenantBoundedAndIncludesSupersededRows()
+    {
+        await fixture.ResetAsync();
+        FederationScope scope = await SeedScopeAsync("pds-correction-receipt");
+        PdsSyncOutbox correction = CreateOutbox(scope, Utc(10));
+        correction.Status = PdsSyncStatus.Superseded;
+        correction.SupersededAt = Utc(11);
+        await using var context = fixture.CreateDbContext();
+        context.PdsSyncOutbox.Add(correction);
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        PdsSyncOutboxRepository repository = new(context);
+
+        bool exists = await repository.ExistsAsync(scope.TenantId, correction.Id);
+        bool crossTenantExists = await repository.ExistsAsync(Guid.CreateVersion7(), correction.Id);
+
+        await Assert.That(exists).IsTrue();
+        await Assert.That(crossTenantExists).IsFalse();
+        await Assert.That(context.ChangeTracker.Entries()).IsEmpty();
+    }
+
+    [Test]
     public async Task PdsSettlement_LinksCanonicalRecordBackToCommittedLocalEvent()
     {
         await fixture.ResetAsync();

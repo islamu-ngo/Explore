@@ -233,7 +233,6 @@ public static class GovernanceSettingKeys
 
     public static class Federation
     {
-        public const string DecentralizationEnabled = "federation.decentralization_enabled";
         public const string AtprotoEventsEnabled = "federation.atproto_events_enabled";
         public const string AtprotoEventValidationProfile = "federation.atproto_event_validation_profile";
         public const string AtprotoPublishMyEvents = "federation.atproto_publish_my_events";

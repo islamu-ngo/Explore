@@ -127,4 +127,30 @@ public class EventRoleAssignmentRepository : GenericRepository<EventRoleAssignme
             .ThenBy(a => a.User.Pii.LastName)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<EventRoleAssignment>> GetEffectiveOwnersForEventAsync(
+        Guid tenantId,
+        Guid eventId,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        if (utcNow.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("Owner resolution timestamp must be UTC.", nameof(utcNow));
+        }
+
+        return await _dbContext.EventRoleAssignments
+            .AsNoTracking()
+            .Include(assignment => assignment.User)
+                .ThenInclude(user => user.Pii)
+            .Where(assignment =>
+                assignment.TenantId == tenantId
+                && assignment.EventId == eventId
+                && assignment.RoleId == (int)RoleEnum.EventOwner
+                && assignment.Status == EventRoleAssignmentStatus.Active
+                && assignment.StartsAtUtc <= utcNow
+                && (assignment.ExpiresAtUtc == null || assignment.ExpiresAtUtc > utcNow))
+            .OrderBy(assignment => assignment.UserId)
+            .ToListAsync(cancellationToken);
+    }
 }

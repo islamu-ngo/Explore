@@ -284,7 +284,11 @@ public class InstanceGovernanceSectionTests : IDisposable
             key,
             true,
             Arg.Any<CancellationToken>());
+        await Assert.That(cut.Markup).Contains(
+            "One switch enables both fetching community events and publishing eligible local events",
+            StringComparison.OrdinalIgnoreCase);
         await Assert.That(cut.Markup).Contains("application commits and validates the event before any PDS record", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).DoesNotContain("decentralization", StringComparison.OrdinalIgnoreCase);
     }
 
     private IRenderedComponent<DynamicComponent> RenderGovernanceSection(
