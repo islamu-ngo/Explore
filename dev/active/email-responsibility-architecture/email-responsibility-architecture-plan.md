@@ -3,10 +3,10 @@
 
 # Email Lifecycle Delivery Implementation Plan
 
-> **Status:** Re-baselined in implementation — committed foundations plus preserved main-checkout SMTP and unrelated work
-> **Last Updated:** 2026-07-19 Europe/Brussels
-> **Implementation progress:** 45/51 tasks complete; phase verification remains tracked separately
-> **Current task:** 6.1 — add heavy-moderation required channel materialization; Task 5.9 runtime proof remains deferred
+> **Status:** Production implementation complete — runtime proof deferred; main-checkout SMTP and unrelated work preserved
+> **Last Updated:** 2026-07-20 Europe/Brussels
+> **Implementation progress:** 49/51 tasks complete; phase verification remains tracked separately
+> **Current task:** production implementation is complete; Tasks 5.9 and 7.3 remain deferred runtime-proof gates under the user's no-tests instruction
 > **Execution location:** main repository checkout only; do not create linked worktrees or a `.worktrees` directory for this workstream
 > **Repository baseline:** current `develop` HEAD `9fe1e26e`; email retention, the SMTP diagnostic boundary, and the earlier partial SMTP operations work are committed in `9bfaf1e0`. Later email/fanout changes and their migrations remain preserved in the main checkout alongside unrelated ATProto/auth/location-privacy work.
 
@@ -456,6 +456,8 @@ Schedule one reminder for an approved registration’s earliest covered publishe
 
 The sole reminder setting is `EmailDispatch:EventReminderLeadTimeHours`, default `24`, inclusive range `1..168`. Dispatch time is `sessionStartUtc - lead`. If that time has passed but the session is still future, persist the reminder due immediately after commit; if the session has started, create none. Nonexistent local wall times are rejected at command validation. An ambiguous overlap uses the persisted event/session offset or UTC instant, never the machine-local timezone.
 
+Production implementation now carries a strict `event-reminder:v2` authority containing the session ID, exact UTC ticks, and normalized event timezone. Reminder copy includes deterministic event-local date/time, the timezone ID, and the exact UTC instant; timezone-only event changes persist new local projections before reprojecting the existing reminder graph in the same transaction. Blazor is the local-wall input boundary: it rejects nonexistent DST-gap values, refuses to guess a new ambiguous overlap occurrence, and preserves an existing overlap occurrence from its persisted UTC instant. Direct API commands carry exact instants, so a nonexistent wall time is not representable at that boundary. Runtime Europe/Brussels, PostgreSQL, TickerQ, SMTP, and Mailpit proof remains deferred by the no-tests instruction.
+
 Phase-end verification (run once after Tasks 7.1–7.3):
 
 ```bash
@@ -543,4 +545,4 @@ Implementation slice summaries must state: implemented architecture and control 
 
 ## 18. Potential Risks and Unknowns
 
-The highest-risk implementation area is now heavy-moderation attendee notification. Task 6.1 must reuse the immutable event-wide occurrence/fanout engine and `ModerationAvailabilityRequired` policy so successful irreversible heavy enforcement creates exactly one immediate occurrence and required in-app/email channel decisions per eligible attendee, with current verified-address skips and idempotent replay. Task 5.9 production routing/source coverage is complete but its integration proof remains unchecked because tests are explicitly prohibited; that evidence gap does not authorize weakening the provider or notification invariants.
+All planned production email code is now present. The remaining risk is evidence rather than an unimplemented product seam: Task 5.9 still needs live local/Coop/Osprey decision convergence proof, and Task 7.3 still needs runtime Europe/Brussels/PostgreSQL/TickerQ verification of exact UTC scheduling, local display, one-live-graph reprojection, and harmless old pointers. Both remain unchecked under the user's no-tests instruction. The source implementation uses no machine-local scheduling authority and passed affected product builds plus independent static review.

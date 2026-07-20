@@ -3,11 +3,11 @@
 
 # Email Lifecycle Delivery Context
 
-> **Status:** Re-baselined in implementation — committed foundations plus preserved main-checkout SMTP and unrelated work
-> **Last Updated:** 2026-07-19 Europe/Brussels
-> **Progress:** 45/51 implementation tasks complete; phase verification remains separate
-> **Current phase:** Phase 5 reporting email and provider convergence; Phase 1, Phase 3, and Phase 4 runtime verification remain open
-> **Next task:** 6.1 add heavy-moderation required channel materialization; Task 5.9 runtime proof remains deferred
+> **Status:** Production implementation complete — runtime proof deferred; main-checkout SMTP and unrelated work preserved
+> **Last Updated:** 2026-07-20 Europe/Brussels
+> **Progress:** 49/51 implementation tasks complete; phase verification remains separate
+> **Current phase:** all planned production code is implemented; phase/runtime verification remains open
+> **Next task:** no further production slice; Tasks 5.9 and 7.3 require runtime proof when tests are permitted
 
 ## Objective
 
@@ -15,7 +15,7 @@ Finish transactional product email for registration transitions, critical event/
 
 ## Resume Brief
 
-The user accepted the Senior CTO corrections. Tasks 0.1–0.7, 1.1–1.6e, 2.1–2.5, 3.1–3.6b, 4.1–4.5, and 5.1–5.8 are implementation-complete. The explicit recipient-delivery migration and fanout foundations are committed. Commit `9bfaf1e0` contains Task 1.5 retention/redaction, the Task 1.6a production boundary, and the earlier SMTP operations patch; later SMTP operations, fanout, event-trigger, and reporting changes remain preserved in the main checkout with their migrations and the strict controller architecture guard. Full Phase 1/3/4/5 testing, Docker-backed PostgreSQL runtime, and explicit Mailpit verification remain open; this affects phase evidence, not the implementation task checkboxes.
+The user accepted the Senior CTO corrections. Tasks 0.1–0.7, 1.1–1.6e, 2.1–2.5, 3.1–3.6b, 4.1–4.5, 5.1–5.8, 6.1–6.2, and 7.1–7.3 now have production implementation. Task 5.9 source routing/coverage and Task 7.3 production/DST source coverage are complete, but their runtime-proof acceptance remains unchecked under the user's no-tests instruction. The explicit recipient-delivery migration and fanout foundations are committed. Commit `9bfaf1e0` contains Task 1.5 retention/redaction, the Task 1.6a production boundary, and the earlier SMTP operations patch; later SMTP operations, fanout, event-trigger, reporting, heavy-moderation, and reminder changes remain preserved in the main checkout with their migrations and strict controller architecture guard. Full Phase 1/3/4/5/6/7 testing, Docker-backed PostgreSQL runtime, and explicit Mailpit verification remain open; this affects evidence rather than a missing production slice.
 
 Task 1.4 added cancellation/revocation preference and unsubscribe mapping while keeping `ReportCaseUpdate` fail-closed. Task 5.1 now supplies distinct persisted case-update/follow-up authority, false-safe migration semantics, and exact dispatch-time checks, but no reporting email is enabled yet. Task 1.5 added bounded/dry-runnable parent-aware redaction, explicit resolve-without-replay, the single permanent `ContentRedactedAt` fence, immediate purged-tenant suppression, and migration/schema/operator documentation. Task 1.6a separates the send contract from connection testing: `InstanceSettingsController` uses MediatR, `SmtpHealthCheck` uses `IEmailConnectionTester`, and only Infrastructure owns `SmtpEmailService`.
 
@@ -183,10 +183,10 @@ Implemented foundations:
 - `src/Explore.Application/Features/Events/Handlers/Commands/CancelEventCommandHandler.cs` — atomic event cancellation plus event-wide immutable occurrence/pointer and post-commit cache eviction.
 - `src/Explore.Application/Features/EventSessions/Handlers/Commands/EventSessionLifecycleTransitionCommandHandlerBase.cs` plus `CancelEventSessionCommandHandler` — shared atomic transition hook, published-only session cancellation occurrence, and post-commit cache eviction.
 
-Next implementation surfaces:
+Remaining proof surface:
 
-- Task 5.6: consented report receipt with canonical SLA snapshot and atomic typed delivery outcomes.
-- Remaining Phases 5–7: reporter contracts/UI/receipt/outcome/follow-up/convergence, heavy-moderation occurrence, and safe reminder caller activation.
+- Task 5.9: live local/Coop/Osprey decision convergence and exact-once reporter outcome proof.
+- Task 7.3: runtime Europe/Brussels DST gap/overlap and event-timezone reprojection proof, including exact UTC instants, local display, harmless old pointers, and one live reminder graph. Production code and focused unexecuted test source are present.
 
 ## Risks and Controls
 
@@ -209,6 +209,7 @@ Next implementation surfaces:
 | Optional backlog permanently suppresses reminders | Task 1.6b persists hysteresis and counts only active core backlog, excluding paused tenants and optional reminders while keeping required reminders eligible. Runtime PostgreSQL proof remains open. |
 | Architecture guard regresses after the boundary repair | Keep the preserved strict controller/handler transport-reference guard and the MediatR diagnostic seam; do not restore controller access to `IEmailService`. |
 | Supersession loses a race to SMTP eligibility | Task 3.5b shares the event advisory lock across coordinator and evaluator, reloads authoritative occurrence state under `READ COMMITTED`, suppresses only pre-handoff work, and preserves fenced/terminal evidence. Runtime two-transaction proof remains an open Phase 3 gate. |
+| A cancelled or rescheduled reminder escapes through an old scheduler pointer | Task 7.2 shares the event lock across lifecycle mutation and final SMTP eligibility, reprojects one stable graph in place, skips inactive authority, and refuses future `Pending.NextAttemptAt` rows in both the specific claim and drain fallback. Runtime PostgreSQL/TickerQ proof remains open. |
 | Fair selection claims stale superseded work or one tenant exceeds its ceiling | Task 3.6a shares the event-precedence lock before fresh claim revalidation, ranks one existing run per tenant, and counts live occurrence claims under the tenant lock. PostgreSQL runtime proof remains open. |
 | A producer crosses optional-reminder backpressure between selection and claim | Task 3.6b serializes occurrence-run creation, hysteresis calculation, and exact admission through the same global advisory lock; optional work remains durable and required work continues. PostgreSQL runtime proof remains open. |
 
@@ -235,23 +236,41 @@ Next implementation surfaces:
 - Task 3.6b is independently reviewed after closing producer/selection races and page-unavailable accounting. The hosted processor resolves every page processor from a fresh scope; global/per-tenant active ceilings and persisted high/low reminder deferral are database-authoritative; run producers and exact claims share the global lock before the existing tenant/event/occurrence order; and health/metrics are aggregate and PII-free. The Release API product build passed 8 projects with 0 errors, configuration JSON and diff checks are clean, and `.worktrees` is absent. No tests or test-project builds were run, so the Phase 3 runtime gate remains open.
 - Task 4.1 is independently reviewed with no blocker. The handler commits event status, ATProto plan, immutable event-wide cancellation occurrence, precedence suppression, and pointer atomically from retry-stable inputs; failure/replay guards create nothing; cache invalidation is post-commit. The Application Release product build passed 2 projects with 0 errors and diff checks are clean. No tests or test-project builds were run, so real PostgreSQL rollback/concurrency remains open Phase 4 evidence.
 - Task 4.2 is independently reviewed with no blocker. The lifecycle base keeps status/schedule/fanout inside one caller transaction and cache eviction after it; the cancel hook emits one strict session occurrence only from Published, with stable source identity/cutoff and immutable title/schedule/timezone. The Application Release product build passed 2 projects with 0 errors/0 warnings and diff checks are clean. No tests or test-project builds were run, so real PostgreSQL/audience concurrency remains open Phase 4 evidence.
+- Task 7.2 is independently reviewed after correcting current-handoff time validation and Approved-to-Approved registration reassignment. Registration/session/event cancellation, heavy moderation, session-start changes, and event-timezone reprojection now update the durable reminder graph inside the business transaction under the shared event advisory lock. Intent-rooted set-based CTEs cover in-app-only reminders, preserve graph identities and fenced/terminal transport evidence, and align mutable outbox/delivery state. Final eligibility rechecks the exact current event, moderation, registration, session, and start authority; future specific pointers defer. Application, Persistence, Infrastructure, and API Release product builds passed with zero errors across the implementation loop, with Application and Infrastructure rebuilt after the final fixes. Diff checks passed and `.worktrees` is absent. No tests or runtime PostgreSQL/TickerQ/SMTP/Mailpit checks were run per user instruction.
+- Task 7.3 production code is independently reviewed after correcting noncanonical v2 authority acceptance and stale test-fixture construction. `event-reminder:v2` binds session ID, exact UTC ticks, and normalized event timezone; initial and reprojected copy includes deterministic local display plus exact UTC; event timezone-only updates persist new session projections before updating the same reminder graph; final dispatch compares current timezone and exact session/start authority. Blazor rejects DST gaps and new ambiguous overlap inputs, preserves either persisted overlap occurrence from its exact UTC instant, and uses no machine-local scheduling authority. Application, Persistence, Infrastructure, API, and Blazor Client Release product builds passed with zero errors during the slice; final affected Application/Persistence builds passed after corrections. Diff checks passed and `.worktrees` is absent. Focused Europe/Brussels and malformed-authority test source is present but unexecuted, so Task 7.3 remains unchecked.
 - This 2026-07-18 re-baseline changes planning docs only and runs no build, test, SMTP, Mailpit, provider, migration, or application command.
 - Planning validation: `git diff --check -- dev/active/email-responsibility-architecture`.
 - Runtime phases use one Release build and one selected non-browser project test; final intent-contract suites remain merge evidence. No gate uses weak broad filters or `--minimum-expected-tests 1`.
 
 ## Handoff Rule
 
-Start Task 6.1 from the completed heavy-redaction enforcement receipt, `EventModerationNotificationFanoutService`, and the generic occurrence/fanout recipient materializer. Successful irreversible heavy enforcement must atomically ensure one immediate event-wide high-precedence occurrence pointer keyed to its authoritative moderation record/decision; replay must reuse it. Eligible attendee materialization uses required linkless in-app plus required email policy, current verified addresses, typed missing/unverified skips, and no light-moderation email. Keep the event content/privacy suppression hardening in Task 6.2. Task 5.9 remains unchecked until its local/Coop/Osprey integration tests may run. The working tree currently contains unrelated ATProto/auth/location-privacy work; do not modify, stage, revert, or include it. Use only the main checkout and never create a linked worktree or `.worktrees` directory. At every handoff, synchronize progress, evidence, risks, and the next task across context, plan, and tasks.
+No further production implementation task remains in this plan. When the user permits runtime verification, execute Task 5.9's local/Coop/Osprey convergence scenarios and Task 7.3's Europe/Brussels/PostgreSQL/TickerQ scenarios, then run the deferred phase gates and Mailpit proof. Keep the distinction that Blazor validates local-wall input while direct API commands already carry exact instants. The working tree currently contains unrelated ATProto/auth/location-privacy work; do not modify, stage, revert, or include it. Use only the main checkout and never create a linked worktree or `.worktrees` directory. At every handoff, synchronize progress, evidence, risks, and the next task across context, plan, and tasks.
 
 ## Handoff Notes
 
 ### Handoff — 2026-07-19 Europe/Brussels
 
-- **Current state:** 45/51 implementation tasks are complete. Task 5.9 production routing, source coverage, and provider docs are audited, but its runtime proof remains unchecked under the no-tests instruction. Task 6.1 is the next implementation slice.
-- **Next action:** add one idempotent heavy-moderation occurrence and required attendee channel materialization after authoritative irreversible enforcement.
+- **Current state:** 48/51 implementation tasks are complete. Task 7.1 atomically schedules one optional reminder for a newly Approved parent/child transition; Task 5.9 runtime proof remains unchecked. Task 7.2 is next.
+- **Next action:** suppress cancelled/heavy/stale reminders, reschedule on time/timezone change, and fence future rows from stale TickerQ pointers.
 - **Blockers:** Docker/PostgreSQL is available, but unrelated untracked migration `20260718215537_BackfillUnclassifiedEventLocations` fails shared fixture setup with PostgreSQL `42703` (`is_deleted` missing), so all 42 selected email transition tests execute zero bodies. Mailpit and the Phase 1 gate remain open.
-- **Modified files:** Task 5.9 changes only focused local/Coop/Osprey test source and provider docs; production routing was not changed. Earlier email/fanout and unrelated changes remain preserved.
-- **Validation:** static source audit confirmed local and durable Coop paths converge on the canonical executor and Osprey remains signal-only; diff and negative-authority checks passed and `.worktrees` is absent. No test or test-project build ran, so Task 5.9 remains unchecked.
-- **Documentation impact:** plan/context/tasks retain 45/51 complete, record Task 5.9's precise evidence gap, and advance implementation to Task 6.1.
-- **Risks:** Task 6.1 must bind heavy attendee notification to the exact irreversible enforcement receipt, preserve highest precedence/idempotency, and represent missing verified addresses as typed skips without exposing event content.
+- **Modified files:** Task 7.1 updates approved-transition scheduler orchestration, reminder options/configuration, persisted coverage query, materializer skipped-in-app support, post-commit pointer trigger, docs, and focused source coverage; earlier work remains preserved.
+- **Validation:** independent acceptance/privacy/concurrency reviews confirmed target-child authority, full Approved cohort selection, deterministic due/session choice, optional channel skips, no authorization broadening, atomic UoW placement, retry stability, dedup, and pointer-only post-commit scheduling. Product builds/static checks passed; `.worktrees` is absent. Tests, TickerQ runtime, SMTP, and Mailpit were not run.
+- **Documentation impact:** plan/context/tasks record 48/51 complete, retain Task 5.9's evidence gap, and advance implementation to Task 7.2.
+- **Risks:** Task 7.2 must close cancellation/heavy/schedule races and ensure stale specific pointers cannot bypass `NextAttemptAt` or leave linked delivery outcomes inconsistent.
 - **Notes for next contributor/agent:** work only in the main checkout; preserve all current changes; do not create worktrees, stage broadly, revert shared files, or duplicate the partial Task 1.6 implementation.
+
+### Handoff — 2026-07-20 Europe/Brussels
+
+- **Current state:** 49/51 implementation tasks are complete. Task 7.2 provides atomic cancellation/supersession and dispatch-time reminder authority; Task 5.9 runtime proof remains unchecked. Task 7.3 is next.
+- **Next action:** prove UTC/local projection across Europe/Brussels DST gap and overlap, define command validation for nonexistent local wall time, and record the one-live-graph/old-pointer behavior without running tests unless the user later permits it.
+- **Modified files:** Task 7.2 updates reminder scheduler contracts/services, logical-intent and optional-email persistence transitions, SMTP eligibility/drain guards, and registration/session/event mutation handlers; earlier shared changes remain preserved.
+- **Validation:** all four directly affected product projects built with zero errors during implementation; Application and Infrastructure rebuilt with zero errors after final review fixes. Diff checks passed and `.worktrees` is absent. No tests or runtime infrastructure were run.
+- **Risks:** the raw PostgreSQL CTEs and cross-transaction races are source-reviewed but not runtime-executed; reminder copy remains UTC-only until Task 7.3 decides and proves local display semantics.
+
+### Handoff — 2026-07-20 Europe/Brussels — production implementation complete
+
+- **Current state:** all planned production email code is implemented. The ledger remains 49/51 because Tasks 5.9 and 7.3 are explicitly runtime-proof tasks and no tests may run.
+- **Next action:** when runtime verification is permitted, execute the focused local/Coop/Osprey convergence and Europe/Brussels/PostgreSQL/TickerQ scenarios, then the deferred phase gates and Mailpit proof. No additional production slice is currently identified.
+- **Modified files:** Task 7.3 threads canonical event timezone through reminder preparation/reprojection/final eligibility, adds strict v2 session/start/timezone authority, deterministic local-plus-UTC rendering, and explicit Blazor local-wall conversion. Existing Application/Blazor test source was updated to the new contracts and exact Brussels cases without execution.
+- **Validation:** independent static review confirmed transaction ordering, strict canonical authority after one correction, gap/overlap semantics, stable graph IDs, stale-pointer fencing, current-timezone eligibility, layer placement, and ABOUTME headers. Application, Persistence, Infrastructure, API, and Blazor Client Release product builds passed with zero errors during the slice; final affected Application/Persistence builds passed after corrections. Diff checks passed and `.worktrees` is absent. No tests, test-project builds, PostgreSQL/TickerQ/SMTP/Mailpit runs, migrations, staging, commits, or worktrees were used.
+- **Risks:** runtime CTE/tick equivalence, advisory-lock interleavings, deployed tzdata behavior, provider convergence, and end-to-end delivery remain unproven by explicit user instruction; do not convert those source conclusions into runtime claims.
