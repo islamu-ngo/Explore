@@ -1,7 +1,9 @@
 // ABOUTME: Builds the public calendar export read model from event and primary-session data.
 // ABOUTME: Enforces published/public visibility before the API serializes the .ics file.
 
+using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Domain;
@@ -12,7 +14,8 @@ namespace Explore.Application.Features.Events.Handlers.Queries;
 
 public sealed class GetEventCalendarExportRequestHandler(
     IEventRepository eventRepository,
-    IEventSessionRepository eventSessionRepository)
+    IEventSessionRepository eventSessionRepository,
+    IEventLocationDisclosureService eventLocationDisclosureService)
     : IRequestHandler<GetEventCalendarExportRequest, EventCalendarExportDto?>
 {
     public async Task<EventCalendarExportDto?> Handle(
@@ -42,6 +45,8 @@ public sealed class GetEventCalendarExportRequestHandler(
             return null;
         }
 
+        string? location = await ResolvePublicLocationAsync(primarySession, cancellationToken);
+
         return new EventCalendarExportDto(
             entity.Id,
             entity.Title,
@@ -49,7 +54,54 @@ public sealed class GetEventCalendarExportRequestHandler(
             entity.Slug,
             primarySession.StartTime.Value.ToUniversalTime(),
             primarySession.EndTime.Value.ToUniversalTime(),
-            null);
+            location);
+    }
+
+    private async Task<string?> ResolvePublicLocationAsync(
+        EventSession session,
+        CancellationToken cancellationToken)
+    {
+        if (session.EventLocationId is not { } eventLocationId)
+        {
+            return null;
+        }
+
+        IReadOnlyDictionary<Guid, EventLocationDisclosureResult> results =
+            await eventLocationDisclosureService.ResolveManyAsync(
+                [new EventLocationDisclosureRequest(
+                    session.TenantId,
+                    session.EventId,
+                    eventLocationId,
+                    session.RoomId,
+                    RequesterUserId: null,
+                    EventLocationDisclosurePurpose.Public)],
+                cancellationToken);
+
+        return results.TryGetValue(eventLocationId, out EventLocationDisclosureResult? result)
+            && result.Purpose == EventLocationDisclosurePurpose.Public
+            && result.State != EventLocationDisclosureState.Hidden
+                ? FormatPublicLocation(result.Values)
+                : null;
+    }
+
+    private static string? FormatPublicLocation(EventLocationDisclosureValues? values)
+    {
+        if (values is null)
+        {
+            return null;
+        }
+
+        string[] parts =
+        [
+            values.VenueName,
+            values.RoomName,
+            values.StreetAddress,
+            values.Postcode,
+            values.City,
+            values.Country
+        ];
+        string location = string.Join(", ", parts.Where(value => !string.IsNullOrWhiteSpace(value))!);
+        return string.IsNullOrWhiteSpace(location) ? null : location;
     }
 
     private static bool IsPublicCalendarEligible(Event entity)

@@ -85,6 +85,10 @@ public class EventController : ExploreControllerBase
         "Event not found",
         "Event not found.");
 
+    private const string CalendarRetentionWarningHeader = "X-Calendar-Retention-Warning";
+    private const string CalendarRetentionWarning =
+        "Third-party calendar providers may retain imported event and location details after access is revoked or the event changes.";
+
     private readonly IMediator _mediator;
     private readonly ILogger<EventController> _logger;
     private readonly IResourceAssembler<EventDto, EventListDto> _resourceAssembler;
@@ -459,12 +463,13 @@ public class EventController : ExploreControllerBase
     [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}/calendar", Name = RouteNames.GetEventCalendar)]
     [EndpointSummary("Download Event Calendar")]
-    [EndpointDescription("Downloads a published public event as an RFC 5545 iCalendar file.")]
+    [EndpointDescription("Downloads a published public event as an RFC 5545 iCalendar file using only public-purpose location disclosure. Third-party calendar providers may retain imported event and location details after access is revoked or the event changes; the warning is also returned in X-Calendar-Retention-Warning.")]
     [Produces("text/calendar")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetCalendar(Guid id, CancellationToken cancellationToken = default)
     {
+        AddCalendarRetentionWarning();
         var export = await _mediator.Send(new GetEventCalendarExportRequest(id), cancellationToken);
         if (export is null)
         {
@@ -479,6 +484,47 @@ public class EventController : ExploreControllerBase
             System.Text.Encoding.UTF8.GetBytes(calendarContent),
             "text/calendar; charset=utf-8",
             fileName);
+    }
+
+    /// <summary>
+    /// Download registration-scoped attendee calendar details as an iCalendar (.ics) file.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
+    [HttpGet("{id:guid}/calendar/my-access", Name = RouteNames.GetAttendeeEventCalendar)]
+    [EndpointSummary("Download Attendee Event Calendar")]
+    [EndpointDescription("Downloads an RFC 5545 iCalendar file using attendee-purpose location disclosure after registration authorization. Third-party calendar providers may retain imported event and location details after access is revoked or the event changes; the warning is also returned in X-Calendar-Retention-Warning.")]
+    [Produces("text/calendar")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetAttendeeCalendar(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        AddCalendarRetentionWarning();
+        AttendeeEventCalendarExportDto? export = await _mediator.Send(
+            new GetAttendeeEventCalendarExportRequest(id),
+            cancellationToken);
+        if (export is null)
+        {
+            return this.ToNotFoundProblem(EventNotFoundProblem);
+        }
+
+        Uri canonicalUrl = new(_publicUrlBuilder.GetEventUrl(export.EventId));
+        string calendarContent = _calendarFileBuilder.Build(export, canonicalUrl);
+        string fileName = $"{SanitizeCalendarFileName(export.Slug ?? export.Title)}.ics";
+
+        return File(
+            System.Text.Encoding.UTF8.GetBytes(calendarContent),
+            "text/calendar; charset=utf-8",
+            fileName);
+    }
+
+    private void AddCalendarRetentionWarning()
+    {
+        Response.Headers[CalendarRetentionWarningHeader] = CalendarRetentionWarning;
     }
 
     /// <summary>

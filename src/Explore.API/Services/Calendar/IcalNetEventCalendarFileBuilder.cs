@@ -18,6 +18,40 @@ public sealed class IcalNetEventCalendarFileBuilder : IEventCalendarFileBuilder
         ArgumentNullException.ThrowIfNull(calendarExport);
         ArgumentNullException.ThrowIfNull(canonicalUrl);
 
+        return BuildCalendar(
+            calendarExport.EventId,
+            calendarExport.Title,
+            calendarExport.Description,
+            calendarExport.StartsAtUtc,
+            calendarExport.EndsAtUtc,
+            calendarExport.Location,
+            canonicalUrl);
+    }
+
+    public string Build(AttendeeEventCalendarExportDto calendarExport, Uri canonicalUrl)
+    {
+        ArgumentNullException.ThrowIfNull(calendarExport);
+        ArgumentNullException.ThrowIfNull(canonicalUrl);
+
+        return BuildCalendar(
+            calendarExport.EventId,
+            calendarExport.Title,
+            calendarExport.Description,
+            calendarExport.StartsAtUtc,
+            calendarExport.EndsAtUtc,
+            calendarExport.Location,
+            canonicalUrl);
+    }
+
+    private static string BuildCalendar(
+        Guid eventId,
+        string title,
+        string? description,
+        DateTimeOffset startsAtUtc,
+        DateTimeOffset endsAtUtc,
+        string? location,
+        Uri canonicalUrl)
+    {
         var calendar = new Ical.Net.Calendar
         {
             ProductId = ProductIdentifier,
@@ -26,32 +60,33 @@ public sealed class IcalNetEventCalendarFileBuilder : IEventCalendarFileBuilder
 
         var calendarEvent = new CalendarEvent
         {
-            Summary = calendarExport.Title,
-            Description = BuildDescription(calendarExport, canonicalUrl),
-            DtStart = new CalDateTime(calendarExport.StartsAtUtc.UtcDateTime),
-            DtEnd = new CalDateTime(calendarExport.EndsAtUtc.UtcDateTime),
-            DtStamp = new CalDateTime(DateTime.UtcNow),
-            Uid = calendarExport.EventId.ToString("D"),
+            Summary = title,
+            Description = BuildDescription(title, description, canonicalUrl),
+            DtStart = new CalDateTime(startsAtUtc.UtcDateTime),
+            DtEnd = new CalDateTime(endsAtUtc.UtcDateTime),
+            DtStamp = new CalDateTime(startsAtUtc.UtcDateTime),
+            Uid = eventId.ToString("D"),
             Url = canonicalUrl
         };
 
-        if (!string.IsNullOrWhiteSpace(calendarExport.Location))
+        if (!string.IsNullOrWhiteSpace(location))
         {
-            calendarEvent.Location = calendarExport.Location;
+            calendarEvent.Location = location;
         }
 
         calendar.Events.Add(calendarEvent);
 
         var serializer = new CalendarSerializer();
-        return serializer.SerializeToString(calendar);
+        return serializer.SerializeToString(calendar)
+            ?? throw new InvalidOperationException("iCalendar serialization returned no content.");
     }
 
-    private static string BuildDescription(EventCalendarExportDto export, Uri canonicalUrl)
+    private static string BuildDescription(string title, string? description, Uri canonicalUrl)
     {
-        string description = string.IsNullOrWhiteSpace(export.Description)
-            ? export.Title
-            : export.Description.Trim();
+        string value = string.IsNullOrWhiteSpace(description)
+            ? title
+            : description.Trim();
 
-        return $"{description}{Environment.NewLine}{Environment.NewLine}{canonicalUrl}";
+        return $"{value}{Environment.NewLine}{Environment.NewLine}{canonicalUrl}";
     }
 }

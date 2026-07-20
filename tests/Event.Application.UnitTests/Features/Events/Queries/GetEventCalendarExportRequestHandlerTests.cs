@@ -1,7 +1,9 @@
 // ABOUTME: Unit tests for the public event calendar export query.
 // ABOUTME: Verifies draft/private events are excluded before the API serializes .ics files.
 
+using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Events.Handlers.Queries;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Domain;
@@ -14,11 +16,15 @@ public sealed class GetEventCalendarExportRequestHandlerTests
 {
     private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
     private readonly IEventSessionRepository _sessionRepository = Substitute.For<IEventSessionRepository>();
+    private readonly IEventLocationDisclosureService _disclosureService = Substitute.For<IEventLocationDisclosureService>();
     private readonly GetEventCalendarExportRequestHandler _handler;
 
     public GetEventCalendarExportRequestHandlerTests()
     {
-        _handler = new GetEventCalendarExportRequestHandler(_eventRepository, _sessionRepository);
+        _handler = new GetEventCalendarExportRequestHandler(
+            _eventRepository,
+            _sessionRepository,
+            _disclosureService);
     }
 
     [Test]
@@ -51,20 +57,29 @@ public sealed class GetEventCalendarExportRequestHandlerTests
     public async Task HandlePublicCalendarDoesNotExposePhysicalVenueRoomOrCity()
     {
         var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
         var start = new DateTimeOffset(2026, 5, 3, 10, 0, 0, TimeSpan.Zero);
-        var session = CreateSession(eventId, start, start.AddHours(1));
+        var session = CreateSession(eventId, start, start.AddHours(1), tenantId);
+        var placement = EventLocation.CreatePhysical(
+            tenantId,
+            eventId,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            DateTime.UtcNow);
+        session.AssignEventLocation(placement);
+        session.RoomId = Guid.NewGuid();
         session.Location = new Location
         {
             Id = Guid.NewGuid(),
-            FullName = "Private Home Venue",
+            FullName = "PRIVATE-HOME-CALENDAR-CANARY",
             City = "Brussels",
             Country = "Belgium",
             Pii = new LocationPii
             {
-                Address = "Rue Privée 1",
-                Postcode = "1000",
-                Latitude = 50.8503,
-                Longitude = 4.3517
+                Address = "17 Confidential Crescent",
+                Postcode = "SECRET-1040",
+                Latitude = 50.84673,
+                Longitude = 4.35247
             },
             Tenant = null!
         };
@@ -73,7 +88,7 @@ public sealed class GetEventCalendarExportRequestHandlerTests
             Id = Guid.NewGuid(),
             LocationId = session.Location.Id,
             Location = session.Location,
-            Name = "Family Living Room",
+            Name = "FAMILY-ROOM-CANARY",
             Tenant = null!
         };
 
@@ -81,10 +96,36 @@ public sealed class GetEventCalendarExportRequestHandlerTests
             .Returns(CreateEvent(eventId, EventStatusEnum.Published, VisibilityTypeEnum.Public));
         _sessionRepository.GetPublicSessionsByEventAsync(eventId, Arg.Any<CancellationToken>())
             .Returns([session]);
+        _disclosureService.ResolveManyAsync(
+                Arg.Any<IReadOnlyCollection<EventLocationDisclosureRequest>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, EventLocationDisclosureResult>
+            {
+                [placement.Id] = EventLocationDisclosureResult.Public(
+                    placement.Id,
+                    EventLocationDisclosureState.PrivateVenue,
+                    new EventLocationDisclosureValues(VenueName: EventLocationDisclosureContract.PrivateHomePublicLabel))
+            });
 
         var result = await _handler.Handle(new GetEventCalendarExportRequest(eventId), CancellationToken.None);
 
-        await Assert.That(result!.Location).IsNull();
+        await Assert.That(result!.Location).IsEqualTo(EventLocationDisclosureContract.PrivateHomePublicLabel);
+        await Assert.That(result.Location).DoesNotContain("PRIVATE-HOME-CALENDAR-CANARY");
+        await Assert.That(result.Location).DoesNotContain("17 Confidential Crescent");
+        await Assert.That(result.Location).DoesNotContain("SECRET-1040");
+        await Assert.That(result.Location).DoesNotContain("50.84673");
+        await Assert.That(result.Location).DoesNotContain("4.35247");
+        await Assert.That(result.Location).DoesNotContain("FAMILY-ROOM-CANARY");
+        await _disclosureService.Received(1).ResolveManyAsync(
+            Arg.Is<IReadOnlyCollection<EventLocationDisclosureRequest>>(requests =>
+                requests.Count == 1
+                && requests.Single().TenantId == tenantId
+                && requests.Single().EventId == eventId
+                && requests.Single().EventLocationId == placement.Id
+                && requests.Single().RoomId == session.RoomId
+                && requests.Single().RequesterUserId == null
+                && requests.Single().Purpose == EventLocationDisclosurePurpose.Public),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -156,16 +197,19 @@ public sealed class GetEventCalendarExportRequestHandlerTests
     private static EventSession CreateSession(
         Guid eventId,
         DateTimeOffset startsAt,
-        DateTimeOffset endsAt)
+        DateTimeOffset endsAt,
+        Guid? tenantId = null)
     {
         return new EventSession
         {
             Id = Guid.NewGuid(),
             EventId = eventId,
             Event = null!,
+            TenantId = tenantId ?? Guid.NewGuid(),
             Tenant = null!,
             StartTime = startsAt,
-            EndTime = endsAt
+            EndTime = endsAt,
+            EventSessionStatusId = (int)EventSessionStatusEnum.Published
         };
     }
 }
