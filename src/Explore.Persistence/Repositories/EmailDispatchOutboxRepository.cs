@@ -243,10 +243,10 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
 
         await _dbContext.Database.ExecuteSqlInterpolatedAsync($$"""
             INSERT INTO email_dispatch_processor_states (
-                id, processor_code, global_smtp_rate_limit_per_minute_override,
+                id, processor_code, is_paused, global_smtp_rate_limit_per_minute_override,
                 optional_reminders_deferred, updated_at, updated_by)
             VALUES (
-                {{Guid.CreateVersion7()}}, {{SmtpProcessorCode}}, {{rateLimitPerMinute}},
+                {{Guid.CreateVersion7()}}, {{SmtpProcessorCode}}, FALSE, {{rateLimitPerMinute}},
                 FALSE, {{changedAt}}, {{changedBy}})
             ON CONFLICT (processor_code) DO UPDATE
             SET global_smtp_rate_limit_per_minute_override = EXCLUDED.global_smtp_rate_limit_per_minute_override,
@@ -905,8 +905,8 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
             transaction,
             """
             INSERT INTO email_dispatch_processor_states
-                (id, processor_code, optional_reminders_deferred, updated_at)
-            VALUES (@id, @processor_code, FALSE, @updated_at)
+                (id, processor_code, is_paused, optional_reminders_deferred, updated_at)
+            VALUES (@id, @processor_code, FALSE, FALSE, @updated_at)
             ON CONFLICT (processor_code) DO NOTHING;
             """);
         AddParameter(command, "id", Guid.CreateVersion7(), DbType.Guid);
@@ -971,8 +971,8 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
             transaction,
             """
             INSERT INTO email_dispatch_processor_states
-                (id, processor_code, optional_reminders_deferred, updated_at)
-            VALUES (@id, @processor_code, FALSE, @updated_at)
+                (id, processor_code, is_paused, optional_reminders_deferred, updated_at)
+            VALUES (@id, @processor_code, FALSE, FALSE, @updated_at)
             ON CONFLICT (processor_code) DO NOTHING;
             """))
         {
