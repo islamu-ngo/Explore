@@ -8,7 +8,7 @@ using MediatR;
 namespace Explore.Application.Features.Users.Handlers.Commands;
 
 public sealed class DeleteUserCommandHandler(
-    IGlobalLocationPrivacyErasureService erasureService)
+    IPrivacyErasureService erasureService)
     : IRequestHandler<DeleteUserCommand, Unit>
 {
     public async Task<Unit> Handle(DeleteUserCommand request, CancellationToken cancellationToken)

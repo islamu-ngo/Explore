@@ -13,7 +13,7 @@ public static class LocationPrivacyOutboxMessageFactory
 
     public static OutboxMessage CreateLocationErased(
         Guid messageId,
-        LocationPrivacyErasureAuthorityIntent intent,
+        PrivacyErasureIntent intent,
         Location location,
         DateTime createdAtUtc)
     {
@@ -35,7 +35,7 @@ public static class LocationPrivacyOutboxMessageFactory
 
     public static OutboxMessage CreateCorrectionRequested(
         Guid messageId,
-        LocationPrivacyErasureAuthorityIntent intent,
+        PrivacyErasureIntent intent,
         EventLocation eventLocation,
         DateTime createdAtUtc)
     {
@@ -78,7 +78,7 @@ public static class LocationPrivacyOutboxMessageFactory
 
     private static void Validate(
         Guid messageId,
-        LocationPrivacyErasureAuthorityIntent intent,
+        PrivacyErasureIntent intent,
         DateTime createdAtUtc)
     {
         ArgumentNullException.ThrowIfNull(intent);

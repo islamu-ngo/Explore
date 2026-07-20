@@ -3,7 +3,6 @@
 
 using Explore.Application.Services;
 using Explore.Domain;
-using Explore.Domain.Enums;
 using TUnit.Core;
 
 namespace Event.Application.UnitTests.Services;
@@ -18,7 +17,7 @@ public sealed class LocationPrivacyOutboxMessageFactoryTests
     public async Task CreateLocationErased_ContainsOnlyOpaqueIdentityAndVersionFacts()
     {
         Location home = CreateHome();
-        LocationPrivacyErasureAuthorityIntent intent = CreateIntent(home.Id);
+        PrivacyErasureIntent intent = CreateIntent();
 
         OutboxMessage message = LocationPrivacyOutboxMessageFactory.CreateLocationErased(
             Guid.CreateVersion7(),
@@ -40,12 +39,12 @@ public sealed class LocationPrivacyOutboxMessageFactoryTests
     public async Task CreateCorrectionRequested_ContainsOnlyOpaqueIdsAndPolicyVersion()
     {
         Location home = CreateHome();
-        LocationPrivacyErasureAuthorityIntent intent = CreateIntent(home.Id);
+        PrivacyErasureIntent intent = CreateIntent();
         EventLocation eventLocation = EventLocation.CreatePhysical(
             home.TenantId,
             Guid.CreateVersion7(),
             home.Id,
-            intent.OwnerUserId,
+            intent.SubjectId,
             Now);
 
         OutboxMessage message = LocationPrivacyOutboxMessageFactory.CreateCorrectionRequested(
@@ -63,13 +62,14 @@ public sealed class LocationPrivacyOutboxMessageFactoryTests
         await Assert.That(message.Payload).DoesNotContain("ROOM-CANARY");
     }
 
-    private static LocationPrivacyErasureAuthorityIntent CreateIntent(Guid locationId) =>
-        LocationPrivacyErasureAuthorityIntent.Record(
+    private static PrivacyErasureIntent CreateIntent() =>
+        PrivacyErasureIntent.Record(
             Guid.CreateVersion7(),
             1,
+            PrivacyErasureSubjectKind.User,
             Guid.CreateVersion7(),
-            [locationId],
-            LocationPrivacyErasureReasonEnum.AccountDeletion,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
             Now,
             Now);
 

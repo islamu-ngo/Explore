@@ -2,11 +2,10 @@
 // ABOUTME: Ensures stale cache state keeps the replay gate closed without leaking provider detail.
 
 using Explore.Application.Caching;
-using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Application.Services;
 using Explore.Domain;
-using Explore.Domain.Enums;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -24,7 +23,7 @@ public sealed class GlobalLocationPrivacyReplayCacheGateTests
         await harness.Service.ReplayPendingAsync(CancellationToken.None);
 
         await Assert.That(harness.Cache.RemovedKeys)
-            .Contains($"user:detail:{harness.Intent.OwnerUserId}");
+            .Contains($"user:detail:{harness.Intent.SubjectId}");
         await Assert.That(harness.Cache.RemovedTags).Contains(CacheTags.EventLocations);
         await harness.Authority.Received(1).ReadAfterAsync(
             harness.Intent.AuthoritySequence,
@@ -53,57 +52,77 @@ public sealed class GlobalLocationPrivacyReplayCacheGateTests
     {
         Guid ownerUserId = Guid.CreateVersion7();
         DateTime recordedAtUtc = DateTime.UtcNow;
-        LocationPrivacyErasureAuthorityIntent intent = LocationPrivacyErasureAuthorityIntent.Record(
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
             Guid.CreateVersion7(),
             1,
+            PrivacyErasureSubjectKind.User,
             ownerUserId,
-            [],
-            LocationPrivacyErasureReasonEnum.AccountDeletion,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
             recordedAtUtc,
             recordedAtUtc);
-        LocationPrivacyErasureReplayCheckpoint checkpoint =
-            LocationPrivacyErasureReplayCheckpoint.Start(
+        PrivacyErasureReplayCheckpoint checkpoint =
+            PrivacyErasureReplayCheckpoint.Start(
                 intent,
                 recordedAtUtc,
                 Guid.CreateVersion7());
 
-        ILocationPrivacyErasureReplayCheckpointRepository checkpointRepository =
-            Substitute.For<ILocationPrivacyErasureReplayCheckpointRepository>();
+        IPrivacyErasureReplayCheckpointRepository checkpointRepository =
+            Substitute.For<IPrivacyErasureReplayCheckpointRepository>();
         checkpointRepository.GetLatestAsync(Arg.Any<CancellationToken>())
             .Returns(checkpoint);
 
-        ILocationPrivacyErasureAuthority authority =
-            Substitute.For<ILocationPrivacyErasureAuthority>();
+        IPrivacyErasureAuthority authority =
+            Substitute.For<IPrivacyErasureAuthority>();
         authority.ReadAfterAsync(Arg.Any<long>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(call => call.ArgAt<long>(0) == 0 ? [intent] : []);
 
-        IGlobalLocationPrivacyErasureRepository erasureRepository =
-            Substitute.For<IGlobalLocationPrivacyErasureRepository>();
+        IUserLocationPrivacyErasureRepository erasureRepository =
+            Substitute.For<IUserLocationPrivacyErasureRepository>();
+        erasureRepository
+            .GetOwnedPrivateHomesAsync(ownerUserId, Arg.Any<CancellationToken>())
+            .Returns([]);
         erasureRepository
             .GetEventLocationsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
         var cache = new RecordingHybridCache(failOnTag);
-        var service = new GlobalLocationPrivacyErasureService(
-            Substitute.For<IUserRepository>(),
-            Substitute.For<IGenericRepository<UserPii, Guid>>(),
-            Substitute.For<IUserAuthenticationTokenRepository>(),
+        IUserRepository userRepository = Substitute.For<IUserRepository>();
+        IGenericRepository<UserPii, Guid> userPiiRepository =
+            Substitute.For<IGenericRepository<UserPii, Guid>>();
+        IUserAuthenticationTokenRepository tokenRepository =
+            Substitute.For<IUserAuthenticationTokenRepository>();
+        IOutboxRepository outboxRepository = Substitute.For<IOutboxRepository>();
+        IPrivacyErasureLedgerRepository ledgerRepository =
+            Substitute.For<IPrivacyErasureLedgerRepository>();
+        ledgerRepository
+            .AppendAsync(Arg.Any<PrivacyErasureIntent>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<PrivacyErasureIntent>());
+        var applier = new PrivacyErasureApplier(
+            userRepository,
+            userPiiRepository,
+            tokenRepository,
             erasureRepository,
             checkpointRepository,
-            Substitute.For<IOutboxRepository>(),
-            authority,
-            Substitute.For<IUnitOfWork>(),
+            ledgerRepository,
+            outboxRepository,
             cache,
             TimeProvider.System,
-            Substitute.For<ILogger<GlobalLocationPrivacyErasureService>>());
+            Substitute.For<ILogger<PrivacyErasureApplier>>());
+        var service = new RetainedAuthorityPrivacyErasureWorkflow(
+            userRepository,
+            checkpointRepository,
+            authority,
+            Substitute.For<IUnitOfWork>(),
+            applier);
 
         return new ReplayHarness(service, intent, authority, cache);
     }
 
     private sealed record ReplayHarness(
-        GlobalLocationPrivacyErasureService Service,
-        LocationPrivacyErasureAuthorityIntent Intent,
-        ILocationPrivacyErasureAuthority Authority,
+        RetainedAuthorityPrivacyErasureWorkflow Service,
+        PrivacyErasureIntent Intent,
+        IPrivacyErasureAuthority Authority,
         RecordingHybridCache Cache);
 
     private sealed class RecordingHybridCache(string? failOnTag) : HybridCache

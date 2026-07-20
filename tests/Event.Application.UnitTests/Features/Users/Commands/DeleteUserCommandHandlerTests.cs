@@ -3,15 +3,14 @@
 
 using System;
 using Event.Application.UnitTests.Common;
-using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.Users.Handlers.Commands;
 using Explore.Application.Features.Users.Requests.Commands;
 using Explore.Application.Services;
 using Explore.Domain;
-using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
@@ -27,7 +26,7 @@ public class DeleteUserCommandHandlerTests
     private readonly IGenericRepository<UserPii, Guid> _userPiiRepository;
     private readonly IUserAuthenticationTokenRepository _userAuthenticationTokenRepository;
     private readonly IGenericRepository<ActorPii, Guid> _actorPiiRepository;
-    private readonly IGlobalLocationPrivacyErasureRepository _erasureRepository;
+    private readonly IUserLocationPrivacyErasureRepository _erasureRepository;
     private readonly HybridCache _cache;
     private readonly IUnitOfWork _unitOfWork;
     private readonly DeleteUserCommandHandler _handler;
@@ -38,15 +37,15 @@ public class DeleteUserCommandHandlerTests
         _userPiiRepository = Substitute.For<IGenericRepository<UserPii, Guid>>();
         _userAuthenticationTokenRepository = Substitute.For<IUserAuthenticationTokenRepository>();
         _actorPiiRepository = Substitute.For<IGenericRepository<ActorPii, Guid>>();
-        _erasureRepository = Substitute.For<IGlobalLocationPrivacyErasureRepository>();
-        ILocationPrivacyErasureReplayCheckpointRepository checkpointRepository =
-            Substitute.For<ILocationPrivacyErasureReplayCheckpointRepository>();
+        _erasureRepository = Substitute.For<IUserLocationPrivacyErasureRepository>();
+        IPrivacyErasureReplayCheckpointRepository checkpointRepository =
+            Substitute.For<IPrivacyErasureReplayCheckpointRepository>();
         IOutboxRepository outboxRepository = Substitute.For<IOutboxRepository>();
-        ILocationPrivacyErasureAuthority authority = Substitute.For<ILocationPrivacyErasureAuthority>();
+        IPrivacyErasureAuthority authority = Substitute.For<IPrivacyErasureAuthority>();
         _cache = Substitute.For<HybridCache>();
         _unitOfWork = new ImmediateUnitOfWork();
-        LocationPrivacyErasureAuthorityIntent? retainedIntent = null;
-        LocationPrivacyErasureReplayCheckpoint? checkpoint = null;
+        PrivacyErasureIntent? retainedIntent = null;
+        PrivacyErasureReplayCheckpoint? checkpoint = null;
 
         _erasureRepository
             .GetOwnedPrivateHomesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -58,17 +57,18 @@ public class DeleteUserCommandHandlerTests
             .GetUserActorsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
         authority
-            .AppendAsync(Arg.Any<LocationPrivacyErasureIntent>(), Arg.Any<CancellationToken>())
+            .AppendAsync(Arg.Any<PrivacyErasureRequest>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                LocationPrivacyErasureIntent intent = call.Arg<LocationPrivacyErasureIntent>();
+                PrivacyErasureRequest intent = call.Arg<PrivacyErasureRequest>();
                 DateTime recordedAt = DateTime.UtcNow;
-                retainedIntent = LocationPrivacyErasureAuthorityIntent.Record(
+                retainedIntent = PrivacyErasureIntent.Record(
                     intent.IntentId,
                     1,
-                    intent.OwnerUserId,
-                    intent.LocationIds,
-                    LocationPrivacyErasureReasonEnum.AccountDeletion,
+                    intent.SubjectKind,
+                    intent.SubjectId,
+                    intent.ReasonCode,
+                    intent.PolicyVersion,
                     recordedAt,
                     recordedAt);
                 return retainedIntent;
@@ -87,29 +87,39 @@ public class DeleteUserCommandHandlerTests
             .Returns(_ => checkpoint);
         checkpointRepository
             .AppendAsync(
-                Arg.Any<LocationPrivacyErasureReplayCheckpoint>(),
+                Arg.Any<PrivacyErasureReplayCheckpoint>(),
                 Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                checkpoint = call.Arg<LocationPrivacyErasureReplayCheckpoint>();
+                checkpoint = call.Arg<PrivacyErasureReplayCheckpoint>();
                 return checkpoint;
             });
         outboxRepository
             .CreateRange(Arg.Any<IReadOnlyCollection<OutboxMessage>>(), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<IReadOnlyCollection<OutboxMessage>>().ToArray());
-
-        IGlobalLocationPrivacyErasureService service = new GlobalLocationPrivacyErasureService(
+        IPrivacyErasureLedgerRepository ledgerRepository =
+            Substitute.For<IPrivacyErasureLedgerRepository>();
+        ledgerRepository
+            .AppendAsync(Arg.Any<PrivacyErasureIntent>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<PrivacyErasureIntent>());
+        var applier = new PrivacyErasureApplier(
             _userRepository,
             _userPiiRepository,
             _userAuthenticationTokenRepository,
             _erasureRepository,
             checkpointRepository,
+            ledgerRepository,
             outboxRepository,
-            authority,
-            _unitOfWork,
             _cache,
             TimeProvider.System,
-            Substitute.For<ILogger<GlobalLocationPrivacyErasureService>>());
+            Substitute.For<ILogger<PrivacyErasureApplier>>());
+
+        IPrivacyErasureService service = new RetainedAuthorityPrivacyErasureWorkflow(
+            _userRepository,
+            checkpointRepository,
+            authority,
+            _unitOfWork,
+            applier);
         _handler = new DeleteUserCommandHandler(service);
     }
 

@@ -178,7 +178,7 @@ public sealed class RemoveTenantMembershipCommandHandlerTests
 
         await Assert.That(parameterTypes).DoesNotContain("IUserRepository");
         await Assert.That(parameterTypes).DoesNotContain("ILocationRepository");
-        await Assert.That(parameterTypes).DoesNotContain("IGlobalLocationPrivacyErasureRepository");
+        await Assert.That(parameterTypes).DoesNotContain("IUserLocationPrivacyErasureRepository");
         await Assert.That(parameterTypes).DoesNotContain("IErasureAuthorityClient");
     }
 
