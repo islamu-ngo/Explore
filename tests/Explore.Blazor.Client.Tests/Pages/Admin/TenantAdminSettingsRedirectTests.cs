@@ -1,5 +1,5 @@
-// ABOUTME: bUnit tests for TenantAdminSettings redirects based on public onboarding deployment status.
-// ABOUTME: Verifies single-tenant redirects, multi-tenant rendering, and unavailable-status errors.
+// ABOUTME: bUnit tests for tenant settings availability across deployment modes.
+// ABOUTME: Verifies tenant administrators are never redirected into instance-only administration.
 
 using Explore.Blazor.Client.Pages.Events;
 
@@ -37,7 +37,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
     public void Dispose() => _ctx.Dispose();
 
     [Test]
-    public async Task TenantAdminSettings_SingleTenantMode_RedirectsToInstanceSettings()
+    public async Task TenantAdminSettings_SingleTenantMode_DoesNotRedirectTenantAdministrator()
     {
         _onboardingService.GetStatusAsync()
             .Returns(new InstanceOnboardingStatusDto { SelectedDeploymentMode = nameof(DeploymentMode.SingleTenant) });
@@ -46,17 +46,10 @@ public class TenantAdminSettingsRedirectTests : IDisposable
             .GetTypes()
             .First(type => type.Name == "TenantAdminSettings" && typeof(IComponent).IsAssignableFrom(type));
 
-        var cut = _ctx.Render<DynamicComponent>(p =>
+        _ctx.Render<DynamicComponent>(p =>
             p.Add(x => x.Type, componentType));
 
-        cut.WaitForAssertion(() =>
-        {
-            if (!_nav.Uri.Contains("/admin/instance/settings", StringComparison.Ordinal))
-                throw new InvalidOperationException("Expected redirect to /admin/instance/settings.");
-        });
-
-        await Assert.That(_nav.Uri).Contains("/admin/instance/settings");
-        await _tenantOnboardingService.DidNotReceive().GetStatusAsync();
+        await Assert.That(_nav.Uri).EndsWith("/admin/tenant/settings");
     }
 
     [Test]
@@ -75,26 +68,4 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         await Assert.That(_nav.Uri).EndsWith("/admin/tenant/settings");
     }
 
-    [Test]
-    public async Task TenantAdminSettings_WhenStatusIsUnavailable_ShowsErrorAndDoesNotRedirect()
-    {
-        _onboardingService.GetStatusAsync()
-            .Returns((InstanceOnboardingStatusDto?)null);
-
-        var componentType = typeof(EventList).Assembly
-            .GetTypes()
-            .First(type => type.Name == "TenantAdminSettings" && typeof(IComponent).IsAssignableFrom(type));
-
-        var cut = _ctx.Render<DynamicComponent>(p =>
-            p.Add(x => x.Type, componentType));
-
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("Unable to determine deployment mode", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("Expected error message not rendered.");
-        });
-
-        await Assert.That(_nav.Uri).EndsWith("/admin/tenant/settings");
-        await Assert.That(cut.Markup).Contains("Unable to determine deployment mode", StringComparison.OrdinalIgnoreCase);
-    }
 }

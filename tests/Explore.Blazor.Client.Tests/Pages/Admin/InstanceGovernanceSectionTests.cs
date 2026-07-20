@@ -285,10 +285,33 @@ public class InstanceGovernanceSectionTests : IDisposable
             true,
             Arg.Any<CancellationToken>());
         await Assert.That(cut.Markup).Contains(
-            "One switch enables both fetching community events and publishing eligible local events",
+            "public inbound discovery works without AT&nbsp;Protocol authentication",
+            StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).Contains(
+            "Publishing and RSVP synchronization require AT&nbsp;Protocol authentication",
             StringComparison.OrdinalIgnoreCase);
         await Assert.That(cut.Markup).Contains("application commits and validates the event before any PDS record", StringComparison.OrdinalIgnoreCase);
         await Assert.That(cut.Markup).DoesNotContain("decentralization", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Test]
+    public async Task AtprotoGovernance_WhenApplicationSessionExpired_RequestsApplicationSignIn()
+    {
+        _settingsService.GetInstanceAsync(Arg.Any<CancellationToken>())
+            .Returns<Task<HalResourceOfSettingGroupResponseDto>>(_ =>
+                throw new ApiException(
+                    "Unauthorized",
+                    401,
+                    response: null,
+                    new Dictionary<string, IEnumerable<string>>(),
+                    innerException: null));
+
+        var cut = RenderGovernanceSection(displayMode: "advanced");
+        cut.WaitForState(() => cut.Markup.Contains("Your application session expired.", StringComparison.Ordinal));
+
+        var alert = cut.Find("[role='alert']");
+        await Assert.That(alert.TextContent).Contains("Sign in again", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(alert.TextContent).DoesNotContain("AT Protocol authentication", StringComparison.OrdinalIgnoreCase);
     }
 
     private IRenderedComponent<DynamicComponent> RenderGovernanceSection(

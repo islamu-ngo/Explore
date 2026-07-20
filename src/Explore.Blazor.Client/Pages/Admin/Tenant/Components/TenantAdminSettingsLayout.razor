@@ -179,7 +179,9 @@
                         </div>
                         @if (_currentSection == "policies")
                         {
-                            <TenantPoliciesSection Model="_model" />
+                            <TenantPoliciesSection Model="_model"
+                                                   IsSingleTenant="_isSingleTenantMode"
+                                                   UseInstanceScope="@(_isSingleTenantMode && _isInstanceAdmin)" />
                         }
                         else if (_currentSection == "render-policy")
                         {

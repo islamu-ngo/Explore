@@ -1,5 +1,5 @@
 // ABOUTME: Route guard that restricts tenant admin routes to tenant-scoped administrators.
-// ABOUTME: Uses BFF/API onboarding status endpoints for tenant authority and single-tenant fallback.
+// ABOUTME: Uses BFF/API tenant authority without promoting instance administrators to tenant administrators.
 
 using Blazouter.Interfaces;
 using Blazouter.Models;
@@ -11,7 +11,6 @@ namespace Explore.Blazor.Client.Routing.Guards;
 public sealed class TenantAdminRouteGuard(
     AuthenticationStateProvider authStateProvider,
     ITenantOnboardingService tenantOnboardingService,
-    IInstanceOnboardingService instanceOnboardingService,
     IUserService userService) : IRouteGuard
 {
     public async Task<bool> CanActivateAsync(RouteMatch match)
@@ -23,27 +22,10 @@ public sealed class TenantAdminRouteGuard(
             return false;
         }
 
-        var instanceStatus = await instanceOnboardingService.GetStatusAsync().ConfigureAwait(false);
-        var isSingleTenant = IsSingleTenant(instanceStatus?.SelectedDeploymentMode);
-        if (isSingleTenant && instanceStatus?.IsAuthenticated == true && instanceStatus.IsCurrentUserInstanceAdmin == true)
-        {
-            return true;
-        }
-
         var authority = await userService.GetAdminAuthorityAsync().ConfigureAwait(false);
         if (authority?.AdminTenantIds?.Any() == true)
         {
             return true;
-        }
-
-        if (isSingleTenant && authority?.IsInstanceAdmin == true)
-        {
-            return true;
-        }
-
-        if (isSingleTenant)
-        {
-            return false;
         }
 
         var tenantStatus = await tenantOnboardingService.GetStatusAsync().ConfigureAwait(false);
@@ -65,9 +47,4 @@ public sealed class TenantAdminRouteGuard(
         return $"/login?returnUrl={Uri.EscapeDataString(returnUrl)}";
     }
 
-    private static bool IsSingleTenant(string? selectedDeploymentMode)
-    {
-        return string.IsNullOrWhiteSpace(selectedDeploymentMode)
-            || string.Equals(selectedDeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase);
-    }
 }

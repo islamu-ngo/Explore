@@ -160,6 +160,23 @@ public class SettingHandlerTests
         await Assert.That(setting.Reason).IsEqualTo("Insufficient permissions");
     }
 
+    [Test]
+    public async Task ResolveGroup_TenantScope_InstanceAdminWithoutTenantAuthority_CannotEdit()
+    {
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminTenantIdsAsync(TestUserId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<Guid>());
+        SetupResolverBatchForEventList();
+        var handler = CreateResolveHandler();
+        var query = new ResolveSettingGroupQuery { Category = "EventList", Scope = SettingScope.Tenant };
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        await Assert.That(result.Settings).IsNotEmpty();
+        await Assert.That(result.Settings.All(setting => !setting.CanEdit)).IsTrue();
+    }
+
     // ──────────────────────────────────────────────
     // UpdateSettingCommandHandler
     // ──────────────────────────────────────────────
@@ -229,6 +246,22 @@ public class SettingHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Message).Contains("administrators");
+    }
+
+    [Test]
+    public async Task Update_TenantScope_InstanceAdminWithoutTenantAuthority_Fails()
+    {
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminTenantIdsAsync(TestUserId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<Guid>());
+        var handler = CreateUpdateHandler();
+        var cmd = new UpdateSettingCommand { Key = TestKey, Value = "pagination", Scope = SettingScope.Tenant };
+
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).Contains("Only tenant administrators");
     }
 
     [Test]

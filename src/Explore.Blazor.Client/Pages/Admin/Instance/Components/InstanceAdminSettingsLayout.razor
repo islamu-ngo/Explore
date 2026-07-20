@@ -142,7 +142,7 @@
                         {
                             <InstanceFooterGovernanceSection Model="_footerGovernance" IsSingleTenant="IsSingleTenantMode" />
                         }
-                        else if (_currentSection == "footer" && IsSingleTenantMode)
+                        else if (_currentSection == "footer" && IsSingleTenantMode && _canManageTenant)
                         {
                             <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantFooterSection />
                         }
@@ -154,7 +154,7 @@
                         {
                             <InstanceListmonkIntegrationSection />
                         }
-                        else if (_currentSection == "members" && IsSingleTenantMode)
+                        else if (_currentSection == "members" && IsSingleTenantMode && _canManageTenant)
                         {
                             <TenantMembersSection />
                         }
@@ -162,29 +162,31 @@
                         {
                             <InstanceAiSection AiAssistant="_aiAssistant" DeploymentMode="_deploymentMode" />
                         }
-                        else if (_currentSection == "policies" && IsSingleTenantMode)
+                        else if (_currentSection == "policies" && IsSingleTenantMode && _canManageTenant)
                         {
-                            <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantPoliciesSection Model="_tenantModel" IsSingleTenant="true" />
+                            <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantPoliciesSection Model="_tenantModel"
+                                                                                                          IsSingleTenant="true"
+                                                                                                          UseInstanceScope="true" />
                         }
-                        else if (_currentSection == "announcement-bar" && IsSingleTenantMode)
+                        else if (_currentSection == "announcement-bar" && IsSingleTenantMode && _canManageTenant)
                         {
                             <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantAnnouncementBarSection Model="_tenantModel" HasExistingAnnouncementBar="_hasAnnouncementBar" />
                         }
-                        else if (_currentSection == "public-experience" && IsSingleTenantMode)
+                        else if (_currentSection == "public-experience" && IsSingleTenantMode && _canManageTenant)
                         {
                             <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantPublicExperienceSection @ref="_publicExperienceSection" Model="_publicExperienceModel" />
                         }
-                        else if (_currentSection == "organizations" && IsSingleTenantMode)
+                        else if (_currentSection == "organizations" && IsSingleTenantMode && _canManageTenant)
                         {
                             <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantOrganizationsSection />
                         }
-                        else if (_currentSection == "lookups" && IsSingleTenantMode)
+                        else if (_currentSection == "lookups" && IsSingleTenantMode && _canManageTenant)
                         {
                             <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantLookupTablesSection />
                         }
                         else if (_currentSection == "advanced")
                         {
-                            <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" Mcp="_mcp" DeploymentMode="@_deploymentMode" DisplayMode="advanced" />
+                            <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" Mcp="_mcp" DeploymentMode="@_deploymentMode" DisplayMode="advanced" SuppressAtprotoGovernance="@(IsSingleTenantMode && _canManageTenant)" />
                         }
                         else if (_currentSection == "access-tokens")
                         {
@@ -288,6 +290,7 @@
     private bool _isLoading = true;
     private FormSubmitState _submitState = new();
     private bool _canEdit;
+    private bool _canManageTenant;
     private bool _hasAnnouncementBar;
     private bool _lastAnnouncementSaveStartedWithExistingBar;
     private string? _errorMessage;
@@ -310,6 +313,7 @@
         var status = await InstanceOnboardingService.GetStatusAsync();
         _canEdit = authority?.IsInstanceAdmin == true
             || (status?.IsAuthenticated == true && status.IsCurrentUserInstanceAdmin == true);
+        _canManageTenant = authority?.AdminTenantIds?.Any() == true;
 
         if (!_canEdit)
         {
@@ -358,7 +362,7 @@
         _footerGovernance = footerGovTask.Result;
         _tenantCount = tenantCountTask.Result;
 
-        if (IsSingleTenantMode)
+        if (IsSingleTenantMode && _canManageTenant)
         {
             _tenantModel = new TenantPolicySettingsDto();
             await TenantPublicExperienceAdminService.ApplySingleTenantPolicySettingsAsync(_tenantModel);
@@ -441,7 +445,7 @@
                 tasks.Add(InstanceOnboardingService.UpdateAnalyticsGovernanceSettingsAsync(_analyticsModel));
                 tasks.Add(InstanceOnboardingService.UpdateTenantDelegationAsync(_delegation));
                 break;
-            case "policies" when IsSingleTenantMode:
+            case "policies" when IsSingleTenantMode && _canManageTenant:
                 _eventPolicy.AllowUserSubmittedEvents = _tenantModel.AllowUserSubmittedEvents ?? _eventPolicy.AllowUserSubmittedEvents;
                 _eventPolicy.AllowOrganizationSubmittedEvents = _tenantModel.AllowOrganizationSubmittedEvents ?? _eventPolicy.AllowOrganizationSubmittedEvents;
                 _eventPolicy.AllowGroupSubmittedEvents = _tenantModel.AllowGroupSubmittedEvents ?? _eventPolicy.AllowGroupSubmittedEvents;
@@ -463,7 +467,7 @@
                 tasks.Add(InstanceOnboardingService.UpdateEventPolicyAsync(_eventPolicy));
                 tasks.Add(InstanceOnboardingService.UpdateOrganizationPolicyAsync(_orgPolicy));
                 break;
-            case "announcement-bar" when IsSingleTenantMode:
+            case "announcement-bar" when IsSingleTenantMode && _canManageTenant:
                 var hadAnnouncementBarBeforeSave = _hasAnnouncementBar;
                 PublicExperienceAdminSaveResult announcementResponse = await TenantPublicExperienceAdminService.SaveAnnouncementBarAsync(
                     _tenantModel,
@@ -602,16 +606,29 @@
     private IReadOnlyList<NavItem> BuildNavItems(bool isSingleTenant)
     {
         if (isSingleTenant)
-            return
+        {
+            List<NavItem> navItems =
             [
                 new("governance",       Icons.Material.Filled.Settings,        "General"),
-                new("members",          Icons.Material.Filled.People,          "Members"),
-                new("organizations",    Icons.Material.Filled.Business,        "Organizations"),
-                new("lookups",          Icons.Material.Filled.TableChart,      "Lookup Tables"),
-                new("policies",         Icons.Material.Filled.Policy,          "Policies"),
+            ];
+
+            if (_canManageTenant)
+            {
+                navItems.AddRange(
+                [
+                    new("members",          Icons.Material.Filled.People,          "Members"),
+                    new("organizations",    Icons.Material.Filled.Business,        "Organizations"),
+                    new("lookups",          Icons.Material.Filled.TableChart,      "Lookup Tables"),
+                    new("policies",         Icons.Material.Filled.Policy,          "Policies"),
+                    new("announcement-bar", Icons.Material.Filled.Announcement,    "Announcement Bar"),
+                    new("public-experience",Icons.Material.Filled.HomeWork,        "Public Experience"),
+                    new("footer",           Icons.Material.Filled.ViewAgenda,      "Footer"),
+                ]);
+            }
+
+            navItems.AddRange(
+            [
                 new("ai",               Icons.Material.Filled.SmartToy,        "AI"),
-                new("announcement-bar", Icons.Material.Filled.Announcement,    "Announcement Bar"),
-                new("public-experience",Icons.Material.Filled.HomeWork,        "Public Experience"),
                 new("themes",           Icons.Material.Filled.ColorLens,       "Themes"),
                 new("auth-providers",   Icons.Material.Filled.Key,             "Authentication and Authorization Providers"),
                 new("modules",          Icons.Material.Filled.Extension,       "Modules"),
@@ -619,15 +636,17 @@
                 new("storage",          Icons.Material.Filled.Cloud,           "Object Storage"),
                 new("smtp",             Icons.Material.Filled.AlternateEmail,  "SMTP"),
                 new("analytics-privacy",Icons.Material.Filled.Analytics,       "Analytics & Privacy"),
-                new("footer",           Icons.Material.Filled.ViewAgenda,      "Footer"),
                 new("localization",     Icons.Material.Filled.Translate,       "Localization"),
                 new("listmonk",         Icons.Material.Filled.MarkEmailRead,   "Listmonk"),
-            new("advanced",                 Icons.Material.Filled.DisplaySettings, "Advanced"),
-            new("support-access",           Icons.Material.Filled.SupportAgent,    "Support Access",   Group: "Operations"),
-            new("support-access-evidence",  Icons.Material.Filled.ReceiptLong,     "Support Evidence", Group: "Operations"),
-            new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
-            new("webhooks",         Icons.Material.Filled.Webhook,         "Webhooks",         Group: "Developer"),
-        ];
+                new("advanced",         Icons.Material.Filled.DisplaySettings, "Advanced"),
+                new("support-access",   Icons.Material.Filled.SupportAgent,    "Support Access",   Group: "Operations"),
+                new("support-access-evidence", Icons.Material.Filled.ReceiptLong, "Support Evidence", Group: "Operations"),
+                new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
+                new("webhooks",         Icons.Material.Filled.Webhook,         "Webhooks",         Group: "Developer"),
+            ]);
+
+            return navItems;
+        }
 
         return
         [

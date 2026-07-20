@@ -87,8 +87,9 @@
             <MudText id="tenant-atproto-events-title" Typo="Typo.subtitle1" Style="font-weight:600;">
                 AT Protocol Event Federation
             </MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                One switch enables both fetching community events and publishing eligible local events to each consenting creator's PDS.
+            <MudText Typo="Typo.body2" Color="Color.Default">
+                When event federation is enabled, public inbound discovery works without AT&nbsp;Protocol authentication.
+                Publishing and RSVP synchronization require AT&nbsp;Protocol authentication.
             </MudText>
 
             @if (_atprotoLoading)
@@ -114,7 +115,7 @@
                            Disabled="@(_atprotoSaving || !CanEdit(AtprotoEventsEnabledKey))">
                     Enable AT Protocol events
                 </MudSwitch>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                <MudText Typo="Typo.caption" Color="Color.Default">
                     Source: @SettingSourceLabel(eventsSetting?.Source). Lock: @LockStateLabel(eventsSetting?.IsLocked).
                 </MudText>
 
@@ -123,6 +124,23 @@
                     <MudText Typo="Typo.caption" Color="Color.Warning" role="status">
                         @LockedReason(AtprotoEventsEnabledKey)
                     </MudText>
+                }
+
+                @if (UseInstanceScope && HasAtprotoAffordance(LockRelation(AtprotoEventsEnabledKey)))
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Warning"
+                               Disabled="@_atprotoSaving"
+                               OnClick="@(() => SetAtprotoLockAsync(AtprotoEventsEnabledKey, true))">
+                        Lock tenant override
+                    </MudButton>
+                }
+                else if (UseInstanceScope && HasAtprotoAffordance(UnlockRelation(AtprotoEventsEnabledKey)))
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                               Disabled="@_atprotoSaving"
+                               OnClick="@(() => SetAtprotoLockAsync(AtprotoEventsEnabledKey, false))">
+                        Unlock tenant override
+                    </MudButton>
                 }
 
                 var profileSetting = FindSetting(AtprotoValidationProfileKey);
@@ -135,10 +153,10 @@
                     <MudSelectItem Value="@PlatformValidationProfile">Platform publishing rules</MudSelectItem>
                     <MudSelectItem Value="@CommunityValidationProfile">Community lexicon minimum</MudSelectItem>
                 </MudSelect>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                <MudText Typo="Typo.caption" Color="Color.Default">
                     Community lexicon minimum reduces required business fields, but privacy, authorization, local commit, and payload safety checks still apply.
                 </MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                <MudText Typo="Typo.caption" Color="Color.Default">
                     Source: @SettingSourceLabel(profileSetting?.Source). Lock: @LockStateLabel(profileSetting?.IsLocked).
                 </MudText>
 
@@ -147,6 +165,23 @@
                     <MudText Typo="Typo.caption" Color="Color.Warning" role="status">
                         @LockedReason(AtprotoValidationProfileKey)
                     </MudText>
+                }
+
+                @if (UseInstanceScope && HasAtprotoAffordance(LockRelation(AtprotoValidationProfileKey)))
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Warning"
+                               Disabled="@_atprotoSaving"
+                               OnClick="@(() => SetAtprotoLockAsync(AtprotoValidationProfileKey, true))">
+                        Lock validation-profile tenant override
+                    </MudButton>
+                }
+                else if (UseInstanceScope && HasAtprotoAffordance(UnlockRelation(AtprotoValidationProfileKey)))
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                               Disabled="@_atprotoSaving"
+                               OnClick="@(() => SetAtprotoLockAsync(AtprotoValidationProfileKey, false))">
+                        Unlock validation-profile tenant override
+                    </MudButton>
                 }
             }
 
@@ -167,7 +202,8 @@
     private const string PlatformValidationProfile = "platform";
     private const string CommunityValidationProfile = "community_lexicon";
 
-    private SettingGroupResponseDto? _atprotoSettings;
+    private IReadOnlyList<AtprotoSettingView>? _atprotoSettings;
+    private IReadOnlyDictionary<string, HalLink> _atprotoLinks = new Dictionary<string, HalLink>();
     private bool _atprotoLoading = true;
     private bool _atprotoSaving;
     private bool _atprotoSaveSucceeded;
@@ -178,6 +214,9 @@
 
     [Parameter]
     public bool IsSingleTenant { get; set; }
+
+    [Parameter]
+    public bool UseInstanceScope { get; set; }
 
     private bool AtprotoEventsEnabled => ReadBool(FindSetting(AtprotoEventsEnabledKey)?.Value);
 
@@ -194,12 +233,20 @@
         _atprotoMessage = null;
         try
         {
-            _atprotoSettings = await AtprotoFederationSettingsService.GetTenantAsync();
+            await RefreshAtprotoSettingsAsync();
+        }
+        catch (ApiException exception) when (exception.StatusCode == (int)System.Net.HttpStatusCode.Unauthorized)
+        {
+            Logger.LogWarning(exception, "Application session expired while loading tenant AT Protocol event settings.");
+            _atprotoSettings = null;
+            _atprotoLinks = new Dictionary<string, HalLink>();
+            _atprotoMessage = "Your application session expired. Sign in again to manage federation settings.";
         }
         catch (Exception exception)
         {
             Logger.LogWarning(exception, "Failed to load tenant AT Protocol event settings.");
             _atprotoSettings = null;
+            _atprotoLinks = new Dictionary<string, HalLink>();
             _atprotoMessage = "AT Protocol event settings are temporarily unavailable.";
         }
         finally
@@ -227,16 +274,23 @@
         _atprotoMessage = null;
         try
         {
-            BaseCommandResponseOfGuid response =
-                await AtprotoFederationSettingsService.UpdateTenantAsync(key, value);
+            BaseCommandResponseOfGuid response = UseInstanceScope
+                ? await AtprotoFederationSettingsService.UpdateInstanceAsync(key, value)
+                : await AtprotoFederationSettingsService.UpdateTenantAsync(key, value);
             _atprotoSaveSucceeded = response.Success == true;
             _atprotoMessage = _atprotoSaveSucceeded
                 ? "AT Protocol event settings saved."
                 : response.Message ?? "AT Protocol event settings could not be saved.";
             if (_atprotoSaveSucceeded)
             {
-                _atprotoSettings = await AtprotoFederationSettingsService.GetTenantAsync();
+                await RefreshAtprotoSettingsAsync();
             }
+        }
+        catch (ApiException exception) when (exception.StatusCode == (int)System.Net.HttpStatusCode.Unauthorized)
+        {
+            Logger.LogWarning(exception, "Application session expired while updating tenant AT Protocol event setting {SettingKey}.", key);
+            _atprotoSaveSucceeded = false;
+            _atprotoMessage = "Your application session expired. Sign in again to manage federation settings.";
         }
         catch (Exception exception)
         {
@@ -250,14 +304,97 @@
         }
     }
 
-    private EffectiveSettingDto? FindSetting(string key) =>
-        _atprotoSettings?.Settings?.FirstOrDefault(setting =>
+    private async Task SetAtprotoLockAsync(string key, bool shouldLock)
+    {
+        var relation = shouldLock ? LockRelation(key) : UnlockRelation(key);
+        if (_atprotoSaving || !UseInstanceScope || !HasAtprotoAffordance(relation))
+        {
+            return;
+        }
+
+        _atprotoSaving = true;
+        _atprotoMessage = null;
+        try
+        {
+            var response = await AtprotoFederationSettingsService.SetInstanceLockAsync(key, shouldLock);
+            _atprotoSaveSucceeded = response.Success == true;
+            _atprotoMessage = _atprotoSaveSucceeded
+                ? shouldLock ? "Tenant override locked." : "Tenant override unlocked."
+                : response.Message ?? "The tenant lock could not be changed.";
+            if (_atprotoSaveSucceeded)
+            {
+                await RefreshAtprotoSettingsAsync();
+            }
+        }
+        catch (ApiException exception) when (exception.StatusCode == (int)System.Net.HttpStatusCode.Unauthorized)
+        {
+            Logger.LogWarning(exception, "Application session expired while changing the instance lock for AT Protocol setting {SettingKey}.", key);
+            _atprotoSaveSucceeded = false;
+            _atprotoMessage = "Your application session expired. Sign in again to manage federation settings.";
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Failed to change the instance lock for AT Protocol setting {SettingKey}.", key);
+            _atprotoSaveSucceeded = false;
+            _atprotoMessage = "The tenant lock could not be changed.";
+        }
+        finally
+        {
+            _atprotoSaving = false;
+        }
+    }
+
+    private async Task RefreshAtprotoSettingsAsync()
+    {
+        if (UseInstanceScope)
+        {
+            var resource = await AtprotoFederationSettingsService.GetInstanceAsync();
+            _atprotoSettings = resource.Settings.Select(setting => new AtprotoSettingView(
+                setting.Key,
+                setting.Value,
+                setting.Source is { } source && Enum.IsDefined(typeof(SettingSource), source)
+                    ? (SettingSource)source
+                    : null,
+                setting.IsLocked,
+                setting.CanEdit == true,
+                setting.Reason)).ToArray();
+            _atprotoLinks = resource._links is null
+                ? new Dictionary<string, HalLink>()
+                : new Dictionary<string, HalLink>(resource._links, StringComparer.Ordinal);
+            return;
+        }
+
+        var tenantSettings = await AtprotoFederationSettingsService.GetTenantAsync();
+        _atprotoSettings = tenantSettings.Settings.Select(setting => new AtprotoSettingView(
+            setting.Key,
+            setting.Value,
+            setting.Source,
+            setting.IsLocked,
+            setting.CanEdit == true,
+            setting.Reason)).ToArray();
+        _atprotoLinks = new Dictionary<string, HalLink>();
+    }
+
+    private AtprotoSettingView? FindSetting(string key) =>
+        _atprotoSettings?.FirstOrDefault(setting =>
             string.Equals(setting.Key, key, StringComparison.Ordinal));
 
-    private bool CanEdit(string key) => FindSetting(key)?.CanEdit == true;
+    private bool CanEdit(string key) => UseInstanceScope
+        ? HasAtprotoAffordance(UpdateRelation(key))
+        : FindSetting(key)?.CanEdit == true;
+
+    private bool HasAtprotoAffordance(string relation) => _atprotoLinks.ContainsKey(relation);
 
     private string LockedReason(string key) =>
-        FindSetting(key)?.Reason ?? "This setting is locked by the instance administrator.";
+        FindSetting(key)?.Reason ?? (UseInstanceScope
+            ? "The server has not granted an update affordance for this instance setting."
+            : "This setting is locked by the instance administrator.");
+
+    private static string UpdateRelation(string key) => $"update-{key}";
+
+    private static string LockRelation(string key) => $"lock-{key}";
+
+    private static string UnlockRelation(string key) => $"unlock-{key}";
 
     private static bool ReadBool(string? value) =>
         bool.TryParse(value?.Trim().Trim('"'), out bool parsed) && parsed;
@@ -282,4 +419,12 @@
         SettingSource.TenantLocked => "Tenant locked",
         _ => "Unknown"
     };
+
+    private sealed record AtprotoSettingView(
+        string Key,
+        string Value,
+        SettingSource? Source,
+        bool? IsLocked,
+        bool CanEdit,
+        string? Reason);
 }

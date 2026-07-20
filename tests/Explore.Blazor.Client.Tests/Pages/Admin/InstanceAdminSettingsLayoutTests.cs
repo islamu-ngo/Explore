@@ -3,6 +3,7 @@
 
 using System.Reflection;
 using Explore.Blazor.Client.Contracts.Services.ControlPlane;
+using Explore.Blazor.Client.Contracts.Services.Federation;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Tests.Common.Authentication;
@@ -58,6 +59,46 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         });
 
         await Assert.That(cut.Markup).Contains("Public Experience", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Test]
+    public async Task InstanceAdminSettingsLayout_SingleTenantInstanceOnly_HidesTenantAdministrationSections()
+    {
+        _userService.GetAdminAuthorityAsync()
+            .Returns(new AdminAuthorityDto
+            {
+                IsInstanceAdmin = true,
+                AdminTenantIds = [],
+                AdminOrganizationIds = [],
+                HasAnyAuthority = true
+            });
+        _tenantOnboardingService.GetStatusAsync()
+            .Returns(new TenantOnboardingStatusDto
+            {
+                IsAuthenticated = true,
+                IsCurrentUserTenantAdministrator = false,
+                IsCurrentUserPlatformAdministrator = true
+            });
+
+        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
+            parameters.Add(component => component.Type, GetLayoutComponentType()));
+
+        cut.WaitForState(() => cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase));
+        var navLabels = cut.FindAll("[role='option']")
+            .Select(item => item.TextContent.Trim())
+            .ToArray();
+        await Assert.That(navLabels).DoesNotContain("Public Experience");
+        await Assert.That(navLabels).DoesNotContain("Members");
+        await Assert.That(navLabels).DoesNotContain("Organizations");
+        await Assert.That(navLabels).DoesNotContain("Policies");
+        cut.FindAll("[role='option']")
+            .Single(item => item.TextContent.Trim() == "Advanced")
+            .Click();
+        cut.WaitForState(() => cut.Markup.Contains("AT Protocol Event Federation", StringComparison.Ordinal));
+        await _ctx.Services.GetRequiredService<IAtprotoFederationSettingsService>().Received(1)
+            .GetInstanceAsync(Arg.Any<CancellationToken>());
+        await _publicExperienceAdminService.DidNotReceive()
+            .ApplySingleTenantPolicySettingsAsync(Arg.Any<TenantPolicySettingsDto>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

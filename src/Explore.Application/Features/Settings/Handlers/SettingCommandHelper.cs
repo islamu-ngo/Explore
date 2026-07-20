@@ -185,21 +185,20 @@ internal static class SettingCommandHelper
 
             case SettingScope.Tenant:
                 var isTenantAdmin = await adminContext.IsTenantAdminAsync(tenantContext.TenantId, ct);
-                if (isTenantAdmin || await adminContext.IsInstanceAdminAsync(ct))
+                if (isTenantAdmin)
                     return (true, null);
 
                 var tenantUserId = await ResolveCurrentUserIdAsync(adminContext, currentUserService, ct);
                 if (tenantUserId is not null)
                 {
                     var adminTenantIds = await adminContext.GetAdminTenantIdsAsync(tenantUserId.Value, ct);
-                    if (adminTenantIds.Contains(tenantContext.TenantId)
-                        || await adminContext.IsInstanceAdminAsync(tenantUserId.Value, ct))
+                    if (adminTenantIds.Contains(tenantContext.TenantId))
                     {
                         return (true, null);
                     }
                 }
 
-                return (false, "Only tenant or instance administrators can update tenant settings.");
+                return (false, "Only tenant administrators can update tenant settings.");
 
             case SettingScope.Instance:
                 if (await adminContext.IsInstanceAdminAsync(ct))

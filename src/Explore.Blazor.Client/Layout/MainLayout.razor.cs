@@ -258,11 +258,21 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
             path = path.TrimEnd('/');
         }
 
+        var wasHidden = _hideChrome;
+
         _hideChrome = path.Equals("/setup", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("/onboarding/", StringComparison.OrdinalIgnoreCase)
             || path.Equals("/startup", StringComparison.OrdinalIgnoreCase);
 
         SidebarState.SetHasSidebar(!_hideChrome);
+
+        if (wasHidden && !_hideChrome)
+        {
+            if (!DockLayoutState.IsMobileViewport)
+            {
+                SidebarState.SetOpen(true);
+            }
+        }
     }
 
 

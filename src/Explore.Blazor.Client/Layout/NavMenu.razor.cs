@@ -399,8 +399,7 @@ public partial class NavMenu : IDisposable
                 if (authority is not null)
                 {
                     _isCurrentUserInstanceAdmin = authority.IsInstanceAdmin == true || _isCurrentUserInstanceAdmin;
-                    _isCurrentUserTenantAdmin = authority.AdminTenantIds?.Any() == true
-                        || (_isSingleTenantMode && _isCurrentUserInstanceAdmin);
+                    _isCurrentUserTenantAdmin = authority.AdminTenantIds?.Any() == true;
                 }
 
                 var tenantStatus = await TenantOnboardingService.GetStatusAsync();

@@ -305,10 +305,26 @@ public class NavMenuAdminTests : IDisposable
 
         // Assert -- onboarding grants are visible even before the serialized auth claims rehydrate.
         await Assert.That(cut.Markup).Contains("Administration");
-        await Assert.That(cut.Markup).Contains("href=\"/admin/tenant/settings\"");
+        await Assert.That(cut.Markup).Contains("href=\"/admin/instance/settings\"");
         await Assert.That(cut.Markup).DoesNotContain("Instance Console");
-        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/tenant/settings\"");
+        await Assert.That(cut.Markup).DoesNotContain("Custom Property Governance");
+    }
+
+    [Test]
+    public async Task NavMenu_SingleTenantTenantAdminOnly_UsesTenantAdministration()
+    {
+        _ctx.SetAuthenticatedUser(AuthenticationTestConstants.AdminUserId, "Client Administrator");
+        SetupNavMenuServices(
+            deploymentMode: "SingleTenant",
+            isCurrentUserTenantAdmin: true);
+
+        var cut = RenderNavMenu();
+        OpenDropdown(cut);
+
+        await Assert.That(cut.Markup).Contains("href=\"/admin/tenant/settings\"");
         await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance/settings\"");
+        await Assert.That(cut.Markup).Contains("Custom Property Governance");
     }
 
     [Test]
@@ -342,9 +358,9 @@ public class NavMenuAdminTests : IDisposable
         // Assert -- the persisted layout rechecks BFF/API authority on menu open.
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("href=\"/admin/tenant/settings\"", StringComparison.Ordinal))
+            if (!cut.Markup.Contains("href=\"/admin/instance/settings\"", StringComparison.Ordinal))
             {
-                throw new InvalidOperationException("Expected tenant administration link to render after status refresh.");
+                throw new InvalidOperationException("Expected instance administration link to render after status refresh.");
             }
         });
         await Assert.That(cut.Markup).Contains("Administration");
@@ -374,10 +390,9 @@ public class NavMenuAdminTests : IDisposable
         OpenDropdown(cut);
 
         // Assert
-        await Assert.That(cut.Markup).Contains("href=\"/admin/tenant/settings\"");
+        await Assert.That(cut.Markup).Contains("href=\"/admin/instance/settings\"");
         await Assert.That(cut.Markup).Contains("Administration");
         await Assert.That(cut.Markup).DoesNotContain("Instance Console");
-        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance\"");
     }
 
     private IRenderedComponent<DynamicComponent> RenderNavMenu()

@@ -290,8 +290,9 @@
                     <MudText id="instance-atproto-events-title" Typo="Typo.h6" HtmlTag="h2" Style="font-weight:600;">
                         AT Protocol Event Federation
                     </MudText>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">
-                        One switch enables both fetching community events and publishing eligible local events to each consenting creator's PDS.
+                    <MudText Typo="Typo.body2" Color="Color.Default">
+                        When event federation is enabled, public inbound discovery works without AT&nbsp;Protocol authentication.
+                        Publishing and RSVP synchronization require AT&nbsp;Protocol authentication.
                     </MudText>
                     <MudAlert Severity="Severity.Info" Dense="true">
                         Publication is local-first: the application commits and validates the event before any PDS record can be created.
@@ -319,7 +320,7 @@
                                        Disabled="@(_atprotoSaving || !HasAtprotoAffordance(UpdateRelation(AtprotoEventsEnabledKey)))">
                                 Enable AT Protocol events
                             </MudSwitch>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            <MudText Typo="Typo.caption" Color="Color.Default">
                                 Source: @SettingSourceLabel(eventsSetting?.Source). Lock: @LockStateLabel(eventsSetting?.IsLocked).
                             </MudText>
                             @if (!HasAtprotoAffordance(UpdateRelation(AtprotoEventsEnabledKey)))
@@ -361,10 +362,10 @@
                                 <MudSelectItem Value="@PlatformValidationProfile">Platform publishing rules</MudSelectItem>
                                 <MudSelectItem Value="@CommunityValidationProfile">Community lexicon minimum</MudSelectItem>
                             </MudSelect>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            <MudText Typo="Typo.caption" Color="Color.Default">
                                 Community lexicon minimum relaxes business-field requirements only. Authorization, privacy, payload safety, and the local-first commit invariant still apply.
                             </MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            <MudText Typo="Typo.caption" Color="Color.Default">
                                 Source: @SettingSourceLabel(profileSetting?.Source). Lock: @LockStateLabel(profileSetting?.IsLocked).
                             </MudText>
                             @if (!HasAtprotoAffordance(UpdateRelation(AtprotoValidationProfileKey)))
@@ -634,11 +635,15 @@
     [Parameter]
     public string DisplayMode { get; set; } = "full";
 
+    [Parameter]
+    public bool SuppressAtprotoGovernance { get; set; }
+
     private bool ShowDeploymentMode => DisplayMode is "full" or "advanced";
     private bool ShowGeneralGovernance => DisplayMode is "full" or "general";
     private bool ShowRenderPolicies => DisplayMode is "full" or "advanced";
     private bool ShowMcpGovernance => DisplayMode is "full" or "advanced";
-    private bool ShowAtprotoGovernance => DisplayMode is "full" or "advanced";
+    private bool ShowAtprotoGovernance =>
+        !SuppressAtprotoGovernance && (DisplayMode is "full" or "advanced");
     private bool ShowHomePage => DisplayMode is "full" or "general";
 
     private HalResourceOfControlPlaneDeploymentModeRunbookDto? _runbook;
@@ -883,6 +888,12 @@
         {
             _atprotoSettings = await AtprotoFederationSettingsService.GetInstanceAsync();
         }
+        catch (ApiException exception) when (exception.StatusCode == (int)System.Net.HttpStatusCode.Unauthorized)
+        {
+            Logger.LogWarning(exception, "Application session expired while loading instance AT Protocol event settings.");
+            _atprotoSettings = null;
+            _atprotoMessage = "Your application session expired. Sign in again to manage federation settings.";
+        }
         catch (Exception exception)
         {
             Logger.LogWarning(exception, "Failed to load instance AT Protocol event settings.");
@@ -924,6 +935,12 @@
                 _atprotoSettings = await AtprotoFederationSettingsService.GetInstanceAsync();
             }
         }
+        catch (ApiException exception) when (exception.StatusCode == (int)System.Net.HttpStatusCode.Unauthorized)
+        {
+            Logger.LogWarning(exception, "Application session expired while updating instance AT Protocol event setting {SettingKey}.", key);
+            _atprotoSaveSucceeded = false;
+            _atprotoMessage = "Your application session expired. Sign in again to manage federation settings.";
+        }
         catch (Exception exception)
         {
             Logger.LogWarning(exception, "Failed to update instance AT Protocol event setting {SettingKey}.", key);
@@ -957,6 +974,12 @@
             {
                 _atprotoSettings = await AtprotoFederationSettingsService.GetInstanceAsync();
             }
+        }
+        catch (ApiException exception) when (exception.StatusCode == (int)System.Net.HttpStatusCode.Unauthorized)
+        {
+            Logger.LogWarning(exception, "Application session expired while changing the instance lock for AT Protocol setting {SettingKey}.", key);
+            _atprotoSaveSucceeded = false;
+            _atprotoMessage = "Your application session expired. Sign in again to manage federation settings.";
         }
         catch (Exception exception)
         {

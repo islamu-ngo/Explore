@@ -24,7 +24,7 @@ public class TenantAdminRouteGuardTests
         var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
         var userService = Substitute.For<IUserService>();
 
-        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, instanceOnboardingService, userService);
+        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, userService);
 
         // Act
         var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/tenant/settings" });
@@ -52,7 +52,7 @@ public class TenantAdminRouteGuardTests
         var userService = Substitute.For<IUserService>();
         userService.GetAdminAuthorityAsync().Returns((AdminAuthorityDto?)null);
 
-        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, instanceOnboardingService, userService);
+        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, userService);
 
         // Act
         var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/tenant/settings" });
@@ -80,7 +80,7 @@ public class TenantAdminRouteGuardTests
         var userService = Substitute.For<IUserService>();
         userService.GetAdminAuthorityAsync().Returns((AdminAuthorityDto?)null);
 
-        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, instanceOnboardingService, userService);
+        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, userService);
 
         // Act
         var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/tenant/settings" });
@@ -116,7 +116,7 @@ public class TenantAdminRouteGuardTests
         var userService = Substitute.For<IUserService>();
         userService.GetAdminAuthorityAsync().Returns((AdminAuthorityDto?)null);
 
-        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, instanceOnboardingService, userService);
+        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, userService);
 
         // Act
         var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/tenant/settings" });
@@ -159,7 +159,7 @@ public class TenantAdminRouteGuardTests
             HasAnyAuthority = true
         });
 
-        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, instanceOnboardingService, userService);
+        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, userService);
 
         // Act
         var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/tenant/settings" });
@@ -169,7 +169,7 @@ public class TenantAdminRouteGuardTests
     }
 
     [Test]
-    public async Task CanActivateAsync_SingleTenantInstanceAdminStatus_ReturnsTrueWhenTenantStatusUnavailable()
+    public async Task CanActivateAsync_SingleTenantInstanceAdminWithoutTenantAuthority_ReturnsFalse()
     {
         // Arrange
         var principal = new AuthenticationTestBuilder()
@@ -190,13 +190,13 @@ public class TenantAdminRouteGuardTests
         });
         var userService = Substitute.For<IUserService>();
 
-        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, instanceOnboardingService, userService);
+        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, userService);
 
         // Act
         var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/tenant/settings" });
 
         // Assert
-        await Assert.That(result).IsTrue();
+        await Assert.That(result).IsFalse();
     }
 
     [Test]
@@ -228,7 +228,7 @@ public class TenantAdminRouteGuardTests
             HasAnyAuthority = true
         });
 
-        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, instanceOnboardingService, userService);
+        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, userService);
 
         // Act
         var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/tenant/settings" });

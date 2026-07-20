@@ -51,7 +51,7 @@ public static class NavMenuTestServices
         userService.GetAdminAuthorityAsync().Returns(new AdminAuthorityDto
         {
             IsInstanceAdmin = isCurrentUserInstanceAdmin,
-            AdminTenantIds = isCurrentUserTenantAdmin || (deploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase) && isCurrentUserInstanceAdmin)
+            AdminTenantIds = isCurrentUserTenantAdmin
                 ? [AuthenticationTestConstants.DefaultTenantId]
                 : [],
             AdminOrganizationIds = [],

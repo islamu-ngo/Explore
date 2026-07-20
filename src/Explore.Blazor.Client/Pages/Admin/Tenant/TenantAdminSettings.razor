@@ -1,70 +1,13 @@
 @* ABOUTME: Page wrapper for the Tenant Admin Settings sidebar layout. *@
-@* ABOUTME: Uses public onboarding status to render multi-tenant settings or redirect single-tenant admins. *@
+@* ABOUTME: Keeps tenant administration available to real tenant administrators in every deployment mode. *@
 
 @page "/admin/tenant/settings"
 @using MudBlazor
 @using Microsoft.AspNetCore.Authorization
 @using Explore.Blazor.Client.Pages.Admin.Tenant.Components
-@using Explore.Blazor.Client.Services
 @attribute [Authorize]
 @rendermode InteractiveServer
-@inject IInstanceOnboardingService InstanceOnboardingService
-@inject NavigationManager Navigation
 
 <PageTitle>Tenant Settings</PageTitle>
 
-@if (_errorMessage is not null)
-{
-    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
-        <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
-    </MudContainer>
-}
-else if (_checkingMode)
-{
-    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
-        <MudStack AlignItems="AlignItems.Center" Class="py-12">
-            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-        </MudStack>
-    </MudContainer>
-}
-else if (!_redirecting)
-{
-    <TenantAdminSettingsLayout />
-}
-
-@code {
-    private bool _checkingMode = true;
-    private bool _redirecting;
-    private string? _errorMessage;
-
-    protected override async Task OnInitializedAsync()
-    {
-        try
-        {
-            var instanceStatus = await InstanceOnboardingService.GetStatusAsync();
-            if (instanceStatus is null)
-            {
-                _errorMessage = "Unable to determine deployment mode. Please refresh or contact support.";
-                return;
-            }
-
-            if (!string.Equals(
-                    instanceStatus.SelectedDeploymentMode,
-                    nameof(DeploymentMode.MultiTenant),
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                _redirecting = true;
-                Navigation.NavigateTo("/admin/instance/settings", replace: true);
-                return;
-            }
-        }
-        catch
-        {
-            _errorMessage = "Unable to determine deployment mode. Please refresh or contact support.";
-        }
-        finally
-        {
-            _checkingMode = false;
-        }
-    }
-}
+<TenantAdminSettingsLayout />

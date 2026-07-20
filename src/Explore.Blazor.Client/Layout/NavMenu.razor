@@ -279,12 +279,23 @@
                                         </a>
                                     }
 
-                                    @if (IsTenantAdmin(context.User) || (IsInstanceAdmin(context.User) && _isSingleTenantMode))
+                                    @if (_isSingleTenantMode && _isCurrentUserInstanceAdmin)
+                                    {
+                                        <a href="/admin/instance/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                            <MudIcon Icon="@Icons.Material.Filled.Domain" Size="Size.Small" />
+                                            Administration
+                                        </a>
+                                    }
+                                    else if (_isCurrentUserTenantAdmin)
                                     {
                                         <a href="/admin/tenant/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                             <MudIcon Icon="@Icons.Material.Filled.Domain" Size="Size.Small" />
                                             @(_isSingleTenantMode ? "Administration" : "Tenant Administration")
                                         </a>
+                                    }
+
+                                    @if (_isCurrentUserTenantAdmin)
+                                    {
                                         <a href="/admin/tenant/custom-properties" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                             <MudIcon Icon="@Icons.Material.Filled.Tune" Size="Size.Small" />
                                             Custom Property Governance

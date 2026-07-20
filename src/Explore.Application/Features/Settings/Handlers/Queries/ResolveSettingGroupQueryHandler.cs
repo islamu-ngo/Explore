@@ -137,8 +137,7 @@ public class ResolveSettingGroupQueryHandler
 
         if (scope == SettingScope.Tenant)
         {
-            if (await _adminContext.IsTenantAdminAsync(_tenantContext.TenantId, ct)
-                || await _adminContext.IsInstanceAdminAsync(ct))
+            if (await _adminContext.IsTenantAdminAsync(_tenantContext.TenantId, ct))
             {
                 return true;
             }
@@ -151,8 +150,7 @@ public class ResolveSettingGroupQueryHandler
             }
 
             IReadOnlyList<Guid> adminTenantIds = await _adminContext.GetAdminTenantIdsAsync(userId.Value, ct);
-            return adminTenantIds.Contains(_tenantContext.TenantId)
-                || await _adminContext.IsInstanceAdminAsync(userId.Value, ct);
+            return adminTenantIds.Contains(_tenantContext.TenantId);
         }
 
         if (scope == SettingScope.Instance)

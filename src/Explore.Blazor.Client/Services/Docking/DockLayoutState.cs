@@ -19,6 +19,8 @@ public sealed class DockLayoutState : IDockPanelRegistry
 
     public DockLayoutChangeReason LastChangeReason { get; private set; } = DockLayoutChangeReason.None;
 
+    public bool IsMobileViewport => _isMobileViewport;
+
     public void Register(DockPanelDescriptor descriptor, RenderFragment content)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
