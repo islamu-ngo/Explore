@@ -123,29 +123,23 @@ public sealed class EventLocationPrivacyAuditTests
     }
 
     [Test]
-    public async Task AuthorityIntentUsesUuidV7AndReadOnlyOpaqueLocationIds()
+    public async Task AuthorityIntentUsesUuidV7AndTypedUserSubject()
     {
-        var firstLocationId = Guid.CreateVersion7();
-        var secondLocationId = Guid.CreateVersion7();
         var requestedAt = new DateTime(2026, 7, 16, 12, 0, 0, DateTimeKind.Utc);
-        var intent = CreateIntent(
-            1,
-            requestedAt,
-            [secondLocationId, firstLocationId, secondLocationId]);
+        var intent = CreateIntent(1, requestedAt);
 
         await Assert.That(intent.IntentId.Version).IsEqualTo(7);
         await Assert.That(intent.AuthoritySequence).IsEqualTo(1);
-        await Assert.That(intent.LocationIds.Count).IsEqualTo(2);
-        await Assert.That(intent.LocationIds.Distinct().Count()).IsEqualTo(2);
-        await Assert.That(() => ((IList<Guid>)intent.LocationIds).Add(Guid.CreateVersion7()))
-            .Throws<NotSupportedException>();
+        await Assert.That(intent.SubjectKind).IsEqualTo(PrivacyErasureSubjectKind.User);
+        await Assert.That(intent.PolicyVersion).IsEqualTo(1);
 
-        await Assert.That(() => LocationPrivacyErasureAuthorityIntent.Record(
+        await Assert.That(() => PrivacyErasureIntent.Record(
                 Guid.NewGuid(),
                 1,
+                PrivacyErasureSubjectKind.User,
                 Guid.CreateVersion7(),
-                [],
-                LocationPrivacyErasureReasonEnum.AccountDeletion,
+                PrivacyErasureReasonCode.AccountDeletion,
+                1,
                 requestedAt,
                 requestedAt))
             .Throws<ArgumentException>();
@@ -159,12 +153,13 @@ public sealed class EventLocationPrivacyAuditTests
 
         await Assert.That(nonRfcVariantId.Version).IsEqualTo(7);
         await Assert.That(nonRfcVariantId.Variant).IsEqualTo(0);
-        await Assert.That(() => LocationPrivacyErasureAuthorityIntent.Record(
+        await Assert.That(() => PrivacyErasureIntent.Record(
                 nonRfcVariantId,
                 1,
+                PrivacyErasureSubjectKind.User,
                 Guid.CreateVersion7(),
-                [],
-                LocationPrivacyErasureReasonEnum.AccountDeletion,
+                PrivacyErasureReasonCode.AccountDeletion,
+                1,
                 requestedAt,
                 requestedAt))
             .Throws<ArgumentException>();
@@ -174,11 +169,11 @@ public sealed class EventLocationPrivacyAuditTests
     public async Task ReplayCheckpointRequiresContiguousMonotonicAuthoritySequence()
     {
         var recordedAt = new DateTime(2026, 7, 16, 12, 0, 0, DateTimeKind.Utc);
-        var firstIntent = CreateIntent(1, recordedAt, []);
-        var secondIntent = CreateIntent(2, recordedAt.AddSeconds(1), []);
-        var gapIntent = CreateIntent(4, recordedAt.AddSeconds(2), []);
-        var first = LocationPrivacyErasureReplayCheckpoint.Start(firstIntent, recordedAt.AddMinutes(1));
-        var second = LocationPrivacyErasureReplayCheckpoint.Advance(first, secondIntent, recordedAt.AddMinutes(2));
+        var firstIntent = CreateIntent(1, recordedAt);
+        var secondIntent = CreateIntent(2, recordedAt.AddSeconds(1));
+        var gapIntent = CreateIntent(4, recordedAt.AddSeconds(2));
+        var first = PrivacyErasureReplayCheckpoint.Start(firstIntent, recordedAt.AddMinutes(1));
+        var second = PrivacyErasureReplayCheckpoint.Advance(first, secondIntent, recordedAt.AddMinutes(2));
 
         await Assert.That(first.Id.Version).IsEqualTo(7);
         await Assert.That(first.AuthoritySequence).IsEqualTo(1);
@@ -186,12 +181,12 @@ public sealed class EventLocationPrivacyAuditTests
         await Assert.That(second.PreviousCheckpointId).IsEqualTo(first.Id);
         await Assert.That(second.Matches(secondIntent)).IsTrue();
 
-        await Assert.That(() => LocationPrivacyErasureReplayCheckpoint.Advance(
+        await Assert.That(() => PrivacyErasureReplayCheckpoint.Advance(
                 second,
                 secondIntent,
                 recordedAt.AddMinutes(3)))
             .Throws<InvalidOperationException>();
-        await Assert.That(() => LocationPrivacyErasureReplayCheckpoint.Advance(
+        await Assert.That(() => PrivacyErasureReplayCheckpoint.Advance(
                 second,
                 gapIntent,
                 recordedAt.AddMinutes(3)))
@@ -205,8 +200,8 @@ public sealed class EventLocationPrivacyAuditTests
         [
             typeof(EventLocationDisclosureAudit),
             typeof(EventLocationExactReadAudit),
-            typeof(LocationPrivacyErasureAuthorityIntent),
-            typeof(LocationPrivacyErasureReplayCheckpoint)
+            typeof(PrivacyErasureIntent),
+            typeof(PrivacyErasureReplayCheckpoint)
         ];
         string[] forbiddenNames =
         [
@@ -276,12 +271,13 @@ public sealed class EventLocationPrivacyAuditTests
                 Guid.CreateVersion7(),
                 null))
             .Throws<ArgumentOutOfRangeException>();
-        await Assert.That(() => LocationPrivacyErasureAuthorityIntent.Record(
+        await Assert.That(() => PrivacyErasureIntent.Record(
                 Guid.CreateVersion7(),
                 1,
+                PrivacyErasureSubjectKind.User,
                 Guid.CreateVersion7(),
-                [],
-                (LocationPrivacyErasureReasonEnum)999,
+                (PrivacyErasureReasonCode)999,
+                1,
                 DateTime.UtcNow,
                 DateTime.UtcNow))
             .Throws<ArgumentOutOfRangeException>();
@@ -290,7 +286,7 @@ public sealed class EventLocationPrivacyAuditTests
         [
             typeof(EventLocationDisclosureAudit),
             typeof(EventLocationExactReadAudit),
-            typeof(LocationPrivacyErasureAuthorityIntent)
+            typeof(PrivacyErasureIntent)
         ];
         await Assert.That(factoryTypes.SelectMany(type => type.GetMethods())
                 .Where(method => method.Name is "Create" or "Record")
@@ -316,16 +312,16 @@ public sealed class EventLocationPrivacyAuditTests
             .Throws<ArgumentOutOfRangeException>();
     }
 
-    private static LocationPrivacyErasureAuthorityIntent CreateIntent(
+    private static PrivacyErasureIntent CreateIntent(
         long sequence,
-        DateTime requestedAt,
-        IEnumerable<Guid> locationIds) =>
-        LocationPrivacyErasureAuthorityIntent.Record(
+        DateTime requestedAt) =>
+        PrivacyErasureIntent.Record(
             Guid.CreateVersion7(),
             sequence,
+            PrivacyErasureSubjectKind.User,
             Guid.CreateVersion7(),
-            locationIds,
-            LocationPrivacyErasureReasonEnum.AccountDeletion,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
             requestedAt,
             requestedAt.AddMilliseconds(1));
 }

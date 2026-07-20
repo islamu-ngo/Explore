@@ -1,22 +1,26 @@
-// ABOUTME: Immutable local fact proving one contiguous erasure-authority intent was applied.
-// ABOUTME: Stores only authority sequence, intent identity, prior checkpoint identity, and UTC application time.
+// ABOUTME: Immutable local fact proving one contiguous platform privacy-erasure intent was applied.
+// ABOUTME: Binds checkpoint identity to the exact typed fact, prior checkpoint, policy, and UTC application time.
 
 namespace Explore.Domain;
 
-public sealed class LocationPrivacyErasureReplayCheckpoint
+public sealed class PrivacyErasureReplayCheckpoint
 {
-    private LocationPrivacyErasureReplayCheckpoint()
+    private PrivacyErasureReplayCheckpoint()
     {
     }
 
     public Guid Id { get; private set; }
     public long AuthoritySequence { get; private set; }
     public Guid IntentId { get; private set; }
+    public PrivacyErasureSubjectKind SubjectKind { get; private set; }
+    public Guid SubjectId { get; private set; }
+    public PrivacyErasureReasonCode ReasonCode { get; private set; }
+    public int PolicyVersion { get; private set; }
     public Guid? PreviousCheckpointId { get; private set; }
     public DateTime AppliedAtUtc { get; private set; }
 
-    public static LocationPrivacyErasureReplayCheckpoint Start(
-        LocationPrivacyErasureAuthorityIntent intent,
+    public static PrivacyErasureReplayCheckpoint Start(
+        PrivacyErasureIntent intent,
         DateTime appliedAtUtc,
         Guid? checkpointId = null)
     {
@@ -29,9 +33,9 @@ public sealed class LocationPrivacyErasureReplayCheckpoint
         return Create(intent, null, appliedAtUtc, checkpointId ?? Guid.CreateVersion7());
     }
 
-    public static LocationPrivacyErasureReplayCheckpoint Advance(
-        LocationPrivacyErasureReplayCheckpoint previous,
-        LocationPrivacyErasureAuthorityIntent intent,
+    public static PrivacyErasureReplayCheckpoint Advance(
+        PrivacyErasureReplayCheckpoint previous,
+        PrivacyErasureIntent intent,
         DateTime appliedAtUtc,
         Guid? checkpointId = null)
     {
@@ -50,13 +54,17 @@ public sealed class LocationPrivacyErasureReplayCheckpoint
         return Create(intent, previous.Id, appliedAtUtc, checkpointId ?? Guid.CreateVersion7());
     }
 
-    public bool Matches(LocationPrivacyErasureAuthorityIntent intent) =>
+    public bool Matches(PrivacyErasureIntent intent) =>
         intent is not null
         && AuthoritySequence == intent.AuthoritySequence
-        && IntentId == intent.IntentId;
+        && IntentId == intent.IntentId
+        && SubjectKind == intent.SubjectKind
+        && SubjectId == intent.SubjectId
+        && ReasonCode == intent.ReasonCode
+        && PolicyVersion == intent.PolicyVersion;
 
-    private static LocationPrivacyErasureReplayCheckpoint Create(
-        LocationPrivacyErasureAuthorityIntent intent,
+    private static PrivacyErasureReplayCheckpoint Create(
+        PrivacyErasureIntent intent,
         Guid? previousCheckpointId,
         DateTime appliedAtUtc,
         Guid checkpointId)
@@ -76,11 +84,15 @@ public sealed class LocationPrivacyErasureReplayCheckpoint
             throw new ArgumentException("Checkpoint ids must be RFC 4122 UUIDv7 values.", nameof(checkpointId));
         }
 
-        return new LocationPrivacyErasureReplayCheckpoint
+        return new PrivacyErasureReplayCheckpoint
         {
             Id = checkpointId,
             AuthoritySequence = intent.AuthoritySequence,
             IntentId = intent.IntentId,
+            SubjectKind = intent.SubjectKind,
+            SubjectId = intent.SubjectId,
+            ReasonCode = intent.ReasonCode,
+            PolicyVersion = intent.PolicyVersion,
             PreviousCheckpointId = previousCheckpointId,
             AppliedAtUtc = appliedAtUtc
         };
