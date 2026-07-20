@@ -38,7 +38,10 @@ public sealed record RecipientNotificationMaterialization(
     Guid? InAppNotificationId = null,
     Guid? InAppDeliveryId = null,
     Guid? EmailDeliveryId = null,
-    DateTime? MaterializedAt = null);
+    DateTime? MaterializedAt = null,
+    bool IncludeInAppChannel = false,
+    bool? InAppPreferenceEnabled = null,
+    string? InAppSkipReason = null);
 
 public sealed record RecipientInAppNotificationDraft(
     int NotificationTypeId,

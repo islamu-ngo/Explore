@@ -156,6 +156,21 @@ public sealed class RecipientNotificationMaterializer(
                 null,
                 null));
         }
+        else if (request.IncludeInAppChannel)
+        {
+            intent.Deliveries.Add(CreateDelivery(
+                request,
+                request.InAppDeliveryId,
+                NotificationPreferenceChannelEnum.InApp,
+                isRequired: false,
+                NotificationDeliveryStatusEnum.Skipped,
+                now,
+                notification: null,
+                email: null,
+                string.IsNullOrWhiteSpace(request.InAppSkipReason)
+                    ? "in_app_preference_disabled"
+                    : request.InAppSkipReason.Trim()));
+        }
 
         EmailDispatchOutbox? email = request.Email;
         if (request.IncludeEmailChannel)
@@ -222,9 +237,12 @@ public sealed class RecipientNotificationMaterializer(
             ConsentPurpose = request.ConsentPurpose,
             ConsentVersion = request.ConsentVersion,
             PreferenceCategoryCode = request.PreferenceCategoryCode,
-            PreferenceEnabled = channel == NotificationPreferenceChannelEnum.Email
-                ? request.EmailPreferenceEnabled
-                : null,
+            PreferenceEnabled = channel switch
+            {
+                NotificationPreferenceChannelEnum.Email => request.EmailPreferenceEnabled,
+                NotificationPreferenceChannelEnum.InApp => request.InAppPreferenceEnabled,
+                _ => null
+            },
             RecipientAddressSource = email?.RecipientAddressSource,
             DisclosureLevel = request.DisclosureLevel,
             TemplateKey = request.Intent.TemplateKey!,
@@ -282,6 +300,20 @@ public sealed class RecipientNotificationMaterializer(
         if (request.MaterializedAt is { Kind: not DateTimeKind.Utc })
         {
             throw new InvalidOperationException("Notification materialization time must be UTC when supplied.");
+        }
+
+        if (request.IncludeInAppChannel
+            && request.InAppPreferenceEnabled == true
+            && request.InApp is null)
+        {
+            throw new InvalidOperationException(
+                "An enabled optional in-app channel requires an in-app notification draft.");
+        }
+
+        if (request.InApp is not null && request.InAppPreferenceEnabled == false)
+        {
+            throw new InvalidOperationException(
+                "A disabled optional in-app channel cannot include an in-app notification draft.");
         }
     }
 

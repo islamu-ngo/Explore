@@ -119,6 +119,7 @@ public sealed class NotificationFanoutRecipientTemplateFactory
     {
         ArgumentNullException.ThrowIfNull(occurrence);
         ArgumentNullException.ThrowIfNull(template);
+        RetryStableRecipientGraphMetadata graphMetadata = CreateRetryStableRecipientGraphMetadata();
         if (template.IsModerationAvailabilityRequired)
         {
             return CreateModerationAvailabilityRequiredMaterialization(
@@ -127,7 +128,8 @@ public sealed class NotificationFanoutRecipientTemplateFactory
                 recipientUserId,
                 verifiedEmail,
                 emailSkipReason,
-                locationAuthorization);
+                locationAuthorization,
+                graphMetadata);
         }
 
         if (occurrence.Id != template.OccurrenceId
@@ -160,7 +162,7 @@ public sealed class NotificationFanoutRecipientTemplateFactory
             : null;
 
         return new RecipientNotificationMaterialization(
-            Guid.CreateVersion7(),
+            graphMetadata.IntentId,
             new NotificationIntentDraft(
                 NotificationCategory.EventLifecycle,
                 TenantId: occurrence.TenantId,
@@ -198,7 +200,11 @@ public sealed class NotificationFanoutRecipientTemplateFactory
             EmailPreferenceEnabled: emailPreferenceEnabled,
             PolicyVersion: occurrence.PolicyVersion,
             TemplateVersion: occurrence.TemplateVersion,
-            LinkAllowed: false);
+            LinkAllowed: false,
+            InAppNotificationId: graphMetadata.InAppNotificationId,
+            InAppDeliveryId: graphMetadata.InAppDeliveryId,
+            EmailDeliveryId: graphMetadata.EmailDeliveryId,
+            MaterializedAt: graphMetadata.MaterializedAt);
     }
 
     private static NotificationFanoutRecipientTemplate ParseModerationAvailabilityRequired(
@@ -240,7 +246,8 @@ public sealed class NotificationFanoutRecipientTemplateFactory
         Guid recipientUserId,
         string? verifiedEmail,
         string? emailSkipReason,
-        FanoutAttendeeLocationAuthorizationResult? locationAuthorization)
+        FanoutAttendeeLocationAuthorizationResult? locationAuthorization,
+        RetryStableRecipientGraphMetadata graphMetadata)
     {
         if (occurrence.Id != template.OccurrenceId
             || !string.Equals(occurrence.TemplateKey, template.TemplateKey, StringComparison.Ordinal)
@@ -280,7 +287,7 @@ public sealed class NotificationFanoutRecipientTemplateFactory
             };
 
         return new RecipientNotificationMaterialization(
-            Guid.CreateVersion7(),
+            graphMetadata.IntentId,
             new NotificationIntentDraft(
                 NotificationCategory.TrustSafetyModeration,
                 TenantId: occurrence.TenantId,
@@ -309,8 +316,19 @@ public sealed class NotificationFanoutRecipientTemplateFactory
                 : null,
             PolicyVersion: occurrence.PolicyVersion,
             TemplateVersion: occurrence.TemplateVersion,
-            LinkAllowed: false);
+            LinkAllowed: false,
+            InAppNotificationId: graphMetadata.InAppNotificationId,
+            InAppDeliveryId: graphMetadata.InAppDeliveryId,
+            EmailDeliveryId: graphMetadata.EmailDeliveryId,
+            MaterializedAt: graphMetadata.MaterializedAt);
     }
+
+    private static RetryStableRecipientGraphMetadata CreateRetryStableRecipientGraphMetadata() => new(
+        Guid.CreateVersion7(),
+        Guid.CreateVersion7(),
+        Guid.CreateVersion7(),
+        Guid.CreateVersion7(),
+        DateTime.UtcNow);
 
     private static bool IsEmptyJsonObject(string json)
     {
@@ -595,4 +613,11 @@ public sealed class NotificationFanoutRecipientTemplateFactory
         : $"{value.Value.ToString("yyyy-MM-dd HH:mm zzz", CultureInfo.InvariantCulture)}{(string.IsNullOrWhiteSpace(timezone) ? string.Empty : $" ({timezone.Trim()})")}";
 
     private static string Text(string? value) => string.IsNullOrWhiteSpace(value) ? "not specified" : value.Trim();
+
+    private sealed record RetryStableRecipientGraphMetadata(
+        Guid IntentId,
+        Guid InAppNotificationId,
+        Guid InAppDeliveryId,
+        Guid EmailDeliveryId,
+        DateTime MaterializedAt);
 }

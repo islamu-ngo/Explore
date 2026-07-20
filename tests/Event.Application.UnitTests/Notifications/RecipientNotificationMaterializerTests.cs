@@ -125,6 +125,36 @@ public sealed class RecipientNotificationMaterializerTests
     }
 
     [Test]
+    public async Task MaterializeAsyncUnknownCommitPrimaryKeyConflictConvergesOnStableWinner()
+    {
+        DateTime materializedAt = new(2026, 7, 20, 12, 0, 0, DateTimeKind.Utc);
+        RecipientNotificationMaterialization request = CreateRequest(includeEmail: true) with
+        {
+            InAppNotificationId = Guid.CreateVersion7(),
+            InAppDeliveryId = Guid.CreateVersion7(),
+            EmailDeliveryId = Guid.CreateVersion7(),
+            MaterializedAt = materializedAt
+        };
+        NotificationIntent winner = CreateWinningIntent(request);
+        winner.Id = request.IntentId;
+        var repository = new RecordingGraphRepository
+        {
+            CreateFailure = new NotificationIntentDeduplicationConflictException(
+                new InvalidOperationException("23505 pk_notification_intents")),
+            Loaded = winner
+        };
+        var unitOfWork = new RecordingUnitOfWork();
+        var materializer = new RecipientNotificationMaterializer(repository, unitOfWork);
+
+        RecipientNotificationMaterializationResult result = await materializer.MaterializeAsync(request);
+
+        await Assert.That(unitOfWork.ExecutionCount).IsEqualTo(2);
+        await Assert.That(repository.LoadCount).IsEqualTo(2);
+        await Assert.That(repository.RepairCount).IsEqualTo(1);
+        await Assert.That(result.Intent.Id).IsEqualTo(request.IntentId);
+    }
+
+    [Test]
     public async Task MaterializeAsyncOccurrenceConflictRecoversByOccurrenceAndRecipient()
     {
         Guid occurrenceId = Guid.CreateVersion7();

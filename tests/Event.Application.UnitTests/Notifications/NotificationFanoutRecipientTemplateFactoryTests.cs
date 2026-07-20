@@ -4,8 +4,10 @@
 using System.Collections.Immutable;
 using System.Text.Json;
 using Explore.Application.Contracts.LocationPrivacy;
+using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Notifications;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 
@@ -40,6 +42,15 @@ public sealed class NotificationFanoutRecipientTemplateFactoryTests
 
         await Assert.That(request.Intent.FanoutOccurrenceId).IsEqualTo(occurrence.Id);
         await Assert.That(request.Intent.DeduplicationKey).Contains(occurrence.Id.ToString("N"));
+        await Assert.That(request.IntentId).IsNotEqualTo(Guid.Empty);
+        await Assert.That(request.InAppNotificationId).IsNotNull();
+        await Assert.That(request.InAppNotificationId).IsNotEqualTo(Guid.Empty);
+        await Assert.That(request.InAppDeliveryId).IsNotNull();
+        await Assert.That(request.InAppDeliveryId).IsNotEqualTo(Guid.Empty);
+        await Assert.That(request.EmailDeliveryId).IsNotNull();
+        await Assert.That(request.EmailDeliveryId).IsNotEqualTo(Guid.Empty);
+        await Assert.That(request.MaterializedAt).IsNotNull();
+        await Assert.That(request.MaterializedAt!.Value.Kind).IsEqualTo(DateTimeKind.Utc);
         await Assert.That(request.InApp).IsNotNull();
         await Assert.That(request.Email).IsNotNull();
         await Assert.That(request.Email!.SourceType).IsEqualTo(NotificationFanoutRecipientTemplateFactory.OccurrenceSourceType);
@@ -310,6 +321,15 @@ public sealed class NotificationFanoutRecipientTemplateFactoryTests
         await Assert.That(materialization.InApp.Body).IsEqualTo(NotificationFanoutRecipientTemplateFactory.ModerationUnavailableBody);
         await Assert.That(materialization.Email.Subject).IsEqualTo(NotificationFanoutRecipientTemplateFactory.ModerationUnavailableTitle);
         await Assert.That(materialization.Email.PlainTextBody).DoesNotContain("Immutable event");
+        await Assert.That(materialization.IntentId).IsNotEqualTo(Guid.Empty);
+        await Assert.That(materialization.InAppNotificationId).IsNotNull();
+        await Assert.That(materialization.InAppNotificationId).IsNotEqualTo(Guid.Empty);
+        await Assert.That(materialization.InAppDeliveryId).IsNotNull();
+        await Assert.That(materialization.InAppDeliveryId).IsNotEqualTo(Guid.Empty);
+        await Assert.That(materialization.EmailDeliveryId).IsNotNull();
+        await Assert.That(materialization.EmailDeliveryId).IsNotEqualTo(Guid.Empty);
+        await Assert.That(materialization.MaterializedAt).IsNotNull();
+        await Assert.That(materialization.MaterializedAt!.Value.Kind).IsEqualTo(DateTimeKind.Utc);
     }
 
     [Test]
@@ -340,6 +360,86 @@ public sealed class NotificationFanoutRecipientTemplateFactoryTests
         NotificationFanoutOccurrence occurrence = CreateHeavyModerationOccurrence(afterJson: "{\"eventTitle\":\"forbidden\"}");
 
         await Assert.ThrowsAsync<JsonException>(() => Task.FromResult(factory.Parse(occurrence)));
+    }
+
+    [Test]
+    [Arguments("{\"title\":\"private-title-canary\"}", "{}", "{}")]
+    [Arguments("{}", "{\"provider\":\"private-provider-canary\"}", "{}")]
+    [Arguments("{}", "{}", "{\"storageKey\":\"private-storage-key-canary\"}")]
+    public async Task HeavyModerationRejectsNonemptyEnrichmentAcrossEveryOccurrencePayload(
+        string changeSetJson,
+        string beforeJson,
+        string afterJson)
+    {
+        NotificationFanoutOccurrence occurrence = CreateOccurrence(
+            NotificationFanoutOccurrenceCoordinationPolicy.HeavyModerationUnavailableTemplateKey,
+            sessionScoped: false,
+            cancelled: false,
+            deliveryPolicyId: (int)NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired,
+            afterJson: afterJson,
+            changeSetJson: changeSetJson,
+            beforeJson: beforeJson);
+
+        await Assert.ThrowsAsync<JsonException>(() => Task.FromResult(factory.Parse(occurrence)));
+    }
+
+    [Test]
+    public async Task HeavyModerationFullCanaryIsAbsentFromPointersMetadataAndRenderedChannels()
+    {
+        NotificationFanoutOccurrence occurrence = CreateHeavyModerationOccurrence();
+        RecipientNotificationMaterialization materialization = factory.CreateMaterialization(
+            occurrence,
+            factory.Parse(occurrence),
+            Guid.CreateVersion7(),
+            "attendee-pii-canary@example.test",
+            emailPreferenceEnabled: false,
+            emailSkipReason: null,
+            locationAuthorization: null);
+        OutboxMessage pointer = NotificationFanoutOccurrenceOutboxMessageFactory.Create(occurrence);
+        string exposedSurface = string.Join('\n',
+            occurrence.ChangeSetJson,
+            occurrence.SafeBeforeSnapshotJson,
+            occurrence.SafeAfterSnapshotJson,
+            pointer.Payload,
+            materialization.Intent.SafePayloadReference,
+            materialization.Intent.DeduplicationKey,
+            materialization.Intent.CorrelationId,
+            materialization.InApp!.Title,
+            materialization.InApp.Body,
+            materialization.InApp.NotificationEntityTypeId?.ToString(),
+            materialization.InApp.EntityId,
+            materialization.LinkAllowed.ToString(),
+            materialization.Email!.Subject,
+            materialization.Email.PlainTextBody,
+            materialization.Email.HtmlBody);
+        string[] forbiddenCanaries =
+        [
+            "private-title-canary",
+            "private-slug-canary",
+            "https://private.example/events/canary",
+            "private-description-canary",
+            "private-image-canary",
+            "private-organizer-canary",
+            "private-evidence-canary",
+            "private-decision-note-canary",
+            "private-reason-canary",
+            "private-moderator-canary",
+            "private-provider-canary",
+            "private-storage-path-canary",
+            "private-storage-key-canary",
+            "private-raw-error-canary",
+            "attendee-pii-canary@example.test"
+        ];
+
+        foreach (string canary in forbiddenCanaries)
+        {
+            await Assert.That(exposedSurface).DoesNotContain(canary);
+        }
+
+        await Assert.That(exposedSurface).DoesNotContain("unsubscribe", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(materialization.LinkAllowed).IsFalse();
+        await Assert.That(materialization.InApp.NotificationEntityTypeId).IsNull();
+        await Assert.That(materialization.InApp.EntityId).IsNull();
     }
 
     private static NotificationFanoutOccurrence CreateHeavyModerationOccurrence(string afterJson = "{}") =>
