@@ -169,6 +169,113 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
     }
 
     [Test]
+    public async Task EligibilitySkipsQueuedReportReceiptWhenRecipientPiiWasErasedBeforeProviderHandoff()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var tenant = await SeedTenantAsync(context, "eligibility-report-receipt-erased-pii");
+        var dispatch = await SeedReportReceiptDispatchAsync(context, tenant);
+        var repository = new EmailDispatchOutboxRepository(context);
+        var leaseToken = Guid.CreateVersion7();
+        await Assert.That(await ClaimSpecificAsync(repository, dispatch, leaseToken, DateTime.UtcNow)).IsNotNull();
+        await context.UserPii
+            .Where(value => value.UserId == dispatch.RecipientUserId)
+            .ExecuteDeleteAsync();
+        context.ChangeTracker.Clear();
+
+        var result = await CreateEligibilityEvaluator(context).EvaluateAndBeginProviderHandoffAsync(
+            CreateEligibilityRequest(tenant.Id, dispatch.Id, leaseToken),
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(EmailDispatchEligibilityOutcome.Skipped);
+        await Assert.That(result.RecipientEmail).IsNull();
+        await Assert.That(result.SkipReason).IsEqualTo(RecipientEmailAddressResolver.RecipientEmailMissing);
+        var persisted = await context.EmailDispatchOutbox.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.Id == dispatch.Id);
+        var delivery = await context.NotificationDeliveries.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.EmailDispatchOutboxId == dispatch.Id);
+        var attempt = await context.EmailDispatchAttempts.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.EmailDispatchOutboxId == dispatch.Id);
+        var receipt = await context.EmailDispatchReceipts.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.EmailDispatchOutboxId == dispatch.Id);
+        await Assert.That(persisted.Status).IsEqualTo(EmailDispatchStatus.Skipped);
+        await Assert.That(persisted.LastFailureCategory).IsEqualTo(RecipientEmailAddressResolver.RecipientEmailMissing);
+        await Assert.That(delivery.StatusId).IsEqualTo((int)NotificationDeliveryStatusEnum.Skipped);
+        await Assert.That(delivery.FailureCategory).IsEqualTo(RecipientEmailAddressResolver.RecipientEmailMissing);
+        await Assert.That(attempt.Outcome).IsEqualTo(EmailDispatchAttemptOutcome.Skipped);
+        await Assert.That(attempt.FailureCategory).IsEqualTo(RecipientEmailAddressResolver.RecipientEmailMissing);
+        await Assert.That(receipt.Status).IsEqualTo(EmailDispatchReceiptStatus.Skipped);
+        await Assert.That(await context.EmailDispatchAttempts.IgnoreQueryFilters().AnyAsync(value =>
+            value.EmailDispatchOutboxId == dispatch.Id && value.FailureCategory == "provider_handoff_started")).IsFalse();
+    }
+
+    [Test]
+    public async Task EligibilityHonorsTrustSafetyOptOutForReportReceiptButNotRequiredModeration()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var tenant = await SeedTenantAsync(context, "eligibility-trust-safety-policy");
+        var reportReceipt = await SeedReportReceiptDispatchAsync(context, tenant);
+        var requiredModeration = await SeedDispatchAsync(context, tenant.Id, EmailDispatchStatus.Pending);
+        var requiredDelivery = requiredModeration.NotificationIntent!.Deliveries.Single();
+        requiredModeration.Kind = EmailDispatchKind.OrganizerNotification;
+        requiredModeration.NotificationIntent.CategoryId = (int)NotificationCategoryEnum.TrustSafetyModeration;
+        requiredDelivery.IsRequired = true;
+        requiredDelivery.DeliveryPolicyId = (int)NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired;
+        requiredDelivery.PreferenceCategoryCode = NotificationPreferenceCategoryCodes.TrustSafety;
+        context.NotificationChannelPreferences.AddRange(
+            CreateUserEmailPreference(
+                tenant.Id,
+                reportReceipt.RecipientUserId,
+                NotificationPreferenceCategoryEnum.TrustSafety,
+                false),
+            CreateUserEmailPreference(
+                tenant.Id,
+                requiredModeration.RecipientUserId,
+                NotificationPreferenceCategoryEnum.TrustSafety,
+                false));
+        await context.SaveChangesAsync();
+
+        var repository = new EmailDispatchOutboxRepository(context);
+        var reportLeaseToken = Guid.CreateVersion7();
+        await Assert.That(await ClaimSpecificAsync(
+            repository,
+            reportReceipt,
+            reportLeaseToken,
+            DateTime.UtcNow)).IsNotNull();
+        context.ChangeTracker.Clear();
+        var reportResult = await CreateEligibilityEvaluator(context).EvaluateAndBeginProviderHandoffAsync(
+            CreateEligibilityRequest(tenant.Id, reportReceipt.Id, reportLeaseToken),
+            CancellationToken.None);
+
+        var moderationLeaseToken = Guid.CreateVersion7();
+        await Assert.That(await ClaimSpecificAsync(
+            repository,
+            requiredModeration,
+            moderationLeaseToken,
+            DateTime.UtcNow)).IsNotNull();
+        context.ChangeTracker.Clear();
+        var moderationResult = await CreateEligibilityEvaluator(context).EvaluateAndBeginProviderHandoffAsync(
+            CreateEligibilityRequest(tenant.Id, requiredModeration.Id, moderationLeaseToken),
+            CancellationToken.None);
+
+        await Assert.That(reportResult.Outcome).IsEqualTo(EmailDispatchEligibilityOutcome.Skipped);
+        await Assert.That(reportResult.SkipReason).IsEqualTo("recipient_notification_preference_disabled");
+        await Assert.That(moderationResult.Outcome).IsEqualTo(EmailDispatchEligibilityOutcome.Eligible);
+        await Assert.That(moderationResult.RecipientEmail).IsEqualTo(requiredModeration.RecipientEmail);
+        var reportOutbox = await context.EmailDispatchOutbox.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.Id == reportReceipt.Id);
+        var moderationOutbox = await context.EmailDispatchOutbox.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.Id == requiredModeration.Id);
+        await Assert.That(reportOutbox.Status).IsEqualTo(EmailDispatchStatus.Skipped);
+        await Assert.That(moderationOutbox.Status).IsEqualTo(EmailDispatchStatus.Processing);
+        await Assert.That(await context.EmailDispatchAttempts.IgnoreQueryFilters().AnyAsync(value =>
+            value.EmailDispatchOutboxId == reportReceipt.Id && value.FailureCategory == "provider_handoff_started")).IsFalse();
+        await Assert.That(await context.EmailDispatchAttempts.IgnoreQueryFilters().AnyAsync(value =>
+            value.EmailDispatchOutboxId == requiredModeration.Id && value.FailureCategory == "provider_handoff_started")).IsTrue();
+    }
+
+    [Test]
     public async Task EligibilitySkipsSupersededDeliveryBeforeProviderHandoff()
     {
         await fixture.ResetAsync();
@@ -1880,6 +1987,103 @@ public sealed class EmailDispatchOutboxTransitionRepositoryTests(PostgreSqlConta
         context.NotificationIntents.Add(intent);
         await context.SaveChangesAsync();
         return dispatch;
+    }
+
+    private static async Task<EmailDispatchOutbox> SeedReportReceiptDispatchAsync(
+        ExploreDbContext context,
+        Tenant tenant)
+    {
+        EmailDispatchOutbox dispatch = await SeedDispatchAsync(
+            context,
+            tenant.Id,
+            EmailDispatchStatus.Pending);
+        var actor = new Actor
+        {
+            Id = Guid.CreateVersion7(),
+            ActorTypeId = (int)ActorTypeEnum.User,
+            ActorType = null!,
+            UserId = dispatch.RecipientUserId,
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            Pii = new ActorPii { DisplayName = "Report receipt recipient" },
+            CreatedAt = DateTime.UtcNow
+        };
+        var @event = new Explore.Domain.Event
+        {
+            Id = Guid.CreateVersion7(),
+            Title = "Reported event",
+            ActorId = actor.Id,
+            Actor = actor,
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            VisibilityTypeId = (int)VisibilityTypeEnum.Public,
+            VisibilityType = null!,
+            EventStatusId = (int)EventStatusEnum.Published,
+            EventStatus = null!,
+            EventFormatId = (int)EventFormatEnum.Digital,
+            EventFormat = null!,
+            CreatedAt = DateTime.UtcNow
+        };
+        EventReport report = EventReport.Create(
+            tenant.Id,
+            @event.Id,
+            dispatch.RecipientUserId,
+            actor.Id,
+            EventReporterKind.AuthenticatedUser,
+            EventReportSourceKind.UserReport,
+            "spam",
+            null,
+            EventReportPriority.Normal,
+            null,
+            reportCaseUpdatesConsent: true,
+            reportFollowUpContactConsent: false,
+            "en",
+            null,
+            null);
+        NotificationIntent intent = dispatch.NotificationIntent!;
+        NotificationDelivery delivery = intent.Deliveries.Single();
+        intent.CategoryId = (int)NotificationCategoryEnum.TrustSafetyReporting;
+        intent.RecipientKindId = (int)NotificationRecipientKindEnum.Reporter;
+        intent.TemplateKey = ReportReceiptNotificationFactory.TemplateKey;
+        intent.EventId = @event.Id;
+        intent.ReportId = report.Id;
+        dispatch.Kind = EmailDispatchKind.ReportReceipt;
+        dispatch.SourceType = ReportReceiptNotificationFactory.SourceType;
+        dispatch.SourceId = report.Id;
+        dispatch.EventId = @event.Id;
+        delivery.DeliveryPolicyId = (int)NotificationDeliveryPolicyEnum.ReportCaseUpdate;
+        delivery.PreferenceCategoryCode = NotificationPreferenceCategoryCodes.TrustSafety;
+        delivery.ConsentPurpose = ReportEmailConsentPurposeCodes.CaseUpdates;
+        delivery.ConsentVersion = 1;
+        delivery.TemplateKey = ReportReceiptNotificationFactory.TemplateKey;
+
+        context.Actors.Add(actor);
+        context.Events.Add(@event);
+        context.EventReports.Add(report);
+        await context.SaveChangesAsync();
+        return dispatch;
+    }
+
+    private static NotificationChannelPreference CreateUserEmailPreference(
+        Guid tenantId,
+        Guid userId,
+        NotificationPreferenceCategoryEnum category,
+        bool isEnabled)
+    {
+        return new NotificationChannelPreference
+        {
+            TenantId = tenantId,
+            Tenant = null!,
+            ScopeId = (int)ConfigurationScopeEnum.User,
+            Scope = null!,
+            UserId = userId,
+            User = null!,
+            CategoryId = (int)category,
+            Category = null!,
+            ChannelId = (int)NotificationPreferenceChannelEnum.Email,
+            Channel = null!,
+            IsEnabled = isEnabled
+        };
     }
 
     private static EmailDispatchEligibilityEvaluator CreateEligibilityEvaluator(ExploreDbContext context) =>

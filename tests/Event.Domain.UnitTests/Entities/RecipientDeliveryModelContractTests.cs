@@ -85,6 +85,14 @@ public sealed class RecipientDeliveryModelContractTests
         await Assert.That(typeof(EmailDispatchOutbox).GetProperty("UserId")).IsNull();
     }
 
+    [Test]
+    public async Task EmailDispatchKind_ReservesDistinctRequiredModerationTransportValue()
+    {
+        await Assert.That((int)EmailDispatchKind.ModerationAvailabilityRequired).IsEqualTo(15);
+        await Assert.That(Enum.GetValues<EmailDispatchKind>().Distinct().Count())
+            .IsEqualTo(Enum.GetValues<EmailDispatchKind>().Length);
+    }
+
     private static Type RequireDomainType(string typeName)
     {
         return typeof(NotificationIntent).Assembly.GetType(typeName)

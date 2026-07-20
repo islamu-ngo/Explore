@@ -85,6 +85,8 @@ public interface INotificationFanoutRunRepository : IGenericRepository<Notificat
         TimeSpan leaseDuration,
         int maxActiveClaims,
         int maxActiveClaimsPerTenant,
+        int optionalReminderBacklogHighWatermark,
+        int optionalReminderBacklogLowWatermark,
         CancellationToken cancellationToken);
 
     Task<bool> TryRenewClaimAsync(

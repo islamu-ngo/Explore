@@ -16,14 +16,13 @@ public sealed class BusinessMetricsNotificationFanoutTests
     {
         using var metricsCapture = new MetricsCapture();
         var metrics = CreateMetrics();
-        var tenantId = Guid.NewGuid().ToString();
 
-        metrics.RecordNotificationFanoutRun(tenantId, EventPublishedNotificationFanoutService.FanoutKind, EventPublishedNotificationFanoutService.OutcomeCompleted);
+        metrics.RecordNotificationFanoutRun(EventPublishedNotificationFanoutService.FanoutKind, EventPublishedNotificationFanoutService.OutcomeCompleted);
 
-        var measurement = await metricsCapture.SingleByTenantAsync("explore.notifications.fanout_runs", tenantId);
+        var measurement = await metricsCapture.SingleAsync("explore.notifications.fanout_runs");
 
         await Assert.That(measurement.Value).IsEqualTo(1);
-        await Assert.That(measurement.Tags["tenant_id"]?.ToString()).IsEqualTo(tenantId);
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("tenant_id");
         await Assert.That(measurement.Tags["fanout_kind"]?.ToString()).IsEqualTo(EventPublishedNotificationFanoutService.FanoutKind);
         await Assert.That(measurement.Tags["outcome"]?.ToString()).IsEqualTo(EventPublishedNotificationFanoutService.OutcomeCompleted);
     }
@@ -33,14 +32,13 @@ public sealed class BusinessMetricsNotificationFanoutTests
     {
         using var metricsCapture = new MetricsCapture();
         var metrics = CreateMetrics();
-        var tenantId = Guid.NewGuid().ToString();
 
-        metrics.RecordNotificationFanoutSubscribers(7, tenantId, EventPublishedNotificationFanoutService.FanoutKind, EventPublishedNotificationFanoutService.OutcomeNotificationCreated);
+        metrics.RecordNotificationFanoutSubscribers(7, EventPublishedNotificationFanoutService.FanoutKind, EventPublishedNotificationFanoutService.OutcomeNotificationCreated);
 
-        var measurement = await metricsCapture.SingleByTenantAsync("explore.notifications.fanout_subscribers", tenantId);
+        var measurement = await metricsCapture.SingleAsync("explore.notifications.fanout_subscribers");
 
         await Assert.That(measurement.Value).IsEqualTo(7);
-        await Assert.That(measurement.Tags["tenant_id"]?.ToString()).IsEqualTo(tenantId);
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("tenant_id");
         await Assert.That(measurement.Tags["fanout_kind"]?.ToString()).IsEqualTo(EventPublishedNotificationFanoutService.FanoutKind);
         await Assert.That(measurement.Tags["outcome"]?.ToString()).IsEqualTo(EventPublishedNotificationFanoutService.OutcomeNotificationCreated);
     }
@@ -50,12 +48,12 @@ public sealed class BusinessMetricsNotificationFanoutTests
     {
         using var metricsCapture = new MetricsCapture();
         var metrics = CreateMetrics();
-        var tenantId = Guid.NewGuid().ToString();
 
-        metrics.RecordNotificationFanoutRun(tenantId, EventPublishedNotificationFanoutService.FanoutKind, EventPublishedNotificationFanoutService.OutcomeFailed);
+        metrics.RecordNotificationFanoutRun(EventPublishedNotificationFanoutService.FanoutKind, EventPublishedNotificationFanoutService.OutcomeFailed);
 
-        var measurement = await metricsCapture.SingleByTenantAsync("explore.notifications.fanout_runs", tenantId);
+        var measurement = await metricsCapture.SingleAsync("explore.notifications.fanout_runs");
 
+        await Assert.That(measurement.Tags.Keys).DoesNotContain("tenant_id");
         await Assert.That(measurement.Tags.Keys).DoesNotContain("event_id");
         await Assert.That(measurement.Tags.Keys).DoesNotContain("actor_id");
         await Assert.That(measurement.Tags.Keys).DoesNotContain("source_actor_id");
@@ -104,7 +102,7 @@ public sealed class BusinessMetricsNotificationFanoutTests
             _listener.Start();
         }
 
-        public async Task<Measurement> SingleByTenantAsync(string instrumentName, string tenantId)
+        public async Task<Measurement> SingleAsync(string instrumentName)
         {
             for (var attempt = 0; attempt < 20; attempt++)
             {
@@ -116,8 +114,6 @@ public sealed class BusinessMetricsNotificationFanoutTests
 
                 var matches = snapshot
                     .Where(measurement => measurement.InstrumentName == instrumentName)
-                    .Where(measurement => measurement.Tags.TryGetValue("tenant_id", out var value)
-                        && string.Equals(value?.ToString(), tenantId, StringComparison.Ordinal))
                     .ToList();
 
                 if (matches.Count > 0)
@@ -132,8 +128,6 @@ public sealed class BusinessMetricsNotificationFanoutTests
             {
                 return _measurements
                     .Where(measurement => measurement.InstrumentName == instrumentName)
-                    .Where(measurement => measurement.Tags.TryGetValue("tenant_id", out var value)
-                        && string.Equals(value?.ToString(), tenantId, StringComparison.Ordinal))
                     .Single();
             }
         }

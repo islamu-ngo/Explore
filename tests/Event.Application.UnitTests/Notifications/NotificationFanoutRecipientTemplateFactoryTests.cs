@@ -189,6 +189,169 @@ public sealed class NotificationFanoutRecipientTemplateFactoryTests
         await Assert.ThrowsAsync<JsonException>(() => Task.FromResult(factory.Parse(occurrence)));
     }
 
+    [Test]
+    public async Task EventTimezoneSessionDisplayTimesAreCanonicalizedAndPairedBySessionId()
+    {
+        Guid firstId = Guid.Parse("01990000-0000-7000-8000-000000000001");
+        Guid secondId = Guid.Parse("01990000-0000-7000-8000-000000000002");
+        var firstBefore = new NotificationFanoutSessionDisplayTimeV1(
+            firstId,
+            "First",
+            new DateTimeOffset(2026, 10, 25, 0, 30, 0, TimeSpan.Zero),
+            null);
+        var secondBefore = new NotificationFanoutSessionDisplayTimeV1(
+            secondId,
+            "Second",
+            new DateTimeOffset(2026, 10, 25, 1, 30, 0, TimeSpan.Zero),
+            null);
+        var firstAfter = firstBefore with
+        {
+            StartsAt = new DateTimeOffset(2026, 10, 25, 2, 30, 0, TimeSpan.FromHours(2))
+        };
+        var secondAfter = secondBefore with
+        {
+            StartsAt = new DateTimeOffset(2026, 10, 25, 2, 30, 0, TimeSpan.FromHours(1))
+        };
+        NotificationFanoutOccurrence occurrence = CreateOccurrence(
+            NotificationFanoutRecipientTemplateFactory.EventUpdatedTemplateKey,
+            sessionScoped: false,
+            cancelled: false,
+            afterJson: RawTimezoneSnapshot("Europe/Brussels", firstAfter, secondAfter),
+            changeSetJson: NotificationFanoutTemplateJson.Serialize(new NotificationFanoutChangeSetV1([
+                NotificationFanoutChangeField.Timezone])),
+            beforeJson: RawTimezoneSnapshot("UTC", secondBefore, firstBefore));
+
+        NotificationFanoutRecipientTemplate template = factory.Parse(occurrence);
+
+        await Assert.That(template.Before.SessionDisplayTimes!.Select(value => value.SessionId))
+            .IsEquivalentTo([firstId, secondId]);
+        await Assert.That(template.Before.SessionDisplayTimes[0]).IsEqualTo(firstBefore);
+        await Assert.That(template.After.SessionDisplayTimes![0]).IsEqualTo(firstAfter);
+        await Assert.That(template.Before.SessionDisplayTimes[1]).IsEqualTo(secondBefore);
+        await Assert.That(template.After.SessionDisplayTimes[1]).IsEqualTo(secondAfter);
+        var materialization = factory.CreateMaterialization(
+            occurrence,
+            template,
+            Guid.CreateVersion7(),
+            "verified@example.test",
+            emailPreferenceEnabled: true,
+            emailSkipReason: null,
+            locationAuthorization: null);
+        await Assert.That(materialization.Email!.PlainTextBody).Contains("First");
+        await Assert.That(materialization.Email.PlainTextBody).Contains("Second");
+        await Assert.That(materialization.Email.PlainTextBody).DoesNotContain(" to ");
+    }
+
+    [Test]
+    public async Task HalfEnrichedAndDefaultSessionDisplayPayloadsFailClosed()
+    {
+        Guid sessionId = Guid.Parse("01990000-0000-7000-8000-000000000003");
+        var validBefore = new NotificationFanoutSessionDisplayTimeV1(
+            sessionId,
+            "Valid session",
+            new DateTimeOffset(2026, 10, 25, 0, 30, 0, TimeSpan.Zero),
+            null);
+        string timezoneChangeSet = NotificationFanoutTemplateJson.Serialize(new NotificationFanoutChangeSetV1([
+            NotificationFanoutChangeField.Timezone]));
+        NotificationFanoutOccurrence halfEnriched = CreateOccurrence(
+            NotificationFanoutRecipientTemplateFactory.EventUpdatedTemplateKey,
+            sessionScoped: false,
+            cancelled: false,
+            afterJson: SnapshotJson(sessionScoped: false, "Immutable event", "Immutable venue"),
+            changeSetJson: timezoneChangeSet,
+            beforeJson: RawTimezoneSnapshot("UTC", validBefore));
+        var defaultEntry = new NotificationFanoutSessionDisplayTimeV1(
+            sessionId,
+            string.Empty,
+            default,
+            null);
+        NotificationFanoutOccurrence invalidEntry = CreateOccurrence(
+            NotificationFanoutRecipientTemplateFactory.EventUpdatedTemplateKey,
+            sessionScoped: false,
+            cancelled: false,
+            afterJson: RawTimezoneSnapshot("Europe/Brussels", defaultEntry),
+            changeSetJson: timezoneChangeSet,
+            beforeJson: RawTimezoneSnapshot("UTC", defaultEntry));
+
+        await Assert.ThrowsAsync<JsonException>(() => Task.FromResult(factory.Parse(halfEnriched)));
+        await Assert.ThrowsAsync<JsonException>(() => Task.FromResult(factory.Parse(invalidEntry)));
+    }
+
+    [Test]
+    public async Task HeavyModerationCreatesRequiredLinklessChannelsWithoutConsultingPreference()
+    {
+        NotificationFanoutOccurrence occurrence = CreateHeavyModerationOccurrence();
+        Guid recipientUserId = Guid.CreateVersion7();
+        NotificationFanoutRecipientTemplate template = factory.Parse(occurrence);
+
+        RecipientNotificationMaterialization materialization = factory.CreateMaterialization(
+            occurrence,
+            template,
+            recipientUserId,
+            "current-verified@example.test",
+            emailPreferenceEnabled: false,
+            emailSkipReason: null,
+            locationAuthorization: null);
+
+        await Assert.That(template.IsModerationAvailabilityRequired).IsTrue();
+        await Assert.That(materialization.DeliveryPolicy).IsEqualTo(NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired);
+        await Assert.That(materialization.InApp).IsNotNull();
+        await Assert.That(materialization.InApp!.IsRequired).IsTrue();
+        await Assert.That(materialization.InApp.NotificationEntityTypeId).IsNull();
+        await Assert.That(materialization.InApp.EntityId).IsNull();
+        await Assert.That(materialization.EmailRequired).IsTrue();
+        await Assert.That(materialization.Email).IsNotNull();
+        await Assert.That(materialization.Email!.Kind).IsEqualTo(EmailDispatchKind.ModerationAvailabilityRequired);
+        await Assert.That(materialization.Email.RecipientEmail).IsEqualTo("current-verified@example.test");
+        await Assert.That(materialization.PreferenceCategoryCode).IsNull();
+        await Assert.That(materialization.EmailPreferenceEnabled).IsNull();
+        await Assert.That(materialization.LinkAllowed).IsFalse();
+        await Assert.That(materialization.InApp.Title).IsEqualTo(NotificationFanoutRecipientTemplateFactory.ModerationUnavailableTitle);
+        await Assert.That(materialization.InApp.Body).IsEqualTo(NotificationFanoutRecipientTemplateFactory.ModerationUnavailableBody);
+        await Assert.That(materialization.Email.Subject).IsEqualTo(NotificationFanoutRecipientTemplateFactory.ModerationUnavailableTitle);
+        await Assert.That(materialization.Email.PlainTextBody).DoesNotContain("Immutable event");
+    }
+
+    [Test]
+    public async Task HeavyModerationWithoutVerifiedAddressCreatesTypedRequiredEmailSkip()
+    {
+        NotificationFanoutOccurrence occurrence = CreateHeavyModerationOccurrence();
+        NotificationFanoutRecipientTemplate template = factory.Parse(occurrence);
+
+        RecipientNotificationMaterialization materialization = factory.CreateMaterialization(
+            occurrence,
+            template,
+            Guid.CreateVersion7(),
+            verifiedEmail: null,
+            emailPreferenceEnabled: false,
+            emailSkipReason: RecipientEmailAddressResolver.RecipientEmailUnverified,
+            locationAuthorization: null);
+
+        await Assert.That(materialization.InApp!.IsRequired).IsTrue();
+        await Assert.That(materialization.IncludeEmailChannel).IsTrue();
+        await Assert.That(materialization.EmailRequired).IsTrue();
+        await Assert.That(materialization.Email).IsNull();
+        await Assert.That(materialization.EmailSkipReason).IsEqualTo(RecipientEmailAddressResolver.RecipientEmailUnverified);
+    }
+
+    [Test]
+    public async Task HeavyModerationPayloadWithBusinessOrRecipientDataFailsClosed()
+    {
+        NotificationFanoutOccurrence occurrence = CreateHeavyModerationOccurrence(afterJson: "{\"eventTitle\":\"forbidden\"}");
+
+        await Assert.ThrowsAsync<JsonException>(() => Task.FromResult(factory.Parse(occurrence)));
+    }
+
+    private static NotificationFanoutOccurrence CreateHeavyModerationOccurrence(string afterJson = "{}") =>
+        CreateOccurrence(
+            NotificationFanoutOccurrenceCoordinationPolicy.HeavyModerationUnavailableTemplateKey,
+            sessionScoped: false,
+            cancelled: false,
+            deliveryPolicyId: (int)NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired,
+            afterJson: afterJson,
+            changeSetJson: "{}",
+            beforeJson: "{}");
+
     private static NotificationFanoutOccurrence CreateOccurrence(
         string templateKey,
         bool sessionScoped,
@@ -196,7 +359,8 @@ public sealed class NotificationFanoutRecipientTemplateFactoryTests
         int templateVersion = 1,
         int deliveryPolicyId = (int)NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional,
         string? afterJson = null,
-        string? changeSetJson = null)
+        string? changeSetJson = null,
+        string? beforeJson = null)
     {
         DateTime now = DateTime.UtcNow;
         return NotificationFanoutOccurrence.Create(
@@ -211,7 +375,7 @@ public sealed class NotificationFanoutRecipientTemplateFactoryTests
                 cancelled
                     ? [NotificationFanoutChangeField.Cancelled]
                     : [NotificationFanoutChangeField.StartTime, NotificationFanoutChangeField.Location])),
-            SnapshotJson(sessionScoped, "Immutable event", "Old immutable venue"),
+            beforeJson ?? SnapshotJson(sessionScoped, "Immutable event", "Old immutable venue"),
             afterJson ?? SnapshotJson(sessionScoped, "Immutable event", "Immutable venue"),
             templateKey,
             templateVersion,
@@ -224,6 +388,20 @@ public sealed class NotificationFanoutRecipientTemplateFactoryTests
             $"fanout:{Guid.NewGuid():N}",
             null);
     }
+
+    private static string RawTimezoneSnapshot(
+        string timezone,
+        params NotificationFanoutSessionDisplayTimeV1[] sessions) =>
+        JsonSerializer.Serialize(
+            new NotificationFanoutSnapshotV1(
+                "Immutable event",
+                SessionTitle: null,
+                StartsAt: null,
+                EndsAt: null,
+                Timezone: timezone,
+                Location: null,
+                SessionDisplayTimes: sessions),
+            NotificationFanoutTemplateJsonContext.Default.NotificationFanoutSnapshotV1);
 
     private static FanoutAttendeeLocationAuthorizationResult CreateAuthorization(
         NotificationFanoutOccurrence occurrence,

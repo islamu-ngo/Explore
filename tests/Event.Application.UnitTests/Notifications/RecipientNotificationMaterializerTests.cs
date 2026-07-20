@@ -37,6 +37,38 @@ public sealed class RecipientNotificationMaterializerTests
     }
 
     [Test]
+    public async Task MaterializeInCurrentTransactionAsyncUsesRetryStableGraphIdentityAndTime()
+    {
+        Guid notificationId = Guid.CreateVersion7();
+        Guid inAppDeliveryId = Guid.CreateVersion7();
+        Guid emailDeliveryId = Guid.CreateVersion7();
+        DateTime materializedAt = new(2026, 7, 19, 12, 0, 0, DateTimeKind.Utc);
+        RecipientNotificationMaterialization request = CreateRequest(includeEmail: true) with
+        {
+            InAppNotificationId = notificationId,
+            InAppDeliveryId = inAppDeliveryId,
+            EmailDeliveryId = emailDeliveryId,
+            MaterializedAt = materializedAt
+        };
+        var repository = new RecordingGraphRepository();
+        var materializer = new RecipientNotificationMaterializer(repository, new RecordingUnitOfWork());
+
+        RecipientNotificationMaterializationResult result =
+            await materializer.MaterializeInCurrentTransactionAsync(request);
+
+        await Assert.That(result.Notification!.Id).IsEqualTo(notificationId);
+        await Assert.That(result.Notification.CreatedAt).IsEqualTo(materializedAt);
+        NotificationDelivery inApp = result.Deliveries.Single(row =>
+            row.ChannelId == (int)NotificationPreferenceChannelEnum.InApp);
+        NotificationDelivery email = result.Deliveries.Single(row =>
+            row.ChannelId == (int)NotificationPreferenceChannelEnum.Email);
+        await Assert.That(inApp.Id).IsEqualTo(inAppDeliveryId);
+        await Assert.That(inApp.CreatedAt).IsEqualTo(materializedAt);
+        await Assert.That(email.Id).IsEqualTo(emailDeliveryId);
+        await Assert.That(email.CreatedAt).IsEqualTo(materializedAt);
+    }
+
+    [Test]
     public async Task MaterializeInCurrentTransactionAsyncPersistsFanoutOccurrenceAuthority()
     {
         Guid occurrenceId = Guid.CreateVersion7();

@@ -95,7 +95,7 @@ public sealed class RecipientNotificationMaterializer(
         NotificationIntentDraft draft = request.Intent;
         Guid tenantId = draft.TenantId!.Value;
         Guid recipientUserId = draft.UserId!.Value;
-        DateTime now = DateTime.UtcNow;
+        DateTime now = request.MaterializedAt ?? DateTime.UtcNow;
 
         var intent = new NotificationIntent
         {
@@ -126,7 +126,7 @@ public sealed class RecipientNotificationMaterializer(
             RecipientInAppNotificationDraft inApp = request.InApp;
             notification = new Notification
             {
-                Id = Guid.CreateVersion7(),
+                Id = request.InAppNotificationId ?? Guid.CreateVersion7(),
                 TenantId = tenantId,
                 Tenant = null!,
                 NotificationIntentId = intent.Id,
@@ -147,6 +147,7 @@ public sealed class RecipientNotificationMaterializer(
             };
             intent.Deliveries.Add(CreateDelivery(
                 request,
+                request.InAppDeliveryId,
                 NotificationPreferenceChannelEnum.InApp,
                 inApp.IsRequired,
                 NotificationDeliveryStatusEnum.Delivered,
@@ -171,6 +172,7 @@ public sealed class RecipientNotificationMaterializer(
                 email.NotificationIntent = intent;
                 intent.Deliveries.Add(CreateDelivery(
                     request,
+                    request.EmailDeliveryId,
                     NotificationPreferenceChannelEnum.Email,
                     request.EmailRequired,
                     NotificationDeliveryStatusEnum.Queued,
@@ -183,6 +185,7 @@ public sealed class RecipientNotificationMaterializer(
             {
                 intent.Deliveries.Add(CreateDelivery(
                     request,
+                    request.EmailDeliveryId,
                     NotificationPreferenceChannelEnum.Email,
                     request.EmailRequired,
                     NotificationDeliveryStatusEnum.Skipped,
@@ -198,6 +201,7 @@ public sealed class RecipientNotificationMaterializer(
 
     private static NotificationDelivery CreateDelivery(
         RecipientNotificationMaterialization request,
+        Guid? deliveryId,
         NotificationPreferenceChannelEnum channel,
         bool isRequired,
         NotificationDeliveryStatusEnum status,
@@ -208,7 +212,7 @@ public sealed class RecipientNotificationMaterializer(
     {
         return new NotificationDelivery
         {
-            Id = Guid.CreateVersion7(),
+            Id = deliveryId ?? Guid.CreateVersion7(),
             TenantId = request.Intent.TenantId!.Value,
             NotificationIntentId = request.IntentId,
             ChannelId = (int)channel,
@@ -266,6 +270,18 @@ public sealed class RecipientNotificationMaterializer(
         if (request.Intent.FanoutOccurrenceId == Guid.Empty)
         {
             throw new InvalidOperationException("Fanout occurrence id must be non-empty when supplied.");
+        }
+
+        if (request.InAppNotificationId == Guid.Empty
+            || request.InAppDeliveryId == Guid.Empty
+            || request.EmailDeliveryId == Guid.Empty)
+        {
+            throw new InvalidOperationException("Pre-generated notification graph ids must be non-empty when supplied.");
+        }
+
+        if (request.MaterializedAt is { Kind: not DateTimeKind.Utc })
+        {
+            throw new InvalidOperationException("Notification materialization time must be UTC when supplied.");
         }
     }
 

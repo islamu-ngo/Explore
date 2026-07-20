@@ -34,7 +34,11 @@ public sealed record RecipientNotificationMaterialization(
     int? ConsentVersion = null,
     int PolicyVersion = 1,
     int TemplateVersion = 1,
-    bool LinkAllowed = false);
+    bool LinkAllowed = false,
+    Guid? InAppNotificationId = null,
+    Guid? InAppDeliveryId = null,
+    Guid? EmailDeliveryId = null,
+    DateTime? MaterializedAt = null);
 
 public sealed record RecipientInAppNotificationDraft(
     int NotificationTypeId,

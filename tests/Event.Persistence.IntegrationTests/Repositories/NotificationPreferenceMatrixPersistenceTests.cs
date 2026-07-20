@@ -33,6 +33,7 @@ public class NotificationPreferenceMatrixPersistenceTests(PostgreSqlContainerFix
 
         var accountSecurity = categories.Single(category => category.MasterCode == NotificationPreferenceCategoryCodes.AccountSecurity);
         var marketing = categories.Single(category => category.MasterCode == NotificationPreferenceCategoryCodes.Marketing);
+        var trustSafety = categories.Single(category => category.MasterCode == NotificationPreferenceCategoryCodes.TrustSafety);
 
         await Assert.That(categories.Count).IsEqualTo(Enum.GetValues<NotificationPreferenceCategoryEnum>().Length);
         await Assert.That(channels.Count).IsEqualTo(Enum.GetValues<NotificationPreferenceChannelEnum>().Length);
@@ -42,6 +43,9 @@ public class NotificationPreferenceMatrixPersistenceTests(PostgreSqlContainerFix
         await Assert.That(marketing.IsRequired).IsFalse();
         await Assert.That(marketing.DefaultEmailEnabled).IsFalse();
         await Assert.That(marketing.DefaultInAppEnabled).IsFalse();
+        await Assert.That(trustSafety.IsRequired).IsFalse();
+        await Assert.That(trustSafety.DefaultEmailEnabled).IsTrue();
+        await Assert.That(trustSafety.DefaultInAppEnabled).IsTrue();
     }
 
     [Test]
@@ -110,6 +114,39 @@ public class NotificationPreferenceMatrixPersistenceTests(PostgreSqlContainerFix
         await Assert.That(decisions[1].IsEnabled).IsFalse();
         await Assert.That(decisions[1].IsRequired).IsFalse();
         await Assert.That(decisions[1].EffectiveSourceScope).IsEqualTo("Default");
+    }
+
+    [Test]
+    public async Task Resolver_AllowsUserToDisableTrustSafetyEmail()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+
+        var tenant = CreateTenant("preference-trust-safety");
+        var user = CreateUser("preference-trust-safety");
+        context.Tenants.Add(tenant);
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
+        context.NotificationChannelPreferences.Add(CreateUserPreference(
+            tenant.Id,
+            user.Id,
+            false,
+            NotificationPreferenceCategoryCodes.TrustSafety));
+        await context.SaveChangesAsync();
+
+        var decision = await new NotificationPreferenceResolver(context).ResolveAsync(
+            new NotificationPreferenceResolveRequest(
+                tenant.Id,
+                user.Id,
+                null,
+                null,
+                NotificationPreferenceCategoryCodes.TrustSafety,
+                NotificationPreferenceChannelCodes.Email));
+
+        await Assert.That(decision.IsEnabled).IsFalse();
+        await Assert.That(decision.IsRequired).IsFalse();
+        await Assert.That(decision.IsLocked).IsFalse();
+        await Assert.That(decision.EffectiveSourceScope).IsEqualTo("User");
     }
 
     [Test]
@@ -230,7 +267,8 @@ public class NotificationPreferenceMatrixPersistenceTests(PostgreSqlContainerFix
     private static NotificationChannelPreference CreateUserPreference(
         Guid tenantId,
         Guid userId,
-        bool isEnabled)
+        bool isEnabled,
+        string categoryCode = NotificationPreferenceCategoryCodes.EventUpdates)
     {
         return new NotificationChannelPreference
         {
@@ -240,7 +278,7 @@ public class NotificationPreferenceMatrixPersistenceTests(PostgreSqlContainerFix
             Scope = null!,
             UserId = userId,
             User = null!,
-            CategoryId = (int)NotificationPreferenceCategoryEnum.EventUpdates,
+            CategoryId = CategoryId(categoryCode),
             Category = null!,
             ChannelId = (int)NotificationPreferenceChannelEnum.Email,
             Channel = null!,
@@ -252,6 +290,7 @@ public class NotificationPreferenceMatrixPersistenceTests(PostgreSqlContainerFix
     {
         NotificationPreferenceCategoryCodes.EventUpdates => (int)NotificationPreferenceCategoryEnum.EventUpdates,
         NotificationPreferenceCategoryCodes.OrganizationUpdates => (int)NotificationPreferenceCategoryEnum.OrganizationUpdates,
+        NotificationPreferenceCategoryCodes.TrustSafety => (int)NotificationPreferenceCategoryEnum.TrustSafety,
         _ => throw new ArgumentOutOfRangeException(nameof(categoryCode), categoryCode, null),
     };
 

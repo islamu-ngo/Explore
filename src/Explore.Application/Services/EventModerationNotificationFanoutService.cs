@@ -228,20 +228,6 @@ public sealed class EventModerationNotificationFanoutService(
                         continue;
                     }
 
-                    var preference = await notificationPreferenceResolver.ResolveAsync(
-                        new NotificationPreferenceResolveRequest(
-                            request.TenantId,
-                            userId,
-                            null,
-                            null,
-                            NotificationPreferenceCategoryCodes.TrustSafety,
-                            NotificationPreferenceChannelCodes.InApp),
-                        cancellationToken);
-                    if (!preference.IsEnabled)
-                    {
-                        continue;
-                    }
-
                     await notificationRepository.Create(CreateHeavyRedactionNotification(request, userId, deduplicationKey));
                     run.CreatedNotificationCount++;
                     createdThisAttempt++;

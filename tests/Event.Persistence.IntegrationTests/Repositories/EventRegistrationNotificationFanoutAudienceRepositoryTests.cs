@@ -62,10 +62,22 @@ public sealed class EventRegistrationNotificationFanoutAudienceRepositoryTests(
                 after: null,
                 pageSize: 50,
                 CancellationToken.None);
+        IReadOnlyList<NotificationFanoutAudienceMember> requiredModerationAudience =
+            await repository.GetNotificationFanoutAudienceBatchAsync(
+                scenario.TenantId,
+                scenario.EventId,
+                sessionId: null,
+                cutoff,
+                (int)NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired,
+                after: null,
+                pageSize: 50,
+                CancellationToken.None);
 
         await Assert.That(ReadSortedAudienceLabels(context, audience))
             .IsEqualTo("approved,pending,waitlisted");
         await Assert.That(audience.Select(member => member.UserId).ToHashSet())
+            .IsEquivalentTo(new HashSet<Guid> { pending, approved, waitlisted });
+        await Assert.That(requiredModerationAudience.Select(member => member.UserId).ToHashSet())
             .IsEquivalentTo(new HashSet<Guid> { pending, approved, waitlisted });
         await Assert.That(audience.All(member => member.FirstEligibleRegistrationCreatedAt <= cutoff)).IsTrue();
     }

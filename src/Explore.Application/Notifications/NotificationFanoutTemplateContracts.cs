@@ -28,7 +28,15 @@ public sealed record NotificationFanoutSnapshotV1(
     DateTimeOffset? StartsAt,
     DateTimeOffset? EndsAt,
     string? Timezone,
-    NotificationFanoutLocationSnapshotV1? Location);
+    NotificationFanoutLocationSnapshotV1? Location,
+    NotificationFanoutSessionDisplayTimeV1[]? SessionDisplayTimes = null);
+
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record NotificationFanoutSessionDisplayTimeV1(
+    Guid SessionId,
+    string? SessionTitle,
+    DateTimeOffset StartsAt,
+    DateTimeOffset? EndsAt);
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record NotificationFanoutLocationSnapshotV1(
@@ -47,14 +55,33 @@ public sealed record NotificationFanoutLocationSnapshotV1(
     WriteIndented = false)]
 [JsonSerializable(typeof(NotificationFanoutChangeSetV1))]
 [JsonSerializable(typeof(NotificationFanoutSnapshotV1))]
+[JsonSerializable(typeof(NotificationFanoutSessionDisplayTimeV1))]
 [JsonSerializable(typeof(NotificationFanoutLocationSnapshotV1))]
 public sealed partial class NotificationFanoutTemplateJsonContext : JsonSerializerContext;
 
 public static class NotificationFanoutTemplateJson
 {
     public static string Serialize(NotificationFanoutChangeSetV1 value) =>
-        JsonSerializer.Serialize(value, NotificationFanoutTemplateJsonContext.Default.NotificationFanoutChangeSetV1);
+        JsonSerializer.Serialize(Canonicalize(value), NotificationFanoutTemplateJsonContext.Default.NotificationFanoutChangeSetV1);
 
     public static string Serialize(NotificationFanoutSnapshotV1 value) =>
-        JsonSerializer.Serialize(value, NotificationFanoutTemplateJsonContext.Default.NotificationFanoutSnapshotV1);
+        JsonSerializer.Serialize(Canonicalize(value), NotificationFanoutTemplateJsonContext.Default.NotificationFanoutSnapshotV1);
+
+    public static NotificationFanoutChangeSetV1 Canonicalize(NotificationFanoutChangeSetV1 value) =>
+        value.Fields is null
+            ? value
+            : value with
+            {
+                Fields = value.Fields.OrderBy(field => (int)field).ToArray()
+            };
+
+    public static NotificationFanoutSnapshotV1 Canonicalize(NotificationFanoutSnapshotV1 value) =>
+        value.SessionDisplayTimes is null
+            ? value
+            : value with
+            {
+                SessionDisplayTimes = value.SessionDisplayTimes
+                    .OrderBy(session => session?.SessionId ?? Guid.Empty)
+                    .ToArray()
+            };
 }

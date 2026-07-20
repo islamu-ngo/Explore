@@ -228,7 +228,6 @@ public sealed class NotificationFanoutOccurrenceCoordinator(
             && replay.SourceId == incoming.SourceId
             && replay.CoalescingKey == incoming.CoalescingKey
             && replay.CoalescingWindowEndsAt == incoming.CoalescingWindowEndsAt
-            && JsonEquals(replay.SafeAfterSnapshotJson, incoming.SafeAfterSnapshotJson)
             && replayClassification.Kind == incomingClassification.Kind;
         if (!compatible)
         {
@@ -237,33 +236,126 @@ public sealed class NotificationFanoutOccurrenceCoordinator(
 
         if (incomingClassification.Kind != NotificationFanoutOccurrenceKind.ImportantUpdate)
         {
-            compatible = JsonEquals(replay.ChangeSetJson, incoming.ChangeSetJson)
-                && JsonEquals(replay.SafeBeforeSnapshotJson, incoming.SafeBeforeSnapshotJson);
+            compatible = replayClassification.Template is not null
+                && incomingClassification.Template is not null
+                    ? TemplateContentEquals(replayClassification.Template, incomingClassification.Template)
+                    : JsonEquals(replay.ChangeSetJson, incoming.ChangeSetJson)
+                        && JsonEquals(replay.SafeBeforeSnapshotJson, incoming.SafeBeforeSnapshotJson)
+                        && JsonEquals(replay.SafeAfterSnapshotJson, incoming.SafeAfterSnapshotJson);
         }
         else
         {
-            NotificationFanoutChangeField[] replayFields = replayClassification.Template!.ChangeSet.Fields;
-            NotificationFanoutChangeField[] incomingFields = incomingClassification.Template!.ChangeSet.Fields;
-            compatible = incomingFields.All(replayFields.Contains);
-            if (compatible && !JsonEquals(replay.SafeBeforeSnapshotJson, incoming.SafeBeforeSnapshotJson))
-            {
-                IReadOnlyList<NotificationFanoutOccurrence> predecessors = await occurrenceRepository
-                    .GetDirectPredecessorsForCoordinationAsync(
-                        incoming.TenantId,
-                        incoming.EventId,
-                        replay.Id,
-                        cancellationToken);
-                compatible = predecessors.Any(predecessor =>
-                    predecessor.SessionId == incoming.SessionId
-                    && predecessor.TemplateKey == incoming.TemplateKey
-                    && JsonEquals(predecessor.SafeAfterSnapshotJson, incoming.SafeBeforeSnapshotJson));
-            }
+            IReadOnlyList<NotificationFanoutOccurrence> predecessors = await occurrenceRepository
+                .GetDirectPredecessorsForCoordinationAsync(
+                    incoming.TenantId,
+                    incoming.EventId,
+                    replay.Id,
+                    cancellationToken);
+            ClassifiedOccurrenceEntry[] classifiedPredecessors = predecessors
+                .Select(predecessor => new ClassifiedOccurrenceEntry(
+                    predecessor,
+                    ClassifyAndValidate(predecessor)))
+                .ToArray();
+            NotificationFanoutOccurrence expected = CreateCoalescedUpdate(incoming, classifiedPredecessors);
+            ClassifiedOccurrence expectedClassification = ClassifyAndValidate(expected);
+            compatible = TemplateContentEquals(
+                replayClassification.Template!,
+                expectedClassification.Template!);
         }
 
         if (!compatible)
         {
             throw new InvalidOperationException("A fanout occurrence source identity was reused with incompatible immutable content.");
         }
+    }
+
+    private static bool HasPredecessorContinuity(
+        NotificationFanoutOccurrence incoming,
+        ClassifiedOccurrence incomingClassification,
+        ClassifiedOccurrenceEntry predecessor)
+    {
+        NotificationFanoutRecipientTemplate predecessorTemplate = predecessor.Classification.Template!;
+        NotificationFanoutRecipientTemplate incomingTemplate = incomingClassification.Template!;
+        NotificationFanoutChangeField[] fields = predecessorTemplate.ChangeSet.Fields
+            .Concat(incomingTemplate.ChangeSet.Fields)
+            .Distinct()
+            .OrderBy(field => (int)field)
+            .ToArray();
+        bool eventWideTimezonePair = IsEventWideUpdate(predecessor.Occurrence)
+            && IsEventWideUpdate(incoming)
+            && fields.Contains(NotificationFanoutChangeField.Timezone);
+        bool predecessorEnriched = HasCompleteSessionDisplayTimes(predecessorTemplate);
+        bool incomingEnriched = HasCompleteSessionDisplayTimes(incomingTemplate);
+        if (eventWideTimezonePair && predecessorEnriched != incomingEnriched)
+        {
+            return false;
+        }
+
+        if (!predecessorEnriched || !incomingEnriched)
+        {
+            return SnapshotContentEquals(predecessorTemplate.After, incomingTemplate.Before);
+        }
+
+        if (!SnapshotTopLevelContentEquals(predecessorTemplate.After, incomingTemplate.Before))
+        {
+            return false;
+        }
+
+        Dictionary<Guid, NotificationFanoutSessionDisplayTimeV1> predecessorAfterById = predecessorTemplate
+            .After.SessionDisplayTimes!
+            .ToDictionary(session => session.SessionId);
+        foreach (NotificationFanoutSessionDisplayTimeV1 incomingBefore in incomingTemplate.Before.SessionDisplayTimes!)
+        {
+            if (predecessorAfterById.TryGetValue(incomingBefore.SessionId, out NotificationFanoutSessionDisplayTimeV1? predecessorAfter)
+                && !SessionDisplayTimeContentEquals(predecessorAfter, incomingBefore))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool SnapshotContentEquals(
+        NotificationFanoutSnapshotV1 left,
+        NotificationFanoutSnapshotV1 right) =>
+        JsonEquals(
+            NotificationFanoutTemplateJson.Serialize(left),
+            NotificationFanoutTemplateJson.Serialize(right));
+
+    private static bool SnapshotTopLevelContentEquals(
+        NotificationFanoutSnapshotV1 left,
+        NotificationFanoutSnapshotV1 right) =>
+        SnapshotContentEquals(
+            left with { SessionDisplayTimes = null },
+            right with { SessionDisplayTimes = null });
+
+    private static bool SessionDisplayTimeContentEquals(
+        NotificationFanoutSessionDisplayTimeV1 left,
+        NotificationFanoutSessionDisplayTimeV1 right) =>
+        left.SessionId == right.SessionId
+        && string.Equals(left.SessionTitle, right.SessionTitle, StringComparison.Ordinal)
+        && left.StartsAt.EqualsExact(right.StartsAt)
+        && ExactEquals(left.EndsAt, right.EndsAt);
+
+    private static bool ExactEquals(DateTimeOffset? left, DateTimeOffset? right) =>
+        left.HasValue == right.HasValue
+        && (!left.HasValue || left.Value.EqualsExact(right!.Value));
+
+    private static bool TemplateContentEquals(
+        NotificationFanoutRecipientTemplate left,
+        NotificationFanoutRecipientTemplate right)
+    {
+        return left.TemplateKey == right.TemplateKey
+            && left.IsCancellation == right.IsCancellation
+            && left.IsSessionScoped == right.IsSessionScoped
+            && left.ChangeSet.Fields.SequenceEqual(right.ChangeSet.Fields)
+            && JsonEquals(
+                NotificationFanoutTemplateJson.Serialize(left.Before),
+                NotificationFanoutTemplateJson.Serialize(right.Before))
+            && JsonEquals(
+                NotificationFanoutTemplateJson.Serialize(left.After),
+                NotificationFanoutTemplateJson.Serialize(right.After));
     }
 
     private async Task<NotificationFanoutOccurrence> ResolveActiveOccurrenceAsync(
@@ -330,12 +422,43 @@ public sealed class NotificationFanoutOccurrenceCoordinator(
             return incoming;
         }
 
-        NotificationFanoutChangeField[] fields = latestUpdate.Classification.Template!.ChangeSet.Fields
-            .Concat(ClassifyAndValidate(incoming).Template!.ChangeSet.Fields)
+        NotificationFanoutRecipientTemplate latestTemplate = latestUpdate.Classification.Template!;
+        ClassifiedOccurrence incomingClassification = ClassifyAndValidate(incoming);
+        NotificationFanoutRecipientTemplate incomingTemplate = incomingClassification.Template!;
+        if (!HasPredecessorContinuity(incoming, incomingClassification, latestUpdate))
+        {
+            return incoming;
+        }
+
+        NotificationFanoutChangeField[] fields = latestTemplate.ChangeSet.Fields
+            .Concat(incomingTemplate.ChangeSet.Fields)
             .Distinct()
             .OrderBy(field => (int)field)
             .ToArray();
-        return NotificationFanoutOccurrence.Create(
+        bool eventWideTimezonePair = IsEventWideUpdate(latestUpdate.Occurrence)
+            && IsEventWideUpdate(incoming)
+            && fields.Contains(NotificationFanoutChangeField.Timezone);
+        bool latestEnriched = HasCompleteSessionDisplayTimes(latestTemplate);
+        bool incomingEnriched = HasCompleteSessionDisplayTimes(incomingTemplate);
+        bool hasAnySessionDisplayTimes = HasAnySessionDisplayTimes(latestTemplate)
+            || HasAnySessionDisplayTimes(incomingTemplate);
+        if (eventWideTimezonePair
+            && hasAnySessionDisplayTimes
+            && (!latestEnriched || !incomingEnriched))
+        {
+            return incoming;
+        }
+
+        string safeBeforeSnapshotJson = MergeEventTimezoneBeforeSnapshot(
+            latestUpdate.Occurrence,
+            latestTemplate,
+            incoming,
+            incomingTemplate,
+            fields);
+        string safeAfterSnapshotJson = eventWideTimezonePair && latestEnriched && incomingEnriched
+            ? NotificationFanoutTemplateJson.Serialize(incomingTemplate.After)
+            : incoming.SafeAfterSnapshotJson;
+        NotificationFanoutOccurrence coalesced = NotificationFanoutOccurrence.Create(
             incoming.Id,
             incoming.TenantId,
             incoming.EventId,
@@ -344,8 +467,8 @@ public sealed class NotificationFanoutOccurrenceCoordinator(
             incoming.AudienceCutoffAt,
             incoming.AggregateVersion,
             NotificationFanoutTemplateJson.Serialize(new NotificationFanoutChangeSetV1(fields)),
-            latestUpdate.Occurrence.SafeBeforeSnapshotJson,
-            incoming.SafeAfterSnapshotJson,
+            safeBeforeSnapshotJson,
+            safeAfterSnapshotJson,
             incoming.TemplateKey,
             incoming.TemplateVersion,
             incoming.DeliveryPolicyId,
@@ -356,7 +479,88 @@ public sealed class NotificationFanoutOccurrenceCoordinator(
             incoming.SourceId,
             incoming.CoalescingKey,
             incoming.CoalescingWindowEndsAt);
+        if (eventWideTimezonePair && latestEnriched && incomingEnriched)
+        {
+            _ = templateFactory.Parse(coalesced);
+        }
+
+        return coalesced;
     }
+
+    private static string MergeEventTimezoneBeforeSnapshot(
+        NotificationFanoutOccurrence latestOccurrence,
+        NotificationFanoutRecipientTemplate latestTemplate,
+        NotificationFanoutOccurrence incomingOccurrence,
+        NotificationFanoutRecipientTemplate incomingTemplate,
+        NotificationFanoutChangeField[] fields)
+    {
+        bool eventTimezoneUpdate = latestOccurrence.SessionId is null
+            && incomingOccurrence.SessionId is null
+            && string.Equals(
+                latestOccurrence.TemplateKey,
+                NotificationFanoutRecipientTemplateFactory.EventUpdatedTemplateKey,
+                StringComparison.Ordinal)
+            && string.Equals(latestOccurrence.TemplateKey, incomingOccurrence.TemplateKey, StringComparison.Ordinal)
+            && fields.Contains(NotificationFanoutChangeField.Timezone);
+        if (!eventTimezoneUpdate)
+        {
+            return latestOccurrence.SafeBeforeSnapshotJson;
+        }
+
+        if (!HasCompleteSessionDisplayTimes(latestTemplate)
+            || !HasCompleteSessionDisplayTimes(incomingTemplate))
+        {
+            return latestOccurrence.SafeBeforeSnapshotJson;
+        }
+
+        NotificationFanoutSessionDisplayTimeV1[] earliestBefore = latestTemplate.Before.SessionDisplayTimes!;
+        NotificationFanoutSessionDisplayTimeV1[] incomingBefore = incomingTemplate.Before.SessionDisplayTimes!;
+        NotificationFanoutSessionDisplayTimeV1[] latestAfter = incomingTemplate.After.SessionDisplayTimes!;
+
+        Dictionary<Guid, NotificationFanoutSessionDisplayTimeV1> earliestById = earliestBefore
+            .ToDictionary(session => session.SessionId);
+        Dictionary<Guid, NotificationFanoutSessionDisplayTimeV1> incomingBeforeById = incomingBefore
+            .ToDictionary(session => session.SessionId);
+        var mergedBefore = new NotificationFanoutSessionDisplayTimeV1[latestAfter.Length];
+        for (var index = 0; index < latestAfter.Length; index++)
+        {
+            NotificationFanoutSessionDisplayTimeV1 final = latestAfter[index];
+            if (!earliestById.TryGetValue(final.SessionId, out NotificationFanoutSessionDisplayTimeV1? prior)
+                && !incomingBeforeById.TryGetValue(final.SessionId, out prior))
+            {
+                throw new InvalidOperationException("Event timezone coalescing cannot identify a latest session's immutable prior display time.");
+            }
+
+            if (prior.StartsAt.ToUniversalTime() != final.StartsAt.ToUniversalTime()
+                || prior.EndsAt?.ToUniversalTime() != final.EndsAt?.ToUniversalTime())
+            {
+                throw new InvalidOperationException("Event timezone coalescing detected changed UTC session truth.");
+            }
+
+            mergedBefore[index] = prior;
+        }
+
+        NotificationFanoutSnapshotV1 mergedSnapshot = latestTemplate.Before with
+        {
+            SessionDisplayTimes = mergedBefore
+        };
+        return NotificationFanoutTemplateJson.Serialize(mergedSnapshot);
+    }
+
+    private static bool IsEventWideUpdate(NotificationFanoutOccurrence occurrence) =>
+        occurrence.SessionId is null
+        && string.Equals(
+            occurrence.TemplateKey,
+            NotificationFanoutRecipientTemplateFactory.EventUpdatedTemplateKey,
+            StringComparison.Ordinal);
+
+    private static bool HasCompleteSessionDisplayTimes(NotificationFanoutRecipientTemplate template) =>
+        template.Before.SessionDisplayTimes is { Length: > 0 }
+        && template.After.SessionDisplayTimes is { Length: > 0 };
+
+    private static bool HasAnySessionDisplayTimes(NotificationFanoutRecipientTemplate template) =>
+        template.Before.SessionDisplayTimes is not null
+        || template.After.SessionDisplayTimes is not null;
 
     private static bool ExistingBlocksIncoming(
         ClassifiedOccurrenceEntry existing,
@@ -404,15 +608,42 @@ public sealed class NotificationFanoutOccurrenceCoordinator(
 
         if (left.Kind == NotificationFanoutOccurrenceKind.SessionCancellation)
         {
+            if (EnrichedTimezoneIncludesSession(right, left.SessionId))
+            {
+                return true;
+            }
+
             return left.SessionId == right.SessionId;
         }
 
         if (right.Kind == NotificationFanoutOccurrenceKind.SessionCancellation)
         {
+            if (EnrichedTimezoneIncludesSession(left, right.SessionId))
+            {
+                return true;
+            }
+
             return right.SessionId == left.SessionId;
         }
 
         return left.SessionId == right.SessionId;
+    }
+
+    private static bool EnrichedTimezoneIncludesSession(
+        ClassifiedOccurrence timezoneCandidate,
+        Guid? cancelledSessionId)
+    {
+        return cancelledSessionId.HasValue
+            && timezoneCandidate.Kind == NotificationFanoutOccurrenceKind.ImportantUpdate
+            && timezoneCandidate.SessionId is null
+            && timezoneCandidate.Template is { } template
+            && string.Equals(
+                template.TemplateKey,
+                NotificationFanoutRecipientTemplateFactory.EventUpdatedTemplateKey,
+                StringComparison.Ordinal)
+            && template.ChangeSet.Fields.Contains(NotificationFanoutChangeField.Timezone)
+            && HasCompleteSessionDisplayTimes(template)
+            && template.After.SessionDisplayTimes!.Any(session => session.SessionId == cancelledSessionId.Value);
     }
 
     private static int CompareOccurrenceOrder(NotificationFanoutOccurrence left, NotificationFanoutOccurrence right)

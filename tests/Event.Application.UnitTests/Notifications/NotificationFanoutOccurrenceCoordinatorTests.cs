@@ -190,6 +190,307 @@ public sealed class NotificationFanoutOccurrenceCoordinatorTests
     }
 
     [Test]
+    public async Task DiscontinuousPredecessorStartsUnmergedOccurrenceAndExactReplayUsesSameBoundary()
+    {
+        var fixture = new Fixture();
+        string predecessorBefore = fixture.Snapshot("Predecessor before", fixture.At);
+        string predecessorAfter = fixture.Snapshot("Predecessor after", fixture.At.AddHours(1));
+        NotificationFanoutOccurrence predecessor = fixture.Persisted(
+            NotificationFanoutOccurrenceKind.ImportantUpdate,
+            fixture.At,
+            sessionId: null,
+            NotificationFanoutChangeField.StartTime,
+            predecessorBefore,
+            predecessorAfter);
+        string incomingBefore = fixture.Snapshot("Discontinuous incoming before", fixture.At.AddHours(3));
+        string incomingAfter = fixture.Snapshot("Incoming after", fixture.At.AddHours(4));
+        NotificationFanoutOccurrenceCandidate incoming = fixture.Candidate(
+            NotificationFanoutOccurrenceKind.ImportantUpdate,
+            fixture.At.AddMinutes(1),
+            sessionId: null,
+            NotificationFanoutChangeField.EndTime,
+            incomingBefore,
+            incomingAfter);
+        fixture.Pending(predecessor);
+
+        NotificationFanoutOccurrenceCoordinationResult first = await fixture.Coordinator
+            .CoordinateInCurrentTransactionAsync(incoming);
+        NotificationFanoutRecipientTemplate firstTemplate = new NotificationFanoutRecipientTemplateFactory()
+            .Parse(first.Occurrence);
+
+        await Assert.That(firstTemplate.ChangeSet.Fields).IsEquivalentTo([NotificationFanoutChangeField.EndTime]);
+        await Assert.That(first.Occurrence.SafeBeforeSnapshotJson).IsEqualTo(incomingBefore);
+        int createdCount = fixture.CreatedOccurrences.Count;
+        int pointerCount = fixture.OutboxPointers.Count;
+        fixture.Replay(first.Occurrence);
+        fixture.Predecessors(first.Occurrence.Id, predecessor);
+
+        NotificationFanoutOccurrenceCoordinationResult replay = await fixture.Coordinator
+            .CoordinateInCurrentTransactionAsync(incoming);
+
+        await Assert.That(replay.Outcome).IsEqualTo(NotificationFanoutOccurrenceCoordinationOutcome.SourceReplay);
+        await Assert.That(fixture.CreatedOccurrences).Count().IsEqualTo(createdCount);
+        await Assert.That(fixture.OutboxPointers).Count().IsEqualTo(pointerCount);
+        NotificationFanoutOccurrenceCandidate tampered = incoming with
+        {
+            SafeBeforeSnapshotJson = fixture.Snapshot("Tampered discontinuity", fixture.At.AddHours(5))
+        };
+        await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Coordinator
+            .CoordinateInCurrentTransactionAsync(tampered));
+    }
+
+    [Test]
+    public async Task EventTimezoneCoalescingKeepsEarliestCarriedTimesAndIncomingTimesForNewSessions()
+    {
+        var fixture = new Fixture();
+        Guid carriedSessionId = Guid.CreateVersion7();
+        Guid newSessionId = Guid.CreateVersion7();
+        var carriedEarliest = new NotificationFanoutSessionDisplayTimeV1(
+            carriedSessionId,
+            "Carried",
+            new DateTimeOffset(2026, 10, 25, 0, 30, 0, TimeSpan.Zero),
+            null);
+        var carriedIncomingBefore = carriedEarliest with
+        {
+            StartsAt = new DateTimeOffset(2026, 10, 25, 2, 30, 0, TimeSpan.FromHours(2))
+        };
+        var carriedLatest = carriedEarliest with
+        {
+            StartsAt = new DateTimeOffset(2026, 10, 25, 1, 30, 0, TimeSpan.FromHours(1))
+        };
+        var newIncomingBefore = new NotificationFanoutSessionDisplayTimeV1(
+            newSessionId,
+            "New",
+            new DateTimeOffset(2026, 10, 25, 2, 45, 0, TimeSpan.FromHours(2)),
+            null);
+        var newLatest = newIncomingBefore with
+        {
+            StartsAt = new DateTimeOffset(2026, 10, 25, 1, 45, 0, TimeSpan.FromHours(1))
+        };
+        string earliestBefore = TimezoneSnapshot("UTC", carriedEarliest);
+        string intermediate = TimezoneSnapshot("Europe/Brussels", carriedIncomingBefore);
+        NotificationFanoutOccurrence existing = fixture.Persisted(
+            NotificationFanoutOccurrenceKind.ImportantUpdate,
+            fixture.At,
+            sessionId: null,
+            NotificationFanoutChangeField.Timezone,
+            earliestBefore,
+            intermediate);
+        string incomingBefore = TimezoneSnapshot("Europe/Brussels", carriedIncomingBefore, newIncomingBefore);
+        string latestAfter = TimezoneSnapshot("Europe/London", newLatest, carriedLatest);
+        NotificationFanoutOccurrenceCandidate incoming = fixture.Candidate(
+            NotificationFanoutOccurrenceKind.ImportantUpdate,
+            fixture.At.AddMinutes(4),
+            sessionId: null,
+            NotificationFanoutChangeField.Timezone,
+            incomingBefore,
+            latestAfter);
+        fixture.Pending(existing);
+
+        NotificationFanoutOccurrenceCoordinationResult result = await fixture.Coordinator
+            .CoordinateInCurrentTransactionAsync(incoming);
+        NotificationFanoutRecipientTemplate template = new NotificationFanoutRecipientTemplateFactory()
+            .Parse(result.Occurrence);
+
+        Guid[] actualIds = template.Before.SessionDisplayTimes!.Select(value => value.SessionId).ToArray();
+        await Assert.That(actualIds.SequenceEqual(actualIds.Order())).IsTrue();
+        await Assert.That(template.Before.SessionDisplayTimes.Single(value => value.SessionId == newSessionId))
+            .IsEqualTo(newIncomingBefore);
+        await Assert.That(template.Before.SessionDisplayTimes.Single(value => value.SessionId == carriedSessionId))
+            .IsEqualTo(carriedEarliest);
+        await Assert.That(template.After.SessionDisplayTimes).IsEquivalentTo([newLatest, carriedLatest]);
+
+        int createdCount = fixture.CreatedOccurrences.Count;
+        int pointerCount = fixture.OutboxPointers.Count;
+        fixture.Replay(result.Occurrence);
+        fixture.Predecessors(result.Occurrence.Id, existing);
+
+        NotificationFanoutOccurrenceCoordinationResult replay = await fixture.Coordinator
+            .CoordinateInCurrentTransactionAsync(incoming);
+
+        await Assert.That(replay.Outcome).IsEqualTo(NotificationFanoutOccurrenceCoordinationOutcome.SourceReplay);
+        await Assert.That(replay.Occurrence.Id).IsEqualTo(result.Occurrence.Id);
+        await Assert.That(fixture.CreatedOccurrences).Count().IsEqualTo(createdCount);
+        await Assert.That(fixture.OutboxPointers).Count().IsEqualTo(pointerCount);
+    }
+
+    [Test]
+    public async Task EnrichedTimezoneSourceReplayRejectsChangedIntersectingIncomingBeforeSnapshot()
+    {
+        var fixture = new Fixture();
+        NotificationFanoutOccurrence predecessor = fixture.Persisted(
+            EnrichedTimezoneCandidate(fixture, fixture.At, fixture.SessionA));
+        var incomingBefore = new NotificationFanoutSessionDisplayTimeV1(
+            fixture.SessionA,
+            "Included session",
+            new DateTimeOffset(2026, 10, 25, 2, 30, 0, TimeSpan.FromHours(2)),
+            new DateTimeOffset(2026, 10, 25, 2, 30, 0, TimeSpan.FromHours(1)));
+        var incomingAfter = incomingBefore with
+        {
+            StartsAt = new DateTimeOffset(2026, 10, 25, 1, 30, 0, TimeSpan.FromHours(1)),
+            EndsAt = new DateTimeOffset(2026, 10, 25, 1, 30, 0, TimeSpan.Zero)
+        };
+        NotificationFanoutOccurrenceCandidate incoming = fixture.Candidate(
+            NotificationFanoutOccurrenceKind.ImportantUpdate,
+            fixture.At.AddMinutes(1),
+            sessionId: null,
+            NotificationFanoutChangeField.Timezone,
+            TimezoneSnapshot("Europe/Brussels", incomingBefore),
+            TimezoneSnapshot("Europe/London", incomingAfter));
+        fixture.Pending(predecessor);
+        NotificationFanoutOccurrenceCoordinationResult first = await fixture.Coordinator
+            .CoordinateInCurrentTransactionAsync(incoming);
+        fixture.Replay(first.Occurrence);
+        fixture.Predecessors(first.Occurrence.Id, predecessor);
+        NotificationFanoutOccurrenceCandidate tampered = incoming with
+        {
+            SafeBeforeSnapshotJson = TimezoneSnapshot(
+                "Europe/Brussels",
+                incomingBefore with { SessionTitle = "Altered replay title" })
+        };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Coordinator
+            .CoordinateInCurrentTransactionAsync(tampered));
+    }
+
+    [Test]
+    public async Task SessionCancellationSupersedesPendingEnrichedEventTimezoneOccurrence()
+    {
+        var fixture = new Fixture();
+        NotificationFanoutOccurrence timezoneOccurrence = fixture.Persisted(
+            EnrichedTimezoneCandidate(fixture, fixture.At, fixture.SessionA));
+        fixture.Pending(timezoneOccurrence);
+        NotificationFanoutOccurrenceCandidate cancellation = fixture.Candidate(
+            NotificationFanoutOccurrenceKind.SessionCancellation,
+            fixture.At.AddMinutes(1),
+            fixture.SessionA);
+
+        NotificationFanoutOccurrenceCoordinationResult result = await fixture.Coordinator
+            .CoordinateInCurrentTransactionAsync(cancellation);
+
+        await Assert.That(result.Outcome).IsEqualTo(NotificationFanoutOccurrenceCoordinationOutcome.NewlyActive);
+        await Assert.That(timezoneOccurrence.State).IsEqualTo(NotificationFanoutOccurrenceState.Superseded);
+        await Assert.That(timezoneOccurrence.SupersededByOccurrenceId).IsEqualTo(cancellation.OccurrenceId);
+        await fixture.EmailSuppressionRepository.Received(1).SuppressPreHandoffAsync(
+            timezoneOccurrence.TenantId,
+            timezoneOccurrence.Id,
+            cancellation.OccurredAt,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ExistingSessionCancellationBlocksLaterEnrichedEventTimezoneOccurrence()
+    {
+        var fixture = new Fixture();
+        NotificationFanoutOccurrence cancellation = fixture.Persisted(
+            NotificationFanoutOccurrenceKind.SessionCancellation,
+            fixture.At,
+            fixture.SessionA);
+        fixture.Pending(cancellation);
+        NotificationFanoutOccurrenceCandidate timezone = EnrichedTimezoneCandidate(
+            fixture,
+            fixture.At.AddMinutes(1),
+            fixture.SessionA);
+
+        NotificationFanoutOccurrenceCoordinationResult result = await fixture.Coordinator
+            .CoordinateInCurrentTransactionAsync(timezone);
+
+        await Assert.That(result.Outcome).IsEqualTo(NotificationFanoutOccurrenceCoordinationOutcome.Superseded);
+        await Assert.That(result.ActiveOccurrenceId).IsEqualTo(cancellation.Id);
+        await Assert.That(result.Occurrence.State).IsEqualTo(NotificationFanoutOccurrenceState.Superseded);
+        await Assert.That(result.Occurrence.SupersededByOccurrenceId).IsEqualTo(cancellation.Id);
+        await Assert.That(fixture.OutboxPointers).IsEmpty();
+    }
+
+    [Test]
+    public async Task UnrelatedSessionCancellationDoesNotCompeteWithEnrichedEventTimezoneOccurrence()
+    {
+        var fixture = new Fixture();
+        NotificationFanoutOccurrence timezoneOccurrence = fixture.Persisted(
+            EnrichedTimezoneCandidate(fixture, fixture.At, fixture.SessionA));
+        fixture.Pending(timezoneOccurrence);
+        NotificationFanoutOccurrenceCandidate cancellation = fixture.Candidate(
+            NotificationFanoutOccurrenceKind.SessionCancellation,
+            fixture.At.AddMinutes(1),
+            fixture.SessionB);
+
+        NotificationFanoutOccurrenceCoordinationResult result = await fixture.Coordinator
+            .CoordinateInCurrentTransactionAsync(cancellation);
+
+        await Assert.That(result.Outcome).IsEqualTo(NotificationFanoutOccurrenceCoordinationOutcome.NewlyActive);
+        await Assert.That(timezoneOccurrence.State).IsEqualTo(NotificationFanoutOccurrenceState.Pending);
+        await fixture.EmailSuppressionRepository.DidNotReceiveWithAnyArgs()
+            .SuppressPreHandoffAsync(default, default, default, default);
+    }
+
+    [Test]
+    public async Task LegacyThenEnrichedTimezoneBoundaryStartsSeparateOccurrenceWithoutCoalescing()
+    {
+        var fixture = new Fixture();
+        NotificationFanoutOccurrence legacy = fixture.Persisted(
+            NotificationFanoutOccurrenceKind.ImportantUpdate,
+            fixture.At,
+            sessionId: null,
+            NotificationFanoutChangeField.StartTime);
+        var beforeSession = new NotificationFanoutSessionDisplayTimeV1(
+            fixture.SessionA,
+            "Session",
+            new DateTimeOffset(2026, 10, 25, 2, 30, 0, TimeSpan.FromHours(2)),
+            new DateTimeOffset(2026, 10, 25, 3, 30, 0, TimeSpan.FromHours(2)));
+        string mixedBefore = TimezoneSnapshot("Europe/Brussels", beforeSession);
+        var afterSession = beforeSession with
+        {
+            StartsAt = new DateTimeOffset(2026, 10, 25, 1, 30, 0, TimeSpan.FromHours(1)),
+            EndsAt = new DateTimeOffset(2026, 10, 25, 1, 30, 0, TimeSpan.Zero)
+        };
+        string mixedAfter = TimezoneSnapshot("Europe/London", afterSession);
+        NotificationFanoutOccurrenceCandidate incoming = fixture.Candidate(
+            NotificationFanoutOccurrenceKind.ImportantUpdate,
+            fixture.At.AddMinutes(1),
+            sessionId: null,
+            NotificationFanoutChangeField.Timezone,
+            mixedBefore,
+            mixedAfter);
+        fixture.Pending(legacy);
+
+        NotificationFanoutOccurrenceCoordinationResult result = await fixture.Coordinator
+            .CoordinateInCurrentTransactionAsync(incoming);
+        NotificationFanoutRecipientTemplate template = new NotificationFanoutRecipientTemplateFactory()
+            .Parse(result.Occurrence);
+
+        await Assert.That(result.Outcome).IsEqualTo(NotificationFanoutOccurrenceCoordinationOutcome.NewlyActive);
+        await Assert.That(template.ChangeSet.Fields).IsEquivalentTo([NotificationFanoutChangeField.Timezone]);
+        await Assert.That(template.Before.SessionDisplayTimes).IsNotNull();
+        await Assert.That(template.After.SessionDisplayTimes).IsNotNull();
+        await Assert.That(fixture.OutboxPointers).Count().IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task EnrichedThenLegacyTimezoneBoundaryStartsSeparateOccurrenceWithoutCoalescing()
+    {
+        var fixture = new Fixture();
+        NotificationFanoutOccurrence enriched = fixture.Persisted(
+            EnrichedTimezoneCandidate(fixture, fixture.At, fixture.SessionA));
+        fixture.Pending(enriched);
+        NotificationFanoutOccurrenceCandidate legacy = fixture.Candidate(
+            NotificationFanoutOccurrenceKind.ImportantUpdate,
+            fixture.At.AddMinutes(1),
+            sessionId: null,
+            NotificationFanoutChangeField.StartTime);
+
+        NotificationFanoutOccurrenceCoordinationResult result = await fixture.Coordinator
+            .CoordinateInCurrentTransactionAsync(legacy);
+        NotificationFanoutRecipientTemplate template = new NotificationFanoutRecipientTemplateFactory()
+            .Parse(result.Occurrence);
+
+        await Assert.That(result.Outcome).IsEqualTo(NotificationFanoutOccurrenceCoordinationOutcome.NewlyActive);
+        await Assert.That(template.ChangeSet.Fields).IsEquivalentTo([NotificationFanoutChangeField.StartTime]);
+        await Assert.That(template.Before.SessionDisplayTimes).IsNull();
+        await Assert.That(template.After.SessionDisplayTimes).IsNull();
+        await Assert.That(fixture.OutboxPointers).Count().IsEqualTo(1);
+    }
+
+    [Test]
     public async Task UpdateOutsideWindowStartsNewWindowWithoutMergingBeforeOrFields()
     {
         var fixture = new Fixture();
@@ -405,6 +706,42 @@ public sealed class NotificationFanoutOccurrenceCoordinatorTests
             Arg.Any<CancellationToken>());
     }
 
+    private static string TimezoneSnapshot(
+        string timezone,
+        params NotificationFanoutSessionDisplayTimeV1[] sessions) =>
+        NotificationFanoutTemplateJson.Serialize(new NotificationFanoutSnapshotV1(
+            "Immutable event",
+            SessionTitle: null,
+            StartsAt: null,
+            EndsAt: null,
+            Timezone: timezone,
+            Location: null,
+            SessionDisplayTimes: sessions));
+
+    private static NotificationFanoutOccurrenceCandidate EnrichedTimezoneCandidate(
+        Fixture fixture,
+        DateTime occurredAt,
+        Guid includedSessionId)
+    {
+        var before = new NotificationFanoutSessionDisplayTimeV1(
+            includedSessionId,
+            "Included session",
+            new DateTimeOffset(2026, 10, 25, 0, 30, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 10, 25, 1, 30, 0, TimeSpan.Zero));
+        var after = before with
+        {
+            StartsAt = new DateTimeOffset(2026, 10, 25, 2, 30, 0, TimeSpan.FromHours(2)),
+            EndsAt = new DateTimeOffset(2026, 10, 25, 2, 30, 0, TimeSpan.FromHours(1))
+        };
+        return fixture.Candidate(
+            NotificationFanoutOccurrenceKind.ImportantUpdate,
+            occurredAt,
+            sessionId: null,
+            NotificationFanoutChangeField.Timezone,
+            TimezoneSnapshot("UTC", before),
+            TimezoneSnapshot("Europe/Brussels", after));
+    }
+
     private static int Priority(NotificationFanoutOccurrenceKind kind) => kind switch
     {
         NotificationFanoutOccurrenceKind.Reminder => NotificationFanoutOccurrenceCoordinationPolicy.ReminderPriority,
@@ -435,6 +772,12 @@ public sealed class NotificationFanoutOccurrenceCoordinatorTests
                     Arg.Any<CancellationToken>())
                 .Returns((NotificationFanoutOccurrence?)null);
             OccurrenceRepository.GetPendingForEventCoordinationAsync(
+                    Arg.Any<Guid>(),
+                    Arg.Any<Guid>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(Array.Empty<NotificationFanoutOccurrence>());
+            OccurrenceRepository.GetDirectPredecessorsForCoordinationAsync(
+                    Arg.Any<Guid>(),
                     Arg.Any<Guid>(),
                     Arg.Any<Guid>(),
                     Arg.Any<CancellationToken>())
@@ -515,6 +858,16 @@ public sealed class NotificationFanoutOccurrenceCoordinatorTests
                     Arg.Any<Guid>(),
                     Arg.Any<CancellationToken>())
                 .Returns(call => replacements.SingleOrDefault(value => value.Id == call.ArgAt<Guid>(1)));
+        }
+
+        public void Predecessors(Guid replacementOccurrenceId, params NotificationFanoutOccurrence[] predecessors)
+        {
+            OccurrenceRepository.GetDirectPredecessorsForCoordinationAsync(
+                    TenantId,
+                    EventId,
+                    replacementOccurrenceId,
+                    Arg.Any<CancellationToken>())
+                .Returns(predecessors);
         }
 
         public NotificationFanoutOccurrenceCandidate Candidate(

@@ -93,11 +93,14 @@ public sealed class NotificationFanoutProcessor(
 
         ClaimExecutionResult[] results = await Task.WhenAll(
             claimRound.Claims.Select(claim => ProcessClaimAsync(claim, cancellationToken)));
+        int executionUnavailableCount = results.Count(
+            result => !result.Failed
+                && result.Outcome == NotificationFanoutPageProcessingOutcome.Unavailable);
         var roundResult = new NotificationFanoutProcessorRoundResult(
             claimRound.Claims.Count,
             claimRound.LeaseContentionCount,
             claimRound.CapacityDeferredCount,
-            claimRound.UnavailableCount,
+            claimRound.UnavailableCount + executionUnavailableCount,
             results.Count(result => result.Outcome == NotificationFanoutPageProcessingOutcome.Completed),
             results.Count(result => result.Outcome == NotificationFanoutPageProcessingOutcome.StaleClaim),
             results.Count(result => result.Failed),
@@ -107,6 +110,7 @@ public sealed class NotificationFanoutProcessor(
         metrics.RecordNotificationFanoutProcessorClaims(roundResult.CompletedCount, "completed");
         metrics.RecordNotificationFanoutProcessorClaims(roundResult.StaleClaimCount, "stale_claim");
         metrics.RecordNotificationFanoutProcessorClaims(roundResult.FailedCount, "failed");
+        metrics.RecordNotificationFanoutProcessorClaims(executionUnavailableCount, "unavailable");
         metrics.RecordNotificationFanoutProcessorRecipients(roundResult.RecipientsProcessed, "processed");
         metrics.RecordNotificationFanoutProcessorRecipients(
             roundResult.NotificationsCreated,

@@ -15,6 +15,9 @@ namespace Event.Persistence.IntegrationTests.Repositories;
 [NotInParallel("PersistenceDb")]
 public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContainerFixture fixture)
 {
+    private const int BacklogHighWatermark = 1000;
+    private const int BacklogLowWatermark = 500;
+
     [Test]
     public async Task EnsurePendingOccurrenceRunAsync_ConcurrentReplayThenClaim_ReusesIndependentRun()
     {
@@ -57,7 +60,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             "worker-after-handoff",
             Utc(2026, 8, 1, 12),
             TimeSpan.FromMinutes(1),
+            8,
             1,
+            BacklogHighWatermark,
+            BacklogLowWatermark,
             CancellationToken.None);
 
         await Assert.That(concurrent[1]).IsNotNull();
@@ -97,14 +103,18 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
 
         await using var context = fixture.CreateDbContext();
         var repository = new NotificationFanoutRunRepository(context);
-        IReadOnlyList<NotificationFanoutClaim> claims = await repository.ClaimDueRoundAsync(
+        NotificationFanoutClaimRoundResult round = await repository.ClaimDueRoundAsync(
             new NotificationFanoutClaimRoundRequest(
                 "fair-worker",
                 claimedAt,
                 TimeSpan.FromMinutes(1),
                 MaxTenants: 10,
-                MaxActiveClaimsPerTenant: 1),
+                MaxActiveClaims: 10,
+                MaxActiveClaimsPerTenant: 1,
+                OptionalReminderBacklogHighWatermark: 1000,
+                OptionalReminderBacklogLowWatermark: 500),
             CancellationToken.None);
+        IReadOnlyList<NotificationFanoutClaim> claims = round.Claims;
 
         await Assert.That(claims).Count().IsEqualTo(3);
         await Assert.That(claims[0].OccurrenceId).IsEqualTo(tenantAHigh);
@@ -136,7 +146,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
                 "ceiling-worker-a",
                 claimedAt,
                 TimeSpan.FromMinutes(1),
+                8,
                 1,
+                BacklogHighWatermark,
+                BacklogLowWatermark,
                 CancellationToken.None),
             repositoryB.TryClaimOccurrenceAsync(
                 scenario.TenantId,
@@ -144,8 +157,50 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
                 "ceiling-worker-b",
                 claimedAt,
                 TimeSpan.FromMinutes(1),
+                8,
                 1,
+                BacklogHighWatermark,
+                BacklogLowWatermark,
                 CancellationToken.None));
+
+        await Assert.That(claims.Count(claim => claim is not null)).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task TryClaimOccurrenceAsync_DifferentTenantsAcrossReplicas_EnforcesGlobalCeiling()
+    {
+        await fixture.ResetAsync();
+        DateTime claimedAt = Utc(2026, 8, 1, 12);
+        FanoutScenario first = await SeedOccurrenceAsync("fanout-global-ceiling-a");
+        FanoutScenario second = await SeedOccurrenceAsync("fanout-global-ceiling-b");
+
+        await using var contextA = fixture.CreateDbContext();
+        await using var contextB = fixture.CreateDbContext();
+        var repositoryA = new NotificationFanoutRunRepository(contextA);
+        var repositoryB = new NotificationFanoutRunRepository(contextB);
+        NotificationFanoutClaim?[] claims = await Task.WhenAll(
+            repositoryA.TryClaimOccurrenceAsync(
+                first.TenantId,
+                first.OccurrenceId,
+                "global-worker-a",
+                claimedAt,
+                TimeSpan.FromMinutes(1),
+                maxActiveClaims: 1,
+                maxActiveClaimsPerTenant: 1,
+                optionalReminderBacklogHighWatermark: BacklogHighWatermark,
+                optionalReminderBacklogLowWatermark: BacklogLowWatermark,
+                cancellationToken: CancellationToken.None),
+            repositoryB.TryClaimOccurrenceAsync(
+                second.TenantId,
+                second.OccurrenceId,
+                "global-worker-b",
+                claimedAt,
+                TimeSpan.FromMinutes(1),
+                maxActiveClaims: 1,
+                maxActiveClaimsPerTenant: 1,
+                optionalReminderBacklogHighWatermark: BacklogHighWatermark,
+                optionalReminderBacklogLowWatermark: BacklogLowWatermark,
+                cancellationToken: CancellationToken.None));
 
         await Assert.That(claims.Count(claim => claim is not null)).IsEqualTo(1);
     }
@@ -174,21 +229,70 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             claimedAt,
             TimeSpan.FromMinutes(1),
             MaxTenants: 10,
-            MaxActiveClaimsPerTenant: 2);
-        IReadOnlyList<NotificationFanoutClaim> first = await repository.ClaimDueRoundAsync(
+            MaxActiveClaims: 10,
+            MaxActiveClaimsPerTenant: 2,
+            OptionalReminderBacklogHighWatermark: 1000,
+            OptionalReminderBacklogLowWatermark: 500);
+        IReadOnlyList<NotificationFanoutClaim> first = (await repository.ClaimDueRoundAsync(
             request,
-            CancellationToken.None);
-        IReadOnlyList<NotificationFanoutClaim> second = await repository.ClaimDueRoundAsync(
+            CancellationToken.None)).Claims;
+        IReadOnlyList<NotificationFanoutClaim> second = (await repository.ClaimDueRoundAsync(
             request,
-            CancellationToken.None);
-        IReadOnlyList<NotificationFanoutClaim> blocked = await repository.ClaimDueRoundAsync(
+            CancellationToken.None)).Claims;
+        IReadOnlyList<NotificationFanoutClaim> blocked = (await repository.ClaimDueRoundAsync(
             request,
-            CancellationToken.None);
+            CancellationToken.None)).Claims;
 
         await Assert.That(first).Count().IsEqualTo(1);
         await Assert.That(second).Count().IsEqualTo(1);
         await Assert.That(blocked).IsEmpty();
         await Assert.That(first[0].OccurrenceId).IsNotEqualTo(second[0].OccurrenceId);
+    }
+
+    [Test]
+    public async Task ClaimDueRoundAsync_CoreBacklogDefersThenResumesOptionalReminder()
+    {
+        await fixture.ResetAsync();
+        DateTime claimedAt = Utc(2026, 8, 1, 12);
+        FanoutScenario scenario = await SeedOccurrenceAsync("fanout-backpressure-core", priority: 30);
+        Guid reminderOccurrenceId = await SeedAdditionalOccurrenceAsync(
+            scenario,
+            "reminder",
+            priority: 10,
+            occurredAt: claimedAt.AddMinutes(-1),
+            deliveryPolicy: NotificationDeliveryPolicyEnum.ReminderOptional);
+        var request = new NotificationFanoutClaimRoundRequest(
+            "backpressure-worker",
+            claimedAt,
+            TimeSpan.FromMinutes(1),
+            MaxTenants: 10,
+            MaxActiveClaims: 10,
+            MaxActiveClaimsPerTenant: 2,
+            OptionalReminderBacklogHighWatermark: 1,
+            OptionalReminderBacklogLowWatermark: 0);
+
+        await using var context = fixture.CreateDbContext();
+        var repository = new NotificationFanoutRunRepository(context);
+        NotificationFanoutClaimRoundResult pressured = await repository.ClaimDueRoundAsync(
+            request,
+            CancellationToken.None);
+        NotificationFanoutClaim coreClaim = pressured.Claims.Single();
+        bool completed = await repository.TryCompleteAsync(
+            coreClaim,
+            claimedAt.AddSeconds(1),
+            CancellationToken.None);
+        NotificationFanoutClaimRoundResult resumed = await repository.ClaimDueRoundAsync(
+            request with { ClaimedAt = claimedAt.AddSeconds(2) },
+            CancellationToken.None);
+        NotificationFanoutProcessorSnapshot snapshot = await repository.GetProcessorSnapshotAsync(
+            claimedAt.AddSeconds(2),
+            CancellationToken.None);
+
+        await Assert.That(coreClaim.OccurrenceId).IsEqualTo(scenario.OccurrenceId);
+        await Assert.That(completed).IsTrue();
+        await Assert.That(resumed.Claims).Count().IsEqualTo(1);
+        await Assert.That(resumed.Claims[0].OccurrenceId).IsEqualTo(reminderOccurrenceId);
+        await Assert.That(snapshot.OptionalRemindersDeferred).IsFalse();
     }
 
     [Test]
@@ -222,21 +326,28 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
                 "active-worker",
                 claimedAt,
                 TimeSpan.FromMinutes(1),
+                8,
                 1,
+                BacklogHighWatermark,
+                BacklogLowWatermark,
                 CancellationToken.None);
             await Assert.That(activeClaim).IsNotNull();
         }
 
         await using var context = fixture.CreateDbContext();
         var repository = new NotificationFanoutRunRepository(context);
-        IReadOnlyList<NotificationFanoutClaim> claims = await repository.ClaimDueRoundAsync(
+        NotificationFanoutClaimRoundResult round = await repository.ClaimDueRoundAsync(
             new NotificationFanoutClaimRoundRequest(
                 "state-worker",
                 claimedAt,
                 TimeSpan.FromMinutes(1),
                 MaxTenants: 10,
-                MaxActiveClaimsPerTenant: 1),
+                MaxActiveClaims: 10,
+                MaxActiveClaimsPerTenant: 1,
+                OptionalReminderBacklogHighWatermark: 1000,
+                OptionalReminderBacklogLowWatermark: 500),
             CancellationToken.None);
+        IReadOnlyList<NotificationFanoutClaim> claims = round.Claims;
 
         await Assert.That(claims).Count().IsEqualTo(1);
         await Assert.That(claims[0].OccurrenceId).IsEqualTo(valid.OccurrenceId);
@@ -256,7 +367,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             "missing-run-worker",
             Utc(2026, 8, 1, 12),
             TimeSpan.FromMinutes(1),
+            8,
             1,
+            BacklogHighWatermark,
+            BacklogLowWatermark,
             CancellationToken.None);
         NotificationFanoutRun? run = await repository.GetByOccurrenceAsync(
             scenario.TenantId,
@@ -290,7 +404,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             "superseded-worker",
             claimedAt,
             TimeSpan.FromMinutes(1),
+            8,
             1,
+            BacklogHighWatermark,
+            BacklogLowWatermark,
             CancellationToken.None);
 
         await Assert.That(claim).IsNull();
@@ -332,7 +449,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             "supersession-race-worker",
             claimedAt,
             TimeSpan.FromMinutes(1),
+            8,
             1,
+            BacklogHighWatermark,
+            BacklogLowWatermark,
             CancellationToken.None);
 
         bool waitedOnEventLock;
@@ -378,7 +498,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
                 "worker-a",
                 claimedAt,
                 TimeSpan.FromMinutes(1),
+                8,
                 1,
+                BacklogHighWatermark,
+                BacklogLowWatermark,
                 CancellationToken.None),
             repositoryB.TryClaimOccurrenceAsync(
                 scenario.TenantId,
@@ -386,7 +509,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
                 "worker-b",
                 claimedAt,
                 TimeSpan.FromMinutes(1),
+                8,
                 1,
+                BacklogHighWatermark,
+                BacklogLowWatermark,
                 CancellationToken.None));
 
         await Assert.That(claims.Count(claim => claim is not null)).IsEqualTo(1);
@@ -412,7 +538,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             "worker-a",
             claimedAt,
             TimeSpan.FromMinutes(1),
+            8,
             1,
+            BacklogHighWatermark,
+            BacklogLowWatermark,
             CancellationToken.None) ?? throw new InvalidOperationException("Initial claim was not acquired.");
 
         bool renewed = await repository.TryRenewClaimAsync(
@@ -426,7 +555,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             "worker-b",
             claimedAt.AddSeconds(90),
             TimeSpan.FromMinutes(1),
+            8,
             1,
+            BacklogHighWatermark,
+            BacklogLowWatermark,
             CancellationToken.None);
         NotificationFanoutClaim? recovered = await repository.TryClaimOccurrenceAsync(
             scenario.TenantId,
@@ -434,7 +566,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             "worker-b",
             claimedAt.AddMinutes(2).AddTicks(1),
             TimeSpan.FromMinutes(1),
+            8,
             1,
+            BacklogHighWatermark,
+            BacklogLowWatermark,
             CancellationToken.None);
 
         await Assert.That(renewed).IsTrue();
@@ -460,7 +595,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             "same-horizon-worker",
             claimedAt,
             TimeSpan.FromMinutes(1),
+            8,
             1,
+            BacklogHighWatermark,
+            BacklogLowWatermark,
             CancellationToken.None) ?? throw new InvalidOperationException("Initial claim was not acquired.");
 
         bool renewed = await repository.TryRenewClaimAsync(
@@ -503,7 +641,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             "checkpoint-worker",
             claimedAt,
             TimeSpan.FromMinutes(5),
+            8,
             1,
+            BacklogHighWatermark,
+            BacklogLowWatermark,
             CancellationToken.None) ?? throw new InvalidOperationException("Initial claim was not acquired.");
 
         bool firstCheckpoint = await repository.TryCheckpointAsync(
@@ -565,7 +706,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             "wrong-tenant",
             claimedAt,
             TimeSpan.FromMinutes(1),
+            8,
             1,
+            BacklogHighWatermark,
+            BacklogLowWatermark,
             CancellationToken.None);
         NotificationFanoutRun? wrongTenantRun = await repository.GetByOccurrenceAsync(
             wrongTenantId,
@@ -578,7 +722,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             "worker-a",
             claimedAt,
             TimeSpan.FromMinutes(1),
+            8,
             1,
+            BacklogHighWatermark,
+            BacklogLowWatermark,
             CancellationToken.None) ?? throw new InvalidOperationException("Initial claim was not acquired.");
         NotificationFanoutClaim second = await repository.TryClaimOccurrenceAsync(
             scenario.TenantId,
@@ -586,7 +733,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             "worker-b",
             claimedAt.AddMinutes(1).AddTicks(1),
             TimeSpan.FromMinutes(1),
+            8,
             1,
+            BacklogHighWatermark,
+            BacklogLowWatermark,
             CancellationToken.None) ?? throw new InvalidOperationException("Expired claim was not recovered.");
 
         bool staleCompletion = await repository.TryCompleteAsync(
@@ -625,7 +775,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             "worker-a",
             claimedAt,
             TimeSpan.FromMinutes(1),
+            8,
             1,
+            BacklogHighWatermark,
+            BacklogLowWatermark,
             CancellationToken.None) ?? throw new InvalidOperationException("Initial claim was not acquired.");
         bool checkpointed = await repository.TryCheckpointAsync(
             first,
@@ -642,7 +795,10 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             "worker-b",
             claimedAt.AddMinutes(1).AddTicks(1),
             TimeSpan.FromMinutes(1),
+            8,
             1,
+            BacklogHighWatermark,
+            BacklogLowWatermark,
             CancellationToken.None) ?? throw new InvalidOperationException("Expired claim was not recovered.");
         bool replayCheckpointed = await repository.TryCheckpointAsync(
             replay,
@@ -666,7 +822,8 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
         bool ensureRun = true,
         int priority = 30,
         DateTime? occurredAt = null,
-        DateTime? notBefore = null)
+        DateTime? notBefore = null,
+        NotificationDeliveryPolicyEnum deliveryPolicy = NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional)
     {
         await using var context = fixture.CreateDbContext();
         var tenant = new Tenant
@@ -726,7 +883,7 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             "{\"startTime\":\"2026-08-01T10:00:00Z\"}",
             "event.updated",
             templateVersion: 1,
-            (int)NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional,
+            (int)deliveryPolicy,
             policyVersion: 1,
             priority,
             notBefore: notBefore ?? occurrenceTime,
@@ -755,7 +912,8 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
         int priority,
         DateTime occurredAt,
         DateTime? notBefore = null,
-        bool ensureRun = true)
+        bool ensureRun = true,
+        NotificationDeliveryPolicyEnum deliveryPolicy = NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional)
     {
         await using var context = fixture.CreateDbContext();
         NotificationFanoutOccurrence occurrence = NotificationFanoutOccurrence.Create(
@@ -771,7 +929,7 @@ public sealed class NotificationFanoutRunLeaseRepositoryTests(PostgreSqlContaine
             "{\"startTime\":\"2026-08-01T10:00:00Z\"}",
             "event.updated",
             templateVersion: 1,
-            (int)NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional,
+            (int)deliveryPolicy,
             policyVersion: 1,
             priority,
             notBefore: notBefore ?? occurredAt,

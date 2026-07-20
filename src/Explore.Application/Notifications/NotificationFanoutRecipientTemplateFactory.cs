@@ -19,10 +19,13 @@ public sealed record NotificationFanoutRecipientTemplate(
     bool IsSessionScoped,
     NotificationFanoutChangeSetV1 ChangeSet,
     NotificationFanoutSnapshotV1 Before,
-    NotificationFanoutSnapshotV1 After)
+    NotificationFanoutSnapshotV1 After,
+    bool IsModerationAvailabilityRequired = false)
 {
     public NotificationFanoutLocationSnapshotV1? LocationForDisclosure =>
-        !IsCancellation && ChangeSet.Fields.Any(changedField => changedField is NotificationFanoutChangeField.Location or NotificationFanoutChangeField.Room)
+        !IsModerationAvailabilityRequired
+        && !IsCancellation
+        && ChangeSet.Fields.Any(changedField => changedField is NotificationFanoutChangeField.Location or NotificationFanoutChangeField.Room)
             ? After.Location
             : null;
 }
@@ -36,6 +39,8 @@ public sealed class NotificationFanoutRecipientTemplateFactory
     public const string SessionCancelledTemplateKey = "event.session.cancelled";
     public const string SessionUpdatedTemplateKey = "event.session.updated";
     public const string OccurrenceSourceType = "notification_fanout_occurrence";
+    public const string ModerationUnavailableTitle = "Event unavailable";
+    public const string ModerationUnavailableBody = "An event you registered for is no longer available.";
 
     public NotificationFanoutRecipientTemplate Parse(NotificationFanoutOccurrence occurrence)
     {
@@ -45,8 +50,17 @@ public sealed class NotificationFanoutRecipientTemplateFactory
             throw new JsonException("Fanout template version is unsupported.");
         }
 
-        if (occurrence.DeliveryPolicyId != (int)NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional
-            || occurrence.PolicyVersion != CurrentPolicyVersion)
+        if (occurrence.PolicyVersion != CurrentPolicyVersion)
+        {
+            throw new JsonException("Fanout delivery policy is unsupported.");
+        }
+
+        if (occurrence.DeliveryPolicyId == (int)NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired)
+        {
+            return ParseModerationAvailabilityRequired(occurrence);
+        }
+
+        if (occurrence.DeliveryPolicyId != (int)NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional)
         {
             throw new JsonException("Fanout delivery policy is unsupported.");
         }
@@ -64,22 +78,26 @@ public sealed class NotificationFanoutRecipientTemplateFactory
             throw new JsonException("Fanout template scope does not match its occurrence.");
         }
 
-        NotificationFanoutChangeSetV1 changeSet = JsonSerializer.Deserialize(
-                occurrence.ChangeSetJson,
-                NotificationFanoutTemplateJsonContext.Default.NotificationFanoutChangeSetV1)
-            ?? throw new JsonException("Fanout change set is required.");
-        NotificationFanoutSnapshotV1 before = JsonSerializer.Deserialize(
-                occurrence.SafeBeforeSnapshotJson,
-                NotificationFanoutTemplateJsonContext.Default.NotificationFanoutSnapshotV1)
-            ?? throw new JsonException("Fanout before snapshot is required.");
-        NotificationFanoutSnapshotV1 after = JsonSerializer.Deserialize(
-                occurrence.SafeAfterSnapshotJson,
-                NotificationFanoutTemplateJsonContext.Default.NotificationFanoutSnapshotV1)
-            ?? throw new JsonException("Fanout after snapshot is required.");
+        NotificationFanoutChangeSetV1 changeSet = NotificationFanoutTemplateJson.Canonicalize(
+            JsonSerializer.Deserialize(
+                    occurrence.ChangeSetJson,
+                    NotificationFanoutTemplateJsonContext.Default.NotificationFanoutChangeSetV1)
+                ?? throw new JsonException("Fanout change set is required."));
+        NotificationFanoutSnapshotV1 before = NotificationFanoutTemplateJson.Canonicalize(
+            JsonSerializer.Deserialize(
+                    occurrence.SafeBeforeSnapshotJson,
+                    NotificationFanoutTemplateJsonContext.Default.NotificationFanoutSnapshotV1)
+                ?? throw new JsonException("Fanout before snapshot is required."));
+        NotificationFanoutSnapshotV1 after = NotificationFanoutTemplateJson.Canonicalize(
+            JsonSerializer.Deserialize(
+                    occurrence.SafeAfterSnapshotJson,
+                    NotificationFanoutTemplateJsonContext.Default.NotificationFanoutSnapshotV1)
+                ?? throw new JsonException("Fanout after snapshot is required."));
 
         ValidateChangeSet(changeSet, isCancellation);
         ValidateSnapshot(before, isSessionScoped);
         ValidateSnapshot(after, isSessionScoped);
+        ValidateSessionDisplayTimes(changeSet, isCancellation, isSessionScoped, before, after);
         return new(
             occurrence.Id,
             occurrence.TemplateKey,
@@ -101,6 +119,17 @@ public sealed class NotificationFanoutRecipientTemplateFactory
     {
         ArgumentNullException.ThrowIfNull(occurrence);
         ArgumentNullException.ThrowIfNull(template);
+        if (template.IsModerationAvailabilityRequired)
+        {
+            return CreateModerationAvailabilityRequiredMaterialization(
+                occurrence,
+                template,
+                recipientUserId,
+                verifiedEmail,
+                emailSkipReason,
+                locationAuthorization);
+        }
+
         if (occurrence.Id != template.OccurrenceId
             || !string.Equals(occurrence.TemplateKey, template.TemplateKey, StringComparison.Ordinal)
             || occurrence.TemplateVersion != CurrentTemplateVersion
@@ -172,6 +201,124 @@ public sealed class NotificationFanoutRecipientTemplateFactory
             LinkAllowed: false);
     }
 
+    private static NotificationFanoutRecipientTemplate ParseModerationAvailabilityRequired(
+        NotificationFanoutOccurrence occurrence)
+    {
+        if (!string.Equals(
+                occurrence.TemplateKey,
+                NotificationFanoutOccurrenceCoordinationPolicy.HeavyModerationUnavailableTemplateKey,
+                StringComparison.Ordinal)
+            || occurrence.SessionId.HasValue
+            || !IsEmptyJsonObject(occurrence.ChangeSetJson)
+            || !IsEmptyJsonObject(occurrence.SafeBeforeSnapshotJson)
+            || !IsEmptyJsonObject(occurrence.SafeAfterSnapshotJson))
+        {
+            throw new JsonException("Required moderation fanout payload is unsupported.");
+        }
+
+        var emptySnapshot = new NotificationFanoutSnapshotV1(
+            string.Empty,
+            SessionTitle: null,
+            StartsAt: null,
+            EndsAt: null,
+            Timezone: null,
+            Location: null);
+        return new NotificationFanoutRecipientTemplate(
+            occurrence.Id,
+            occurrence.TemplateKey,
+            IsCancellation: false,
+            IsSessionScoped: false,
+            new NotificationFanoutChangeSetV1([]),
+            emptySnapshot,
+            emptySnapshot,
+            IsModerationAvailabilityRequired: true);
+    }
+
+    private static RecipientNotificationMaterialization CreateModerationAvailabilityRequiredMaterialization(
+        NotificationFanoutOccurrence occurrence,
+        NotificationFanoutRecipientTemplate template,
+        Guid recipientUserId,
+        string? verifiedEmail,
+        string? emailSkipReason,
+        FanoutAttendeeLocationAuthorizationResult? locationAuthorization)
+    {
+        if (occurrence.Id != template.OccurrenceId
+            || !string.Equals(occurrence.TemplateKey, template.TemplateKey, StringComparison.Ordinal)
+            || !string.Equals(
+                occurrence.TemplateKey,
+                NotificationFanoutOccurrenceCoordinationPolicy.HeavyModerationUnavailableTemplateKey,
+                StringComparison.Ordinal)
+            || occurrence.TemplateVersion != CurrentTemplateVersion
+            || occurrence.PolicyVersion != CurrentPolicyVersion
+            || occurrence.DeliveryPolicyId != (int)NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired
+            || occurrence.SessionId.HasValue
+            || recipientUserId == Guid.Empty
+            || locationAuthorization is not null)
+        {
+            throw new InvalidOperationException("Required moderation materialization authority does not match the parsed occurrence.");
+        }
+
+        string deduplicationKey = $"notification-fanout-occurrence:{occurrence.Id:N}:recipient:{recipientUserId:N}";
+        EmailDispatchOutbox? email = string.IsNullOrWhiteSpace(verifiedEmail)
+            ? null
+            : new EmailDispatchOutbox
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = occurrence.TenantId,
+                Kind = EmailDispatchKind.ModerationAvailabilityRequired,
+                SourceType = OccurrenceSourceType,
+                SourceId = occurrence.Id,
+                EventId = occurrence.EventId,
+                RecipientUserId = recipientUserId,
+                RecipientAddressSource = RecipientAddressSource.TenantUserVerifiedEmail,
+                RecipientEmail = verifiedEmail.Trim(),
+                Subject = ModerationUnavailableTitle,
+                PlainTextBody = $"Assalamu alaykum,\n\n{ModerationUnavailableBody}\n\nEvent Platform",
+                HtmlBody = $"<p>Assalamu alaykum,</p><p>{ModerationUnavailableBody}</p><p>Event Platform</p>",
+                CorrelationId = occurrence.Id.ToString("D"),
+                CreatedAt = occurrence.OccurredAt
+            };
+
+        return new RecipientNotificationMaterialization(
+            Guid.CreateVersion7(),
+            new NotificationIntentDraft(
+                NotificationCategory.TrustSafetyModeration,
+                TenantId: occurrence.TenantId,
+                RecipientKind: nameof(NotificationRecipientKindEnum.User),
+                TemplateKey: occurrence.TemplateKey,
+                SafePayloadReference: $"notification-fanout-occurrence:{occurrence.Id:D}",
+                DeduplicationKey: deduplicationKey,
+                CorrelationId: occurrence.Id.ToString("D"),
+                UserId: recipientUserId,
+                EventId: occurrence.EventId,
+                FanoutOccurrenceId: occurrence.Id),
+            NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired,
+            "moderation_availability_required",
+            new RecipientInAppNotificationDraft(
+                (int)NotificationTypeEnum.General,
+                ModerationUnavailableTitle,
+                ModerationUnavailableBody,
+                (int)ActorTypeEnum.User,
+                (int)NotificationReasonEnum.System,
+                IsRequired: true),
+            email,
+            IncludeEmailChannel: true,
+            EmailRequired: true,
+            EmailSkipReason: email is null
+                ? emailSkipReason ?? "recipient_email_missing_or_unverified"
+                : null,
+            PolicyVersion: occurrence.PolicyVersion,
+            TemplateVersion: occurrence.TemplateVersion,
+            LinkAllowed: false);
+    }
+
+    private static bool IsEmptyJsonObject(string json)
+    {
+        using JsonDocument document = JsonDocument.Parse(json);
+        return document.RootElement.ValueKind == JsonValueKind.Object
+            && !document.RootElement.EnumerateObject().Any();
+    }
+
     private static EmailDispatchOutbox CreateEmail(
         NotificationFanoutOccurrence occurrence,
         NotificationFanoutRecipientTemplate template,
@@ -223,6 +370,7 @@ public sealed class NotificationFanoutRecipientTemplateFactory
                     break;
                 case NotificationFanoutChangeField.Timezone:
                     changes.Add($"Timezone: {Text(template.Before.Timezone)} → {Text(template.After.Timezone)}.");
+                    AddChangedSessionDisplayTimes(changes, template);
                     break;
                 case NotificationFanoutChangeField.Location:
                 case NotificationFanoutChangeField.Room:
@@ -308,12 +456,133 @@ public sealed class NotificationFanoutRecipientTemplateFactory
         if (string.IsNullOrWhiteSpace(snapshot.EventTitle)
             || isSessionScoped && string.IsNullOrWhiteSpace(snapshot.SessionTitle)
             || !isSessionScoped && snapshot.SessionTitle is not null
+            || isSessionScoped && snapshot.SessionDisplayTimes is not null
             || snapshot.Location is { EventLocationId: var eventLocationId } && eventLocationId == Guid.Empty
             || snapshot.Location?.RoomId == Guid.Empty)
         {
             throw new JsonException("Fanout snapshot does not match its template scope.");
         }
     }
+
+    private static void ValidateSessionDisplayTimes(
+        NotificationFanoutChangeSetV1 changeSet,
+        bool isCancellation,
+        bool isSessionScoped,
+        NotificationFanoutSnapshotV1 before,
+        NotificationFanoutSnapshotV1 after)
+    {
+        NotificationFanoutSessionDisplayTimeV1[]? beforeSessions = before.SessionDisplayTimes;
+        NotificationFanoutSessionDisplayTimeV1[]? afterSessions = after.SessionDisplayTimes;
+        if (beforeSessions is null && afterSessions is null)
+        {
+            return;
+        }
+
+        if (isCancellation
+            || isSessionScoped
+            || !changeSet.Fields.Contains(NotificationFanoutChangeField.Timezone))
+        {
+            throw new JsonException("Fanout affected-session snapshots do not match an event timezone update.");
+        }
+
+        if (beforeSessions is null || afterSessions is null)
+        {
+            throw new JsonException("Fanout session display-time snapshots must be absent on both sides or complete on both sides.");
+        }
+
+        if (string.IsNullOrWhiteSpace(before.Timezone)
+            || string.IsNullOrWhiteSpace(after.Timezone))
+        {
+            throw new JsonException("Fanout enriched timezone snapshots require both timezone identifiers.");
+        }
+
+        ValidateSessionDisplayTimeSet(beforeSessions);
+        ValidateSessionDisplayTimeSet(afterSessions);
+        if (beforeSessions.Length != afterSessions.Length)
+        {
+            throw new JsonException("Fanout session display-time snapshots have different session sets.");
+        }
+
+        bool anyDisplayTimeChanged = false;
+        for (var index = 0; index < beforeSessions.Length; index++)
+        {
+            NotificationFanoutSessionDisplayTimeV1 prior = beforeSessions[index];
+            NotificationFanoutSessionDisplayTimeV1 current = afterSessions[index];
+            if (prior.SessionId == Guid.Empty
+                || prior.SessionId != current.SessionId
+                || prior.StartsAt.ToUniversalTime() != current.StartsAt.ToUniversalTime()
+                || prior.EndsAt?.ToUniversalTime() != current.EndsAt?.ToUniversalTime())
+            {
+                throw new JsonException("Fanout affected-session display times are invalid or mutable.");
+            }
+
+            anyDisplayTimeChanged |= !prior.StartsAt.EqualsExact(current.StartsAt)
+                || !ExactEquals(prior.EndsAt, current.EndsAt);
+        }
+
+        if (!anyDisplayTimeChanged)
+        {
+            throw new JsonException("Fanout session display-time snapshots contain no attendee-visible change.");
+        }
+    }
+
+    private static void ValidateSessionDisplayTimeSet(NotificationFanoutSessionDisplayTimeV1[]? sessions)
+    {
+        if (sessions is null)
+        {
+            return;
+        }
+
+        if (sessions.Length == 0
+            || sessions.Any(session => session is null
+                || session.SessionId == Guid.Empty
+                || string.IsNullOrWhiteSpace(session.SessionTitle)
+                || session.StartsAt == default
+                || session.EndsAt is { } endsAt
+                    && (endsAt == default || endsAt <= session.StartsAt))
+            || sessions.Select(session => session.SessionId).Distinct().Count() != sessions.Length)
+        {
+            throw new JsonException("Fanout session display-time snapshot is empty, duplicated, or incomplete.");
+        }
+    }
+
+    private static void AddChangedSessionDisplayTimes(
+        List<string> changes,
+        NotificationFanoutRecipientTemplate template)
+    {
+        if (template.Before.SessionDisplayTimes is not { Length: > 0 } beforeSessions
+            || template.After.SessionDisplayTimes is not { Length: > 0 } afterSessions)
+        {
+            return;
+        }
+
+        for (var index = 0; index < beforeSessions.Length; index++)
+        {
+            NotificationFanoutSessionDisplayTimeV1 prior = beforeSessions[index];
+            NotificationFanoutSessionDisplayTimeV1 current = afterSessions[index];
+            if (prior.StartsAt.EqualsExact(current.StartsAt)
+                && ExactEquals(prior.EndsAt, current.EndsAt))
+            {
+                continue;
+            }
+
+            string sessionTitle = Text(current.SessionTitle ?? prior.SessionTitle ?? "Session");
+            changes.Add(
+                $"{sessionTitle}: {FormatInterval(prior, template.Before.Timezone)} → {FormatInterval(current, template.After.Timezone)}.");
+        }
+    }
+
+    private static string FormatInterval(NotificationFanoutSessionDisplayTimeV1 session, string? timezone)
+    {
+        string start = FormatTime(session.StartsAt, timezone);
+        return session.EndsAt is null
+            ? start
+            : $"{start} to {FormatTime(session.EndsAt, timezone)}";
+    }
+
+    private static bool ExactEquals(DateTimeOffset? left, DateTimeOffset? right) =>
+        left.HasValue == right.HasValue
+        && (!left.HasValue || left.Value.EqualsExact(right!.Value));
 
     private static string ScopeName(NotificationFanoutRecipientTemplate template) =>
         template.IsSessionScoped ? "Session" : "Event";

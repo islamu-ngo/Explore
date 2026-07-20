@@ -51,12 +51,13 @@ public sealed class BusinessMetrics : IDisposable
     private readonly Counter<long> _notificationFanoutProcessorClaims;
     private readonly Counter<long> _notificationFanoutProcessorRecipients;
     private long _notificationFanoutDueOccurrenceCount;
-    private long _notificationFanoutDueRequiredOccurrenceCount;
+    private long _notificationFanoutDueCoreOccurrenceCount;
     private long _notificationFanoutDueOptionalReminderCount;
     private long _notificationFanoutActiveClaimCount;
     private long _notificationFanoutExpiredClaimCount;
     private long _notificationFanoutSupersededOccurrenceCount;
     private long _notificationFanoutProcessedRecipientCount;
+    private long _notificationFanoutRemainingOccurrenceCount;
     private long _notificationFanoutOldestDueAgeSeconds;
     private long _notificationFanoutOptionalReminderDeferralState;
     private readonly Counter<long> _webhookMessagesCreated;
@@ -269,8 +270,8 @@ public sealed class BusinessMetrics : IDisposable
             unit: "{occurrence}",
             description: "Current due fanout occurrence count");
         meter.CreateObservableGauge(
-            "explore.notifications.fanout_processor.due_required_occurrences",
-            () => Volatile.Read(ref _notificationFanoutDueRequiredOccurrenceCount),
+            "explore.notifications.fanout_processor.due_core_occurrences",
+            () => Volatile.Read(ref _notificationFanoutDueCoreOccurrenceCount),
             unit: "{occurrence}",
             description: "Current due non-reminder fanout occurrence count");
         meter.CreateObservableGauge(
@@ -298,6 +299,11 @@ public sealed class BusinessMetrics : IDisposable
             () => Volatile.Read(ref _notificationFanoutProcessedRecipientCount),
             unit: "{recipient}",
             description: "Current durable processed-recipient total across fanout runs");
+        meter.CreateObservableGauge(
+            "explore.notifications.fanout_processor.remaining_occurrences",
+            () => Volatile.Read(ref _notificationFanoutRemainingOccurrenceCount),
+            unit: "{occurrence}",
+            description: "Current due plus actively processing fanout occurrence count");
         meter.CreateObservableGauge(
             "explore.notifications.fanout_processor.oldest_due_age",
             () => Volatile.Read(ref _notificationFanoutOldestDueAgeSeconds),
@@ -776,7 +782,7 @@ public sealed class BusinessMetrics : IDisposable
 
     public void RecordNotificationFanoutProcessorSnapshot(
         long dueOccurrenceCount,
-        long dueRequiredOccurrenceCount,
+        long dueCoreOccurrenceCount,
         long dueOptionalReminderCount,
         long activeClaimCount,
         long expiredClaimCount,
@@ -786,12 +792,15 @@ public sealed class BusinessMetrics : IDisposable
         bool optionalReminderDeferralActive)
     {
         Interlocked.Exchange(ref _notificationFanoutDueOccurrenceCount, Math.Max(0, dueOccurrenceCount));
-        Interlocked.Exchange(ref _notificationFanoutDueRequiredOccurrenceCount, Math.Max(0, dueRequiredOccurrenceCount));
+        Interlocked.Exchange(ref _notificationFanoutDueCoreOccurrenceCount, Math.Max(0, dueCoreOccurrenceCount));
         Interlocked.Exchange(ref _notificationFanoutDueOptionalReminderCount, Math.Max(0, dueOptionalReminderCount));
         Interlocked.Exchange(ref _notificationFanoutActiveClaimCount, Math.Max(0, activeClaimCount));
         Interlocked.Exchange(ref _notificationFanoutExpiredClaimCount, Math.Max(0, expiredClaimCount));
         Interlocked.Exchange(ref _notificationFanoutSupersededOccurrenceCount, Math.Max(0, supersededOccurrenceCount));
         Interlocked.Exchange(ref _notificationFanoutProcessedRecipientCount, Math.Max(0, processedRecipientCount));
+        Interlocked.Exchange(
+            ref _notificationFanoutRemainingOccurrenceCount,
+            Math.Max(0, dueOccurrenceCount + activeClaimCount));
         Interlocked.Exchange(ref _notificationFanoutOldestDueAgeSeconds, Math.Max(0, oldestDueAgeSeconds));
         Volatile.Write(ref _notificationFanoutOptionalReminderDeferralState,
             optionalReminderDeferralActive ? 1 : 0);

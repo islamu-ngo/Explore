@@ -54,6 +54,9 @@ public sealed class NotificationFanoutOccurrenceHandoffServiceTests
             default,
             default,
             default,
+            default,
+            default,
+            default,
             default);
     }
 

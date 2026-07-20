@@ -239,9 +239,48 @@ public sealed class EmailDispatchEligibilityEvaluator(
             .AsNoTracking()
             .Include(value => value.Pii)
             .SingleOrDefaultAsync(value => value.Id == dispatch.RecipientUserId, cancellationToken);
-        if (user is null)
+        if (user is null || user.IsDeleted)
         {
             return await SkipAsync(dispatch, delivery, request, "recipient_deleted", cancellationToken);
+        }
+
+        if (dispatch.Kind == EmailDispatchKind.OrganizerNotification
+            && delivery.NotificationIntent.TemplateKey == EventOrganizerWarningNotificationFactory.TemplateKey)
+        {
+            if (dispatch.EventId is not Guid eventId)
+            {
+                return await SkipAsync(
+                    dispatch,
+                    delivery,
+                    request,
+                    "report_organizer_authority_missing",
+                    cancellationToken);
+            }
+
+            DateTime authorityAtUtc = await dbContext.Database
+                .SqlQueryRaw<DateTime>("SELECT clock_timestamp() AS \"Value\"")
+                .SingleAsync(cancellationToken);
+            bool effectiveOwner = await dbContext.EventRoleAssignments
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                .AsNoTracking()
+                .AnyAsync(assignment =>
+                    assignment.TenantId == request.TenantId
+                    && assignment.EventId == eventId
+                    && assignment.UserId == dispatch.RecipientUserId
+                    && assignment.RoleId == (int)RoleEnum.EventOwner
+                    && assignment.Status == EventRoleAssignmentStatus.Active
+                    && assignment.StartsAtUtc <= authorityAtUtc
+                    && (assignment.ExpiresAtUtc == null || assignment.ExpiresAtUtc > authorityAtUtc),
+                    cancellationToken);
+            if (!effectiveOwner)
+            {
+                return await SkipAsync(
+                    dispatch,
+                    delivery,
+                    request,
+                    "report_organizer_authority_inactive",
+                    cancellationToken);
+            }
         }
 
         string recipientEmail;
@@ -275,11 +314,20 @@ public sealed class EmailDispatchEligibilityEvaluator(
                 return await SkipAsync(dispatch, delivery, request, "recipient_address_source_mismatch", cancellationToken);
             }
 
-            recipientEmail = user.Email.Trim();
-            if (user.EmailVerified != true || string.IsNullOrWhiteSpace(recipientEmail))
+            RecipientEmailAddressResolution emailAddress = RecipientEmailAddressResolver.Resolve(
+                user,
+                dispatch.RecipientUserId);
+            if (!emailAddress.HasVerifiedEmail)
             {
-                return await SkipAsync(dispatch, delivery, request, "recipient_email_unverified", cancellationToken);
+                return await SkipAsync(
+                    dispatch,
+                    delivery,
+                    request,
+                    emailAddress.SkipReason!,
+                    cancellationToken);
             }
+
+            recipientEmail = emailAddress.Email!;
         }
 
         var consentReason = await ResolveConsentSkipReasonAsync(policy, delivery, dispatch, cancellationToken);
@@ -525,11 +573,15 @@ public sealed class EmailDispatchEligibilityEvaluator(
 
         return policy.ConsentRequirement switch
         {
-            EmailDispatchConsentRequirement.ReportCaseUpdates => "report_case_update_consent_unavailable",
+            EmailDispatchConsentRequirement.ReportCaseUpdates when
+                !string.Equals(delivery.ConsentPurpose, ReportEmailConsentPurposeCodes.CaseUpdates, StringComparison.Ordinal)
+                => "report_consent_purpose_mismatch",
+            EmailDispatchConsentRequirement.ReportCaseUpdates when !report.ReportCaseUpdatesConsent
+                => "report_case_update_consent_withdrawn",
             EmailDispatchConsentRequirement.ReportFollowUpContact when
                 !string.Equals(delivery.ConsentPurpose, ReportEmailConsentPurposeCodes.FollowUpContact, StringComparison.Ordinal)
                 => "report_consent_purpose_mismatch",
-            EmailDispatchConsentRequirement.ReportFollowUpContact when !report.ReporterContactConsent
+            EmailDispatchConsentRequirement.ReportFollowUpContact when !report.ReportFollowUpContactConsent
                 => "report_follow_up_consent_withdrawn",
             _ => null
         };

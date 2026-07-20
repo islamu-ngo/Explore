@@ -220,6 +220,74 @@ public sealed class EventModerationNotificationFanoutServiceTests
     }
 
     [Test]
+    public async Task FanoutHeavyRedactionAsync_BypassesOptionalTrustSafetyPreference()
+    {
+        var moderationRecord = CreateHeavyModerationRecord();
+        var request = CreateHeavyRequest(moderationRecord);
+        var userId = Guid.Parse("10000000-0000-0000-0000-000000000001");
+        var createdNotifications = new List<Notification>();
+
+        ConfigureNewHeavyRun(request);
+        _moderationRecordRepository.GetByIdAsync(
+                request.TenantId,
+                request.ModerationRecordId,
+                Arg.Any<CancellationToken>())
+            .Returns(moderationRecord);
+        _registrationIntentRepository.GetRegisteredUserFanoutBatchAsync(
+                request.TenantId,
+                moderationRecord.EventId,
+                Arg.Any<Guid?>(),
+                Arg.Any<int>(),
+                Arg.Any<CancellationToken>())
+            .Returns([userId], []);
+        _notificationRepository.ExistsByDeduplicationKeyAsync(
+                request.TenantId,
+                userId,
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(false);
+        _notificationRepository.Create(Arg.Do<Notification>(notification => createdNotifications.Add(notification)))
+            .Returns(call => call.Arg<Notification>());
+
+        await _service.FanoutHeavyRedactionAsync(request);
+
+        await Assert.That(createdNotifications).Count().IsEqualTo(1);
+        await Assert.That(createdNotifications[0].UserId).IsEqualTo(userId);
+        await _preferenceResolver.DidNotReceiveWithAnyArgs()
+            .ResolveAsync(default!, default);
+    }
+
+    [Test]
+    public async Task FanoutLightModerationAsync_WhenTrustSafetyPreferenceIsDisabled_SkipsNotification()
+    {
+        var request = CreateRequest();
+        var userId = Guid.Parse("10000000-0000-0000-0000-000000000001");
+
+        ConfigureNewRun(request);
+        _registrationIntentRepository.GetRegisteredUserFanoutBatchAsync(
+                request.TenantId,
+                request.EventId,
+                Arg.Any<Guid?>(),
+                Arg.Any<int>(),
+                Arg.Any<CancellationToken>())
+            .Returns([userId], []);
+        _notificationRepository.ExistsByDeduplicationKeyAsync(
+                request.TenantId,
+                userId,
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(false);
+        _preferenceResolver.ResolveAsync(
+                Arg.Any<NotificationPreferenceResolveRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => DisabledDecision(call.Arg<NotificationPreferenceResolveRequest>()));
+
+        await _service.FanoutLightModerationAsync(request);
+
+        await _notificationRepository.DidNotReceive().Create(Arg.Any<Notification>());
+    }
+
+    [Test]
     public async Task FanoutLightModerationAsync_WithCompletedRun_DoesNothing()
     {
         var request = CreateRequest();
@@ -347,10 +415,23 @@ public sealed class EventModerationNotificationFanoutServiceTests
             request.CategoryCode,
             request.ChannelCode,
             true,
-            true,
-            true,
             false,
-            "RequiredCategory",
-            "Required notification category");
+            false,
+            false,
+            "Default",
+            null);
+    }
+
+    private static NotificationPreferenceDecision DisabledDecision(NotificationPreferenceResolveRequest request)
+    {
+        return new NotificationPreferenceDecision(
+            request.CategoryCode,
+            request.ChannelCode,
+            false,
+            false,
+            false,
+            false,
+            "User",
+            null);
     }
 }

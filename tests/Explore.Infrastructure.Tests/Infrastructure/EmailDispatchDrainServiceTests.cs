@@ -428,6 +428,35 @@ public sealed class EmailDispatchDrainServiceTests
     }
 
     [Test]
+    public async Task ProcessSingleAsyncSendsRequiredModerationWithoutOptionalUnsubscribeMetadata()
+    {
+        var fixture = new Fixture();
+        var dispatch = CreateDispatch(EmailDispatchStatus.Pending);
+        dispatch.Kind = EmailDispatchKind.ModerationAvailabilityRequired;
+        EmailMessage? sentMessage = null;
+        fixture.Repository.GetByTenantAndPublishEventId(dispatch.TenantId, dispatch.PublishEventId, Arg.Any<CancellationToken>())
+            .Returns(dispatch);
+        fixture.Repository.IsTenantPaused(dispatch.TenantId, Arg.Any<CancellationToken>()).Returns(false);
+        ConfigureSuccessfulClaim(fixture, dispatch);
+        fixture.EmailService.SendAsync(Arg.Do<EmailMessage>(message => sentMessage = message), Arg.Any<CancellationToken>())
+            .Returns(EmailResult.Ok("provider-required-moderation"));
+
+        EmailDispatchSingleDrainResult result = await fixture.Service.ProcessSingleAsync(
+            dispatch.TenantId,
+            dispatch.PublishEventId,
+            "tickerq-drain",
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(EmailDispatchDrainOutcome.Sent);
+        await Assert.That(sentMessage).IsNotNull();
+        await Assert.That(sentMessage!.CustomHeaders.ContainsKey("List-Unsubscribe")).IsFalse();
+        await Assert.That(sentMessage.PlainTextBody).DoesNotContain("unsubscribe");
+        await Assert.That(sentMessage.HtmlBody).DoesNotContain("unsubscribe");
+        fixture.UnsubscribeTokenService.DidNotReceiveWithAnyArgs()
+            .GenerateToken(default!, default);
+    }
+
+    [Test]
     public async Task ProcessSingleAsyncUsesEventUpdatesUnsubscribeCategoryForRegistrationCancellationKinds()
     {
         foreach (var kind in new[] { EmailDispatchKind.RegistrationCancelled, EmailDispatchKind.RegistrationRevoked })

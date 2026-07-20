@@ -16,24 +16,18 @@ public sealed class RegistrationNotificationDeliveryService(
 {
     public RegistrationNotificationEmailResolution ResolveRegistrationConfirmationEmail(User user)
     {
-        var email = user.Email?.Trim();
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            return new RegistrationNotificationEmailResolution(
-                RegistrationNotificationEmailStatus.MissingEmail,
-                null);
-        }
-
-        if (user.EmailVerified != true)
-        {
-            return new RegistrationNotificationEmailResolution(
+        RecipientEmailAddressResolution resolution = RecipientEmailAddressResolver.Resolve(user, user.Id);
+        return resolution.SkipReason == RecipientEmailAddressResolver.RecipientEmailUnverified
+            ? new RegistrationNotificationEmailResolution(
                 RegistrationNotificationEmailStatus.UnverifiedIdentityEmail,
-                null);
-        }
-
-        return new RegistrationNotificationEmailResolution(
-            RegistrationNotificationEmailStatus.VerifiedEmail,
-            email);
+                null)
+            : resolution.HasVerifiedEmail
+                ? new RegistrationNotificationEmailResolution(
+                    RegistrationNotificationEmailStatus.VerifiedEmail,
+                    resolution.Email)
+                : new RegistrationNotificationEmailResolution(
+                    RegistrationNotificationEmailStatus.MissingEmail,
+                    null);
     }
 
     public RecipientNotificationMaterialization? CreateLifecycleMaterialization(
