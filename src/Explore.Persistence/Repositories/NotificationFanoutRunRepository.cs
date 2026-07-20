@@ -98,13 +98,28 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
         }
 
         Guid concurrencyStamp = Guid.CreateVersion7();
+        DateTime settledAt = DateTime.UtcNow;
         var strategy = _dbContext.Database.CreateExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
         {
             try
             {
+                Guid? eventId = await LoadOccurrenceEventIdHintAsync(
+                    tenantId,
+                    occurrenceId,
+                    cancellationToken);
+                if (!eventId.HasValue)
+                {
+                    return null;
+                }
+
                 await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
                 await AcquireGlobalClaimLockAsync(cancellationToken);
+                await NotificationFanoutPrecedenceLock.AcquireAsync(
+                    _dbContext,
+                    tenantId,
+                    eventId.Value,
+                    cancellationToken);
                 await AcquireOccurrenceLockAsync(tenantId, occurrenceId, cancellationToken);
 
                 var occurrence = await LoadPendingOccurrenceSourceAsync(
@@ -112,8 +127,13 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
                     occurrenceId,
                     notAfter: null,
                     cancellationToken);
-                if (occurrence is null)
+                if (occurrence is null || occurrence.EventId != eventId.Value)
                 {
+                    await SettleStalePendingOccurrenceRunAsync(
+                        tenantId,
+                        occurrenceId,
+                        settledAt,
+                        cancellationToken);
                     await transaction.CommitAsync(cancellationToken);
                     return null;
                 }
@@ -595,6 +615,11 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
             .Where(run => run.TenantId == claim.TenantId
                 && run.Id == claim.RunId
                 && run.FanoutOccurrenceId == claim.OccurrenceId
+                && _dbContext.NotificationFanoutOccurrences
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+                    .Any(occurrence => occurrence.TenantId == run.TenantId
+                        && occurrence.Id == run.FanoutOccurrenceId
+                        && occurrence.State == NotificationFanoutOccurrenceState.Pending)
                 && run.Status == "processing"
                 && run.ProcessingLeaseToken == claim.LeaseToken
                 && run.ProcessingFence == claim.Fence
@@ -863,6 +888,22 @@ public class NotificationFanoutRunRepository : GenericRepository<NotificationFan
             .Where(item => item.TenantId == tenantId && item.Id == occurrenceId)
             .Select(item => (Guid?)item.EventId)
             .SingleOrDefaultAsync(cancellationToken);
+
+    private Task<int> SettleStalePendingOccurrenceRunAsync(
+        Guid tenantId,
+        Guid occurrenceId,
+        DateTime settledAt,
+        CancellationToken cancellationToken) =>
+        _dbContext.NotificationFanoutRuns
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .Where(run => run.TenantId == tenantId
+                && run.FanoutOccurrenceId == occurrenceId
+                && run.Status == "pending")
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(run => run.Status, "completed")
+                .SetProperty(run => run.CompletedAt, settledAt)
+                .SetProperty(run => run.UpdatedAt, settledAt),
+                cancellationToken);
 
     private static NotificationFanoutRun CreateOccurrenceRun(
         Guid runId,

@@ -3,6 +3,7 @@
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Exceptions;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence.Repositories;
@@ -75,6 +76,44 @@ public class NotificationIntentRepositoryTests(PostgreSqlContainerFixture fixtur
         await Assert.That(loaded!.CategoryId).IsEqualTo((int)NotificationCategoryEnum.RegistrationLifecycle);
         await Assert.That(loaded.OwnershipTypeId).IsEqualTo((int)NotificationOwnershipTypeEnum.IslamuEvent);
         await Assert.That(loaded.SafePayloadReference).IsEqualTo("notification-intents/registration-approved");
+    }
+
+    [Test]
+    public async Task CreateGraphAsync_MapsOnlyNotificationIntentPrimaryKeyReplayToRecoverableConflict()
+    {
+        await fixture.ResetAsync();
+        Guid stableIntentId = Guid.CreateVersion7();
+        Guid tenantId;
+        Guid recipientUserId;
+        await using (var seedContext = fixture.CreateDbContext())
+        {
+            Tenant tenant = CreateTenant("intent-primary-key-replay");
+            (User User, TenantUser TenantUser) recipient = CreateTenantRecipient(
+                tenant,
+                "intent-primary-key-replay");
+            seedContext.Tenants.Add(tenant);
+            seedContext.TenantUsers.Add(recipient.TenantUser);
+            NotificationIntent committed = CreateIntent(
+                tenant.Id,
+                recipient.User.Id,
+                "notification-intent:committed");
+            committed.Id = stableIntentId;
+            seedContext.NotificationIntents.Add(committed);
+            await seedContext.SaveChangesAsync();
+            tenantId = tenant.Id;
+            recipientUserId = recipient.User.Id;
+        }
+
+        await using var retryContext = fixture.CreateDbContext();
+        var repository = new NotificationIntentRepository(retryContext);
+        NotificationIntent retry = CreateIntent(
+            tenantId,
+            recipientUserId,
+            "notification-intent:retry-with-different-deduplication-key");
+        retry.Id = stableIntentId;
+
+        await Assert.ThrowsAsync<NotificationIntentDeduplicationConflictException>(() =>
+            repository.CreateGraphAsync(retry, CancellationToken.None));
     }
 
     [Test]

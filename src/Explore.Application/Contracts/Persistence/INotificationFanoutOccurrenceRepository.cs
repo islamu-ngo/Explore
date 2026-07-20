@@ -8,6 +8,11 @@ namespace Explore.Application.Contracts.Persistence;
 
 public interface INotificationFanoutOccurrenceRepository : IGenericRepository<NotificationFanoutOccurrence, Guid>
 {
+    Task<bool> AcquireEventPrecedenceLockAndHasHeavyAuthorityAsync(
+        Guid tenantId,
+        Guid eventId,
+        CancellationToken cancellationToken = default);
+
     Task AcquireSourceThenEventCoordinationLocksAsync(
         Guid tenantId,
         string sourceType,
@@ -47,6 +52,12 @@ public interface INotificationFanoutOccurrenceRepository : IGenericRepository<No
 
     Task<bool> TryPersistSupersessionAsync(
         NotificationFanoutOccurrence occurrence,
+        CancellationToken cancellationToken = default);
+
+    Task<int> SettleNonTerminalRunsForSupersededOccurrenceAsync(
+        Guid tenantId,
+        Guid occurrenceId,
+        DateTime settledAt,
         CancellationToken cancellationToken = default);
 
     Task<NotificationFanoutOccurrence?> GetByPointerAsync(

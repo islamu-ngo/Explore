@@ -15,6 +15,7 @@ public sealed class NotificationIntentRepository : GenericRepository<Notificatio
     IRecipientNotificationGraphRepository
 {
     private const string UniqueViolationSqlState = "23505";
+    private const string IntentPrimaryKeyConstraintName = "pk_notification_intents";
     private const string DeduplicationConstraintName = "ux_notification_intents_tenant_deduplication_key";
     private const string OccurrenceRecipientConstraintName = "ux_notification_intents_tenant_occurrence_recipient";
     private readonly ExploreDbContext _dbContext;
@@ -31,6 +32,7 @@ public sealed class NotificationIntentRepository : GenericRepository<Notificatio
 
     public async Task<NotificationIntent> CreateGraphAsync(NotificationIntent intent, CancellationToken cancellationToken = default)
     {
+        await EnsureFanoutOccurrencePendingUnderEventLockAsync(intent, cancellationToken);
         try
         {
             _dbContext.NotificationIntents.Add(intent);
@@ -40,7 +42,9 @@ public sealed class NotificationIntentRepository : GenericRepository<Notificatio
         catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
         {
             SqlState: UniqueViolationSqlState,
-            ConstraintName: DeduplicationConstraintName or OccurrenceRecipientConstraintName
+            ConstraintName: IntentPrimaryKeyConstraintName
+                or DeduplicationConstraintName
+                or OccurrenceRecipientConstraintName
         })
         {
             throw new NotificationIntentDeduplicationConflictException(ex);
@@ -121,6 +125,7 @@ public sealed class NotificationIntentRepository : GenericRepository<Notificatio
         EmailDispatchOutbox? expectedEmail,
         CancellationToken cancellationToken = default)
     {
+        await EnsureFanoutOccurrencePendingUnderEventLockAsync(winningIntent, cancellationToken);
         var tracked = await _dbContext.NotificationIntents
             .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .Include(intent => intent.Deliveries)
@@ -172,6 +177,43 @@ public sealed class NotificationIntentRepository : GenericRepository<Notificatio
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task EnsureFanoutOccurrencePendingUnderEventLockAsync(
+        NotificationIntent intent,
+        CancellationToken cancellationToken)
+    {
+        if (intent.FanoutOccurrenceId is not { } occurrenceId)
+        {
+            return;
+        }
+
+        if (intent.EventId is not { } eventId
+            || occurrenceId == Guid.Empty
+            || eventId == Guid.Empty
+            || intent.TenantId == Guid.Empty)
+        {
+            throw new NotificationFanoutOccurrenceUnavailableException();
+        }
+
+        NotificationFanoutPrecedenceLock.EnsureActivePostgresTransaction(_dbContext);
+        await NotificationFanoutPrecedenceLock.AcquireAsync(
+            _dbContext,
+            intent.TenantId,
+            eventId,
+            cancellationToken);
+        bool remainsPending = await _dbContext.NotificationFanoutOccurrences
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .AnyAsync(occurrence => occurrence.TenantId == intent.TenantId
+                && occurrence.Id == occurrenceId
+                && occurrence.EventId == eventId
+                && occurrence.State == NotificationFanoutOccurrenceState.Pending,
+                cancellationToken);
+        if (!remainsPending)
+        {
+            throw new NotificationFanoutOccurrenceUnavailableException();
+        }
     }
 
     public async Task<NotificationExternalDelegation> AddExternalDelegationAsync(

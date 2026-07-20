@@ -99,6 +99,11 @@ public sealed class NotificationFanoutOccurrenceCoordinator(
                 throw new InvalidOperationException("A pending fanout occurrence changed after coordination acquired its event lock.");
             }
 
+            await occurrenceRepository.SettleNonTerminalRunsForSupersededOccurrenceAsync(
+                loser.Occurrence.TenantId,
+                loser.Occurrence.Id,
+                DateTime.UtcNow,
+                cancellationToken);
             await emailSuppressionRepository.SuppressPreHandoffAsync(
                 loser.Occurrence.TenantId,
                 loser.Occurrence.Id,
@@ -192,6 +197,7 @@ public sealed class NotificationFanoutOccurrenceCoordinator(
         NotificationFanoutRecipientTemplate? template = kind is NotificationFanoutOccurrenceKind.ImportantUpdate
             or NotificationFanoutOccurrenceKind.SessionCancellation
             or NotificationFanoutOccurrenceKind.EventCancellation
+            or NotificationFanoutOccurrenceKind.HeavyModerationUnavailable
                 ? templateFactory.Parse(occurrence)
                 : null;
         if (template is null)

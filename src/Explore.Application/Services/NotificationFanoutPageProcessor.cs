@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Exceptions;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Notifications;
 using Explore.Domain;
@@ -126,11 +127,22 @@ public sealed class NotificationFanoutPageProcessor(
                         notificationsCreated);
                 }
 
-                RecipientNotificationMaterializationResult materialized =
-                    await recipientMaterializationService.MaterializeAsync(
+                RecipientNotificationMaterializationResult materialized;
+                try
+                {
+                    materialized = await recipientMaterializationService.MaterializeAsync(
                         occurrence,
                         member.UserId,
                         cancellationToken);
+                }
+                catch (NotificationFanoutOccurrenceUnavailableException)
+                {
+                    return Result(
+                        NotificationFanoutPageProcessingOutcome.Unavailable,
+                        pagesCheckpointed,
+                        recipientsMaterialized,
+                        notificationsCreated);
+                }
                 ValidateMaterialization(materialized, occurrence, member.UserId);
                 recipientsMaterialized = checked(recipientsMaterialized + 1);
                 if (materialized.Notification is not null)

@@ -1,5 +1,5 @@
-// ABOUTME: Suppresses occurrence-linked email work only while it remains safely before SMTP provider handoff.
-// ABOUTME: Uses one bounded PostgreSQL statement and preserves attempt, receipt, and terminal delivery evidence.
+// ABOUTME: Suppresses occurrence-linked in-app and email work while transport remains before SMTP handoff.
+// ABOUTME: Uses one bounded PostgreSQL statement and preserves provider-fenced and terminal SMTP evidence.
 
 using System.Data;
 using Explore.Application.Contracts.Persistence;
@@ -85,10 +85,46 @@ public sealed class NotificationFanoutEmailSuppressionRepository(ExploreDbContex
                   AND delivery.channel_id = @email_channel_id
                   AND delivery.status_id IN (@pending_delivery_status, @queued_delivery_status)
                 RETURNING delivery.id
+            ),
+            suppressed_notification AS (
+                UPDATE notifications AS notification
+                SET is_deleted = TRUE,
+                    deleted_at = @suppressed_at,
+                    updated_at = @suppressed_at
+                FROM notification_deliveries AS delivery
+                INNER JOIN notification_intents AS intent
+                    ON intent.tenant_id = delivery.tenant_id
+                   AND intent.id = delivery.notification_intent_id
+                WHERE intent.tenant_id = @tenant_id
+                  AND intent.fanout_occurrence_id = @occurrence_id
+                  AND intent.is_deleted = FALSE
+                  AND delivery.tenant_id = intent.tenant_id
+                  AND delivery.channel_id = @in_app_channel_id
+                  AND delivery.notification_id = notification.id
+                  AND delivery.status_id IN (@pending_delivery_status, @delivered_delivery_status)
+                  AND notification.tenant_id = intent.tenant_id
+                  AND notification.is_deleted = FALSE
+                RETURNING notification.tenant_id, notification.id
+            ),
+            superseded_in_app_delivery AS (
+                UPDATE notification_deliveries AS delivery
+                SET status_id = @superseded_delivery_status,
+                    provider_status = @provider_status,
+                    failure_category = @reason,
+                    completed_at = @suppressed_at,
+                    updated_at = @suppressed_at
+                FROM suppressed_notification AS notification
+                WHERE delivery.tenant_id = notification.tenant_id
+                  AND delivery.notification_id = notification.id
+                  AND delivery.channel_id = @in_app_channel_id
+                  AND delivery.status_id = @pending_delivery_status
+                RETURNING delivery.id
             )
             SELECT
                 (SELECT COUNT(*)::integer FROM suppressed_outbox),
-                (SELECT COUNT(*)::integer FROM superseded_delivery);
+                (SELECT COUNT(*)::integer FROM superseded_delivery),
+                (SELECT COUNT(*)::integer FROM suppressed_notification),
+                (SELECT COUNT(*)::integer FROM superseded_in_app_delivery);
             """;
         AddParameter(command, "tenant_id", tenantId, DbType.Guid);
         AddParameter(command, "occurrence_id", occurrenceId, DbType.Guid);
@@ -104,8 +140,10 @@ public sealed class NotificationFanoutEmailSuppressionRepository(ExploreDbContex
         AddParameter(command, "processing_receipt_status", (int)EmailDispatchReceiptStatus.Processing, DbType.Int32);
         AddParameter(command, "pending_delivery_status", (int)NotificationDeliveryStatusEnum.Pending, DbType.Int32);
         AddParameter(command, "queued_delivery_status", (int)NotificationDeliveryStatusEnum.Queued, DbType.Int32);
+        AddParameter(command, "delivered_delivery_status", (int)NotificationDeliveryStatusEnum.Delivered, DbType.Int32);
         AddParameter(command, "superseded_delivery_status", (int)NotificationDeliveryStatusEnum.Superseded, DbType.Int32);
         AddParameter(command, "email_channel_id", (int)NotificationPreferenceChannelEnum.Email, DbType.Int32);
+        AddParameter(command, "in_app_channel_id", (int)NotificationPreferenceChannelEnum.InApp, DbType.Int32);
 
         if (command.Connection!.State != ConnectionState.Open)
         {
@@ -118,7 +156,11 @@ public sealed class NotificationFanoutEmailSuppressionRepository(ExploreDbContex
             throw new InvalidOperationException("Fanout email suppression did not return its bounded result.");
         }
 
-        return new NotificationFanoutEmailSuppressionResult(reader.GetInt32(0), reader.GetInt32(1));
+        return new NotificationFanoutEmailSuppressionResult(
+            reader.GetInt32(0),
+            reader.GetInt32(1),
+            reader.GetInt32(2),
+            reader.GetInt32(3));
     }
 
     private static void AddParameter(

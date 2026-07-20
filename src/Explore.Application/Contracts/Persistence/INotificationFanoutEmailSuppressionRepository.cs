@@ -1,5 +1,5 @@
-// ABOUTME: Defines transaction-bound suppression of pre-handoff email work for superseded fanout occurrences.
-// ABOUTME: Keeps transport evidence immutable once the canonical SMTP provider fence exists.
+// ABOUTME: Defines transaction-bound suppression of linked recipient work for superseded fanout occurrences.
+// ABOUTME: Hides stale in-app rows while keeping SMTP evidence immutable after the provider fence exists.
 
 namespace Explore.Application.Contracts.Persistence;
 
@@ -14,11 +14,13 @@ public interface INotificationFanoutEmailSuppressionRepository
 
 public sealed record NotificationFanoutEmailSuppressionResult(
     int OutboxRowsSkipped,
-    int DeliveryRowsSuperseded);
+    int DeliveryRowsSuperseded,
+    int NotificationsSuppressed = 0,
+    int InAppDeliveryRowsSuperseded = 0);
 
 public static class NotificationFanoutEmailSuppressionReason
 {
     public const string Code = "fanout_occurrence_superseded";
     public const string ProviderStatus = "superseded";
-    public const string Message = "Email delivery was suppressed because a newer event notification replaced it before provider handoff.";
+    public const string Message = "Delivery was suppressed because a higher-priority event notification replaced it before provider handoff.";
 }

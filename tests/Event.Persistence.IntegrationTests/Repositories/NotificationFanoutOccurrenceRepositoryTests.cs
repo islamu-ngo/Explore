@@ -48,7 +48,7 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
         var occurrenceRepository = new NotificationFanoutOccurrenceRepository(context);
         var repository = new NotificationFanoutEmailSuppressionRepository(context);
         var unitOfWork = new EfCoreUnitOfWork(context);
-        DateTime suppressedAt = DateTime.UtcNow;
+        DateTime suppressedAt = AtPostgresPrecision(DateTime.UtcNow);
 
         NotificationFanoutEmailSuppressionResult first = await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
@@ -78,6 +78,10 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
             .SingleAsync(value => value.Id == graph.DispatchId);
         NotificationDelivery delivery = await context.NotificationDeliveries.IgnoreQueryFilters().AsNoTracking()
             .SingleAsync(value => value.Id == graph.DeliveryId);
+        Notification notification = await context.Notifications.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.Id == graph.NotificationId);
+        NotificationDelivery inAppDelivery = await context.NotificationDeliveries.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.Id == graph.InAppDeliveryId);
         EmailDispatchAttempt[] attempts = await context.EmailDispatchAttempts.IgnoreQueryFilters().AsNoTracking()
             .Where(value => value.EmailDispatchOutboxId == graph.DispatchId)
             .OrderBy(value => value.AttemptNumber)
@@ -88,16 +92,57 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
 
         await Assert.That(first.OutboxRowsSkipped).IsEqualTo(expectedSuppressed ? 1 : 0);
         await Assert.That(first.DeliveryRowsSuperseded).IsEqualTo(expectedSuppressed ? 1 : 0);
+        await Assert.That(first.NotificationsSuppressed).IsEqualTo(1);
+        await Assert.That(first.InAppDeliveryRowsSuperseded).IsEqualTo(0);
         await Assert.That(replay).IsEqualTo(new NotificationFanoutEmailSuppressionResult(0, 0));
         await Assert.That(dispatch.Status).IsEqualTo(expectedSuppressed ? EmailDispatchStatus.Skipped : status);
         await Assert.That(dispatch.AttemptCount).IsEqualTo(graph.AttemptCount);
         await Assert.That(delivery.StatusId).IsEqualTo(expectedSuppressed
             ? (int)NotificationDeliveryStatusEnum.Superseded
             : graph.DeliveryStatusId);
+        await Assert.That(notification.IsDeleted).IsTrue();
+        await Assert.That(notification.DeletedAt).IsEqualTo(suppressedAt);
+        await Assert.That(inAppDelivery.StatusId).IsEqualTo((int)NotificationDeliveryStatusEnum.Delivered);
+        await Assert.That(inAppDelivery.CompletedAt).IsEqualTo(graph.InAppDeliveryCompletedAt);
         await Assert.That(attempts.Select(value => (value.AttemptNumber, value.Outcome, value.FailureCategory)))
             .IsEquivalentTo(graph.Attempts);
         await Assert.That(receipts.Select(value => (value.Status, value.FailureCode)))
             .IsEquivalentTo(graph.Receipts);
+    }
+
+    [Test]
+    public async Task OccurrenceSuppression_SupersedesPendingInAppDeliveryWhileHidingNotification()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        Scenario scenario = await CreateScenarioAsync(context, "suppression-pending-in-app", includeRecipient: true);
+        NotificationFanoutOccurrence occurrence = CreateOccurrence(scenario.TenantId, scenario.EventId);
+        context.NotificationFanoutOccurrences.Add(occurrence);
+        await context.SaveChangesAsync();
+        SuppressionGraph graph = await CreateSuppressionGraphAsync(
+            context,
+            scenario,
+            occurrence,
+            EmailDispatchStatus.Pending,
+            providerFenced: false,
+            inAppStatus: NotificationDeliveryStatusEnum.Pending);
+        var repository = new NotificationFanoutEmailSuppressionRepository(context);
+        var unitOfWork = new EfCoreUnitOfWork(context);
+        DateTime suppressedAt = AtPostgresPrecision(DateTime.UtcNow);
+
+        NotificationFanoutEmailSuppressionResult result = await unitOfWork.ExecuteInTransactionAsync(token =>
+            repository.SuppressPreHandoffAsync(scenario.TenantId, occurrence.Id, suppressedAt, token));
+
+        context.ChangeTracker.Clear();
+        Notification notification = await context.Notifications.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(value => value.Id == graph.NotificationId);
+        NotificationDelivery delivery = await context.NotificationDeliveries.AsNoTracking()
+            .SingleAsync(value => value.Id == graph.InAppDeliveryId);
+        await Assert.That(result.NotificationsSuppressed).IsEqualTo(1);
+        await Assert.That(result.InAppDeliveryRowsSuperseded).IsEqualTo(1);
+        await Assert.That(notification.IsDeleted).IsTrue();
+        await Assert.That(delivery.StatusId).IsEqualTo((int)NotificationDeliveryStatusEnum.Superseded);
+        await Assert.That(delivery.CompletedAt).IsEqualTo(suppressedAt);
     }
 
     [Test]
@@ -328,10 +373,13 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
         await context.SaveChangesAsync();
 
         var repository = new NotificationIntentRepository(context);
-        await repository.CreateGraphAsync(CreateIntent(scenario, occurrence.Id, "fanout:first"));
+        var unitOfWork = new EfCoreUnitOfWork(context);
+        await unitOfWork.ExecuteInTransactionAsync(token =>
+            repository.CreateGraphAsync(CreateIntent(scenario, occurrence.Id, "fanout:first"), token));
 
         await Assert.ThrowsAsync<NotificationIntentDeduplicationConflictException>(() =>
-            repository.CreateGraphAsync(CreateIntent(scenario, occurrence.Id, "fanout:second")));
+            unitOfWork.ExecuteInTransactionAsync(token =>
+                repository.CreateGraphAsync(CreateIntent(scenario, occurrence.Id, "fanout:second"), token)));
     }
 
     [Test]
@@ -535,6 +583,216 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
         });
 
         await Assert.That(changed).IsFalse();
+    }
+
+    [Test]
+    public async Task HeavyCoordination_AfterRunHandoff_SettlesNonterminalRunsAndPreservesTerminalEvidence()
+    {
+        await fixture.ResetAsync();
+        await using var seedContext = fixture.CreateDbContext();
+        Scenario scenario = await CreateScenarioAsync(seedContext, "coordination-heavy-run-settlement");
+        Guid sessionA = await CreateSessionAsync(seedContext, scenario.TenantId, scenario.EventId, "Session A");
+        Guid sessionB = await CreateSessionAsync(seedContext, scenario.TenantId, scenario.EventId, "Session B");
+        Guid sessionC = await CreateSessionAsync(seedContext, scenario.TenantId, scenario.EventId, "Session C");
+        DateTime at = DateTime.UtcNow.AddMinutes(-10);
+        NotificationFanoutOccurrence eventUpdate = CreatePersistedCandidate(CreateCoordinationCandidate(
+            scenario.TenantId,
+            scenario.EventId,
+            at,
+            sequence: 1));
+        NotificationFanoutOccurrence sessionUpdateA = CreatePersistedCandidate(CreateCoordinationCandidate(
+            scenario.TenantId,
+            scenario.EventId,
+            at.AddMinutes(1),
+            sequence: 2) with
+        {
+            SessionId = sessionA,
+            TemplateKey = NotificationFanoutRecipientTemplateFactory.SessionUpdatedTemplateKey,
+            SourceId = sessionA
+        });
+        NotificationFanoutOccurrence sessionUpdateB = CreatePersistedCandidate(CreateCoordinationCandidate(
+            scenario.TenantId,
+            scenario.EventId,
+            at.AddMinutes(2),
+            sequence: 3) with
+        {
+            SessionId = sessionB,
+            TemplateKey = NotificationFanoutRecipientTemplateFactory.SessionUpdatedTemplateKey,
+            SourceId = sessionB
+        });
+        NotificationFanoutOccurrence sessionUpdateC = CreatePersistedCandidate(CreateCoordinationCandidate(
+            scenario.TenantId,
+            scenario.EventId,
+            at.AddMinutes(3),
+            sequence: 4) with
+        {
+            SessionId = sessionC,
+            TemplateKey = NotificationFanoutRecipientTemplateFactory.SessionUpdatedTemplateKey,
+            SourceId = sessionC
+        });
+        seedContext.NotificationFanoutOccurrences.AddRange(
+            eventUpdate,
+            sessionUpdateA,
+            sessionUpdateB,
+            sessionUpdateC);
+        await seedContext.SaveChangesAsync();
+
+        var runIds = new Dictionary<Guid, Guid>();
+        foreach (Guid occurrenceId in new[]
+        {
+            eventUpdate.Id,
+            sessionUpdateA.Id,
+            sessionUpdateB.Id,
+            sessionUpdateC.Id
+        })
+        {
+            await using var handoffContext = fixture.CreateDbContext();
+            var runRepository = new NotificationFanoutRunRepository(handoffContext);
+            NotificationFanoutRun run = await runRepository.EnsurePendingOccurrenceRunAsync(
+                    scenario.TenantId,
+                    occurrenceId,
+                    Guid.CreateVersion7(),
+                    CancellationToken.None)
+                ?? throw new InvalidOperationException("Pending occurrence handoff did not create its run.");
+            runIds.Add(occurrenceId, run.Id);
+        }
+
+        Guid processingLeaseToken = Guid.CreateVersion7();
+        DateTime cursorAt = DateTime.UtcNow.AddHours(-1);
+        NotificationFanoutClaim staleClaim;
+        RunTerminalEvidence completedEvidence;
+        RunTerminalEvidence failedEvidence;
+        await using (var preparationContext = fixture.CreateDbContext())
+        {
+            NotificationFanoutRun pendingRun = await preparationContext.NotificationFanoutRuns
+                .SingleAsync(run => run.Id == runIds[eventUpdate.Id]);
+            pendingRun.CursorFirstEligibleRegistrationCreatedAt = cursorAt;
+            pendingRun.CursorUserId = Guid.CreateVersion7();
+            pendingRun.ProcessedCount = 11;
+            pendingRun.CreatedNotificationCount = 7;
+
+            NotificationFanoutRun processingRun = await preparationContext.NotificationFanoutRuns
+                .SingleAsync(run => run.Id == runIds[sessionUpdateA.Id]);
+            processingRun.Status = "processing";
+            processingRun.CursorFirstEligibleRegistrationCreatedAt = cursorAt.AddMinutes(1);
+            processingRun.CursorUserId = Guid.CreateVersion7();
+            processingRun.ProcessingLeaseOwner = "stale-worker";
+            processingRun.ProcessingLeaseToken = processingLeaseToken;
+            processingRun.ProcessingLeaseExpiresAt = DateTime.UtcNow.AddHours(1);
+            processingRun.ProcessingGeneration = 3;
+            processingRun.ProcessingFence = 5;
+            processingRun.ProcessedCount = 13;
+            processingRun.CreatedNotificationCount = 8;
+            processingRun.StartedAt = DateTime.UtcNow.AddMinutes(-2);
+
+            NotificationFanoutRun completedRun = await preparationContext.NotificationFanoutRuns
+                .SingleAsync(run => run.Id == runIds[sessionUpdateB.Id]);
+            completedRun.Status = "completed";
+            completedRun.ProcessedCount = 17;
+            completedRun.CreatedNotificationCount = 9;
+            completedRun.CompletedAt = DateTime.UtcNow.AddMinutes(-1);
+            completedRun.UpdatedAt = completedRun.CompletedAt;
+
+            NotificationFanoutRun failedRun = await preparationContext.NotificationFanoutRuns
+                .SingleAsync(run => run.Id == runIds[sessionUpdateC.Id]);
+            failedRun.Status = "failed";
+            failedRun.ProcessedCount = 19;
+            failedRun.CreatedNotificationCount = 10;
+            failedRun.FailedAt = DateTime.UtcNow.AddMinutes(-1);
+            failedRun.LastError = "retained bounded failure evidence";
+            failedRun.UpdatedAt = failedRun.FailedAt;
+            await preparationContext.SaveChangesAsync();
+
+            staleClaim = new NotificationFanoutClaim(
+                processingRun.Id,
+                processingRun.TenantId,
+                processingRun.FanoutOccurrenceId!.Value,
+                processingLeaseToken,
+                processingRun.ProcessingFence,
+                processingRun.ProcessingGeneration,
+                new NotificationFanoutAudienceCursor(
+                    processingRun.CursorFirstEligibleRegistrationCreatedAt!.Value,
+                    processingRun.CursorUserId!.Value));
+            completedEvidence = CaptureRunTerminalEvidence(completedRun);
+            failedEvidence = CaptureRunTerminalEvidence(failedRun);
+        }
+
+        await using (var heavyContext = fixture.CreateDbContext())
+        {
+            var coordinator = new NotificationFanoutOccurrenceCoordinator(
+                new NotificationFanoutOccurrenceRepository(heavyContext),
+                new NotificationFanoutEmailSuppressionRepository(heavyContext),
+                new OutboxRepository(heavyContext),
+                new NotificationFanoutRecipientTemplateFactory());
+            var unitOfWork = new EfCoreUnitOfWork(heavyContext);
+            DateTime heavyAt = DateTime.UtcNow;
+            await unitOfWork.ExecuteInTransactionAsync(token => coordinator.CoordinateInCurrentTransactionAsync(
+                new NotificationFanoutOccurrenceCandidate(
+                    Guid.CreateVersion7(),
+                    Guid.CreateVersion7(),
+                    scenario.TenantId,
+                    scenario.EventId,
+                    SessionId: null,
+                    heavyAt,
+                    AudienceCutoffAt: heavyAt,
+                    Guid.CreateVersion7(),
+                    ChangeSetJson: "{}",
+                    SafeBeforeSnapshotJson: "{}",
+                    SafeAfterSnapshotJson: "{}",
+                    NotificationFanoutOccurrenceCoordinationPolicy.HeavyModerationUnavailableTemplateKey,
+                    NotificationFanoutRecipientTemplateFactory.CurrentTemplateVersion,
+                    (int)NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired,
+                    NotificationFanoutRecipientTemplateFactory.CurrentPolicyVersion,
+                    RequestedNotBefore: heavyAt,
+                    SourceType: "event_moderation_record",
+                    SourceId: Guid.CreateVersion7()),
+                token));
+        }
+
+        await using var verificationContext = fixture.CreateDbContext();
+        NotificationFanoutRun[] settledRuns = await verificationContext.NotificationFanoutRuns
+            .AsNoTracking()
+            .Where(run => run.TenantId == scenario.TenantId
+                && runIds.Values.Contains(run.Id))
+            .ToArrayAsync();
+        NotificationFanoutRun settledPending = settledRuns.Single(run => run.Id == runIds[eventUpdate.Id]);
+        NotificationFanoutRun settledProcessing = settledRuns.Single(run => run.Id == runIds[sessionUpdateA.Id]);
+        NotificationFanoutRun unchangedCompleted = settledRuns.Single(run => run.Id == runIds[sessionUpdateB.Id]);
+        NotificationFanoutRun unchangedFailed = settledRuns.Single(run => run.Id == runIds[sessionUpdateC.Id]);
+
+        await Assert.That(settledRuns.Count(run => run.Status is "pending" or "processing")).IsEqualTo(0);
+        await Assert.That(settledPending.Status).IsEqualTo("completed");
+        await Assert.That(settledPending.ProcessedCount).IsEqualTo(11);
+        await Assert.That(settledPending.CreatedNotificationCount).IsEqualTo(7);
+        await Assert.That(settledProcessing.Status).IsEqualTo("completed");
+        await Assert.That(settledProcessing.ProcessedCount).IsEqualTo(13);
+        await Assert.That(settledProcessing.CreatedNotificationCount).IsEqualTo(8);
+        await Assert.That(settledProcessing.ProcessingLeaseOwner).IsNull();
+        await Assert.That(settledProcessing.ProcessingLeaseToken).IsNull();
+        await Assert.That(settledProcessing.ProcessingLeaseExpiresAt).IsNull();
+        await Assert.That(CaptureRunTerminalEvidence(unchangedCompleted)).IsEqualTo(completedEvidence);
+        await Assert.That(CaptureRunTerminalEvidence(unchangedFailed)).IsEqualTo(failedEvidence);
+
+        var staleWorkerRepository = new NotificationFanoutRunRepository(verificationContext);
+        DateTime observedAt = DateTime.UtcNow;
+        NotificationFanoutAudienceCursor nextCursor = new(cursorAt.AddHours(1), Guid.CreateVersion7());
+        await Assert.That(await staleWorkerRepository.TryRenewClaimAsync(
+            staleClaim,
+            observedAt,
+            observedAt.AddMinutes(1),
+            CancellationToken.None)).IsFalse();
+        await Assert.That(await staleWorkerRepository.TryCheckpointAsync(
+            staleClaim,
+            staleClaim.Cursor,
+            nextCursor,
+            processedDelta: 1,
+            createdDelta: 1,
+            observedAt,
+            CancellationToken.None)).IsFalse();
+        await Assert.That(await staleWorkerRepository.TryCompleteAsync(
+            staleClaim,
+            observedAt,
+            CancellationToken.None)).IsFalse();
     }
 
     [Test]
@@ -773,9 +1031,29 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
             notBefore,
             candidate.SourceType,
             candidate.SourceId,
-            $"event:{candidate.EventId:N}",
+            candidate.SessionId.HasValue
+                ? $"event:{candidate.EventId:N}:session:{candidate.SessionId.Value:N}"
+                : $"event:{candidate.EventId:N}",
             notBefore);
     }
+
+    private static RunTerminalEvidence CaptureRunTerminalEvidence(NotificationFanoutRun run) => new(
+        run.Status,
+        run.CursorFirstEligibleRegistrationCreatedAt,
+        run.CursorUserId,
+        run.ProcessingLeaseOwner,
+        run.ProcessingLeaseToken,
+        run.ProcessingLeaseExpiresAt,
+        run.ProcessingGeneration,
+        run.ProcessingFence,
+        run.ProcessedCount,
+        run.CreatedNotificationCount,
+        run.StartedAt,
+        run.CompletedAt,
+        run.FailedAt,
+        run.LastError,
+        run.UpdatedAt,
+        run.ConcurrencyStamp);
 
     private static async Task<Guid> CreateEventAsync(
         ExploreDbContext context,
@@ -790,15 +1068,17 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
         {
             Id = Guid.CreateVersion7(),
             TenantId = tenantId,
+            Tenant = await context.Tenants.SingleAsync(value => value.Id == tenantId),
             Title = title,
             ActorId = actorId,
             Actor = null!,
-            EventTypeId = (int)EventTypeEnum.Conference,
-            EventType = null!,
             EventFormatId = (int)EventFormatEnum.Local,
             EventFormat = null!,
             EventStatusId = (int)EventStatusEnum.Draft,
             EventStatus = null!,
+            VisibilityTypeId = (int)VisibilityTypeEnum.Public,
+            VisibilityType = await context.VisibilityTypes.SingleAsync(
+                value => value.Id == (int)VisibilityTypeEnum.Public),
             ConcurrencyStamp = Guid.CreateVersion7(),
         };
         context.Events.Add(@event);
@@ -852,9 +1132,10 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
         Scenario scenario,
         NotificationFanoutOccurrence occurrence,
         EmailDispatchStatus status,
-        bool providerFenced)
+        bool providerFenced,
+        NotificationDeliveryStatusEnum inAppStatus = NotificationDeliveryStatusEnum.Delivered)
     {
-        DateTime now = DateTime.UtcNow;
+        DateTime now = AtPostgresPrecision(DateTime.UtcNow);
         Guid recipientUserId = scenario.RecipientUserId!.Value;
         TenantUser tenantUser = await context.TenantUsers
             .SingleAsync(value => value.TenantId == scenario.TenantId && value.UserId == recipientUserId);
@@ -944,7 +1225,47 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
                     : null,
             CreatedAt = now
         };
+        var notification = new Notification
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = scenario.TenantId,
+            Tenant = null!,
+            NotificationIntentId = intent.Id,
+            NotificationIntent = intent,
+            UserId = recipientUserId,
+            User = null!,
+            NotificationTypeId = (int)NotificationTypeEnum.EventUpdated,
+            NotificationType = null!,
+            Title = "Stale event details",
+            Body = "This stale notification must become unavailable.",
+            DeduplicationKey = $"{intent.DeduplicationKey}:in-app",
+            NotificationScopeId = (int)ActorTypeEnum.User,
+            NotificationScope = null!,
+            NotificationReasonId = (int)NotificationReasonEnum.System,
+            CreatedAt = now
+        };
+        var inAppDelivery = new NotificationDelivery
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = scenario.TenantId,
+            NotificationIntentId = intent.Id,
+            NotificationIntent = intent,
+            ChannelId = (int)NotificationPreferenceChannelEnum.InApp,
+            DeliveryPolicyId = (int)NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional,
+            IsRequired = false,
+            PolicyVersion = 1,
+            DisclosureLevel = "standard",
+            TemplateKey = occurrence.TemplateKey,
+            TemplateVersion = 1,
+            LinkAllowed = false,
+            NotificationId = notification.Id,
+            Notification = notification,
+            StatusId = (int)inAppStatus,
+            CompletedAt = inAppStatus == NotificationDeliveryStatusEnum.Delivered ? now : null,
+            CreatedAt = now
+        };
         intent.Deliveries.Add(delivery);
+        intent.Deliveries.Add(inAppDelivery);
         var attempts = new List<EmailDispatchAttempt>();
         var receipts = new List<EmailDispatchReceipt>();
         if (status != EmailDispatchStatus.Pending)
@@ -1004,6 +1325,8 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
         context.NotificationIntents.Add(intent);
         context.EmailDispatchOutbox.Add(dispatch);
         context.NotificationDeliveries.Add(delivery);
+        context.Notifications.Add(notification);
+        context.NotificationDeliveries.Add(inAppDelivery);
         context.EmailDispatchAttempts.AddRange(attempts);
         context.EmailDispatchReceipts.AddRange(receipts);
         await context.SaveChangesAsync();
@@ -1012,6 +1335,9 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
             dispatch.PublishEventId,
             intent.Id,
             delivery.Id,
+            notification.Id,
+            inAppDelivery.Id,
+            inAppDelivery.CompletedAt,
             attemptCount,
             deliveryStatusId,
             attempts.Select(value => (value.AttemptNumber, value.Outcome, value.FailureCategory)).ToArray(),
@@ -1023,6 +1349,9 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
             context,
             new NotificationDeliveryPolicyResolver(),
             new NotificationPreferenceResolver(context));
+
+    private static DateTime AtPostgresPrecision(DateTime value) =>
+        new(value.Ticks - value.Ticks % TimeSpan.TicksPerMicrosecond, DateTimeKind.Utc);
 
     private static NotificationIntent CreateIntent(Scenario scenario, Guid occurrenceId, string deduplicationKey)
     {
@@ -1124,11 +1453,31 @@ public sealed class NotificationFanoutOccurrenceRepositoryTests(PostgreSqlContai
     }
 
     private sealed record Scenario(Guid TenantId, Guid EventId, Guid? RecipientUserId);
+    private sealed record RunTerminalEvidence(
+        string Status,
+        DateTime? CursorFirstEligibleRegistrationCreatedAt,
+        Guid? CursorUserId,
+        string? ProcessingLeaseOwner,
+        Guid? ProcessingLeaseToken,
+        DateTime? ProcessingLeaseExpiresAt,
+        int ProcessingGeneration,
+        long ProcessingFence,
+        int ProcessedCount,
+        int CreatedNotificationCount,
+        DateTime? StartedAt,
+        DateTime? CompletedAt,
+        DateTime? FailedAt,
+        string? LastError,
+        DateTime? UpdatedAt,
+        Guid ConcurrencyStamp);
     private sealed record SuppressionGraph(
         Guid DispatchId,
         Guid PublishEventId,
         Guid NotificationIntentId,
         Guid DeliveryId,
+        Guid NotificationId,
+        Guid InAppDeliveryId,
+        DateTime? InAppDeliveryCompletedAt,
         int AttemptCount,
         int DeliveryStatusId,
         IReadOnlyList<(int AttemptNumber, EmailDispatchAttemptOutcome Outcome, string? FailureCategory)> Attempts,

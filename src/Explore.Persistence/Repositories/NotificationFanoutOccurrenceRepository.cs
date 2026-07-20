@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Models.InternalEvents;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,6 +18,23 @@ public sealed class NotificationFanoutOccurrenceRepository
     public NotificationFanoutOccurrenceRepository(ExploreDbContext dbContext) : base(dbContext)
     {
         this.dbContext = dbContext;
+    }
+
+    public async Task<bool> AcquireEventPrecedenceLockAndHasHeavyAuthorityAsync(
+        Guid tenantId,
+        Guid eventId,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureCoordinationTransaction();
+        await NotificationFanoutPrecedenceLock.AcquireAsync(dbContext, tenantId, eventId, cancellationToken);
+        return await dbContext.EventModerationRecords
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .AnyAsync(record => record.TenantId == tenantId
+                && record.EventId == eventId
+                && record.ActionKind == EventModerationActionKind.HeavyRedacted
+                && record.IsIrreversible,
+                cancellationToken);
     }
 
     public async Task AcquireSourceThenEventCoordinationLocksAsync(
@@ -153,6 +171,43 @@ public sealed class NotificationFanoutOccurrenceRepository
                     .SetProperty(row => row.SupersededAt, occurrence.SupersededAt),
                 cancellationToken);
         return changed == 1;
+    }
+
+    public async Task<int> SettleNonTerminalRunsForSupersededOccurrenceAsync(
+        Guid tenantId,
+        Guid occurrenceId,
+        DateTime settledAt,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureCoordinationTransaction();
+        if (tenantId == Guid.Empty || occurrenceId == Guid.Empty)
+        {
+            throw new ArgumentException("Fanout run settlement requires non-empty tenant and occurrence identifiers.");
+        }
+
+        if (settledAt.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("Fanout run settlement time must be UTC.", nameof(settledAt));
+        }
+
+        return await dbContext.Database.ExecuteSqlInterpolatedAsync($$"""
+            UPDATE notification_fanout_runs AS run
+            SET status = 'completed',
+                completed_at = GREATEST({{settledAt}}, run.created_at, run.started_at, run.updated_at),
+                processing_lease_owner = NULL,
+                processing_lease_token = NULL,
+                processing_lease_expires_at = NULL,
+                updated_at = GREATEST({{settledAt}}, run.created_at, run.started_at, run.updated_at)
+            WHERE run.tenant_id = {{tenantId}}
+              AND run.fanout_occurrence_id = {{occurrenceId}}
+              AND run.status IN ('pending', 'processing')
+              AND EXISTS (
+                  SELECT 1
+                  FROM notification_fanout_occurrences AS occurrence
+                  WHERE occurrence.tenant_id = run.tenant_id
+                    AND occurrence.id = run.fanout_occurrence_id
+                    AND occurrence.state = {{NotificationFanoutOccurrenceState.Superseded}})
+            """, cancellationToken);
     }
 
     public async Task<NotificationFanoutOccurrence?> GetByPointerAsync(
