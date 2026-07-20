@@ -42,6 +42,7 @@ public sealed class CreateEventRegistrationCommandHandlerTests
     private readonly INotificationRepository _notificationRepository = Substitute.For<INotificationRepository>();
     private readonly INotificationOrchestrator _notificationOrchestrator = Substitute.For<INotificationOrchestrator>();
     private readonly IRecipientNotificationMaterializer _recipientNotificationMaterializer = Substitute.For<IRecipientNotificationMaterializer>();
+    private readonly IEventLifecycleScheduler _eventLifecycleScheduler = Substitute.For<IEventLifecycleScheduler>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IListmonkRegistrationSyncOutboxFactory _listmonkFactory = Substitute.For<IListmonkRegistrationSyncOutboxFactory>();
     private readonly IWebhookEventPublisher _webhookPublisher = Substitute.For<IWebhookEventPublisher>();
@@ -127,6 +128,7 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             _listmonkFactory,
             new RegistrationNotificationDeliveryService(new EventLifecycleEmailOutboxFactory()),
             _recipientNotificationMaterializer,
+            _eventLifecycleScheduler,
             _unitOfWork,
             _webhookPublisher,
             Substitute.For<ILogger<CreateEventRegistrationCommandHandler>>(),

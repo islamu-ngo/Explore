@@ -37,6 +37,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
     private readonly IListmonkRegistrationSyncOutboxFactory _listmonkOutboxFactory;
     private readonly IRegistrationNotificationDeliveryService _notificationDeliveryService;
     private readonly IRecipientNotificationMaterializer _recipientNotificationMaterializer;
+    private readonly IEventLifecycleScheduler _eventLifecycleScheduler;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IWebhookEventPublisher _webhookPublisher;
     private readonly ILogger<CreateEventRegistrationCommandHandler> _logger;
@@ -55,6 +56,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         IListmonkRegistrationSyncOutboxFactory listmonkOutboxFactory,
         IRegistrationNotificationDeliveryService notificationDeliveryService,
         IRecipientNotificationMaterializer recipientNotificationMaterializer,
+        IEventLifecycleScheduler eventLifecycleScheduler,
         IUnitOfWork unitOfWork,
         IWebhookEventPublisher webhookPublisher,
         ILogger<CreateEventRegistrationCommandHandler> logger,
@@ -72,6 +74,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         _listmonkOutboxFactory = listmonkOutboxFactory;
         _notificationDeliveryService = notificationDeliveryService;
         _recipientNotificationMaterializer = recipientNotificationMaterializer;
+        _eventLifecycleScheduler = eventLifecycleScheduler;
         _unitOfWork = unitOfWork;
         _webhookPublisher = webhookPublisher;
         _logger = logger;
@@ -160,6 +163,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         var occurredAt = DateTimeOffset.UtcNow;
         var notificationIntentId = Guid.CreateVersion7();
         var emailDispatchOutboxId = Guid.CreateVersion7();
+        EventReminderGraphIds reminderGraphIds = EventReminderGraphIds.Create();
         var atprotoOutboxId = Guid.CreateVersion7();
 
         var intent = new EventRegistrationIntent
@@ -202,6 +206,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             cancellationToken);
 
         EventRegistrationIntentCreationResult creationResult;
+        EventReminderPreparedSchedule? preparedReminder = null;
         try
         {
             creationResult = await _unitOfWork.ExecuteSerializableAsync(
@@ -245,6 +250,16 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
                         await _recipientNotificationMaterializer.MaterializeInCurrentTransactionAsync(
                             notificationMaterialization,
                             ct);
+                        preparedReminder = await _eventLifecycleScheduler.PrepareEventReminderInCurrentTransactionAsync(
+                            new EventReminderPreparationInput(
+                                createdResult.Intent,
+                                createdResult.Transition,
+                                user,
+                                parentEvent.Title,
+                                occurredAt,
+                                reminderGraphIds,
+                                parentEvent.GetEffectiveScheduleTimeZoneId()),
+                            ct);
                     }
                     return createdResult;
                 }, cancellationToken);
@@ -286,6 +301,13 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             response.Id = created.Id;
             response.Message = "Event Registration already exists.";
             return response;
+        }
+
+        if (preparedReminder is not null)
+        {
+            await _eventLifecycleScheduler.TriggerPreparedEventReminderAsync(
+                preparedReminder,
+                cancellationToken);
         }
 
         if (dto.ShareEmailWithOrganizer)
