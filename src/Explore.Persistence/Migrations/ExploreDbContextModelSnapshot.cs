@@ -5565,9 +5565,9 @@ namespace Explore.Persistence.Migrations
 
                     b.ToTable("event_report_decisions", null, t =>
                         {
-                            t.HasCheckConstraint("ck_event_report_decisions_external_decision_id_not_blank", "external_decision_id IS NULL OR length(btrim(external_decision_id)) > 0");
-
                             t.HasCheckConstraint("ck_event_report_decisions_duplicate_group_shape", "(decision_kind = 2 AND duplicate_group_id IS NOT NULL) OR (decision_kind <> 2 AND duplicate_group_id IS NULL)");
+
+                            t.HasCheckConstraint("ck_event_report_decisions_external_decision_id_not_blank", "external_decision_id IS NULL OR length(btrim(external_decision_id)) > 0");
 
                             t.HasCheckConstraint("ck_event_report_decisions_kind", "decision_kind BETWEEN 1 AND 7");
 
@@ -11276,54 +11276,6 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("location_pii", (string)null);
                 });
 
-            modelBuilder.Entity("Explore.Domain.LocationPrivacyErasureReplayCheckpoint", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("AppliedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("applied_at_utc");
-
-                    b.Property<long>("AuthoritySequence")
-                        .HasColumnType("bigint")
-                        .HasColumnName("authority_sequence");
-
-                    b.Property<Guid>("IntentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("intent_id");
-
-                    b.Property<Guid?>("PreviousCheckpointId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("previous_checkpoint_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_location_privacy_erasure_replay_checkpoints");
-
-                    b.HasIndex("AuthoritySequence")
-                        .IsUnique()
-                        .HasDatabaseName("ux_location_privacy_erasure_checkpoints_sequence");
-
-                    b.HasIndex("IntentId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_location_privacy_erasure_checkpoints_intent");
-
-                    b.HasIndex("PreviousCheckpointId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_location_privacy_erasure_checkpoints_previous");
-
-                    b.ToTable("location_privacy_erasure_replay_checkpoints", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_location_privacy_erasure_checkpoints_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b') AND substring(intent_id::text, 15, 1) = '7' AND substring(intent_id::text, 20, 1) IN ('8', '9', 'a', 'b')");
-
-                            t.HasCheckConstraint("ck_location_privacy_erasure_replay_checkpoints_chain", "(authority_sequence = 1 AND previous_checkpoint_id IS NULL) OR (authority_sequence > 1 AND previous_checkpoint_id IS NOT NULL)");
-
-                            t.HasCheckConstraint("ck_location_privacy_erasure_replay_checkpoints_sequence", "authority_sequence > 0");
-                        });
-                });
-
             modelBuilder.Entity("Explore.Domain.LocationPrivacyState", b =>
                 {
                     b.Property<int>("Id")
@@ -14405,6 +14357,263 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_tenant_policy_sets_tenant_id");
 
                     b.ToTable("tenant_policy_sets", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.PrivacyErasureCounter", b =>
+                {
+                    b.Property<bool>("Singleton")
+                        .HasColumnType("boolean")
+                        .HasColumnName("singleton");
+
+                    b.Property<long>("LastSequence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_sequence");
+
+                    b.HasKey("Singleton")
+                        .HasName("pk_authority_counter");
+
+                    b.ToTable("authority_counter", "privacy_erasure_authority", t =>
+                        {
+                            t.HasCheckConstraint("ck_privacy_erasure_authority_counter_nonnegative", "last_sequence >= 0");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_authority_counter_singleton", "singleton");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.PrivacyErasureIntent", b =>
+                {
+                    b.Property<long>("AuthoritySequence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("authority_sequence");
+
+                    b.Property<Guid>("IntentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("intent_id");
+
+                    b.Property<int>("PolicyVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("policy_version");
+
+                    b.Property<short>("ReasonCode")
+                        .HasColumnType("smallint")
+                        .HasColumnName("reason_code");
+
+                    b.Property<DateTime>("RecordedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recorded_at_utc");
+
+                    b.Property<DateTime>("RequestedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at_utc");
+
+                    b.Property<DateTime>("RetentionExpiresAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retention_expires_at_utc")
+                        .HasDefaultValueSql("'infinity'::timestamp with time zone");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_id");
+
+                    b.Property<short>("SubjectKind")
+                        .HasColumnType("smallint")
+                        .HasColumnName("subject_kind");
+
+                    b.HasKey("AuthoritySequence")
+                        .HasName("pk_erasure_intents");
+
+                    b.HasAlternateKey("IntentId")
+                        .HasName("ak_privacy_erasure_intents_intent_id");
+
+                    b.HasIndex("IntentId", "SubjectKind", "PolicyVersion")
+                        .IsUnique()
+                        .HasDatabaseName("ix_erasure_intents_intent_id_subject_kind_policy_version");
+
+                    b.ToTable("erasure_intents", "privacy_erasure_authority", t =>
+                        {
+                            t.HasCheckConstraint("ck_privacy_erasure_intents_intent_rfc4122_variant", "substring(intent_id::text, 20, 1) IN ('8', '9', 'a', 'b')");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_intents_intent_uuid_v7", "substring(intent_id::text, 15, 1) = '7'");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_intents_policy_version", "policy_version > 0");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_intents_reason", "reason_code BETWEEN 1 AND 3");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_intents_retention", "retention_expires_at_utc > recorded_at_utc");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_intents_sequence", "authority_sequence > 0");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_intents_server_time_order", "recorded_at_utc >= requested_at_utc");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_intents_subject_kind", "subject_kind = 1");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_intents_subject_nonempty", "subject_id <> '00000000-0000-0000-0000-000000000000'::uuid");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.PrivacyErasurePolicyCoverage", b =>
+                {
+                    b.Property<Guid>("IntentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("intent_id");
+
+                    b.Property<short>("SubjectKind")
+                        .HasColumnType("smallint")
+                        .HasColumnName("subject_kind");
+
+                    b.Property<int>("PolicyVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("policy_version");
+
+                    b.Property<DateTime>("CoveredAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("covered_at_utc");
+
+                    b.HasKey("IntentId", "SubjectKind", "PolicyVersion")
+                        .HasName("pk_privacy_erasure_policy_coverage");
+
+                    b.ToTable("privacy_erasure_policy_coverage", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_privacy_erasure_policy_coverage_policy_version", "policy_version > 0");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_policy_coverage_subject_kind", "subject_kind = 1");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.PrivacyErasureReplayCheckpoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("AppliedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("applied_at_utc");
+
+                    b.Property<long>("AuthoritySequence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("authority_sequence");
+
+                    b.Property<Guid>("IntentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("intent_id");
+
+                    b.Property<int>("PolicyVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("policy_version");
+
+                    b.Property<Guid?>("PreviousCheckpointId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("previous_checkpoint_id");
+
+                    b.Property<short>("ReasonCode")
+                        .HasColumnType("smallint")
+                        .HasColumnName("reason_code");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_id");
+
+                    b.Property<short>("SubjectKind")
+                        .HasColumnType("smallint")
+                        .HasColumnName("subject_kind");
+
+                    b.HasKey("Id")
+                        .HasName("pk_privacy_erasure_replay_checkpoints");
+
+                    b.HasIndex("AuthoritySequence")
+                        .IsUnique()
+                        .HasDatabaseName("ux_privacy_erasure_checkpoints_sequence");
+
+                    b.HasIndex("IntentId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_privacy_erasure_checkpoints_intent");
+
+                    b.HasIndex("PreviousCheckpointId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_privacy_erasure_checkpoints_previous");
+
+                    b.ToTable("privacy_erasure_replay_checkpoints", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_privacy_erasure_checkpoints_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b') AND substring(intent_id::text, 15, 1) = '7' AND substring(intent_id::text, 20, 1) IN ('8', '9', 'a', 'b')");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_replay_checkpoints_chain", "(authority_sequence = 1 AND previous_checkpoint_id IS NULL) OR (authority_sequence > 1 AND previous_checkpoint_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_replay_checkpoints_sequence", "authority_sequence > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.PrivacyErasureSaga", b =>
+                {
+                    b.Property<Guid>("IntentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("intent_id");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token");
+
+                    b.Property<long>("FenceToken")
+                        .HasColumnType("bigint")
+                        .HasColumnName("fence_token");
+
+                    b.Property<DateTime>("FencedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fenced_at_utc");
+
+                    b.Property<int>("PolicyVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("policy_version");
+
+                    b.Property<DateTime>("ReceiptExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("receipt_expires_at_utc");
+
+                    b.Property<byte[]>("ReceiptHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("bytea")
+                        .HasColumnName("receipt_hash")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_id");
+
+                    b.Property<short>("SubjectKind")
+                        .HasColumnType("smallint")
+                        .HasColumnName("subject_kind");
+
+                    b.HasKey("IntentId")
+                        .HasName("pk_privacy_erasure_sagas");
+
+                    b.HasIndex("ReceiptHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_privacy_erasure_sagas_receipt_hash");
+
+                    b.HasIndex("IntentId", "SubjectKind", "PolicyVersion")
+                        .IsUnique()
+                        .HasDatabaseName("ix_privacy_erasure_sagas_intent_id_subject_kind_policy_version");
+
+                    b.ToTable("privacy_erasure_sagas", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_privacy_erasure_sagas_concurrency_uuid_v7", "substring(concurrency_token::text, 15, 1) = '7' AND substring(concurrency_token::text, 20, 1) IN ('8', '9', 'a', 'b')");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_sagas_fence", "fence_token > 0");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_sagas_policy_version", "policy_version > 0");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_sagas_receipt_hash", "octet_length(receipt_hash) = 32");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_sagas_receipt_window", "receipt_expires_at_utc > fenced_at_utc");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_sagas_subject_kind", "subject_kind = 1");
+
+                            t.HasCheckConstraint("ck_privacy_erasure_sagas_subject_nonempty", "subject_id <> '00000000-0000-0000-0000-000000000000'::uuid");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationMode", b =>
@@ -24230,15 +24439,6 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Location");
                 });
 
-            modelBuilder.Entity("Explore.Domain.LocationPrivacyErasureReplayCheckpoint", b =>
-                {
-                    b.HasOne("Explore.Domain.LocationPrivacyErasureReplayCheckpoint", null)
-                        .WithMany()
-                        .HasForeignKey("PreviousCheckpointId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_location_privacy_erasure_replay_checkpoints_location_privac");
-                });
-
             modelBuilder.Entity("Explore.Domain.LocationRoom", b =>
                 {
                     b.HasOne("Explore.Domain.Location", null)
@@ -27213,6 +27413,37 @@ namespace Explore.Persistence.Migrations
 
                     b.Navigation("RenderPolicy")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Explore.Domain.PrivacyErasurePolicyCoverage", b =>
+                {
+                    b.HasOne("Explore.Domain.PrivacyErasureIntent", null)
+                        .WithMany()
+                        .HasForeignKey("IntentId")
+                        .HasPrincipalKey("IntentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_privacy_erasure_policy_coverage_privacy_erasure_intents_int");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PrivacyErasureReplayCheckpoint", b =>
+                {
+                    b.HasOne("Explore.Domain.PrivacyErasureReplayCheckpoint", null)
+                        .WithMany()
+                        .HasForeignKey("PreviousCheckpointId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_privacy_erasure_replay_checkpoints_privacy_erasure_replay_c");
+                });
+
+            modelBuilder.Entity("Explore.Domain.PrivacyErasureSaga", b =>
+                {
+                    b.HasOne("Explore.Domain.PrivacyErasureIntent", null)
+                        .WithOne()
+                        .HasForeignKey("Explore.Domain.PrivacyErasureSaga", "IntentId")
+                        .HasPrincipalKey("Explore.Domain.PrivacyErasureIntent", "IntentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_privacy_erasure_sagas_privacy_erasure_intents_intent_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.Role", b =>

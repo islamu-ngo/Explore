@@ -1,6 +1,7 @@
 // ABOUTME: Provides the single application-facing entry point for Explore database migrations.
-// ABOUTME: Keeps feature-specific staged rollout policies inside Persistence instead of migration hosts.
+// ABOUTME: Applies the complete current migration set through the ordinary EF Core migration path.
 
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 namespace Explore.Persistence.Schema;
@@ -15,9 +16,6 @@ public static class ExploreDatabaseMigrator
         ArgumentNullException.ThrowIfNull(db);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        return EventLocationPrivacyMigrationStage.MigrateAsync(
-            db,
-            configuration[EventLocationPrivacyMigrationStage.ConfigurationKey],
-            cancellationToken);
+        return db.Database.MigrateAsync(cancellationToken);
     }
 }

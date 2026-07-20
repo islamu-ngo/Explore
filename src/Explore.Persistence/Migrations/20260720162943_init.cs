@@ -12,6 +12,9 @@ namespace Explore.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.EnsureSchema(
+                name: "privacy_erasure_authority");
+
             migrationBuilder.AlterDatabase()
                 .Annotation("Npgsql:PostgresExtension:btree_gist", ",,");
 
@@ -306,6 +309,21 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "authority_counter",
+                schema: "privacy_erasure_authority",
+                columns: table => new
+                {
+                    singleton = table.Column<bool>(type: "boolean", nullable: false),
+                    last_sequence = table.Column<long>(type: "bigint", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_authority_counter", x => x.singleton);
+                    table.CheckConstraint("ck_privacy_erasure_authority_counter_nonnegative", "last_sequence >= 0");
+                    table.CheckConstraint("ck_privacy_erasure_authority_counter_singleton", "singleton");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "category_types",
                 columns: table => new
                 {
@@ -356,6 +374,36 @@ namespace Explore.Persistence.Migrations
                     table.CheckConstraint("ck_email_dispatch_processor_states_global_rate_override", "global_smtp_rate_limit_per_minute_override IS NULL OR global_smtp_rate_limit_per_minute_override BETWEEN 1 AND 100000");
                     table.CheckConstraint("ck_email_dispatch_processor_states_smtp_rate_pair", "(smtp_available_tokens IS NULL) = (smtp_refill_at IS NULL)");
                     table.CheckConstraint("ck_email_dispatch_processor_states_smtp_tokens_nonnegative", "smtp_available_tokens IS NULL OR smtp_available_tokens >= 0");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "erasure_intents",
+                schema: "privacy_erasure_authority",
+                columns: table => new
+                {
+                    authority_sequence = table.Column<long>(type: "bigint", nullable: false),
+                    intent_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    subject_kind = table.Column<short>(type: "smallint", nullable: false),
+                    subject_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    reason_code = table.Column<short>(type: "smallint", nullable: false),
+                    policy_version = table.Column<int>(type: "integer", nullable: false),
+                    requested_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    recorded_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    retention_expires_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "'infinity'::timestamp with time zone")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_erasure_intents", x => x.authority_sequence);
+                    table.UniqueConstraint("ak_privacy_erasure_intents_intent_id", x => x.intent_id);
+                    table.CheckConstraint("ck_privacy_erasure_intents_intent_rfc4122_variant", "substring(intent_id::text, 20, 1) IN ('8', '9', 'a', 'b')");
+                    table.CheckConstraint("ck_privacy_erasure_intents_intent_uuid_v7", "substring(intent_id::text, 15, 1) = '7'");
+                    table.CheckConstraint("ck_privacy_erasure_intents_policy_version", "policy_version > 0");
+                    table.CheckConstraint("ck_privacy_erasure_intents_reason", "reason_code BETWEEN 1 AND 3");
+                    table.CheckConstraint("ck_privacy_erasure_intents_retention", "retention_expires_at_utc > recorded_at_utc");
+                    table.CheckConstraint("ck_privacy_erasure_intents_sequence", "authority_sequence > 0");
+                    table.CheckConstraint("ck_privacy_erasure_intents_server_time_order", "recorded_at_utc >= requested_at_utc");
+                    table.CheckConstraint("ck_privacy_erasure_intents_subject_kind", "subject_kind = 1");
+                    table.CheckConstraint("ck_privacy_erasure_intents_subject_nonempty", "subject_id <> '00000000-0000-0000-0000-000000000000'::uuid");
                 });
 
             migrationBuilder.CreateTable(
@@ -771,30 +819,6 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "location_privacy_erasure_replay_checkpoints",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    authority_sequence = table.Column<long>(type: "bigint", nullable: false),
-                    intent_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    previous_checkpoint_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    applied_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_location_privacy_erasure_replay_checkpoints", x => x.id);
-                    table.CheckConstraint("ck_location_privacy_erasure_checkpoints_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b') AND substring(intent_id::text, 15, 1) = '7' AND substring(intent_id::text, 20, 1) IN ('8', '9', 'a', 'b')");
-                    table.CheckConstraint("ck_location_privacy_erasure_replay_checkpoints_chain", "(authority_sequence = 1 AND previous_checkpoint_id IS NULL) OR (authority_sequence > 1 AND previous_checkpoint_id IS NOT NULL)");
-                    table.CheckConstraint("ck_location_privacy_erasure_replay_checkpoints_sequence", "authority_sequence > 0");
-                    table.ForeignKey(
-                        name: "fk_location_privacy_erasure_replay_checkpoints_location_privac",
-                        column: x => x.previous_checkpoint_id,
-                        principalTable: "location_privacy_erasure_replay_checkpoints",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "location_privacy_states",
                 columns: table => new
                 {
@@ -1179,6 +1203,34 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_policy_change_outbox", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "privacy_erasure_replay_checkpoints",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    authority_sequence = table.Column<long>(type: "bigint", nullable: false),
+                    intent_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    subject_kind = table.Column<short>(type: "smallint", nullable: false),
+                    subject_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    reason_code = table.Column<short>(type: "smallint", nullable: false),
+                    policy_version = table.Column<int>(type: "integer", nullable: false),
+                    previous_checkpoint_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    applied_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_privacy_erasure_replay_checkpoints", x => x.id);
+                    table.CheckConstraint("ck_privacy_erasure_checkpoints_uuid_v7", "substring(id::text, 15, 1) = '7' AND substring(id::text, 20, 1) IN ('8', '9', 'a', 'b') AND substring(intent_id::text, 15, 1) = '7' AND substring(intent_id::text, 20, 1) IN ('8', '9', 'a', 'b')");
+                    table.CheckConstraint("ck_privacy_erasure_replay_checkpoints_chain", "(authority_sequence = 1 AND previous_checkpoint_id IS NULL) OR (authority_sequence > 1 AND previous_checkpoint_id IS NOT NULL)");
+                    table.CheckConstraint("ck_privacy_erasure_replay_checkpoints_sequence", "authority_sequence > 0");
+                    table.ForeignKey(
+                        name: "fk_privacy_erasure_replay_checkpoints_privacy_erasure_replay_c",
+                        column: x => x.previous_checkpoint_id,
+                        principalTable: "privacy_erasure_replay_checkpoints",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -1974,6 +2026,62 @@ namespace Explore.Persistence.Migrations
                         principalTable: "atproto_records",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "privacy_erasure_policy_coverage",
+                columns: table => new
+                {
+                    intent_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    subject_kind = table.Column<short>(type: "smallint", nullable: false),
+                    policy_version = table.Column<int>(type: "integer", nullable: false),
+                    covered_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_privacy_erasure_policy_coverage", x => new { x.intent_id, x.subject_kind, x.policy_version });
+                    table.CheckConstraint("ck_privacy_erasure_policy_coverage_policy_version", "policy_version > 0");
+                    table.CheckConstraint("ck_privacy_erasure_policy_coverage_subject_kind", "subject_kind = 1");
+                    table.ForeignKey(
+                        name: "fk_privacy_erasure_policy_coverage_privacy_erasure_intents_int",
+                        column: x => x.intent_id,
+                        principalSchema: "privacy_erasure_authority",
+                        principalTable: "erasure_intents",
+                        principalColumn: "intent_id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "privacy_erasure_sagas",
+                columns: table => new
+                {
+                    intent_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    subject_kind = table.Column<short>(type: "smallint", nullable: false),
+                    subject_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    policy_version = table.Column<int>(type: "integer", nullable: false),
+                    fence_token = table.Column<long>(type: "bigint", nullable: false),
+                    receipt_hash = table.Column<byte[]>(type: "bytea", fixedLength: true, maxLength: 32, nullable: false),
+                    receipt_expires_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    fenced_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    concurrency_token = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_privacy_erasure_sagas", x => x.intent_id);
+                    table.CheckConstraint("ck_privacy_erasure_sagas_concurrency_uuid_v7", "substring(concurrency_token::text, 15, 1) = '7' AND substring(concurrency_token::text, 20, 1) IN ('8', '9', 'a', 'b')");
+                    table.CheckConstraint("ck_privacy_erasure_sagas_fence", "fence_token > 0");
+                    table.CheckConstraint("ck_privacy_erasure_sagas_policy_version", "policy_version > 0");
+                    table.CheckConstraint("ck_privacy_erasure_sagas_receipt_hash", "octet_length(receipt_hash) = 32");
+                    table.CheckConstraint("ck_privacy_erasure_sagas_receipt_window", "receipt_expires_at_utc > fenced_at_utc");
+                    table.CheckConstraint("ck_privacy_erasure_sagas_subject_kind", "subject_kind = 1");
+                    table.CheckConstraint("ck_privacy_erasure_sagas_subject_nonempty", "subject_id <> '00000000-0000-0000-0000-000000000000'::uuid");
+                    table.ForeignKey(
+                        name: "fk_privacy_erasure_sagas_privacy_erasure_intents_intent_id",
+                        column: x => x.intent_id,
+                        principalSchema: "privacy_erasure_authority",
+                        principalTable: "erasure_intents",
+                        principalColumn: "intent_id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -6614,51 +6722,6 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "event_report_cases",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    report_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    queue_code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    status = table.Column<int>(type: "integer", nullable: false),
-                    priority = table.Column<int>(type: "integer", nullable: false),
-                    assigned_moderator_user_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    sla_due_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_report_cases", x => x.id);
-                    table.UniqueConstraint("ak_event_report_cases_tenant_id_id", x => new { x.tenant_id, x.id });
-                    table.UniqueConstraint("ak_event_report_cases_tenant_id_report_id_id", x => new { x.tenant_id, x.report_id, x.id });
-                    table.CheckConstraint("ck_event_report_cases_priority", "priority BETWEEN 1 AND 4");
-                    table.CheckConstraint("ck_event_report_cases_queue_code_not_blank", "length(btrim(queue_code)) > 0");
-                    table.CheckConstraint("ck_event_report_cases_status", "status BETWEEN 1 AND 6");
-                    table.ForeignKey(
-                        name: "fk_event_report_cases_event_reports_tenant_id_report_id",
-                        columns: x => new { x.tenant_id, x.report_id },
-                        principalTable: "event_reports",
-                        principalColumns: new[] { "tenant_id", "id" });
-                    table.ForeignKey(
-                        name: "fk_event_report_cases_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_report_cases_users_assigned_moderator_user_id",
-                        column: x => x.assigned_moderator_user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "event_report_evidence",
                 columns: table => new
                 {
@@ -7582,118 +7645,6 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "event_report_decisions",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    case_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    report_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    decision_source = table.Column<int>(type: "integer", nullable: false),
-                    provider_target_scope = table.Column<int>(type: "integer", nullable: false),
-                    provider_target_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    decision_kind = table.Column<int>(type: "integer", nullable: false),
-                    reason_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    safe_note = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
-                    moderator_user_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    external_decision_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_report_decisions", x => x.id);
-                    table.UniqueConstraint("ak_event_report_decisions_tenant_id_report_id_id", x => new { x.tenant_id, x.report_id, x.id });
-                    table.CheckConstraint("ck_event_report_decisions_external_decision_id_not_blank", "external_decision_id IS NULL OR length(btrim(external_decision_id)) > 0");
-                    table.CheckConstraint("ck_event_report_decisions_kind", "decision_kind BETWEEN 1 AND 7");
-                    table.CheckConstraint("ck_event_report_decisions_local_moderator_required", "decision_source <> 1 OR moderator_user_id IS NOT NULL");
-                    table.CheckConstraint("ck_event_report_decisions_provider_target_id_not_blank", "length(btrim(provider_target_id)) > 0");
-                    table.CheckConstraint("ck_event_report_decisions_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");
-                    table.CheckConstraint("ck_event_report_decisions_reason_code_not_blank", "length(btrim(reason_code)) > 0");
-                    table.CheckConstraint("ck_event_report_decisions_safe_note_not_blank", "safe_note IS NULL OR length(btrim(safe_note)) > 0");
-                    table.CheckConstraint("ck_event_report_decisions_source", "decision_source BETWEEN 1 AND 4");
-                    table.ForeignKey(
-                        name: "fk_event_report_decisions_event_report_cases_tenant_id_report_",
-                        columns: x => new { x.tenant_id, x.report_id, x.case_id },
-                        principalTable: "event_report_cases",
-                        principalColumns: new[] { "tenant_id", "report_id", "id" });
-                    table.ForeignKey(
-                        name: "fk_event_report_decisions_event_reports_tenant_id_report_id",
-                        columns: x => new { x.tenant_id, x.report_id },
-                        principalTable: "event_reports",
-                        principalColumns: new[] { "tenant_id", "id" });
-                    table.ForeignKey(
-                        name: "fk_event_report_decisions_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_report_decisions_users_moderator_user_id",
-                        column: x => x.moderator_user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_report_external_links",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    report_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    case_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    provider = table.Column<int>(type: "integer", nullable: false),
-                    provider_target_scope = table.Column<int>(type: "integer", nullable: false),
-                    provider_target_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    provider_case_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    provider_signal_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    provider_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    sync_state = table.Column<int>(type: "integer", nullable: false),
-                    last_synced_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    last_error_category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    retry_count = table.Column<int>(type: "integer", nullable: false),
-                    correlation_id = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_report_external_links", x => x.id);
-                    table.CheckConstraint("ck_event_report_external_links_correlation_id_not_blank", "length(btrim(correlation_id)) > 0");
-                    table.CheckConstraint("ck_event_report_external_links_last_error_category_not_blank", "last_error_category IS NULL OR length(btrim(last_error_category)) > 0");
-                    table.CheckConstraint("ck_event_report_external_links_provider", "provider BETWEEN 1 AND 2");
-                    table.CheckConstraint("ck_event_report_external_links_provider_case_id_not_blank", "provider_case_id IS NULL OR length(btrim(provider_case_id)) > 0");
-                    table.CheckConstraint("ck_event_report_external_links_provider_signal_id_not_blank", "provider_signal_id IS NULL OR length(btrim(provider_signal_id)) > 0");
-                    table.CheckConstraint("ck_event_report_external_links_provider_target_id_not_blank", "length(btrim(provider_target_id)) > 0");
-                    table.CheckConstraint("ck_event_report_external_links_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");
-                    table.CheckConstraint("ck_event_report_external_links_provider_url_not_blank", "provider_url IS NULL OR length(btrim(provider_url)) > 0");
-                    table.CheckConstraint("ck_event_report_external_links_retry_count_nonnegative", "retry_count >= 0");
-                    table.CheckConstraint("ck_event_report_external_links_sync_state", "sync_state BETWEEN 1 AND 5");
-                    table.ForeignKey(
-                        name: "fk_event_report_external_links_event_report_cases_tenant_id_re",
-                        columns: x => new { x.tenant_id, x.report_id, x.case_id },
-                        principalTable: "event_report_cases",
-                        principalColumns: new[] { "tenant_id", "report_id", "id" });
-                    table.ForeignKey(
-                        name: "fk_event_report_external_links_event_reports_tenant_id_report_",
-                        columns: x => new { x.tenant_id, x.report_id },
-                        principalTable: "event_reports",
-                        principalColumns: new[] { "tenant_id", "id" });
-                    table.ForeignKey(
-                        name: "fk_event_report_external_links_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "webhook_local_target_snapshots",
                 columns: table => new
                 {
@@ -7963,159 +7914,6 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "event_moderation_records",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    moderator_user_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    action_kind = table.Column<int>(type: "integer", nullable: false),
-                    reason_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    previous_status_id = table.Column<int>(type: "integer", nullable: false),
-                    resulting_status_id = table.Column<int>(type: "integer", nullable: false),
-                    is_irreversible = table.Column<bool>(type: "boolean", nullable: false),
-                    source_moderation_record_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    source_report_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    source_report_decision_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    correlation_id = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_moderation_records", x => x.id);
-                    table.CheckConstraint("ck_event_moderation_records_correlation_not_blank", "correlation_id IS NULL OR length(btrim(correlation_id)) > 0");
-                    table.CheckConstraint("ck_event_moderation_records_reason_code_not_blank", "length(btrim(reason_code)) > 0");
-                    table.CheckConstraint("ck_event_moderation_records_source_decision_requires_report", "source_report_decision_id IS NULL OR source_report_id IS NOT NULL");
-                    table.CheckConstraint("ck_event_moderation_records_status_transition", "previous_status_id <> resulting_status_id");
-                    table.ForeignKey(
-                        name: "fk_event_moderation_records_event_moderation_records_source_mo",
-                        column: x => x.source_moderation_record_id,
-                        principalTable: "event_moderation_records",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_moderation_records_event_report_decisions_tenant_id_s",
-                        columns: x => new { x.tenant_id, x.source_report_id, x.source_report_decision_id },
-                        principalTable: "event_report_decisions",
-                        principalColumns: new[] { "tenant_id", "report_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_moderation_records_event_reports_tenant_id_source_rep",
-                        columns: x => new { x.tenant_id, x.source_report_id },
-                        principalTable: "event_reports",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_moderation_records_events_tenant_id_event_id",
-                        columns: x => new { x.tenant_id, x.event_id },
-                        principalTable: "events",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_moderation_records_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "notification_intents",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    category_id = table.Column<int>(type: "integer", nullable: false),
-                    ownership_type_id = table.Column<int>(type: "integer", nullable: false),
-                    recipient_kind_id = table.Column<int>(type: "integer", nullable: false),
-                    status_id = table.Column<int>(type: "integer", nullable: false),
-                    template_key = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false),
-                    deduplication_key = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
-                    safe_payload_reference = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    safe_payload_hash = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
-                    correlation_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    recipient_user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    fanout_occurrence_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    report_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    report_decision_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_notification_intents", x => x.id);
-                    table.UniqueConstraint("ak_notification_intents_tenant_id", x => new { x.tenant_id, x.id });
-                    table.UniqueConstraint("ak_notification_intents_tenant_id_recipient", x => new { x.tenant_id, x.id, x.recipient_user_id });
-                    table.ForeignKey(
-                        name: "fk_notification_intents_event_report_decisions_report_decision",
-                        column: x => x.report_decision_id,
-                        principalTable: "event_report_decisions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_intents_event_reports_report_id",
-                        column: x => x.report_id,
-                        principalTable: "event_reports",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_intents_events_event_id",
-                        column: x => x.event_id,
-                        principalTable: "events",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_intents_fanout_occurrence_tenant",
-                        columns: x => new { x.tenant_id, x.fanout_occurrence_id },
-                        principalTable: "notification_fanout_occurrences",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_intents_notification_categories_category_id",
-                        column: x => x.category_id,
-                        principalTable: "notification_categories",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_intents_notification_intent_statuses_status_id",
-                        column: x => x.status_id,
-                        principalTable: "notification_intent_statuses",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_intents_notification_ownership_types_ownership",
-                        column: x => x.ownership_type_id,
-                        principalTable: "notification_ownership_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_intents_notification_recipient_kinds_recipient",
-                        column: x => x.recipient_kind_id,
-                        principalTable: "notification_recipient_kinds",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_intents_tenant_users_tenant_id_recipient_user_",
-                        columns: x => new { x.tenant_id, x.recipient_user_id },
-                        principalTable: "tenant_users",
-                        principalColumns: new[] { "tenant_id", "user_id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_intents_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "webhook_provider_publication_attempts",
                 columns: table => new
                 {
@@ -8156,436 +7954,6 @@ namespace Explore.Persistence.Migrations
                         columns: x => new { x.tenant_id, x.webhook_provider_publication_id },
                         principalTable: "webhook_provider_publications",
                         principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "email_dispatch_outbox",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    publish_event_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    kind = table.Column<int>(type: "integer", nullable: false),
-                    source_type = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    source_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    notification_intent_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    registration_intent_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    recipient_user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    recipient_address_source = table.Column<int>(type: "integer", nullable: false),
-                    managed_tenant_provisioning_operation_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    recipient_email = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
-                    subject = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    plain_text_body = table.Column<string>(type: "text", nullable: true),
-                    html_body = table.Column<string>(type: "text", nullable: true),
-                    reply_to = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: true),
-                    status = table.Column<int>(type: "integer", nullable: false),
-                    attempt_count = table.Column<int>(type: "integer", nullable: false),
-                    max_attempts = table.Column<int>(type: "integer", nullable: false, defaultValue: 5),
-                    next_attempt_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    processing_started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    processing_lease_token = table.Column<Guid>(type: "uuid", nullable: true),
-                    sent_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    dead_lettered_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    parked_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    unknown_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    content_redacted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    last_failure_category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    last_error = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    last_failure_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    provider_message_id = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    correlation_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    rabbit_mq_last_published_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    rabbit_mq_last_publish_attempt_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    rabbit_mq_publish_attempt_count = table.Column<int>(type: "integer", nullable: false),
-                    rabbit_mq_last_publish_failure_category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_email_dispatch_outbox", x => x.id);
-                    table.UniqueConstraint("ak_email_dispatch_outbox_tenant_id", x => new { x.tenant_id, x.id });
-                    table.UniqueConstraint("ak_email_dispatch_outbox_tenant_id_intent", x => new { x.tenant_id, x.id, x.notification_intent_id });
-                    table.UniqueConstraint("ak_email_dispatch_outbox_tenant_id_intent_address_source", x => new { x.tenant_id, x.id, x.notification_intent_id, x.recipient_address_source });
-                    table.UniqueConstraint("ak_email_dispatch_outbox_tenant_id_publish_event", x => new { x.tenant_id, x.id, x.publish_event_id });
-                    table.CheckConstraint("ck_email_dispatch_outbox_processing_fence", "(status = 2) = (processing_started_at IS NOT NULL AND processing_lease_token IS NOT NULL)");
-                    table.CheckConstraint("ck_email_dispatch_outbox_recipient_authority", "(recipient_address_source = 1 AND recipient_user_id IS NOT NULL AND managed_tenant_provisioning_operation_id IS NULL AND kind <> 8) OR (recipient_address_source = 2 AND recipient_user_id IS NOT NULL AND managed_tenant_provisioning_operation_id IS NOT NULL AND kind = 8 AND source_type = 'managed_tenant_provisioning' AND source_id = managed_tenant_provisioning_operation_id)");
-                    table.CheckConstraint("ck_email_dispatch_outbox_redaction_fence", "content_redacted_at IS NULL OR (recipient_email = '' AND subject = '' AND plain_text_body IS NULL AND html_body IS NULL AND reply_to IS NULL AND last_error IS NULL AND provider_message_id IS NULL AND correlation_id IS NULL AND next_attempt_at IS NULL AND processing_started_at IS NULL AND processing_lease_token IS NULL)");
-                    table.CheckConstraint("ck_email_dispatch_outbox_unknown_terminal", "status <> 7 OR (unknown_at IS NOT NULL AND next_attempt_at IS NULL AND processing_started_at IS NULL AND processing_lease_token IS NULL)");
-                    table.ForeignKey(
-                        name: "fk_email_dispatch_outbox_event_registration_intents_registrati",
-                        column: x => x.registration_intent_id,
-                        principalTable: "event_registration_intents",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_email_dispatch_outbox_events_event_id",
-                        column: x => x.event_id,
-                        principalTable: "events",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_email_dispatch_outbox_managed_tenant_provisioning_operation",
-                        column: x => x.managed_tenant_provisioning_operation_id,
-                        principalTable: "managed_tenant_provisioning_operations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_email_dispatch_outbox_recipient_matches_intent",
-                        columns: x => new { x.tenant_id, x.notification_intent_id, x.recipient_user_id },
-                        principalTable: "notification_intents",
-                        principalColumns: new[] { "tenant_id", "id", "recipient_user_id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_email_dispatch_outbox_tenant_users_tenant_id_recipient_user",
-                        columns: x => new { x.tenant_id, x.recipient_user_id },
-                        principalTable: "tenant_users",
-                        principalColumns: new[] { "tenant_id", "user_id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_email_dispatch_outbox_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "notification_external_delegations",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    notification_intent_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    provider_kind_id = table.Column<int>(type: "integer", nullable: false),
-                    account_authority_kind_id = table.Column<int>(type: "integer", nullable: true),
-                    status_id = table.Column<int>(type: "integer", nullable: false),
-                    recipient_kind_id = table.Column<int>(type: "integer", nullable: false),
-                    template_key = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false),
-                    safe_payload_hash = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
-                    external_provider_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    external_correlation_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    external_delivery_status = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    failure_category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    report_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    report_decision_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    requested_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_notification_external_delegations", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_notification_external_delegations_account_authority_kinds_a",
-                        column: x => x.account_authority_kind_id,
-                        principalTable: "account_authority_kinds",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_external_delegations_event_report_decisions_re",
-                        column: x => x.report_decision_id,
-                        principalTable: "event_report_decisions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_external_delegations_event_reports_report_id",
-                        column: x => x.report_id,
-                        principalTable: "event_reports",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_external_delegations_external_workflow_provide",
-                        column: x => x.provider_kind_id,
-                        principalTable: "external_workflow_provider_kinds",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_external_delegations_notification_external_del",
-                        column: x => x.status_id,
-                        principalTable: "notification_external_delegation_statuses",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_external_delegations_notification_recipient_ki",
-                        column: x => x.recipient_kind_id,
-                        principalTable: "notification_recipient_kinds",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_external_delegations_tenant_intent",
-                        columns: x => new { x.tenant_id, x.notification_intent_id },
-                        principalTable: "notification_intents",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_external_delegations_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "notifications",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    notification_intent_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    notification_type_id = table.Column<int>(type: "integer", nullable: false),
-                    title = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    body = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    deduplication_key = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    is_read = table.Column<bool>(type: "boolean", nullable: false),
-                    read_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    notification_entity_type_id = table.Column<int>(type: "integer", nullable: true),
-                    entity_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    notification_scope_id = table.Column<int>(type: "integer", nullable: false),
-                    source_actor_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    recipient_context_actor_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    notification_reason_id = table.Column<int>(type: "integer", nullable: true),
-                    is_archived = table.Column<bool>(type: "boolean", nullable: false),
-                    archived_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    snoozed_until = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_notifications", x => x.id);
-                    table.UniqueConstraint("ak_notifications_tenant_id", x => new { x.tenant_id, x.id });
-                    table.CheckConstraint("ck_notifications_entity_reference_shape", "(notification_entity_type_id IS NULL AND entity_id IS NULL) OR (notification_entity_type_id IS NOT NULL AND entity_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')");
-                    table.ForeignKey(
-                        name: "fk_notifications_actors_recipient_context_actor_id",
-                        column: x => x.recipient_context_actor_id,
-                        principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "fk_notifications_actors_source_actor_id",
-                        column: x => x.source_actor_id,
-                        principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "fk_notifications_notification_entity_types_notification_entity",
-                        column: x => x.notification_entity_type_id,
-                        principalTable: "notification_entity_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notifications_notification_reasons_notification_reason_id",
-                        column: x => x.notification_reason_id,
-                        principalTable: "notification_reasons",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notifications_notification_scope_types_notification_scope_id",
-                        column: x => x.notification_scope_id,
-                        principalTable: "notification_scope_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notifications_notification_types_notification_type_id",
-                        column: x => x.notification_type_id,
-                        principalTable: "notification_types",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notifications_recipient_matches_intent",
-                        columns: x => new { x.tenant_id, x.notification_intent_id, x.user_id },
-                        principalTable: "notification_intents",
-                        principalColumns: new[] { "tenant_id", "id", "recipient_user_id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notifications_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notifications_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "email_dispatch_attempts",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    email_dispatch_outbox_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    attempt_number = table.Column<int>(type: "integer", nullable: false),
-                    transport = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    provider = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    outcome = table.Column<int>(type: "integer", nullable: false),
-                    started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    failure_category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    sanitized_error_message = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    provider_message_id = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    correlation_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_email_dispatch_attempts", x => x.id);
-                    table.CheckConstraint("ck_email_dispatch_attempts_provider_handoff_fence", "failure_category <> 'provider_handoff_started' OR (outcome = 3 AND completed_at IS NULL AND provider_message_id IS NULL)");
-                    table.ForeignKey(
-                        name: "fk_email_dispatch_attempts_email_dispatch_outbox_tenant_id_ema",
-                        columns: x => new { x.tenant_id, x.email_dispatch_outbox_id },
-                        principalTable: "email_dispatch_outbox",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_email_dispatch_attempts_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "email_dispatch_receipts",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    publish_event_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    email_dispatch_outbox_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    status = table.Column<int>(type: "integer", nullable: false),
-                    consumer_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    first_seen_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    processing_started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    failed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    failure_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    failure_message = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
-                    provider_message_id = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_email_dispatch_receipts", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_email_dispatch_receipts_email_dispatch_outbox_tenant_id_ema",
-                        columns: x => new { x.tenant_id, x.email_dispatch_outbox_id, x.publish_event_id },
-                        principalTable: "email_dispatch_outbox",
-                        principalColumns: new[] { "tenant_id", "id", "publish_event_id" },
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_email_dispatch_receipts_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "notification_deliveries",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    notification_intent_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    channel_id = table.Column<int>(type: "integer", nullable: false),
-                    delivery_policy_id = table.Column<int>(type: "integer", nullable: false),
-                    is_required = table.Column<bool>(type: "boolean", nullable: false),
-                    policy_version = table.Column<int>(type: "integer", nullable: false),
-                    consent_purpose = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    consent_version = table.Column<int>(type: "integer", nullable: true),
-                    preference_category_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    preference_enabled = table.Column<bool>(type: "boolean", nullable: true),
-                    recipient_address_source = table.Column<int>(type: "integer", nullable: true),
-                    disclosure_level = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    template_key = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false),
-                    template_version = table.Column<int>(type: "integer", nullable: false),
-                    link_allowed = table.Column<bool>(type: "boolean", nullable: false),
-                    notification_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    email_dispatch_outbox_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    status_id = table.Column<int>(type: "integer", nullable: false),
-                    provider_message_id = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    provider_status = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    failure_category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    queued_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_notification_deliveries", x => x.id);
-                    table.UniqueConstraint("ak_notification_deliveries_tenant_id_intent_channel", x => new { x.tenant_id, x.id, x.notification_intent_id, x.channel_id });
-                    table.CheckConstraint("ck_notification_deliveries_channel_link", "NOT (email_dispatch_outbox_id IS NOT NULL AND notification_id IS NOT NULL) AND (email_dispatch_outbox_id IS NULL OR (channel_id = 1 AND recipient_address_source IS NOT NULL)) AND (notification_id IS NULL OR channel_id = 2) AND (channel_id <> 2 OR recipient_address_source IS NULL) AND (email_dispatch_outbox_id IS NOT NULL OR recipient_address_source IS NULL)");
-                    table.ForeignKey(
-                        name: "fk_notification_deliveries_email_dispatch_outbox_tenant_id_ema",
-                        columns: x => new { x.tenant_id, x.email_dispatch_outbox_id, x.notification_intent_id, x.recipient_address_source },
-                        principalTable: "email_dispatch_outbox",
-                        principalColumns: new[] { "tenant_id", "id", "notification_intent_id", "recipient_address_source" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_deliveries_notification_delivery_policy_delive",
-                        column: x => x.delivery_policy_id,
-                        principalTable: "notification_delivery_policies",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_deliveries_notification_delivery_statuses_stat",
-                        column: x => x.status_id,
-                        principalTable: "notification_delivery_statuses",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_deliveries_notification_intents_tenant_id_noti",
-                        columns: x => new { x.tenant_id, x.notification_intent_id },
-                        principalTable: "notification_intents",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_deliveries_notification_preference_channels_ch",
-                        column: x => x.channel_id,
-                        principalTable: "notification_preference_channels",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_deliveries_notification_tenant",
-                        columns: x => new { x.tenant_id, x.notification_id },
-                        principalTable: "notifications",
-                        principalColumns: new[] { "tenant_id", "id" },
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_notification_deliveries_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -8727,6 +8095,171 @@ namespace Explore.Persistence.Migrations
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "fk_custom_property_values_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "email_dispatch_attempts",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    email_dispatch_outbox_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    attempt_number = table.Column<int>(type: "integer", nullable: false),
+                    transport = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    provider = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    outcome = table.Column<int>(type: "integer", nullable: false),
+                    started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    failure_category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    sanitized_error_message = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    provider_message_id = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    correlation_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_email_dispatch_attempts", x => x.id);
+                    table.CheckConstraint("ck_email_dispatch_attempts_provider_handoff_fence", "failure_category <> 'provider_handoff_started' OR (outcome = 3 AND completed_at IS NULL AND provider_message_id IS NULL)");
+                    table.ForeignKey(
+                        name: "fk_email_dispatch_attempts_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "email_dispatch_outbox",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    publish_event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    kind = table.Column<int>(type: "integer", nullable: false),
+                    source_type = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    source_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    notification_intent_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    registration_intent_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    recipient_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    recipient_address_source = table.Column<int>(type: "integer", nullable: false),
+                    managed_tenant_provisioning_operation_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    recipient_email = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
+                    subject = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    plain_text_body = table.Column<string>(type: "text", nullable: true),
+                    html_body = table.Column<string>(type: "text", nullable: true),
+                    reply_to = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: true),
+                    status = table.Column<int>(type: "integer", nullable: false),
+                    attempt_count = table.Column<int>(type: "integer", nullable: false),
+                    max_attempts = table.Column<int>(type: "integer", nullable: false, defaultValue: 5),
+                    next_attempt_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    processing_started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    processing_lease_token = table.Column<Guid>(type: "uuid", nullable: true),
+                    sent_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    dead_lettered_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    parked_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    unknown_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    content_redacted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    last_failure_category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    last_error = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    last_failure_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    provider_message_id = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    correlation_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    rabbit_mq_last_published_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    rabbit_mq_last_publish_attempt_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    rabbit_mq_publish_attempt_count = table.Column<int>(type: "integer", nullable: false),
+                    rabbit_mq_last_publish_failure_category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_email_dispatch_outbox", x => x.id);
+                    table.UniqueConstraint("ak_email_dispatch_outbox_tenant_id", x => new { x.tenant_id, x.id });
+                    table.UniqueConstraint("ak_email_dispatch_outbox_tenant_id_intent", x => new { x.tenant_id, x.id, x.notification_intent_id });
+                    table.UniqueConstraint("ak_email_dispatch_outbox_tenant_id_intent_address_source", x => new { x.tenant_id, x.id, x.notification_intent_id, x.recipient_address_source });
+                    table.UniqueConstraint("ak_email_dispatch_outbox_tenant_id_publish_event", x => new { x.tenant_id, x.id, x.publish_event_id });
+                    table.CheckConstraint("ck_email_dispatch_outbox_processing_fence", "(status = 2) = (processing_started_at IS NOT NULL AND processing_lease_token IS NOT NULL)");
+                    table.CheckConstraint("ck_email_dispatch_outbox_recipient_authority", "(recipient_address_source = 1 AND recipient_user_id IS NOT NULL AND managed_tenant_provisioning_operation_id IS NULL AND kind <> 8) OR (recipient_address_source = 2 AND recipient_user_id IS NOT NULL AND managed_tenant_provisioning_operation_id IS NOT NULL AND kind = 8 AND source_type = 'managed_tenant_provisioning' AND source_id = managed_tenant_provisioning_operation_id)");
+                    table.CheckConstraint("ck_email_dispatch_outbox_redaction_fence", "content_redacted_at IS NULL OR (recipient_email = '' AND subject = '' AND plain_text_body IS NULL AND html_body IS NULL AND reply_to IS NULL AND last_error IS NULL AND provider_message_id IS NULL AND correlation_id IS NULL AND next_attempt_at IS NULL AND processing_started_at IS NULL AND processing_lease_token IS NULL)");
+                    table.CheckConstraint("ck_email_dispatch_outbox_unknown_terminal", "status <> 7 OR (unknown_at IS NOT NULL AND next_attempt_at IS NULL AND processing_started_at IS NULL AND processing_lease_token IS NULL)");
+                    table.ForeignKey(
+                        name: "fk_email_dispatch_outbox_event_registration_intents_registrati",
+                        column: x => x.registration_intent_id,
+                        principalTable: "event_registration_intents",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_email_dispatch_outbox_events_event_id",
+                        column: x => x.event_id,
+                        principalTable: "events",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_email_dispatch_outbox_managed_tenant_provisioning_operation",
+                        column: x => x.managed_tenant_provisioning_operation_id,
+                        principalTable: "managed_tenant_provisioning_operations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_email_dispatch_outbox_tenant_users_tenant_id_recipient_user",
+                        columns: x => new { x.tenant_id, x.recipient_user_id },
+                        principalTable: "tenant_users",
+                        principalColumns: new[] { "tenant_id", "user_id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_email_dispatch_outbox_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "email_dispatch_receipts",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    publish_event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    email_dispatch_outbox_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    status = table.Column<int>(type: "integer", nullable: false),
+                    consumer_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    first_seen_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    processing_started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    failed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    failure_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    failure_message = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    provider_message_id = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_email_dispatch_receipts", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_email_dispatch_receipts_email_dispatch_outbox_tenant_id_ema",
+                        columns: x => new { x.tenant_id, x.email_dispatch_outbox_id, x.publish_event_id },
+                        principalTable: "email_dispatch_outbox",
+                        principalColumns: new[] { "tenant_id", "id", "publish_event_id" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_email_dispatch_receipts_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
@@ -8958,6 +8491,628 @@ namespace Explore.Persistence.Migrations
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "fk_event_custom_property_projections_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_moderation_records",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    moderator_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    action_kind = table.Column<int>(type: "integer", nullable: false),
+                    reason_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    previous_status_id = table.Column<int>(type: "integer", nullable: false),
+                    resulting_status_id = table.Column<int>(type: "integer", nullable: false),
+                    is_irreversible = table.Column<bool>(type: "boolean", nullable: false),
+                    source_moderation_record_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    source_report_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    source_report_decision_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    correlation_id = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_moderation_records", x => x.id);
+                    table.UniqueConstraint("ak_event_moderation_records_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.CheckConstraint("ck_event_moderation_records_correlation_not_blank", "correlation_id IS NULL OR length(btrim(correlation_id)) > 0");
+                    table.CheckConstraint("ck_event_moderation_records_reason_code_not_blank", "length(btrim(reason_code)) > 0");
+                    table.CheckConstraint("ck_event_moderation_records_source_decision_requires_report", "source_report_decision_id IS NULL OR source_report_id IS NOT NULL");
+                    table.CheckConstraint("ck_event_moderation_records_status_transition", "previous_status_id <> resulting_status_id");
+                    table.ForeignKey(
+                        name: "fk_event_moderation_records_event_moderation_records_source_mo",
+                        column: x => x.source_moderation_record_id,
+                        principalTable: "event_moderation_records",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_moderation_records_event_reports_tenant_id_source_rep",
+                        columns: x => new { x.tenant_id, x.source_report_id },
+                        principalTable: "event_reports",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_moderation_records_events_tenant_id_event_id",
+                        columns: x => new { x.tenant_id, x.event_id },
+                        principalTable: "events",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_moderation_records_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_report_cases",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    report_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    current_decision_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    queue_code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    status = table.Column<int>(type: "integer", nullable: false),
+                    priority = table.Column<int>(type: "integer", nullable: false),
+                    assigned_moderator_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    sla_due_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_report_cases", x => x.id);
+                    table.UniqueConstraint("ak_event_report_cases_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.UniqueConstraint("ak_event_report_cases_tenant_id_report_id_id", x => new { x.tenant_id, x.report_id, x.id });
+                    table.CheckConstraint("ck_event_report_cases_priority", "priority BETWEEN 1 AND 4");
+                    table.CheckConstraint("ck_event_report_cases_queue_code_not_blank", "length(btrim(queue_code)) > 0");
+                    table.CheckConstraint("ck_event_report_cases_status", "status BETWEEN 1 AND 6");
+                    table.ForeignKey(
+                        name: "fk_event_report_cases_event_reports_tenant_id_report_id",
+                        columns: x => new { x.tenant_id, x.report_id },
+                        principalTable: "event_reports",
+                        principalColumns: new[] { "tenant_id", "id" });
+                    table.ForeignKey(
+                        name: "fk_event_report_cases_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_report_cases_users_assigned_moderator_user_id",
+                        column: x => x.assigned_moderator_user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_report_decisions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    case_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    report_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    decision_source = table.Column<int>(type: "integer", nullable: false),
+                    provider_target_scope = table.Column<int>(type: "integer", nullable: false),
+                    provider_target_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    decision_kind = table.Column<int>(type: "integer", nullable: false),
+                    duplicate_group_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    reason_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    safe_note = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    moderator_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    external_decision_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_report_decisions", x => x.id);
+                    table.UniqueConstraint("ak_event_report_decisions_tenant_id_report_id_id", x => new { x.tenant_id, x.report_id, x.id });
+                    table.UniqueConstraint("ak_event_report_decisions_tenant_report_case_id", x => new { x.tenant_id, x.report_id, x.case_id, x.id });
+                    table.CheckConstraint("ck_event_report_decisions_duplicate_group_shape", "(decision_kind = 2 AND duplicate_group_id IS NOT NULL) OR (decision_kind <> 2 AND duplicate_group_id IS NULL)");
+                    table.CheckConstraint("ck_event_report_decisions_external_decision_id_not_blank", "external_decision_id IS NULL OR length(btrim(external_decision_id)) > 0");
+                    table.CheckConstraint("ck_event_report_decisions_kind", "decision_kind BETWEEN 1 AND 7");
+                    table.CheckConstraint("ck_event_report_decisions_local_moderator_required", "decision_source <> 1 OR moderator_user_id IS NOT NULL");
+                    table.CheckConstraint("ck_event_report_decisions_provider_target_id_not_blank", "length(btrim(provider_target_id)) > 0");
+                    table.CheckConstraint("ck_event_report_decisions_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");
+                    table.CheckConstraint("ck_event_report_decisions_reason_code_not_blank", "length(btrim(reason_code)) > 0");
+                    table.CheckConstraint("ck_event_report_decisions_safe_note_not_blank", "safe_note IS NULL OR length(btrim(safe_note)) > 0");
+                    table.CheckConstraint("ck_event_report_decisions_source", "decision_source BETWEEN 1 AND 4");
+                    table.ForeignKey(
+                        name: "fk_event_report_decisions_event_report_cases_tenant_id_report_",
+                        columns: x => new { x.tenant_id, x.report_id, x.case_id },
+                        principalTable: "event_report_cases",
+                        principalColumns: new[] { "tenant_id", "report_id", "id" });
+                    table.ForeignKey(
+                        name: "fk_event_report_decisions_event_reports_tenant_id_report_id",
+                        columns: x => new { x.tenant_id, x.report_id },
+                        principalTable: "event_reports",
+                        principalColumns: new[] { "tenant_id", "id" });
+                    table.ForeignKey(
+                        name: "fk_event_report_decisions_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_report_decisions_users_moderator_user_id",
+                        column: x => x.moderator_user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_report_external_links",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    report_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    case_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    provider = table.Column<int>(type: "integer", nullable: false),
+                    provider_target_scope = table.Column<int>(type: "integer", nullable: false),
+                    provider_target_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    provider_case_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    provider_signal_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    provider_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    sync_state = table.Column<int>(type: "integer", nullable: false),
+                    last_synced_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    last_error_category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    retry_count = table.Column<int>(type: "integer", nullable: false),
+                    correlation_id = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_report_external_links", x => x.id);
+                    table.CheckConstraint("ck_event_report_external_links_correlation_id_not_blank", "length(btrim(correlation_id)) > 0");
+                    table.CheckConstraint("ck_event_report_external_links_last_error_category_not_blank", "last_error_category IS NULL OR length(btrim(last_error_category)) > 0");
+                    table.CheckConstraint("ck_event_report_external_links_provider", "provider BETWEEN 1 AND 2");
+                    table.CheckConstraint("ck_event_report_external_links_provider_case_id_not_blank", "provider_case_id IS NULL OR length(btrim(provider_case_id)) > 0");
+                    table.CheckConstraint("ck_event_report_external_links_provider_signal_id_not_blank", "provider_signal_id IS NULL OR length(btrim(provider_signal_id)) > 0");
+                    table.CheckConstraint("ck_event_report_external_links_provider_target_id_not_blank", "length(btrim(provider_target_id)) > 0");
+                    table.CheckConstraint("ck_event_report_external_links_provider_target_scope", "provider_target_scope BETWEEN 1 AND 3");
+                    table.CheckConstraint("ck_event_report_external_links_provider_url_not_blank", "provider_url IS NULL OR length(btrim(provider_url)) > 0");
+                    table.CheckConstraint("ck_event_report_external_links_retry_count_nonnegative", "retry_count >= 0");
+                    table.CheckConstraint("ck_event_report_external_links_sync_state", "sync_state BETWEEN 1 AND 5");
+                    table.ForeignKey(
+                        name: "fk_event_report_external_links_event_report_cases_tenant_id_re",
+                        columns: x => new { x.tenant_id, x.report_id, x.case_id },
+                        principalTable: "event_report_cases",
+                        principalColumns: new[] { "tenant_id", "report_id", "id" });
+                    table.ForeignKey(
+                        name: "fk_event_report_external_links_event_reports_tenant_id_report_",
+                        columns: x => new { x.tenant_id, x.report_id },
+                        principalTable: "event_reports",
+                        principalColumns: new[] { "tenant_id", "id" });
+                    table.ForeignKey(
+                        name: "fk_event_report_external_links_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_report_decision_executions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    report_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    decision_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    state = table.Column<int>(type: "integer", nullable: false),
+                    enforcement_receipt_kind = table.Column<int>(type: "integer", nullable: false),
+                    enforcement_receipt_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    moderation_record_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    processing_lease_token = table.Column<Guid>(type: "uuid", nullable: true),
+                    processing_lease_expires_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    attempt_count = table.Column<int>(type: "integer", nullable: false),
+                    last_failure_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    last_failure_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    enforcement_completed_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    completed_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    version = table.Column<long>(type: "bigint", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_report_decision_executions", x => x.id);
+                    table.UniqueConstraint("ak_event_report_decision_executions_tenant_id_id", x => new { x.tenant_id, x.id });
+                    table.CheckConstraint("ck_event_report_decision_executions_failure_code_not_blank", "last_failure_code IS NULL OR length(btrim(last_failure_code)) > 0");
+                    table.CheckConstraint("ck_event_report_decision_executions_lease_pair", "(processing_lease_token IS NULL) = (processing_lease_expires_at_utc IS NULL)");
+                    table.CheckConstraint("ck_event_report_decision_executions_moderation_record_shape", "(enforcement_receipt_kind IN (2, 3) AND moderation_record_id IS NOT NULL AND moderation_record_id = enforcement_receipt_id) OR (enforcement_receipt_kind NOT IN (2, 3) AND moderation_record_id IS NULL)");
+                    table.CheckConstraint("ck_event_report_decision_executions_receipt_id_shape", "(enforcement_receipt_kind IN (2, 3) AND enforcement_receipt_id IS NOT NULL) OR (enforcement_receipt_kind NOT IN (2, 3) AND enforcement_receipt_id IS NULL)");
+                    table.CheckConstraint("ck_event_report_decision_executions_receipt_kind", "enforcement_receipt_kind BETWEEN 0 AND 5");
+                    table.CheckConstraint("ck_event_report_decision_executions_state", "state BETWEEN 1 AND 4");
+                    table.CheckConstraint("ck_event_report_decision_executions_state_shape", "(state = 1 AND enforcement_receipt_kind = 0 AND enforcement_completed_at_utc IS NULL AND completed_at_utc IS NULL AND processing_lease_token IS NULL) OR (state = 2 AND enforcement_receipt_kind = 0 AND enforcement_completed_at_utc IS NULL AND completed_at_utc IS NULL AND processing_lease_token IS NOT NULL) OR (state = 3 AND enforcement_receipt_kind <> 0 AND enforcement_completed_at_utc IS NOT NULL AND completed_at_utc IS NULL) OR (state = 4 AND enforcement_receipt_kind <> 0 AND enforcement_completed_at_utc IS NOT NULL AND completed_at_utc IS NOT NULL AND processing_lease_token IS NULL)");
+                    table.ForeignKey(
+                        name: "fk_event_report_decision_executions_event_moderation_records_t",
+                        columns: x => new { x.tenant_id, x.moderation_record_id },
+                        principalTable: "event_moderation_records",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_report_decision_executions_event_report_decisions_ten",
+                        columns: x => new { x.tenant_id, x.report_id, x.decision_id },
+                        principalTable: "event_report_decisions",
+                        principalColumns: new[] { "tenant_id", "report_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_report_decision_executions_event_reports_tenant_id_re",
+                        columns: x => new { x.tenant_id, x.report_id },
+                        principalTable: "event_reports",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_report_decision_executions_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "notification_intents",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    category_id = table.Column<int>(type: "integer", nullable: false),
+                    ownership_type_id = table.Column<int>(type: "integer", nullable: false),
+                    recipient_kind_id = table.Column<int>(type: "integer", nullable: false),
+                    status_id = table.Column<int>(type: "integer", nullable: false),
+                    template_key = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false),
+                    deduplication_key = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
+                    safe_payload_reference = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    safe_payload_hash = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
+                    correlation_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    recipient_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    fanout_occurrence_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    report_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    report_decision_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_notification_intents", x => x.id);
+                    table.UniqueConstraint("ak_notification_intents_tenant_id", x => new { x.tenant_id, x.id });
+                    table.UniqueConstraint("ak_notification_intents_tenant_id_recipient", x => new { x.tenant_id, x.id, x.recipient_user_id });
+                    table.ForeignKey(
+                        name: "fk_notification_intents_event_report_decisions_report_decision",
+                        column: x => x.report_decision_id,
+                        principalTable: "event_report_decisions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_intents_event_reports_report_id",
+                        column: x => x.report_id,
+                        principalTable: "event_reports",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_intents_events_event_id",
+                        column: x => x.event_id,
+                        principalTable: "events",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_intents_fanout_occurrence_tenant",
+                        columns: x => new { x.tenant_id, x.fanout_occurrence_id },
+                        principalTable: "notification_fanout_occurrences",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_intents_notification_categories_category_id",
+                        column: x => x.category_id,
+                        principalTable: "notification_categories",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_intents_notification_intent_statuses_status_id",
+                        column: x => x.status_id,
+                        principalTable: "notification_intent_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_intents_notification_ownership_types_ownership",
+                        column: x => x.ownership_type_id,
+                        principalTable: "notification_ownership_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_intents_notification_recipient_kinds_recipient",
+                        column: x => x.recipient_kind_id,
+                        principalTable: "notification_recipient_kinds",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_intents_tenant_users_tenant_id_recipient_user_",
+                        columns: x => new { x.tenant_id, x.recipient_user_id },
+                        principalTable: "tenant_users",
+                        principalColumns: new[] { "tenant_id", "user_id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_intents_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "notification_external_delegations",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    notification_intent_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    provider_kind_id = table.Column<int>(type: "integer", nullable: false),
+                    account_authority_kind_id = table.Column<int>(type: "integer", nullable: true),
+                    status_id = table.Column<int>(type: "integer", nullable: false),
+                    recipient_kind_id = table.Column<int>(type: "integer", nullable: false),
+                    template_key = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false),
+                    safe_payload_hash = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
+                    external_provider_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    external_correlation_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    external_delivery_status = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    failure_category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    report_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    report_decision_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    requested_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_notification_external_delegations", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_notification_external_delegations_account_authority_kinds_a",
+                        column: x => x.account_authority_kind_id,
+                        principalTable: "account_authority_kinds",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_external_delegations_event_report_decisions_re",
+                        column: x => x.report_decision_id,
+                        principalTable: "event_report_decisions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_external_delegations_event_reports_report_id",
+                        column: x => x.report_id,
+                        principalTable: "event_reports",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_external_delegations_external_workflow_provide",
+                        column: x => x.provider_kind_id,
+                        principalTable: "external_workflow_provider_kinds",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_external_delegations_notification_external_del",
+                        column: x => x.status_id,
+                        principalTable: "notification_external_delegation_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_external_delegations_notification_recipient_ki",
+                        column: x => x.recipient_kind_id,
+                        principalTable: "notification_recipient_kinds",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_external_delegations_tenant_intent",
+                        columns: x => new { x.tenant_id, x.notification_intent_id },
+                        principalTable: "notification_intents",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_external_delegations_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "notifications",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    notification_intent_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    notification_type_id = table.Column<int>(type: "integer", nullable: false),
+                    title = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    body = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    deduplication_key = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    is_read = table.Column<bool>(type: "boolean", nullable: false),
+                    read_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    notification_entity_type_id = table.Column<int>(type: "integer", nullable: true),
+                    entity_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    notification_scope_id = table.Column<int>(type: "integer", nullable: false),
+                    source_actor_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    recipient_context_actor_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    notification_reason_id = table.Column<int>(type: "integer", nullable: true),
+                    is_archived = table.Column<bool>(type: "boolean", nullable: false),
+                    archived_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    snoozed_until = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_notifications", x => x.id);
+                    table.UniqueConstraint("ak_notifications_tenant_id", x => new { x.tenant_id, x.id });
+                    table.CheckConstraint("ck_notifications_entity_reference_shape", "(notification_entity_type_id IS NULL AND entity_id IS NULL) OR (notification_entity_type_id IS NOT NULL AND entity_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')");
+                    table.ForeignKey(
+                        name: "fk_notifications_actors_recipient_context_actor_id",
+                        column: x => x.recipient_context_actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_notifications_actors_source_actor_id",
+                        column: x => x.source_actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_notifications_notification_entity_types_notification_entity",
+                        column: x => x.notification_entity_type_id,
+                        principalTable: "notification_entity_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notifications_notification_reasons_notification_reason_id",
+                        column: x => x.notification_reason_id,
+                        principalTable: "notification_reasons",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notifications_notification_scope_types_notification_scope_id",
+                        column: x => x.notification_scope_id,
+                        principalTable: "notification_scope_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notifications_notification_types_notification_type_id",
+                        column: x => x.notification_type_id,
+                        principalTable: "notification_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notifications_recipient_matches_intent",
+                        columns: x => new { x.tenant_id, x.notification_intent_id, x.user_id },
+                        principalTable: "notification_intents",
+                        principalColumns: new[] { "tenant_id", "id", "recipient_user_id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notifications_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notifications_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "notification_deliveries",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    notification_intent_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    channel_id = table.Column<int>(type: "integer", nullable: false),
+                    delivery_policy_id = table.Column<int>(type: "integer", nullable: false),
+                    is_required = table.Column<bool>(type: "boolean", nullable: false),
+                    policy_version = table.Column<int>(type: "integer", nullable: false),
+                    consent_purpose = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    consent_version = table.Column<int>(type: "integer", nullable: true),
+                    preference_category_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    preference_enabled = table.Column<bool>(type: "boolean", nullable: true),
+                    recipient_address_source = table.Column<int>(type: "integer", nullable: true),
+                    disclosure_level = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    template_key = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false),
+                    template_version = table.Column<int>(type: "integer", nullable: false),
+                    link_allowed = table.Column<bool>(type: "boolean", nullable: false),
+                    notification_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    email_dispatch_outbox_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    status_id = table.Column<int>(type: "integer", nullable: false),
+                    provider_message_id = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    provider_status = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    failure_category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    queued_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_notification_deliveries", x => x.id);
+                    table.UniqueConstraint("ak_notification_deliveries_tenant_id_intent_channel", x => new { x.tenant_id, x.id, x.notification_intent_id, x.channel_id });
+                    table.CheckConstraint("ck_notification_deliveries_channel_link", "NOT (email_dispatch_outbox_id IS NOT NULL AND notification_id IS NOT NULL) AND (email_dispatch_outbox_id IS NULL OR (channel_id = 1 AND recipient_address_source IS NOT NULL)) AND (notification_id IS NULL OR channel_id = 2) AND (channel_id <> 2 OR recipient_address_source IS NULL) AND (email_dispatch_outbox_id IS NOT NULL OR recipient_address_source IS NULL)");
+                    table.ForeignKey(
+                        name: "fk_notification_deliveries_email_dispatch_outbox_tenant_id_ema",
+                        columns: x => new { x.tenant_id, x.email_dispatch_outbox_id, x.notification_intent_id, x.recipient_address_source },
+                        principalTable: "email_dispatch_outbox",
+                        principalColumns: new[] { "tenant_id", "id", "notification_intent_id", "recipient_address_source" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_deliveries_notification_delivery_policy_delive",
+                        column: x => x.delivery_policy_id,
+                        principalTable: "notification_delivery_policies",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_deliveries_notification_delivery_statuses_stat",
+                        column: x => x.status_id,
+                        principalTable: "notification_delivery_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_deliveries_notification_intents_tenant_id_noti",
+                        columns: x => new { x.tenant_id, x.notification_intent_id },
+                        principalTable: "notification_intents",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_deliveries_notification_preference_channels_ch",
+                        column: x => x.channel_id,
+                        principalTable: "notification_preference_channels",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_deliveries_notification_tenant",
+                        columns: x => new { x.tenant_id, x.notification_id },
+                        principalTable: "notifications",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_deliveries_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
@@ -10328,6 +10483,13 @@ namespace Explore.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_erasure_intents_intent_id_subject_kind_policy_version",
+                schema: "privacy_erasure_authority",
+                table: "erasure_intents",
+                columns: new[] { "intent_id", "subject_kind", "policy_version" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_event_agenda_items_elp_consistency",
                 table: "event_agenda_items",
                 columns: new[] { "tenant_id", "event_id", "event_location_id", "location_id" });
@@ -10641,9 +10803,16 @@ namespace Explore.Persistence.Migrations
                 filter: "source_report_decision_id IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_moderation_records_tenant_source_report_decision_exact",
+                name: "ux_event_moderation_records_exact_receipt_fk",
+                table: "event_moderation_records",
+                columns: new[] { "tenant_id", "source_report_id", "source_report_decision_id", "id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ux_event_moderation_records_tenant_source_report_decision_exact",
                 table: "event_moderation_records",
                 columns: new[] { "tenant_id", "source_report_id", "source_report_decision_id" },
+                unique: true,
                 filter: "source_report_id IS NOT NULL AND source_report_decision_id IS NOT NULL");
 
             migrationBuilder.CreateIndex(
@@ -10741,6 +10910,12 @@ namespace Explore.Persistence.Migrations
                 column: "assigned_moderator_user_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_event_report_cases_current_decision",
+                table: "event_report_cases",
+                columns: new[] { "tenant_id", "report_id", "id", "current_decision_id" },
+                filter: "current_decision_id IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_event_report_cases_tenant_assignee_status_updated",
                 table: "event_report_cases",
                 columns: new[] { "tenant_id", "assigned_moderator_user_id", "status", "updated_at" },
@@ -10760,6 +10935,28 @@ namespace Explore.Persistence.Migrations
                 filter: "sla_due_at IS NOT NULL");
 
             migrationBuilder.CreateIndex(
+                name: "ix_event_report_decision_executions_runnable",
+                table: "event_report_decision_executions",
+                columns: new[] { "state", "processing_lease_expires_at_utc", "created_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_report_decision_executions_tenant_id_moderation_recor",
+                table: "event_report_decision_executions",
+                columns: new[] { "tenant_id", "moderation_record_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ux_event_report_decision_executions_tenant_decision",
+                table: "event_report_decision_executions",
+                columns: new[] { "tenant_id", "decision_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ux_event_report_decision_executions_tenant_report_decision",
+                table: "event_report_decision_executions",
+                columns: new[] { "tenant_id", "report_id", "decision_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_event_report_decisions_moderator_user_id",
                 table: "event_report_decisions",
                 column: "moderator_user_id");
@@ -10769,11 +10966,6 @@ namespace Explore.Persistence.Migrations
                 table: "event_report_decisions",
                 columns: new[] { "tenant_id", "case_id", "created_at" },
                 descending: new[] { false, false, true });
-
-            migrationBuilder.CreateIndex(
-                name: "ix_event_report_decisions_tenant_id_report_id_case_id",
-                table: "event_report_decisions",
-                columns: new[] { "tenant_id", "report_id", "case_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_event_report_decisions_tenant_report_created",
@@ -11809,24 +12001,6 @@ namespace Explore.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "ux_location_privacy_erasure_checkpoints_intent",
-                table: "location_privacy_erasure_replay_checkpoints",
-                column: "intent_id",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "ux_location_privacy_erasure_checkpoints_previous",
-                table: "location_privacy_erasure_replay_checkpoints",
-                column: "previous_checkpoint_id",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "ux_location_privacy_erasure_checkpoints_sequence",
-                table: "location_privacy_erasure_replay_checkpoints",
-                column: "authority_sequence",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
                 name: "ix_location_privacy_states_master_code",
                 table: "location_privacy_states",
                 column: "master_code",
@@ -12622,6 +12796,36 @@ namespace Explore.Persistence.Migrations
                 name: "ix_policy_change_outbox_status_retry",
                 table: "policy_change_outbox",
                 columns: new[] { "status", "next_retry_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "ux_privacy_erasure_checkpoints_intent",
+                table: "privacy_erasure_replay_checkpoints",
+                column: "intent_id",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ux_privacy_erasure_checkpoints_previous",
+                table: "privacy_erasure_replay_checkpoints",
+                column: "previous_checkpoint_id",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ux_privacy_erasure_checkpoints_sequence",
+                table: "privacy_erasure_replay_checkpoints",
+                column: "authority_sequence",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_privacy_erasure_sagas_intent_id_subject_kind_policy_version",
+                table: "privacy_erasure_sagas",
+                columns: new[] { "intent_id", "subject_kind", "policy_version" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_privacy_erasure_sagas_receipt_hash",
+                table: "privacy_erasure_sagas",
+                column: "receipt_hash",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_registration_scopes_master_code",
@@ -14068,11 +14272,43 @@ namespace Explore.Persistence.Migrations
                 onDelete: ReferentialAction.Restrict);
 
             migrationBuilder.AddForeignKey(
+                name: "fk_email_dispatch_attempts_email_dispatch_outbox_tenant_id_ema",
+                table: "email_dispatch_attempts",
+                columns: new[] { "tenant_id", "email_dispatch_outbox_id" },
+                principalTable: "email_dispatch_outbox",
+                principalColumns: new[] { "tenant_id", "id" },
+                onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.AddForeignKey(
+                name: "fk_email_dispatch_outbox_recipient_matches_intent",
+                table: "email_dispatch_outbox",
+                columns: new[] { "tenant_id", "notification_intent_id", "recipient_user_id" },
+                principalTable: "notification_intents",
+                principalColumns: new[] { "tenant_id", "id", "recipient_user_id" },
+                onDelete: ReferentialAction.Restrict);
+
+            migrationBuilder.AddForeignKey(
                 name: "fk_event_custom_property_definitions_event_custom_property_opt",
                 table: "event_custom_property_definitions",
                 column: "default_option_id",
                 principalTable: "event_custom_property_options",
                 principalColumn: "id",
+                onDelete: ReferentialAction.Restrict);
+
+            migrationBuilder.AddForeignKey(
+                name: "fk_event_moderation_records_event_report_decisions_tenant_id_s",
+                table: "event_moderation_records",
+                columns: new[] { "tenant_id", "source_report_id", "source_report_decision_id" },
+                principalTable: "event_report_decisions",
+                principalColumns: new[] { "tenant_id", "report_id", "id" },
+                onDelete: ReferentialAction.Restrict);
+
+            migrationBuilder.AddForeignKey(
+                name: "fk_event_report_cases_event_report_decisions_tenant_id_report_",
+                table: "event_report_cases",
+                columns: new[] { "tenant_id", "report_id", "id", "current_decision_id" },
+                principalTable: "event_report_decisions",
+                principalColumns: new[] { "tenant_id", "report_id", "case_id", "id" },
                 onDelete: ReferentialAction.Restrict);
 
             migrationBuilder.AddForeignKey(
@@ -14114,11 +14350,376 @@ namespace Explore.Persistence.Migrations
                 principalTable: "incoming_webhook_messages",
                 principalColumns: new[] { "tenant_id", "id" },
                 onDelete: ReferentialAction.Restrict);
+
+            migrationBuilder.Sql(
+                """
+                DO $lookups$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1
+                        FROM (VALUES
+                            (1, 'UNCLASSIFIED'), (2, 'COMMERCIAL_VENUE'),
+                            (3, 'PUBLIC_SPACE'), (4, 'COMMUNITY_VENUE'),
+                            (5, 'PRIVATE_HOME')) AS expected(id, master_code)
+                        JOIN location_kinds AS existing
+                          ON existing.id = expected.id OR existing.master_code = expected.master_code
+                        WHERE existing.id <> expected.id
+                           OR existing.master_code <> expected.master_code) THEN
+                        RAISE EXCEPTION 'location kind lookup collision'
+                            USING ERRCODE = '23505';
+                    END IF;
+
+                    IF EXISTS (
+                        SELECT 1
+                        FROM (VALUES
+                            (1, 'NOT_PROVIDED'), (2, 'ACTIVE'), (3, 'ERASED'))
+                            AS expected(id, master_code)
+                        JOIN location_privacy_states AS existing
+                          ON existing.id = expected.id OR existing.master_code = expected.master_code
+                        WHERE existing.id <> expected.id
+                           OR existing.master_code <> expected.master_code) THEN
+                        RAISE EXCEPTION 'location privacy state lookup collision'
+                            USING ERRCODE = '23505';
+                    END IF;
+
+                    IF EXISTS (
+                        SELECT 1
+                        FROM (VALUES
+                            (1, 'NEVER'), (2, 'ANY_CURRENT_REGISTRANT'),
+                            (3, 'CONFIRMED_PARTICIPANT')) AS expected(id, master_code)
+                        JOIN location_disclosure_audiences AS existing
+                          ON existing.id = expected.id OR existing.master_code = expected.master_code
+                        WHERE existing.id <> expected.id
+                           OR existing.master_code <> expected.master_code) THEN
+                        RAISE EXCEPTION 'location disclosure audience lookup collision'
+                            USING ERRCODE = '23505';
+                    END IF;
+                END
+                $lookups$;
+
+                INSERT INTO location_kinds (id, master_code, full_name, description)
+                VALUES
+                    (1, 'UNCLASSIFIED', 'Unclassified', 'Physical location kind has not been reviewed'),
+                    (2, 'COMMERCIAL_VENUE', 'Commercial venue', 'Commercially operated event venue'),
+                    (3, 'PUBLIC_SPACE', 'Public space', 'Publicly accessible physical space'),
+                    (4, 'COMMUNITY_VENUE', 'Community venue', 'Community-operated physical venue'),
+                    (5, 'PRIVATE_HOME', 'Private home', 'Private residential location')
+                ON CONFLICT (id) DO UPDATE
+                SET full_name = EXCLUDED.full_name,
+                    description = EXCLUDED.description
+                WHERE location_kinds.master_code = EXCLUDED.master_code;
+
+                INSERT INTO location_privacy_states (id, master_code, full_name, description)
+                VALUES
+                    (1, 'NOT_PROVIDED', 'Not provided', 'No physical location PII has been provided'),
+                    (2, 'ACTIVE', 'Active', 'Physical location PII is active'),
+                    (3, 'ERASED', 'Erased', 'Physical location PII was irreversibly erased')
+                ON CONFLICT (id) DO UPDATE
+                SET full_name = EXCLUDED.full_name,
+                    description = EXCLUDED.description
+                WHERE location_privacy_states.master_code = EXCLUDED.master_code;
+
+                INSERT INTO location_disclosure_audiences (id, master_code, full_name, description)
+                VALUES
+                    (1, 'NEVER', 'Never', 'Physical location details are never disclosed'),
+                    (2, 'ANY_CURRENT_REGISTRANT', 'Any current registrant', 'Eligible current registrations may receive disclosed details'),
+                    (3, 'CONFIRMED_PARTICIPANT', 'Confirmed participant', 'Only confirmed eligible participants may receive disclosed details')
+                ON CONFLICT (id) DO UPDATE
+                SET full_name = EXCLUDED.full_name,
+                    description = EXCLUDED.description
+                WHERE location_disclosure_audiences.master_code = EXCLUDED.master_code;
+
+                ALTER TABLE event_report_decision_executions
+                    ADD CONSTRAINT fk_event_report_decision_executions_exact_moderation_receipt
+                    FOREIGN KEY (tenant_id, report_id, decision_id, moderation_record_id)
+                    REFERENCES event_moderation_records
+                        (tenant_id, source_report_id, source_report_decision_id, id)
+                    ON DELETE RESTRICT;
+
+                CREATE OR REPLACE FUNCTION elp_reject_append_only_mutation()
+                RETURNS trigger
+                LANGUAGE plpgsql
+                SET search_path = pg_catalog, public
+                AS $function$
+                BEGIN
+                    RAISE EXCEPTION 'event location privacy evidence is append-only'
+                        USING ERRCODE = '55000';
+                END
+                $function$;
+
+                CREATE TRIGGER tr_elp_disclosure_audits_append_only
+                BEFORE UPDATE OR DELETE ON event_location_disclosure_audits
+                FOR EACH ROW EXECUTE FUNCTION elp_reject_append_only_mutation();
+
+                CREATE TRIGGER tr_elp_exact_read_audits_append_only
+                BEFORE UPDATE OR DELETE ON event_location_exact_read_audits
+                FOR EACH ROW EXECUTE FUNCTION elp_reject_append_only_mutation();
+
+                CREATE TRIGGER tr_elp_replay_checkpoints_append_only
+                BEFORE UPDATE OR DELETE ON privacy_erasure_replay_checkpoints
+                FOR EACH ROW EXECUTE FUNCTION elp_reject_append_only_mutation();
+
+                CREATE OR REPLACE FUNCTION elp_validate_event_location_carrier()
+                RETURNS trigger
+                LANGUAGE plpgsql
+                SET search_path = pg_catalog, public
+                AS $function$
+                DECLARE
+                    expected_event_id uuid;
+                    authority_location_id uuid;
+                    authority_is_tba boolean;
+                    physical_privacy_state integer;
+                BEGIN
+                    IF NEW.event_location_id IS NULL THEN
+                        RETURN NEW;
+                    END IF;
+
+                    IF TG_TABLE_NAME = 'event_session_agenda_items' THEN
+                        SELECT session.event_id
+                        INTO expected_event_id
+                        FROM event_sessions AS session
+                        WHERE session.tenant_id = NEW.tenant_id
+                          AND session.id = NEW.event_session_id;
+                    ELSE
+                        expected_event_id := NEW.event_id;
+                    END IF;
+
+                    SELECT authority.location_id,
+                           authority.is_to_be_announced,
+                           location.location_privacy_state_id
+                    INTO authority_location_id,
+                         authority_is_tba,
+                         physical_privacy_state
+                    FROM event_locations AS authority
+                    LEFT JOIN locations AS location
+                      ON location.tenant_id = authority.tenant_id
+                     AND location.id = authority.location_id
+                    WHERE authority.tenant_id = NEW.tenant_id
+                      AND authority.event_id = expected_event_id
+                      AND authority.id = NEW.event_location_id
+                      AND authority.is_deleted = false;
+
+                    IF NOT FOUND
+                       OR NEW.location_id IS DISTINCT FROM authority_location_id
+                       OR (authority_is_tba = false AND physical_privacy_state <> 2) THEN
+                        RAISE EXCEPTION 'event location carrier does not match active authority'
+                            USING ERRCODE = '23514';
+                    END IF;
+
+                    RETURN NEW;
+                END
+                $function$;
+
+                CREATE CONSTRAINT TRIGGER tr_elp_event_agenda_items_consistency
+                AFTER INSERT OR UPDATE OF tenant_id, event_id, event_location_id, location_id
+                ON event_agenda_items
+                DEFERRABLE INITIALLY IMMEDIATE
+                FOR EACH ROW EXECUTE FUNCTION elp_validate_event_location_carrier();
+
+                CREATE CONSTRAINT TRIGGER tr_elp_event_sessions_consistency
+                AFTER INSERT OR UPDATE OF tenant_id, event_id, event_location_id, location_id
+                ON event_sessions
+                DEFERRABLE INITIALLY IMMEDIATE
+                FOR EACH ROW EXECUTE FUNCTION elp_validate_event_location_carrier();
+
+                CREATE CONSTRAINT TRIGGER tr_elp_event_session_groups_consistency
+                AFTER INSERT OR UPDATE OF tenant_id, event_id, event_location_id, location_id
+                ON event_session_groups
+                DEFERRABLE INITIALLY IMMEDIATE
+                FOR EACH ROW EXECUTE FUNCTION elp_validate_event_location_carrier();
+
+                CREATE CONSTRAINT TRIGGER tr_elp_event_session_agenda_items_consistency
+                AFTER INSERT OR UPDATE OF tenant_id, event_session_id, event_location_id, location_id
+                ON event_session_agenda_items
+                DEFERRABLE INITIALLY IMMEDIATE
+                FOR EACH ROW EXECUTE FUNCTION elp_validate_event_location_carrier();
+
+                CREATE OR REPLACE FUNCTION elp_guard_referenced_event_location_identity()
+                RETURNS trigger
+                LANGUAGE plpgsql
+                SET search_path = pg_catalog, public
+                AS $function$
+                BEGIN
+                    IF (NEW.tenant_id, NEW.event_id, NEW.location_id, NEW.is_to_be_announced, NEW.is_deleted)
+                       IS NOT DISTINCT FROM
+                       (OLD.tenant_id, OLD.event_id, OLD.location_id, OLD.is_to_be_announced, OLD.is_deleted) THEN
+                        RETURN NEW;
+                    END IF;
+
+                    IF EXISTS (
+                        SELECT 1 FROM event_agenda_items
+                        WHERE tenant_id = OLD.tenant_id AND event_location_id = OLD.id
+                        UNION ALL
+                        SELECT 1 FROM event_sessions
+                        WHERE tenant_id = OLD.tenant_id AND event_location_id = OLD.id
+                        UNION ALL
+                        SELECT 1 FROM event_session_groups
+                        WHERE tenant_id = OLD.tenant_id AND event_location_id = OLD.id
+                        UNION ALL
+                        SELECT 1 FROM event_session_agenda_items
+                        WHERE tenant_id = OLD.tenant_id AND event_location_id = OLD.id) THEN
+                        RAISE EXCEPTION 'referenced event location identity is immutable'
+                            USING ERRCODE = '55000';
+                    END IF;
+
+                    RETURN NEW;
+                END
+                $function$;
+
+                CREATE CONSTRAINT TRIGGER tr_elp_event_locations_referenced_identity
+                AFTER UPDATE OF tenant_id, event_id, location_id, is_to_be_announced, is_deleted
+                ON event_locations
+                DEFERRABLE INITIALLY IMMEDIATE
+                FOR EACH ROW EXECUTE FUNCTION elp_guard_referenced_event_location_identity();
+
+                CREATE OR REPLACE FUNCTION elp_guard_erased_location_irreversibility()
+                RETURNS trigger
+                LANGUAGE plpgsql
+                SET search_path = pg_catalog, public
+                AS $function$
+                BEGIN
+                    IF OLD.location_privacy_state_id = 3 THEN
+                        RAISE EXCEPTION 'erased location is immutable'
+                            USING ERRCODE = '55000';
+                    END IF;
+                    RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+                END
+                $function$;
+
+                CREATE OR REPLACE FUNCTION elp_reject_erased_location_pii()
+                RETURNS trigger
+                LANGUAGE plpgsql
+                SET search_path = pg_catalog, public
+                AS $function$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM locations
+                        WHERE id = NEW.location_id
+                          AND location_privacy_state_id = 3) THEN
+                        RAISE EXCEPTION 'PII cannot be attached to an erased location'
+                            USING ERRCODE = '55000';
+                    END IF;
+                    RETURN NEW;
+                END
+                $function$;
+
+                CREATE OR REPLACE FUNCTION elp_validate_location_erasure_tombstone()
+                RETURNS trigger
+                LANGUAGE plpgsql
+                SET search_path = pg_catalog, public
+                AS $function$
+                BEGIN
+                    IF NEW.location_privacy_state_id = 3
+                       AND (NEW.owner_user_id IS NOT NULL
+                            OR NEW.pii_erased_at_utc IS NULL
+                            OR NEW.pii_erasure_reason IS NULL
+                            OR NEW.full_name <> 'Private venue'
+                            OR NEW.city <> ''
+                            OR EXISTS (
+                                SELECT 1 FROM location_pii
+                                WHERE location_id = NEW.id)) THEN
+                        RAISE EXCEPTION 'erased location tombstone is invalid'
+                            USING ERRCODE = '23514';
+                    END IF;
+                    RETURN NEW;
+                END
+                $function$;
+
+                CREATE OR REPLACE FUNCTION elp_guard_erased_room_tombstone()
+                RETURNS trigger
+                LANGUAGE plpgsql
+                SET search_path = pg_catalog, public
+                AS $function$
+                DECLARE
+                    row_value location_rooms%ROWTYPE;
+                BEGIN
+                    row_value := CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+
+                    IF row_value.name LIKE 'privacy-erased-%' AND TG_OP = 'DELETE' THEN
+                        RAISE EXCEPTION 'privacy-erased room tombstone cannot be deleted'
+                            USING ERRCODE = '55000';
+                    END IF;
+
+                    IF EXISTS (
+                        SELECT 1 FROM locations
+                        WHERE tenant_id = row_value.tenant_id
+                          AND id = row_value.location_id
+                          AND location_privacy_state_id = 3)
+                       AND (row_value.name <> 'privacy-erased-' || replace(row_value.id::text, '-', '')
+                            OR row_value.slug IS NOT NULL
+                            OR row_value.description IS NOT NULL
+                            OR row_value.is_deleted = false
+                            OR row_value.deleted_at IS NULL) THEN
+                        RAISE EXCEPTION 'erased room tombstone is invalid'
+                            USING ERRCODE = '23514';
+                    END IF;
+
+                    RETURN row_value;
+                END
+                $function$;
+
+                CREATE TRIGGER tr_elp_locations_irreversible
+                BEFORE UPDATE OR DELETE ON locations
+                FOR EACH ROW EXECUTE FUNCTION elp_guard_erased_location_irreversibility();
+
+                CREATE TRIGGER tr_elp_location_piis_no_reattachment
+                BEFORE INSERT OR UPDATE ON location_pii
+                FOR EACH ROW EXECUTE FUNCTION elp_reject_erased_location_pii();
+
+                CREATE TRIGGER tr_elp_locations_tombstone_shape
+                BEFORE INSERT OR UPDATE ON locations
+                FOR EACH ROW EXECUTE FUNCTION elp_validate_location_erasure_tombstone();
+
+                CREATE TRIGGER tr_elp_location_rooms_tombstone_shape
+                BEFORE INSERT OR UPDATE ON location_rooms
+                FOR EACH ROW EXECUTE FUNCTION elp_guard_erased_room_tombstone();
+
+                CREATE TRIGGER tr_elp_location_rooms_no_tombstone_delete
+                BEFORE DELETE ON location_rooms
+                FOR EACH ROW EXECUTE FUNCTION elp_guard_erased_room_tombstone();
+                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql(
+                """
+                DO $rollback$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM privacy_erasure_authority.erasure_intents
+                        UNION ALL
+                        SELECT 1 FROM privacy_erasure_authority.authority_counter
+                        WHERE last_sequence <> 0
+                        UNION ALL
+                        SELECT 1 FROM event_location_disclosure_audits
+                        UNION ALL
+                        SELECT 1 FROM event_location_exact_read_audits
+                        UNION ALL
+                        SELECT 1 FROM privacy_erasure_replay_checkpoints
+                        UNION ALL
+                        SELECT 1 FROM locations
+                        WHERE location_privacy_state_id = 3) THEN
+                        RAISE EXCEPTION 'privacy evidence prevents baseline rollback'
+                            USING ERRCODE = '55000';
+                    END IF;
+                END
+                $rollback$;
+
+                DROP FUNCTION IF EXISTS elp_guard_erased_room_tombstone() CASCADE;
+                DROP FUNCTION IF EXISTS elp_validate_location_erasure_tombstone() CASCADE;
+                DROP FUNCTION IF EXISTS elp_reject_erased_location_pii() CASCADE;
+                DROP FUNCTION IF EXISTS elp_guard_erased_location_irreversibility() CASCADE;
+                DROP FUNCTION IF EXISTS elp_guard_referenced_event_location_identity() CASCADE;
+                DROP FUNCTION IF EXISTS elp_validate_event_location_carrier() CASCADE;
+                DROP FUNCTION IF EXISTS elp_reject_append_only_mutation() CASCADE;
+                """);
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_reports_actors_tenant_id_reporter_actor_id",
+                table: "event_reports");
+
             migrationBuilder.DropForeignKey(
                 name: "fk_event_series_actors_actor_id",
                 table: "event_series");
@@ -14162,6 +14763,18 @@ namespace Explore.Persistence.Migrations
             migrationBuilder.DropForeignKey(
                 name: "fk_event_locations_tenants_tenant_id",
                 table: "event_locations");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_report_cases_tenants_tenant_id",
+                table: "event_report_cases");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_report_decisions_tenants_tenant_id",
+                table: "event_report_decisions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_reports_tenants_tenant_id",
+                table: "event_reports");
 
             migrationBuilder.DropForeignKey(
                 name: "fk_event_series_tenants_tenant_id",
@@ -14244,6 +14857,18 @@ namespace Explore.Persistence.Migrations
                 table: "webhook_consumers");
 
             migrationBuilder.DropForeignKey(
+                name: "fk_event_report_cases_users_assigned_moderator_user_id",
+                table: "event_report_cases");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_report_decisions_users_moderator_user_id",
+                table: "event_report_decisions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_reports_users_reporter_user_id",
+                table: "event_reports");
+
+            migrationBuilder.DropForeignKey(
                 name: "fk_locations_users_owner_user_id",
                 table: "locations");
 
@@ -14296,6 +14921,10 @@ namespace Explore.Persistence.Migrations
                 table: "event_locations");
 
             migrationBuilder.DropForeignKey(
+                name: "fk_event_reports_events_tenant_id_event_id",
+                table: "event_reports");
+
+            migrationBuilder.DropForeignKey(
                 name: "fk_event_sessions_events_tenant_id_event_id",
                 table: "event_sessions");
 
@@ -14326,6 +14955,10 @@ namespace Explore.Persistence.Migrations
             migrationBuilder.DropForeignKey(
                 name: "fk_event_template_custom_property_definitions_event_templates_",
                 table: "event_template_custom_property_definitions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_report_cases_event_report_decisions_tenant_id_report_",
+                table: "event_report_cases");
 
             migrationBuilder.DropForeignKey(
                 name: "fk_event_session_custom_property_definitions_event_sessions_ev",
@@ -14397,6 +15030,10 @@ namespace Explore.Persistence.Migrations
                 name: "audit_logs");
 
             migrationBuilder.DropTable(
+                name: "authority_counter",
+                schema: "privacy_erasure_authority");
+
+            migrationBuilder.DropTable(
                 name: "category_type_categories");
 
             migrationBuilder.DropTable(
@@ -14445,10 +15082,10 @@ namespace Explore.Persistence.Migrations
                 name: "event_location_exact_read_audits");
 
             migrationBuilder.DropTable(
-                name: "event_moderation_records");
+                name: "event_registrations");
 
             migrationBuilder.DropTable(
-                name: "event_registrations");
+                name: "event_report_decision_executions");
 
             migrationBuilder.DropTable(
                 name: "event_report_evidence");
@@ -14532,9 +15169,6 @@ namespace Explore.Persistence.Migrations
                 name: "location_pii");
 
             migrationBuilder.DropTable(
-                name: "location_privacy_erasure_replay_checkpoints");
-
-            migrationBuilder.DropTable(
                 name: "managed_control_plane_registrations");
 
             migrationBuilder.DropTable(
@@ -14584,6 +15218,15 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "policy_change_outbox");
+
+            migrationBuilder.DropTable(
+                name: "privacy_erasure_policy_coverage");
+
+            migrationBuilder.DropTable(
+                name: "privacy_erasure_replay_checkpoints");
+
+            migrationBuilder.DropTable(
+                name: "privacy_erasure_sagas");
 
             migrationBuilder.DropTable(
                 name: "role_permissions");
@@ -14736,6 +15379,9 @@ namespace Explore.Persistence.Migrations
                 name: "event_custom_property_values");
 
             migrationBuilder.DropTable(
+                name: "event_moderation_records");
+
+            migrationBuilder.DropTable(
                 name: "categories");
 
             migrationBuilder.DropTable(
@@ -14785,6 +15431,10 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "organization_positions");
+
+            migrationBuilder.DropTable(
+                name: "erasure_intents",
+                schema: "privacy_erasure_authority");
 
             migrationBuilder.DropTable(
                 name: "permissions");
@@ -14952,9 +15602,6 @@ namespace Explore.Persistence.Migrations
                 name: "registration_scopes");
 
             migrationBuilder.DropTable(
-                name: "event_report_decisions");
-
-            migrationBuilder.DropTable(
                 name: "notification_fanout_occurrences");
 
             migrationBuilder.DropTable(
@@ -14982,13 +15629,7 @@ namespace Explore.Persistence.Migrations
                 name: "ai_conversation_statuses");
 
             migrationBuilder.DropTable(
-                name: "event_report_cases");
-
-            migrationBuilder.DropTable(
                 name: "notification_delivery_policies");
-
-            migrationBuilder.DropTable(
-                name: "event_reports");
 
             migrationBuilder.DropTable(
                 name: "actors");
@@ -15094,6 +15735,15 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "event_types");
+
+            migrationBuilder.DropTable(
+                name: "event_report_decisions");
+
+            migrationBuilder.DropTable(
+                name: "event_report_cases");
+
+            migrationBuilder.DropTable(
+                name: "event_reports");
 
             migrationBuilder.DropTable(
                 name: "event_sessions");

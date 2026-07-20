@@ -25,6 +25,8 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace Explore.Persistence;
 
@@ -264,6 +266,21 @@ public static class PersistenceServicesRegistration
         {
             string connectionString =
                 PrivacyErasureDurabilityOptions.GetRetainedAuthorityConnectionString(configuration);
+            try
+            {
+                var builder = new NpgsqlConnectionStringBuilder(connectionString);
+                if (string.IsNullOrWhiteSpace(builder.Host)
+                    || string.IsNullOrWhiteSpace(builder.Database)
+                    || string.IsNullOrWhiteSpace(builder.Username))
+                {
+                    throw InvalidRetainedAuthorityConnection();
+                }
+            }
+            catch (ArgumentException)
+            {
+                throw InvalidRetainedAuthorityConnection();
+            }
+
             services.AddDbContext<PrivacyErasureAuthorityDbContext>(options =>
                 options.UseNpgsql(connectionString)
                     .UseSnakeCaseNamingConvention());
@@ -376,4 +393,10 @@ public static class PersistenceServicesRegistration
     {
         return bool.TryParse(value, out var enabled) && enabled;
     }
+
+    private static OptionsValidationException InvalidRetainedAuthorityConnection() =>
+        new(
+            nameof(PrivacyErasureDurabilityOptions),
+            typeof(PrivacyErasureDurabilityOptions),
+            [$"ConnectionStrings:{PrivacyErasureDurabilityOptions.ConnectionStringName} must be a valid Npgsql Host/Database/Username connection string in RetainedAuthority mode."]);
 }

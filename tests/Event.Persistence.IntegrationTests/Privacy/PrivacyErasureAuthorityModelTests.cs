@@ -176,7 +176,7 @@ public sealed class PrivacyErasureAuthorityModelTests
 
             await using PrivacyErasureAuthorityDbContext context =
                 new PrivacyErasureAuthorityDbContextFactory().CreateDbContext(
-                    ["--connection", "Host=127.0.0.1;Port=3;Database=hostile_argument;Username=canary"]);
+                    ["--hostile-connection", "Host=127.0.0.1;Port=3;Database=hostile_argument;Username=canary"]);
             var target = new NpgsqlConnectionStringBuilder(context.Database.GetConnectionString());
 
             await Assert.That(target.Host).IsEqualTo("127.0.0.1");

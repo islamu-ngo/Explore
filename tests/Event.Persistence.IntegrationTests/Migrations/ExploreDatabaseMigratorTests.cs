@@ -1,11 +1,13 @@
-// ABOUTME: PostgreSQL acceptance tests for ordinary Explore database migration behavior after the clean reset.
-// ABOUTME: Converts the obsolete staged gate coverage into current-set, retry, and legacy-config invariants.
+// ABOUTME: Verifies the application migration seam against a disposable PostgreSQL database.
+// ABOUTME: Proves ordinary EF migration applies the current set without staged configuration and is retry-safe.
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Persistence;
 using Explore.Persistence.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
 
@@ -13,68 +15,32 @@ namespace Event.Persistence.IntegrationTests.Migrations;
 
 [ClassDataSource<RecipientDeliveryMigrationContainerFixture>(Shared = SharedType.PerAssembly)]
 [NotInParallel("PersistenceDb")]
-[Property("Category", "EventLocationPrivacy")]
-public sealed class EventLocationMigrationStageTests(RecipientDeliveryMigrationContainerFixture fixture)
+[Property("Category", "ExploreDatabaseMigrator")]
+public sealed class ExploreDatabaseMigratorTests(RecipientDeliveryMigrationContainerFixture fixture)
 {
     [Test]
-    public async Task GenericMigrator_AppliesEveryCurrentMigrationWithoutAStageGate()
+    public async Task MigrateAsync_AppliesCurrentMigrationSetWithoutStageConfiguration_AndIsRetrySafe()
     {
-        await WithDatabaseAsync(async context =>
-        {
-            await ExploreDatabaseMigrator.MigrateAsync(context, new ConfigurationManager());
-
-            await Assert.That(await context.Database.GetAppliedMigrationsAsync())
-                .IsEquivalentTo(context.Database.GetMigrations());
-        });
-    }
-
-    [Test]
-    public async Task ReapplyingCurrentMigrationSet_IsSuccessfulNoOp_AndPreservesHistory()
-    {
-        await WithDatabaseAsync(async context =>
-        {
-            var configuration = new ConfigurationManager();
-            await ExploreDatabaseMigrator.MigrateAsync(context, configuration);
-            string[] historyBeforeRetry = (await context.Database.GetAppliedMigrationsAsync()).ToArray();
-
-            await ExploreDatabaseMigrator.MigrateAsync(context, configuration);
-
-            await Assert.That(await context.Database.GetAppliedMigrationsAsync())
-                .IsEquivalentTo(historyBeforeRetry);
-        });
-    }
-
-    [Test]
-    [Arguments(null)]
-    [Arguments("")]
-    [Arguments(" ")]
-    [Arguments("Backfill")]
-    [Arguments("Contract")]
-    [Arguments("Everything")]
-    public async Task LegacyStageConfiguration_DoesNotAlterOrdinaryMigrationBehavior(string? legacyValue)
-    {
-        await WithDatabaseAsync(async context =>
-        {
-            var configuration = new ConfigurationManager
-            {
-                ["Database:Migrations:EventLocationPrivacyStage"] = legacyValue
-            };
-
-            await ExploreDatabaseMigrator.MigrateAsync(context, configuration);
-
-            await Assert.That(await context.Database.GetAppliedMigrationsAsync())
-                .IsEquivalentTo(context.Database.GetMigrations());
-        });
-    }
-
-    private async Task WithDatabaseAsync(Func<ExploreDbContext, Task> action)
-    {
-        string databaseName = $"normal_migration_{Guid.NewGuid():N}";
+        string databaseName = $"ordinary_migrator_{Guid.NewGuid():N}";
         string connectionString = await CreateDatabaseAsync(databaseName);
+
         try
         {
             await using ExploreDbContext context = CreateContext(connectionString);
-            await action(context);
+            var configuration = new ConfigurationManager();
+
+            await ExploreDatabaseMigrator.MigrateAsync(context, configuration);
+            string[] firstHistory = (await context.Database.GetAppliedMigrationsAsync()).ToArray();
+            bool probeTableExists = await context.Database.SqlQueryRaw<bool>(
+                    """SELECT to_regclass('public.task4_migration_probe') IS NOT NULL AS "Value" """)
+                .SingleAsync();
+
+            await ExploreDatabaseMigrator.MigrateAsync(context, configuration);
+            string[] secondHistory = (await context.Database.GetAppliedMigrationsAsync()).ToArray();
+
+            await Assert.That(firstHistory).IsEquivalentTo([Task4MigrationProbe.MigrationId]);
+            await Assert.That(probeTableExists).IsTrue();
+            await Assert.That(secondHistory).IsEquivalentTo(firstHistory);
         }
         finally
         {
@@ -119,10 +85,38 @@ public sealed class EventLocationMigrationStageTests(RecipientDeliveryMigrationC
     private static ExploreDbContext CreateContext(string connectionString)
     {
         var options = new DbContextOptionsBuilder<ExploreDbContext>()
-            .UseNpgsql(connectionString)
+            .UseNpgsql(
+                connectionString,
+                postgres => postgres.MigrationsAssembly(typeof(Task4MigrationProbe).Assembly.FullName))
             .UseSnakeCaseNamingConvention()
             .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
             .Options;
-        return new ExploreDbContext(options);
+        return new Task4MigrationProbeContext(options);
+    }
+}
+
+public sealed class Task4MigrationProbeContext(DbContextOptions<ExploreDbContext> options)
+    : ExploreDbContext(options);
+
+[DbContext(typeof(Task4MigrationProbeContext))]
+[Migration(MigrationId)]
+public sealed class Task4MigrationProbe : Migration
+{
+    public const string MigrationId = "20260720000000_Task4MigrationProbe";
+
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.CreateTable(
+            name: "task4_migration_probe",
+            columns: table => new
+            {
+                id = table.Column<int>(type: "integer", nullable: false)
+            },
+            constraints: table => table.PrimaryKey("pk_task4_migration_probe", x => x.id));
+    }
+
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropTable("task4_migration_probe");
     }
 }

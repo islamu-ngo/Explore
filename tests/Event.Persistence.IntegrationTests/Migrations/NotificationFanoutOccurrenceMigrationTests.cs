@@ -1,5 +1,5 @@
-// ABOUTME: Rehearses the fanout-occurrence migration against an isolated PostgreSQL Testcontainer.
-// ABOUTME: Proves reversible schema, tenant-safe foreign keys, and the recipient uniqueness guard.
+// ABOUTME: Verifies fanout-occurrence schema in the rebased PostgreSQL baseline.
+// ABOUTME: Proves model parity, tenant-safe foreign keys, and the recipient uniqueness guard.
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Persistence;
@@ -18,26 +18,17 @@ namespace Event.Persistence.IntegrationTests.Migrations;
 public sealed class NotificationFanoutOccurrenceMigrationTests(
     RecipientDeliveryMigrationContainerFixture fixture)
 {
-    private const string PreviousMigration = "20260717131038_NormalizeRecipientNotificationDelivery";
-    private const string TargetMigration = "20260717160935_AddNotificationFanoutOccurrences";
-
     [Test]
-    public async Task UpDownUp_CreatesAndReversesOccurrenceSchema()
+    public async Task CurrentBaseline_CreatesOccurrenceSchemaAndMatchesModel()
     {
+        await ResetSharedMigrationDatabaseAsync();
         await using var context = CreateDbContext();
         IMigrator migrator = context.GetService<IMigrator>();
 
         try
         {
-            await migrator.MigrateAsync(PreviousMigration);
-            await migrator.MigrateAsync(TargetMigration);
+            await migrator.MigrateAsync("20260719221539_init");
             await Assert.That(ReadPendingModelOperations(context)).IsEmpty();
-            await AssertSchemaAsync(expected: true);
-
-            await migrator.MigrateAsync(PreviousMigration);
-            await AssertSchemaAsync(expected: false);
-
-            await migrator.MigrateAsync(TargetMigration);
             await AssertSchemaAsync(expected: true);
         }
         finally
