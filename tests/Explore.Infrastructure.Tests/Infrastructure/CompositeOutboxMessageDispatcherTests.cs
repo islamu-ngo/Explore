@@ -2,9 +2,11 @@
 // ABOUTME: Verifies retired broker events fail closed while local fanout and provider sync still route.
 
 using System.Text.Json;
+using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Events.Handlers.Commands;
+using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Features.Management.Handlers.Commands;
 using Explore.Application.Features.Management.Requests.Commands;
 using Explore.Application.Models.InternalEvents;
@@ -13,6 +15,7 @@ using Explore.Domain;
 using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.Services.Moderation;
 using MediatR;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -245,14 +248,71 @@ public sealed class CompositeOutboxMessageDispatcherTests
             Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    [Category("EventLocationPrivacy")]
+    [Arguments(LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType)]
+    [Arguments(LocationPrivacyOutboxMessageFactory.LocationPrivacyCorrectionRequestedEventType)]
+    [Arguments(LocationPrivacyCorrectionDispatcher.GovernanceCorrectionEventType)]
+    public async Task DispatchAsync_WithLocationPrivacyEvent_RoutesToCorrectionDispatcher(string eventType)
+    {
+        var cache = new RecordingHybridCache();
+        CompositeOutboxMessageDispatcher dispatcher = CreateDispatcher(
+            Substitute.For<IEventPublishedNotificationFanoutService>(),
+            Substitute.For<IEventModerationNotificationFanoutService>(),
+            cache: cache);
+
+        await dispatcher.DispatchAsync(CreateLocationPrivacyMessage(eventType));
+
+        await Assert.That(cache.RemovedTags).Contains(CacheTags.EventLocations);
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task ReconcileDeadLetterAsync_WithLocationPrivacyEvent_ReplaysCorrectionDispatcher()
+    {
+        var cache = new RecordingHybridCache();
+        CompositeOutboxMessageDispatcher dispatcher = CreateDispatcher(
+            Substitute.For<IEventPublishedNotificationFanoutService>(),
+            Substitute.For<IEventModerationNotificationFanoutService>(),
+            cache: cache);
+
+        await dispatcher.ReconcileDeadLetterAsync(CreateLocationPrivacyMessage(
+            LocationPrivacyOutboxMessageFactory.LocationPrivacyCorrectionRequestedEventType));
+
+        await Assert.That(cache.RemovedTags).Contains(CacheTags.EventLocations);
+    }
+
+    [Test]
+    [Category("EventLocationPrivacy")]
+    public async Task ReconcileDeadLetterAsync_WithUnsupportedEventType_Throws()
+    {
+        CompositeOutboxMessageDispatcher dispatcher = CreateDispatcher(
+            Substitute.For<IEventPublishedNotificationFanoutService>(),
+            Substitute.For<IEventModerationNotificationFanoutService>());
+
+        await Assert.That(async () => await dispatcher.ReconcileDeadLetterAsync(new OutboxMessage
+        {
+            Id = Guid.CreateVersion7(),
+            AggregateType = "Unknown",
+            AggregateId = Guid.CreateVersion7(),
+            EventType = "UnknownEvent"
+        })).Throws<InvalidOperationException>();
+    }
+
     private static CompositeOutboxMessageDispatcher CreateDispatcher(
         IEventPublishedNotificationFanoutService fanoutService,
         IEventModerationNotificationFanoutService moderationFanoutService,
         IReportProviderSyncDispatcher? reportProviderSyncDispatcher = null,
         IMediator? mediator = null,
         INotificationFanoutOccurrenceRepository? occurrenceRepository = null,
-        INotificationFanoutRunRepository? runRepository = null)
+        INotificationFanoutRunRepository? runRepository = null,
+        HybridCache? cache = null)
     {
+        var correctionPlanner = Substitute.For<IAtprotoLocationPrivacyCorrectionPlanner>();
+        correctionPlanner.PlanLocationPrivacyCorrectionAsync(
+                Arg.Any<AtprotoLocationPrivacyCorrectionInput>(),
+                Arg.Any<CancellationToken>())
+            .Returns(AtprotoPublicationPlanningResult.Skipped("correction_already_planned"));
         return new CompositeOutboxMessageDispatcher(
             new NotificationFanoutOccurrenceHandoffService(
                 occurrenceRepository ?? Substitute.For<INotificationFanoutOccurrenceRepository>(),
@@ -260,6 +320,9 @@ public sealed class CompositeOutboxMessageDispatcherTests
             fanoutService,
             moderationFanoutService,
             reportProviderSyncDispatcher ?? Substitute.For<IReportProviderSyncDispatcher>(),
+            new LocationPrivacyCorrectionDispatcher(
+                cache ?? new RecordingHybridCache(),
+                correctionPlanner),
             mediator ?? Substitute.For<IMediator>(),
             NullLogger<CompositeOutboxMessageDispatcher>.Instance);
     }
@@ -307,4 +370,90 @@ public sealed class CompositeOutboxMessageDispatcherTests
             Status = "pending",
             ConcurrencyStamp = Guid.CreateVersion7()
         };
+
+    private static OutboxMessage CreateLocationPrivacyMessage(string eventType)
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        Guid eventLocationId = Guid.CreateVersion7();
+        Guid locationId = Guid.CreateVersion7();
+        object payload = eventType switch
+        {
+            LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType => new
+            {
+                SchemaVersion = 1,
+                IntentId = Guid.CreateVersion7(),
+                AuthoritySequence = 1,
+                LocationId = locationId,
+                LocationVersion = Guid.CreateVersion7()
+            },
+            LocationPrivacyOutboxMessageFactory.LocationPrivacyCorrectionRequestedEventType => new
+            {
+                SchemaVersion = 1,
+                IntentId = Guid.CreateVersion7(),
+                AuthoritySequence = 1,
+                TenantId = tenantId,
+                EventId = eventId,
+                EventLocationId = eventLocationId,
+                LocationId = (Guid?)null,
+                PolicyVersion = 1
+            },
+            LocationPrivacyCorrectionDispatcher.GovernanceCorrectionEventType => new
+            {
+                SchemaVersion = 1,
+                TenantId = tenantId,
+                EventId = eventId,
+                EventLocationId = eventLocationId,
+                PolicyVersion = 2
+            },
+            _ => throw new ArgumentOutOfRangeException(nameof(eventType))
+        };
+
+        return new OutboxMessage
+        {
+            Id = Guid.CreateVersion7(),
+            AggregateType = eventType == LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType
+                ? nameof(Location)
+                : nameof(EventLocation),
+            AggregateId = eventType == LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType
+                ? locationId
+                : eventLocationId,
+            EventType = eventType,
+            Payload = JsonSerializer.Serialize(payload),
+            CreatedAt = new DateTime(2026, 7, 19, 12, 0, 0, DateTimeKind.Utc)
+        };
+    }
+
+    private sealed class RecordingHybridCache : HybridCache
+    {
+        public List<string> RemovedTags { get; } = [];
+
+        public override ValueTask<T> GetOrCreateAsync<TState, T>(
+            string key,
+            TState state,
+            Func<TState, CancellationToken, ValueTask<T>> factory,
+            HybridCacheEntryOptions? options = null,
+            IEnumerable<string>? tags = null,
+            CancellationToken cancellationToken = default) => factory(state, cancellationToken);
+
+        public override ValueTask RemoveAsync(
+            string key,
+            CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+
+        public override ValueTask RemoveByTagAsync(
+            string tag,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RemovedTags.Add(tag);
+            return ValueTask.CompletedTask;
+        }
+
+        public override ValueTask SetAsync<T>(
+            string key,
+            T value,
+            HybridCacheEntryOptions? options = null,
+            IEnumerable<string>? tags = null,
+            CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+    }
 }

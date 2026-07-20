@@ -1,5 +1,5 @@
-// ABOUTME: Handles grouped Event PATCH updates with concurrency, explicit mapping, and cache invalidation.
-// ABOUTME: Loads the schedule graph once, applies present property groups, saves once, and evicts Event caches.
+// ABOUTME: Handles retry-safe grouped Event PATCH updates and published timezone fanout occurrences.
+// ABOUTME: Persists event projections, immutable attendee notices, federation work, and cache sequencing atomically.
 
 using System;
 using System.Linq;
@@ -13,7 +13,10 @@ using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Features.Federation.Atproto.Services;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
+using Explore.Application.Services;
+using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Federation;
 using Explore.Domain.Services.Scheduling;
@@ -38,6 +41,8 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
     private readonly IUnitOfWork _unitOfWork;
     private readonly IUserContext _userContext;
     private readonly AtprotoEventPublicationPlanner _atprotoPublicationPlanner;
+    private readonly NotificationFanoutOccurrenceCoordinator _fanoutCoordinator;
+    private readonly TimeProvider _timeProvider;
 
     public UpdateEventCommandHandler(
         IEventRepository eventRepository,
@@ -53,7 +58,9 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         HybridCache cache,
         IUnitOfWork unitOfWork,
         IUserContext userContext,
-        AtprotoEventPublicationPlanner atprotoPublicationPlanner)
+        AtprotoEventPublicationPlanner atprotoPublicationPlanner,
+        NotificationFanoutOccurrenceCoordinator fanoutCoordinator,
+        TimeProvider timeProvider)
     {
         _eventRepository = eventRepository;
         _audienceAgeRepository = audienceAgeRepository;
@@ -69,6 +76,8 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         _unitOfWork = unitOfWork;
         _userContext = userContext;
         _atprotoPublicationPlanner = atprotoPublicationPlanner;
+        _fanoutCoordinator = fanoutCoordinator;
+        _timeProvider = timeProvider;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventCommand request, CancellationToken cancellationToken)
@@ -93,55 +102,73 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
             return response;
         }
 
-        var eventEntity = await _eventRepository.GetScheduleGraphForUpdateAsync(request.EventId, cancellationToken);
-        if (eventEntity is null)
-        {
-            response.Success = false;
-            response.Message = "Event not found.";
-            return response;
-        }
+        Guid currentUserId = _userContext.GetRequiredUserId();
+        DateTime occurredAt = _timeProvider.GetUtcNow().UtcDateTime;
+        Guid federationOutboxId = Guid.CreateVersion7();
+        Guid occurrenceId = Guid.CreateVersion7();
+        Guid pointerOutboxMessageId = Guid.CreateVersion7();
+        Guid eventIdForCache = Guid.Empty;
+        Guid tenantIdForCache = Guid.Empty;
 
-        if (eventEntity.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
+        response = await _unitOfWork.ExecuteSerializableAsync(async token =>
         {
-            throw new ConcurrencyConflictException(
-                ConcurrencyConflictException.ConcurrentUpdate,
-                "The event changed since it was loaded. Refresh the event and try again.",
-                "event",
-                eventEntity.Id.ToString());
-        }
+            Explore.Domain.Event? eventEntity = await _eventRepository.GetScheduleGraphForUpdateAsync(request.EventId, token);
+            if (eventEntity is null)
+            {
+                return new BaseCommandResponse<Guid>
+                {
+                    Success = false,
+                    Message = "Event not found."
+                };
+            }
 
-        var update = request.UpdateEventDto;
-        ApplyTitle(eventEntity, update.Title);
-        ApplySubtitle(eventEntity, update.Subtitle);
-        ApplyDescription(eventEntity, update.Description);
-        ApplyContent(eventEntity, update.Content);
-        ApplySlug(eventEntity, update.Slug);
-        ApplyEventType(eventEntity, update.EventType);
-        ApplyAudienceGender(eventEntity, update.AudienceGender);
-        ApplyAudienceAge(eventEntity, update.AudienceAge);
-        ApplyPrice(eventEntity, update.Price);
-        ApplyCurrencyCode(eventEntity, update.CurrencyCode);
-        ApplyFeaturedImage(eventEntity, update.FeaturedImage);
-        ApplyRegistrationRequired(eventEntity, update.RegistrationRequired);
-        ApplyExternalRegistrationUrl(eventEntity, update.ExternalRegistrationUrl);
-        ApplyVisibility(eventEntity, update.Visibility);
-        ApplyFormat(eventEntity, update.Format);
-        ApplyMadhab(eventEntity, update.Madhab);
-        ApplyTimezone(eventEntity, update.Timezone, update.EventTimeZone);
-        ApplyEventUrl(eventEntity, update.EventUrl);
-        ApplyBackgroundColor(eventEntity, update.BackgroundColor);
-        ApplyBackgroundEffect(eventEntity, update.BackgroundEffect);
-        ApplyBackgroundImage(eventEntity, update.BackgroundImage);
-        ApplyTemplate(eventEntity, update.SourceTemplate);
-        ApplySeries(eventEntity, update.SeriesMembership);
-        ApplySeriesOrder(eventEntity, update.SeriesOrder);
-        ApplyRegistrationPolicy(eventEntity, update.RegistrationPolicy);
+            if (eventEntity.ConcurrencyStamp != request.ExpectedConcurrencyStamp)
+            {
+                throw new ConcurrencyConflictException(
+                    ConcurrencyConflictException.ConcurrentUpdate,
+                    "The event changed since it was loaded. Refresh the event and try again.",
+                    "event",
+                    eventEntity.Id.ToString());
+            }
 
-        var currentUserId = _userContext.GetRequiredUserId();
-        var federationOutboxId = Guid.CreateVersion7();
-        var federationCreatedAt = DateTime.UtcNow;
-        await _unitOfWork.ExecuteInTransactionAsync(async token =>
-        {
+            var update = request.UpdateEventDto;
+            string previousTitle = eventEntity.Title;
+            string previousTimezone = eventEntity.GetEffectiveScheduleTimeZoneId();
+            bool timezoneRequested = TryResolveRequestedTimezone(
+                update.Timezone,
+                update.EventTimeZone,
+                out string requestedTimezone);
+            NotificationFanoutSessionDisplayTimeV1[] beforeSessionTimes = timezoneRequested
+                && !string.Equals(previousTimezone, requestedTimezone, StringComparison.Ordinal)
+                    ? CapturePublishedSessionDisplayTimes(eventEntity, previousTimezone)
+                    : [];
+
+            ApplyTitle(eventEntity, update.Title);
+            ApplySubtitle(eventEntity, update.Subtitle);
+            ApplyDescription(eventEntity, update.Description);
+            ApplyContent(eventEntity, update.Content);
+            ApplySlug(eventEntity, update.Slug);
+            ApplyEventType(eventEntity, update.EventType);
+            ApplyAudienceGender(eventEntity, update.AudienceGender);
+            ApplyAudienceAge(eventEntity, update.AudienceAge);
+            ApplyPrice(eventEntity, update.Price);
+            ApplyCurrencyCode(eventEntity, update.CurrencyCode);
+            ApplyFeaturedImage(eventEntity, update.FeaturedImage);
+            ApplyRegistrationRequired(eventEntity, update.RegistrationRequired);
+            ApplyExternalRegistrationUrl(eventEntity, update.ExternalRegistrationUrl);
+            ApplyVisibility(eventEntity, update.Visibility);
+            ApplyFormat(eventEntity, update.Format);
+            ApplyMadhab(eventEntity, update.Madhab);
+            ApplyTimezone(eventEntity, update.Timezone, update.EventTimeZone);
+            ApplyEventUrl(eventEntity, update.EventUrl);
+            ApplyBackgroundColor(eventEntity, update.BackgroundColor);
+            ApplyBackgroundEffect(eventEntity, update.BackgroundEffect);
+            ApplyBackgroundImage(eventEntity, update.BackgroundImage);
+            ApplyTemplate(eventEntity, update.SourceTemplate);
+            ApplySeries(eventEntity, update.SeriesMembership);
+            ApplySeriesOrder(eventEntity, update.SeriesOrder);
+            ApplyRegistrationPolicy(eventEntity, update.RegistrationPolicy);
+
             await _eventRepository.Update(eventEntity);
             if (eventEntity.EventStatusId == (int)EventStatusEnum.Published)
             {
@@ -153,20 +180,133 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
                         eventEntity.ConcurrencyStamp,
                         PdsSyncOperation.Update,
                         federationOutboxId,
-                        federationCreatedAt),
+                        occurredAt),
                     token);
             }
+
+            if (eventEntity.EventStatusId == (int)EventStatusEnum.Published
+                && beforeSessionTimes.Length > 0)
+            {
+                string currentTimezone = eventEntity.GetEffectiveScheduleTimeZoneId();
+                NotificationFanoutSessionDisplayTimeV1[] afterSessionTimes = CapturePublishedSessionDisplayTimes(
+                    eventEntity,
+                    currentTimezone);
+                if (HaveAttendeeVisibleTimeChanges(beforeSessionTimes, afterSessionTimes))
+                {
+                    var before = new NotificationFanoutSnapshotV1(
+                        previousTitle,
+                        SessionTitle: null,
+                        StartsAt: null,
+                        EndsAt: null,
+                        Timezone: previousTimezone,
+                        Location: null,
+                        SessionDisplayTimes: beforeSessionTimes);
+                    var after = new NotificationFanoutSnapshotV1(
+                        eventEntity.Title,
+                        SessionTitle: null,
+                        StartsAt: null,
+                        EndsAt: null,
+                        Timezone: currentTimezone,
+                        Location: null,
+                        SessionDisplayTimes: afterSessionTimes);
+                    await _fanoutCoordinator.CoordinateInCurrentTransactionAsync(
+                        new NotificationFanoutOccurrenceCandidate(
+                            occurrenceId,
+                            pointerOutboxMessageId,
+                            eventEntity.TenantId,
+                            eventEntity.Id,
+                            SessionId: null,
+                            occurredAt,
+                            occurredAt,
+                            request.ExpectedConcurrencyStamp,
+                            NotificationFanoutTemplateJson.Serialize(new NotificationFanoutChangeSetV1(
+                                [NotificationFanoutChangeField.Timezone])),
+                            NotificationFanoutTemplateJson.Serialize(before),
+                            NotificationFanoutTemplateJson.Serialize(after),
+                            NotificationFanoutRecipientTemplateFactory.EventUpdatedTemplateKey,
+                            NotificationFanoutRecipientTemplateFactory.CurrentTemplateVersion,
+                            (int)NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional,
+                            NotificationFanoutRecipientTemplateFactory.CurrentPolicyVersion,
+                            occurredAt,
+                            "event_timezone_update_command",
+                            eventEntity.Id),
+                        token);
+                }
+            }
+
+            eventIdForCache = eventEntity.Id;
+            tenantIdForCache = eventEntity.TenantId;
+            return new BaseCommandResponse<Guid>
+            {
+                Success = true,
+                Id = eventEntity.Id,
+                Message = "Event updated successfully."
+            };
         }, cancellationToken);
 
-        await _cache.RemoveAsync($"event:detail:{eventEntity.Id}", cancellationToken);
-        await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(eventEntity.TenantId), cancellationToken);
+        if (!response.Success)
+        {
+            return response;
+        }
 
-        response.Success = true;
-        response.Id = eventEntity.Id;
-        response.Message = "Event updated successfully.";
+        await _cache.RemoveAsync($"event:detail:{eventIdForCache}", cancellationToken);
+        await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(tenantIdForCache), cancellationToken);
 
         return response;
     }
+
+    private static bool TryResolveRequestedTimezone(
+        UpdateEventTimezoneDto? timezone,
+        UpdateEventEventTimeZoneDto? eventTimeZone,
+        out string timezoneId)
+    {
+        bool hasTimezone = timezone?.Value.HasValue == true;
+        bool hasEventTimezone = eventTimeZone?.Value.HasValue == true;
+        if (!hasTimezone && !hasEventTimezone)
+        {
+            timezoneId = string.Empty;
+            return false;
+        }
+
+        string? requested = hasEventTimezone
+            ? eventTimeZone!.Value.Value
+            : timezone!.Value.Value;
+        timezoneId = ScheduleTimeZoneResolver.NormalizeOrUtc(requested);
+        return true;
+    }
+
+    private static NotificationFanoutSessionDisplayTimeV1[] CapturePublishedSessionDisplayTimes(
+        Explore.Domain.Event eventEntity,
+        string timezoneId)
+    {
+        TimeZoneInfo timezone = ScheduleTimeZoneResolver.ResolveRequired(timezoneId);
+        return eventEntity.Sessions
+            .Where(session => session.ContributesToPublicScheduleSummary())
+            .OrderBy(session => session.Id)
+            .Select(session => new NotificationFanoutSessionDisplayTimeV1(
+                session.Id,
+                session.Title,
+                TimeZoneInfo.ConvertTime(session.StartTime!.Value, timezone),
+                session.EndTime.HasValue
+                    ? TimeZoneInfo.ConvertTime(session.EndTime.Value, timezone)
+                    : null))
+            .ToArray();
+    }
+
+    private static bool HaveAttendeeVisibleTimeChanges(
+        NotificationFanoutSessionDisplayTimeV1[] before,
+        NotificationFanoutSessionDisplayTimeV1[] after)
+    {
+        return before.Length == after.Length
+            && before.Zip(after).Any(pair =>
+                pair.First.SessionId != pair.Second.SessionId
+                || !pair.First.StartsAt.EqualsExact(pair.Second.StartsAt)
+                || !ExactEquals(pair.First.EndsAt, pair.Second.EndsAt));
+    }
+
+    private static bool ExactEquals(DateTimeOffset? left, DateTimeOffset? right) =>
+        left.HasValue == right.HasValue
+        && (!left.HasValue || left.Value.EqualsExact(right!.Value));
 
     private static void ApplyTitle(Explore.Domain.Event eventEntity, UpdateEventTitleDto? update)
     {
@@ -301,18 +441,11 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         UpdateEventTimezoneDto? timezone,
         UpdateEventEventTimeZoneDto? eventTimeZone)
     {
-        if (timezone?.Value.HasValue != true && eventTimeZone?.Value.HasValue != true)
+        if (!TryResolveRequestedTimezone(timezone, eventTimeZone, out string timezoneId))
         {
             return;
         }
 
-        var requested = eventTimeZone?.Value.HasValue == true
-            ? eventTimeZone.Value.Value
-            : timezone?.Value.Value;
-
-        var timezoneId = ScheduleTimeZoneResolver.NormalizeOrUtc(requested);
-        eventEntity.Timezone = timezoneId;
-        eventEntity.EventTimeZoneId = timezoneId;
         eventEntity.ApplyScheduleTimeZone(timezoneId, _scheduleProjectionCalculator);
     }
 

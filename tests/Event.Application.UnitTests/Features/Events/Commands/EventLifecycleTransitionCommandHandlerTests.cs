@@ -8,7 +8,9 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Federation;
@@ -21,6 +23,8 @@ namespace Event.Application.UnitTests.Features.Events.Commands;
 
 public sealed class EventLifecycleTransitionCommandHandlerTests
 {
+    private static readonly DateTimeOffset Now = new(2026, 7, 19, 18, 30, 0, TimeSpan.Zero);
+
     [Test]
     public async Task ArchiveEvent_WhenConcurrencyMatches_ArchivesEventAndInvalidatesCaches()
     {
@@ -95,28 +99,52 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
     public async Task CancelEvent_WhenConcurrencyMatches_CancelsEventAndInvalidatesCaches()
     {
         var eventRepository = Substitute.For<IEventRepository>();
-        var unitOfWork = CreateUnitOfWork();
         var cache = Substitute.For<HybridCache>();
         var eventEntity = CreateEvent(EventStatusEnum.Published);
+        Guid expectedConcurrencyStamp = eventEntity.ConcurrencyStamp;
         eventRepository.GetById(eventEntity.Id).Returns(eventEntity);
         var userContext = Substitute.For<IUserContext>();
         userContext.GetRequiredUserId().Returns(Guid.CreateVersion7());
+        bool transactionCompleted = false;
+        bool occurrenceCreatedBeforeCommit = false;
+        bool cacheObservedCommit = false;
+        var unitOfWork = CreateUnitOfWork(() => transactionCompleted = true);
+        cache.RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                cacheObservedCommit = transactionCompleted;
+                return ValueTask.CompletedTask;
+            });
+        var fanout = new FanoutFixture(() => occurrenceCreatedBeforeCommit = !transactionCompleted);
         var handler = new CancelEventCommandHandler(
             eventRepository,
             unitOfWork,
             cache,
             userContext,
-            AtprotoPublicationPlannerTestFactory.Disabled());
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            fanout.Coordinator,
+            new FixedTimeProvider(Now));
 
         var result = await handler.Handle(new CancelEventCommand
         {
             Id = eventEntity.Id,
-            Request = new CancelEventRequestDto { ExpectedConcurrencyStamp = eventEntity.ConcurrencyStamp }
+            Request = new CancelEventRequestDto { ExpectedConcurrencyStamp = expectedConcurrencyStamp }
         }, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(eventEntity.EventStatusId).IsEqualTo((int)EventStatusEnum.Cancelled);
         await eventRepository.Received(1).Update(eventEntity);
+        await Assert.That(fanout.CreatedOccurrences).Count().IsEqualTo(1);
+        await Assert.That(fanout.OutboxPointers).Count().IsEqualTo(1);
+        NotificationFanoutOccurrence occurrence = fanout.CreatedOccurrences[0];
+        await Assert.That(occurrence.TenantId).IsEqualTo(eventEntity.TenantId);
+        await Assert.That(occurrence.EventId).IsEqualTo(eventEntity.Id);
+        await Assert.That(occurrence.SessionId).IsNull();
+        await Assert.That(occurrence.TemplateKey).IsEqualTo(NotificationFanoutRecipientTemplateFactory.EventCancelledTemplateKey);
+        await Assert.That(occurrence.AggregateVersion).IsEqualTo(expectedConcurrencyStamp);
+        await Assert.That(occurrence.AudienceCutoffAt).IsEqualTo(Now.UtcDateTime);
+        await Assert.That(occurrenceCreatedBeforeCommit).IsTrue();
+        await Assert.That(cacheObservedCommit).IsTrue();
         await cache.Received(1).RemoveAsync($"event:detail:{eventEntity.Id}", Arg.Any<CancellationToken>());
         await cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(eventEntity.TenantId), Arg.Any<CancellationToken>());
     }
@@ -131,12 +159,15 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
         eventRepository.GetById(eventEntity.Id).Returns(eventEntity);
         var userContext = Substitute.For<IUserContext>();
         userContext.GetRequiredUserId().Returns(Guid.CreateVersion7());
+        var fanout = new FanoutFixture();
         var handler = new CancelEventCommandHandler(
             eventRepository,
             unitOfWork,
             cache,
             userContext,
-            AtprotoPublicationPlannerTestFactory.Disabled());
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            fanout.Coordinator,
+            new FixedTimeProvider(Now));
 
         var result = await handler.Handle(new CancelEventCommand
         {
@@ -147,15 +178,68 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_cancel_already_cancelled");
         await eventRepository.DidNotReceive().Update(Arg.Any<Explore.Domain.Event>());
+        await Assert.That(fanout.CreatedOccurrences).IsEmpty();
+        await Assert.That(fanout.OutboxPointers).IsEmpty();
+        await cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    private static IUnitOfWork CreateUnitOfWork()
+    private static IUnitOfWork CreateUnitOfWork(Action? onCompleted = null)
     {
         var unitOfWork = Substitute.For<IUnitOfWork>();
         unitOfWork
             .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo => callInfo.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>()(CancellationToken.None));
+            .Returns(async callInfo =>
+            {
+                BaseCommandResponse<Guid> response = await callInfo
+                    .Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>()(CancellationToken.None);
+                onCompleted?.Invoke();
+                return response;
+            });
         return unitOfWork;
+    }
+
+    private sealed class FanoutFixture
+    {
+        public FanoutFixture(Action? onOccurrenceCreated = null)
+        {
+            OccurrenceRepository.GetPendingForEventCoordinationAsync(
+                    Arg.Any<Guid>(),
+                    Arg.Any<Guid>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(Array.Empty<NotificationFanoutOccurrence>());
+            OccurrenceRepository.Create(Arg.Any<NotificationFanoutOccurrence>())
+                .Returns(call =>
+                {
+                    NotificationFanoutOccurrence occurrence = call.Arg<NotificationFanoutOccurrence>();
+                    onOccurrenceCreated?.Invoke();
+                    CreatedOccurrences.Add(occurrence);
+                    return occurrence;
+                });
+            OutboxRepository.Create(Arg.Any<OutboxMessage>())
+                .Returns(call =>
+                {
+                    OutboxMessage message = call.Arg<OutboxMessage>();
+                    OutboxPointers.Add(message);
+                    return message;
+                });
+            Coordinator = new NotificationFanoutOccurrenceCoordinator(
+                OccurrenceRepository,
+                Substitute.For<INotificationFanoutEmailSuppressionRepository>(),
+                OutboxRepository,
+                new NotificationFanoutRecipientTemplateFactory());
+        }
+
+        public INotificationFanoutOccurrenceRepository OccurrenceRepository { get; } =
+            Substitute.For<INotificationFanoutOccurrenceRepository>();
+        public IOutboxRepository OutboxRepository { get; } = Substitute.For<IOutboxRepository>();
+        public NotificationFanoutOccurrenceCoordinator Coordinator { get; }
+        public List<NotificationFanoutOccurrence> CreatedOccurrences { get; } = [];
+        public List<OutboxMessage> OutboxPointers { get; } = [];
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
     }
 
     private static Explore.Domain.Event CreateEvent(EventStatusEnum status) => new()

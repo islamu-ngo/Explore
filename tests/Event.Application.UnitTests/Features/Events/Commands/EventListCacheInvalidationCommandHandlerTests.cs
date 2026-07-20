@@ -9,6 +9,10 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Models.Common;
+using Explore.Application.Notifications;
+using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Services.Scheduling;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -19,6 +23,104 @@ namespace Event.Application.UnitTests.Features.Events.Commands;
 
 public class EventListCacheInvalidationCommandHandlerTests
 {
+    [Test]
+    public async Task PublishedTimezoneChangeCapturesDstGapDisplayTimesInOneEventOccurrence()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var eventId = Guid.CreateVersion7();
+        var sessionId = Guid.CreateVersion7();
+        var expectedStamp = Guid.CreateVersion7();
+        var at = new DateTimeOffset(2026, 1, 10, 12, 0, 0, TimeSpan.Zero);
+        var eventRepository = Substitute.For<IEventRepository>();
+        var occurrenceRepository = Substitute.For<INotificationFanoutOccurrenceRepository>();
+        var outboxRepository = Substitute.For<IOutboxRepository>();
+        var cache = Substitute.For<HybridCache>();
+        var calculator = new EventScheduleProjectionCalculator();
+        Explore.Domain.Event @event = CreateEvent(eventId, tenantId);
+        @event.ConcurrencyStamp = expectedStamp;
+        @event.EventStatusId = (int)Explore.Domain.Enums.EventStatusEnum.Published;
+        @event.EventTimeZoneId = "UTC";
+        @event.Timezone = "UTC";
+        var session = new EventSession
+        {
+            Id = sessionId,
+            EventId = eventId,
+            Event = @event,
+            TenantId = tenantId,
+            Tenant = @event.Tenant,
+            Title = "DST boundary session",
+            EventSessionStatusId = (int)Explore.Domain.Enums.EventSessionStatusEnum.Published,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        session.Reschedule(
+            new DateTimeOffset(2026, 3, 29, 0, 30, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 3, 29, 1, 30, 0, TimeSpan.Zero),
+            "UTC",
+            calculator);
+        @event.Sessions.Add(session);
+        eventRepository.GetScheduleGraphForUpdateAsync(eventId, Arg.Any<CancellationToken>()).Returns(@event);
+        occurrenceRepository.GetPendingForEventCoordinationAsync(
+                tenantId,
+                eventId,
+                Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<NotificationFanoutOccurrence>());
+        NotificationFanoutOccurrence? persistedOccurrence = null;
+        occurrenceRepository.Create(Arg.Do<NotificationFanoutOccurrence>(value => persistedOccurrence = value))
+            .Returns(call => call.Arg<NotificationFanoutOccurrence>());
+        outboxRepository.Create(Arg.Any<OutboxMessage>()).Returns(call => call.Arg<OutboxMessage>());
+        var userContext = Substitute.For<IUserContext>();
+        userContext.GetRequiredUserId().Returns(Guid.CreateVersion7());
+        var handler = new UpdateEventCommandHandler(
+            eventRepository,
+            Substitute.For<IAudienceAgeRepository>(),
+            Substitute.For<IAudienceGenderRepository>(),
+            Substitute.For<IEventTypeRepository>(),
+            Substitute.For<IVisibilityTypeRepository>(),
+            Substitute.For<IEventFormatRepository>(),
+            Substitute.For<IStorageObjectRepository>(),
+            Substitute.For<IEventSeriesRepository>(),
+            Substitute.For<IEventRegistrationPolicyRepository>(),
+            calculator,
+            cache,
+            ImmediateUnitOfWork(),
+            userContext,
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            new NotificationFanoutOccurrenceCoordinator(
+                occurrenceRepository,
+                Substitute.For<INotificationFanoutEmailSuppressionRepository>(),
+                outboxRepository,
+                new NotificationFanoutRecipientTemplateFactory()),
+            new FixedTimeProvider(at));
+
+        BaseCommandResponse<Guid> result = await handler.Handle(new UpdateEventCommand
+        {
+            EventId = eventId,
+            ExpectedConcurrencyStamp = expectedStamp,
+            UpdateEventDto = new UpdateEventDto
+            {
+                EventTimeZone = new UpdateEventEventTimeZoneDto
+                {
+                    Value = OptionalUpdate<string?>.Set("Europe/Brussels")
+                }
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(persistedOccurrence).IsNotNull();
+        NotificationFanoutRecipientTemplate template = new NotificationFanoutRecipientTemplateFactory()
+            .Parse(persistedOccurrence!);
+        await Assert.That(persistedOccurrence!.SessionId).IsNull();
+        await Assert.That(persistedOccurrence.AudienceCutoffAt).IsEqualTo(at.UtcDateTime);
+        await Assert.That(persistedOccurrence.AggregateVersion).IsEqualTo(expectedStamp);
+        await Assert.That(template.Before.SessionDisplayTimes!).Count().IsEqualTo(1);
+        await Assert.That(template.After.SessionDisplayTimes!).Count().IsEqualTo(1);
+        await Assert.That(template.Before.SessionDisplayTimes![0].StartsAt.Offset).IsEqualTo(TimeSpan.Zero);
+        await Assert.That(template.After.SessionDisplayTimes![0].StartsAt)
+            .IsEqualTo(new DateTimeOffset(2026, 3, 29, 1, 30, 0, TimeSpan.FromHours(1)));
+        await Assert.That(template.After.SessionDisplayTimes[0].EndsAt)
+            .IsEqualTo(new DateTimeOffset(2026, 3, 29, 3, 30, 0, TimeSpan.FromHours(2)));
+    }
+
     [Test]
     public async Task UpdateEvent_WhenEventIsUpdated_InvalidatesTenantEventListTag()
     {
@@ -48,7 +150,13 @@ public class EventListCacheInvalidationCommandHandlerTests
             cache,
             unitOfWork,
             userContext,
-            AtprotoPublicationPlannerTestFactory.Disabled());
+            AtprotoPublicationPlannerTestFactory.Disabled(),
+            new NotificationFanoutOccurrenceCoordinator(
+                Substitute.For<INotificationFanoutOccurrenceRepository>(),
+                Substitute.For<INotificationFanoutEmailSuppressionRepository>(),
+                Substitute.For<IOutboxRepository>(),
+                new NotificationFanoutRecipientTemplateFactory()),
+            TimeProvider.System);
 
         var result = await handler.Handle(new UpdateEventCommand
         {
@@ -146,6 +254,15 @@ public class EventListCacheInvalidationCommandHandlerTests
                 Arg.Any<Func<CancellationToken, Task>>(),
                 Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<Func<CancellationToken, Task>>()(CancellationToken.None));
+        unitOfWork.ExecuteSerializableAsync(
+                Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>()(CancellationToken.None));
         return unitOfWork;
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset value) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => value;
     }
 }

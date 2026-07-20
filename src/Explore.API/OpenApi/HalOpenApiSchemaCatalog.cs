@@ -43,6 +43,7 @@ internal static class HalOpenApiSchemaCatalog
         // Location DTOs
         typeof(Explore.Application.DTOs.Location.LocationDto),
         typeof(Explore.Application.DTOs.Location.LocationListDto),
+        typeof(Explore.Application.DTOs.Location.EventLocationManagementDto),
 
         // Organization DTOs
         typeof(Explore.Application.DTOs.Organization.OrganizationDto),
@@ -184,6 +185,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfTagListDto"] = typeof(Explore.Application.DTOs.Tag.TagListDto),
         ["HalResourceOfLocationDto"] = typeof(Explore.Application.DTOs.Location.LocationDto),
         ["HalResourceOfLocationListDto"] = typeof(Explore.Application.DTOs.Location.LocationListDto),
+        ["HalResourceOfEventLocationManagementDto"] = typeof(Explore.Application.DTOs.Location.EventLocationManagementDto),
         ["HalResourceOfOrganizationDto"] = typeof(Explore.Application.DTOs.Organization.OrganizationDto),
         ["HalResourceOfOrganizationListDto"] = typeof(Explore.Application.DTOs.Organization.OrganizationListDto),
         ["HalResourceOfActorDto"] = typeof(Explore.Application.DTOs.Actor.ActorDto),

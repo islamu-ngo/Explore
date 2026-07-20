@@ -40,7 +40,11 @@ public sealed class SecurityHeadersMiddleware
             // Prevent caching of sensitive responses (write operations)
             if (!HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method))
             {
-                headers["Cache-Control"] = "no-store";
+                if (!headers.CacheControl.ToString().Contains("no-store", StringComparison.OrdinalIgnoreCase))
+                {
+                    headers.CacheControl = "no-store";
+                }
+
                 headers["Pragma"] = "no-cache";
             }
 

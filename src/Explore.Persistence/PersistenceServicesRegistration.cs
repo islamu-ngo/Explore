@@ -202,6 +202,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IEventHeavyRedactionRepository, EventHeavyRedactionRepository>();
         services.AddScoped<IEventModerationRecordRepository, EventModerationRecordRepository>();
         services.AddScoped<IEventReportRepository, EventReportRepository>();
+        services.AddScoped<IEventReportDecisionExecutionRepository, EventReportDecisionExecutionRepository>();
         services.AddScoped<IEventSessionRepository, EventSessionRepository>();
         services.AddScoped<IEventSessionGroupRepository, EventSessionGroupRepository>();
         services.AddScoped<IEventSessionGroupSessionRepository, EventSessionGroupSessionRepository>();

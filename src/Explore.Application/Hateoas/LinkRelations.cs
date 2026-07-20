@@ -300,6 +300,8 @@ public static class LinkRelations
     /// </summary>
     public const string ReportEvent = "report-event";
 
+    public const string UpdateCommunicationConsent = "update-communication-consent";
+
     public const string ModerationReports = "moderation-reports";
 
     public const string TriageReport = "triage-report";

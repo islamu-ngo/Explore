@@ -21,6 +21,7 @@ using Explore.Application.Telemetry;
 using Explore.Infrastructure;
 using Explore.Infrastructure.HealthChecks;
 using Explore.Infrastructure.Messaging;
+using Explore.Infrastructure.NotificationFanout;
 using Explore.Infrastructure.Webhooks;
 using Explore.Persistence;
 using Explore.Persistence.Schema;
@@ -300,6 +301,7 @@ if (!isOpenApiGeneration)
     builder.Services.AddHostedService<OutboxProcessor>();
     if (!builder.Environment.IsEnvironment("Testing"))
     {
+        builder.Services.AddHostedService<NotificationFanoutProcessor>();
         builder.Services.AddHostedService<IdempotencyCleanupProcessor>();
         builder.Services.AddHostedService<EmailDispatchRetentionCleanupProcessor>();
         builder.Services.AddHostedService<AiRetentionCleanupProcessor>();
@@ -425,6 +427,10 @@ builder.Services.AddHealthChecks()
         "web-push-dispatch",
         failureStatus: HealthStatus.Unhealthy,
         tags: ["ready", "web-push", "dispatch", "infrastructure"])
+    .AddCheck<NotificationFanoutHealthCheck>(
+        "notification-fanout",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "notification", "fanout", "infrastructure"])
     .AddCheck<IdempotencyCleanupHealthCheck>(
         "idempotency-cleanup",
         failureStatus: HealthStatus.Unhealthy,
@@ -590,6 +596,13 @@ if (!builder.Environment.IsEnvironment("Testing") && !isOpenApiGeneration)
         logger.LogCritical(ex, "Database migration failed. Application cannot start.");
         throw; // Prevent app from starting with failed migration
     }
+}
+
+if ((!builder.Environment.IsEnvironment("Testing") ||
+     app.Configuration.GetValue<bool>("Testing:EnableLocationPrivacyStartupGate")) &&
+    !isOpenApiGeneration)
+{
+    await LocationPrivacyStartupGate.RunAsync(app.Services, shutdownCts.Token);
 }
 
 // Setup secret bootstrap logging — resolve provider and log the secret for first-run setup.

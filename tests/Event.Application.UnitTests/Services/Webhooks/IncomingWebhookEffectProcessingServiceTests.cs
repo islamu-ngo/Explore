@@ -46,6 +46,30 @@ public sealed class IncomingWebhookEffectProcessingServiceTests
     }
 
     [Test]
+    public async Task ProcessAsync_StaleDispatcherReplay_DoesNotDispatchCommandOrSettlePointer()
+    {
+        var setup = CreateClaim(CreatePayload());
+        _pointerRepository.GetActiveClaimAsync(
+                setup.Claim,
+                Arg.Any<DateTime>(),
+                Arg.Any<CancellationToken>())
+            .Returns((IncomingWebhookEffectOutbox?)null);
+
+        var result = await CreateService(setup.Now).ProcessAsync(
+            setup.Claim,
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(IncomingWebhookClaimExecutionOutcome.LeaseLost);
+        await _mediator.DidNotReceive().Send(
+            Arg.Any<ProcessCoopDecisionCallbackCommand>(),
+            Arg.Any<CancellationToken>());
+        await _receiptRepository.DidNotReceive().AddAsync(
+            Arg.Any<IncomingWebhookEffectReceipt>(),
+            Arg.Any<CancellationToken>());
+        await _pointerRepository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task ProcessAsync_InvalidJson_DeadLettersWithoutCommand()
     {
         var setup = CreateClaim(Encoding.UTF8.GetBytes("{invalid"));

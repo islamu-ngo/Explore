@@ -32,12 +32,14 @@ using Explore.Infrastructure.Mail;
 using Explore.Infrastructure.Mail.Unsubscribe;
 using Explore.Infrastructure.Management;
 using Explore.Infrastructure.Messaging;
+using Explore.Infrastructure.NotificationFanout;
 using Explore.Infrastructure.Privacy.ErasureAuthority;
 using Explore.Infrastructure.Services;
 using Explore.Infrastructure.Services.Federation;
 using Explore.Infrastructure.Services.Keycloak;
 using Explore.Infrastructure.Services.Moderation;
 using Explore.Infrastructure.Services.Moderation.Coop;
+using Explore.Infrastructure.Services.Privacy;
 using Explore.Infrastructure.Storage;
 using Explore.Infrastructure.Strategies;
 using Explore.Infrastructure.SupportAccess;
@@ -76,6 +78,7 @@ public static class InfrastructureServicesRegistration
         services.AddOptions<LocationPrivacyErasureAuthorityOptions>()
             .Bind(configuration.GetSection(LocationPrivacyErasureAuthorityOptions.SectionName));
         services.AddSingleton<ILocationPrivacyErasureAuthority, PostgreSqlLocationPrivacyErasureAuthority>();
+        services.AddScoped<ILocationErasureReplayService, LocationErasureReplayService>();
 
         services.AddOptions<ManagedControlPlaneOptions>()
             .Bind(configuration.GetSection(ManagedControlPlaneOptions.SectionName))
@@ -471,6 +474,12 @@ public static class InfrastructureServicesRegistration
         services.AddSingleton<IEmailDispatchTransport, RabbitMqEmailDispatchTransport>();
         services.AddScoped<EmailDispatchRabbitMqPointerPublisher>();
 
+        services.AddOptions<NotificationFanoutProcessorSettings>()
+            .Bind(configuration.GetSection(NotificationFanoutProcessorSettings.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<NotificationFanoutProcessorSettings>,
+            NotificationFanoutProcessorSettingsValidator>();
+
         services.AddOptions<WebPushSettings>()
             .Bind(configuration.GetSection(WebPushSettings.SectionName))
             .ValidateOnStart();
@@ -497,6 +506,7 @@ public static class InfrastructureServicesRegistration
 
         // Generic Outbox Processor settings and dispatcher
         services.Configure<OutboxProcessorSettings>(configuration.GetSection(OutboxProcessorSettings.SectionName));
+        services.AddScoped<LocationPrivacyCorrectionDispatcher>();
         services.AddScoped<IOutboxMessageDispatcher, CompositeOutboxMessageDispatcher>();
         services.AddOptions<EmailDispatchProcessorSettings>()
             .Bind(configuration.GetSection(EmailDispatchProcessorSettings.SectionName))

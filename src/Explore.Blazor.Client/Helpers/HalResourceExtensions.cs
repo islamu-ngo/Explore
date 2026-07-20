@@ -694,13 +694,49 @@ public static class HalResourceExtensions
         }
 
         var value = href.GetString();
-        return value is { Length: > 0 } &&
-               value[0] == '/' &&
-               (value.Length == 1 || value[1] != '/') &&
-               !value.Contains('\\') &&
-               !value.Any(char.IsControl)
-            ? value
-            : null;
+        if (value is not { Length: > 0 } ||
+            value[0] != '/' ||
+            (value.Length > 1 && value[1] == '/') ||
+            value.Contains('\\') ||
+            value.Any(char.IsControl))
+        {
+            return null;
+        }
+
+        for (var index = 0; index < value.Length; index++)
+        {
+            if (value[index] == '%' &&
+                (index + 2 >= value.Length || !Uri.IsHexDigit(value[index + 1]) || !Uri.IsHexDigit(value[index + 2])))
+            {
+                return null;
+            }
+        }
+
+        var queryStart = value.IndexOf('?');
+        if (queryStart < 0)
+        {
+            return value;
+        }
+
+        var fragmentStart = value.IndexOf('#', queryStart + 1);
+        var query = value[(queryStart + 1)..(fragmentStart < 0 ? value.Length : fragmentStart)];
+        foreach (var parameter in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = parameter.IndexOf('=');
+            var key = Uri.UnescapeDataString(separator < 0 ? parameter : parameter[..separator]);
+            if (key.Contains("token", StringComparison.OrdinalIgnoreCase) ||
+                key.Contains("secret", StringComparison.OrdinalIgnoreCase) ||
+                key.Contains("credential", StringComparison.OrdinalIgnoreCase) ||
+                key.Contains("password", StringComparison.OrdinalIgnoreCase) ||
+                key.Contains("assertion", StringComparison.OrdinalIgnoreCase) ||
+                key.Equals("api_key", StringComparison.OrdinalIgnoreCase) ||
+                key.Equals("apikey", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+        }
+
+        return value;
     }
 
     public static bool HasHalLink(this InstanceOnboardingStatusDto dto, string linkRel)

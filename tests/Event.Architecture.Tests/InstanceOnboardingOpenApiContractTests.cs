@@ -2,6 +2,7 @@
 // ABOUTME: Prevents generated API methods from regressing to untyped object return values.
 
 using System.Text.Json;
+using Explore.Application.DTOs.Instance;
 
 namespace Event.Architecture.Tests;
 
@@ -42,6 +43,42 @@ public sealed class InstanceOnboardingOpenApiContractTests
 
             await Assert.That(schemaReference).IsEqualTo($"#/components/schemas/{expectedSchema}");
         }
+    }
+
+    [Test]
+    public async Task TenantDelegationContract_MustNotExposeLegacyDecentralizationControls()
+    {
+        var serializedDto = JsonSerializer.Serialize(
+            new TenantDelegationSettingsDto(),
+            JsonSerializerOptions.Web);
+        using var serializedDocument = JsonDocument.Parse(serializedDto);
+
+        await Assert.That(serializedDocument.RootElement.TryGetProperty("decentralizationEnabled", out _)).IsFalse();
+        await Assert.That(serializedDocument.RootElement.TryGetProperty("lockDecentralizationEnabled", out _)).IsFalse();
+
+        var repositoryRoot = ResolveRepositoryRoot();
+        var schemaPath = Path.Combine(repositoryRoot, "schemas", "openapi_islamu-event.json");
+        await using var schemaStream = File.OpenRead(schemaPath);
+        using var schemaDocument = await JsonDocument.ParseAsync(schemaStream);
+        var properties = schemaDocument.RootElement
+            .GetProperty("components")
+            .GetProperty("schemas")
+            .GetProperty(nameof(TenantDelegationSettingsDto))
+            .GetProperty("properties");
+
+        await Assert.That(properties.TryGetProperty("decentralizationEnabled", out _)).IsFalse();
+        await Assert.That(properties.TryGetProperty("lockDecentralizationEnabled", out _)).IsFalse();
+
+        var generatedClientPath = Path.Combine(
+            repositoryRoot,
+            "src",
+            "Explore.Blazor.Client",
+            "Clients",
+            "EventApiClient.g.cs");
+        var generatedClient = await File.ReadAllTextAsync(generatedClientPath);
+
+        await Assert.That(generatedClient).DoesNotContain("DecentralizationEnabled", StringComparison.Ordinal);
+        await Assert.That(generatedClient).DoesNotContain("decentralizationEnabled", StringComparison.Ordinal);
     }
 
     private static string ResolveRepositoryRoot()

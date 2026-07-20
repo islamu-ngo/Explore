@@ -153,6 +153,28 @@ public class AiContextDisclosureSchemaTests
     }
 
     [Test]
+    public async Task PostcodeClassification_IsContextualToOwningEntity()
+    {
+        var registry = AiContextDisclosureRegistry.CreateDefault();
+
+        bool hasOrganizationPostcode = registry.TryGetEntry(
+            nameof(OrganizationPii),
+            nameof(OrganizationPii.Postcode),
+            out AiContextDisclosureEntry? organizationPostcode);
+        bool hasLocationPostcode = registry.TryGetEntry(
+            nameof(LocationPii),
+            nameof(LocationPii.Postcode),
+            out AiContextDisclosureEntry? locationPostcode);
+
+        await Assert.That(hasOrganizationPostcode).IsTrue();
+        await Assert.That(organizationPostcode!.Sensitivity).IsEqualTo(AiContextSensitivityEnum.Internal);
+        await Assert.That(organizationPostcode.Phase4Gated).IsFalse();
+        await Assert.That(hasLocationPostcode).IsTrue();
+        await Assert.That(locationPostcode!.Sensitivity).IsEqualTo(AiContextSensitivityEnum.Restricted);
+        await Assert.That(locationPostcode.Phase4Gated).IsTrue();
+    }
+
+    [Test]
     public async Task EveryEntryHasDefinedSensitivityAndRule()
     {
         var registry = AiContextDisclosureRegistry.CreateDefault();

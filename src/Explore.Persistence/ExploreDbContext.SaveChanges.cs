@@ -1,5 +1,5 @@
 // ABOUTME: Partial class containing SaveChangesAsync override with automatic audit and generated field population.
-// ABOUTME: Handles public event codes plus IConcurrencyAware, IAuditableEntity, and ISoftDeletable entity interceptors.
+// ABOUTME: Preserves pre-generated Added stamps while rotating Modified IConcurrencyAware entities and audit metadata.
 
 using Explore.Domain;
 using Explore.Domain.Interfaces;
@@ -58,7 +58,8 @@ public partial class ExploreDbContext
             }
 
             if (entry.Entity is IConcurrencyAware concurrencyAware &&
-                (entry.State == EntityState.Added || entry.State == EntityState.Modified))
+                (entry.State == EntityState.Added || entry.State == EntityState.Modified) &&
+                (entry.State == EntityState.Modified || concurrencyAware.ConcurrencyStamp == Guid.Empty))
             {
                 concurrencyAware.ConcurrencyStamp = entry.Entity is Explore.Domain.EventLocation
                     or Explore.Domain.Location

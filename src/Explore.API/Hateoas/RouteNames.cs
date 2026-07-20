@@ -56,6 +56,7 @@ public static class RouteNames
     public const string GetEventModerationHistory = "GetEventModerationHistory";
     public const string GetManagedEventsByActor = "GetManagedEventsByActor";
     public const string GetEventCalendar = "GetEventCalendar";
+    public const string GetAttendeeEventCalendar = "GetAttendeeEventCalendar";
     public const string GetMyEvents = "GetMyEvents";
     public const string GetEventCreationContext = "GetEventCreationContext";
     public const string GetEventSessionCreateContext = "GetEventSessionCreateContext";
@@ -78,12 +79,22 @@ public static class RouteNames
     public const string GetEventTemplateSyncHistory = "GetEventTemplateSyncHistory";
     #endregion
 
+    #region Event Location Routes
+
+    public const string GetPublicEventLocations = "GetPublicEventLocations";
+    public const string GetAttendeeEventLocations = "GetAttendeeEventLocations";
+    public const string GetManagementEventLocation = "GetManagementEventLocation";
+    public const string UpdateEventLocationDisclosure = "UpdateEventLocationDisclosure";
+
+    #endregion
+
     #region Event Report Routes
 
     public const string GetEventReportOptions = "GetEventReportOptions";
     public const string SubmitEventReport = "SubmitEventReport";
     public const string GetMyEventReports = "GetMyEventReports";
     public const string GetMyEventReport = "GetMyEventReport";
+    public const string UpdateMyEventReportCommunicationConsent = "UpdateMyEventReportCommunicationConsent";
     public const string GetModerationReportingRoutingState = "GetModerationReportingRoutingState";
     public const string UpdateModerationReportingRoutingSettings = "UpdateModerationReportingRoutingSettings";
     public const string TestModerationReportingProvider = "TestModerationReportingProvider";

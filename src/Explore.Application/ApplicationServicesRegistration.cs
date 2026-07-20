@@ -75,7 +75,12 @@ public static class ApplicationServicesRegistration
 
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
-        services.Configure<EventReportSubmissionOptions>(configuration.GetSection(EventReportSubmissionOptions.SectionName));
+        services.AddOptions<EventReportSubmissionOptions>()
+            .Bind(configuration.GetSection(EventReportSubmissionOptions.SectionName))
+            .Validate(
+                options => EventReportSubmissionOptions.IsValidCaseSlaHours(options.CaseSlaHours),
+                $"Reporting:CaseSlaHours must be between {EventReportSubmissionOptions.MinCaseSlaHours} and {EventReportSubmissionOptions.MaxCaseSlaHours} hours.")
+            .ValidateOnStart();
         services.Configure<NotificationRoutingOptions>(configuration.GetSection(NotificationRoutingOptions.SectionName));
         services.Configure<AccountAuthorityLifecycleEmailOptions>(configuration.GetSection(AccountAuthorityLifecycleEmailOptions.SectionName));
         services.AddSingleton<IAiToolContractRegistry>(_ => AiToolContractRegistry.CreateDefault());
@@ -117,6 +122,8 @@ public static class ApplicationServicesRegistration
         services.AddScoped<AtprotoEventPublicationPlanner>();
         services.AddScoped<IAtprotoDeliveryGate>(provider =>
             provider.GetRequiredService<AtprotoEventPublicationPlanner>());
+        services.AddScoped<IAtprotoLocationPrivacyCorrectionPlanner>(provider =>
+            provider.GetRequiredService<AtprotoEventPublicationPlanner>());
         services.AddScoped<AtprotoPdsDeliveryProcessor>();
         services.AddScoped<IModuleCapabilityService, ModuleCapabilityService>();
         services.AddScoped<SettingUpsertService>();
@@ -149,6 +156,10 @@ public static class ApplicationServicesRegistration
         services.AddScoped<INotificationOrchestrator, DefaultNotificationOrchestrator>();
         services.AddScoped<IRecipientNotificationMaterializer, RecipientNotificationMaterializer>();
         services.AddSingleton<NotificationDeliveryPolicyResolver>();
+        services.AddSingleton<ReportReceiptNotificationFactory>();
+        services.AddSingleton<ReportOutcomeNotificationFactory>();
+        services.AddSingleton<ReportNeedsMoreInformationNotificationFactory>();
+        services.AddSingleton<EventOrganizerWarningNotificationFactory>();
         services.AddSingleton<NotificationFanoutRecipientTemplateFactory>();
         services.AddScoped<NotificationFanoutRecipientMaterializationService>();
         services.AddScoped<INotificationFanoutRecipientMaterializationService>(provider =>

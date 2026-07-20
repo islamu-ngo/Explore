@@ -21,6 +21,7 @@ public sealed class CompositeOutboxMessageDispatcher(
     IEventPublishedNotificationFanoutService notificationFanoutService,
     IEventModerationNotificationFanoutService moderationNotificationFanoutService,
     IReportProviderSyncDispatcher reportProviderSyncDispatcher,
+    LocationPrivacyCorrectionDispatcher locationPrivacyCorrectionDispatcher,
     IMediator mediator,
     ILogger<CompositeOutboxMessageDispatcher> logger) : IOutboxMessageDispatcher
 {
@@ -48,6 +49,12 @@ public sealed class CompositeOutboxMessageDispatcher(
                 await reportProviderSyncDispatcher.DispatchAsync(message, ct);
                 return;
 
+            case LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType:
+            case LocationPrivacyOutboxMessageFactory.LocationPrivacyCorrectionRequestedEventType:
+            case LocationPrivacyCorrectionDispatcher.GovernanceCorrectionEventType:
+                await locationPrivacyCorrectionDispatcher.DispatchAsync(message, ct);
+                return;
+
             case ManagedTenantProvisioningOutboxEvents.ProcessRequested:
                 await mediator.Send(
                     new ProcessManagedTenantProvisioningOperationCommand(message.AggregateId, message.Id),
@@ -65,14 +72,25 @@ public sealed class CompositeOutboxMessageDispatcher(
         OutboxMessage message,
         CancellationToken ct = default)
     {
-        if (message.EventType != ManagedTenantProvisioningOutboxEvents.ProcessRequested)
+        switch (message.EventType)
         {
-            return;
-        }
+            case ManagedTenantProvisioningOutboxEvents.ProcessRequested:
+                await mediator.Send(
+                    new ReconcileManagedTenantProvisioningDeadLetterCommand(message.AggregateId, message.Id),
+                    ct);
+                return;
 
-        await mediator.Send(
-            new ReconcileManagedTenantProvisioningDeadLetterCommand(message.AggregateId, message.Id),
-            ct);
+            case LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType:
+            case LocationPrivacyOutboxMessageFactory.LocationPrivacyCorrectionRequestedEventType:
+            case LocationPrivacyCorrectionDispatcher.GovernanceCorrectionEventType:
+                await locationPrivacyCorrectionDispatcher.DispatchAsync(message, ct);
+                return;
+
+            default:
+                throw new InvalidOperationException(
+                    $"Outbox EventType '{message.EventType}' for message {message.Id} " +
+                    "does not support dead-letter reconciliation.");
+        }
     }
 
     private async Task DispatchNotificationFanoutAsync(OutboxMessage message, CancellationToken cancellationToken)

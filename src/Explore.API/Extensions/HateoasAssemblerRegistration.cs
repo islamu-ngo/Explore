@@ -132,6 +132,10 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ICollectionLinkPolicy<LocationListDto>, LocationCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<LocationDto, LocationListDto>, LocationResourceAssembler>();
 
+        services.AddScoped<ILinkPolicy<EventLocationManagementDto>, EventLocationManagementLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<EventLocationManagementDto>, EventLocationManagementCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<EventLocationManagementDto, EventLocationManagementDto>, EventLocationResourceAssembler>();
+
         // Category
         services.AddScoped<ILinkPolicy<CategoryDto>, CategoryDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<CategoryListDto>, CategoryCollectionLinkPolicy>();

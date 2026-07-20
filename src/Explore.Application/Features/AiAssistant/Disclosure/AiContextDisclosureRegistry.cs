@@ -199,10 +199,10 @@ public sealed class AiContextDisclosureRegistry
             new(
                 EntityName: nameof(LocationPii),
                 FieldName: nameof(LocationPii.Postcode),
-                Sensitivity: AiContextSensitivityEnum.Internal,
+                Sensitivity: AiContextSensitivityEnum.Restricted,
                 LocalModelRule: AiContextDisclosureRuleEnum.Allow,
-                Rationale: "Coarse jurisdiction.",
-                Phase4Gated: false),
+                Rationale: "A venue postcode may identify a private location; purpose-specific EventLocation disclosure decides when it may be released.",
+                Phase4Gated: true),
             new(
                 EntityName: nameof(LocationPii),
                 FieldName: nameof(LocationPii.Latitude),

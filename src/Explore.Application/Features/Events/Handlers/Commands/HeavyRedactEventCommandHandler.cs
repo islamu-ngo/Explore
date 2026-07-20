@@ -9,6 +9,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Events.Moderation;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Features.Federation.Atproto.Services;
+using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Application.Telemetry;
@@ -24,7 +25,8 @@ namespace Explore.Application.Features.Events.Handlers.Commands;
 public sealed class HeavyRedactEventCommandHandler(
     IEventHeavyRedactionRepository redactionRepository,
     IEventModerationRecordRepository moderationRecordRepository,
-    IOutboxRepository outboxRepository,
+    INotificationFanoutOccurrenceRepository fanoutOccurrenceRepository,
+    NotificationFanoutOccurrenceCoordinator fanoutCoordinator,
     IStorageObjectDeletionService storageObjectDeletionService,
     IUnitOfWork unitOfWork,
     ICurrentUserService currentUserService,
@@ -35,6 +37,7 @@ public sealed class HeavyRedactEventCommandHandler(
 {
     private const int ImmediateDeletionBatchSize = 100;
     private const string ActionKind = "heavy_redacted";
+    private const string FanoutSourceType = "event_moderation_record";
 
     public async Task<BaseCommandResponse<Guid>> Handle(HeavyRedactEventCommand request, CancellationToken cancellationToken)
     {
@@ -59,6 +62,9 @@ public sealed class HeavyRedactEventCommandHandler(
         EventModerationRecord? moderationRecordForLog = null;
         var federationOutboxId = Guid.CreateVersion7();
         var federationCreatedAt = DateTime.UtcNow;
+        var occurrenceId = Guid.CreateVersion7();
+        var pointerOutboxMessageId = Guid.CreateVersion7();
+        var redactedAt = DateTimeOffset.UtcNow;
         var transactionResponse = await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
             var graph = await redactionRepository.GetForUpdateAsync(request.Id, token);
@@ -80,57 +86,66 @@ public sealed class HeavyRedactEventCommandHandler(
                 @event.Id,
                 token);
 
+            EventModerationRecord moderationRecord;
             if (latestRecord?.ActionKind == EventModerationActionKind.HeavyRedacted)
             {
                 wasIdempotent = true;
+                moderationRecord = latestRecord;
                 logger.LogInformation(
                     "Heavy event moderation skipped because event {EventId} in tenant {TenantId} is already heavy-redacted; delete-requested image cleanup will still be checked.",
                     @event.Id,
                     @event.TenantId);
-
-                return Success(@event.Id, "Event is already heavy-redacted.");
             }
-
-            var redactedAt = DateTimeOffset.UtcNow;
-            var moderationRecord = EventModerationRecord.CreateHeavyRedaction(
-                @event.TenantId,
-                @event.Id,
-                moderatorUserId,
-                request.ReasonCode,
-                @event.EventStatusId,
-                request.CorrelationId,
-                redactedAt);
-
-            if (!TryLinkSourceReportDecision(moderationRecord, request.SourceReportId, request.SourceReportDecisionId, out var sourceLinkError))
+            else
             {
-                return Failure(
+                moderationRecord = EventModerationRecord.CreateHeavyRedaction(
+                    @event.TenantId,
                     @event.Id,
-                    "Source report decision link is invalid.",
-                    [sourceLinkError],
-                    "event_heavy_redaction_source_report_decision_invalid");
+                    moderatorUserId,
+                    request.ReasonCode,
+                    @event.EventStatusId,
+                    request.CorrelationId,
+                    redactedAt);
+
+                if (!TryLinkSourceReportDecision(moderationRecord, request.SourceReportId, request.SourceReportDecisionId, out var sourceLinkError))
+                {
+                    return Failure(
+                        @event.Id,
+                        "Source report decision link is invalid.",
+                        [sourceLinkError],
+                        "event_heavy_redaction_source_report_decision_invalid");
+                }
+
+                EventHeavyRedactionApplicator.Apply(graph, moderatorUserId, redactedAt);
+
+                await redactionRepository.SaveChangesAsync(token);
+                await atprotoPublicationPlanner.PlanEventAsync(
+                    new AtprotoEventPublicationInput(
+                        @event.TenantId,
+                        moderatorUserId ?? Guid.Empty,
+                        @event.Id,
+                        @event.ConcurrencyStamp,
+                        PdsSyncOperation.Delete,
+                        federationOutboxId,
+                        federationCreatedAt),
+                    token);
+                await moderationRecordRepository.Create(moderationRecord);
+
+                await cache.RemoveAsync($"event:detail:{@event.Id}", token);
+                await cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), token);
             }
 
-            EventHeavyRedactionApplicator.Apply(graph, moderatorUserId, redactedAt);
-
-            await redactionRepository.SaveChangesAsync(token);
-            await atprotoPublicationPlanner.PlanEventAsync(
-                new AtprotoEventPublicationInput(
-                    @event.TenantId,
-                    moderatorUserId ?? Guid.Empty,
-                    @event.Id,
-                    @event.ConcurrencyStamp,
-                    PdsSyncOperation.Delete,
-                    federationOutboxId,
-                    federationCreatedAt),
+            await EnsureHeavyModerationFanoutOccurrenceAsync(
+                @event,
+                moderationRecord,
+                occurrenceId,
+                pointerOutboxMessageId,
                 token);
-            await moderationRecordRepository.Create(moderationRecord);
-            await outboxRepository.Create(EventModerationOutboxMessageFactory.CreateHeavyRedactionNotificationFanoutMessage(@event, moderationRecord));
             moderationRecordForLog = moderationRecord;
 
-            await cache.RemoveAsync($"event:detail:{@event.Id}", token);
-            await cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), token);
-
-            return Success(@event.Id, "Event heavy-redacted successfully.");
+            return Success(
+                @event.Id,
+                wasIdempotent ? "Event is already heavy-redacted." : "Event heavy-redacted successfully.");
         }, cancellationToken);
 
         if (!transactionResponse.Success)
@@ -236,4 +251,51 @@ public sealed class HeavyRedactEventCommandHandler(
 
     private static bool HasSourceReportDecision(HeavyRedactEventCommand request) =>
         request.SourceReportId.HasValue && request.SourceReportDecisionId.HasValue;
+
+    private async Task EnsureHeavyModerationFanoutOccurrenceAsync(
+        Explore.Domain.Event @event,
+        EventModerationRecord moderationRecord,
+        Guid candidateOccurrenceId,
+        Guid pointerOutboxMessageId,
+        CancellationToken cancellationToken)
+    {
+        if (moderationRecord.TenantId != @event.TenantId
+            || moderationRecord.EventId != @event.Id
+            || moderationRecord.ActionKind != EventModerationActionKind.HeavyRedacted
+            || !moderationRecord.IsIrreversible)
+        {
+            throw new InvalidOperationException("Heavy moderation fanout requires the authoritative irreversible moderation record.");
+        }
+
+        Guid aggregateVersion = moderationRecord.SourceReportDecisionId ?? moderationRecord.Id;
+        NotificationFanoutOccurrence? existingOccurrence = await fanoutOccurrenceRepository
+            .GetBySourceIdentityForCoordinationAsync(
+                @event.TenantId,
+                FanoutSourceType,
+                moderationRecord.Id,
+                aggregateVersion,
+                cancellationToken);
+        DateTime occurredAt = moderationRecord.CreatedAt.UtcDateTime;
+        await fanoutCoordinator.CoordinateInCurrentTransactionAsync(
+            new NotificationFanoutOccurrenceCandidate(
+                existingOccurrence?.Id ?? candidateOccurrenceId,
+                pointerOutboxMessageId,
+                @event.TenantId,
+                @event.Id,
+                SessionId: null,
+                occurredAt,
+                AudienceCutoffAt: occurredAt,
+                aggregateVersion,
+                ChangeSetJson: "{}",
+                SafeBeforeSnapshotJson: "{}",
+                SafeAfterSnapshotJson: "{}",
+                NotificationFanoutOccurrenceCoordinationPolicy.HeavyModerationUnavailableTemplateKey,
+                NotificationFanoutRecipientTemplateFactory.CurrentTemplateVersion,
+                (int)NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired,
+                NotificationFanoutRecipientTemplateFactory.CurrentPolicyVersion,
+                RequestedNotBefore: occurredAt,
+                FanoutSourceType,
+                moderationRecord.Id),
+            cancellationToken);
+    }
 }

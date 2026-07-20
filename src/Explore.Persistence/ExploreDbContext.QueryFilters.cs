@@ -84,6 +84,10 @@ public partial class ExploreDbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => e.Report != null && !e.Report.IsDeleted);
 
+        modelBuilder.Entity<EventReportDecisionExecution>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => e.Report != null && !e.Report.IsDeleted);
+
         modelBuilder.Entity<EventReportExternalLink>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => e.Report != null && !e.Report.IsDeleted);

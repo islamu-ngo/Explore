@@ -119,6 +119,7 @@ public partial class ExploreDbContext
     public DbSet<EventReportCase> EventReportCases { get; set; }
     public DbSet<EventReportSignal> EventReportSignals { get; set; }
     public DbSet<EventReportDecision> EventReportDecisions { get; set; }
+    public DbSet<EventReportDecisionExecution> EventReportDecisionExecutions { get; set; }
     public DbSet<EventReportExternalLink> EventReportExternalLinks { get; set; }
     public DbSet<EventSessionLanguage> EventSessionLanguages { get; set; }
     public DbSet<EventSessionSpeaker> EventSessionSpeakers { get; set; }

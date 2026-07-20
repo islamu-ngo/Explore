@@ -2,7 +2,6 @@
 // ABOUTME: Verifies redaction orchestration, safe audit rows, image delete state, idempotency, and cache invalidation.
 
 using System.Diagnostics.Metrics;
-using System.Text.Json;
 using Event.Application.UnitTests.Common;
 using Explore.Application.Authorization;
 using Explore.Application.Caching;
@@ -29,6 +28,8 @@ public sealed class HeavyRedactEventCommandHandlerTests
 {
     private readonly IEventHeavyRedactionRepository _redactionRepository = Substitute.For<IEventHeavyRedactionRepository>();
     private readonly IEventModerationRecordRepository _moderationRecordRepository = Substitute.For<IEventModerationRecordRepository>();
+    private readonly INotificationFanoutOccurrenceRepository _fanoutOccurrenceRepository = Substitute.For<INotificationFanoutOccurrenceRepository>();
+    private readonly INotificationFanoutEmailSuppressionRepository _fanoutEmailSuppressionRepository = Substitute.For<INotificationFanoutEmailSuppressionRepository>();
     private readonly IOutboxRepository _outboxRepository = Substitute.For<IOutboxRepository>();
     private readonly IStorageObjectDeletionService _storageObjectDeletionService = Substitute.For<IStorageObjectDeletionService>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
@@ -48,13 +49,26 @@ public sealed class HeavyRedactEventCommandHandlerTests
 
         _moderationRecordRepository.Create(Arg.Any<EventModerationRecord>())
             .Returns(call => call.Arg<EventModerationRecord>());
+        _fanoutOccurrenceRepository.Create(Arg.Any<NotificationFanoutOccurrence>())
+            .Returns(call => call.Arg<NotificationFanoutOccurrence>());
+        _fanoutOccurrenceRepository.GetPendingForEventCoordinationAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<NotificationFanoutOccurrence>());
         _outboxRepository.Create(Arg.Any<OutboxMessage>())
             .Returns(call => call.Arg<OutboxMessage>());
+        var fanoutCoordinator = new NotificationFanoutOccurrenceCoordinator(
+            _fanoutOccurrenceRepository,
+            _fanoutEmailSuppressionRepository,
+            _outboxRepository,
+            new NotificationFanoutRecipientTemplateFactory());
 
         _handler = new HeavyRedactEventCommandHandler(
             _redactionRepository,
             _moderationRecordRepository,
-            _outboxRepository,
+            _fanoutOccurrenceRepository,
+            fanoutCoordinator,
             _storageObjectDeletionService,
             _unitOfWork,
             _currentUserService,
@@ -97,6 +111,7 @@ public sealed class HeavyRedactEventCommandHandlerTests
             [],
             [image]);
         var createdRecords = new List<EventModerationRecord>();
+        var createdOccurrences = new List<NotificationFanoutOccurrence>();
         var createdMessages = new List<OutboxMessage>();
 
         _currentUserService.UserId.Returns(moderatorUserId);
@@ -106,6 +121,8 @@ public sealed class HeavyRedactEventCommandHandlerTests
             .Returns((EventModerationRecord?)null);
         _moderationRecordRepository.Create(Arg.Do<EventModerationRecord>(record => createdRecords.Add(record)))
             .Returns(call => call.Arg<EventModerationRecord>());
+        _fanoutOccurrenceRepository.Create(Arg.Do<NotificationFanoutOccurrence>(occurrence => createdOccurrences.Add(occurrence)))
+            .Returns(call => call.Arg<NotificationFanoutOccurrence>());
         _outboxRepository.Create(Arg.Do<OutboxMessage>(message => createdMessages.Add(message)))
             .Returns(call => call.Arg<OutboxMessage>());
 
@@ -138,17 +155,30 @@ public sealed class HeavyRedactEventCommandHandlerTests
         await Assert.That(record.SourceReportId).IsEqualTo(sourceReportId);
         await Assert.That(record.SourceReportDecisionId).IsEqualTo(sourceReportDecisionId);
 
+        await Assert.That(createdOccurrences).Count().IsEqualTo(1);
+        NotificationFanoutOccurrence occurrence = createdOccurrences.Single();
+        await Assert.That(occurrence.TenantId).IsEqualTo(@event.TenantId);
+        await Assert.That(occurrence.EventId).IsEqualTo(@event.Id);
+        await Assert.That(occurrence.SessionId).IsNull();
+        await Assert.That(occurrence.SourceType).IsEqualTo("event_moderation_record");
+        await Assert.That(occurrence.SourceId).IsEqualTo(record.Id);
+        await Assert.That(occurrence.AggregateVersion).IsEqualTo(sourceReportDecisionId);
+        await Assert.That(occurrence.TemplateKey).IsEqualTo(NotificationFanoutOccurrenceCoordinationPolicy.HeavyModerationUnavailableTemplateKey);
+        await Assert.That(occurrence.DeliveryPolicyId).IsEqualTo((int)NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired);
+        await Assert.That(occurrence.Priority).IsEqualTo(NotificationFanoutOccurrenceCoordinationPolicy.HeavyModerationUnavailablePriority);
+        await Assert.That(occurrence.NotBefore).IsEqualTo(occurrence.OccurredAt);
+        await Assert.That(occurrence.AudienceCutoffAt).IsEqualTo(occurrence.OccurredAt);
+
         await Assert.That(createdMessages).Count().IsEqualTo(1);
         var message = createdMessages.Single();
-        await Assert.That(message.EventType).IsEqualTo(EventModerationOutboxMessageFactory.EventHeavyRedactedNotificationFanoutRequestedEventType);
-        await Assert.That(message.AggregateId).IsEqualTo(@event.Id);
+        await Assert.That(message.EventType).IsEqualTo(NotificationFanoutOccurrenceOutboxMessageFactory.EventType);
+        await Assert.That(message.EventType).IsNotEqualTo(EventModerationOutboxMessageFactory.EventHeavyRedactedNotificationFanoutRequestedEventType);
+        await Assert.That(message.AggregateId).IsEqualTo(occurrence.Id);
         await Assert.That(message.Status).IsEqualTo(OutboxMessageStatus.Pending);
 
-        var payload = JsonSerializer.Deserialize<EventHeavyRedactedNotificationFanoutRequested>(message.Payload!);
-        await Assert.That(payload).IsNotNull();
-        await Assert.That(payload!.TenantId).IsEqualTo(@event.TenantId);
-        await Assert.That(payload.ModerationRecordId).IsEqualTo(record.Id);
-        await Assert.That(payload.SourceActorId).IsEqualTo(@event.ActorId);
+        NotificationFanoutOccurrenceRequested payload = NotificationFanoutOccurrenceOutboxMessageFactory.DeserializePointer(message.Payload!);
+        await Assert.That(payload.TenantId).IsEqualTo(@event.TenantId);
+        await Assert.That(payload.OccurrenceId).IsEqualTo(occurrence.Id);
         await Assert.That(message.Payload).DoesNotContain(@event.Id.ToString());
         await Assert.That(message.Payload).DoesNotContain(@event.Id.ToString("N"));
         await Assert.That(message.Payload).DoesNotContain("Illegal Event");
@@ -168,7 +198,7 @@ public sealed class HeavyRedactEventCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenLatestRecordIsAlreadyHeavyRedacted_ReturnsSuccessWithoutDuplicateAudit()
+    public async Task Handle_WhenLatestRecordIsAlreadyHeavyRedacted_RepairsMissingOccurrenceWithoutDuplicateAudit()
     {
         var @event = CreateEvent(EventStatusEnum.Moderated, imageId: null);
         var graph = new EventHeavyRedactionGraph(@event, [], [], [], [], [], [], [], [], [], []);
@@ -192,7 +222,12 @@ public sealed class HeavyRedactEventCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await _redactionRepository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
         await _moderationRecordRepository.DidNotReceive().Create(Arg.Any<EventModerationRecord>());
-        await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+        await _fanoutOccurrenceRepository.Received(1).Create(Arg.Is<NotificationFanoutOccurrence>(occurrence =>
+            occurrence.SourceId == latestRecord.Id
+            && occurrence.AggregateVersion == latestRecord.Id
+            && occurrence.DeliveryPolicyId == (int)NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired));
+        await _outboxRepository.Received(1).Create(Arg.Is<OutboxMessage>(message =>
+            message.EventType == NotificationFanoutOccurrenceOutboxMessageFactory.EventType));
         await _storageObjectDeletionService.Received(1).DeleteRequestedForResourceAsync(
             @event.TenantId,
             ResourceKinds.Event,
@@ -201,6 +236,66 @@ public sealed class HeavyRedactEventCommandHandlerTests
             100,
             Arg.Any<CancellationToken>());
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenHeavyOccurrenceAlreadyExists_ReusesItWithoutDuplicatePointer()
+    {
+        var @event = CreateEvent(EventStatusEnum.Moderated, imageId: null);
+        var graph = new EventHeavyRedactionGraph(@event, [], [], [], [], [], [], [], [], [], []);
+        EventModerationRecord latestRecord = EventModerationRecord.CreateHeavyRedaction(
+            @event.TenantId,
+            @event.Id,
+            Guid.NewGuid(),
+            "illegal_content",
+            (int)EventStatusEnum.Published,
+            null,
+            DateTimeOffset.UtcNow.AddMinutes(-5));
+        DateTime rawOccurredAt = latestRecord.CreatedAt.UtcDateTime;
+        DateTime occurredAt = new(
+            rawOccurredAt.Ticks - rawOccurredAt.Ticks % TimeSpan.TicksPerMicrosecond,
+            DateTimeKind.Utc);
+        NotificationFanoutOccurrence existingOccurrence = NotificationFanoutOccurrence.Create(
+            Guid.CreateVersion7(),
+            @event.TenantId,
+            @event.Id,
+            null,
+            occurredAt,
+            occurredAt,
+            latestRecord.Id,
+            "{}",
+            "{}",
+            "{}",
+            NotificationFanoutOccurrenceCoordinationPolicy.HeavyModerationUnavailableTemplateKey,
+            NotificationFanoutRecipientTemplateFactory.CurrentTemplateVersion,
+            (int)NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired,
+            NotificationFanoutRecipientTemplateFactory.CurrentPolicyVersion,
+            NotificationFanoutOccurrenceCoordinationPolicy.HeavyModerationUnavailablePriority,
+            occurredAt,
+            "event_moderation_record",
+            latestRecord.Id,
+            $"event:{@event.Id:N}",
+            null);
+
+        _currentUserService.UserId.Returns(Guid.NewGuid());
+        _redactionRepository.GetForUpdateAsync(@event.Id, Arg.Any<CancellationToken>()).Returns(graph);
+        _moderationRecordRepository.GetLatestByEventAsync(@event.TenantId, @event.Id, Arg.Any<CancellationToken>()).Returns(latestRecord);
+        _fanoutOccurrenceRepository.GetBySourceIdentityForCoordinationAsync(
+                @event.TenantId,
+                "event_moderation_record",
+                latestRecord.Id,
+                latestRecord.Id,
+                Arg.Any<CancellationToken>())
+            .Returns(existingOccurrence);
+
+        BaseCommandResponse<Guid> result = await _handler.Handle(
+            new HeavyRedactEventCommand { Id = @event.Id },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _fanoutOccurrenceRepository.DidNotReceive().Create(Arg.Any<NotificationFanoutOccurrence>());
+        await _outboxRepository.DidNotReceive().Create(Arg.Any<OutboxMessage>());
+        await _moderationRecordRepository.DidNotReceive().Create(Arg.Any<EventModerationRecord>());
     }
 
     [Test]
