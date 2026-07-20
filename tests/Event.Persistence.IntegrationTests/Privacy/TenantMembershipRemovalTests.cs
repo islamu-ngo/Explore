@@ -7,7 +7,6 @@ using Explore.Application.Features.TenantUsers.Requests.Commands;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
-using Explore.Infrastructure.Privacy.ErasureAuthority;
 using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
@@ -177,7 +176,7 @@ public sealed class TenantMembershipRemovalTests(TenantMembershipRemovalPostgreS
         var globalErasureOutboxCount = await context.OutboxMessages.CountAsync(message =>
             message.EventType == LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType
             || message.EventType == LocationPrivacyOutboxMessageFactory.LocationPrivacyCorrectionRequestedEventType);
-        var retainedErasureIntentCount = await fixture.CountRetainedErasureIntentsAsync();
+        var retainedErasureIntentCount = await context.PrivacyErasureIntents.CountAsync();
 
         await Assert.That(tenantAUser.IsDeleted).IsEqualTo(tenantARemoved);
         await Assert.That(tenantAUser.StatusId).IsEqualTo(tenantARemoved
@@ -326,28 +325,15 @@ public sealed class TenantMembershipRemovalTests(TenantMembershipRemovalPostgreS
 
 public sealed class TenantMembershipRemovalPostgreSqlFixture : IAsyncInitializer, IAsyncDisposable
 {
-    private const string ExpandMigration = "20260716132239_AddEventLocationPrivacyExpand";
+    private const string ExpandMigration = "20260719221539_init";
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:18-alpine")
         .WithDatabase("tenant_membership_removal_test")
         .WithUsername("postgres")
         .WithPassword("postgres")
         .Build();
-    private readonly PostgreSqlContainer _authorityContainer = new PostgreSqlBuilder("postgres:18-alpine")
-        .WithDatabase("tenant_membership_removal_authority_test")
-        .WithUsername("postgres")
-        .WithPassword("postgres")
-        .Build();
-
     public async Task InitializeAsync()
     {
-        await Task.WhenAll(_container.StartAsync(), _authorityContainer.StartAsync());
-        await using (var connection = new NpgsqlConnection(_authorityContainer.GetConnectionString()))
-        {
-            await connection.OpenAsync();
-            await using var command = connection.CreateCommand();
-            command.CommandText = LocationPrivacyErasureAuthoritySchema.ReadProvisioningSql();
-            await command.ExecuteNonQueryAsync();
-        }
+        await _container.StartAsync();
 
         await using var context = CreateSeedContext();
         await context.Database.MigrateAsync(ExpandMigration);
@@ -378,19 +364,9 @@ public sealed class TenantMembershipRemovalPostgreSqlFixture : IAsyncInitializer
 
     public async ValueTask DisposeAsync()
     {
-        await Task.WhenAll(_container.StopAsync(), _authorityContainer.StopAsync());
+        await _container.StopAsync();
         await _container.DisposeAsync();
-        await _authorityContainer.DisposeAsync();
         GC.SuppressFinalize(this);
-    }
-
-    public async Task<long> CountRetainedErasureIntentsAsync()
-    {
-        await using var connection = new NpgsqlConnection(_authorityContainer.GetConnectionString());
-        await connection.OpenAsync();
-        await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT count(*) FROM location_privacy_authority.erasure_intents";
-        return (long)(await command.ExecuteScalarAsync())!;
     }
 
     public ExploreDbContext CreateSeedContext()

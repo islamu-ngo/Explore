@@ -19,7 +19,7 @@ public sealed class EventLocationPrivacyArchitectureTests
             "DeleteUserCommand",
             "IUserRepository",
             "ILocationRepository",
-            "IGlobalLocationPrivacyErasureRepository",
+            "IUserLocationPrivacyErasureRepository",
             "IErasureAuthority"
         };
         var violations = Directory.GetFiles(featureRoot, "*.cs", SearchOption.AllDirectories)
