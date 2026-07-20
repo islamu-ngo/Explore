@@ -36,6 +36,22 @@ public sealed class EventLocationManagementLinkPolicy(IHttpContextAccessor httpC
                 eventId.ToString("D"),
                 authorization.ResourceAttributes,
                 authorization.Scope);
+
+        if (dto.NeedsPrivacyReview)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.RemediateLocation,
+                RouteNames.ConfirmEventLocationRemediation,
+                new { eventId, eventLocationId = dto.EventLocationId },
+                HttpMethods.Post,
+                "Confirm location privacy remediation",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Update,
+                    ResourceKinds.Event,
+                    eventId.ToString("D"),
+                    authorization.ResourceAttributes,
+                    authorization.Scope);
+        }
     }
 
     private bool TryGetEventId(out Guid eventId)
@@ -90,12 +106,13 @@ public sealed class EventLocationManagementLinkPolicy(IHttpContextAccessor httpC
     }
 }
 
-public sealed class EventLocationManagementCollectionLinkPolicy
+public sealed class EventLocationManagementCollectionLinkPolicy(
+    ILinkPolicy<EventLocationManagementDto> detailPolicy)
     : ICollectionLinkPolicy<EventLocationManagementDto>
 {
     public IEnumerable<LinkDefinition> GetItemLinks(
         EventLocationManagementDto dto,
-        ClaimsPrincipal? user) => [];
+        ClaimsPrincipal? user) => detailPolicy.GetLinks(dto, user);
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user) => [];
 }

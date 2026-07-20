@@ -20,6 +20,7 @@ using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventSessionTemplate;
 using Explore.Application.DTOs.EventTemplate;
+using Explore.Application.DTOs.Location;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.AiAssistant.Disclosure;
 using Explore.Application.Features.EventAgendaItems.Requests.Queries;
@@ -1453,7 +1454,7 @@ public sealed class EventManagementMcpTools(
         var truncatedFields = new List<string>();
         var returnedSessions = sessions
             .Take(MaxManagedSessions)
-            .Select(MapSession)
+            .Select(session => MapSession(session))
             .ToArray();
         var returnedSessionGroups = sessionGroups
             .Take(MaxManagedSessionGroups)
@@ -1998,6 +1999,7 @@ public sealed class EventManagementMcpTools(
             TrimToEmpty(dto.Title, MaxShortTextLength, truncatedFields, nameof(dto.Title)),
             dto.SortOrder,
             TrimToNull(dto.Color, MaxShortTextLength, truncatedFields, nameof(dto.Color)),
+            MapPublicLocation(dto.EventLocation, truncatedFields),
             days);
     }
 
@@ -2066,6 +2068,7 @@ public sealed class EventManagementMcpTools(
             dto.LocalEndTime.Value,
             dto.SortOrder,
             dto.SessionGroupId,
+            MapPublicLocation(dto.EventLocation, truncatedFields),
             dto.Capacity,
             TrimToNull(dto.RegistrationModeName, MaxShortTextLength, truncatedFields, nameof(dto.RegistrationModeName)),
             warnings);
@@ -2083,7 +2086,7 @@ public sealed class EventManagementMcpTools(
     {
         var returnedSessions = sessions
             .Take(MaxPublicSessions)
-            .Select(MapSession)
+            .Select(session => MapSession(session, includePublicLocation: true))
             .ToArray();
 
         return new EventMcpSessionListResultDescriptor(
@@ -2096,7 +2099,9 @@ public sealed class EventManagementMcpTools(
             Sessions: returnedSessions);
     }
 
-    private static EventMcpSessionSummaryDescriptor MapSession(EventSessionListDto dto)
+    private static EventMcpSessionSummaryDescriptor MapSession(
+        EventSessionListDto dto,
+        bool includePublicLocation = false)
     {
         var truncatedFields = new List<string>();
 
@@ -2126,41 +2131,74 @@ public sealed class EventManagementMcpTools(
                 .WhereNotBlank()
                 .Take(10)
                 .ToArray(),
+            includePublicLocation ? MapPublicLocation(dto.EventLocation, truncatedFields) : null,
             truncatedFields);
+    }
+
+    private static EventMcpLocationDescriptor? MapPublicLocation(
+        EventLocationPublicDto? dto,
+        ICollection<string> truncatedFields)
+    {
+        if (dto is null)
+        {
+            return null;
+        }
+
+        EventLocationPublicFieldsDto? fields = dto.Fields;
+        return new EventMcpLocationDescriptor(
+            dto.EventLocationId,
+            dto.State.ToString(),
+            TrimToNull(fields?.Country, MaxShortTextLength, truncatedFields, nameof(EventLocationPublicFieldsDto.Country)),
+            TrimToNull(fields?.Timezone, MaxShortTextLength, truncatedFields, nameof(EventLocationPublicFieldsDto.Timezone)),
+            TrimToNull(fields?.City, MaxShortTextLength, truncatedFields, nameof(EventLocationPublicFieldsDto.City)),
+            TrimToNull(fields?.VenueName, MaxShortTextLength, truncatedFields, nameof(EventLocationPublicFieldsDto.VenueName)),
+            TrimToNull(fields?.RoomName, MaxShortTextLength, truncatedFields, nameof(EventLocationPublicFieldsDto.RoomName)),
+            TrimToNull(fields?.StreetAddress, MaxShortTextLength, truncatedFields, nameof(EventLocationPublicFieldsDto.StreetAddress)),
+            TrimToNull(fields?.Postcode, MaxShortTextLength, truncatedFields, nameof(EventLocationPublicFieldsDto.Postcode)),
+            fields?.Latitude,
+            fields?.Longitude,
+            TrimToNull(fields?.FormattedAddress, MaxLongTextLength, truncatedFields, nameof(EventLocationPublicFieldsDto.FormattedAddress)),
+            TrimToNull(fields?.MapUrl, MaxLongTextLength, truncatedFields, nameof(EventLocationPublicFieldsDto.MapUrl)),
+            TrimToNull(fields?.Geohash, MaxShortTextLength, truncatedFields, nameof(EventLocationPublicFieldsDto.Geohash)));
     }
 
     private void EnforcePublicSessionLocationDisclosureCeiling(
         IEnumerable<EventSessionListDto> sessions)
     {
         var requests = sessions
-            .Select(session => CreateZeroDisclosureLocationSanitizationInput(
-                session.LocationId,
-                session.LocationFullName,
-                session.LocationCity,
-                session.RoomId,
-                session.RoomName))
+            .Select(session => session.EventLocation)
+            .Where(location => location is not null)
+            .Cast<EventLocationPublicDto>()
+            .Distinct()
+            .Select(CreatePublicEventLocationSanitizationInput)
             .ToArray();
 
-        EnforceSuccessfulSanitization(requests, aiContextGateway.SanitizeMany(requests));
+        EnforceSuccessfulPublicLocationSanitization(requests, aiContextGateway.SanitizeMany(requests));
     }
 
     private void EnforcePublicProgramLocationDisclosureCeiling(EventProgramSummaryDto program)
     {
-        var requests = new List<AiContextSanitizationInput>();
+        var locations = new List<EventLocationPublicDto>();
         foreach (var group in program.Sections.SelectMany(section => section.SessionGroups))
         {
-            requests.Add(CreateZeroDisclosureLocationSanitizationInput(
-                locationName: group.LocationName,
-                roomName: group.RoomName));
+            if (group.EventLocation is not null)
+            {
+                locations.Add(group.EventLocation);
+            }
 
-            requests.AddRange(group.Days
+            locations.AddRange(group.Days
                 .SelectMany(day => day.Items)
-                .Select(item => CreateZeroDisclosureLocationSanitizationInput(
-                    locationName: item.LocationName,
-                    roomName: item.RoomName)));
+                .Where(item => item.EventLocation is not null)
+                .Select(item => item.EventLocation!));
         }
 
-        EnforceSuccessfulSanitization(requests, aiContextGateway.SanitizeMany(requests));
+        AiContextSanitizationInput[] requests = locations
+            .Distinct()
+            .Select(CreatePublicEventLocationSanitizationInput)
+            .ToArray();
+        EnforceSuccessfulPublicLocationSanitization(
+            requests,
+            aiContextGateway.SanitizeMany(requests));
     }
 
     private void EnforceManagedProgramLocationDisclosureCeiling(
@@ -2181,7 +2219,37 @@ public sealed class EventManagementMcpTools(
                 roomName: group.RoomName)))
             .ToArray();
 
-        EnforceSuccessfulSanitization(requests, aiContextGateway.SanitizeMany(requests));
+        EnforceSuccessfulZeroLocationSanitization(requests, aiContextGateway.SanitizeMany(requests));
+    }
+
+    private static AiContextSanitizationInput CreatePublicEventLocationSanitizationInput(
+        EventLocationPublicDto location)
+    {
+        EventLocationPublicFieldsDto? fields = location.Fields;
+        return new AiContextSanitizationInput(
+            EntityName: nameof(EventLocationPublicDto),
+            Fields: new Dictionary<string, object?>
+            {
+                [nameof(EventLocationPublicDto.EventLocationId)] = location.EventLocationId,
+                [nameof(EventLocationPublicDto.State)] = location.State,
+                [nameof(EventLocationPublicFieldsDto.Country)] = fields?.Country,
+                [nameof(EventLocationPublicFieldsDto.Timezone)] = fields?.Timezone,
+                [nameof(EventLocationPublicFieldsDto.City)] = fields?.City,
+                [nameof(EventLocationPublicFieldsDto.VenueName)] = fields?.VenueName,
+                [nameof(EventLocationPublicFieldsDto.RoomName)] = fields?.RoomName,
+                [nameof(EventLocationPublicFieldsDto.StreetAddress)] = fields?.StreetAddress,
+                [nameof(EventLocationPublicFieldsDto.Postcode)] = fields?.Postcode,
+                [nameof(EventLocationPublicFieldsDto.Latitude)] = fields?.Latitude,
+                [nameof(EventLocationPublicFieldsDto.Longitude)] = fields?.Longitude,
+                [nameof(EventLocationPublicFieldsDto.FormattedAddress)] = fields?.FormattedAddress,
+                [nameof(EventLocationPublicFieldsDto.MapUrl)] = fields?.MapUrl,
+                [nameof(EventLocationPublicFieldsDto.Geohash)] = fields?.Geohash
+            },
+            ProviderTrustTier: AiProviderTrustTierEnum.Unknown,
+            ViewerScope: AiViewerScopeEnum.Public,
+            GrantedFieldKeys: new HashSet<string>(),
+            PiiDisclosureEnabled: false,
+            MaxSensitivity: AiContextSensitivityEnum.Public);
     }
 
     private static AiContextSanitizationInput CreateZeroDisclosureLocationSanitizationInput(
@@ -2206,7 +2274,44 @@ public sealed class EventManagementMcpTools(
             PiiDisclosureEnabled: false,
             MaxSensitivity: AiContextSensitivityEnum.Public);
 
-    private static void EnforceSuccessfulSanitization(
+    private static void EnforceSuccessfulPublicLocationSanitization(
+        IReadOnlyList<AiContextSanitizationInput> requests,
+        IReadOnlyList<AiContextSanitizedEnvelope> envelopes)
+    {
+        if (requests.Count != envelopes.Count)
+        {
+            throw new InvalidOperationException("AI context disclosure failed for public EventLocation data.");
+        }
+
+        for (var index = 0; index < requests.Count; index++)
+        {
+            AiContextSanitizationInput request = requests[index];
+            AiContextSanitizedEnvelope envelope = envelopes[index];
+            if (!string.Equals(request.EntityName, envelope.EntityName, StringComparison.Ordinal)
+                || !envelope.Succeeded
+                || envelope.RedactedFieldNames.Count != 0
+                || envelope.DeniedFieldNames.Count != 0
+                || envelope.DisclosedFields.Count != request.Fields.Count
+                || request.Fields.Any(field => !IsExactAllowedField(envelope.DisclosedFields, field)))
+            {
+                throw new InvalidOperationException("AI context disclosure failed for public EventLocation data.");
+            }
+        }
+    }
+
+    private static bool IsExactAllowedField(
+        IReadOnlyList<AiContextDisclosedField> disclosedFields,
+        KeyValuePair<string, object?> expected)
+    {
+        AiContextDisclosedField[] matches = disclosedFields
+            .Where(field => string.Equals(field.Name, expected.Key, StringComparison.Ordinal))
+            .ToArray();
+        return matches.Length == 1
+            && matches[0].AppliedRule == AiContextDisclosureRuleEnum.Allow
+            && Equals(matches[0].Value, expected.Value);
+    }
+
+    private static void EnforceSuccessfulZeroLocationSanitization(
         IReadOnlyList<AiContextSanitizationInput> requests,
         IReadOnlyList<AiContextSanitizedEnvelope> envelopes)
     {

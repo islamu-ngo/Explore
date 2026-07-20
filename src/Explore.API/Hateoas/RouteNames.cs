@@ -84,7 +84,9 @@ public static class RouteNames
     public const string GetPublicEventLocations = "GetPublicEventLocations";
     public const string GetAttendeeEventLocations = "GetAttendeeEventLocations";
     public const string GetManagementEventLocation = "GetManagementEventLocation";
+    public const string GetEventLocationReviewQueue = "GetEventLocationReviewQueue";
     public const string UpdateEventLocationDisclosure = "UpdateEventLocationDisclosure";
+    public const string ConfirmEventLocationRemediation = "ConfirmEventLocationRemediation";
 
     #endregion
 

@@ -2787,6 +2787,29 @@ Table "location_privacy_erasure_replay_checkpoints" {
   Note: 'PII-free append-only local replay chain for the separately retained erasure authority. Checks enforce positive monotonic sequence, a non-forking predecessor, and UUIDv7 identities.'
 }
 
+Table "location_privacy_authority"."authority_counter" {
+  "singleton" boolean [pk, not null]
+  "last_sequence" bigint [not null]
+
+  Note: 'Singleton PII-free sequence allocator for the application location-erasure ledger. Checks require singleton=true and a non-negative last sequence.'
+}
+
+Table "location_privacy_authority"."erasure_intents" {
+  "authority_sequence" bigint [pk, not null]
+  "intent_id" uuid [not null, note: 'uuidv7 idempotency key']
+  "owner_user_id" uuid [not null, note: 'opaque identifier; no user FK by design']
+  "location_ids" uuid[] [not null, note: 'normalized opaque identifiers; no location FK by design']
+  "reason" smallint [not null]
+  "requested_at_utc" timestamptz [not null]
+  "recorded_at_utc" timestamptz [not null]
+
+  indexes {
+    intent_id [unique, name: 'ix_erasure_intents_intent_id']
+  }
+
+  Note: 'PII-free immutable location-erasure facts for ApplicationDatabase mode and the retained-authority mirror. Checks enforce positive sequence, UUIDv7/RFC variant intent identity, non-empty opaque IDs, closed reasons, and server recording time order.'
+}
+
 // ============================================================
 // Actors
 // ============================================================

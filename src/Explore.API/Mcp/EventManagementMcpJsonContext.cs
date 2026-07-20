@@ -57,4 +57,5 @@ namespace Explore.API.Mcp;
 [JsonSerializable(typeof(EventMcpReadinessWarningDescriptor))]
 [JsonSerializable(typeof(EventMcpSessionListResultDescriptor))]
 [JsonSerializable(typeof(EventMcpSessionSummaryDescriptor))]
+[JsonSerializable(typeof(EventMcpLocationDescriptor))]
 public sealed partial class EventManagementMcpJsonContext : JsonSerializerContext;

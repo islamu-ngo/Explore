@@ -36,9 +36,14 @@ public sealed class EventLocationController(
         "Event location disclosure validation failed",
         "The EventLocation disclosure policy could not be updated.");
 
+    private static readonly ApiValidationProblemDescriptor RemediationValidationProblem = new(
+        "eventLocationRemediation",
+        "Event location remediation failed",
+        "The EventLocation privacy review could not be completed.");
+
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("public", Name = RouteNames.GetPublicEventLocations)]
+    [HttpGet("", Name = RouteNames.GetPublicEventLocations)]
     [EndpointSummary("Get public event locations")]
     [EndpointDescription("Returns only public-purpose EventLocation disclosures for a published public event.")]
     [ProducesResponseType(typeof(IReadOnlyList<EventLocationPublicDto>), StatusCodes.Status200OK)]
@@ -102,6 +107,37 @@ public sealed class EventLocationController(
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [PrivateNoStore]
+    [HttpGet("review", Name = RouteNames.GetEventLocationReviewQueue)]
+    [EndpointSummary("Get event location privacy review queue")]
+    [EndpointDescription("Returns management-authorized EventLocations that still require privacy remediation.")]
+    [ProducesResponseType(typeof(HalCollectionResource<EventLocationManagementDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalCollectionResource<EventLocationManagementDto>>> GetReviewQueue(
+        Guid eventId,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<EventLocationManagementDto>? result = await mediator.Send(
+            new GetEventLocationReviewQueueRequest(eventId),
+            cancellationToken);
+        if (result is null)
+        {
+            return this.ToNotFoundProblem(EventLocationNotFoundProblem);
+        }
+
+        HalCollectionResource<EventLocationManagementDto> resource =
+            await resourceAssembler.ToCollectionResource(
+                result,
+                RouteNames.GetEventLocationReviewQueue,
+                new { eventId },
+                HttpContext);
+        return Ok(resource);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
     [HttpPut("{eventLocationId:guid}/disclosure", Name = RouteNames.UpdateEventLocationDisclosure)]
     [EndpointSummary("Update event location disclosure")]
     [EndpointDescription("Updates organizer-selected disclosure fields using required policy and aggregate concurrency tokens.")]
@@ -140,6 +176,45 @@ public sealed class EventLocationController(
         return response.FailureCode == "event_location_policy_not_found"
             ? this.ToNotFoundProblem(EventLocationNotFoundProblem, response.Message)
             : this.ToCommandValidationProblem(response, DisclosureValidationProblem);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [PrivateNoStore]
+    [HttpPost("{eventLocationId:guid}/remediation/confirm", Name = RouteNames.ConfirmEventLocationRemediation)]
+    [EndpointSummary("Confirm event location privacy remediation")]
+    [EndpointDescription("Clears privacy review only for a usable physical EventLocation or an explicit TBA association.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> ConfirmRemediation(
+        Guid eventId,
+        Guid eventLocationId,
+        [FromBody] ConfirmEventLocationRemediationDto request,
+        CancellationToken cancellationToken = default)
+    {
+        BaseCommandResponse<Guid> response = await mediator.Send(
+            new ConfirmEventLocationRemediationCommand
+            {
+                EventId = eventId,
+                EventLocationId = eventLocationId,
+                ExpectedConcurrencyStamp = request.ExpectedConcurrencyStamp,
+                ExpectedPolicyVersion = request.ExpectedPolicyVersion
+            },
+            cancellationToken);
+
+        if (response.Success)
+        {
+            return Ok(response);
+        }
+
+        return response.FailureCode == "event_location_remediation_not_found"
+            ? this.ToNotFoundProblem(EventLocationNotFoundProblem, response.Message)
+            : this.ToCommandValidationProblem(response, RemediationValidationProblem);
     }
 
     private static EventLocationDisclosureFields ToSelectedFields(UpdateEventLocationDisclosureDto request)

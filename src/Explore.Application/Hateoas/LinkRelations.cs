@@ -263,6 +263,8 @@ public static class LinkRelations
     /// </summary>
     public const string PublishReadiness = "publish-readiness";
 
+    public const string RemediateLocation = "remediate-location";
+
     /// <summary>
     /// Cancel action for events or registrations.
     /// </summary>

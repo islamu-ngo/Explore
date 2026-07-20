@@ -578,6 +578,7 @@ public sealed record EventMcpProgramSessionGroupDescriptor(
     string Title,
     int SortOrder,
     string? Color,
+    EventMcpLocationDescriptor? EventLocation,
     IReadOnlyList<EventMcpProgramDayDescriptor> Days);
 
 public sealed record EventMcpProgramDayDescriptor(
@@ -598,6 +599,7 @@ public sealed record EventMcpProgramItemDescriptor(
     TimeOnly LocalEndTime,
     int SortOrder,
     Guid? SessionGroupId,
+    EventMcpLocationDescriptor? EventLocation,
     int? Capacity,
     string? RegistrationModeName,
     IReadOnlyList<EventMcpReadinessWarningDescriptor> ReadinessWarnings);
@@ -647,4 +649,21 @@ public sealed record EventMcpSessionSummaryDescriptor(
     decimal? Price,
     string? CurrencyCode,
     IReadOnlyList<string> SessionGroups,
+    EventMcpLocationDescriptor? EventLocation,
     IReadOnlyList<string> TruncatedFields);
+
+public sealed record EventMcpLocationDescriptor(
+    Guid EventLocationId,
+    string State,
+    string? Country,
+    string? Timezone,
+    string? City,
+    string? VenueName,
+    string? RoomName,
+    string? StreetAddress,
+    string? Postcode,
+    double? Latitude,
+    double? Longitude,
+    string? FormattedAddress,
+    string? MapUrl,
+    string? Geohash);
