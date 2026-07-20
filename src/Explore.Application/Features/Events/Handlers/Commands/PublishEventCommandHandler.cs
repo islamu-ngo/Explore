@@ -22,6 +22,7 @@ namespace Explore.Application.Features.Events.Handlers.Commands;
 
 public class PublishEventCommandHandler(
     IEventRepository eventRepository,
+    IEventLocationRepository eventLocationRepository,
     IOutboxRepository outboxRepository,
     IUnitOfWork unitOfWork,
     HybridCache cache,
@@ -65,6 +66,10 @@ public class PublishEventCommandHandler(
 
             EventLifecyclePolicy policy = await policyProvider.GetEffectivePolicyAsync(@event.TenantId, ValidationProfile.EventPublish, token);
             LifecycleReadinessResult readiness = readinessEvaluator.Evaluate(@event, policy.Profile, policy);
+            IReadOnlyList<EventLocation> eventLocations = await eventLocationRepository.GetByEventIdAsync(
+                @event.Id,
+                token);
+            readiness = EventLocationPublicationReadinessEvaluator.Include(readiness, eventLocations);
             if (!readiness.IsReady)
                 return Failure(request.Id, "Event is not ready to publish.", readiness.Errors.Select(error => error.Message), ReadinessFailedCode);
 

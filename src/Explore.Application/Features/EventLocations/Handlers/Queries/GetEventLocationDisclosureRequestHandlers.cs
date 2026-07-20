@@ -147,6 +147,65 @@ public sealed class GetManagementEventLocationRequestHandler(
             return null;
         }
 
+        return EventLocationManagementProjection.Map(
+            placement,
+            result,
+            authorizationTarget);
+    }
+}
+
+public sealed class GetEventLocationReviewQueueRequestHandler(
+    IEventRepository events,
+    IEventLocationRepository eventLocations,
+    IEventLocationDisclosureService disclosureService)
+    : IRequestHandler<GetEventLocationReviewQueueRequest, IReadOnlyList<EventLocationManagementDto>?>
+{
+    public async Task<IReadOnlyList<EventLocationManagementDto>?> Handle(
+        GetEventLocationReviewQueueRequest request,
+        CancellationToken cancellationToken)
+    {
+        Event? authorizationTarget = (await events.GetAuthorizationTargetsByIdsAsync(
+                [request.EventId],
+                cancellationToken))
+            .SingleOrDefault(item => item.Id == request.EventId);
+        if (authorizationTarget is null)
+        {
+            return null;
+        }
+
+        EventLocation[] placements = (await eventLocations.GetByEventIdAsync(
+                request.EventId,
+                cancellationToken))
+            .Where(item => item.NeedsPrivacyReview)
+            .ToArray();
+        if (placements.Length == 0)
+        {
+            return [];
+        }
+
+        IReadOnlyDictionary<Guid, EventLocationDisclosureResult> results =
+            await GetPublicEventLocationsRequestHandler.ResolveAsync(
+                placements,
+                EventLocationDisclosurePurpose.Management,
+                disclosureService,
+                cancellationToken);
+        return placements
+            .Where(placement => results[placement.Id].State != EventLocationDisclosureState.Hidden)
+            .Select(placement => EventLocationManagementProjection.Map(
+                placement,
+                results[placement.Id],
+                authorizationTarget))
+            .ToArray();
+    }
+}
+
+internal static class EventLocationManagementProjection
+{
+    public static EventLocationManagementDto Map(
+        EventLocation placement,
+        EventLocationDisclosureResult result,
+        Event authorizationTarget)
+    {
         var descriptor = ResourceDescriptors.EventAuthorizationTarget;
         var updateAuthorization = new AuthorizationCheck(
             descriptor.Kind,

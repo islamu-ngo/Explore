@@ -9,6 +9,7 @@ using Explore.Application.Exceptions;
 using Explore.Application.Features.EventLocations.Requests.Commands;
 using Explore.Application.Features.EventLocations.Validators;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using MediatR;
@@ -82,7 +83,7 @@ public sealed class UpdateEventLocationPolicyCommandHandler(
                 actorUserId,
                 EventLocationDisclosureAuditReasonEnum.OrganizerPolicyChange,
                 timeProvider.GetUtcNow().UtcDateTime,
-                request.NeedsPrivacyReview);
+                eventLocation.NeedsPrivacyReview || request.NeedsPrivacyReview);
             await audits.AppendAsync(audit, token);
             return Success(eventLocation.Id);
         }, cancellationToken);
@@ -109,6 +110,116 @@ public sealed class UpdateEventLocationPolicyCommandHandler(
         Id = eventLocationId,
         Success = true,
         Message = "EventLocation policy updated."
+    };
+
+    private static BaseCommandResponse<Guid> Failure(
+        Guid eventLocationId,
+        string code,
+        string message,
+        IEnumerable<string>? errors = null) => new()
+        {
+            Id = eventLocationId,
+            Success = false,
+            FailureCode = code,
+            Message = message,
+            Errors = errors?.ToList() ?? [message]
+        };
+}
+
+public sealed class ConfirmEventLocationRemediationCommandHandler(
+    IEventLocationRepository eventLocations,
+    IUnitOfWork unitOfWork,
+    HybridCache cache,
+    ITenantContext tenantContext,
+    IUserContext userContext,
+    TimeProvider timeProvider)
+    : IRequestHandler<ConfirmEventLocationRemediationCommand, BaseCommandResponse<Guid>>
+{
+    public async Task<BaseCommandResponse<Guid>> Handle(
+        ConfirmEventLocationRemediationCommand request,
+        CancellationToken cancellationToken)
+    {
+        var validator = new ConfirmEventLocationRemediationCommandValidator();
+        var validation = await validator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return Failure(
+                request.EventLocationId,
+                "event_location_remediation_validation_failed",
+                "EventLocation remediation confirmation failed validation.",
+                validation.Errors.Select(error => error.ErrorMessage));
+        }
+
+        Guid actorUserId = userContext.GetRequiredUserId();
+        BaseCommandResponse<Guid> result = await unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            EventLocation? eventLocation = await eventLocations.GetForUpdateAsync(
+                request.EventLocationId,
+                token);
+            if (eventLocation is null
+                || eventLocation.TenantId != tenantContext.TenantId
+                || eventLocation.EventId != request.EventId)
+            {
+                return Failure(
+                    request.EventLocationId,
+                    "event_location_remediation_not_found",
+                    "EventLocation remediation target was not found.");
+            }
+
+            if (eventLocation.ConcurrencyStamp != request.ExpectedConcurrencyStamp
+                || eventLocation.PolicyVersion != request.ExpectedPolicyVersion)
+            {
+                throw ConcurrencyConflict(eventLocation.Id);
+            }
+
+            if (!eventLocation.NeedsPrivacyReview)
+            {
+                return Success(eventLocation.Id, "EventLocation privacy review is already complete.");
+            }
+
+            if (!eventLocation.SatisfiesPublicationVenueRequirement(eventLocation.Location))
+            {
+                return Failure(
+                    eventLocation.Id,
+                    "event_location_remediation_location_unusable",
+                    "Replace the unusable physical location or explicitly select TBA before confirming remediation.");
+            }
+
+            DateTime changedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
+            EventLocationDisclosureAudit audit = eventLocation.CompletePrivacyReview(
+                actorUserId,
+                changedAtUtc);
+            OutboxMessage correction = LocationPrivacyOutboxMessageFactory.CreateProjectionCorrection(
+                Guid.CreateVersion7(),
+                eventLocation,
+                changedAtUtc);
+            await eventLocations.SaveGovernanceChangesAsync([audit], [correction], token);
+            return Success(eventLocation.Id, "EventLocation privacy remediation confirmed.");
+        }, cancellationToken);
+
+        if (!result.Success)
+        {
+            return result;
+        }
+
+        await cache.RemoveByTagAsync(CacheTags.EventLocation(request.EventLocationId), CancellationToken.None);
+        await cache.RemoveByTagAsync(CacheTags.EventLocationsByEvent(request.EventId), CancellationToken.None);
+        await cache.RemoveByTagAsync(CacheTags.Event(request.EventId), CancellationToken.None);
+        await cache.RemoveByTagAsync(CacheTags.EventListByTenant(tenantContext.TenantId), CancellationToken.None);
+        return result;
+    }
+
+    private static ConcurrencyConflictException ConcurrencyConflict(Guid eventLocationId) => new(
+        ConcurrencyConflictException.ConcurrentUpdate,
+        "The EventLocation was modified by another request. Reload and retry remediation.",
+        nameof(EventLocation),
+        eventLocationId.ToString("D"));
+
+    private static BaseCommandResponse<Guid> Success(Guid eventLocationId, string message) => new()
+    {
+        Id = eventLocationId,
+        Success = true,
+        Message = message
     };
 
     private static BaseCommandResponse<Guid> Failure(

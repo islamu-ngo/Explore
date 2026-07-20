@@ -10,6 +10,7 @@ public static class LocationPrivacyOutboxMessageFactory
 {
     public const string LocationPiiErasedEventType = "LocationPiiErased";
     public const string LocationPrivacyCorrectionRequestedEventType = "LocationPrivacyCorrectionRequested";
+    public const string ProjectionCorrectionEventType = "location.privacy.corrected";
 
     public static OutboxMessage CreateLocationErased(
         Guid messageId,
@@ -58,6 +59,27 @@ public static class LocationPrivacyOutboxMessageFactory
             createdAtUtc);
     }
 
+    public static OutboxMessage CreateProjectionCorrection(
+        Guid messageId,
+        EventLocation eventLocation,
+        DateTime createdAtUtc)
+    {
+        Validate(messageId, createdAtUtc);
+        ArgumentNullException.ThrowIfNull(eventLocation);
+        return Create(
+            messageId,
+            nameof(EventLocation),
+            eventLocation.Id,
+            ProjectionCorrectionEventType,
+            new ProjectionCorrectionPayload(
+                1,
+                eventLocation.TenantId,
+                eventLocation.EventId,
+                eventLocation.Id,
+                eventLocation.PolicyVersion),
+            createdAtUtc);
+    }
+
     private static OutboxMessage Create<TPayload>(
         Guid messageId,
         string aggregateType,
@@ -82,6 +104,11 @@ public static class LocationPrivacyOutboxMessageFactory
         DateTime createdAtUtc)
     {
         ArgumentNullException.ThrowIfNull(intent);
+        Validate(messageId, createdAtUtc);
+    }
+
+    private static void Validate(Guid messageId, DateTime createdAtUtc)
+    {
         if (messageId == Guid.Empty || messageId.Version != 7 || messageId.Variant is < 8 or > 11)
         {
             throw new ArgumentException("Outbox message ids must be RFC 4122 UUIDv7 values.", nameof(messageId));
@@ -108,5 +135,12 @@ public static class LocationPrivacyOutboxMessageFactory
         Guid EventId,
         Guid EventLocationId,
         Guid? LocationId,
+        int PolicyVersion);
+
+    private sealed record ProjectionCorrectionPayload(
+        int SchemaVersion,
+        Guid TenantId,
+        Guid EventId,
+        Guid EventLocationId,
         int PolicyVersion);
 }

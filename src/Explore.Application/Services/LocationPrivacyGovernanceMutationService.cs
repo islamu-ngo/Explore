@@ -1,7 +1,6 @@
 // ABOUTME: Applies location-governance writes with transactional EventLocation correction records.
 // ABOUTME: Rejects tenant widening and evicts global, tenant, event, and association cache tags after commit.
 
-using System.Text.Json;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -286,7 +285,10 @@ public sealed class LocationPrivacyGovernanceMutationService(
                 actorUserId,
                 changedAtUtc);
             audits.Add(audit);
-            outboxMessages.Add(CreateCorrectionOutbox(eventLocation, changedAtUtc));
+            outboxMessages.Add(LocationPrivacyOutboxMessageFactory.CreateProjectionCorrection(
+                Guid.CreateVersion7(),
+                eventLocation,
+                changedAtUtc));
             corrected.Add(new(
                 eventLocation.TenantId,
                 eventLocation.EventId,
@@ -389,25 +391,6 @@ public sealed class LocationPrivacyGovernanceMutationService(
         _ => int.MinValue
     };
 
-    private static OutboxMessage CreateCorrectionOutbox(
-        EventLocation eventLocation,
-        DateTime createdAtUtc) => new()
-        {
-            Id = Guid.CreateVersion7(),
-            AggregateType = nameof(EventLocation),
-            AggregateId = eventLocation.Id,
-            EventType = "location.privacy.corrected",
-            Payload = JsonSerializer.Serialize(new LocationPrivacyCorrectionPayload(
-            SchemaVersion: 1,
-            eventLocation.TenantId,
-            eventLocation.EventId,
-            eventLocation.Id,
-            eventLocation.PolicyVersion)),
-            Status = OutboxMessageStatus.Pending,
-            CreatedAt = createdAtUtc,
-            MaxRetries = 5
-        };
-
     public async Task InvalidateMutationAsync(
         SettingScope scope,
         Guid? tenantId,
@@ -432,11 +415,4 @@ public sealed class LocationPrivacyGovernanceMutationService(
             await cache.RemoveByTagAsync(CacheTags.EventLocation(eventLocationId), cancellationToken);
         }
     }
-
-    private sealed record LocationPrivacyCorrectionPayload(
-        int SchemaVersion,
-        Guid TenantId,
-        Guid EventId,
-        Guid EventLocationId,
-        int PolicyVersion);
 }

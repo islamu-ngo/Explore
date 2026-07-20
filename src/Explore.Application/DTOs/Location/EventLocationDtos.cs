@@ -269,3 +269,7 @@ public sealed record UpdateEventLocationDisclosureDto(
     DateTime? RevealFullDetailsFromUtc,
     int ExpectedPolicyVersion,
     Guid ExpectedConcurrencyStamp);
+
+public sealed record ConfirmEventLocationRemediationDto(
+    int ExpectedPolicyVersion,
+    Guid ExpectedConcurrencyStamp);

@@ -1,16 +1,17 @@
-// ABOUTME: Machine-readable registry seeding every persisted public *Pii property with its AI disclosure classification.
-// ABOUTME: Drives the AI Context Gateway's per-field allow/redact/aggregate/deny decisions; reflection-tested for completeness.
+// ABOUTME: Machine-readable registry for persisted PII and purpose-authorized derived AI projections.
+// ABOUTME: Keeps raw PII classifications separate from already-evaluated public EventLocation fields.
 
 using System.Collections.Generic;
+using Explore.Application.DTOs.Location;
 using Explore.Domain;
 using Explore.Domain.Enums;
 
 namespace Explore.Application.Features.AiAssistant.Disclosure;
 
 /// <summary>
-/// Authoritative registry of every persisted public <c>*Pii</c> property's AI-disclosure
-/// classification. Seeded verbatim from
-/// <c>dev/active/ai-context-disclosure-policy/field-classification-matrix.md</c>.
+/// Authoritative registry of persisted public <c>*Pii</c> properties and explicitly
+/// purpose-authorized derived projections. Raw PII entries remain independently
+/// enumerable so schema completeness checks cannot be weakened by projection entries.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -38,16 +39,27 @@ namespace Explore.Application.Features.AiAssistant.Disclosure;
 public sealed class AiContextDisclosureRegistry
 {
     private readonly IReadOnlyDictionary<string, AiContextDisclosureEntry> _entriesByKey;
+    private readonly IReadOnlyDictionary<string, AiContextDisclosureEntry> _projectionEntriesByKey;
 
-    private AiContextDisclosureRegistry(IReadOnlyDictionary<string, AiContextDisclosureEntry> entriesByKey)
+    private AiContextDisclosureRegistry(
+        IReadOnlyDictionary<string, AiContextDisclosureEntry> entriesByKey,
+        IReadOnlyDictionary<string, AiContextDisclosureEntry> projectionEntriesByKey)
     {
         _entriesByKey = entriesByKey;
+        _projectionEntriesByKey = projectionEntriesByKey;
     }
 
     /// <summary>
     /// All registered entries. Order is unspecified; consumers must not rely on insertion order.
     /// </summary>
     public IReadOnlyCollection<AiContextDisclosureEntry> Entries => _entriesByKey.Values.ToList();
+
+    /// <summary>
+    /// Derived fields whose values are safe only after their owning purpose evaluator has
+    /// materialized the named projection. These entries never reclassify the raw PII source.
+    /// </summary>
+    public IReadOnlyCollection<AiContextDisclosureEntry> ProjectionEntries =>
+        _projectionEntriesByKey.Values.ToList();
 
     /// <summary>
     /// Number of registered entries. Used by the completeness reflection test as a sanity floor.
@@ -219,6 +231,33 @@ public sealed class AiContextDisclosureRegistry
                 Phase4Gated: true),
         };
 
+        string[] publicEventLocationFields =
+        [
+            nameof(EventLocationPublicDto.EventLocationId),
+            nameof(EventLocationPublicDto.State),
+            nameof(EventLocationPublicFieldsDto.Country),
+            nameof(EventLocationPublicFieldsDto.Timezone),
+            nameof(EventLocationPublicFieldsDto.City),
+            nameof(EventLocationPublicFieldsDto.VenueName),
+            nameof(EventLocationPublicFieldsDto.RoomName),
+            nameof(EventLocationPublicFieldsDto.StreetAddress),
+            nameof(EventLocationPublicFieldsDto.Postcode),
+            nameof(EventLocationPublicFieldsDto.Latitude),
+            nameof(EventLocationPublicFieldsDto.Longitude),
+            nameof(EventLocationPublicFieldsDto.FormattedAddress),
+            nameof(EventLocationPublicFieldsDto.MapUrl),
+            nameof(EventLocationPublicFieldsDto.Geohash)
+        ];
+        AiContextDisclosureEntry[] projectionEntries = publicEventLocationFields
+            .Select(fieldName => new AiContextDisclosureEntry(
+                EntityName: nameof(EventLocationPublicDto),
+                FieldName: fieldName,
+                Sensitivity: AiContextSensitivityEnum.Public,
+                LocalModelRule: AiContextDisclosureRuleEnum.Allow,
+                Rationale: "The EventLocation public-purpose evaluator already selected this field; raw LocationPii remains separately restricted.",
+                Phase4Gated: false))
+            .ToArray();
+
         var byKey = new Dictionary<string, AiContextDisclosureEntry>(entries.Count, StringComparer.OrdinalIgnoreCase);
         foreach (var entry in entries)
         {
@@ -229,7 +268,19 @@ public sealed class AiContextDisclosureRegistry
             }
         }
 
-        return new AiContextDisclosureRegistry(byKey);
+        var projectionsByKey = new Dictionary<string, AiContextDisclosureEntry>(
+            projectionEntries.Length,
+            StringComparer.OrdinalIgnoreCase);
+        foreach (AiContextDisclosureEntry entry in projectionEntries)
+        {
+            if (byKey.ContainsKey(entry.Key) || !projectionsByKey.TryAdd(entry.Key, entry))
+            {
+                throw new InvalidOperationException(
+                    $"Duplicate AI disclosure entry for key '{entry.Key}'. Each field must be registered exactly once.");
+            }
+        }
+
+        return new AiContextDisclosureRegistry(byKey, projectionsByKey);
     }
 
     /// <summary>
@@ -237,7 +288,11 @@ public sealed class AiContextDisclosureRegistry
     /// Returns <c>false</c> for navigation properties and unregistered fields (fail-closed).
     /// </summary>
     public bool TryGetEntry(string entityName, string fieldName, out AiContextDisclosureEntry entry)
-        => _entriesByKey.TryGetValue(AiContextDisclosureEntry.BuildKey(entityName, fieldName), out entry!);
+    {
+        string key = AiContextDisclosureEntry.BuildKey(entityName, fieldName);
+        return _entriesByKey.TryGetValue(key, out entry!)
+            || _projectionEntriesByKey.TryGetValue(key, out entry!);
+    }
 
     /// <summary>
     /// Resolves the effective disclosure rule for a single field at a given provider-trust tier.
@@ -260,7 +315,7 @@ public sealed class AiContextDisclosureRegistry
         AiProviderTrustTierEnum providerTrustTier,
         bool piiDisclosureEnabled)
     {
-        if (!_entriesByKey.TryGetValue(AiContextDisclosureEntry.BuildKey(entityName, fieldName), out var entry))
+        if (!TryGetEntry(entityName, fieldName, out AiContextDisclosureEntry? entry))
         {
             return AiContextDisclosureRuleEnum.Deny;
         }

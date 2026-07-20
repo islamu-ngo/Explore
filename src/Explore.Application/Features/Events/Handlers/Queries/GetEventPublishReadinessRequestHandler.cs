@@ -4,12 +4,14 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Services.Lifecycle;
+using Explore.Domain;
 using MediatR;
 
 namespace Explore.Application.Features.Events.Handlers.Queries;
 
 public class GetEventPublishReadinessRequestHandler(
     IEventRepository eventRepository,
+    IEventLocationRepository eventLocationRepository,
     IEventLifecyclePolicyProvider policyProvider,
     IEventLifecycleReadinessEvaluator readinessEvaluator)
     : IRequestHandler<GetEventPublishReadinessRequest, EventPublishReadinessDto?>
@@ -24,6 +26,10 @@ public class GetEventPublishReadinessRequestHandler(
 
         EventLifecyclePolicy policy = await policyProvider.GetEffectivePolicyAsync(@event.TenantId, ValidationProfile.EventPublish, cancellationToken);
         LifecycleReadinessResult result = readinessEvaluator.Evaluate(@event, policy.Profile, policy);
+        IReadOnlyList<EventLocation> eventLocations = await eventLocationRepository.GetByEventIdAsync(
+            @event.Id,
+            cancellationToken);
+        result = EventLocationPublicationReadinessEvaluator.Include(result, eventLocations);
 
         return MapToDto(@event.Id, result);
     }

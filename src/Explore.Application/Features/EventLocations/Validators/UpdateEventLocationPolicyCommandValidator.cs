@@ -27,3 +27,17 @@ public sealed class UpdateEventLocationPolicyCommandValidator
             .WithMessage("RevealFullDetailsFromUtc must be UTC when provided.");
     }
 }
+
+public sealed class ConfirmEventLocationRemediationCommandValidator
+    : AbstractValidator<ConfirmEventLocationRemediationCommand>
+{
+    public ConfirmEventLocationRemediationCommandValidator()
+    {
+        RuleFor(command => command.EventId).NotEmpty();
+        RuleFor(command => command.EventLocationId).NotEmpty();
+        RuleFor(command => command.ExpectedConcurrencyStamp).NotEmpty();
+        RuleFor(command => command.ExpectedPolicyVersion)
+            .GreaterThan(0)
+            .LessThan(int.MaxValue);
+    }
+}

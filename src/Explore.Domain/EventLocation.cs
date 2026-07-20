@@ -242,6 +242,31 @@ public sealed class EventLocation : ITenantEntity, IAuditableEntity, ISoftDeleta
         return audit;
     }
 
+    public EventLocationDisclosureAudit CompletePrivacyReview(
+        Guid actorUserId,
+        DateTime changedAtUtc)
+    {
+        if (!NeedsPrivacyReview)
+        {
+            throw new InvalidOperationException("EventLocation does not require privacy remediation.");
+        }
+
+        if (!SatisfiesPublicationVenueRequirement(Location))
+        {
+            throw new InvalidOperationException("EventLocation cannot complete privacy remediation without a usable physical location or explicit TBA state.");
+        }
+
+        return ChangeDisclosurePolicy(
+            GetDisclosureFields(),
+            (LocationDisclosureAudienceEnum)FullDetailsAudienceId,
+            RevealFullDetailsFromUtc,
+            PolicyVersion,
+            actorUserId,
+            EventLocationDisclosureAuditReasonEnum.PrivacyErasureRemediation,
+            changedAtUtc,
+            needsPrivacyReview: false);
+    }
+
     public void DetachFinalReference(Guid actorUserId, DateTime deletedAtUtc)
     {
         RequireId(actorUserId, nameof(actorUserId));

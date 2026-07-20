@@ -22,3 +22,14 @@ public sealed record UpdateEventLocationPolicyCommand : IRequest<BaseCommandResp
 
     string? ISecureRequest.ResourceId => EventId.ToString("D");
 }
+
+[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
+public sealed record ConfirmEventLocationRemediationCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
+{
+    public Guid EventId { get; init; }
+    public Guid EventLocationId { get; init; }
+    public Guid ExpectedConcurrencyStamp { get; init; }
+    public int ExpectedPolicyVersion { get; init; }
+
+    string? ISecureRequest.ResourceId => EventId.ToString("D");
+}

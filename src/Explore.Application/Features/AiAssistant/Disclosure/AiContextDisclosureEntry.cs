@@ -1,23 +1,23 @@
-// ABOUTME: Immutable record describing one PII field's classification entry in the AI disclosure registry.
-// ABOUTME: Seeded from dev/active/ai-context-disclosure-policy/field-classification-matrix.md §4.
+// ABOUTME: Immutable record describing one field classification in the AI disclosure registry.
+// ABOUTME: Covers persisted PII and purpose-authorized derived projections before AI/MCP output.
 
 using Explore.Domain.Enums;
 
 namespace Explore.Application.Features.AiAssistant.Disclosure;
 
 /// <summary>
-/// Represents the disclosure classification for a single persisted public property
-/// on a <c>*Pii</c> entity. Entries are immutable and seeded by
+/// Represents the disclosure classification for a persisted <c>*Pii</c> property or a
+/// purpose-authorized derived projection field. Entries are immutable and seeded by
 /// <see cref="AiContextDisclosureRegistry.CreateDefault"/>. The effective rule for
 /// any provider-trust tier is computed by
 /// <see cref="AiContextDisclosureRegistry.ResolveEffectiveRule"/>.
 /// </summary>
 /// <param name="EntityName">
-/// Unqualified domain entity name (e.g. <c>UserPii</c>). Match is OrdinalIgnoreCase.
+/// Unqualified entity or projection name (e.g. <c>UserPii</c>). Match is OrdinalIgnoreCase.
 /// </param>
 /// <param name="FieldName">
-/// Public persisted property name on the entity (e.g. <c>Email</c>).
-/// Navigation properties are NOT registered — only fields that are physically persisted.
+/// Public property name on the entity or flattened derived projection (e.g. <c>Email</c>).
+/// Navigation properties are not registered.
 /// </param>
 /// <param name="Sensitivity">
 /// Base data sensitivity tier (<see cref="AiContextSensitivityEnum"/>). Higher = more restrictive.

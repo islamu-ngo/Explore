@@ -1,6 +1,8 @@
 // ABOUTME: Purpose-specific EventLocation read requests for public, attendee, and management API surfaces.
 // ABOUTME: Keeps requester identity server-derived and scopes every disclosure read to its parent event.
 
+using Explore.Application.Authorization;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Location;
 using MediatR;
 
@@ -14,3 +16,10 @@ public sealed record GetAttendeeEventLocationsRequest(Guid EventId)
 
 public sealed record GetManagementEventLocationRequest(Guid EventId, Guid EventLocationId)
     : IRequest<EventLocationManagementDto?>;
+
+[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Events.ViewManagement)]
+public sealed record GetEventLocationReviewQueueRequest(Guid EventId)
+    : IRequest<IReadOnlyList<EventLocationManagementDto>?>, ISecureRequest
+{
+    string? ISecureRequest.ResourceId => EventId.ToString("D");
+}

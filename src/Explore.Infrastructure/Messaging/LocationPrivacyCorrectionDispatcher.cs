@@ -15,7 +15,7 @@ public sealed class LocationPrivacyCorrectionDispatcher(
     HybridCache cache,
     IAtprotoLocationPrivacyCorrectionPlanner correctionPlanner)
 {
-    public const string GovernanceCorrectionEventType = "location.privacy.corrected";
+    public const string GovernanceCorrectionEventType = LocationPrivacyOutboxMessageFactory.ProjectionCorrectionEventType;
 
     private static readonly string[] GlobalTags =
     [
