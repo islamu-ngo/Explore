@@ -17,6 +17,14 @@ public interface IEmailDispatchOutboxRepository
         EmailDispatchSpecificClaimRequest request,
         CancellationToken cancellationToken);
 
+    Task<EventReminderStateChangeResult> SuppressEventRemindersInCurrentTransactionAsync(
+        EventReminderSupersessionRequest request,
+        CancellationToken cancellationToken);
+
+    Task<EventReminderStateChangeResult> RescheduleEventRemindersInCurrentTransactionAsync(
+        EventReminderRescheduleRequest request,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<EmailDispatchOutbox>> GetRabbitMqPublishBatch(
         int batchSize,
         DateTime now,
@@ -199,6 +207,30 @@ public sealed record EmailDispatchSpecificClaimRequest(
     int OptionalReminderBacklogHighWatermark,
     int OptionalReminderBacklogLowWatermark,
     DateTime ClaimedAt);
+
+public sealed record EventReminderSupersessionRequest(
+    Guid TenantId,
+    Guid EventId,
+    Guid? RegistrationIntentId,
+    Guid? SessionId,
+    DateTime SupersededAt,
+    string ReasonCode);
+
+public sealed record EventReminderRescheduleRequest(
+    Guid TenantId,
+    Guid EventId,
+    Guid? RegistrationIntentId,
+    Guid? SessionId,
+    string EventTitle,
+    TimeSpan LeadTime,
+    DateTime ChangedAt,
+    string EventTimeZoneId = "UTC");
+
+public sealed record EventReminderStateChangeResult(
+    int OutboxRowsChanged,
+    int EmailDeliveryRowsChanged,
+    int NotificationsChanged,
+    int InAppDeliveryRowsChanged);
 
 public sealed record EmailDispatchAcceptedSettlement(
     Guid TenantId,

@@ -20,6 +20,226 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
     private const string ClaimAdvisoryLockName = "email-dispatch-smtp-claim";
     private const string AcceptedSettlementUnknownCategory = "accepted_settlement_unknown";
     private const string AcceptedSettlementUnknownMessage = "SMTP accepted the message, but local settlement is uncertain. Automatic resend is disabled pending reconciliation.";
+    private const string ProviderHandoffStarted = "provider_handoff_started";
+    private const string ReminderSupersededProviderStatus = "superseded";
+    private const string ReminderSupersededMessage = "The reminder was superseded before SMTP provider handoff.";
+    private const string ReminderRescheduleSql = """
+        WITH candidates AS (
+            SELECT intent.tenant_id,
+                   intent.id AS notification_intent_id,
+                   split_part(intent.safe_payload_reference, ':', 2)::uuid AS registration_intent_id,
+                   intent.recipient_user_id,
+                   outbox.id AS outbox_id
+            FROM notification_intents AS intent
+            LEFT JOIN email_dispatch_outbox AS outbox
+                ON outbox.tenant_id = intent.tenant_id
+               AND outbox.notification_intent_id = intent.id
+               AND outbox.kind = @reminder_kind
+               AND outbox.is_deleted = FALSE
+               AND outbox.content_redacted_at IS NULL
+               AND outbox.status IN (@pending_status, @retry_status, @processing_status)
+               AND (outbox.status <> @processing_status OR (
+                   NOT EXISTS (
+                       SELECT 1 FROM email_dispatch_attempts AS attempt
+                       WHERE attempt.tenant_id = outbox.tenant_id
+                         AND attempt.email_dispatch_outbox_id = outbox.id
+                         AND attempt.attempt_number = outbox.attempt_count
+                         AND attempt.failure_category = @provider_handoff_started)
+                   AND NOT EXISTS (
+                       SELECT 1 FROM email_dispatch_receipts AS receipt
+                       WHERE receipt.tenant_id = outbox.tenant_id
+                         AND receipt.email_dispatch_outbox_id = outbox.id
+                         AND receipt.status = @processing_receipt_status)))
+            WHERE intent.tenant_id = @tenant_id
+              AND intent.event_id = @event_id
+              AND intent.template_key = 'event.reminder'
+              AND intent.is_deleted = FALSE
+              AND intent.safe_payload_reference ~ '^event-registration-intent:[0-9a-f]{32}:session:[0-9a-f]{32}$'
+              AND (@registration_intent_id IS NULL
+                   OR split_part(intent.safe_payload_reference, ':', 2)::uuid = @registration_intent_id)
+              AND (@session_id IS NULL
+                   OR right(intent.safe_payload_reference, length(@session_suffix)) = @session_suffix
+                   OR EXISTS (
+                       SELECT 1
+                       FROM event_registrations AS affected_child
+                       WHERE affected_child.tenant_id = intent.tenant_id
+                         AND affected_child.event_registration_intent_id = split_part(intent.safe_payload_reference, ':', 2)::uuid
+                         AND affected_child.event_id = @event_id
+                         AND affected_child.user_id = intent.recipient_user_id
+                         AND affected_child.event_session_id = @session_id
+                         AND affected_child.is_deleted = FALSE
+                         AND affected_child.approval_status_id = @approved_status))
+            FOR UPDATE OF intent
+        ),
+        selected AS (
+            SELECT candidates.*,
+                   eligible.session_id,
+                   eligible.session_start,
+                   eligible.local_start_date,
+                   eligible.local_start_time
+            FROM candidates
+            LEFT JOIN LATERAL (
+                SELECT session.id AS session_id,
+                       session.start_time AS session_start,
+                       session.local_start_date,
+                       session.local_start_time
+                FROM event_registration_intents AS parent
+                INNER JOIN event_registrations AS child
+                    ON child.tenant_id = parent.tenant_id
+                   AND child.event_registration_intent_id = parent.id
+                INNER JOIN event_sessions AS session
+                    ON session.tenant_id = child.tenant_id
+                   AND session.id = child.event_session_id
+                   AND session.event_id = parent.event_id
+                INNER JOIN events AS event
+                    ON event.tenant_id = parent.tenant_id
+                   AND event.id = parent.event_id
+                WHERE parent.tenant_id = candidates.tenant_id
+                  AND parent.id = candidates.registration_intent_id
+                  AND parent.event_id = @event_id
+                  AND parent.user_id = candidates.recipient_user_id
+                  AND parent.is_deleted = FALSE
+                  AND parent.approval_status_id = @approved_status
+                  AND child.user_id = parent.user_id
+                  AND child.event_id = parent.event_id
+                  AND child.is_deleted = FALSE
+                  AND child.approval_status_id = @approved_status
+                  AND session.is_deleted = FALSE
+                  AND session.event_session_status_id = @published_session_status
+                  AND session.start_time IS NOT NULL
+                  AND session.local_start_date IS NOT NULL
+                  AND session.local_start_time IS NOT NULL
+                  AND session.start_time > @changed_at
+                  AND event.is_deleted = FALSE
+                  AND event.event_status_id = @published_event_status
+                  AND COALESCE(
+                      NULLIF(btrim(event.event_time_zone_id), ''),
+                      NULLIF(btrim(event.timezone), ''),
+                      'UTC') = @time_zone_id
+                ORDER BY session.start_time, session.id
+                LIMIT 1
+            ) AS eligible ON TRUE
+        ),
+        changed_outbox AS (
+            UPDATE email_dispatch_outbox AS outbox
+            SET status = CASE WHEN selected.session_id IS NULL THEN @skipped_status ELSE @pending_status END,
+                next_attempt_at = CASE
+                    WHEN selected.session_id IS NULL THEN NULL
+                    ELSE GREATEST(
+                        selected.session_start - (@lead_seconds * INTERVAL '1 second'),
+                        @changed_at)
+                END,
+                processing_started_at = NULL,
+                processing_lease_token = NULL,
+                subject = CASE WHEN selected.session_id IS NULL THEN outbox.subject ELSE 'Reminder: ' || @title END,
+                plain_text_body = CASE WHEN selected.session_id IS NULL THEN outbox.plain_text_body ELSE
+                    'Assalamu alaykum,' || E'\n\n' ||
+                    'This is a reminder that ' || @title || ' starts at ' ||
+                    to_char(selected.local_start_date, 'YYYY-MM-DD') || ' ' ||
+                    to_char(selected.local_start_time, 'HH24:MI') ||
+                    ' [' || @time_zone_id || '] (' ||
+                    to_char(selected.session_start AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') || ').' ||
+                    E'\n\n' || 'Event Platform' END,
+                html_body = CASE WHEN selected.session_id IS NULL THEN outbox.html_body ELSE
+                    '<p>Assalamu alaykum,</p><p>This is a reminder that <strong>' || @html_title ||
+                    '</strong> starts at ' ||
+                    to_char(selected.local_start_date, 'YYYY-MM-DD') || ' ' ||
+                    to_char(selected.local_start_time, 'HH24:MI') ||
+                    ' [' || @html_time_zone_id || '] (' ||
+                    to_char(selected.session_start AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') ||
+                    ').</p><p>Event Platform</p>' END,
+                correlation_id = CASE WHEN selected.session_id IS NULL THEN outbox.correlation_id ELSE
+                    'event-reminder:v2:' || replace(selected.session_id::text, '-', '') || ':' ||
+                    (round(extract(epoch FROM selected.session_start) * 10000000)::bigint + 621355968000000000)::text || ':' ||
+                    @time_zone_id END,
+                last_failure_category = CASE WHEN selected.session_id IS NULL THEN @reason ELSE NULL END,
+                last_error = CASE WHEN selected.session_id IS NULL THEN @message ELSE NULL END,
+                last_failure_at = CASE WHEN selected.session_id IS NULL THEN @changed_at ELSE NULL END,
+                updated_at = @changed_at
+            FROM selected
+            WHERE outbox.tenant_id = selected.tenant_id AND outbox.id = selected.outbox_id
+            RETURNING outbox.tenant_id,
+                      outbox.id,
+                      outbox.notification_intent_id,
+                      outbox.registration_intent_id,
+                      selected.session_id,
+                      selected.session_start
+        ),
+        changed_intent AS (
+            UPDATE notification_intents AS intent
+            SET status_id = CASE
+                    WHEN selected.session_id IS NULL THEN @resolved_intent_status
+                    WHEN selected.outbox_id IS NOT NULL THEN @dispatch_queued_intent_status
+                    ELSE intent.status_id END,
+                safe_payload_reference = CASE WHEN selected.session_id IS NULL THEN intent.safe_payload_reference ELSE
+                    'event-registration-intent:' || replace(selected.registration_intent_id::text, '-', '') ||
+                    ':session:' || replace(selected.session_id::text, '-', '') END,
+                updated_at = @changed_at
+            FROM selected
+            WHERE intent.tenant_id = selected.tenant_id
+              AND intent.id = selected.notification_intent_id
+        ),
+        changed_email_delivery AS (
+            UPDATE notification_deliveries AS delivery
+            SET status_id = CASE WHEN changed_outbox.session_id IS NULL THEN @superseded_delivery_status ELSE @queued_delivery_status END,
+                provider_status = CASE WHEN changed_outbox.session_id IS NULL THEN @superseded_provider_status ELSE NULL END,
+                failure_category = CASE WHEN changed_outbox.session_id IS NULL THEN @reason ELSE NULL END,
+                completed_at = CASE WHEN changed_outbox.session_id IS NULL THEN @changed_at ELSE NULL END,
+                updated_at = @changed_at
+            FROM changed_outbox
+            WHERE delivery.tenant_id = changed_outbox.tenant_id
+              AND delivery.email_dispatch_outbox_id = changed_outbox.id
+              AND delivery.channel_id = @email_channel_id
+              AND delivery.status_id IN (@pending_delivery_status, @queued_delivery_status)
+            RETURNING delivery.id
+        ),
+        changed_notification AS (
+            UPDATE notifications AS notification
+            SET is_deleted = selected.session_id IS NULL,
+                deleted_at = CASE WHEN selected.session_id IS NULL THEN @changed_at ELSE NULL END,
+                title = CASE WHEN selected.session_id IS NULL THEN notification.title ELSE 'Reminder: ' || @title END,
+                body = CASE WHEN selected.session_id IS NULL THEN notification.body ELSE
+                    @title || ' starts at ' ||
+                    to_char(selected.local_start_date, 'YYYY-MM-DD') || ' ' ||
+                    to_char(selected.local_start_time, 'HH24:MI') ||
+                    ' [' || @time_zone_id || '] (' ||
+                    to_char(selected.session_start AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') || ').' END,
+                entity_id = CASE WHEN selected.session_id IS NULL THEN notification.entity_id ELSE selected.session_id::text END,
+                updated_at = @changed_at
+            FROM notification_deliveries AS delivery
+            INNER JOIN selected
+                ON selected.tenant_id = delivery.tenant_id
+               AND selected.notification_intent_id = delivery.notification_intent_id
+            WHERE delivery.channel_id = @in_app_channel_id
+              AND delivery.notification_id = notification.id
+              AND notification.tenant_id = selected.tenant_id
+              AND notification.is_deleted = FALSE
+            RETURNING notification.tenant_id, notification.id, notification.notification_intent_id
+        ),
+        changed_in_app_delivery AS (
+            UPDATE notification_deliveries AS delivery
+            SET status_id = @superseded_delivery_status,
+                provider_status = @superseded_provider_status,
+                failure_category = @reason,
+                completed_at = @changed_at,
+                updated_at = @changed_at
+            FROM changed_notification
+            INNER JOIN selected
+                ON selected.tenant_id = changed_notification.tenant_id
+               AND selected.notification_intent_id = changed_notification.notification_intent_id
+               AND selected.session_id IS NULL
+            WHERE delivery.tenant_id = changed_notification.tenant_id
+              AND delivery.notification_id = changed_notification.id
+              AND delivery.channel_id = @in_app_channel_id
+              AND delivery.status_id IN (@pending_delivery_status, @queued_delivery_status)
+            RETURNING delivery.id
+        )
+        SELECT
+            (SELECT COUNT(*)::integer FROM changed_outbox),
+            (SELECT COUNT(*)::integer FROM changed_email_delivery),
+            (SELECT COUNT(*)::integer FROM changed_notification),
+            (SELECT COUNT(*)::integer FROM changed_in_app_delivery);
+        """;
 
     private readonly ExploreDbContext _dbContext;
 
@@ -72,6 +292,189 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         }
 
         return (await LoadClaimedRowsAsync(claimedIds, cancellationToken)).Single();
+    }
+
+    public async Task<EventReminderStateChangeResult> SuppressEventRemindersInCurrentTransactionAsync(
+        EventReminderSupersessionRequest request,
+        CancellationToken cancellationToken)
+    {
+        NotificationFanoutPrecedenceLock.EnsureActivePostgresTransaction(_dbContext);
+        if (request.TenantId == Guid.Empty
+            || request.EventId == Guid.Empty
+            || request.SupersededAt.Kind != DateTimeKind.Utc
+            || string.IsNullOrWhiteSpace(request.ReasonCode)
+            || request.ReasonCode.Length > 200)
+        {
+            throw new ArgumentException("Reminder supersession requires exact tenant/event authority, a UTC time, and a bounded reason.", nameof(request));
+        }
+
+        await NotificationFanoutPrecedenceLock.AcquireAsync(
+            _dbContext,
+            request.TenantId,
+            request.EventId,
+            cancellationToken);
+
+        string? sessionSuffix = request.SessionId.HasValue ? $":session:{request.SessionId.Value:N}" : null;
+        await using DbCommand command = CreateReminderCommand(
+            """
+            WITH reminder_intents AS (
+                SELECT intent.tenant_id, intent.id AS notification_intent_id
+                FROM notification_intents AS intent
+                WHERE intent.tenant_id = @tenant_id
+                  AND intent.event_id = @event_id
+                  AND intent.template_key = 'event.reminder'
+                  AND intent.is_deleted = FALSE
+                  AND intent.safe_payload_reference ~ '^event-registration-intent:[0-9a-f]{32}:session:[0-9a-f]{32}$'
+                  AND (@registration_intent_id IS NULL
+                       OR split_part(intent.safe_payload_reference, ':', 2)::uuid = @registration_intent_id)
+                  AND (@session_suffix IS NULL
+                       OR right(intent.safe_payload_reference, length(@session_suffix)) = @session_suffix)
+            ),
+            candidates AS (
+                SELECT outbox.tenant_id, outbox.id, outbox.notification_intent_id
+                FROM email_dispatch_outbox AS outbox
+                INNER JOIN reminder_intents AS intent
+                    ON intent.tenant_id = outbox.tenant_id
+                   AND intent.notification_intent_id = outbox.notification_intent_id
+                WHERE outbox.tenant_id = @tenant_id
+                  AND outbox.event_id = @event_id
+                  AND outbox.kind = @reminder_kind
+                  AND outbox.is_deleted = FALSE
+                  AND outbox.content_redacted_at IS NULL
+                  AND outbox.status IN (@pending_status, @retry_status, @processing_status)
+                  AND (outbox.status <> @processing_status OR (
+                      NOT EXISTS (
+                          SELECT 1 FROM email_dispatch_attempts AS attempt
+                          WHERE attempt.tenant_id = outbox.tenant_id
+                            AND attempt.email_dispatch_outbox_id = outbox.id
+                            AND attempt.attempt_number = outbox.attempt_count
+                            AND attempt.failure_category = @provider_handoff_started)
+                      AND NOT EXISTS (
+                          SELECT 1 FROM email_dispatch_receipts AS receipt
+                          WHERE receipt.tenant_id = outbox.tenant_id
+                            AND receipt.email_dispatch_outbox_id = outbox.id
+                            AND receipt.status = @processing_receipt_status)))
+                FOR UPDATE OF outbox
+            ),
+            suppressed_outbox AS (
+                UPDATE email_dispatch_outbox AS outbox
+                SET status = @skipped_status,
+                    next_attempt_at = NULL,
+                    processing_started_at = NULL,
+                    processing_lease_token = NULL,
+                    last_failure_category = @reason,
+                    last_error = @message,
+                    last_failure_at = @changed_at,
+                    updated_at = @changed_at
+                FROM candidates
+                WHERE outbox.tenant_id = candidates.tenant_id AND outbox.id = candidates.id
+                RETURNING outbox.tenant_id, outbox.id, outbox.notification_intent_id
+            ),
+            resolved_intent AS (
+                UPDATE notification_intents AS intent
+                SET status_id = @resolved_intent_status, updated_at = @changed_at
+                FROM reminder_intents
+                WHERE intent.tenant_id = reminder_intents.tenant_id
+                  AND intent.id = reminder_intents.notification_intent_id
+            ),
+            superseded_email_delivery AS (
+                UPDATE notification_deliveries AS delivery
+                SET status_id = @superseded_delivery_status,
+                    provider_status = @superseded_provider_status,
+                    failure_category = @reason,
+                    completed_at = @changed_at,
+                    updated_at = @changed_at
+                FROM suppressed_outbox
+                WHERE delivery.tenant_id = suppressed_outbox.tenant_id
+                  AND delivery.email_dispatch_outbox_id = suppressed_outbox.id
+                  AND delivery.channel_id = @email_channel_id
+                  AND delivery.status_id IN (@pending_delivery_status, @queued_delivery_status)
+                RETURNING delivery.id
+            ),
+            suppressed_notification AS (
+                UPDATE notifications AS notification
+                SET is_deleted = TRUE, deleted_at = @changed_at, updated_at = @changed_at
+                FROM notification_deliveries AS delivery
+                INNER JOIN reminder_intents
+                    ON reminder_intents.tenant_id = delivery.tenant_id
+                   AND reminder_intents.notification_intent_id = delivery.notification_intent_id
+                WHERE delivery.channel_id = @in_app_channel_id
+                  AND delivery.notification_id = notification.id
+                  AND notification.tenant_id = reminder_intents.tenant_id
+                  AND notification.is_deleted = FALSE
+                RETURNING notification.tenant_id, notification.id
+            ),
+            superseded_in_app_delivery AS (
+                UPDATE notification_deliveries AS delivery
+                SET status_id = @superseded_delivery_status,
+                    provider_status = @superseded_provider_status,
+                    failure_category = @reason,
+                    completed_at = @changed_at,
+                    updated_at = @changed_at
+                FROM suppressed_notification
+                WHERE delivery.tenant_id = suppressed_notification.tenant_id
+                  AND delivery.notification_id = suppressed_notification.id
+                  AND delivery.channel_id = @in_app_channel_id
+                  AND delivery.status_id IN (@pending_delivery_status, @queued_delivery_status)
+                RETURNING delivery.id
+            )
+            SELECT
+                (SELECT COUNT(*)::integer FROM suppressed_outbox),
+                (SELECT COUNT(*)::integer FROM superseded_email_delivery),
+                (SELECT COUNT(*)::integer FROM suppressed_notification),
+                (SELECT COUNT(*)::integer FROM superseded_in_app_delivery);
+            """);
+        AddReminderParameters(
+            command,
+            request.TenantId,
+            request.EventId,
+            request.RegistrationIntentId,
+            request.SessionId,
+            sessionSuffix,
+            request.SupersededAt,
+            request.ReasonCode);
+        return await ReadReminderStateChangeAsync(command, cancellationToken);
+    }
+
+    public async Task<EventReminderStateChangeResult> RescheduleEventRemindersInCurrentTransactionAsync(
+        EventReminderRescheduleRequest request,
+        CancellationToken cancellationToken)
+    {
+        NotificationFanoutPrecedenceLock.EnsureActivePostgresTransaction(_dbContext);
+        if (request.TenantId == Guid.Empty
+            || request.EventId == Guid.Empty
+            || request.ChangedAt.Kind != DateTimeKind.Utc
+            || request.LeadTime <= TimeSpan.Zero)
+        {
+            throw new ArgumentException("Reminder rescheduling requires exact tenant/event authority, positive lead time, and a UTC time.", nameof(request));
+        }
+
+        await NotificationFanoutPrecedenceLock.AcquireAsync(_dbContext, request.TenantId, request.EventId, cancellationToken);
+        string title = string.IsNullOrWhiteSpace(request.EventTitle) ? "the event" : request.EventTitle.Trim();
+        string htmlTitle = System.Net.WebUtility.HtmlEncode(title);
+        string timeZoneId = Explore.Domain.Services.Scheduling.ScheduleTimeZoneResolver.NormalizeOrUtc(
+            request.EventTimeZoneId);
+        string htmlTimeZoneId = System.Net.WebUtility.HtmlEncode(timeZoneId);
+        string? sessionSuffix = request.SessionId.HasValue ? $":session:{request.SessionId.Value:N}" : null;
+        await using DbCommand command = CreateReminderCommand(ReminderRescheduleSql);
+        AddReminderParameters(
+            command,
+            request.TenantId,
+            request.EventId,
+            request.RegistrationIntentId,
+            request.SessionId,
+            sessionSuffix,
+            request.ChangedAt,
+            "event_reminder_schedule_changed");
+        AddParameter(command, "lead_seconds", request.LeadTime.TotalSeconds, DbType.Double);
+        AddParameter(command, "title", title, DbType.String);
+        AddParameter(command, "html_title", htmlTitle, DbType.String);
+        AddParameter(command, "time_zone_id", timeZoneId, DbType.String);
+        AddParameter(command, "html_time_zone_id", htmlTimeZoneId, DbType.String);
+        AddParameter(command, "published_event_status", (int)EventStatusEnum.Published, DbType.Int32);
+        AddParameter(command, "approved_status", (int)ApprovalStatusEnum.Approved, DbType.Int32);
+        AddParameter(command, "published_session_status", (int)EventSessionStatusEnum.Published, DbType.Int32);
+        return await ReadReminderStateChangeAsync(command, cancellationToken);
     }
 
     public async Task<IReadOnlyList<EmailDispatchOutbox>> GetRabbitMqPublishBatch(
@@ -1196,6 +1599,64 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         }
 
         return ids;
+    }
+
+    private DbCommand CreateReminderCommand(string commandText)
+    {
+        NotificationFanoutPrecedenceLock.EnsureActivePostgresTransaction(_dbContext);
+        return CreateCommand(_dbContext.Database.CurrentTransaction!.GetDbTransaction(), commandText);
+    }
+
+    private static async Task<EventReminderStateChangeResult> ReadReminderStateChangeAsync(
+        DbCommand command,
+        CancellationToken cancellationToken)
+    {
+        await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            throw new InvalidOperationException("Reminder state change did not return its bounded result.");
+        }
+
+        return new EventReminderStateChangeResult(
+            reader.GetInt32(0),
+            reader.GetInt32(1),
+            reader.GetInt32(2),
+            reader.GetInt32(3));
+    }
+
+    private static void AddReminderParameters(
+        DbCommand command,
+        Guid tenantId,
+        Guid eventId,
+        Guid? registrationIntentId,
+        Guid? sessionId,
+        string? sessionSuffix,
+        DateTime changedAt,
+        string reason)
+    {
+        AddParameter(command, "tenant_id", tenantId, DbType.Guid);
+        AddParameter(command, "event_id", eventId, DbType.Guid);
+        AddParameter(command, "registration_intent_id", registrationIntentId ?? (object)DBNull.Value, DbType.Guid);
+        AddParameter(command, "session_id", sessionId ?? (object)DBNull.Value, DbType.Guid);
+        AddParameter(command, "session_suffix", sessionSuffix ?? (object)DBNull.Value, DbType.String);
+        AddParameter(command, "changed_at", changedAt);
+        AddParameter(command, "reason", reason, DbType.String);
+        AddParameter(command, "message", ReminderSupersededMessage, DbType.String);
+        AddParameter(command, "provider_handoff_started", ProviderHandoffStarted, DbType.String);
+        AddParameter(command, "superseded_provider_status", ReminderSupersededProviderStatus, DbType.String);
+        AddParameter(command, "reminder_kind", (int)EmailDispatchKind.EventReminder, DbType.Int32);
+        AddParameter(command, "pending_status", (int)EmailDispatchStatus.Pending, DbType.Int32);
+        AddParameter(command, "retry_status", (int)EmailDispatchStatus.RetryScheduled, DbType.Int32);
+        AddParameter(command, "processing_status", (int)EmailDispatchStatus.Processing, DbType.Int32);
+        AddParameter(command, "skipped_status", (int)EmailDispatchStatus.Skipped, DbType.Int32);
+        AddParameter(command, "processing_receipt_status", (int)EmailDispatchReceiptStatus.Processing, DbType.Int32);
+        AddParameter(command, "resolved_intent_status", (int)NotificationIntentStatusEnum.Resolved, DbType.Int32);
+        AddParameter(command, "dispatch_queued_intent_status", (int)NotificationIntentStatusEnum.DispatchQueued, DbType.Int32);
+        AddParameter(command, "pending_delivery_status", (int)NotificationDeliveryStatusEnum.Pending, DbType.Int32);
+        AddParameter(command, "queued_delivery_status", (int)NotificationDeliveryStatusEnum.Queued, DbType.Int32);
+        AddParameter(command, "superseded_delivery_status", (int)NotificationDeliveryStatusEnum.Superseded, DbType.Int32);
+        AddParameter(command, "email_channel_id", (int)NotificationPreferenceChannelEnum.Email, DbType.Int32);
+        AddParameter(command, "in_app_channel_id", (int)NotificationPreferenceChannelEnum.InApp, DbType.Int32);
     }
 
     private static DbCommand CreateCommand(DbTransaction transaction, string commandText)
