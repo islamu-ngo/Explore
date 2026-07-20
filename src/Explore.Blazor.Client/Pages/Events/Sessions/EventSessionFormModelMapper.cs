@@ -37,7 +37,8 @@ internal static class EventSessionFormModelMapper
     public static EventSessionEditFormState PopulateUpdateRequest(
         UpdateEventSessionDto session,
         EventSessionDto sourceSession,
-        Guid eventId)
+        Guid eventId,
+        string eventTimeZoneId = "UTC")
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(sourceSession);
@@ -65,10 +66,18 @@ internal static class EventSessionFormModelMapper
             Value = OptionalEventSessionIslamicAspect(sourceSession.IslamicAspect)
         };
 
-        var localStart = DateTimeHelper.ConvertUtcToLocal(sourceSession.StartTime);
-        var localEnd = DateTimeHelper.ConvertUtcToLocal(sourceSession.EndTime);
+        DateTime? localStart = sourceSession.LocalStartDate.HasValue && sourceSession.LocalStartTime.HasValue
+            ? sourceSession.LocalStartDate.Value.Date + sourceSession.LocalStartTime.Value
+            : sourceSession.StartTime.HasValue
+                ? DateTimeHelper.ConvertUtcToLocal(sourceSession.StartTime.Value, eventTimeZoneId)
+                : null;
+        DateTime? localEnd = sourceSession.LocalEndDate.HasValue && sourceSession.LocalEndTime.HasValue
+            ? sourceSession.LocalEndDate.Value.Date + sourceSession.LocalEndTime.Value
+            : sourceSession.EndTime.HasValue
+                ? DateTimeHelper.ConvertUtcToLocal(sourceSession.EndTime.Value, eventTimeZoneId)
+                : null;
         return new EventSessionEditFormState(
-            localStart?.Date ?? DateTime.Today,
+            localStart?.Date ?? DateTimeHelper.ConvertUtcToLocal(DateTimeOffset.UtcNow, eventTimeZoneId).Date,
             localStart?.TimeOfDay ?? new TimeSpan(9, 0, 0),
             localEnd?.TimeOfDay ?? new TimeSpan(10, 0, 0),
             GetPrimarySessionGroupId(sourceSession));
@@ -81,7 +90,8 @@ internal static class EventSessionFormModelMapper
         DateTime? sessionDate,
         TimeSpan? startTime,
         TimeSpan? endTime,
-        out string? validationError)
+        out string? validationError,
+        string eventTimeZoneId = "UTC")
     {
         ArgumentNullException.ThrowIfNull(session);
         validationError = null;
@@ -97,9 +107,25 @@ internal static class EventSessionFormModelMapper
             return false;
         }
 
+        if (!DateTimeHelper.TryConvertLocalToUtc(
+                start,
+                eventTimeZoneId,
+                existingInstant: null,
+                out DateTimeOffset startUtc,
+                out validationError)
+            || !DateTimeHelper.TryConvertLocalToUtc(
+                end,
+                eventTimeZoneId,
+                existingInstant: null,
+                out DateTimeOffset endUtc,
+                out validationError))
+        {
+            return false;
+        }
+
         session.EventId = eventId;
         session.TenantId = tenantId;
-        ApplyNormalizedSchedule(session, title, start, end);
+        ApplyNormalizedSchedule(session, title, startUtc, endUtc);
         return true;
     }
 
@@ -111,7 +137,10 @@ internal static class EventSessionFormModelMapper
         DateTime? sessionDate,
         TimeSpan? startTime,
         TimeSpan? endTime,
-        out string? validationError)
+        out string? validationError,
+        string eventTimeZoneId = "UTC",
+        DateTimeOffset? existingStartUtc = null,
+        DateTimeOffset? existingEndUtc = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         validationError = null;
@@ -130,9 +159,25 @@ internal static class EventSessionFormModelMapper
             return false;
         }
 
+        if (!DateTimeHelper.TryConvertLocalToUtc(
+                start,
+                eventTimeZoneId,
+                existingStartUtc,
+                out DateTimeOffset startUtc,
+                out validationError)
+            || !DateTimeHelper.TryConvertLocalToUtc(
+                end,
+                eventTimeZoneId,
+                existingEndUtc,
+                out DateTimeOffset endUtc,
+                out validationError))
+        {
+            return false;
+        }
+
         session.Event ??= new UpdateEventSessionEventDto();
         session.Event.EventId = eventId;
-        ApplyNormalizedSchedule(session, title, start, end);
+        ApplyNormalizedSchedule(session, title, startUtc, endUtc);
         return true;
     }
 
@@ -175,22 +220,30 @@ internal static class EventSessionFormModelMapper
         return true;
     }
 
-    private static void ApplyNormalizedSchedule(CreateEventSessionDto session, string title, DateTime start, DateTime end)
+    private static void ApplyNormalizedSchedule(
+        CreateEventSessionDto session,
+        string title,
+        DateTimeOffset startUtc,
+        DateTimeOffset endUtc)
     {
         session.Title = title;
         session.MaxAudienceAttendees = session.MaxAudienceAttendees > 0 ? session.MaxAudienceAttendees : null;
-        session.StartTime = DateTimeHelper.ConvertLocalToUtc(start);
-        session.EndTime = DateTimeHelper.ConvertLocalToUtc(end);
+        session.StartTime = startUtc;
+        session.EndTime = endUtc;
     }
 
-    private static void ApplyNormalizedSchedule(UpdateEventSessionDto session, string title, DateTime start, DateTime end)
+    private static void ApplyNormalizedSchedule(
+        UpdateEventSessionDto session,
+        string title,
+        DateTimeOffset startUtc,
+        DateTimeOffset endUtc)
     {
         session.Title!.Value!.Value = title;
         session.MaxAudienceAttendees!.Value!.Value = session.MaxAudienceAttendees.Value.Value > 0
             ? session.MaxAudienceAttendees.Value.Value
             : null;
-        session.Schedule!.StartTime!.Value = DateTimeHelper.ConvertLocalToUtc(start);
-        session.Schedule.EndTime!.Value = DateTimeHelper.ConvertLocalToUtc(end);
+        session.Schedule!.StartTime!.Value = startUtc;
+        session.Schedule.EndTime!.Value = endUtc;
     }
 
     private static bool TryParseDefaultTime(string? value, out TimeSpan time)

@@ -167,6 +167,7 @@
     private Guid? _selectedSessionGroupId;
     private Guid? _initialSessionGroupId;
     private string? _successMessage;
+    private string? _eventTimeZoneId;
 
     private EditContext _editContext = default!;
     private FormSubmitState _submitState = new();
@@ -187,6 +188,7 @@
         _event = await eventTask;
         _sourceSession = await sessionTask;
         var createContext = await createContextTask;
+        _eventTimeZoneId = createContext?.TimeZoneId;
         _locations = createContext?.Locations ?? new List<EventSessionCreateLocationOptionDto>();
         _allRooms = createContext?.Rooms ?? new List<EventSessionCreateRoomOptionDto>();
         _sessionGroups = await sessionGroupsTask;
@@ -203,6 +205,11 @@
         else if (_sourceSession.EventId != EventId)
         {
             _submitState.Fail("This session does not belong to the selected event draft.");
+            _sourceSession = null;
+        }
+        else if (string.IsNullOrWhiteSpace(_eventTimeZoneId))
+        {
+            _submitState.Fail("The event timezone is missing. Set it before editing program times.");
             _sourceSession = null;
         }
         else
@@ -277,7 +284,11 @@
 
     private EventSessionEditFormState PopulateSession(EventSessionDto session)
     {
-        var formState = EventSessionFormModelMapper.PopulateUpdateRequest(_session, session, EventId);
+        var formState = EventSessionFormModelMapper.PopulateUpdateRequest(
+            _session,
+            session,
+            EventId,
+            _eventTimeZoneId!);
         _sessionDate = formState.SessionDate;
         _startTime = formState.StartTime;
         _endTime = formState.EndTime;
@@ -358,7 +369,10 @@
             _sessionDate,
             _startTime,
             _endTime,
-            out validationError);
+            out validationError,
+            _eventTimeZoneId!,
+            _sourceSession?.StartTime,
+            _sourceSession?.EndTime);
     }
 
     private static string FormatLocation(EventSessionCreateLocationOptionDto location)

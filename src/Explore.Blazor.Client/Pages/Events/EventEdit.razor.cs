@@ -344,7 +344,7 @@ public partial class EventEdit : IDisposable
     private string TagsSummary => SelectedTagNames.Count == 0 ? "No tags selected" : string.Join(", ", SelectedTagNames);
 
     // Timezone
-    private TimeZoneInfo _selectedTimezone = TimeZoneInfo.Local;
+    private TimeZoneInfo _selectedTimezone = TimeZoneInfo.Utc;
     private string _selectedTimezoneDisplay => FormatTimezoneShort(_selectedTimezone);
     private static readonly IReadOnlyList<TimeZoneInfo> _allTimezones = TimeZoneInfo.GetSystemTimeZones();
     private bool isProcessing = false;
@@ -502,7 +502,7 @@ public partial class EventEdit : IDisposable
             }
             catch
             {
-                _selectedTimezone = TimeZoneInfo.Local;
+                _selectedTimezone = TimeZoneInfo.Utc;
             }
         }
 

@@ -142,7 +142,7 @@ public partial class CreateEvent : IDisposable
     private string CategoriesSummary => SelectedCategoryNames.Count == 0 ? "No categories selected" : string.Join(", ", SelectedCategoryNames);
     private string TagsSummary => SelectedTagNames.Count == 0 ? "No tags selected" : string.Join(", ", SelectedTagNames);
     // Timezone
-    private TimeZoneInfo _selectedTimezone = TimeZoneInfo.Local;
+    private TimeZoneInfo _selectedTimezone = TimeZoneInfo.Utc;
     private string _selectedTimezoneDisplay => FormatTimezoneShort(_selectedTimezone);
     private static readonly IReadOnlyList<TimeZoneInfo> _allTimezones = TimeZoneInfo.GetSystemTimeZones();
     private Guid createdEventId = Guid.Empty;
@@ -961,7 +961,7 @@ public partial class CreateEvent : IDisposable
         {
             createDto.IsRegistrationRequired = true;
         }
-        _inlineSessionDate ??= DateTime.Today.AddDays(1);
+        _inlineSessionDate ??= TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, _selectedTimezone).Date.AddDays(1);
     }
 
     // ========== Validation & Submission ==========
@@ -1255,16 +1255,26 @@ public partial class CreateEvent : IDisposable
             return true;
         }
 
-        var startTimeUtc = DateTimeHelper.CombineDateTimeToUtc(_inlineSessionDate, _inlineSessionStartTime);
-        var endTimeUtc = DateTimeHelper.CombineDateTimeToUtc(_inlineSessionDate, _inlineSessionEndTime);
-
-        if (!startTimeUtc.HasValue || !endTimeUtc.HasValue)
+        if (!DateTimeHelper.TryCombineDateTimeToUtc(
+                _inlineSessionDate,
+                _inlineSessionStartTime,
+                _selectedTimezone.Id,
+                existingInstant: null,
+                out DateTimeOffset startTimeUtc,
+                out string? scheduleValidationError)
+            || !DateTimeHelper.TryCombineDateTimeToUtc(
+                _inlineSessionDate,
+                _inlineSessionEndTime,
+                _selectedTimezone.Id,
+                existingInstant: null,
+                out DateTimeOffset endTimeUtc,
+                out scheduleValidationError))
         {
-            _submitState.Fail("Choose the event date, start time, and end time before publishing.");
+            _submitState.Fail(scheduleValidationError ?? "Choose the event date, start time, and end time before publishing.");
             return false;
         }
 
-        if (endTimeUtc.Value <= startTimeUtc.Value)
+        if (endTimeUtc <= startTimeUtc)
         {
             _submitState.Fail("The event end time must be after the start time.");
             return false;
@@ -1277,8 +1287,8 @@ public partial class CreateEvent : IDisposable
                 TempKey = "inline-primary-session",
                 Title = string.IsNullOrWhiteSpace(createDto.Title) ? "Main session" : createDto.Title.Trim(),
                 Description = createDto.Description,
-                StartTime = startTimeUtc.Value,
-                EndTime = endTimeUtc.Value,
+                StartTime = startTimeUtc,
+                EndTime = endTimeUtc,
                 LocationId = _inlineSessionLocationId,
                 SortOrder = 1,
                 MaxAudienceAttendees = _inlineSessionCapacity is > 0 ? _inlineSessionCapacity : null,

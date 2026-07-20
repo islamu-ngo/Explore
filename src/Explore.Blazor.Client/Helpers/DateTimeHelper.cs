@@ -1,75 +1,116 @@
+// ABOUTME: Converts event-local wall times through an explicit event timezone without machine-local assumptions.
+// ABOUTME: Rejects DST gaps and preserves an existing ambiguous occurrence only when its wall value is unchanged.
+
 namespace Explore.Blazor.Client.Helpers;
 
-/// <summary>
-/// Provides utility methods for consistent DateTimeOffset conversions to UTC.
-/// PostgreSQL timestamptz columns require DateTimeOffset with offset 0 (UTC).
-/// </summary>
 public static class DateTimeHelper
 {
-    /// <summary>
-    /// Converts a local DateTime to UTC DateTimeOffset (offset 0).
-    /// This is required for PostgreSQL timestamptz compatibility.
-    /// </summary>
-    /// <param name="localDateTime">The local DateTime value from UI date/time pickers</param>
-    /// <returns>DateTimeOffset in UTC with offset 0</returns>
-    /// <remarks>
-    /// Assumes the input DateTime is in the local timezone.
-    /// PostgreSQL timestamptz requires UTC (offset 0) - this method ensures compliance.
-    /// </remarks>
-    public static DateTimeOffset ConvertLocalToUtc(DateTime localDateTime)
+    public static bool TryConvertLocalToUtc(
+        DateTime localDateTime,
+        string? timeZoneId,
+        DateTimeOffset? existingInstant,
+        out DateTimeOffset utc,
+        out string? validationError)
     {
-        // Create DateTimeOffset with local timezone offset, then convert to UTC
-        var localOffset = TimeZoneInfo.Local.GetUtcOffset(localDateTime);
-        var dateTimeOffset = new DateTimeOffset(localDateTime, localOffset);
-        return dateTimeOffset.ToUniversalTime();
+        utc = default;
+        validationError = null;
+        if (!TryResolveTimeZone(timeZoneId, out TimeZoneInfo timeZone, out validationError))
+        {
+            return false;
+        }
+
+        DateTime wallTime = DateTime.SpecifyKind(localDateTime, DateTimeKind.Unspecified);
+        if (timeZone.IsInvalidTime(wallTime))
+        {
+            validationError = $"{wallTime:yyyy-MM-dd HH:mm} does not exist in {timeZone.Id} because the clock moves forward. Choose another time.";
+            return false;
+        }
+
+        TimeSpan offset;
+        if (timeZone.IsAmbiguousTime(wallTime))
+        {
+            DateTimeOffset? existingLocal = existingInstant.HasValue
+                ? TimeZoneInfo.ConvertTime(existingInstant.Value.ToUniversalTime(), timeZone)
+                : null;
+            if (!existingLocal.HasValue || existingLocal.Value.DateTime != wallTime)
+            {
+                validationError = $"{wallTime:yyyy-MM-dd HH:mm} occurs twice in {timeZone.Id}. Choose a time outside the repeated hour.";
+                return false;
+            }
+
+            offset = existingLocal.Value.Offset;
+            if (!timeZone.GetAmbiguousTimeOffsets(wallTime).Contains(offset))
+            {
+                validationError = $"The saved occurrence of {wallTime:yyyy-MM-dd HH:mm} is no longer valid in {timeZone.Id}. Choose another time.";
+                return false;
+            }
+        }
+        else
+        {
+            offset = timeZone.GetUtcOffset(wallTime);
+        }
+
+        utc = new DateTimeOffset(wallTime, offset).ToUniversalTime();
+        return true;
     }
 
-    /// <summary>
-    /// Converts a nullable local DateTime to UTC DateTimeOffset (offset 0).
-    /// Returns null if input is null.
-    /// </summary>
-    /// <param name="localDateTime">The nullable local DateTime value</param>
-    /// <returns>Nullable DateTimeOffset in UTC with offset 0</returns>
-    public static DateTimeOffset? ConvertLocalToUtc(DateTime? localDateTime)
+    public static bool TryCombineDateTimeToUtc(
+        DateTime? date,
+        TimeSpan? time,
+        string? timeZoneId,
+        DateTimeOffset? existingInstant,
+        out DateTimeOffset utc,
+        out string? validationError)
     {
-        return localDateTime.HasValue ? ConvertLocalToUtc(localDateTime.Value) : null;
-    }
-
-    /// <summary>
-    /// Combines nullable date and time parts into UTC DateTimeOffset.
-    /// Returns null if either date or time is null.
-    /// </summary>
-    /// <param name="date">The date part (from MudDatePicker)</param>
-    /// <param name="time">The time part (from MudTimePicker)</param>
-    /// <returns>Combined DateTimeOffset in UTC with offset 0, or null if either input is null</returns>
-    public static DateTimeOffset? CombineDateTimeToUtc(DateTime? date, TimeSpan? time)
-    {
+        utc = default;
+        validationError = null;
         if (!date.HasValue || !time.HasValue)
-            return null;
+        {
+            validationError = "Choose a date and time.";
+            return false;
+        }
 
-        var combined = date.Value.Date + time.Value;
-        return ConvertLocalToUtc(combined);
+        return TryConvertLocalToUtc(
+            date.Value.Date + time.Value,
+            timeZoneId,
+            existingInstant,
+            out utc,
+            out validationError);
     }
 
-    /// <summary>
-    /// Converts UTC DateTimeOffset to local DateTime for display in UI.
-    /// Used when populating date/time pickers from database values.
-    /// </summary>
-    /// <param name="utcDateTimeOffset">The UTC DateTimeOffset from database</param>
-    /// <returns>Local DateTime for UI display</returns>
-    public static DateTime ConvertUtcToLocal(DateTimeOffset utcDateTimeOffset)
+    public static DateTime ConvertUtcToLocal(DateTimeOffset utcDateTimeOffset, string timeZoneId)
     {
-        return utcDateTimeOffset.LocalDateTime;
+        TimeZoneInfo timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+        return TimeZoneInfo.ConvertTime(utcDateTimeOffset.ToUniversalTime(), timeZone).DateTime;
     }
 
-    /// <summary>
-    /// Converts nullable UTC DateTimeOffset to nullable local DateTime.
-    /// Returns null if input is null.
-    /// </summary>
-    /// <param name="utcDateTimeOffset">The nullable UTC DateTimeOffset</param>
-    /// <returns>Nullable local DateTime for UI display</returns>
-    public static DateTime? ConvertUtcToLocal(DateTimeOffset? utcDateTimeOffset)
+    private static bool TryResolveTimeZone(
+        string? timeZoneId,
+        out TimeZoneInfo timeZone,
+        out string? validationError)
     {
-        return utcDateTimeOffset?.LocalDateTime;
+        timeZone = TimeZoneInfo.Utc;
+        validationError = null;
+        if (string.IsNullOrWhiteSpace(timeZoneId))
+        {
+            validationError = "The event timezone is missing. Set it before entering program times.";
+            return false;
+        }
+
+        try
+        {
+            timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId.Trim());
+            return true;
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            validationError = $"The event timezone '{timeZoneId}' is not available on this system.";
+            return false;
+        }
+        catch (InvalidTimeZoneException)
+        {
+            validationError = $"The event timezone '{timeZoneId}' is invalid.";
+            return false;
+        }
     }
 }

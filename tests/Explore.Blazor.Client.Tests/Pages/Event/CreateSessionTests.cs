@@ -155,8 +155,8 @@ public sealed class CreateSessionTests : IDisposable
             && dto.RoomId == roomId
             && dto.EventSessionKindId == 1
             && dto.RegistrationModeId == 2
-            && dto.StartTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 6, 1, 9, 30, 0))
-            && dto.EndTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 6, 1, 10, 30, 0))
+            && dto.StartTime == new DateTimeOffset(2026, 6, 1, 7, 30, 0, TimeSpan.Zero)
+            && dto.EndTime == new DateTimeOffset(2026, 6, 1, 8, 30, 0, TimeSpan.Zero)
             && dto.StartTime.Value.Offset == TimeSpan.Zero
             && dto.EndTime.Value.Offset == TimeSpan.Zero));
         await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit?programUpdated=1", StringComparison.Ordinal)).IsTrue();

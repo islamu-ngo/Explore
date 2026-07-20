@@ -151,8 +151,8 @@ public sealed class EditSessionTests : IDisposable
                 && dto.RegistrationMode!.Value!.Value == 2
                 && dto.IslamicAspect!.Value!.Value!.ReferencePrayer == (PrayerTime)2
                 && dto.IslamicAspect.Value.Value.RequiresWudu == true
-                && dto.Schedule!.StartTime!.Value == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 7, 3, 14, 0, 0))
-                && dto.Schedule.EndTime!.Value == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 7, 3, 15, 30, 0))
+                && dto.Schedule!.StartTime!.Value == new DateTimeOffset(2026, 7, 3, 12, 0, 0, TimeSpan.Zero)
+                && dto.Schedule.EndTime!.Value == new DateTimeOffset(2026, 7, 3, 13, 30, 0, TimeSpan.Zero)
                 && dto.Schedule.StartTime.Value.Value.Offset == TimeSpan.Zero
                 && dto.Schedule.EndTime.Value.Value.Offset == TimeSpan.Zero));
         await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit?programUpdated=1", StringComparison.Ordinal)).IsTrue();

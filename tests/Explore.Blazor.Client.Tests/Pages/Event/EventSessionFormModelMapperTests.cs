@@ -10,6 +10,8 @@ namespace Explore.Blazor.Client.Tests.Pages.Event;
 
 public sealed class EventSessionFormModelMapperTests
 {
+    private const string BrusselsTimeZoneId = "Europe/Brussels";
+
     [Test]
     public async Task ApplyCreateContext_UsesDefaultsAndSelectorOptions()
     {
@@ -57,7 +59,8 @@ public sealed class EventSessionFormModelMapperTests
             new DateTime(2026, 6, 1),
             new TimeSpan(9, 30, 0),
             new TimeSpan(10, 30, 0),
-            out var validationError);
+            out var validationError,
+            BrusselsTimeZoneId);
 
         await Assert.That(prepared).IsTrue();
         await Assert.That(validationError).IsNull();
@@ -65,8 +68,8 @@ public sealed class EventSessionFormModelMapperTests
         await Assert.That(session.TenantId).IsEqualTo(tenantId);
         await Assert.That(session.Title).IsEqualTo("Opening talk");
         await Assert.That(session.MaxAudienceAttendees).IsNull();
-        await Assert.That(session.StartTime).IsEqualTo(DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 6, 1, 9, 30, 0)));
-        await Assert.That(session.EndTime).IsEqualTo(DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 6, 1, 10, 30, 0)));
+        await Assert.That(session.StartTime).IsEqualTo(new DateTimeOffset(2026, 6, 1, 7, 30, 0, TimeSpan.Zero));
+        await Assert.That(session.EndTime).IsEqualTo(new DateTimeOffset(2026, 6, 1, 8, 30, 0, TimeSpan.Zero));
     }
 
     [Test]
@@ -88,6 +91,10 @@ public sealed class EventSessionFormModelMapperTests
             RegistrationModeId = 2,
             StartTime = new DateTimeOffset(2026, 7, 3, 14, 0, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2026, 7, 3, 15, 30, 0, TimeSpan.Zero),
+            LocalStartDate = new DateTimeOffset(2026, 7, 3, 0, 0, 0, TimeSpan.Zero),
+            LocalEndDate = new DateTimeOffset(2026, 7, 3, 0, 0, 0, TimeSpan.Zero),
+            LocalStartTime = new TimeSpan(16, 0, 0),
+            LocalEndTime = new TimeSpan(17, 30, 0),
             IslamicAspect = new EventSessionIslamicAspectDto { ReferencePrayer = (PrayerTime)2, RequiresWudu = true },
             SessionGroups =
             [
@@ -96,7 +103,11 @@ public sealed class EventSessionFormModelMapperTests
             ]
         };
 
-        var state = EventSessionFormModelMapper.PopulateUpdateRequest(request, source, eventId);
+        var state = EventSessionFormModelMapper.PopulateUpdateRequest(
+            request,
+            source,
+            eventId,
+            BrusselsTimeZoneId);
 
         await Assert.That(request.Event?.EventId).IsEqualTo(eventId);
         await Assert.That(request.Title?.Value?.Value).IsEqualTo("Workshop");
@@ -105,9 +116,9 @@ public sealed class EventSessionFormModelMapperTests
         await Assert.That(request.IslamicAspect!.Value?.Value?.ReferencePrayer).IsEqualTo((PrayerTime)2);
         await Assert.That(request.IslamicAspect.Value?.Value?.RequiresWudu).IsTrue();
         await Assert.That(state.PrimarySessionGroupId).IsEqualTo(primaryGroupId);
-        await Assert.That(state.SessionDate).IsEqualTo(DateTimeHelper.ConvertUtcToLocal(source.StartTime)!.Value.Date);
-        await Assert.That(state.StartTime).IsEqualTo(DateTimeHelper.ConvertUtcToLocal(source.StartTime)!.Value.TimeOfDay);
-        await Assert.That(state.EndTime).IsEqualTo(DateTimeHelper.ConvertUtcToLocal(source.EndTime)!.Value.TimeOfDay);
+        await Assert.That(state.SessionDate).IsEqualTo(new DateTime(2026, 7, 3));
+        await Assert.That(state.StartTime).IsEqualTo(new TimeSpan(16, 0, 0));
+        await Assert.That(state.EndTime).IsEqualTo(new TimeSpan(17, 30, 0));
     }
 
     [Test]
@@ -129,9 +140,58 @@ public sealed class EventSessionFormModelMapperTests
             new DateTime(2026, 6, 1),
             new TimeSpan(9, 0, 0),
             new TimeSpan(10, 0, 0),
-            out var validationError);
+            out var validationError,
+            BrusselsTimeZoneId);
 
         await Assert.That(prepared).IsFalse();
         await Assert.That(validationError).IsEqualTo("The session context is invalid. Return to the event draft and try again.");
+    }
+
+    [Test]
+    public async Task TryConvertLocalToUtc_RejectsEuropeBrusselsSpringGap()
+    {
+        bool converted = DateTimeHelper.TryConvertLocalToUtc(
+            new DateTime(2026, 3, 29, 2, 30, 0),
+            BrusselsTimeZoneId,
+            existingInstant: null,
+            out _,
+            out string? validationError);
+
+        await Assert.That(converted).IsFalse();
+        await Assert.That(validationError).Contains("does not exist in Europe/Brussels");
+    }
+
+    [Test]
+    public async Task TryConvertLocalToUtc_RejectsNewEuropeBrusselsOverlapWithoutOccurrence()
+    {
+        bool converted = DateTimeHelper.TryConvertLocalToUtc(
+            new DateTime(2026, 10, 25, 2, 30, 0),
+            BrusselsTimeZoneId,
+            existingInstant: null,
+            out _,
+            out string? validationError);
+
+        await Assert.That(converted).IsFalse();
+        await Assert.That(validationError).Contains("occurs twice in Europe/Brussels");
+    }
+
+    [Test]
+    [Arguments("2026-10-25T00:30:00+00:00")]
+    [Arguments("2026-10-25T01:30:00+00:00")]
+    public async Task TryConvertLocalToUtc_PreservesEitherPersistedEuropeBrusselsOverlapOccurrence(
+        string persistedUtcText)
+    {
+        DateTimeOffset persistedUtc = DateTimeOffset.Parse(persistedUtcText);
+
+        bool converted = DateTimeHelper.TryConvertLocalToUtc(
+            new DateTime(2026, 10, 25, 2, 30, 0),
+            BrusselsTimeZoneId,
+            persistedUtc,
+            out DateTimeOffset actualUtc,
+            out string? validationError);
+
+        await Assert.That(converted).IsTrue();
+        await Assert.That(validationError).IsNull();
+        await Assert.That(actualUtc).IsEqualTo(persistedUtc);
     }
 }

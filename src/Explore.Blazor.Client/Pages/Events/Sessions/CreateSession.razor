@@ -157,7 +157,7 @@
         RegistrationModeId = FallbackRegistrationModeId,
         Title = string.Empty
     };
-    private DateTime? _sessionDate = DateTime.Today.AddDays(1);
+    private DateTime? _sessionDate;
     private TimeSpan? _startTime = new(9, 0, 0);
     private TimeSpan? _endTime = new(10, 0, 0);
     private bool _isLoading = true;
@@ -238,7 +238,10 @@
             FallbackRegistrationModeId);
         _locations = formState.Locations;
         _sessionGroups = formState.SessionGroups;
-        _sessionDate = formState.SessionDate ?? _sessionDate;
+        _sessionDate = formState.SessionDate
+            ?? (string.IsNullOrWhiteSpace(context.TimeZoneId)
+                ? null
+                : DateTimeHelper.ConvertUtcToLocal(DateTimeOffset.UtcNow, context.TimeZoneId).Date.AddDays(1));
         _startTime = formState.StartTime ?? _startTime;
         _endTime = formState.EndTime ?? _endTime;
     }
@@ -346,7 +349,8 @@
             _sessionDate,
             _startTime,
             _endTime,
-            out validationError);
+            out validationError,
+            _createContext?.TimeZoneId);
     }
 
     private static string FormatLocation(EventSessionCreateLocationOptionDto location)
