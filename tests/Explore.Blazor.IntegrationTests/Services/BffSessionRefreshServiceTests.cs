@@ -70,18 +70,23 @@ public sealed class BffSessionRefreshServiceTests
         var accessToken = CreateJwt("user-1", DateTime.UtcNow.AddMinutes(30), "session-1");
         var principal = CreatePrincipal("user-1", "session-1");
         var authService = new TestAuthenticationService(AuthenticateResult.Success(CreateTicket(principal, accessToken)));
-        var tokenService = Substitute.For<ICircuitAccessTokenService>();
+        var tokenStore = Substitute.For<ICircuitTokenStore>();
+        tokenStore.Store("user-1", "session-1", accessToken)
+            .Returns(new CircuitTokenStoreResult(true, null));
         var onboardingStatusProvider = Substitute.For<IBffOnboardingStatusProvider>();
         onboardingStatusProvider.GetStatusAsync(Arg.Any<CancellationToken>())
             .Returns(new BffOnboardingStatus(IsCompleted: false, IsSetupModeActive: true, Known: true));
-        var context = CreateContext(authService: authService, tokenService: tokenService, onboardingStatusProvider: onboardingStatusProvider);
+        var context = CreateContext(
+            authService: authService,
+            tokenStore: tokenStore,
+            onboardingStatusProvider: onboardingStatusProvider);
         var service = CreateService(onboardingStatusProvider);
 
         var result = await service.RefreshSessionAsync(context, CancellationToken.None);
 
         await ExecuteAsync(result, context);
         await Assert.That(context.Response.StatusCode).IsEqualTo(StatusCodes.Status200OK);
-        tokenService.Received(1).SetToken(accessToken);
+        tokenStore.Received(1).Store("user-1", "session-1", accessToken);
         await Assert.That(authService.SignInCalled).IsTrue();
 
         context.Response.Body.Position = 0;
@@ -93,6 +98,53 @@ public sealed class BffSessionRefreshServiceTests
         tokenStatus.GetString().Should().StartWith("valid_until:");
         await Assert.That(root.TryGetProperty("token", out _)).IsFalse();
         root.GetRawText().Should().NotContain(accessToken);
+    }
+
+    [Test]
+    public async Task RefreshSessionAsync_WhenTokenSubjectDiffersFromCookiePrincipal_StoresTokenForCookiePrincipal()
+    {
+        const string principalUserId = "principal-user";
+        const string principalSessionId = "principal-session";
+        var accessToken = CreateJwt("token-subject", DateTime.UtcNow.AddMinutes(30), "token-session");
+        var principal = CreatePrincipal(principalUserId, principalSessionId);
+        var authService = new TestAuthenticationService(AuthenticateResult.Success(CreateTicket(principal, accessToken)));
+        var tokenStore = new CircuitTokenStore(NullLogger<CircuitTokenStore>.Instance);
+        var tokenService = new CircuitAccessTokenService(
+            tokenStore,
+            new HttpContextAccessor(),
+            NullLogger<CircuitAccessTokenService>.Instance);
+        var context = CreateContext(authService, tokenService, tokenStore: tokenStore);
+        var service = CreateService();
+
+        var result = await service.RefreshSessionAsync(context, CancellationToken.None);
+
+        await ExecuteAsync(result, context);
+        var resolution = tokenStore.Resolve(principalUserId, principalSessionId);
+        await Assert.That(context.Response.StatusCode).IsEqualTo(StatusCodes.Status200OK);
+        await Assert.That(resolution.Found).IsTrue();
+        await Assert.That(resolution.Token).IsEqualTo(accessToken);
+    }
+
+    [Test]
+    public async Task RefreshSessionAsync_WhenCircuitStoreRejectsToken_ReturnsConflictWithoutSigningIn()
+    {
+        var accessToken = CreateJwt("user-1", DateTime.UtcNow.AddMinutes(30), "session-1");
+        var principal = CreatePrincipal("user-1", "session-1");
+        var authService = new TestAuthenticationService(AuthenticateResult.Success(CreateTicket(principal, accessToken)));
+        var tokenStore = Substitute.For<ICircuitTokenStore>();
+        tokenStore.Store("user-1", "session-1", accessToken)
+            .Returns(new CircuitTokenStoreResult(false, "token_rejected"));
+        var context = CreateContext(authService: authService, tokenStore: tokenStore);
+        var service = CreateService();
+
+        var result = await service.RefreshSessionAsync(context, CancellationToken.None);
+
+        await ExecuteAsync(result, context);
+        await Assert.That(context.Response.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
+        await Assert.That(authService.SignInCalled).IsFalse();
+        context.Response.Body.Position = 0;
+        var responseBody = await new StreamReader(context.Response.Body).ReadToEndAsync();
+        responseBody.Should().Contain("token_handoff_failed").And.NotContain(accessToken);
     }
 
     [Test]
@@ -203,7 +255,12 @@ public sealed class BffSessionRefreshServiceTests
         tokenService ??= Substitute.For<ICircuitAccessTokenService>();
         userContext ??= Substitute.For<ICircuitUserContext>();
         cookieStore ??= Substitute.For<IBffAuthCookieStore>();
-        tokenStore ??= Substitute.For<ICircuitTokenStore>();
+        if (tokenStore is null)
+        {
+            tokenStore = Substitute.For<ICircuitTokenStore>();
+            tokenStore.Store(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>())
+                .Returns(new CircuitTokenStoreResult(true, null));
+        }
         onboardingStatusProvider ??= Substitute.For<IBffOnboardingStatusProvider>();
 
         var services = new ServiceCollection()

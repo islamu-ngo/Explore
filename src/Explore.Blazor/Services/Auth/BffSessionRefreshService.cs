@@ -56,7 +56,7 @@ public sealed class BffSessionRefreshService(
 
         var accessToken = authResult.Properties.GetTokenValue("access_token");
         var tokenAssessment = tokenAssessmentService.Assess(accessToken);
-        if (!tokenAssessment.IsUsable)
+        if (!tokenAssessment.IsUsable || string.IsNullOrWhiteSpace(accessToken))
         {
             ClearCircuitTokenState(context, authResult.Principal, logger, tokenAssessment.Reason);
             logger.LogWarning(
@@ -79,16 +79,24 @@ public sealed class BffSessionRefreshService(
             forceRefresh: true,
             cancellationToken: cancellationToken);
 
+        var userId = tokenAssessmentService.ResolveUserId(authResult.Principal);
+        var tokenStoreResult = context.RequestServices.GetRequiredService<ICircuitTokenStore>()
+            .Store(userId ?? string.Empty, authResult.Principal.FindFirst("sid")?.Value, accessToken);
+        if (!tokenStoreResult.Accepted)
+        {
+            logger.LogWarning(
+                "[AuthEndpoints] Refresh session could not hand off bearer token | Reason={Reason} User={UserId}",
+                tokenStoreResult.RejectionCode,
+                userId ?? "(unknown)");
+            return Results.Json(
+                new { refreshed = false, reason = "token_handoff_failed" },
+                statusCode: StatusCodes.Status409Conflict);
+        }
+
         await context.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
             authResult.Principal,
             authResult.Properties);
-
-        var tokenService = context.RequestServices.GetService<ICircuitAccessTokenService>();
-        if (!string.IsNullOrWhiteSpace(accessToken))
-        {
-            tokenService?.SetToken(accessToken);
-        }
 
         logger.LogInformation(
             "[AuthEndpoints] Refresh session confirmed usable bearer token | User={UserId} TokenSummary={TokenSummary} AdminClaimsUpdated={AdminClaimsUpdated}",

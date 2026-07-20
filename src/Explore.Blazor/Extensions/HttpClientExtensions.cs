@@ -40,7 +40,7 @@ public static class HttpClientExtensions
         // No BaseAddress here; components set it from NavigationManager.BaseUri at runtime.
         services.AddHttpClient("BffSelfClient")
             .AddHttpMessageHandler<BffCookieForwardingHandler>()
-            .ConfigureDevCertBypass(environment);
+            .ConfigureDevCertBypass(environment, allowAutoRedirect: false);
 
         // Named direct storage upload client — used only for trusted server-issued provider upload URLs.
         services.AddHttpClient(StorageHttpClientNames.DirectUpload, client =>
@@ -225,9 +225,10 @@ public static class HttpClientExtensions
     /// </summary>
     private static IHttpClientBuilder ConfigureDevCertBypass(
         this IHttpClientBuilder builder,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        bool allowAutoRedirect = true)
     {
-        builder.ConfigurePrimaryHttpMessageHandler(() => CreatePooledHandler(environment));
+        builder.ConfigurePrimaryHttpMessageHandler(() => CreatePooledHandler(environment, allowAutoRedirect));
 
         // Keep pooled handlers alive for the full PooledConnectionLifetime window so the
         // handler's internal pool actually gets to reuse connections. Otherwise the factory
@@ -238,10 +239,13 @@ public static class HttpClientExtensions
         return builder;
     }
 
-    private static SocketsHttpHandler CreatePooledHandler(IWebHostEnvironment environment)
+    private static SocketsHttpHandler CreatePooledHandler(
+        IWebHostEnvironment environment,
+        bool allowAutoRedirect)
     {
         var handler = new SocketsHttpHandler
         {
+            AllowAutoRedirect = allowAutoRedirect,
             UseCookies = false,
             PooledConnectionLifetime = TimeSpan.FromMinutes(2),
             PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30),

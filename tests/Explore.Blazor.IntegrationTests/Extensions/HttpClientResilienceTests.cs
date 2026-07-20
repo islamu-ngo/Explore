@@ -19,6 +19,22 @@ namespace Explore.Blazor.IntegrationTests.Extensions;
 public sealed class HttpClientResilienceTests
 {
     [Test]
+    public async Task BffSelfClient_WhenRefreshRedirectsToLogin_DoesNotMaskExpiredApplicationSession()
+    {
+        await using var bff = await RedirectingBffApp.StartAsync();
+        var services = CreateServices(bff.BaseAddress);
+        services.AddSingleton(Substitute.For<IBffAuthCookieStore>());
+        await using var provider = services.BuildServiceProvider();
+        var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("BffSelfClient");
+        client.BaseAddress = new Uri(bff.BaseAddress);
+
+        using var response = await client.PostAsync("/bff/auth/refresh-session/internal", content: null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        bff.LoginCallCount.Should().Be(0);
+    }
+
+    [Test]
     public async Task BffClient_PostAiMessage_WhenApiTakesMoreThanFourSeconds_DoesNotTimeoutOrRetryUnsafeRequest()
     {
         await using var api = await DelayedApiApp.StartAsync(TimeSpan.FromSeconds(5));
@@ -119,6 +135,46 @@ public sealed class HttpClientResilienceTests
             });
             builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0");
             return builder.Build();
+        }
+    }
+
+    private sealed class RedirectingBffApp(WebApplication app) : IAsyncDisposable
+    {
+        private readonly WebApplication _app = app;
+        private int _loginCallCount;
+
+        public string BaseAddress { get; private set; } = string.Empty;
+
+        public int LoginCallCount => _loginCallCount;
+
+        public static async Task<RedirectingBffApp> StartAsync()
+        {
+            var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+            {
+                EnvironmentName = Environments.Development
+            });
+            builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0");
+            var wrapper = new RedirectingBffApp(builder.Build());
+            wrapper._app.MapPost("/bff/auth/refresh-session/internal", () => Results.Redirect("/login"));
+            wrapper._app.MapGet("/login", () =>
+            {
+                Interlocked.Increment(ref wrapper._loginCallCount);
+                return Results.Ok();
+            });
+
+            await wrapper._app.StartAsync();
+            var addresses = wrapper._app.Services
+                .GetRequiredService<IServer>()
+                .Features
+                .Get<IServerAddressesFeature>();
+            wrapper.BaseAddress = addresses!.Addresses.Single();
+            return wrapper;
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await _app.StopAsync();
+            await _app.DisposeAsync();
         }
     }
 }
