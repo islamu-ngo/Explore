@@ -267,11 +267,11 @@ public sealed class EmailDispatchDrainService(
             return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.AlreadyClaimed, dispatch.Id);
         }
 
-        if (dispatch.Status == EmailDispatchStatus.RetryScheduled
+        if (dispatch.Status is EmailDispatchStatus.Pending or EmailDispatchStatus.RetryScheduled
             && dispatch.NextAttemptAt is { } nextAttemptAt
             && nextAttemptAt > now)
         {
-            metrics.RecordEmailDispatchRabbitMqConsume("acked", "retry_deferred");
+            metrics.RecordEmailDispatchRabbitMqConsume("acked", "not_due");
             return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.Deferred, dispatch.Id);
         }
 
@@ -296,8 +296,12 @@ public sealed class EmailDispatchDrainService(
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
         var tenantAccessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
 
-        var now = dispatch.ProcessingStartedAt
-            ?? throw new InvalidOperationException("A claimed email dispatch requires a processing start time.");
+        if (dispatch.ProcessingStartedAt is null)
+        {
+            throw new InvalidOperationException("A claimed email dispatch requires a processing start time.");
+        }
+
+        var now = DateTime.UtcNow;
         var leaseToken = dispatch.ProcessingLeaseToken
             ?? throw new InvalidOperationException("A claimed email dispatch requires a processing lease token.");
 

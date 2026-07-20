@@ -9,6 +9,7 @@ using Explore.Application.Notifications;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Domain.Services.Scheduling;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -49,7 +50,8 @@ public sealed class EmailDispatchEligibilityEvaluator(
             IsolationLevel.ReadCommitted,
             cancellationToken);
 
-        if (fanoutAuthorityHint is { OccurrenceId: not null, EventId: { } lockEventId })
+        if (fanoutAuthorityHint is { EventId: { } lockEventId } authorityHint
+            && (authorityHint.OccurrenceId.HasValue || authorityHint.Kind == EmailDispatchKind.EventReminder))
         {
             await NotificationFanoutPrecedenceLock.AcquireAsync(
                 dbContext,
@@ -155,6 +157,24 @@ public sealed class EmailDispatchEligibilityEvaluator(
                 request,
                 "fanout_occurrence_authority_mismatch",
                 cancellationToken);
+        }
+
+        if (dispatch.Kind == EmailDispatchKind.EventReminder)
+        {
+            string? reminderSkipReason = await ResolveEventReminderAuthoritySkipReasonAsync(
+                dispatch,
+                delivery.NotificationIntent,
+                request.EvaluatedAt,
+                cancellationToken);
+            if (reminderSkipReason is not null)
+            {
+                return await SkipAsync(
+                    dispatch,
+                    delivery,
+                    request,
+                    reminderSkipReason,
+                    cancellationToken);
+            }
         }
 
         var processorPaused = await dbContext.EmailDispatchProcessorStates
@@ -442,8 +462,8 @@ public sealed class EmailDispatchEligibilityEvaluator(
             .SingleAsync(cancellationToken);
 
         await dbContext.Database.ExecuteSqlInterpolatedAsync($$"""
-            INSERT INTO email_dispatch_processor_states (id, processor_code, optional_reminders_deferred, updated_at)
-            VALUES ({{Guid.CreateVersion7()}}, {{SmtpProcessorCode}}, FALSE, {{databaseNow}})
+            INSERT INTO email_dispatch_processor_states (id, processor_code, is_paused, optional_reminders_deferred, updated_at)
+            VALUES ({{Guid.CreateVersion7()}}, {{SmtpProcessorCode}}, FALSE, FALSE, {{databaseNow}})
             ON CONFLICT (processor_code) DO NOTHING
             """, cancellationToken);
         var processorState = await dbContext.EmailDispatchProcessorStates
@@ -585,6 +605,117 @@ public sealed class EmailDispatchEligibilityEvaluator(
                 => "report_follow_up_consent_withdrawn",
             _ => null
         };
+    }
+
+    private async Task<string?> ResolveEventReminderAuthoritySkipReasonAsync(
+        EmailDispatchOutbox dispatch,
+        NotificationIntent intent,
+        DateTime evaluatedAt,
+        CancellationToken cancellationToken)
+    {
+        if (dispatch.EventId is not Guid eventId
+            || dispatch.RegistrationIntentId is not Guid registrationIntentId
+            || intent.TemplateKey != "event.reminder"
+            || intent.EventId != eventId
+            || intent.RecipientUserId != dispatch.RecipientUserId
+            || !EventReminderAuthorityReference.TryParse(
+                dispatch.CorrelationId,
+                out Guid scheduledSessionId,
+                out DateTimeOffset scheduledStartUtc,
+                out string scheduledTimeZoneId)
+            || !string.Equals(
+                intent.SafePayloadReference,
+                $"event-registration-intent:{registrationIntentId:N}:session:{scheduledSessionId:N}",
+                StringComparison.Ordinal))
+        {
+            return "event_reminder_authority_missing";
+        }
+
+        var eventTimeZone = await dbContext.Events
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .Where(value =>
+                value.TenantId == dispatch.TenantId
+                && value.Id == eventId
+                && !value.IsDeleted
+                && value.EventStatusId == (int)EventStatusEnum.Published)
+            .Select(value => new { value.EventTimeZoneId, value.Timezone })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (eventTimeZone is null)
+        {
+            return "event_reminder_authority_inactive";
+        }
+
+        string currentTimeZoneId;
+        try
+        {
+            currentTimeZoneId = ScheduleTimeZoneResolver.NormalizeOrUtc(
+                eventTimeZone.EventTimeZoneId ?? eventTimeZone.Timezone);
+        }
+        catch (ArgumentException)
+        {
+            return "event_reminder_timezone_invalid";
+        }
+
+        if (!string.Equals(currentTimeZoneId, scheduledTimeZoneId, StringComparison.Ordinal))
+        {
+            return "event_reminder_authority_changed";
+        }
+
+        bool registrationAuthorityActive = await dbContext.EventRegistrationIntents
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .AnyAsync(parent =>
+                parent.TenantId == dispatch.TenantId
+                && parent.Id == registrationIntentId
+                && parent.EventId == eventId
+                && parent.UserId == dispatch.RecipientUserId
+                && !parent.IsDeleted
+                && parent.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
+                && !dbContext.EventModerationRecords
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                    .Any(record =>
+                        record.TenantId == dispatch.TenantId
+                        && record.EventId == eventId
+                        && record.ActionKind == EventModerationActionKind.HeavyRedacted
+                        && record.IsIrreversible),
+                cancellationToken);
+        if (!registrationAuthorityActive)
+        {
+            return "event_reminder_authority_inactive";
+        }
+
+        DateTimeOffset cutoffUtc = new(
+            evaluatedAt.Kind == DateTimeKind.Utc ? evaluatedAt : evaluatedAt.ToUniversalTime());
+        var currentSession = await (
+                from child in dbContext.EventRegistrations
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                    .AsNoTracking()
+                join session in dbContext.EventSessions
+                    .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                    .AsNoTracking()
+                    on new { child.TenantId, Id = child.EventSessionId }
+                    equals new { session.TenantId, Id = session.Id }
+                where child.TenantId == dispatch.TenantId
+                      && child.EventRegistrationIntentId == registrationIntentId
+                      && child.EventId == eventId
+                      && child.UserId == dispatch.RecipientUserId
+                      && !child.IsDeleted
+                      && child.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
+                      && session.EventId == eventId
+                      && !session.IsDeleted
+                      && session.EventSessionStatusId == (int)EventSessionStatusEnum.Published
+                      && session.StartTime.HasValue
+                      && session.StartTime.Value > cutoffUtc
+                orderby session.StartTime, session.Id
+                select new { SessionId = session.Id, SessionStart = session.StartTime!.Value })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return currentSession is null
+            || currentSession.SessionId != scheduledSessionId
+            || currentSession.SessionStart.ToUniversalTime() != scheduledStartUtc
+                ? "event_reminder_authority_changed"
+                : null;
     }
 
     private async Task<EmailDispatchEligibilityResult> SkipAsync(
@@ -746,7 +877,8 @@ public sealed class EmailDispatchEligibilityEvaluator(
                 && value.ChannelId == (int)NotificationPreferenceChannelEnum.Email)
             .Select(value => new FanoutAuthorityHint(
                 value.NotificationIntent!.FanoutOccurrenceId,
-                value.NotificationIntent.EventId))
+                value.NotificationIntent.EventId,
+                value.EmailDispatchOutbox!.Kind))
             .SingleOrDefaultAsync(cancellationToken);
     }
 
@@ -757,5 +889,5 @@ public sealed class EmailDispatchEligibilityEvaluator(
         bool ProcessorPaused = false,
         bool TenantPaused = false);
     private sealed record SmtpTokenBucket(int AvailableTokens, DateTime RefillAt);
-    private sealed record FanoutAuthorityHint(Guid? OccurrenceId, Guid? EventId);
+    private sealed record FanoutAuthorityHint(Guid? OccurrenceId, Guid? EventId, EmailDispatchKind Kind);
 }
