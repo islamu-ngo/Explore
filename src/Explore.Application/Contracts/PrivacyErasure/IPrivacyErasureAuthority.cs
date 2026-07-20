@@ -1,0 +1,18 @@
+// ABOUTME: Defines the application boundary for the independently retained privacy-erasure authority.
+// ABOUTME: Exposes append and checkpoint-oriented reads only, with no update or delete capability.
+
+using Explore.Domain;
+
+namespace Explore.Application.Contracts.PrivacyErasure;
+
+public interface IPrivacyErasureAuthority
+{
+    Task<PrivacyErasureIntent> AppendAsync(
+        PrivacyErasureRequest intent,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PrivacyErasureIntent>> ReadAfterAsync(
+        long authoritySequence,
+        int limit,
+        CancellationToken cancellationToken = default);
+}

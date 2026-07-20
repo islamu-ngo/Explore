@@ -5,10 +5,10 @@ using Explore.Domain;
 
 namespace Explore.Application.Contracts.Persistence;
 
-public interface ILocationPrivacyErasureReplayCheckpointRepository
+public interface IPrivacyErasureReplayCheckpointRepository
 {
-    Task<LocationPrivacyErasureReplayCheckpoint> AppendAsync(
-        LocationPrivacyErasureReplayCheckpoint checkpoint,
+    Task<PrivacyErasureReplayCheckpoint> AppendAsync(
+        PrivacyErasureReplayCheckpoint checkpoint,
         CancellationToken cancellationToken);
-    Task<LocationPrivacyErasureReplayCheckpoint?> GetLatestAsync(CancellationToken cancellationToken);
+    Task<PrivacyErasureReplayCheckpoint?> GetLatestAsync(CancellationToken cancellationToken);
 }
