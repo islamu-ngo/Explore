@@ -5,6 +5,7 @@ using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Models.InternalEvents;
+using Explore.Application.Notifications;
 using Explore.Application.Services;
 using Explore.Application.Telemetry;
 using Explore.Domain;
@@ -21,21 +22,51 @@ public sealed class EventModerationNotificationFanoutServiceTests
     private readonly INotificationRepository _notificationRepository = Substitute.For<INotificationRepository>();
     private readonly INotificationFanoutRunRepository _fanoutRunRepository = Substitute.For<INotificationFanoutRunRepository>();
     private readonly INotificationPreferenceResolver _preferenceResolver = Substitute.For<INotificationPreferenceResolver>();
+    private readonly INotificationFanoutOccurrenceRepository _fanoutOccurrenceRepository = Substitute.For<INotificationFanoutOccurrenceRepository>();
+    private readonly INotificationFanoutEmailSuppressionRepository _emailSuppressionRepository = Substitute.For<INotificationFanoutEmailSuppressionRepository>();
+    private readonly IOutboxRepository _outboxRepository = Substitute.For<IOutboxRepository>();
+    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly EventModerationNotificationFanoutService _service;
 
     public EventModerationNotificationFanoutServiceTests()
     {
+        var coordinator = new NotificationFanoutOccurrenceCoordinator(
+            _fanoutOccurrenceRepository,
+            _emailSuppressionRepository,
+            _outboxRepository,
+            new NotificationFanoutRecipientTemplateFactory());
         _service = new EventModerationNotificationFanoutService(
             _registrationIntentRepository,
             _moderationRecordRepository,
             _notificationRepository,
             _fanoutRunRepository,
             _preferenceResolver,
+            _fanoutOccurrenceRepository,
+            coordinator,
+            _unitOfWork,
             CreateMetrics(),
             Substitute.For<ILogger<EventModerationNotificationFanoutService>>());
 
         _preferenceResolver.ResolveAsync(Arg.Any<NotificationPreferenceResolveRequest>(), Arg.Any<CancellationToken>())
             .Returns(call => EnabledDecision(call.Arg<NotificationPreferenceResolveRequest>()));
+        _fanoutOccurrenceRepository.GetPendingForEventCoordinationAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
+        _fanoutOccurrenceRepository.Create(Arg.Any<NotificationFanoutOccurrence>())
+            .Returns(call => call.Arg<NotificationFanoutOccurrence>());
+        _outboxRepository.Create(Arg.Any<OutboxMessage>())
+            .Returns(call => call.Arg<OutboxMessage>());
+        _unitOfWork.ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task<NotificationFanoutOccurrenceCoordinationResult>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task<NotificationFanoutOccurrenceCoordinationResult>>>()(
+                call.ArgAt<CancellationToken>(1)));
+        _unitOfWork.ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task>>()(call.ArgAt<CancellationToken>(1)));
     }
 
     [Test]
@@ -85,6 +116,7 @@ public sealed class EventModerationNotificationFanoutServiceTests
         await Assert.That(updatedRuns.Last().ProcessedCount).IsEqualTo(2);
         await Assert.That(updatedRuns.Last().CreatedNotificationCount).IsEqualTo(2);
         await Assert.That(updatedRuns.Last().CursorSubscriberTenantUserId).IsEqualTo(secondUserId);
+        await _outboxRepository.DidNotReceiveWithAnyArgs().Create(default!);
     }
 
     [Test]
@@ -118,143 +150,59 @@ public sealed class EventModerationNotificationFanoutServiceTests
     }
 
     [Test]
-    public async Task FanoutHeavyRedactionAsync_WithRegisteredUsers_CreatesGenericLinklessNotificationsAndCompletesRun()
+    public async Task FanoutHeavyRedactionAsync_ConvergesRetainedPointerOnGenericPriorityOneHundredOccurrence()
     {
         var moderationRecord = CreateHeavyModerationRecord();
         var request = CreateHeavyRequest(moderationRecord);
-        var firstUserId = Guid.Parse("10000000-0000-0000-0000-000000000001");
-        var secondUserId = Guid.Parse("20000000-0000-0000-0000-000000000002");
-        var createdNotifications = new List<Notification>();
-        var updatedRuns = new List<NotificationFanoutRun>();
-
-        ConfigureNewHeavyRun(request);
+        var createdOccurrences = new List<NotificationFanoutOccurrence>();
+        var createdPointers = new List<OutboxMessage>();
         _moderationRecordRepository.GetByIdAsync(
                 request.TenantId,
                 request.ModerationRecordId,
                 Arg.Any<CancellationToken>())
             .Returns(moderationRecord);
-        _fanoutRunRepository.Update(Arg.Do<NotificationFanoutRun>(run => updatedRuns.Add(CloneRun(run))))
-            .Returns(Task.CompletedTask);
-        _registrationIntentRepository.GetRegisteredUserFanoutBatchAsync(
-                request.TenantId,
-                moderationRecord.EventId,
-                Arg.Any<Guid?>(),
-                Arg.Any<int>(),
-                Arg.Any<CancellationToken>())
-            .Returns([firstUserId, secondUserId], []);
-        _notificationRepository.ExistsByDeduplicationKeyAsync(
-                request.TenantId,
-                Arg.Any<Guid>(),
-                Arg.Any<string>(),
-                Arg.Any<CancellationToken>())
-            .Returns(false);
-        _notificationRepository.Create(Arg.Do<Notification>(notification => createdNotifications.Add(notification)))
-            .Returns(call => call.Arg<Notification>());
+        _fanoutOccurrenceRepository.Create(
+                Arg.Do<NotificationFanoutOccurrence>(occurrence => createdOccurrences.Add(occurrence)))
+            .Returns(call => call.Arg<NotificationFanoutOccurrence>());
+        _outboxRepository.Create(Arg.Do<OutboxMessage>(pointer => createdPointers.Add(pointer)))
+            .Returns(call => call.Arg<OutboxMessage>());
 
         await _service.FanoutHeavyRedactionAsync(request);
 
-        await Assert.That(createdNotifications).Count().IsEqualTo(2);
-        await Assert.That(createdNotifications.Select(notification => notification.UserId)).Contains(firstUserId);
-        await Assert.That(createdNotifications.Select(notification => notification.UserId)).Contains(secondUserId);
-        var notification = createdNotifications.First();
-        await Assert.That(notification.TenantId).IsEqualTo(request.TenantId);
-        await Assert.That(notification.NotificationTypeId).IsEqualTo((int)NotificationTypeEnum.General);
-        await Assert.That(notification.NotificationEntityTypeId).IsNull();
-        await Assert.That(notification.EntityId).IsNull();
-        await Assert.That(notification.SourceActorId).IsNull();
-        await Assert.That(notification.RecipientContextActorId).IsNull();
-        await Assert.That(notification.NotificationScopeId).IsEqualTo((int)ActorTypeEnum.User);
-        await Assert.That(notification.NotificationReasonId).IsEqualTo((int)NotificationReasonEnum.System);
-        await Assert.That(notification.Title).Contains("Event");
-        await Assert.That(notification.Body).Contains("moderation");
-        await Assert.That(notification.DeduplicationKey).Contains(request.ModerationRecordId.ToString("N"));
-        await Assert.That(notification.DeduplicationKey).DoesNotContain(moderationRecord.EventId.ToString("N"));
-        await Assert.That(notification.Title).DoesNotContain(moderationRecord.EventId.ToString());
-        await Assert.That(notification.Body).DoesNotContain(moderationRecord.EventId.ToString());
-        await Assert.That(notification.Title).DoesNotContain("Illegal Event");
-        await Assert.That(notification.Body).DoesNotContain("Illegal Event");
-        await Assert.That(notification.Title).DoesNotContain("/events/");
-        await Assert.That(notification.Body).DoesNotContain("/events/");
-        await Assert.That(updatedRuns.Last().Status).IsEqualTo(EventModerationNotificationFanoutService.StatusCompleted);
-        await Assert.That(updatedRuns.Last().FanoutKind).IsEqualTo(EventModerationNotificationFanoutService.HeavyFanoutKind);
-        await Assert.That(updatedRuns.Last().ProcessedCount).IsEqualTo(2);
-        await Assert.That(updatedRuns.Last().CreatedNotificationCount).IsEqualTo(2);
-        await Assert.That(updatedRuns.Last().CursorSubscriberTenantUserId).IsEqualTo(secondUserId);
+        NotificationFanoutOccurrence occurrence = createdOccurrences.Single();
+        await Assert.That(occurrence.Priority).IsEqualTo(NotificationFanoutOccurrenceCoordinationPolicy.HeavyModerationUnavailablePriority);
+        await Assert.That(occurrence.TemplateKey).IsEqualTo(NotificationFanoutOccurrenceCoordinationPolicy.HeavyModerationUnavailableTemplateKey);
+        await Assert.That(occurrence.DeliveryPolicyId).IsEqualTo((int)NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired);
+        await Assert.That(occurrence.ChangeSetJson).IsEqualTo("{}");
+        await Assert.That(occurrence.SafeBeforeSnapshotJson).IsEqualTo("{}");
+        await Assert.That(occurrence.SafeAfterSnapshotJson).IsEqualTo("{}");
+        OutboxMessage pointer = createdPointers.Single();
+        await Assert.That(pointer.Payload).DoesNotContain("SourceActorId");
+        await Assert.That(pointer.Payload).DoesNotContain("RedactedAt");
+        await Assert.That(pointer.Payload).DoesNotContain("illegal_content");
+        await _registrationIntentRepository.DidNotReceiveWithAnyArgs()
+            .GetRegisteredUserFanoutBatchAsync(default, default, default, default, default);
+        await _notificationRepository.DidNotReceiveWithAnyArgs().Create(default!);
+        await _fanoutRunRepository.DidNotReceiveWithAnyArgs().Create(default!);
+        await _preferenceResolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default);
     }
 
     [Test]
-    public async Task FanoutHeavyRedactionAsync_WithExistingDeduplicationKey_SkipsDuplicateNotification()
+    public async Task FanoutHeavyRedactionAsync_WithInvalidAuthorityDoesNotCreateOccurrence()
     {
         var moderationRecord = CreateHeavyModerationRecord();
         var request = CreateHeavyRequest(moderationRecord);
-        var userId = Guid.Parse("10000000-0000-0000-0000-000000000001");
-
-        ConfigureNewHeavyRun(request);
         _moderationRecordRepository.GetByIdAsync(
                 request.TenantId,
                 request.ModerationRecordId,
                 Arg.Any<CancellationToken>())
-            .Returns(moderationRecord);
-        _registrationIntentRepository.GetRegisteredUserFanoutBatchAsync(
-                request.TenantId,
-                moderationRecord.EventId,
-                Arg.Any<Guid?>(),
-                Arg.Any<int>(),
-                Arg.Any<CancellationToken>())
-            .Returns([userId], []);
-        _notificationRepository.ExistsByDeduplicationKeyAsync(
-                request.TenantId,
-                userId,
-                Arg.Any<string>(),
-                Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns((EventModerationRecord?)null);
 
-        await _service.FanoutHeavyRedactionAsync(request);
+        await Assert.That(() => _service.FanoutHeavyRedactionAsync(request))
+            .Throws<InvalidOperationException>();
 
-        await _notificationRepository.DidNotReceive().Create(Arg.Any<Notification>());
-        await _fanoutRunRepository.Received().Update(Arg.Is<NotificationFanoutRun>(run =>
-            run.FanoutKind == EventModerationNotificationFanoutService.HeavyFanoutKind
-            && run.Status == EventModerationNotificationFanoutService.StatusCompleted
-            && run.ProcessedCount == 1
-            && run.CreatedNotificationCount == 0));
-    }
-
-    [Test]
-    public async Task FanoutHeavyRedactionAsync_BypassesOptionalTrustSafetyPreference()
-    {
-        var moderationRecord = CreateHeavyModerationRecord();
-        var request = CreateHeavyRequest(moderationRecord);
-        var userId = Guid.Parse("10000000-0000-0000-0000-000000000001");
-        var createdNotifications = new List<Notification>();
-
-        ConfigureNewHeavyRun(request);
-        _moderationRecordRepository.GetByIdAsync(
-                request.TenantId,
-                request.ModerationRecordId,
-                Arg.Any<CancellationToken>())
-            .Returns(moderationRecord);
-        _registrationIntentRepository.GetRegisteredUserFanoutBatchAsync(
-                request.TenantId,
-                moderationRecord.EventId,
-                Arg.Any<Guid?>(),
-                Arg.Any<int>(),
-                Arg.Any<CancellationToken>())
-            .Returns([userId], []);
-        _notificationRepository.ExistsByDeduplicationKeyAsync(
-                request.TenantId,
-                userId,
-                Arg.Any<string>(),
-                Arg.Any<CancellationToken>())
-            .Returns(false);
-        _notificationRepository.Create(Arg.Do<Notification>(notification => createdNotifications.Add(notification)))
-            .Returns(call => call.Arg<Notification>());
-
-        await _service.FanoutHeavyRedactionAsync(request);
-
-        await Assert.That(createdNotifications).Count().IsEqualTo(1);
-        await Assert.That(createdNotifications[0].UserId).IsEqualTo(userId);
-        await _preferenceResolver.DidNotReceiveWithAnyArgs()
-            .ResolveAsync(default!, default);
+        await _fanoutOccurrenceRepository.DidNotReceiveWithAnyArgs().Create(default!);
+        await _outboxRepository.DidNotReceiveWithAnyArgs().Create(default!);
     }
 
     [Test]
@@ -285,6 +233,34 @@ public sealed class EventModerationNotificationFanoutServiceTests
         await _service.FanoutLightModerationAsync(request);
 
         await _notificationRepository.DidNotReceive().Create(Arg.Any<Notification>());
+    }
+
+    [Test]
+    public async Task FanoutLightModerationAsync_WhenHeavyAuthorityAlreadyWon_SettlesWithoutRecipientOrEmailWork()
+    {
+        EventLightModeratedNotificationFanoutRequested request = CreateRequest();
+        ConfigureNewRun(request);
+        _registrationIntentRepository.GetRegisteredUserFanoutBatchAsync(
+                request.TenantId,
+                request.EventId,
+                Arg.Any<Guid?>(),
+                Arg.Any<int>(),
+                Arg.Any<CancellationToken>())
+            .Returns([Guid.CreateVersion7()]);
+        _fanoutOccurrenceRepository.AcquireEventPrecedenceLockAndHasHeavyAuthorityAsync(
+                request.TenantId,
+                request.EventId,
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        await _service.FanoutLightModerationAsync(request);
+
+        await _notificationRepository.DidNotReceiveWithAnyArgs().Create(default!);
+        await _outboxRepository.DidNotReceiveWithAnyArgs().Create(default!);
+        await _fanoutRunRepository.Received().Update(Arg.Is<NotificationFanoutRun>(run =>
+            run.Status == EventModerationNotificationFanoutService.StatusCompleted
+            && run.ProcessedCount == 0
+            && run.CreatedNotificationCount == 0));
     }
 
     [Test]
@@ -335,21 +311,6 @@ public sealed class EventModerationNotificationFanoutServiceTests
             .Returns(call => call.Arg<NotificationFanoutRun>());
     }
 
-    private void ConfigureNewHeavyRun(EventHeavyRedactedNotificationFanoutRequested request)
-    {
-        _fanoutRunRepository.GetBySourceAsync(
-                request.TenantId,
-                EventModerationNotificationFanoutService.HeavyFanoutKind,
-                (int)NotificationEntityTypeEnum.Event,
-                request.ModerationRecordId,
-                request.SourceActorId,
-                true,
-                Arg.Any<CancellationToken>())
-            .Returns((NotificationFanoutRun?)null);
-        _fanoutRunRepository.Create(Arg.Any<NotificationFanoutRun>())
-            .Returns(call => call.Arg<NotificationFanoutRun>());
-    }
-
     private static EventLightModeratedNotificationFanoutRequested CreateRequest() => new()
     {
         TenantId = Guid.NewGuid(),
@@ -377,8 +338,7 @@ public sealed class EventModerationNotificationFanoutServiceTests
         {
             TenantId = moderationRecord.TenantId,
             ModerationRecordId = moderationRecord.Id,
-            SourceActorId = Guid.NewGuid(),
-            RedactedAt = moderationRecord.CreatedAt
+            Version = EventHeavyRedactedNotificationFanoutRequested.CurrentVersion
         };
 
     private static NotificationFanoutRun CloneRun(NotificationFanoutRun run) => new()

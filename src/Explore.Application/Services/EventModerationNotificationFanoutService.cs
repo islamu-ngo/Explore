@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Models.InternalEvents;
+using Explore.Application.Notifications;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -17,6 +18,9 @@ public sealed class EventModerationNotificationFanoutService(
     INotificationRepository notificationRepository,
     INotificationFanoutRunRepository fanoutRunRepository,
     INotificationPreferenceResolver notificationPreferenceResolver,
+    INotificationFanoutOccurrenceRepository fanoutOccurrenceRepository,
+    NotificationFanoutOccurrenceCoordinator fanoutCoordinator,
+    IUnitOfWork unitOfWork,
     BusinessMetrics metrics,
     ILogger<EventModerationNotificationFanoutService> logger) : IEventModerationNotificationFanoutService
 {
@@ -77,45 +81,87 @@ public sealed class EventModerationNotificationFanoutService(
                     break;
                 }
 
-                foreach (var userId in attendeeUserIds)
+                LightModerationBatchResult batch = LightModerationBatchResult.Blocked;
+                await unitOfWork.ExecuteInTransactionAsync(
+                    async token =>
+                    {
+                        bool heavyAuthority = await fanoutOccurrenceRepository
+                            .AcquireEventPrecedenceLockAndHasHeavyAuthorityAsync(
+                                request.TenantId,
+                                request.EventId,
+                                token);
+                        if (heavyAuthority)
+                        {
+                            batch = LightModerationBatchResult.Blocked;
+                            return;
+                        }
+
+                        var processed = 0;
+                        var created = 0;
+                        var duplicateSkipped = 0;
+                        Guid? cursor = null;
+                        foreach (Guid userId in attendeeUserIds)
+                        {
+                            token.ThrowIfCancellationRequested();
+                            processed++;
+                            cursor = userId;
+
+                            string deduplicationKey = BuildLightModerationDeduplicationKey(request, userId);
+                            bool alreadyCreated = await notificationRepository.ExistsByDeduplicationKeyAsync(
+                                request.TenantId,
+                                userId,
+                                deduplicationKey,
+                                token);
+                            if (alreadyCreated)
+                            {
+                                duplicateSkipped++;
+                                continue;
+                            }
+
+                            NotificationPreferenceDecision preference = await notificationPreferenceResolver.ResolveAsync(
+                                new NotificationPreferenceResolveRequest(
+                                    request.TenantId,
+                                    userId,
+                                    null,
+                                    null,
+                                    NotificationPreferenceCategoryCodes.TrustSafety,
+                                    NotificationPreferenceChannelCodes.InApp),
+                                token);
+                            if (!preference.IsEnabled)
+                            {
+                                continue;
+                            }
+
+                            await notificationRepository.Create(
+                                CreateLightModerationNotification(request, userId, deduplicationKey));
+                            created++;
+                        }
+
+                        batch = new LightModerationBatchResult(
+                            BlockedByHeavyAuthority: false,
+                            processed,
+                            created,
+                            duplicateSkipped,
+                            cursor);
+                    },
+                    cancellationToken);
+                if (batch.BlockedByHeavyAuthority)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    run.ProcessedCount++;
-                    processedThisAttempt++;
-                    run.CursorSubscriberTenantUserId = userId;
-
-                    var deduplicationKey = BuildLightModerationDeduplicationKey(request, userId);
-                    var alreadyCreated = await notificationRepository.ExistsByDeduplicationKeyAsync(
-                        request.TenantId,
-                        userId,
-                        deduplicationKey,
-                        cancellationToken);
-
-                    if (alreadyCreated)
-                    {
-                        duplicateSkippedThisAttempt++;
-                        continue;
-                    }
-
-                    var preference = await notificationPreferenceResolver.ResolveAsync(
-                        new NotificationPreferenceResolveRequest(
-                            request.TenantId,
-                            userId,
-                            null,
-                            null,
-                            NotificationPreferenceCategoryCodes.TrustSafety,
-                            NotificationPreferenceChannelCodes.InApp),
-                        cancellationToken);
-                    if (!preference.IsEnabled)
-                    {
-                        continue;
-                    }
-
-                    await notificationRepository.Create(CreateLightModerationNotification(request, userId, deduplicationKey));
-                    run.CreatedNotificationCount++;
-                    createdThisAttempt++;
+                    run.Status = StatusCompleted;
+                    run.CompletedAt = DateTime.UtcNow;
+                    run.FailedAt = null;
+                    run.LastError = null;
+                    await fanoutRunRepository.Update(run);
+                    metrics.RecordNotificationFanoutRun(LightFanoutKind, OutcomeSkippedCompleted);
+                    return;
                 }
 
+                run.ProcessedCount += batch.ProcessedCount;
+                run.CreatedNotificationCount += batch.CreatedCount;
+                run.CursorSubscriberTenantUserId = batch.CursorSubscriberTenantUserId;
+                processedThisAttempt += batch.ProcessedCount;
+                createdThisAttempt += batch.CreatedCount;
+                duplicateSkippedThisAttempt += batch.DuplicateSkippedCount;
                 await fanoutRunRepository.Update(run);
 
                 if (attendeeUserIds.Count < BatchSize)
@@ -157,117 +203,73 @@ public sealed class EventModerationNotificationFanoutService(
         EventHeavyRedactedNotificationFanoutRequested request,
         CancellationToken cancellationToken = default)
     {
-        var moderationRecord = await moderationRecordRepository.GetByIdAsync(
-            request.TenantId,
-            request.ModerationRecordId,
-            cancellationToken)
-            ?? throw new InvalidOperationException(
-                $"Moderation record {request.ModerationRecordId} was not found for heavy moderation notification fanout.");
-
-        if (moderationRecord.ActionKind != EventModerationActionKind.HeavyRedacted || !moderationRecord.IsIrreversible)
+        if (request.TenantId == Guid.Empty
+            || request.ModerationRecordId == Guid.Empty
+            || request.Version != EventHeavyRedactedNotificationFanoutRequested.CurrentVersion)
         {
-            throw new InvalidOperationException(
-                $"Moderation record {request.ModerationRecordId} is not an irreversible heavy redaction record.");
+            throw new InvalidOperationException("The retained heavy moderation fanout pointer is invalid.");
         }
 
-        var run = await GetOrCreateHeavyRunAsync(request, cancellationToken);
-        if (string.Equals(run.Status, StatusCompleted, StringComparison.Ordinal))
-        {
-            metrics.RecordNotificationFanoutRun(HeavyFanoutKind, OutcomeSkippedCompleted);
-            logger.LogInformation(
-                "Skipping completed heavy moderation notification fanout run {RunId} for moderation record {ModerationRecordId}",
-                run.Id,
-                request.ModerationRecordId);
-            return;
-        }
-
-        run.Status = StatusProcessing;
-        run.StartedAt ??= DateTime.UtcNow;
-        run.FailedAt = null;
-        run.LastError = null;
-        await fanoutRunRepository.Update(run);
-        metrics.RecordNotificationFanoutRun(HeavyFanoutKind, OutcomeProcessing);
-
-        var processedThisAttempt = 0;
-        var createdThisAttempt = 0;
-        var duplicateSkippedThisAttempt = 0;
-
-        try
-        {
-            while (true)
+        Guid occurrenceId = Guid.CreateVersion7();
+        Guid pointerOutboxMessageId = Guid.CreateVersion7();
+        NotificationFanoutOccurrenceCoordinationResult result = await unitOfWork.ExecuteInTransactionAsync(
+            async token =>
             {
-                var attendeeUserIds = await registrationIntentRepository.GetRegisteredUserFanoutBatchAsync(
+                EventModerationRecord moderationRecord = await moderationRecordRepository.GetByIdAsync(
                     request.TenantId,
-                    moderationRecord.EventId,
-                    run.CursorSubscriberTenantUserId,
-                    BatchSize,
-                    cancellationToken);
-
-                if (attendeeUserIds.Count == 0)
+                    request.ModerationRecordId,
+                    token)
+                    ?? throw new InvalidOperationException("The retained heavy moderation authority is unavailable.");
+                if (moderationRecord.TenantId != request.TenantId
+                    || moderationRecord.ActionKind != EventModerationActionKind.HeavyRedacted
+                    || !moderationRecord.IsIrreversible)
                 {
-                    break;
+                    throw new InvalidOperationException("The retained heavy moderation authority is invalid.");
                 }
 
-                foreach (var userId in attendeeUserIds)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    run.ProcessedCount++;
-                    processedThisAttempt++;
-                    run.CursorSubscriberTenantUserId = userId;
+                Guid aggregateVersion = moderationRecord.SourceReportDecisionId ?? moderationRecord.Id;
+                NotificationFanoutOccurrence? existingOccurrence = await fanoutOccurrenceRepository
+                    .GetBySourceIdentityForCoordinationAsync(
+                        moderationRecord.TenantId,
+                        "event_moderation_record",
+                        moderationRecord.Id,
+                        aggregateVersion,
+                        token);
+                DateTime occurredAt = moderationRecord.CreatedAt.UtcDateTime;
+                return await fanoutCoordinator.CoordinateInCurrentTransactionAsync(
+                    new NotificationFanoutOccurrenceCandidate(
+                        existingOccurrence?.Id ?? occurrenceId,
+                        pointerOutboxMessageId,
+                        moderationRecord.TenantId,
+                        moderationRecord.EventId,
+                        SessionId: null,
+                        occurredAt,
+                        AudienceCutoffAt: occurredAt,
+                        aggregateVersion,
+                        ChangeSetJson: "{}",
+                        SafeBeforeSnapshotJson: "{}",
+                        SafeAfterSnapshotJson: "{}",
+                        NotificationFanoutOccurrenceCoordinationPolicy.HeavyModerationUnavailableTemplateKey,
+                        NotificationFanoutRecipientTemplateFactory.CurrentTemplateVersion,
+                        (int)NotificationDeliveryPolicyEnum.ModerationAvailabilityRequired,
+                        NotificationFanoutRecipientTemplateFactory.CurrentPolicyVersion,
+                        RequestedNotBefore: occurredAt,
+                        SourceType: "event_moderation_record",
+                        SourceId: moderationRecord.Id),
+                    token);
+            },
+            cancellationToken);
 
-                    var deduplicationKey = BuildHeavyRedactionDeduplicationKey(request, userId);
-                    var alreadyCreated = await notificationRepository.ExistsByDeduplicationKeyAsync(
-                        request.TenantId,
-                        userId,
-                        deduplicationKey,
-                        cancellationToken);
-
-                    if (alreadyCreated)
-                    {
-                        duplicateSkippedThisAttempt++;
-                        continue;
-                    }
-
-                    await notificationRepository.Create(CreateHeavyRedactionNotification(request, userId, deduplicationKey));
-                    run.CreatedNotificationCount++;
-                    createdThisAttempt++;
-                }
-
-                await fanoutRunRepository.Update(run);
-
-                if (attendeeUserIds.Count < BatchSize)
-                {
-                    break;
-                }
-            }
-
-            run.Status = StatusCompleted;
-            run.CompletedAt = DateTime.UtcNow;
-            run.FailedAt = null;
-            run.LastError = null;
-            await fanoutRunRepository.Update(run);
-            metrics.RecordNotificationFanoutRun(HeavyFanoutKind, OutcomeCompleted);
-            metrics.RecordNotificationFanoutSubscribers(processedThisAttempt, HeavyFanoutKind, OutcomeProcessed);
-            metrics.RecordNotificationFanoutSubscribers(createdThisAttempt, HeavyFanoutKind, OutcomeNotificationCreated);
-            metrics.RecordNotificationFanoutSubscribers(duplicateSkippedThisAttempt, HeavyFanoutKind, OutcomeDuplicateSkipped);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            run.Status = StatusFailed;
-            run.FailedAt = DateTime.UtcNow;
-            run.LastError = ex.Message;
-            await fanoutRunRepository.Update(run);
-            metrics.RecordNotificationFanoutRun(HeavyFanoutKind, OutcomeFailed);
-            metrics.RecordNotificationFanoutSubscribers(processedThisAttempt, HeavyFanoutKind, OutcomeProcessed);
-            metrics.RecordNotificationFanoutSubscribers(createdThisAttempt, HeavyFanoutKind, OutcomeNotificationCreated);
-            metrics.RecordNotificationFanoutSubscribers(duplicateSkippedThisAttempt, HeavyFanoutKind, OutcomeDuplicateSkipped);
-            logger.LogError(
-                ex,
-                "Failed heavy moderation notification fanout run {RunId} for moderation record {ModerationRecordId}",
-                run.Id,
-                request.ModerationRecordId);
-            throw;
-        }
+        metrics.RecordNotificationFanoutRun(
+            HeavyFanoutKind,
+            result.Outcome == NotificationFanoutOccurrenceCoordinationOutcome.NewlyActive
+                ? OutcomeCompleted
+                : OutcomeSkippedCompleted);
+        logger.LogInformation(
+            "Retained heavy moderation pointer converged on occurrence {OccurrenceId} in tenant {TenantId} with outcome {Outcome}.",
+            result.ActiveOccurrenceId,
+            request.TenantId,
+            result.Outcome);
     }
 
     private async Task<NotificationFanoutRun> GetOrCreateRunAsync(
@@ -294,42 +296,6 @@ public sealed class EventModerationNotificationFanoutService(
             TenantId = request.TenantId,
             Tenant = null!,
             FanoutKind = LightFanoutKind,
-            NotificationEntityTypeId = (int)NotificationEntityTypeEnum.Event,
-            NotificationEntityType = null!,
-            EntityId = request.ModerationRecordId,
-            SourceActorId = request.SourceActorId,
-            SourceActor = null!,
-            Status = StatusProcessing,
-            StartedAt = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            ConcurrencyStamp = Guid.NewGuid()
-        });
-    }
-
-    private async Task<NotificationFanoutRun> GetOrCreateHeavyRunAsync(
-        EventHeavyRedactedNotificationFanoutRequested request,
-        CancellationToken cancellationToken)
-    {
-        var run = await fanoutRunRepository.GetBySourceAsync(
-            request.TenantId,
-            HeavyFanoutKind,
-            (int)NotificationEntityTypeEnum.Event,
-            request.ModerationRecordId,
-            request.SourceActorId,
-            trackChanges: true,
-            cancellationToken);
-
-        if (run is not null)
-        {
-            return run;
-        }
-
-        return await fanoutRunRepository.Create(new NotificationFanoutRun
-        {
-            Id = Guid.NewGuid(),
-            TenantId = request.TenantId,
-            Tenant = null!,
-            FanoutKind = HeavyFanoutKind,
             NotificationEntityTypeId = (int)NotificationEntityTypeEnum.Event,
             NotificationEntityType = null!,
             EntityId = request.ModerationRecordId,
@@ -377,38 +343,14 @@ public sealed class EventModerationNotificationFanoutService(
         return $"event-moderated-light:{request.TenantId:N}:{request.ModerationRecordId:N}:{userId:N}";
     }
 
-    private static Notification CreateHeavyRedactionNotification(
-        EventHeavyRedactedNotificationFanoutRequested request,
-        Guid userId,
-        string deduplicationKey)
+    private sealed record LightModerationBatchResult(
+        bool BlockedByHeavyAuthority,
+        int ProcessedCount,
+        int CreatedCount,
+        int DuplicateSkippedCount,
+        Guid? CursorSubscriberTenantUserId)
     {
-        return new Notification
-        {
-            Id = Guid.NewGuid(),
-            TenantId = request.TenantId,
-            Tenant = null!,
-            UserId = userId,
-            User = null!,
-            NotificationTypeId = (int)NotificationTypeEnum.General,
-            NotificationType = null!,
-            Title = "Event no longer accessible",
-            Body = "An event you registered for is no longer accessible after moderation.",
-            DeduplicationKey = deduplicationKey,
-            NotificationEntityTypeId = null,
-            EntityId = null,
-            NotificationScopeId = (int)ActorTypeEnum.User,
-            NotificationScope = null!,
-            SourceActorId = null,
-            RecipientContextActorId = null,
-            NotificationReasonId = (int)NotificationReasonEnum.System,
-            CreatedAt = DateTime.UtcNow
-        };
+        public static LightModerationBatchResult Blocked { get; } = new(true, 0, 0, 0, null);
     }
 
-    private static string BuildHeavyRedactionDeduplicationKey(
-        EventHeavyRedactedNotificationFanoutRequested request,
-        Guid userId)
-    {
-        return $"event-moderated-heavy:{request.TenantId:N}:{request.ModerationRecordId:N}:{userId:N}";
-    }
 }
