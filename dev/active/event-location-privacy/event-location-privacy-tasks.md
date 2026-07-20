@@ -4,7 +4,7 @@
 # Event Location Privacy Tasks
 
 **Status:** W1-W5, W7, and W8 complete; W6 partially complete (`ELP-230A`, `ELP-250`, `ELP-310` verified; `ELP-500` open); W9-W10 gates remain open
-**Last Updated:** 2026-07-19 Europe/Brussels
+**Last Updated:** 2026-07-20 Europe/Brussels
 **Plan:** `dev/active/event-location-privacy/event-location-privacy-plan.md`  
 **Context:** `dev/active/event-location-privacy/event-location-privacy-context.md`
 
@@ -34,13 +34,13 @@
 | 8. Outbound/discovery/docs | Disclosure authority stable | Every surface has evidence and operations/docs match behavior |
 | 9. Final QA | All prior phases complete | Full build/tests/contracts/migrations/visual review green |
 
-The exact execution order is the wave table in plan Section 16. Critical corrections are: `ELP-015` runs immediately after leakage/route characterization; `ELP-350` precedes `ELP-315`; `ELP-505` and `ELP-515` are one atomic lane; `ELP-420A` precedes Blazor adoption; and `ELP-230C`, `ELP-430`, then `ELP-420B` form the final contraction lane.
+The exact execution order is the wave table in plan Section 16. Critical corrections are: `ELP-015` runs immediately after leakage/route characterization; `ELP-350` precedes `ELP-315`; historical `ELP-505`/`ELP-515` execution ownership is transferred to OREA with no ELP checkbox; `ELP-420A` precedes Blazor adoption; and `ELP-230C`, `ELP-430`, then `ELP-420B` form the final contraction lane.
 
 ## Phase 0: Contract and Characterization
 
 - [x] **ELP-000 — Re-baseline the approved architecture across all three durable docs**
   - Paths: `dev/active/event-location-privacy/*`.
-  - Result: canonical EventLocation, nullable-TBA XOR, retained internal scheduling IDs, deterministic legacy state, immediate Stage A, staged migrations, and verification owners are decision-complete. Authority topology is now owned by OREA: one-database default plus explicit retained PostgreSQL mode.
+  - Result: canonical EventLocation, nullable-TBA XOR, retained internal scheduling IDs, deterministic legacy state, immediate Stage A, staged migrations, and verification owners are decision-complete. Authority topology is now owned by OREA: one-database default, explicit retained mode with no fallback, `local-full`-only provisioning, and Persistence/EF Core ownership of both ledgers and generated migrations.
   - Evidence: initial six-file protected-diff capture plus the historical 2026-07-16 two-database protocol review; OREA now supersedes that universal topology with the approved two-mode contract.
 
 - [x] **ELP-005 — Block stale Home Discovery address/coordinate contract before product edits**
@@ -182,7 +182,7 @@ The following ELP-200/210 tables are authoritative and synchronized with plan Se
 
 - [x] **ELP-230A — Generate focused expand migration**
   - Paths: planned configurations `LocationKindConfiguration.cs`, `LocationPrivacyStateConfiguration.cs`, `LocationDisclosureAudienceConfiguration.cs`, `EventLocationConfiguration.cs`, `EventLocationDisclosureAuditConfiguration.cs`; `ExploreDbContext.cs`, `ExploreDbContext.QueryFilters.cs`, generated migration/snapshot.
-  - Change: lookup seeds, Location lifecycle columns, optional PII, EventLocation/audit/local replay-checkpoint tables, nullable EventLocationId references, TBA/location XOR, filtered uniqueness, indexes/checks/tenant-safe consistency FKs. The separate authority database is provisioned/backed up independently and is not created by application EF migration.
+  - Change: lookup seeds, Location lifecycle columns, optional PII, EventLocation/audit/local replay-checkpoint tables, nullable EventLocationId references, TBA/location XOR, filtered uniqueness, indexes/checks/tenant-safe consistency FKs. Optional authority provisioning and its dedicated EF migration are outside ELP-230A and owned by OREA-120/140/300.
   - Result: additive schema supports fail-closed dual-write with valid Down before irreversible activation.
   - Verify: generated SQL reviewed for locks, defaults, tenant keys, UUIDv7, concurrency, local checkpoint, and rollback; `Database:Migrations:EventLocationPrivacyStage=Expand|Backfill|Contract` is required while ELP migrations are pending, and a missing/invalid selector cannot auto-apply backfill/contract.
   - Evidence: `20260716132239_AddEventLocationPrivacyExpand`, its generated Designer/snapshot state, `EventLocationPrivacyMigrationStage`, `ExploreDatabaseMigrator`, API startup, MigrationService startup, lookup-seeder activation, and `EventLocationMigrationStageTests` are present. Independent PostgreSQL 18 verification passed the original five migration-stage tests and the Persistence `EventLocationPrivacy` category 40/40; exact 783-line idempotent Expand SQL applied twice, fresh/legacy upgrade and pre-activation Down preserved legacy rows, and raw SQL rejected append-only audit deletion, erased-PII reattachment/resurrection, tombstone restoration, carrier mismatches, and referenced-association detach. The later stage-gate repair makes already-applied Expand/Backfill targets idempotent before later-pending-stage checks and forwards a configured nonblank stage from AppHost to both MigrationService and API; focused applied-stage retry passed 2/2, the full PostgreSQL stage suite passed 7/7, and AppHost architecture passed 7/7. Missing/blank/invalid/unavailable stages still fail closed. Live Aspire proved stage forwarding but stopped on persisted PostgreSQL/RabbitMQ credential mismatch, so migration-service exit 0 and healthy API are not claimed. Current `has-pending-model-changes` is separately non-green because concurrent shared model/snapshot work exists, so no repository-wide model-parity claim is made. Migration implication: Expand and the separately verified Backfill are complete; Contract and disclosure activation remain gated. Cache implication: none. Security implication: selector ceilings and PostgreSQL guards fail closed. Risk/next: preserve the externally invalid shared snapshot/current-head state until the authorized migration lane reconciles it.
@@ -209,7 +209,7 @@ The following ELP-200/210 tables are authoritative and synchronized with plan Se
   - Paths: `ILocationRepository.cs`, `LocationRepository.cs`, `ExploreDbContext.QueryFilters.cs`, architecture and PostgreSQL tests.
   - Rule: explicit tenant-filter bypass strictly bounded by OwnerUserId and PrivateHome; no general unrestricted query.
   - Result: all current/former-tenant owned Homes found without cross-user leakage.
-  - Evidence: `ILocationRepository.GetOwnedPrivateHomesForGlobalErasureAsync` returns tracked entities, rejects `Guid.Empty` before EF access, disables only the named tenant filter for `GlobalLocationPrivacyErasure`, and immediately bounds by exact `OwnerUserId` plus `PrivateHome` with tenant/id ordering. Two fresh PostgreSQL 18 runs passed 2/2 each using two owned Homes across tenants, an unrelated-owner Home, and a transactionally injected same-owner commercial counterexample; both `Location` and AutoIncluded `LocationPii` were tracked and the DDL/DML mutation rolled back. Application contract passed 1/1, tenant-filter architecture 4/4, Clean Architecture 15/15, Code Hygiene 4/4, and the root Release build completed 26 projects with 0 errors. Migration/cache implications: none. Security implication: no unrestricted cross-tenant enumeration or DTO/`IQueryable` escape. Risk/next: the query is only the read seam; `ELP-500`/`ELP-505` still own erasure orchestration.
+  - Evidence: `ILocationRepository.GetOwnedPrivateHomesForGlobalErasureAsync` returns tracked entities, rejects `Guid.Empty` before EF access, disables only the named tenant filter for `GlobalLocationPrivacyErasure`, and immediately bounds by exact `OwnerUserId` plus `PrivateHome` with tenant/id ordering. Two fresh PostgreSQL 18 runs passed 2/2 each using two owned Homes across tenants, an unrelated-owner Home, and a transactionally injected same-owner commercial counterexample; both `Location` and AutoIncluded `LocationPii` were tracked and the DDL/DML mutation rolled back. Application contract passed 1/1, tenant-filter architecture 4/4, Clean Architecture 15/15, Code Hygiene 4/4, and the root Release build completed 26 projects with 0 errors. Migration/cache implications: none. Security implication: no unrestricted cross-tenant enumeration or DTO/`IQueryable` escape. Risk/next: the query is only the read seam; ELP-500 retains characterization ownership while OREA owns erasure orchestration.
 
 - [x] **ELP-260 — Persist policy audit, authority client/checkpoint, and concurrency**
   - Paths: EventLocation audit/exact-read/checkpoint repositories and configurations; `src/Explore.Application/Contracts/LocationPrivacy/`; `src/Explore.Infrastructure/Privacy/ErasureAuthority/`; two-database integration tests.
@@ -304,29 +304,28 @@ The following ELP-200/210 tables are authoritative and synchronized with plan Se
   - Separate retained-authority evidence: duplicate/ambiguous UUIDv7 append already has PostgreSQL coverage, but command orchestration is not claimed.
   - Deferred inventory is re-baselined to OREA-040/100/110/120/130/140: default local-ledger atomicity; retained append/application crash boundaries; rollback/checkpoint/outbox; retained sequence-zero replay; former-membership/room integration; membership separation; discovery cleanup; and PII-free ledger/outbox shape. Keep this task open until both startup-selected workflows and their generated migrations have dedicated evidence.
 
-- [ ] **ELP-505 — Implement global cross-tenant Home erasure and durable tombstones**
-  - Paths: OREA-selected application/retained workflows, `DeleteUserCommandHandler.cs`, `IGlobalLocationPrivacyErasureRepository.cs`, `GlobalLocationPrivacyErasureRepository.cs`, `Location.cs`, `LocationRepository.cs`, local ledger/checkpoint repositories/configurations, and cross-mode tests.
-  - Result: default mode atomically appends its PII-free local ledger fact with erasure/checkpoint/outbox; retained mode appends the independent authority first and fails closed without fallback. Both erase all OwnerUserId Homes across tenants and return success only after the app transaction commits.
-  - Atomic lane: implement and verify together with ELP-515; neither task can be checked independently.
+**ELP-505 ownership transfer — non-executable; implementation completion is not claimed here**
+
+- OREA-040 owns the two real workflows and shared erasure applier; OREA-100/110 own the local ledger and atomic application-database persistence; OREA-120/140 own retained EF persistence and migration adoption.
+- The original acceptance remains binding under those OREA tasks: both modes erase all `OwnerUserId` Homes across tenants, default commits ledger/erasure/checkpoint/outbox atomically, and retained mode never falls back.
 
 - [ ] **ELP-510 — Separate tenant membership removal from global deletion**
   - Paths: planned `src/Explore.Application/Features/TenantUsers/Requests/Commands/RemoveTenantMembershipCommand.cs`, `src/Explore.Application/Features/TenantUsers/Handlers/Commands/RemoveTenantMembershipCommandHandler.cs`, authorization descriptor/policy beside that feature, and `tests/Event.Application.UnitTests/Features/TenantUsers/Commands/RemoveTenantMembershipCommandHandlerTests.cs`.
   - Result: removing TenantUser/TenantUserProfile does not invoke global erasure or alter other-tenant Homes.
 
-- [ ] **ELP-515 — Persist privacy correction outbox inside the erasure transaction**
-  - Paths: `src/Explore.Application/Services/LocationPrivacyOutboxMessageFactory.cs`, `IOutboxRepository.cs`, `DeleteUserCommandHandler.cs`, tests.
-  - Messages: `LocationPiiErased` and required external-correction intents with IDs/versions only.
-  - Result: app rollback preserves PII/ledger/checkpoint/outbox together; in retained mode the external authority intent remains pending. Committed erasure always has its local ledger/checkpoint and durable outbox rows before cache eviction.
-  - Atomic lane: same app-DB transaction and cross-mode evidence as ELP-505; neither task can be checked independently.
+**ELP-515 ownership transfer — non-executable; implementation completion is not claimed here**
+
+- OREA-040 owns correction-outbox creation inside the shared application transaction; OREA-110/120 own the mode-specific ledger persistence needed to prove rollback and replay behavior.
+- The original acceptance remains binding under OREA: correction payloads contain IDs/versions only; rollback preserves PII/ledger/checkpoint/outbox together; a committed erasure has durable local checkpoint/outbox state before cache eviction.
 
 - [ ] **ELP-520 — Verify concrete correction dispatch, idempotency, retry, and dead-letter recovery**
   - Paths: `src/Explore.Infrastructure/Messaging/CompositeOutboxMessageDispatcher.cs`, planned concrete location-privacy correction dispatcher/service, `InfrastructureServicesRegistration.cs`, `tests/Explore.Infrastructure.Tests/Infrastructure/CompositeOutboxMessageDispatcherTests.cs`, API outbox dead-letter tests.
   - Result: every new event type has a concrete route; duplicate delivery is safe; unknown/no-op routing cannot pass; dead letters are visible/reconcilable.
 
-- [ ] **ELP-525 — Add backup/restore erasure replay runbook and pre-traffic gate**
-  - Paths: `docs/OPERATIONS.md`, planned `src/Explore.Application/Contracts/Services/ILocationErasureReplayService.cs`, `src/Explore.Infrastructure/Services/Privacy/LocationErasureReplayService.cs`, `src/Explore.API/BackgroundServices/LocationPrivacyStartupGate.cs`, registration in `src/Explore.API/Program.cs`, and integration/operational tests.
-  - Content: `ApplicationDatabase` default startup with no authority resolution and an explicit no-backup-resurrection guarantee; `RetainedAuthority` opt-in with named connection, immutable facts/sequence, checkpoint, sequence-zero replay, independent restore overlay, cache/correction replay, evidence SQL, and fail-closed incident path.
-  - Result: default mode starts with one database; retained mode alone guarantees replay before listeners/workers and blocks without fallback when authority continuity cannot be proven. OREA-120/140/150 own the dedicated DbContext, generated migrations, and raw-client retirement.
+**ELP-525 ownership transfer — no implementation task remains in this workstream**
+
+- [`optional-retained-erasure-authority-plan.md`](../optional-retained-erasure-authority/optional-retained-erasure-authority-plan.md) owns the two-mode storage, migration, startup, provisioning, and operator contract.
+- `OREA-210` owns conditional pre-traffic replay; `OREA-320` owns the backup/restore and operator runbooks. Do not implement this topology under an ELP task.
 
 - [ ] **ELP-530 — Implement post-erasure EventLocation remediation workflow**
   - Paths: EventLocation review query/commands, notification outbox, publication validator, admin dashboard API, tests.
@@ -416,21 +415,21 @@ The following ELP-200/210 tables are authoritative and synchronized with plan Se
 |---|---|---|
 | Unknown legacy becomes Unclassified, never Public; PII presence maps only to Active/NotProvided | ELP-230B | `EventLocationBackfillTests` in Persistence Integration |
 | Active Home owner valid; non-erased ownerless invalid; Erased ownerless/PII-less valid; resurrection rejected | ELP-120 | `LocationPrivacyLifecycleTests` in Domain Unit |
-| Person/household venue and room labels/descriptions tombstoned and never public | ELP-130 / ELP-505 | `GlobalLocationPrivacyErasureTests` in Persistence Integration |
+| Person/household venue and room labels/descriptions tombstoned and never public | ELP-130 / OREA-040 | `GlobalLocationPrivacyErasureTests` in Persistence Integration |
 | Same physical Location has independent per-event policies; TBA/location XOR holds | ELP-125 / ELP-150 | `EventLocationTests` in Domain Unit |
 | Public contract exposes EventLocationId, not unrestricted LocationId | ELP-300 / ELP-405 | `EventLocationControllerTests` in API Integration |
 | Event/Day/SessionSelection coverage is exact | ELP-225 | `EventLocationRegistrationAccessServiceTests` in Application Unit |
 | Pending/waitlisted broad only; cancelled/revoked/deleted deny; null resolved by mode | ELP-200 / ELP-225 | `EventLocationRegistrationAccessServiceTests` in Application Unit |
-| Homes in two tenants are both globally erased | ELP-500 / ELP-505 | `GlobalLocationPrivacyErasureTests` in Persistence Integration |
+| Homes in two tenants are both globally erased | ELP-500 / OREA-040 | `GlobalLocationPrivacyErasureTests` in Persistence Integration |
 | Membership removal does not erase global/other-tenant data | ELP-070 / ELP-510 | `RemoveTenantMembershipCommandHandlerTests` in Application Unit |
-| Authority intent remains immutable across app rollback; PII/checkpoint/outbox roll back; retry/replay is idempotent; post-commit crash finds checkpoint/outbox | ELP-500 / ELP-505 / ELP-515 | `GlobalLocationPrivacyErasureTests` in Persistence Integration |
+| Mode-selected ledger intent remains immutable across app rollback; retained external intent stays replayable; PII/checkpoint/outbox roll back; post-commit crash finds checkpoint/outbox | OREA-040 / OREA-110 / OREA-120 | `GlobalLocationPrivacyErasureTests` in Persistence Integration |
 | Public endpoint remains public-only with auth cookie | ELP-400 / ELP-405 | `EventLocationControllerTests` in API Integration |
 | Attendee/management are private/no-store | ELP-400 / ELP-405 | `EventLocationControllerTests` in API Integration |
 | Tightened policy/governance defeats stale cache | ELP-340 / ELP-810 | `EventLocationGovernanceTests` in API Integration |
 | Public calendar public-only; attendee calendar authorized/no-store | ELP-440 | `EventCalendarPrivacyTests` in API Integration |
 | Email/webhook/export/ticket/search/report cannot bypass authority | ELP-715 | Focused test beside every ELP-020 inventory owner |
 | Concrete correction dispatcher is idempotent/retryable/dead-letter visible | ELP-520 | `CompositeOutboxMessageDispatcherTests` in Infrastructure plus API dead-letter tests |
-| Default never resolves authority; explicit retained mode survives app restore, replays before traffic/workers, and fails closed without fallback | ELP-525 / OREA-210 | `LocationPrivacyStartupGateTests` in API Integration |
+| Default never resolves authority; explicit retained mode survives app restore, replays before traffic/workers, and fails closed without fallback | OREA-210 | `LocationPrivacyStartupGateTests` in API Integration |
 | Discovery data is absent today or never auto-created from PII and erases transactionally | ELP-730 | Architecture absence proof or `LocationDiscoveryPrivacyTests` in Persistence Integration |
 | Batch projection stays within query/auth count budget | ELP-315 | `EventLocationDisclosureBatchTests` in Persistence Integration |
 | Server time controls reveal and cannot bypass entitlement | ELP-130 / ELP-310 / ELP-340 | `EventLocationDisclosureEvaluatorTests` in Application Unit |

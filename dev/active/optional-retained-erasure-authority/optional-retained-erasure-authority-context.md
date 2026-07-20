@@ -3,11 +3,13 @@
 
 # Optional Retained Erasure Authority Context
 
-**Status:** Planning complete; implementation not started
+**Status:** Planning complete; OREA-000 re-baseline complete; downstream runtime implementation in progress
 
 **Last Updated:** 2026-07-20 Europe/Brussels
 
 **Canonical plan:** `dev/active/optional-retained-erasure-authority/optional-retained-erasure-authority-plan.md`
+
+**OREA-000 evidence:** `.omo/evidence/optional-retained-erasure-authority/OREA-000/verification.md`
 
 ## 1. Approved Product Direction
 
@@ -54,9 +56,11 @@
 - Every new file starts with two `ABOUTME:` lines.
 - Planning edits stay under `dev/active/`; runtime code is not changed during this planning turn.
 
-## 3. Verified Current State
+## 3. Verified Planning Baseline
 
-### Current storage path
+The tables below record the source state used to approve this plan. Concurrent OREA implementation has since started, so these rows are not current completion evidence. Use each downstream OREA task's recorded tests and artifacts for live implementation status.
+
+### Baseline storage path
 
 | Source | Verified behavior |
 |---|---|
@@ -66,7 +70,7 @@
 | `LocationPrivacyErasureAuthoritySchema.cs` | Reads the embedded SQL resource |
 | `src/Explore.Infrastructure/Explore.Infrastructure.csproj` | Embeds the authority SQL file |
 
-### Current composition and startup
+### Baseline composition and startup
 
 | Source | Verified behavior |
 |---|---|
@@ -79,7 +83,7 @@
 
 This mismatch explains the observed startup failure: the API requires a service/resource that AppHost and the migration worker do not supply.
 
-### Current application transaction
+### Baseline application transaction
 
 `GlobalLocationPrivacyErasureService` currently:
 

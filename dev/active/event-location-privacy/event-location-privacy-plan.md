@@ -4,9 +4,10 @@
 # Event Location Privacy Implementation Plan
 
 **Status:** Approved architecture; W1-W5, W7, and W8 complete; W6 partially complete (`ELP-230A`, `ELP-250`, `ELP-310` verified; `ELP-500` open); W9-W10 gates remain open
-**Last Updated:** 2026-07-19 Europe/Brussels
+**Last Updated:** 2026-07-20 Europe/Brussels
 **Intent:** Cross-cutting fallback contract composed from `add-cqrs-handler`, `update-repository-query`, `add-ef-migration`, `add-get-endpoint`, `add-write-endpoint`, `openapi-contract-change`, `add-hal-link`, `cerbos-policy-change`, and `blazor-component-affordance`  
 **Review:** Senior CTO amendments and repository re-audit incorporated; product changes follow the execution waves in Section 16
+**Erasure-authority topology:** [`dev/active/optional-retained-erasure-authority/optional-retained-erasure-authority-plan.md`](../optional-retained-erasure-authority/optional-retained-erasure-authority-plan.md) owns this topology. `ApplicationDatabase` is the one-database default; `RetainedAuthority` is explicit and never falls back; only `local-full` auto-provisions it; and Persistence/EF Core owns both ledgers, repositories, contexts, and generated migrations.
 
 ## 1. Outcome
 
@@ -99,7 +100,7 @@ Implementation must follow:
 | `src/Explore.Application/Features/Events/Handlers/Queries/GetEventCalendarExportRequestHandler.cs` | Stage A suppresses public location text. | ELP-440 later splits public and attendee calendar authority. |
 | `src/Explore.Blazor.Client/Pages/Events/EventDetail.razor.cs` | Stage A sanitizes JSON-LD and removes the unconditional private-address promise. | ELP-630/650 later render server-selected disclosure states/affordances. |
 | `src/Explore.Domain/EventRegistrationIntent.cs`, `RegistrationScopeEnum.cs`, and `Services/Registration/RegistrationPolicyRules.cs` | Registration intent supports Event, Day, and SessionSelection scopes. | Entitlement must use effective intent coverage, not row existence. |
-| `src/Explore.Application/Features/Users/Handlers/Commands/DeleteUserCommandHandler.cs` | User PII and actor identifiers are erased, but owned Home locations are not. | Append the separate authority intent first, then add global cross-tenant Home erasure, local checkpoint, and correction outbox in one application-database transaction. |
+| `src/Explore.Application/Features/Users/Handlers/Commands/DeleteUserCommandHandler.cs` | User PII and actor identifiers are erased, but owned Home locations are not. | Route through the startup-selected OREA workflow: one application transaction in the default mode, or retained-authority append followed by that application transaction in explicit retained mode. |
 | `src/Explore.Infrastructure/Messaging/CompositeOutboxMessageDispatcher.cs` and `src/Explore.API/BackgroundServices/OutboxProcessor.cs` | Unknown/non-managed reconciliation returns without failure, and the processor can mark that no-op as reconciled. | Make unknown/no-op reconciliation fail closed; add explicit, idempotent location-privacy correction routes and tests. |
 | `docs/MULTI_TENANCY.md` | `TenantUser` / `TenantUserProfile` represent tenant membership. | Tenant membership removal must remain separate from global identity erasure. |
 
@@ -373,7 +374,7 @@ The startup-selected OREA workflow does not claim cross-database atomicity:
 - `RetainedAuthority` is explicit, requires `ConnectionStrings:LocationPrivacyAuthority`, appends the immutable PII-free UUIDv7 intent to the independent authority first, and then mirrors/applies it in the same application transaction. Ambiguous acknowledgement retries the same intent ID; authority failure never falls back.
 - Both modes report success only after the application transaction commits; cache eviction is best effort afterward.
 
-Rollback of the application transaction leaves PII, labels, state, user erasure, checkpoint, and outbox unchanged, while the already-appended authority intent remains pending. A crash after authority append is therefore safe: retry or startup replay applies the same intent idempotently. A crash after application commit finds both checkpoint and correction outbox durable. Authority unavailability fails deletion closed before application mutation.
+Rollback of the application transaction leaves PII, labels, state, user erasure, local ledger/checkpoint, and outbox unchanged together. In retained mode, an already-appended external authority intent remains pending; retry or startup replay applies that intent idempotently, and authority unavailability fails deletion closed before application mutation. A crash after either mode's application commit finds both checkpoint and correction outbox durable.
 
 Extend `src/Explore.Infrastructure/Messaging/CompositeOutboxMessageDispatcher.cs` with explicit location-privacy event routes and an idempotent concrete dispatcher. Unknown routes remain fatal/retryable and eventually dead-letter. Tests prove dispatch, duplicate delivery safety, retry, dead-letter visibility, and operator reconciliation.
 
@@ -385,7 +386,7 @@ Tenant-admin removal changes `TenantUser` / `TenantUserProfile` participation on
 
 | Operation | Application owner | Persistence/transaction owner | Required verification owner |
 |---|---|---|---|
-| Global account deletion | `DeleteUserCommandHandler` extended with the erasure-authority client and `IGlobalLocationPrivacyErasureRepository` | authority append first; then one `IUnitOfWork.ExecuteInTransactionAsync` app-DB transaction with the named owner-bounded query, local checkpoint, and outbox | `DeleteUserCommandHandlerTests` plus `GlobalLocationPrivacyErasureTests` |
+| Global account deletion | `DeleteUserCommandHandler` using the startup-selected OREA workflow and `IGlobalLocationPrivacyErasureRepository` | default: local ledger plus named owner-bounded erasure/checkpoint/outbox in one app transaction; retained: authority append first, then exact local mirror plus the same app transaction | `DeleteUserCommandHandlerTests` plus `GlobalLocationPrivacyErasureTests` |
 | Tenant membership removal | planned `RemoveTenantMembershipCommandHandler` under `Features/TenantUsers` | tenant-filtered `TenantUser`/`TenantUserProfile` repositories only; role grants are revoked/soft-deleted in the same tenant | `RemoveTenantMembershipCommandHandlerTests` |
 | Boundary enforcement | neither operation may call the other handler; only global deletion may depend on `IGlobalLocationPrivacyErasureRepository` | the repository bypass reason is unavailable to membership code | `EventLocationPrivacyArchitectureTests` rejects global-erasure dependencies from `Features/TenantUsers` |
 
@@ -471,7 +472,7 @@ Each migration stage is a separate operator-selected deployment target. `Databas
 
 The thematic phases in the task checklist describe ownership; this dependency-correct wave order controls execution. Tasks in one wave may run in parallel only when they do not share files.
 
-W1 through W5, W7, and W8 are complete. W6 is partially complete: ELP-230A, ELP-250, and ELP-310 have independent confirmed evidence, while ELP-500 remains open with two genuine command-boundary RED cases and eight deferred Todo 10 scenario portions. ELP-330 is independently confirmed: development seeding joins the in-scope dual-write boundary, all 36 seeded carriers converge on 8 distinct active authorities and initial audits stably after a second seed, and the real-PostgreSQL seeder 6/6, dual-write 8/8 twice, service 9/9, session-agenda handler 6/6, strict fixture 42/42, architecture 15/15 plus 4/4, and root build gates were green at verifier confidence 0.99. W8 ELP-230B/225/340 now has independent confirmed evidence; W9 ELP-350/315, ELP-360, ELP-510, and atomic ELP-505+515 with ELP-500 acceptance are next. This does not complete EventLocation route/editor adoption, concrete correction dispatch, global erasure, model parity, API 29/29, or final QA waves.
+W1 through W5, W7, and W8 are complete. W6 is partially complete: ELP-230A, ELP-250, and ELP-310 have independent confirmed evidence, while ELP-500 remains open with two genuine command-boundary RED cases and eight deferred Todo 10 scenario portions. ELP-330 is independently confirmed: development seeding joins the in-scope dual-write boundary, all 36 seeded carriers converge on 8 distinct active authorities and initial audits stably after a second seed, and the real-PostgreSQL seeder 6/6, dual-write 8/8 twice, service 9/9, session-agenda handler 6/6, strict fixture 42/42, architecture 15/15 plus 4/4, and root build gates were green at verifier confidence 0.99. W8 ELP-230B/225/340 now has independent confirmed evidence; W9 retains ELP-350/315, ELP-360, and ELP-510. The historical ELP-505/515 requirements are non-executable here and transferred to OREA-040/100/110/120/130/140. This does not claim completion of the transferred erasure workflow, EventLocation route/editor adoption, concrete correction dispatch, model parity, API 29/29, or final QA waves.
 
 | Wave | Tasks | Exit evidence |
 |---|---|---|
@@ -484,9 +485,9 @@ W1 through W5, W7, and W8 are complete. W6 is partially complete: ELP-230A, ELP-
 | W6 | `ELP-230A` → `ELP-250` → `ELP-500`; `ELP-310` independently | Expand schema, bounded cross-tenant query, adversarial erasure tests, and pure evaluator pass. |
 | W7 | `ELP-330` | Dual-write is verified with fail-closed associations across production and development seeding writers. |
 | W8 | `ELP-230B`, `ELP-225`, `ELP-340` | Conservative backfill, intent coverage, and restrictive governance pass. |
-| W9 | `ELP-350` → `ELP-315`; `ELP-360`; `ELP-510`; atomic `ELP-505` + `ELP-515` | Authorization precedes batched management reads; membership removal remains separate; erasure and outbox commit once. |
+| W9 | `ELP-350` → `ELP-315`; `ELP-360`; `ELP-510` | Authorization precedes batched management reads and membership removal remains separate. Historical ELP-505/515 execution ownership is transferred to OREA. |
 | W10 | `ELP-320`, `ELP-405`, `ELP-520` | Backend projections, route split, and fail-closed correction dispatch pass. |
-| W11 | `ELP-410`, `ELP-440`, `ELP-525`, `ELP-720`, `ELP-730` | HAL, calendar split, startup restore gate, AI/federation, and discovery boundaries pass. |
+| W11 | `ELP-410`, `ELP-440`, `ELP-720`, `ELP-730` | HAL, calendar split, AI/federation, and discovery boundaries pass; OREA-210 separately owns the startup restore gate. |
 | W12 | `ELP-530`, `ELP-715` | Remediation and concrete outbound producers are covered. |
 | W13 | `ELP-420A`, `ELP-540` | Additive generated contracts are available and bounded metrics/alerts exist. |
 | W14 | `ELP-600` | Blazor adopts generated purpose-specific contracts; no hand-edited client. |
@@ -499,7 +500,7 @@ W1 through W5, W7, and W8 are complete. W6 is partially complete: ELP-230A, ELP-
 | W21 | `ELP-820` | Every required project suite and Release build pass. |
 | W22 | `ELP-840` | Repository/dev-doc review proves no obsolete authority or unrelated edits. |
 
-`ELP-130` owns the field matrix and evaluator test vectors; `ELP-310` owns evaluator code. `ELP-320` owns session/program/agenda backend projections, `ELP-440` owns both calendars, `ELP-650` owns JSON-LD/copy, and `ELP-700` is the final cross-surface proof. `ELP-420A` generates additive contracts for adoption; `ELP-420B` proves the final removal contract. `ELP-505` and `ELP-515` are one indivisible implementation lane and are never checked separately.
+`ELP-130` owns the field matrix and evaluator test vectors; `ELP-310` owns evaluator code. `ELP-320` owns session/program/agenda backend projections, `ELP-440` owns both calendars, `ELP-650` owns JSON-LD/copy, and `ELP-700` is the final cross-surface proof. `ELP-420A` generates additive contracts for adoption; `ELP-420B` proves the final removal contract. Historical ELP-505/515 acceptance is preserved under the focused OREA tasks and has no executable checkbox in this workstream.
 
 ## 17. Required Test Matrix
 
@@ -516,8 +517,8 @@ Tests must prove:
 - pending/waitlisted qualify only for broad audience; cancelled/revoked/rejected/deleted deny; null state is resolved by mode;
 - two owned Homes in two tenants are both erased by global deletion;
 - tenant membership removal erases neither global PII nor other-tenant Homes;
-- application transaction rollback leaves PII, durable labels, state, user, local checkpoint, and outbox unchanged while the authority intent remains pending for replay;
-- authority append retry returns the same sequence, and a fresh application database replays from sequence zero before traffic;
+- application transaction rollback leaves PII, durable labels, state, user, local ledger/checkpoint, and outbox unchanged together; in retained mode the external authority intent remains pending for replay;
+- retained-authority append retry returns the same sequence, and retained mode replays a fresh application database from sequence zero before traffic;
 - crash after commit finds correction outbox rows already present;
 - correction dispatcher is concrete, idempotent, retryable, dead-letter visible, and never carries address values;
 - public endpoint with an auth cookie remains byte-for-byte public-only;
@@ -548,7 +549,7 @@ Each acceptance case has one primary automated owner; cross-layer cases may add 
 | Public/attendee calendar separation | `tests/Event.API.IntegrationTests/Features/EventCalendarPrivacyTests.cs` | `ELP-440` |
 | Outbound producer boundary | tests beside each producer named by the ELP-020 inventory | `ELP-715` |
 | Correction routing/reconciliation | `tests/Explore.Infrastructure.Tests/Infrastructure/CompositeOutboxMessageDispatcherTests.cs` plus API dead-letter tests | `ELP-520` |
-| Restore replay startup gate | `tests/Event.API.IntegrationTests/Privacy/LocationPrivacyStartupGateTests.cs` | `ELP-525` |
+| Restore replay startup gate | `tests/Event.API.IntegrationTests/Privacy/LocationPrivacyStartupGateTests.cs` | `OREA-210` in the focused optional-retained-authority workstream |
 | Discovery separation/erasure | `tests/Event.Persistence.IntegrationTests/Privacy/LocationDiscoveryPrivacyTests.cs`, or architecture absence proof while no discovery store exists | `ELP-730` |
 | Batch query/authorization budget | `tests/Event.Persistence.IntegrationTests/Privacy/EventLocationDisclosureBatchTests.cs` | `ELP-315` |
 | Server-time reveal and field matrix | `tests/Event.Application.UnitTests/Services/EventLocationDisclosureEvaluatorTests.cs` | `ELP-130`, `310`, `340` |
@@ -584,7 +585,7 @@ Completed-wave evidence through Todo 9: managed/API ELP 19/19; API public ELP 11
 | Durable Home fields remain identifying after PII deletion | Contextual matrix, generic label, room tombstoning, adversarial erasure tests |
 | Registration scope over-grants another day/session/location | Intent-coverage value object and exhaustive scope tests |
 | Cross-tenant erasure bypass leaks or misses records | Named OwnerUserId-bounded query, architecture guardrail, two-tenant integration test |
-| Authority append succeeds but app transaction does not | UUIDv7 idempotency, immutable pending intent, local replay checkpoint, startup replay |
+| Retained-authority append succeeds but app transaction does not | UUIDv7 idempotency, immutable pending intent, local replay checkpoint, retained-mode startup replay |
 | Partial commit loses correction event | Insert outbox in same transaction; rollback/crash tests |
 | Default/no-op dispatcher silently drops correction | Explicit Composite route, concrete handler, startup/architecture tests, dead-letter alert |
 | Legacy data becomes public accidentally | Unclassified backfill, conservative fail-closed EventLocation, review queue |

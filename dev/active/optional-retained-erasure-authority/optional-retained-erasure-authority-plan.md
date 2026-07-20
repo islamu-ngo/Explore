@@ -3,7 +3,7 @@
 
 # Optional Retained Erasure Authority Implementation Plan
 
-**Status:** Proposed; architecture direction approved; implementation not started
+**Status:** Proposed; architecture direction approved; implementation in progress; completion tracked per OREA task evidence
 
 **Last Updated:** 2026-07-20 Europe/Brussels
 
@@ -30,16 +30,16 @@ The optional database must follow repository conventions:
 
 ## 2. Issue And Root Cause
 
-### 2.1 Current issue
+### 2.1 Baseline issue at plan approval
 
-The current retained-only implementation treats the retained database as mandatory for every installation:
+At plan approval, the retained-only implementation treated the retained database as mandatory for every installation:
 
 - `InfrastructureServicesRegistration.ConfigureInfrastructureServices` always registers `PostgreSqlLocationPrivacyErasureAuthority`.
 - `Explore.API/Program.cs` always executes `LocationPrivacyStartupGate` outside tests and OpenAPI generation.
 - `PostgreSqlLocationPrivacyErasureAuthority` throws when `LocationPrivacy:ErasureAuthority:ConnectionString` is missing.
 - `docs/OPERATIONS.md` describes that connection string and replay gate as required.
 
-At the same time, `src/Explore.AppHost/AppHost.cs` does not provision or inject an authority database in any profile, and `Event.MigrationService` knows only `ExploreDbContext` and `DataProtectionKeyContext`. The result is a startup design that requires infrastructure the repository does not actually create or migrate.
+At that baseline, `src/Explore.AppHost/AppHost.cs` did not provision or inject an authority database in any profile, and `Event.MigrationService` knew only `ExploreDbContext` and `DataProtectionKeyContext`. These statements explain the approved correction; after implementation work begins, current status must come from the owning OREA task evidence rather than this historical baseline.
 
 ### 2.2 Why the decision happened
 
@@ -47,29 +47,28 @@ The Event Location Privacy workstream optimized first for the strongest disaster
 
 The mistake was not the existence of retained authority. The mistake was promoting the strongest deployment topology into a universal application invariant instead of an explicit operator-selected capability. That led directly to unconditional dependency injection, unconditional startup replay, and a non-EF schema path.
 
-### 2.3 Convention mismatch
+### 2.3 Convention mismatch at plan approval
 
-The current authority implementation also bypasses normal persistence ownership:
+At plan approval, the authority implementation also bypassed normal persistence ownership:
 
-- `src/Explore.Infrastructure/Privacy/ErasureAuthority/PostgreSqlLocationPrivacyErasureAuthority.cs` owns a raw `NpgsqlDataSource`.
-- `LocationPrivacyErasureAuthoritySchema.sql` is an embedded runtime provisioning resource.
-- the authority has no DbContext, design-time factory, EF migration history, or migration-service step.
+- `src/Explore.Infrastructure/Privacy/ErasureAuthority/PostgreSqlLocationPrivacyErasureAuthority.cs` owned a raw `NpgsqlDataSource`.
+- `LocationPrivacyErasureAuthoritySchema.sql` was an embedded runtime provisioning resource.
+- the authority had no DbContext, design-time factory, EF migration history, or migration-service step.
 
-The correction is to keep the security semantics while bringing storage and schema lifecycle back under `Explore.Persistence` and EF Core.
+That baseline justified the approved correction: keep the security semantics while bringing storage and schema lifecycle back under `Explore.Persistence` and EF Core. This subsection does not claim downstream completion; current implementation status comes only from the owning OREA task evidence.
 
 ## 3. Source Ownership And Supersession
 
 This focused plan owns the deployment-mode correction for retained erasure authority. It does not replace the broader Event Location Privacy disclosure, authorization, API, calendar, AI, federation, or discovery work.
 
-Until the broader workstream is re-baselined, this plan supersedes statements that say the retained database and replay gate are mandatory in:
+The broader Event Location Privacy planning sources now defer deployment-mode, persistence, migration, startup, and provisioning ownership to this plan:
 
 - `dev/active/event-location-privacy/event-location-privacy-plan.md`;
 - `dev/active/event-location-privacy/event-location-privacy-context.md`;
 - `dev/active/event-location-privacy/event-location-privacy-tasks.md`;
-- `.omo/plans/event-location-privacy.md`;
-- `docs/OPERATIONS.md` and `docs/BACKUP_RESTORE_UPGRADE.md`.
+- `.omo/plans/event-location-privacy.md`.
 
-The first implementation slice must reconcile those statements. Work on the authority topology must not continue concurrently in both workstreams.
+OREA-000 completed that planning re-baseline. Canonical operator docs, including `docs/OPERATIONS.md` and `docs/BACKUP_RESTORE_UPGRADE.md`, remain intentionally unchanged until OREA-320 updates them against implemented behavior. Work on the authority topology must not continue concurrently in both workstreams.
 
 ## 4. Deployment Modes And Defaults
 
