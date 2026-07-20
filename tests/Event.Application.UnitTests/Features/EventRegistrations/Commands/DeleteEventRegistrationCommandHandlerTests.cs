@@ -5,6 +5,7 @@ using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Features.EventRegistrations.Handlers.Commands;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
 using Explore.Application.Services;
@@ -300,6 +301,7 @@ public sealed class DeleteEventRegistrationCommandHandlerTests
             userRepository ?? Substitute.For<IUserRepository>(),
             new RegistrationNotificationDeliveryService(new EventLifecycleEmailOutboxFactory()),
             materializer ?? Substitute.For<IRecipientNotificationMaterializer>(),
+            Substitute.For<IEventLifecycleScheduler>(),
             AtprotoPublicationPlannerTestFactory.Disabled());
     }
 

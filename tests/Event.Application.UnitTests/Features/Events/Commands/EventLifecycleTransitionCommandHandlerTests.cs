@@ -5,6 +5,7 @@ using Event.Application.UnitTests.Common;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
@@ -123,6 +124,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             userContext,
             AtprotoPublicationPlannerTestFactory.Disabled(),
             fanout.Coordinator,
+            Substitute.For<IEventLifecycleScheduler>(),
             new FixedTimeProvider(Now));
 
         var result = await handler.Handle(new CancelEventCommand
@@ -167,6 +169,7 @@ public sealed class EventLifecycleTransitionCommandHandlerTests
             userContext,
             AtprotoPublicationPlannerTestFactory.Disabled(),
             fanout.Coordinator,
+            Substitute.For<IEventLifecycleScheduler>(),
             new FixedTimeProvider(Now));
 
         var result = await handler.Handle(new CancelEventCommand

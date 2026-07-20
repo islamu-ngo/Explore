@@ -71,7 +71,7 @@ public sealed class ProcessCoopDecisionCallbackCommandHandlerTests
         var coopLink = report.ExternalLinks.Single();
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id).IsEqualTo(createdDecision.Id);
-        await Assert.That(report.Status).IsEqualTo(EventReportStatus.UnderReview);
+        await Assert.That(report.Status).IsEqualTo(EventReportStatus.Submitted);
         await Assert.That(reportCase.Status).IsEqualTo(EventReportCaseStatus.DecisionReady);
         await Assert.That(createdDecision.DecisionSource).IsEqualTo(EventReportDecisionSource.CoopReviewer);
         await Assert.That(createdDecision.DecisionKind).IsEqualTo(EventReportDecisionKind.LightModerate);
@@ -162,6 +162,15 @@ public sealed class ProcessCoopDecisionCallbackCommandHandlerTests
         var delegatedCaseStamp = reportCase.ConcurrencyStamp;
         report.Cases.Add(reportCase);
         ConfigureTenantReport(tenantId, report);
+        _eventReportRepository.PersistDecisionCaptureAsync(
+                report,
+                Arg.Any<EventReportDecision>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                reportCase.ConcurrencyStamp = Guid.CreateVersion7();
+                return Task.CompletedTask;
+            });
 
         BaseCommandResponse<Guid> current = await CreateHandler().Handle(
             CreateDecisionCommand(

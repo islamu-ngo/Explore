@@ -70,6 +70,7 @@ public sealed class HeavyRedactEventCommandHandlerTests
             _moderationRecordRepository,
             _fanoutOccurrenceRepository,
             fanoutCoordinator,
+            Substitute.For<IEventLifecycleScheduler>(),
             _storageObjectDeletionService,
             _unitOfWork,
             _currentUserService,

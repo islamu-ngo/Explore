@@ -386,7 +386,7 @@ public sealed class ExecuteReportDecisionCommandHandlerTests
                 scenario.Report.EventId,
                 Arg.Any<DateTime>(),
                 Arg.Any<CancellationToken>())
-            .Returns([owner], []);
+            .Returns([owner], (IReadOnlyList<EventRoleAssignment>)[]);
 
         BaseCommandResponse<Guid> result = await CreateHandler().Handle(scenario.Command, CancellationToken.None);
 

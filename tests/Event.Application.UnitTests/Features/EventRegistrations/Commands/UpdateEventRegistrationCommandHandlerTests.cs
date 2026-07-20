@@ -172,6 +172,7 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
         registration.ApprovalStatusId = (int)ApprovalStatusEnum.Approved;
         registration.ConcurrencyStamp = stamp;
         _eventRegistrationRepository.GetById(registration.Id).Returns(registration);
+        _eventRepository.GetById(eventId).Returns(CreateEvent(eventId, tenantId));
         _intentRepository.GetById(registrationIntentId)
             .Returns(CreateIntent(registrationIntentId, tenantId, eventId, registration.UserId));
         _approvalStatusRepository.Exists((int)ApprovalStatusEnum.Approved).Returns(true);

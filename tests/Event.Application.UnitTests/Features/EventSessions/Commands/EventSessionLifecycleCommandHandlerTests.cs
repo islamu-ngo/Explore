@@ -4,6 +4,7 @@
 using Event.Application.UnitTests.Common;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.Features.EventSessions.Handlers.Commands;
 using Explore.Application.Features.EventSessions.Requests.Commands;
@@ -98,6 +99,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             CreateUnitOfWork(),
             cache,
             fanout.Coordinator,
+            Substitute.For<IEventLifecycleScheduler>(),
             new FixedTimeProvider(Now));
         var start = new DateTimeOffset(2026, 7, 1, 8, 0, 0, TimeSpan.Zero);
         var end = start.AddHours(2);
@@ -147,6 +149,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             CreateUnitOfWork(),
             cache,
             new FanoutFixture().Coordinator,
+            Substitute.For<IEventLifecycleScheduler>(),
             new FixedTimeProvider(Now));
         var start = new DateTimeOffset(2026, 7, 1, 8, 0, 0, TimeSpan.Zero);
         var end = start.AddHours(2);
@@ -185,6 +188,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             CreateUnitOfWork(),
             Substitute.For<HybridCache>(),
             new FanoutFixture().Coordinator,
+            Substitute.For<IEventLifecycleScheduler>(),
             new FixedTimeProvider(Now));
 
         var result = await handler.Handle(new ScheduleEventSessionCommand
@@ -244,6 +248,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             CreateUnitOfWork(() => transactionCompleted = true),
             cache,
             fanout.Coordinator,
+            Substitute.For<IEventLifecycleScheduler>(),
             new FixedTimeProvider(Now));
 
         BaseCommandResponse<Guid> result = await handler.Handle(new ScheduleEventSessionCommand
@@ -303,6 +308,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             CreateUnitOfWork(),
             Substitute.For<HybridCache>(),
             fanout.Coordinator,
+            Substitute.For<IEventLifecycleScheduler>(),
             new FixedTimeProvider(Now));
 
         BaseCommandResponse<Guid> result = await handler.Handle(new ScheduleEventSessionCommand
@@ -383,6 +389,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             unitOfWork,
             Substitute.For<HybridCache>(),
             fanout.Coordinator,
+            Substitute.For<IEventLifecycleScheduler>(),
             new FixedTimeProvider(Now));
 
         BaseCommandResponse<Guid> result = await handler.Handle(new ScheduleEventSessionCommand
@@ -510,6 +517,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             CreateUnitOfWork(() => transactionCompleted = true),
             cache,
             fanout.Coordinator,
+            Substitute.For<IEventLifecycleScheduler>(),
             new FixedTimeProvider(Now));
 
         var result = await handler.Handle(new CancelEventSessionCommand
@@ -560,6 +568,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             CreateUnitOfWork(),
             Substitute.For<HybridCache>(),
             fanout.Coordinator,
+            Substitute.For<IEventLifecycleScheduler>(),
             new FixedTimeProvider(Now));
 
         BaseCommandResponse<Guid> result = await handler.Handle(new CancelEventSessionCommand
@@ -591,6 +600,7 @@ public sealed class EventSessionLifecycleCommandHandlerTests
             CreateUnitOfWork(),
             cache,
             fanout.Coordinator,
+            Substitute.For<IEventLifecycleScheduler>(),
             new FixedTimeProvider(Now));
 
         BaseCommandResponse<Guid> result = await handler.Handle(new CancelEventSessionCommand

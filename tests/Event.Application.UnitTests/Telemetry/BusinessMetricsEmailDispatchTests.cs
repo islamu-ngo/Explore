@@ -14,7 +14,7 @@ public sealed class BusinessMetricsEmailDispatchTests
     public async Task RecordEmailDispatchAttemptRecordsExpectedSafeTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordEmailDispatchAttempt("retry_scheduled", "smtp_send_failed");
 
@@ -30,7 +30,7 @@ public sealed class BusinessMetricsEmailDispatchTests
     public async Task RecordEmailDispatchAttemptDoesNotEmitSensitiveOrHighCardinalityTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordEmailDispatchAttempt("sent");
 
@@ -52,7 +52,7 @@ public sealed class BusinessMetricsEmailDispatchTests
     public async Task RecordEmailDispatchRabbitMqConsumeRecordsExpectedSafeTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordEmailDispatchRabbitMqConsume("acked", "none");
 
@@ -68,7 +68,7 @@ public sealed class BusinessMetricsEmailDispatchTests
     public async Task RecordEmailDispatchRabbitMqConsumeDoesNotEmitSensitiveOrHighCardinalityTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordEmailDispatchRabbitMqConsume("rejected", "missing_outbox");
 
@@ -92,7 +92,7 @@ public sealed class BusinessMetricsEmailDispatchTests
     public async Task RecordEmailDispatchOperationalSignalsUsesOnlyBoundedSafeTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordEmailDispatchTenantBacklog(3, 17);
         metrics.RecordEmailDispatchOldestPendingAge(125.5);
@@ -116,7 +116,7 @@ public sealed class BusinessMetricsEmailDispatchTests
     public async Task OptionalReminderDeferralGaugeExportsCurrentState()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordEmailDispatchOptionalReminderDeferral(false);
         metricsCapture.Observe();
@@ -133,7 +133,7 @@ public sealed class BusinessMetricsEmailDispatchTests
     public async Task EmailDispatchOutcomeTagsUseClosedVocabulariesWithOtherFallback()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
         metrics.RecordEmailDispatchAttempt("recipient@example.test", "raw-provider-error-123");
         metrics.RecordEmailDispatchOperationalOutcome("skipped", "recipient_email_unverified");
         metrics.RecordEmailDispatchRabbitMqPublish("tenant-123", "provider-message-456");

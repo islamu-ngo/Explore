@@ -15,7 +15,7 @@ public sealed class BusinessMetricsNotificationFanoutTests
     public async Task RecordNotificationFanoutRunRecordsExpectedSafeTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordNotificationFanoutRun(EventPublishedNotificationFanoutService.FanoutKind, EventPublishedNotificationFanoutService.OutcomeCompleted);
 
@@ -31,7 +31,7 @@ public sealed class BusinessMetricsNotificationFanoutTests
     public async Task RecordNotificationFanoutSubscribersRecordsAggregatedCountWithSafeTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordNotificationFanoutSubscribers(7, EventPublishedNotificationFanoutService.FanoutKind, EventPublishedNotificationFanoutService.OutcomeNotificationCreated);
 
@@ -47,7 +47,7 @@ public sealed class BusinessMetricsNotificationFanoutTests
     public async Task NotificationFanoutMetricsDoNotEmitSensitiveOrHighCardinalityTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordNotificationFanoutRun(EventPublishedNotificationFanoutService.FanoutKind, EventPublishedNotificationFanoutService.OutcomeFailed);
 

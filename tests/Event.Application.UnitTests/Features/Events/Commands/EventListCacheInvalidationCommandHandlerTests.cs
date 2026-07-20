@@ -6,6 +6,7 @@ using Explore.Application.Caching;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
@@ -90,6 +91,7 @@ public class EventListCacheInvalidationCommandHandlerTests
                 Substitute.For<INotificationFanoutEmailSuppressionRepository>(),
                 outboxRepository,
                 new NotificationFanoutRecipientTemplateFactory()),
+            Substitute.For<IEventLifecycleScheduler>(),
             new FixedTimeProvider(at));
 
         BaseCommandResponse<Guid> result = await handler.Handle(new UpdateEventCommand
@@ -156,6 +158,7 @@ public class EventListCacheInvalidationCommandHandlerTests
                 Substitute.For<INotificationFanoutEmailSuppressionRepository>(),
                 Substitute.For<IOutboxRepository>(),
                 new NotificationFanoutRecipientTemplateFactory()),
+            Substitute.For<IEventLifecycleScheduler>(),
             TimeProvider.System);
 
         var result = await handler.Handle(new UpdateEventCommand

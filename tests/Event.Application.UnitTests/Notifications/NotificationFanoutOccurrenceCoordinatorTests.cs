@@ -901,13 +901,14 @@ public sealed class NotificationFanoutOccurrenceCoordinatorTests
                 NotificationFanoutOccurrenceKind.Reminder => (int)NotificationDeliveryPolicyEnum.ReminderOptional,
                 _ => (int)NotificationDeliveryPolicyEnum.CriticalEventUpdateOptional
             };
+            bool heavyModeration = kind == NotificationFanoutOccurrenceKind.HeavyModerationUnavailable;
             string changeSet = kind is NotificationFanoutOccurrenceKind.HeavyModerationUnavailable
                 or NotificationFanoutOccurrenceKind.Reminder
                     ? "{}"
                     : NotificationFanoutTemplateJson.Serialize(new NotificationFanoutChangeSetV1([
                         cancellation ? NotificationFanoutChangeField.Cancelled : changeField]));
-            string before = beforeJson ?? Snapshot("Before", occurredAt, sessionScoped);
-            string after = afterJson ?? Snapshot("After", occurredAt.AddHours(1), sessionScoped);
+            string before = beforeJson ?? (heavyModeration ? "{}" : Snapshot("Before", occurredAt, sessionScoped));
+            string after = afterJson ?? (heavyModeration ? "{}" : Snapshot("After", occurredAt.AddHours(1), sessionScoped));
 
             return new(
                 Guid.CreateVersion7(),

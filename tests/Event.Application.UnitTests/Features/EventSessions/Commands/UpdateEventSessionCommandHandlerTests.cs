@@ -3,6 +3,7 @@
 
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Features.EventSessions.Handlers.Commands;
@@ -80,6 +81,7 @@ public class UpdateEventSessionCommandHandlerTests
             _eventLocationAttachmentService,
             _cache,
             _fanout.Coordinator,
+            Substitute.For<IEventLifecycleScheduler>(),
             new FixedTimeProvider(Now)
         );
     }

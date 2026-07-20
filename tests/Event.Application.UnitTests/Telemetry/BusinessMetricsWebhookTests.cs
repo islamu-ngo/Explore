@@ -14,7 +14,7 @@ public sealed class BusinessMetricsWebhookTests
     public async Task RecordWebhookDeliveryFailureRecordsExpectedSafeTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordWebhookDeliveryFailure(
             "event.published",
@@ -34,7 +34,7 @@ public sealed class BusinessMetricsWebhookTests
     public async Task RecordWebhookDeliveryFailureDoesNotEmitSensitiveOrHighCardinalityTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordWebhookDeliveryFailure(
             "event.published",
@@ -61,7 +61,7 @@ public sealed class BusinessMetricsWebhookTests
     public async Task RecordWebhookManualRetryRecordsBoundedUnknownsForUnsafeInput()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordWebhookManualRetry(
             "https://example.test/private",
@@ -80,7 +80,7 @@ public sealed class BusinessMetricsWebhookTests
     public async Task RecordWebhookProviderPublishFailureRecordsExpectedSafeTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordWebhookProviderPublishFailure(
             "event.published",
@@ -104,7 +104,7 @@ public sealed class BusinessMetricsWebhookTests
     public async Task RecordWebhookClaimLagUsesOnlyBoundedProviderAndOperationTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordWebhookClaimLag(
             WebhookTelemetryProvider.Local,
@@ -123,7 +123,7 @@ public sealed class BusinessMetricsWebhookTests
     public async Task RecordWebhookProcessingOutcomeUsesClosedTelemetryVocabulary()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordWebhookProcessingOutcome(
             WebhookTelemetryProvider.Svix,
@@ -142,7 +142,7 @@ public sealed class BusinessMetricsWebhookTests
     public async Task CoopIncomingEffectMetricsUseBoundedProviderAndOperationTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordWebhookProcessingOutcome(
             WebhookTelemetryProvider.Coop,
@@ -162,7 +162,7 @@ public sealed class BusinessMetricsWebhookTests
     public async Task SpecializedOperationalMetricsExposeOnlyBoundedDimensions()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordWebhookRetryScheduled(
             WebhookTelemetryProvider.Svix,
@@ -200,7 +200,7 @@ public sealed class BusinessMetricsWebhookTests
     public async Task RetentionMetricsCollapseUnsafeDimensionsUnderLoad()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         for (var index = 0; index < 1_000; index++)
         {

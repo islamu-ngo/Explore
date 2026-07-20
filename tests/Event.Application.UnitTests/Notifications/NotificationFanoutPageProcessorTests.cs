@@ -141,7 +141,7 @@ public sealed class NotificationFanoutPageProcessorTests
 
         await Assert.That(replay.Outcome).IsEqualTo(NotificationFanoutPageProcessingOutcome.Completed);
         await Assert.That(committedRecipients).Count().IsEqualTo(2);
-        await Assert.That(materializationCalls).IsEqualTo(3);
+        await Assert.That(materializationCalls).IsEqualTo(4);
         await fixture.RunRepository.Received(1).TryCheckpointAsync(
             Arg.Any<NotificationFanoutClaim>(),
             null,

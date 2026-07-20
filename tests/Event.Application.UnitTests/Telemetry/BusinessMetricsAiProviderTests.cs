@@ -39,7 +39,7 @@ public sealed class BusinessMetricsAiProviderTests
     public async Task RecordAiProviderHealthCheckRecordsExpectedSafeTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordAiProviderHealthCheck("openai-compatible", "healthy", "configured_no_probe");
 
@@ -56,7 +56,7 @@ public sealed class BusinessMetricsAiProviderTests
     public async Task RecordAiProviderRequestDoesNotEmitSensitiveOrHighCardinalityTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordAiProviderRequest("fake", "succeeded");
 
@@ -69,7 +69,7 @@ public sealed class BusinessMetricsAiProviderTests
     public async Task RecordAiProviderRequestBoundsUnexpectedProviderOutcomeAndFailureTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordAiProviderRequest(
             "https://secret.example/gpt-test",
@@ -88,7 +88,7 @@ public sealed class BusinessMetricsAiProviderTests
     public async Task RecordAiProviderRequestDurationRecordsOnlyBoundedSafeTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordAiProviderRequestDuration(
             TimeSpan.FromMilliseconds(250),
@@ -109,7 +109,7 @@ public sealed class BusinessMetricsAiProviderTests
     public async Task RecordAiProviderTokenUsageRecordsOnlyProviderAndTokenTypeTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordAiProviderTokenUsage("https://secret.example/gpt-test", inputTokens: 12, outputTokens: null, totalTokens: null);
 
@@ -125,7 +125,7 @@ public sealed class BusinessMetricsAiProviderTests
     public async Task RecordAiProviderProposedActionsRecordsOnlyBoundedActionKindTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordAiProviderProposedActions("openai", 2, "delete_event_tech_aspect");
 
@@ -141,7 +141,7 @@ public sealed class BusinessMetricsAiProviderTests
     public async Task RecordAiProviderProposedActionsRejectsUnboundedActionKindTags()
     {
         using var metricsCapture = new MetricsCapture();
-        var metrics = CreateMetrics();
+        using var metrics = CreateMetrics();
 
         metrics.RecordAiProviderProposedActions("openai", 2, "secret_action_payload");
 

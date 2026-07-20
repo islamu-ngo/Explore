@@ -571,7 +571,7 @@ public sealed class CreateEventRegistrationCommandHandlerTests
         var userId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var command = CreateSessionRegistrationCommand(eventId, userId, sessionId);
-        SetupValidRegistration(tenantId, eventId, userId, sessionId, CreateUser(userId, email: string.Empty, emailVerified: null));
+        SetupValidRegistration(tenantId, eventId, userId, sessionId, CreateUser(userId, email: string.Empty, emailVerified: true));
         _notificationRepository.ExistsByDeduplicationKeyAsync(
                 tenantId,
                 userId,
