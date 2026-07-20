@@ -9,9 +9,9 @@ Last Updated: 2026-07-19 Europe/Brussels
 
 - **Original request:** Write an implementation plan under dev/active for the ATProto implementation, follow dev/report/atproto-report.md strictly, use CarpaNet documentation from /home/amir/dev/Github/CarpaNet/docs/docs and Context7, ignore backward compatibility because the product is still in development, and preserve repository conventions, Clean Architecture, security, and maintainability. The 2026-07-18 clarification makes ATProto Events one governed capability for both fetch and publication, requires local-DB-first publication, requires every non-native public event field in the single event record description, and adds an administrator-selectable community-lexicon validation profile.
 - **Task directory:** dev/active/atproto-auth/
-- **Planning status:** All 27 planned implementation tasks and documentation reconciliation are complete. Canonical verification has been executed; focused ATProto gates are green and remaining broad failures are unrelated shared-tree blockers.
+- **Planning status:** All 27 planned implementation tasks are complete. Todo 15 documentation reconciliation is in final cross-document QA; focused ATProto gates are green, broad gates remain blocked or indeterminate, and no release-readiness claim is made.
 - **Completed implementation tasks:** 27/27. The final tenant-gated discovery/API slice is independently confirmed in `.omo/evidence/atproto-auth/task-13/README.md`.
-- **Current priority:** Completed-work handoff; re-run the open broad gates only after their unrelated notification/email/architecture blockers are repaired.
+- **Current priority:** Finish Todo 15 documentation evidence, then run Todo 16's canonical matrix after the unrelated shared-tree blockers recorded in context/tasks are repaired.
 - **Primary source:** dev/report/atproto-report.md, revision 3 dated 2026-07-18.
 - **Matched intents:** bff-auth-bug, add-write-endpoint, add-get-endpoint, add-cqrs-handler, add-ef-migration, update-repository-query, openapi-contract-change, add-hal-link, blazor-component-affordance, and external-infrastructure-bootstrap.
 - **Relevant skills:** implementation-plan, agentic-research, clean-architecture-rules, auth-patterns, blazor-bff-patterns, cqrs-mediatr-guidelines, dotnet-efcore-guidelines, outbox-pattern, error-tracking, blazor-ui-conventions, and lsp.
@@ -139,7 +139,7 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 - Multi-node OAuth state needs an atomic consume operation; ordinary IDistributedCache get/remove is insufficient.
 - Canonical callback hosting needs a one-time tenant handoff for custom domains.
 - CarpaNet accepts supplied HTTP clients for core flows, but local source inspection found ATProtoOAuthClient construction paths that may instantiate a client internally; the implementation must prove or contain that egress.
-- Federation governance currently has only federation.decentralization_enabled; no effective ATProto Events capability, validation profile, administrator locks, or user publication consent exists.
+- At the planning baseline, federation governance exposed only the legacy decentralization capability; the ATProto Events capability, validation profile, administrator locks, and user publication consent had not yet been implemented.
 - Existing event detail/list projections do not guarantee a complete, deterministic, public event snapshot for PDS publication.
 - A worker row can remain Processing after a crash and the completion path discards URI/CID, so idempotent retry and RSVP strongRef ordering are incomplete.
 

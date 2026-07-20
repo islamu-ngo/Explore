@@ -112,6 +112,12 @@ When a reviewer makes a decision in Coop (e.g., dismissing a case, warning an or
          ▼
 [ ProcessCoopDecisionCallbackCommand ]
          │
+         ▼
+[ ExecuteReportDecisionCommand ] (canonical enforcement/completion seam)
+         │
+         ▼
+[ Complete decision + materialize reporter notification atomically ]
+         │
          ├─► [ Retryable failure ] ──► Schedule bounded retry
          ├─► [ Poison callback ] ──► Dead-letter for operator review
          ▼
@@ -126,9 +132,13 @@ When a reviewer makes a decision in Coop (e.g., dismissing a case, warning an or
 5. If the signature matches and the timestamp is within the drift tolerance window (typically 5 minutes), the callback is verified.
 
 ### Idempotency Enforcement
-Verified callbacks are retained in `incoming_webhook_messages`. A nonblank signed `ProviderDecisionId` and SHA-256 evidence bind the retained message to a specialized `IncomingWebhookEffectOutbox`. Unique `(TenantId, Provider, ProviderDecisionId, EffectKind)` and `(TenantId, IncomingWebhookMessageId, EffectKind)` constraints make exact replay idempotent; missing IDs and same-ID/different-hash input quarantine instead of running a decision.
+Verified callbacks are retained in `incoming_webhook_messages`. Every decision callback must carry a stable, nonblank signed `ProviderDecisionId`; neither intake nor `ProcessCoopDecisionCallbackCommand` derives one from report, case, correlation, or action fields. The identifier and SHA-256 evidence bind the retained message to a specialized `IncomingWebhookEffectOutbox`. Unique `(TenantId, Provider, ProviderDecisionId, EffectKind)` and `(TenantId, IncomingWebhookMessageId, EffectKind)` constraints make exact replay idempotent; missing IDs and same-ID/different-hash input quarantine instead of running a decision. A later `NeedsMoreInfo` or `Escalate` generation therefore needs a new provider identifier, while an exact replay retains the original identifier.
 
-The effect worker claims due pointers with a generation, monotonically increasing fence, opaque token, owner, and renewable expiry. Settlement rechecks the complete claim identity. It validates tenant, provider, event kind, payload hash, and decision identity against the retained callback before invoking `ProcessCoopDecisionCallbackCommand`. The applied-effect receipt and pointer completion commit together only after that command succeeds. A crashed or stale worker therefore cannot settle work after a newer claim has recovered the lease, and callback/pointer/dispatcher replay does not repeat an applied decision.
+The outbound Coop mirror includes the authoritative report-case concurrency stamp as `expected_case_concurrency_stamp`. Coop must echo that exact value in the signed decision callback. The retained callback bytes remain authoritative: the effect worker never fills in or replaces a missing stamp, and a genuinely new decision with an absent or stale stamp is rejected for refresh. Exact replay of an already captured provider decision remains stamp-independent.
+
+The effect worker claims due pointers with a generation, monotonically increasing fence, opaque token, owner, and renewable expiry. Settlement rechecks the complete claim identity. It validates tenant, provider, event kind, payload hash, and decision identity against the retained callback before invoking `ProcessCoopDecisionCallbackCommand`.
+
+That command captures the provider decision and invokes `ExecuteReportDecisionCommand` with the selected decision ID and post-selection case stamp. This is the same executor used by the local moderation API. Enforcement receipts, case completion, and reporter outcome or follow-up materialization belong exclusively to that executor; callback capture alone cannot create a reporter outcome. The applied-effect receipt and pointer completion commit together only after command execution succeeds. A crashed or stale worker cannot settle work after a newer claim recovers the lease, and callback/pointer/dispatcher replay converges on the same decision/execution identity without creating another notification intent.
 
 Permanent validation failures are dead-lettered with bounded categories and safe details. Retryable failures use bounded retry scheduling; cancellation leaves the lease for normal expiry recovery. Operators inspect tenant-scoped lifecycle data through `GET /api/admin/incoming-webhook-effects/status` and may follow the HAL `redrive` relation only for dead-lettered rows whose retained payload remains inside its replay window. Redrive requires the expected processing generation and an authenticated actor, creates a safe audit event, and never returns callback bytes, hashes, provider decision IDs, or raw provider errors.
 
@@ -176,6 +186,7 @@ sequenceDiagram
 
 * **Composite Provider:** `src/Explore.Infrastructure/Services/Moderation/CompositeEventReportProvider.cs`
 * **Callback Command Handler:** `src/Explore.Application/Features/EventReporting/Handlers/Commands/ProcessCoopDecisionCallbackCommandHandler.cs`
+* **Canonical Decision Executor:** `src/Explore.Application/Features/EventReporting/Handlers/Commands/ExecuteReportDecisionCommandHandler.cs`
 * **Effect Processing:** `src/Explore.Application/Services/Webhooks/IncomingWebhookEffectProcessingService.cs`
 * **Effect Drain:** `src/Explore.Infrastructure/Webhooks/IncomingWebhookEffectDrainService.cs`
 * **Operator API:** `src/Explore.API/Controllers/IncomingWebhookEffectsAdminController.cs`

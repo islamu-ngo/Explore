@@ -125,6 +125,8 @@ To rotate, publish a new active key and mark the previous active key retired. A 
 
 OAuth client and session-JWT signing rings follow the same overlap rule: exactly one active signing key, with previous keys retained as retired verification/session keys until their pinned OAuth sessions or issued JWTs have expired or been revoked. Rotate one purpose at a time, verify readiness, and only then remove an unused retired key. Removing an in-use session-encryption or OAuth-client key deliberately invalidates the affected sessions and requires those users to sign in again.
 
+Only the BFF OAuth-client signing ring is evaluated by the `atproto-authentication` readiness check. Validate the encryption and session-JWT rings with a controlled sign-in/session refresh before removing retired keys; their consumers otherwise fail closed when persisting/restoring a session or issuing/validating a first-party JWT.
+
 ### Rotation Section
 
 | Key | Default | Purpose |
@@ -139,6 +141,9 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 
 | Infisical Path + Key | .NET Configuration Key |
 |---|---|
+| `/atproto/ATPROTO_OAUTH_CLIENT_PRIVATE_JWKS` | `auth.atproto.oauth_client_private_jwks`; resolves to BFF `Atproto:OAuthClientPrivateJwks` |
+| `/atproto/ATPROTO_SESSION_ENCRYPTION_KEYRING` | `auth.atproto.session_encryption_keyring`; consumed by Infrastructure session-envelope protection |
+| `/atproto/ATPROTO_SESSION_JWT_PRIVATE_JWKS` | `auth.atproto.session_jwt_private_jwks`; consumed by API first-party session JWT signing/validation |
 | `/keycloak/REALM_NAME` | `Keycloak:RealmName` |
 | `/keycloak/KEYCLOAK_CLIENT_ID` | Nonsecret browser/BFF client metadata mapped to `Keycloak:ClientId` for API onboarding detection. |
 | `/keycloak/KEYCLOAK_BLAZOR_CLIENT_SECRET` | Blazor BFF `Keycloak:ClientSecret` and Compose `keycloak-init` client-secret sync input |
@@ -170,7 +175,7 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 | `/api/VAPID_PRIVATE_KEY` | `WebPush:VapidPrivateKey` |
 | raw process environment + `STORAGE_S3_*` | consumed directly by the S3 resolver as a compatibility fallback |
 
-Environment variable format uses double-underscore separators for .NET keys, for example `S3Settings__Endpoint`. Storage also accepts raw `STORAGE_S3_*` variables for deployment compatibility. PostgreSQL bootstrap intentionally uses discrete `POSTGRESQL_*` values rather than a single URL-form connection string. SMTP secret-provider defaults use the user-facing `MAIL_SMTP_*` names; local Compose also exports older `SMTP_*` aliases for compatibility with development seeding.
+The three ATProto rows use the same uppercase name as their default environment-variable name as well as their Infisical key. Environment variable format otherwise uses double-underscore separators for .NET keys, for example `S3Settings__Endpoint`. Storage also accepts raw `STORAGE_S3_*` variables for deployment compatibility. PostgreSQL bootstrap intentionally uses discrete `POSTGRESQL_*` values rather than a single URL-form connection string. SMTP secret-provider defaults use the user-facing `MAIL_SMTP_*` names; local Compose also exports older `SMTP_*` aliases for compatibility with development seeding.
 
 Compose Keycloak bootstrap consumes `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` only inside the one-shot `keycloak-init` container. Those credentials are not application runtime secrets and must not be stored in governance settings or copied into support artifacts. The init logs redact client secret values.
 

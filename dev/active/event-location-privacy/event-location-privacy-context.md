@@ -8,6 +8,8 @@
 **Plan:** `dev/active/event-location-privacy/event-location-privacy-plan.md`  
 **Tasks:** `dev/active/event-location-privacy/event-location-privacy-tasks.md`
 
+**Erasure-authority topology:** `dev/active/optional-retained-erasure-authority/` supersedes every mandatory second-database statement in this workstream. Missing `LocationPrivacy:ErasureDurability:Mode` means `ApplicationDatabase`; only explicit `RetainedAuthority` enables the independently retained authority and synchronous pre-host replay.
+
 ## SESSION PROGRESS
 
 ### Completed
@@ -21,9 +23,9 @@
 - Confirmed global User identity and tenant membership (`TenantUser` / `TenantUserProfile`) are different concepts.
 - Incorporated Senior CTO feedback into the canonical first-class `EventLocation` architecture.
 - Replaced the prior `LocationClassification`, side-table disclosure policy, session-row entitlement, tenant-local erasure, Public legacy backfill, and post-commit correction-message decisions.
-- Re-audited the live source and corrected the rollout: Stage A minimization is immediate, `EventLocation.LocationId` is nullable only for explicit TBA, internal physical scheduling IDs remain for database integrity, legacy privacy state is backfilled from PII presence, migration stages are operator-selected, and restore replay uses a separately retained PostgreSQL erasure-authority database outside the application restore set.
+- Re-audited the live source and corrected the rollout: Stage A minimization is immediate, `EventLocation.LocationId` is nullable only for explicit TBA, internal physical scheduling IDs remain for database integrity, legacy privacy state is backfilled from PII presence, migration stages are operator-selected, and explicit retained mode uses a separately retained PostgreSQL erasure-authority database outside the application restore set.
 - Corrected task ownership and execution order: ELP-420 is split into additive/final generation, ELP-505 and ELP-515 are one transaction lane, ELP-230C runs after every consumer migration, and infrastructure plus manual browser verification are mandatory.
-- Completed ELP-000/005 on 2026-07-16 and re-synchronized ELP-000 after authority-protocol review: the three Event Location Privacy documents now consistently require authority-first append in a separate retained database followed by the application transaction; the three pre-existing Home Discovery diffs were hunk-preserved and stale generic-location safety claims were removed. The authority contradiction/completeness grep passed, `DocumentationQualityTests` passed 4/4, and the owned three-file `git diff --check` passed.
+- Completed ELP-000/005 on 2026-07-16 and re-synchronized ELP-000 after authority-protocol review. That historical authority-first requirement is now retained-mode-only under the optional retained-erasure-authority plan; the default application-database ledger/workflow remains OREA implementation work. The three pre-existing Home Discovery diffs were hunk-preserved and stale generic-location safety claims were removed.
 - Completed ELP-020/030/040/070 on 2026-07-16: every outbound surface has an owner/purpose/field/cache/correction/test contract; current OpenAPI/HAL/NSwag/EF artifacts and deterministic commands are hash-baselined without rewriting protected generated output; governance merge/failure/audit/cache semantics are field-complete; and global deletion is explicitly isolated from tenant membership removal. Path/table/key/checkbox assertions passed, `DocumentationQualityTests` passed 4/4, recorded hashes were rechecked unchanged, and the owned three-file `git diff --check` passed.
 - Completed ELP-010/015/400 on 2026-07-16. Generic Location/room reads are authenticated, resource-authorized, `private, no-store`, and removed from output caching. Anonymous session, group, agenda, program, calendar, JSON-LD, filter, HAL, and MCP surfaces now omit physical IDs, identifying venue/room values, address/postcode/coordinates, and location-bearing warnings; an authentication cookie cannot enrich public output. Public child routes require a Published+Public parent and enforce child/day publication and scheduling eligibility. Separate resource-authorized management routes preserve draft editing while returning only locations/rooms already associated with that event. The management picker is intentionally bounded to those associations: first/new venue selection remains fail-closed for non-admins until ELP-405/610 introduce EventLocation management.
 - Completed ELP-200 on 2026-07-16. `ApprovalStatus` now has stable `Cancelled=5`/`CANCELLED` and `Revoked=6`/`REVOKED` values. Null approval is resolved from registration mode; Pending and Approved consume capacity, terminal transitions release it, moving a registration reserves/releases atomically, and a full destination waitlists. Child cancellation persists `Cancelled`; remaining live children keep the parent live, while the last live child synchronizes the parent terminal state. PATCH cannot reassign event, intent, or user identity. Authorization enrichment loads a persisted tenant-safe ownership snapshot so attendees can cancel only their own registration, never PATCH; the serializable cancellation transaction revalidates the snapshot to close the authorization/use race while organizer/admin paths remain available.
@@ -60,7 +62,7 @@
 
 ### Next
 
-1. Execute W9: `ELP-350` before `ELP-315`, plus `ELP-360`, `ELP-510`, and the atomic authority-first `ELP-505` + `ELP-515` lane with full `ELP-500` acceptance.
+1. Execute W9: `ELP-350` before `ELP-315`, plus `ELP-360` and `ELP-510`; OREA owns the two-mode `ELP-505` + `ELP-515` workflow correction and its local-ledger persistence prerequisites.
 2. Keep first/new venue selection fail-closed for non-admins until ELP-405/610 provide EventLocation-scoped management and HAL affordances.
 3. Preserve the externally invalid shared migration/snapshot state for its authorized owner; do not infer current-head/model parity from the verified pre-concurrency Backfill artifact.
 
@@ -74,7 +76,7 @@
 
 ## Quick Resume
 
-The target is not a field mask on `Location`. Physical place data remains in `Location` / optional `LocationPii`; a canonical first-class `EventLocation` owns per-event disclosure. `LocationKind` describes the place but never authorizes disclosure. `LocationPrivacyState` distinguishes `NotProvided`, `Active`, and irreversible `Erased`. Public, attendee, and management routes are separate. Attendee entitlement is resolved from registration intent scope/lifecycle. Global account deletion first appends an immutable intent to the separate erasure authority, then erases owned Private Homes and inserts the local checkpoint/correction outbox in one application-database transaction.
+The target is not a field mask on `Location`. Physical place data remains in `Location` / optional `LocationPii`; a canonical first-class `EventLocation` owns per-event disclosure. `LocationKind` describes the place but never authorizes disclosure. `LocationPrivacyState` distinguishes `NotProvided`, `Active`, and irreversible `Erased`. Public, attendee, and management routes are separate. Attendee entitlement is resolved from registration intent scope/lifecycle. Global account deletion uses the startup-selected OREA workflow: the default keeps its PII-free ledger in the application transaction, while retained mode appends to the independent authority first and then commits the application mirror/checkpoint/correction outbox.
 
 Stage A is active: public routes are redacted, eligibility-gated, and principal-invariant; generic physical reads and event management reads are authorized and `private, no-store`; management choices are bounded to locations already associated with the event. ELP-230A, ELP-230B, ELP-225, ELP-250, ELP-310, ELP-330, and ELP-340 are independently verified. Public/attendee activation is still blocked by Contract, batch/route, and consumer-adoption gates. Resume at W9; keep ELP-500 open. Do not claim repository-wide green, current-head/model parity, or a healthy live API from the externally blocked evidence; do not revive the obsolete `EventLocationDisclosurePolicy` design or restore a tenant-wide non-admin venue picker.
 
@@ -89,7 +91,7 @@ Stage A is active: public routes are redacted, eligibility-gated, and principal-
 | EF mapping | `src/Explore.Persistence/Configurations/Entities/EventLocationConfiguration.cs` and related privacy configurations | Tenant/soft-delete filters, bounded repository access, audit/checkpoint mappings, and carrier indexes exist; verified ELP-230A enforces the physical database constraints/triggers. |
 | Registration authority fact | `src/Explore.Application/Services/EventLocationRegistrationAccessService.cs` | Pure and entity-backed batch paths emit sealed immutable access facts from exact tenant/event/user intent, lifecycle, day, session, and current EventLocation placement facts. |
 | Disclosure contracts | `src/Explore.Application/DTOs/Location/EventLocationDisclosureContract.cs` and purpose-specific request/result/DTO files | One 16-field vector authority and constrained factories prevent public physical-ID or operational-secret disclosure and contradictory states. |
-| Retained erasure authority | `src/Explore.Infrastructure/Privacy/ErasureAuthority/` | Separate PostgreSQL schema/client implements transactional monotonic append, UUIDv7 idempotency, bounded reads, and execute-only runtime access; startup replay remains ELP-525. |
+| Retained erasure authority | `src/Explore.Infrastructure/Privacy/ErasureAuthority/` | Current raw PostgreSQL schema/client implements transactional monotonic append, UUIDv7 idempotency, bounded reads, and execute-only runtime access. It is selected only by explicit retained mode; OREA-120/140/150 own its EF replacement and eventual removal. |
 | Location repository | `src/Explore.Persistence/Repositories/LocationRepository.cs` | Generic reads include PII; `ForgetPiiAsync` hard-deletes but has no account-erasure caller. |
 | Public DTOs | `src/Explore.Application/DTOs/Location/LocationDto.cs` and `LocationListDto.cs` | Exact/identifying data is conflated with discovery/management contracts; list includes Address. |
 | Generic Location API | `src/Explore.API/Controllers/LocationController.cs` and `LocationRoomController.cs` | Reads are authenticated, resource-authorized, `private, no-store`, and not output-cached; public event projections do not dereference these management contracts. |
@@ -223,13 +225,12 @@ ELP-200 added stable persisted `Cancelled=5`/`CANCELLED` and `Revoked=6`/`REVOKE
 
 ## Global Erasure Control Flow
 
-1. Require the independently retained PostgreSQL erasure-authority database to be available; otherwise fail before any application mutation.
-2. Append an immutable PII-free intent first. The UUIDv7 intent ID is the idempotency key; the authority assigns a monotonic sequence. The record contains only opaque owner/location identifiers, reason code, and server UTC metadata—never address or user-entered text.
-3. Retry after an ambiguous acknowledgement with the same intent ID; the authority returns the same sequence and never creates a duplicate intent.
-4. In one application-database transaction, execute the named tenant-filter bypass bounded by OwnerUserId, lock all current/former-tenant owned Private Homes, erase/tombstone PII and derived data, update EventLocations, complete User/Actor erasure, insert the local `(authority sequence, intent ID)` replay checkpoint, and insert PII-free correction outbox rows.
-5. Report deletion success only after the application transaction commits. Cache eviction remains best effort after commit; background workers dispatch the durable outbox.
+Mode is selected explicitly at process startup; connection-string presence never selects it.
 
-A crash after the authority append but before application commit is safe: the immutable intent remains pending, and retry/startup replay idempotently applies it. Application rollback leaves PII/local checkpoint/outbox unchanged but never removes the authority intent. A crash after application commit finds both the checkpoint and outbox durable. If volume proves one application transaction unsafe, stop for approval before introducing a durable saga.
+- `ApplicationDatabase` is the default. One application transaction appends the PII-free local ledger fact, executes the OwnerUserId-bounded erasure, advances the checkpoint, and inserts correction outbox rows. It does not contact a retained authority and does not protect against restoring a pre-erasure application backup.
+- `RetainedAuthority` requires `ConnectionStrings:LocationPrivacyAuthority`. It appends the immutable PII-free intent to the independent authority first, then mirrors and applies that exact fact with erasure/checkpoint/outbox in one application transaction. Ambiguous append acknowledgement retries with the same UUIDv7 intent ID; authority failure never falls back to the default workflow.
+
+A retained append followed by application failure remains pending for idempotent retry/startup replay. In either mode, application rollback leaves the application ledger/checkpoint/outbox and PII mutation unchanged together, and a successful application commit leaves the checkpoint and outbox durable. If volume proves one application transaction unsafe, stop for approval before introducing a durable saga.
 
 Tenant membership removal changes TenantUser/TenantUserProfile only and never invokes this global flow.
 
@@ -237,7 +238,7 @@ Tenant membership removal changes TenantUser/TenantUserProfile only and never in
 
 | Operation | Exact owner | Must change | Must never change | Test/architecture owner |
 |---|---|---|---|---|
-| Global account deletion | `DeleteUserCommandHandler` + authority client + `IGlobalLocationPrivacyErasureRepository` | append authority intent first; then update all OwnerUserId Private Homes across current/former tenants, UserPii/tokens/ActorPii, review state, local checkpoint, and correction outbox in one app-DB transaction | unrelated owners' locations; unbounded tenant-filter bypass; claiming atomicity across databases | `DeleteUserCommandHandlerTests`, `GlobalLocationPrivacyErasureTests` |
+| Global account deletion | `DeleteUserCommandHandler` + startup-selected OREA workflow + `IGlobalLocationPrivacyErasureRepository` | default: local ledger + erasure/checkpoint/outbox in one app transaction; retained: authority append first, then exact mirror + the same app transaction | unrelated owners' locations; unbounded tenant-filter bypass; claiming atomicity across databases; retained-to-default fallback | `DeleteUserCommandHandlerTests`, `GlobalLocationPrivacyErasureTests` |
 | Tenant membership removal | planned `RemoveTenantMembershipCommandHandler` + tenant-filtered TenantUser/Profile repositories | the selected tenant's `TenantUser`, `TenantUserProfile`, and active role grants only | global User/UserPii, Location/LocationPii/EventLocation, other tenants, privacy erasure/outbox | `RemoveTenantMembershipCommandHandlerTests` |
 | Dependency boundary | `EventLocationPrivacyArchitectureTests` | permit the global-erasure repository only in the global User deletion lane | any `Features/TenantUsers` handler referencing `DeleteUserCommand`, `DeleteUserCommandHandler`, or `IGlobalLocationPrivacyErasureRepository` | architecture suite |
 
@@ -269,10 +270,9 @@ Public ICS is public-only. Attendee ICS is authenticated/private/no-store. Priva
 ## Backup and Restore Boundary
 
 - Historical backups may contain erased PII until retention expiry; document the limit honestly.
-- The PostgreSQL erasure authority is a separate independently retained and backed-up database outside the application database restore set. It stores immutable UUIDv7-idempotent PII-free intents with a monotonic sequence; the application database stores only its local replay checkpoint.
-- On a fresh application database the checkpoint starts at sequence zero. Startup reads and idempotently applies every authority intent before traffic, then persists the checkpoint, purges caches/rebuilds indexes, and replays external corrections.
-- Application logical or physical-cluster restore never overwrites or pretends to transactionally restore the authority. Restore the retained authority independently, verify continuity, then replay it over the restored application database.
-- Authority unavailability fails closed for both deletion and startup. API, BFF proxying, MCP, outbox/workers, and readiness remain blocked until authority availability, sequence continuity, replay, and evidence queries succeed.
+- `ApplicationDatabase` starts with only the application database and never contacts an authority. Ordinary erasure remains transactional, but restoring a pre-erasure application backup can resurrect previously erased PII because the ledger shares that restore set.
+- `RetainedAuthority` uses a separate independently retained and backed-up database outside the application restore set. A fresh/restored application database replays missing facts synchronously before API listeners or workers start.
+- Retained authority unavailability, missing configuration, sequence divergence, or replay failure blocks startup and new retained erasures with no fallback. Restore the authority independently, verify continuity, then replay it over the restored application database.
 
 ## Post-Erasure Remediation
 

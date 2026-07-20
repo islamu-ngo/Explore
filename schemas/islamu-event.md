@@ -828,10 +828,10 @@ Table "atproto_record_tenant_presentations" {
 
   indexes {
     (tenant_id, is_visible, evaluated_at) [name: 'ix_atproto_record_presentations_visible']
-    atproto_record_id
+    atproto_record_id [name: 'ix_atproto_record_tenant_presentations_atproto_record_id']
   }
 
-  Note: 'Tenant allowlist/presentation decision for one global canonical record.'
+  Note: 'Tenant capability/presentation decision for one global canonical record.'
 }
 
 Table "atproto_outbound_record_ownerships" {
@@ -847,6 +847,7 @@ Table "atproto_outbound_record_ownerships" {
   indexes {
     (tenant_id, source_entity_type, source_entity_id) [unique, name: 'ux_atproto_outbound_ownership_source']
     (tenant_id, user_id) [name: 'ix_atproto_outbound_ownership_user']
+    user_id [name: 'ix_atproto_outbound_record_ownerships_user_id']
   }
 
   Note: 'Tenant/user/lifecycle authority for a locally published canonical record.'
@@ -930,7 +931,10 @@ Table "pds_sync_outbox" {
     (status, next_retry_at, lease_expires_at, created_at) [name: 'ix_pds_sync_outbox_worker_poll']
     (tenant_id, user_id, status) [name: 'ix_pds_sync_outbox_owner']
     (did, collection, record_key) [name: 'ix_pds_sync_outbox_record_identity']
+    atproto_record_id [name: 'ix_pds_sync_outbox_atproto_record_id']
     depends_on_atproto_record_id [name: 'ix_pds_sync_outbox_dependency', note: 'filter: depends_on_atproto_record_id IS NOT NULL']
+    superseded_by_id [name: 'ix_pds_sync_outbox_superseded_by_id']
+    user_id [name: 'ix_pds_sync_outbox_user_id']
   }
 
   Note: 'Immutable tenant-owned PDS intent with reclaimable fenced delivery, dependency, supersession, and URI/CID settlement.'
@@ -1414,6 +1418,8 @@ Table "instance_policy_sets" {
   "updated_at" timestamptz
   "updated_by" uuid
   "xmin" xid [not null, note: 'rowversion / optimistic concurrency']
+
+  Note: 'Obsolete federation policy-slot columns were retired by migration 20260719213000_RetireLegacyDecentralizationSetting. AT Protocol event federation is governed through the hierarchical federation.atproto_events_enabled setting.'
 }
 
 // ============================================================
@@ -2947,6 +2953,7 @@ Table "user_authentication_tokens" {
 
   indexes {
     (tenant_id, provider, subject_did) [unique, name: 'ux_user_authentication_tokens_tenant_provider_subject_did']
+    user_id [name: 'ix_user_authentication_tokens_user_id']
   }
 
   Note: 'Complete CarpaNet OAuth session stored only as an AES-256-GCM authenticated envelope; no plaintext token or private DPoP columns.'
@@ -4068,7 +4075,8 @@ Table "event_reports" {
   "priority" int [not null]
   "severity_hint" int
   "duplicate_group_id" uuid
-  "reporter_contact_consent" boolean [not null]
+  "report_case_updates_consent" boolean [not null]
+  "report_follow_up_contact_consent" boolean [not null]
   "reporter_locale" varchar(10)
   "reporter_ip_hash" varchar(64)
   "reporter_user_agent_hash" varchar(64)
@@ -4093,7 +4101,7 @@ Table "event_reports" {
     (tenant_id, reporter_user_id, event_id, reason_code, created_at) [name: 'ix_event_reports_tenant_reporter_event_reason_created', note: 'filter: reporter_user_id IS NOT NULL; descending: created_at']
   }
 
-  Note: 'Tenant-scoped event-report aggregate. Checks enforce non-blank reason/subcategory/fingerprint values when present, enum ranges for reporter/source/status/priority/severity, and closed_at only for terminal statuses.'
+  Note: 'Tenant-scoped event-report aggregate with separate case-update and follow-up-contact consent authorities. Checks enforce non-blank reason/subcategory/fingerprint values when present, enum ranges for reporter/source/status/priority/severity, and closed_at only for terminal statuses.'
 }
 
 Table "event_report_cases" {
@@ -4205,6 +4213,7 @@ Table "event_report_decisions" {
   "report_id" uuid [not null]
   "decision_source" int [not null]
   "decision_kind" int [not null]
+  "duplicate_group_id" uuid
   "reason_code" varchar(100) [not null]
   "safe_note" varchar(1000)
   "moderator_user_id" uuid
@@ -4223,7 +4232,36 @@ Table "event_report_decisions" {
     (tenant_id, decision_source, external_decision_id) [unique, name: 'ux_event_report_decisions_tenant_source_external', note: 'filter: external_decision_id IS NOT NULL']
   }
 
-  Note: 'Review decision before enforcement. Checks enforce source/kind ranges, non-blank reason/safe-note/external IDs when present, and local moderator identity for local decisions.'
+  Note: 'Review decision before enforcement. Duplicate decisions require duplicate_group_id and every other kind forbids it. Checks also enforce source/kind ranges, non-blank reason/safe-note/external IDs when present, and local moderator identity for local decisions.'
+}
+
+Table "event_report_decision_executions" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "report_id" uuid [not null]
+  "decision_id" uuid [not null]
+  "state" int [not null]
+  "enforcement_receipt_kind" int [not null]
+  "enforcement_receipt_id" uuid
+  "processing_lease_token" uuid
+  "processing_lease_expires_at_utc" timestamptz
+  "attempt_count" int [not null]
+  "last_failure_code" varchar(100)
+  "last_failure_at_utc" timestamptz
+  "enforcement_completed_at_utc" timestamptz
+  "completed_at_utc" timestamptz
+  "created_at" timestamptz [not null]
+  "updated_at" timestamptz
+  "version" bigint [not null]
+
+  indexes {
+    (tenant_id, id) [unique, name: 'ak_event_report_decision_executions_tenant_id_id']
+    (tenant_id, decision_id) [unique, name: 'ux_event_report_decision_executions_tenant_decision']
+    (tenant_id, report_id, decision_id) [unique, name: 'ux_event_report_decision_executions_tenant_report_decision']
+    (state, processing_lease_expires_at_utc, created_at) [name: 'ix_event_report_decision_executions_runnable']
+  }
+
+  Note: 'One durable execution per captured report decision. Checks fence the Requested/InProgress/CompletionPending/Completed state shapes, paired leases, exact light/heavy receipt IDs, and bounded failure metadata.'
 }
 
 Table "event_report_external_links" {
@@ -4868,6 +4906,9 @@ Ref: "event_report_decisions"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "event_report_decisions".("tenant_id", "report_id") > "event_reports".("tenant_id", "id") [delete: restrict]
 Ref: "event_report_decisions".("tenant_id", "report_id", "case_id") > "event_report_cases".("tenant_id", "report_id", "id") [delete: restrict]
 Ref: "event_report_decisions"."moderator_user_id" > "users"."id" [delete: restrict]
+Ref: "event_report_decision_executions"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_report_decision_executions".("tenant_id", "report_id") > "event_reports".("tenant_id", "id") [delete: restrict]
+Ref: "event_report_decision_executions".("tenant_id", "report_id", "decision_id") > "event_report_decisions".("tenant_id", "report_id", "id") [delete: restrict]
 Ref: "event_report_external_links"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "event_report_external_links".("tenant_id", "report_id") > "event_reports".("tenant_id", "id") [delete: restrict]
 Ref: "event_report_external_links".("tenant_id", "report_id", "case_id") > "event_report_cases".("tenant_id", "report_id", "id") [delete: restrict]

@@ -7,7 +7,7 @@ ABOUTME: Covers DB-first PDS delivery, exhaustive projection, Jetstream discover
 > **Status:** Implemented AT Protocol integration; ActivityPub/PDS hosting remain roadmap
 > **Owner:** API
 > **Last Verified:** 2026-07-19
-> **Source Anchors:** `Explore.API/Controllers/AtprotoSessionController.cs`, `Explore.API/Controllers/EventController.cs`, `Explore.API/BackgroundServices/PdsSyncWorker.cs`, `Explore.Blazor/Authentication/AtprotoAuthenticationHandler.cs`, `Explore.Infrastructure/Services/Federation/AtprotoJetstreamSubscriber.cs`, `Explore.Application/Features/Federation/Atproto/`, `docs/LEXICONS.md`, `docs/OUTBOX_PATTERN.md`
+> **Source Anchors:** `src/Explore.API/Controllers/AtprotoSessionController.cs`, `src/Explore.API/Controllers/EventController.cs`, `src/Explore.API/BackgroundServices/PdsSyncWorker.cs`, `src/Explore.Blazor/Authentication/AtprotoAuthenticationHandler.cs`, `src/Explore.Infrastructure/Services/Federation/AtprotoJetstreamSubscriber.cs`, `src/Explore.Application/Features/Federation/Atproto/`, `docs/LEXICONS.md`, `docs/OUTBOX_PATTERN.md`
 
 ## Status
 
@@ -25,9 +25,9 @@ AT Protocol OAuth authentication is implemented for accounts that are already li
 - **OAuth authentication**: the BFF uses CarpaNet confidential-client OAuth with protected single-use state, PKCE, DPoP, a server-private bootstrap bridge, encrypted DID-keyed session persistence, and a short-lived first-party ES256 API session JWT. The browser receives only the HttpOnly BFF cookie and safe display state.
 - **Linked-account boundary**: the verified DID, PDS, tenant, and existing `UserExternalLogin` must agree. ATProto login does not create or email-match platform users.
 - **Safe public API**: `GET /api/event` returns a typed local-or-federated discovery collection. Federated items receive only a policy-produced `source` relation to `GET /api/event/federated/{atprotoRecordId}/source`; no raw `AtprotoRecord` read or mutation API exists.
-- **Governance**: `federation.atproto_events_enabled` controls both event ingestion and eligible outbound enqueue. `federation.atproto_event_validation_profile` selects platform or community-lexicon publication requirements, subject to instance locks; `federation.atproto_publish_my_events` remains self-scoped user consent.
+- **Governance**: `federation.atproto_events_enabled` controls inbound tenant presentation/stream demand and eligible outbound enqueue. `federation.atproto_event_validation_profile` selects platform or community-lexicon publication requirements, subject to instance locks; the community profile relaxes only required local business fields. `federation.atproto_publish_my_events` remains self-scoped user consent.
 - **Projection**: one typed community event record maps native lexicon fields and renders every other public event value—including all sessions, aspects, resolved lookups, and EAV values—into one deterministic description. Coverage, privacy, or exact-size failures prevent enqueue; values are never silently dropped or truncated.
-- **Inbound ingestion**: one leased CarpaNet Jetstream consumer accepts exactly the community event and RSVP collections and persists canonical records, tombstones, quarantine evidence, and cursor state atomically.
+- **Inbound ingestion**: one leased CarpaNet Jetstream consumer accepts exactly the community event and RSVP collections from a fixed endpoint and fail-closed curated DID allowlist. It persists one global canonical DID/collection/record-key row with its current source version, typed event projection, tenant presentation, tombstone/quarantine effects, and cursor state atomically.
 - **Outbound delivery**: event lifecycle handlers atomically commit the local publication and immutable `PdsSyncOutbox` intent. A fenced worker rechecks capability, self-consent, linked session, source version, payload, and public-location privacy immediately before CarpaNet PDS I/O, then settles URI/CID and links the canonical record back to the committed local event.
 - **Client surfaces**: instance administrators manage defaults/locks, unlocked tenant administrators manage effective capability/profile, and users manage only their own publication consent. Federated cards and local delivery status use text plus color and render actions only from HAL.
 - **Authorization fallback**: local fallback authorization treats actor records as read-only for authenticated users and denies ATProto record/indexed DID writes except for instance-admin bypass.
@@ -83,7 +83,7 @@ ATProto OAuth login is implemented, while PDS account hosting is not. Identity l
 │         ▼                                              ▼                    │
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
 │   │                    ISLAMU Event AppView                              │   │
-│   │  • Indexes ngo.islamu.event.* records                               │   │
+│   │  • Indexes community event and RSVP records                          │   │
 │   │  • Provides search/discovery APIs                                    │   │
 │   │  • Manages cultural/audience filtering                               │   │
 │   │  • Hosts ActivityPub Gateway                                         │   │
@@ -149,8 +149,8 @@ The diagram below is a product-level illustration, not the record-shape contract
 │  1. User creates event record                                               │
 │     ┌─────────────────────────────────┐                                     │
 │     │ {                               │                                     │
-│     │   "$type": "ngo.islamu.event...",│                                    │
-│     │   "title": "Community Iftar",   │                                     │
+│     │   "$type": "community.lexicon.calendar.event",│                       │
+│     │   "name": "Community Iftar",    │                                     │
 │     │   "startsAt": "2025-03-15...",  │                                     │
 │     │   ...                           │                                     │
 │     │ }                               │                                     │
@@ -249,7 +249,7 @@ The key insight is that DID creation is **async**. Here's how to handle it:
 
 ## Lexicon Boundary
 
-[LEXICONS.md](LEXICONS.md) defines the current NSID hierarchy used for stable event and event-session projections. That document explicitly excludes ATProto PDS publication, bridgy-fed wiring, ActivityPub federation, and outbox/publication machinery. Link to it when documenting schema vocabulary; do not use it as evidence that public federation publication is implemented.
+[LEXICONS.md](LEXICONS.md) defines the exact vendored community event/RSVP, `strongRef`, location, and session lexicons compiled by CarpaNet. It also records the stricter product mapping: one exhaustive event description and outbound `#going` only. The lexicons define record vocabulary; lifecycle handlers, governance, privacy evaluation, `PdsSyncOutbox`, Jetstream persistence, and HAL remain the publication authorities.
 
 ## Outbox Boundary
 
@@ -258,6 +258,7 @@ The key insight is that DID creation is **async**. Here's how to handle it:
 ## Operator And Product Guidance
 
 - Treat `federation.atproto_events_enabled` as one governed capability for both canonical Jetstream ingestion and eligible outbound PDS delivery. Keep it disabled until migrations, worker configuration, and operator recovery procedures are ready.
+- The `community_lexicon` validation profile changes required local publication fields only; it never authorizes invalid supplied values, incomplete projections, private disclosure, or oversized records.
 - Treat `auth.atproto_login_enabled` as authentication only; it does not enable event federation or user publication consent.
 - Keep public-facing release notes precise: AT Protocol OAuth, event discovery, Jetstream ingestion, and lifecycle-owned PDS publication are implemented; ActivityPub interoperability and first-party PDS hosting remain roadmap work.
 - Keep ATProto/PDS account email separate from ISLAMU product notification email. PDS SMTP is account-authority transport, not a general product-email provider.

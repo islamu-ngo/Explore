@@ -228,6 +228,51 @@ Event/session lifecycle migration notes:
 - Rollback is development-only and not data-preserving for unscheduled draft rows. Before downgrading past this migration, either delete/resolve unscheduled draft sessions or schedule them through the normal command path so non-null schedule columns can be restored safely.
 - Public outputs must continue to use the published/scheduled session gate. Operator backfills or imports may create structurally valid draft rows, but publication and session publish readiness remain Application-layer checks.
 
+### ELP-525 retained location-erasure startup gate
+
+`Explore.API` resolves `ILocationErasureReplayService` after application migrations and seeding but before `app.Run()`. The gate reads the newest immutable application checkpoint, verifies it against the separately retained PostgreSQL authority, and replays every later intent in sequence. A fresh application database starts at sequence zero. Each intent atomically commits Home tombstones, user/actor erasure, the next checkpoint, and PII-free `LocationPiiErased` / `LocationPrivacyCorrectionRequested` outbox rows; post-commit cache tags are then invalidated. There is no separate exact-location search index today. If one is introduced, its purge must consume the same correction intent and become a readiness prerequisite.
+
+Startup is closed when the authority is unavailable, the local checkpoint cannot be found at the same authority sequence and intent ID, the next sequence is missing, replay is cancelled, the application transaction fails, or synchronous cache invalidation fails. On every restart with an existing checkpoint, replay verifies that checkpoint against the authority and re-invalidates its user and location/event cache surface before reading later facts. This makes a post-commit cache outage retryable instead of letting a durable checkpoint hide stale distributed-cache state. The API never reaches host start in those cases, so Kestrel, MCP, readiness, outbox processing, PDS/federation workers, and every other hosted service remain unavailable. The Blazor BFF therefore has no live API proxy target. This ordering relies on the Generic Host boundary: `Build()` creates the host, while `Run`/`Start` starts its hosted services, including the HTTP server. See the official [ASP.NET Core Generic Host lifecycle](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/host/generic-host?view=aspnetcore-10.0) and [hosted-service startup ordering](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/host/hosted-services?view=aspnetcore-10.0).
+
+Required configuration is `LocationPrivacy:ErasureAuthority:ConnectionString` (`LocationPrivacy__ErasureAuthority__ConnectionString` in environment form). Treat it as a secret. Never log it, its endpoint, retained opaque identifiers, or provider exception text. The API emits only the bounded exception type when the gate fails.
+
+Operator evidence uses two database sessions because the authority is deliberately outside the application restore set. Run authority queries with its backup/owner role; the runtime role is function-only and cannot read tables:
+
+```sql
+-- Authority database: an empty ledger is valid; otherwise sequence must start at 1 with no gaps.
+SELECT COUNT(*) AS retained_count,
+       COALESCE(MIN(authority_sequence), 0) AS first_sequence,
+       COALESCE(MAX(authority_sequence), 0) AS authority_watermark,
+       COUNT(*) = COALESCE(MAX(authority_sequence), 0) AS contiguous_from_one
+FROM location_privacy_authority.erasure_intents;
+
+SELECT last_sequence AS counter_watermark
+FROM location_privacy_authority.authority_counter
+WHERE singleton;
+```
+
+```sql
+-- Application database: capture this before startup and again after a successful gate.
+SELECT COALESCE(MAX(authority_sequence), 0) AS application_watermark,
+       COUNT(*) AS checkpoint_count
+FROM location_privacy_erasure_replay_checkpoints;
+
+SELECT authority_sequence, intent_id, applied_at_utc
+FROM location_privacy_erasure_replay_checkpoints
+ORDER BY authority_sequence DESC
+LIMIT 1;
+
+SELECT event_type, status, COUNT(*) AS message_count
+FROM outbox_messages
+WHERE event_type IN ('LocationPiiErased', 'LocationPrivacyCorrectionRequested')
+GROUP BY event_type, status
+ORDER BY event_type, status;
+```
+
+Before exposing readiness, require `application_watermark = authority_watermark`, the latest `(authority_sequence, intent_id)` to match the authority fact returned for that sequence, restored physical canaries to be tombstoned with no `location_pii` row, and correction outbox evidence to exist. Replay invalidates application HybridCache tags synchronously. Once the gate succeeds and the host starts, the normal idempotent outbox processor drains correction rows; inspect `Failed` and `DeadLettered` rows before declaring external projections converged.
+
+For local orchestration, `aspire start --isolated --apphost src/Explore.AppHost/Explore.AppHost.csproj` waits for a stable AppHost state and surfaces early startup failures; inspect with `aspire describe` and `aspire logs explore-api`. Do not infer success from an “app starting” log: prove the socket and the two database watermarks. See the official [Aspire `start` command](https://aspire.dev/reference/cli/commands/aspire-start/).
+
 ## Health and Metrics Endpoints
 
 Via `Explore.ServiceDefaults` + app-specific checks:
@@ -250,6 +295,7 @@ Readiness interpretation:
 | `data-protection-keys` | Blazor | Persisted ASP.NET Core Data Protection key table is reachable | Not used | BFF key-ring table or backing database is unavailable; existing cookies may fail after restart |
 | `distributed-cache` | API, Blazor, Control Plane BFF | Effective cache round-trip works | Configured Redis fell back to in-memory cache | Effective cache round-trip failed |
 | `oidc-discovery` | API, Blazor, Control Plane BFF | OIDC metadata valid, or OIDC is not configured | Not used | Configured OIDC metadata endpoint is unreachable or invalid |
+| `atproto-authentication` | Blazor | AT Protocol login is disabled, or its canonical public URL/callback, key ring, and state/session stores are ready | Not used | Login is enabled but a bounded prerequisite is unavailable |
 | `smtp` | API | SMTP connection/auth succeeds | SMTP is not configured | Configured SMTP is unreachable or authentication fails |
 | `email-dispatch` | API | Selected Basic Dispatch trigger is enabled (`TickerQ` scheduler or hosted-service fallback) and outbox counts are below warning thresholds | Dispatch is intentionally disabled, due dispatch backlog crosses threshold, stale `Processing` rows cross threshold, or `DeadLettered` rows cross threshold | TickerQ mode selected while scheduler is disabled; invalid dispatch/scheduler options fail startup; RabbitMQ is not checked in Basic mode |
 | `email-dispatch-retention-cleanup` | API | Retention cleanup is enabled in redaction or dry-run mode | Cleanup is intentionally disabled | Invalid retention options fail startup |
@@ -261,6 +307,7 @@ Readiness interpretation:
 | `storage-reconciliation` | API | Storage reconciliation worker is enabled in dry-run or mutation mode | Reconciliation is intentionally disabled | Invalid reconciliation options fail startup |
 | `ai-provider` | API | AI provider integration is disabled, deterministic fake provider is enabled, or OpenAI Responses/OpenAI-compatible/Anthropic/Anthropic-compatible/Azure OpenAI settings are valid | Not used | AI provider is enabled but no runnable provider is configured, or provider endpoint/settings fail egress validation |
 | `cerbos` | API | Local provider mode is selected, or configured Cerbos PDP passes gRPC health | Not used | Instance `authorization.provider` is `cerbos` and the PDP is missing or unreachable |
+| `atproto-jetstream` | API | Ingestion is dormant because no tenant capability is enabled, or capability plus a curated DID allowlist are ready | Not used | Capability is enabled without an allowlist, or capability readiness cannot be resolved |
 | `islamu-event-api` | Blazor, Control Plane BFF | BFF can reach API readiness endpoint | Not used | API readiness endpoint is unavailable or unhealthy |
 | `secret_provider` | API, Blazor, Control Plane BFF | Secret backend path is healthy | Secret backend has transient failures within the configured threshold | Secret backend crossed the unhealthy threshold |
 
@@ -565,24 +612,40 @@ Trace tags on active support-access requests use bounded support context such as
 
 ### Notification Fanout Operations
 
-Event-published actor-subscription fanout is handled as an internal outbox side effect:
+Two fanout paths currently coexist. The legacy event-published actor-subscription path remains an internal outbox side effect:
 
 1. The event publish command writes an internal `EventPublishedNotificationFanoutRequested` outbox row in the same transaction as the event status change.
 2. `OutboxProcessor` claims pending rows and calls `CompositeOutboxMessageDispatcher`.
 3. The composite dispatcher routes `EventPublishedNotificationFanoutRequested` to `EventPublishedNotificationFanoutService`; retired external `EventPublished` broker rows fail closed as unknown outbox event types.
 4. The fanout service creates or resumes `NotificationFanoutRun`, scans active organization/group actor subscriptions for active tenant-local users, skips existing `Notification.DeduplicationKey` values, creates durable in-app notification rows, and marks the run completed or failed.
 
+The recipient-occurrence path handles attendee lifecycle fanout:
+
+1. A business mutation persists one immutable `NotificationFanoutOccurrence` and its generic-outbox pointer in the mutation transaction.
+2. Pointer handoff creates the corresponding pending `NotificationFanoutRun`; handoff is never suppressed by backlog pressure.
+3. `NotificationFanoutProcessor` acquires a fair round under the global PostgreSQL claim lock. Global and per-tenant active limits are rechecked before each exact claim under global → tenant → event-precedence → occurrence lock order.
+4. Every claim runs in a fresh dependency-injection scope through `NotificationFanoutPageProcessor`. The processor renews the fenced lease, reads a deterministic attendee page, atomically materializes recipient notification/delivery/email work, and advances the compound timestamp/user cursor only after the page commits.
+5. A crash leaves the lease and last committed cursor durable. After expiry, another replica advances token, fence, and generation and resumes without skipping the uncommitted page.
+
+Optional-reminder backpressure is durable and cross-replica. Under the global claim lock, the repository counts active non-reminder occurrences and updates the singleton `notification_fanout_processor_states` hysteresis row. At the high watermark, reminder claims stop while core work remains eligible; at or below the low watermark, reminders resume. Reminder occurrences/runs are retained and are never marked superseded merely because the queue is pressured.
+
 Operator signals:
 
 | Signal | Meaning |
 |---|---|
-| `explore.notifications.fanout_runs` | Run-level processing/completed/skipped-completed/failed outcomes by tenant and fanout kind. |
+| `explore.notifications.fanout_runs` | Legacy run outcomes by a closed fanout-kind/outcome vocabulary. Tenant IDs are not metric labels. |
 | `explore.notifications.fanout_subscribers` | Aggregate processed, notification-created, and duplicate-skipped subscriber decisions. |
+| `explore.notifications.fanout_processor.claims` | Recipient-occurrence claimed, completed, stale-claim, lease-contention, capacity-deferred, unavailable, and failed counts. |
+| `explore.notifications.fanout_processor.recipients` | Aggregate processed and notification-created recipient counts without recipient or tenant labels. |
+| `explore.notifications.fanout_processor.*` gauges | Due/core/reminder occurrences, active/expired claims, processed recipients for unfinished runs, superseded occurrences, oldest due age, and durable reminder deferral. |
+| `notification-fanout` readiness | Safe aggregate counts and thresholds; degraded for disabled processing, expired claims, excessive due backlog, or excessive oldest-due age. |
 | `NotificationFanoutRun` rows | Durable worker cursor/count/status state for source event/actor/kind tuples. |
+| `NotificationFanoutOccurrence` rows | Immutable occurrence snapshots plus pending/superseded business authority. |
+| `notification_fanout_processor_states` | Cross-replica optional-reminder hysteresis authority. |
 | General outbox dead-letter rows | Internal fanout messages that exceeded retry policy and need inspection/replay decisions. |
-| Structured fanout logs | Include run/event/tenant IDs and aggregate counts; do not include event title, subscriber identity, notification body, or deduplication key. |
+| Structured fanout logs | Aggregate round/failure messages only; do not include tenant/event/occurrence/run/recipient IDs, template payloads, addresses, titles, bodies, or deduplication keys. |
 
-Fanout is at-least-once. Operators should treat `Notification.DeduplicationKey` and `NotificationFanoutRun` state as the duplicate-prevention and progress source of truth rather than inferring success from process logs alone.
+Fanout is at-least-once. Operators should treat the occurrence/run fence, recipient intent uniqueness, delivery uniqueness, email outbox uniqueness, and `Notification.DeduplicationKey` as duplicate-prevention authorities rather than inferring success from logs. `remainingOccurrenceCount` means due plus active occurrences; the system intentionally does not run a full recipient-audience count merely for health reporting.
 
 ### Notification SSE Refresh Operations
 
@@ -1021,6 +1084,8 @@ Admin settings management:
 
 AT Protocol event federation is disabled by governance by default. Before enabling `federation.atproto_events_enabled`, verify the OAuth health check is ready, the migrations are current, the curated Jetstream DID allowlist is non-empty, and the PDS/Jetstream worker bounds match [CONFIGURATION.md](CONFIGURATION.md). The administrator capability enables both inbound event discovery and eligibility for outbound publication; each owner must still opt in through `federation.atproto_publish_my_events`.
 
+`Explore.API` hosts both runtime loops. `PdsSyncWorker` polls committed `PdsSyncOutbox` rows every 5 seconds by default, claims at most 20 with 90-second fenced leases, and processes at most 10 concurrently in fresh scopes. `AtprotoJetstreamSubscriber` is implemented in Infrastructure but hosted by the API; it opens one capability-aware global stream, renews its 60-second lease every 20 seconds, and cancels the stream immediately when renewal is fenced or fails. Jetstream never opens per-tenant streams.
+
 Operational signals are intentionally bounded:
 
 | Signal | Meaning |
@@ -1029,6 +1094,7 @@ Operational signals are intentionally bounded:
 | `atproto.authentication.duration` | Matching authentication duration histogram in seconds. |
 | `atproto.jetstream.envelopes` | Jetstream connection, replay, fencing, materialization, quarantine, and lease outcomes; the optional `collection` tag is normalized to `event`, `rsvp`, or `unsupported`. |
 | `atproto-authentication` health check | BFF readiness for canonical public URL/callback, signing material, state/session stores, and provider configuration; failure detail is reduced to a stable code. |
+| `atproto-jetstream` health check | API readiness for capability resolution and the curated DID allowlist; dormant disabled capability is healthy, while enabled-without-allowlist fails closed. |
 | `PdsSyncWorker` structured logs | Per-claim completion or bounded `FailureCode`/`FailureDisposition`; provider response bodies, OAuth material, DIDs, record keys, and payloads must not be logged. |
 
 For delayed or failed publication, keep the local event authoritative. Inspect the newest non-superseded `PdsSyncOutbox` row for the tenant/event, verify capability, consent, linked session, and public-location eligibility, then follow the stable recovery guidance in [TROUBLESHOOTING.md](TROUBLESHOOTING.md). Do not create a PDS record manually and do not replay by changing the stable record key.

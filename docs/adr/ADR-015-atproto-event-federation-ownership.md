@@ -21,9 +21,9 @@ The platform must also operate safely on multiple nodes. A consumer or outbox wo
 
 ### Inbound ownership and presentation
 
-1. Inbound event and RSVP records are global canonical observations keyed by DID, collection, record key, and source version. A tenant does not own or duplicate the canonical record.
+1. Inbound event and RSVP records are global canonical observations identified by DID, collection, and record key. Each row carries the current monotonic source version/cursor; a tenant does not own or duplicate the canonical record.
 2. Tenant visibility is represented separately through tenant presentation joins. The effective `federation.atproto_events_enabled` setting controls whether a tenant receives or presents inbound records; it does not create per-tenant copies or sockets.
-3. Tenant and instance allowlists are policy inputs owned by their existing governance scopes. Instance policy is the ceiling; tenant policy may narrow it only where the instance lock permits. A record is admitted only when both effective policy and the curated federation policy allow it.
+3. `Atproto:Jetstream:AllowedDids` is the bounded curated ingress allowlist. An empty allowlist is deny-all: the subscriber does not open the stream, and the event source rejects an empty subscription before network access. Tenant governance controls presentation and whether any stream demand exists; it is not a second DID allowlist.
 4. Exactly one logical Jetstream consumer owns the global stream. Multi-node hosts coordinate through a renewable lease carrying owner, generation/fence, and expiry. A stale generation cannot advance the cursor or settle materialization.
 5. Accepted record materialization, dependent RSVP changes, tombstone effects, quarantine state, and cursor advancement commit atomically. A rejected or malformed envelope can be quarantined with bounded metadata in that same transaction; no path advances the cursor while losing its required record, tombstone, or quarantine effect.
 6. Tombstones suppress or remove the canonical version and its dependent RSVP presentation. They never invoke local event lifecycle handlers or create outbound work. Locally owned URI/CID matches reconcile as echoes instead of producing duplicate federated events.
@@ -31,13 +31,15 @@ The platform must also operate safely on multiple nodes. A consumer or outbox wo
 ### Outbound ownership and ordering
 
 1. The local event or registration lifecycle is the only outbound publication authority. Public `AtprotoRecord` POST, PUT, and DELETE endpoints, commands, DTOs, generated methods, and HAL affordances do not exist.
-2. Each outbound operation owns explicit tenant ID, platform user ID, owner DID, source entity kind and ID, source aggregate version, operation kind, immutable payload and hash, stable record key, and idempotency/supersession identity.
-3. The locally published event transition and its initial immutable outbox operation commit in the same `IUnitOfWork` transaction. No PDS call occurs before that commit. Update, delete, redaction, and RSVP paths cannot synthesize an initial remote event record.
-4. Aggregate version is authoritative. A newer operation supersedes stale create/update work for the same source. Visibility tightening, heavy redaction, erasure, cancellation, or deletion prevents an older publication payload from being delivered afterward.
-5. Outbox claims use renewable owner/generation/expiry leases. Only the current fenced owner may settle. Crashed claims are reclaimable; stale workers cannot complete or overwrite a newer result.
-6. Immediately before remote I/O, the worker rechecks the effective master capability, the owner's current self-scoped publication consent, source version/currentness, visibility, redaction/erasure state, and public-location disclosure. A failed recheck settles or defers the operation according to its safe classification without calling the PDS.
-7. A stable DID/collection/record-key identity makes retries idempotent. Remote success is reconciled before settlement so a crash between those steps cannot create a second record.
-8. Successful event delivery transactionally settles the local `AtprotoRecord` URI/CID and outbox result. RSVP create/update work remains unclaimable until that event URI and CID exist, and its subject strong reference uses those exact settled values.
+2. `federation.atproto_events_enabled` is the single capability for inbound tenant presentation/stream demand and eligible outbound enqueue. Outbound work also requires the owner's self-scoped consent and exact linked encrypted DID/PDS session. The `community_lexicon` profile relaxes only required local business fields; authorization, supplied-value validation, privacy, projection completeness, and record limits remain enforced.
+3. Each outbound operation owns explicit tenant ID, platform user ID, owner DID, source entity kind and ID, source aggregate version, operation kind, immutable payload and hash, stable record key, and idempotency/supersession identity.
+4. The locally published event transition and its initial immutable outbox operation commit in the same `IUnitOfWork` transaction. No PDS call occurs before that commit. Update, delete, redaction, and RSVP paths cannot synthesize an initial remote event record.
+5. Every eligible public event, session, aspect, resolved lookup, EAV, and public-media value has one manifest disposition. Native lexicon fields map directly; every other public value is rendered deterministically into the single event `description`. Missing coverage, privacy failure, invalid record shape, or exact JSON/DAG-CBOR overflow prevents enqueue; nothing is truncated or silently omitted.
+6. Aggregate version is authoritative. A newer operation supersedes stale create/update work for the same source. Visibility tightening, heavy redaction, erasure, cancellation, or deletion prevents an older publication payload from being delivered afterward.
+7. Outbox claims use renewable owner/generation/expiry leases. Only the current fenced owner may settle. Crashed claims are reclaimable; stale workers cannot complete or overwrite a newer result.
+8. Immediately before remote I/O, the worker rechecks the effective master capability, the owner's current self-scoped publication consent, exact session/account link, source version/currentness, visibility, redaction/erasure state, payload, and public-location disclosure. A failed recheck settles or defers the operation according to its safe classification without calling the PDS.
+9. A stable DID/collection/record-key identity makes retries idempotent. Remote success is reconciled before settlement so a crash between those steps cannot create a second record.
+10. Successful event delivery transactionally settles the local `AtprotoRecord` URI/CID and outbox result. RSVP create/update work remains unclaimable until that event URI and CID exist, and its subject `strongRef` uses those exact settled values. Outbound RSVP represents only a committed active registration as `community.lexicon.calendar.rsvp#going`; organizer approval states, `#interested`, and `#notgoing` are not local user intent.
 
 ### Completed remote records
 
@@ -68,7 +70,7 @@ Disabling capability or revoking consent stops pending and future eligible remot
 ## Consequences
 
 - Read-only ATProto discovery remains available through tenant-scoped CQRS queries and HAL navigation.
-- Later persistence work must encode global inbound identity, tenant presentation joins, fenced leases, atomic checkpoints, immutable outbound payloads, version/supersession, and URI/CID settlement.
+- Persistence now encodes global inbound identity, typed event materialization, tenant presentation joins, payload-free quarantine, fenced leases, atomic checkpoints, immutable outbound payloads, version/supersession, dependencies, and URI/CID settlement.
 - Event publication remains local-first and eventually consistent with the PDS; remote outage never rolls back a committed application event.
 - RSVP publication has an explicit event-before-RSVP dependency and cannot fabricate a subject strong reference.
 - Capability and consent changes are effective at the last safe boundary before remote I/O.

@@ -5,10 +5,10 @@
 
 > **Status:** Re-baselined in implementation — committed foundations plus preserved main-checkout SMTP and unrelated work
 > **Last Updated:** 2026-07-19 Europe/Brussels
-> **Implementation progress:** 31/51 tasks complete; phase verification remains tracked separately
-> **Current task:** 3.6b — add fanout processor settings, backpressure, telemetry, and health
+> **Implementation progress:** 45/51 tasks complete; phase verification remains tracked separately
+> **Current task:** 6.1 — add heavy-moderation required channel materialization; Task 5.9 runtime proof remains deferred
 > **Execution location:** main repository checkout only; do not create linked worktrees or a `.worktrees` directory for this workstream
-> **Repository baseline:** current `develop` HEAD `8daf573b`; email retention, the SMTP diagnostic boundary, and the earlier partial SMTP operations work are committed in `9bfaf1e0`. Tasks 1.6b–1.6e, their migrations, the strict controller architecture guard, and these workstream docs remain preserved main-checkout changes alongside unrelated ATProto/auth/location-privacy work.
+> **Repository baseline:** current `develop` HEAD `9fe1e26e`; email retention, the SMTP diagnostic boundary, and the earlier partial SMTP operations work are committed in `9bfaf1e0`. Later email/fanout changes and their migrations remain preserved in the main checkout alongside unrelated ATProto/auth/location-privacy work.
 
 ## 1. Outcome
 
@@ -398,7 +398,7 @@ dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTe
 
 ### Phase 3 — Generic fanout engine (Tasks 3.1–3.6b)
 
-Tasks 3.1–3.6a are implemented: immutable occurrence persistence/pointers, deterministic audience paging with `CoverageEstablishedAt`, fenced lease/checkpoint recovery, idempotent general-outbox-to-pending-run handoff, typed occurrence-recipient materialization, crash-safe page processing, occurrence precedence/coalescing, provider-handoff suppression, and cross-replica fair claims are complete. The remaining work is one bounded processor/operations slice:
+Tasks 3.1–3.6b are implemented: immutable occurrence persistence/pointers, deterministic audience paging with `CoverageEstablishedAt`, fenced lease/checkpoint recovery, idempotent general-outbox-to-pending-run handoff, typed occurrence-recipient materialization, crash-safe page processing, occurrence precedence/coalescing, provider-handoff suppression, cross-replica fair claims, and bounded processor operations are complete:
 
 - **3.4a — Completed: route pointers and ensure runs** (`M`, depends on 1.6e): strict v1 pointer/envelope validation, authoritative tenant/occurrence reload, per-occurrence locked idempotent pending-run creation, independent pre-generated retry identifiers, and immediate general-outbox completion are implemented and independently confirmed. The handoff never claims or retains recipient-work state.
 - **3.4b — Completed: build typed recipient materialization** (`L`, depends on 3.4a): the closed four-key v1 factory, current verified-address/preference resolution, occurrence-linked atomic graph, exact dual-constraint recovery, and value-free recipient-bound location mask are implemented and independently confirmed. Only immutable occurrence values reach copy; unsupported key/version/policy/scope/change/JSON input fails closed.
@@ -406,7 +406,7 @@ Tasks 3.1–3.6a are implemented: immutable occurrence persistence/pointers, det
 - **3.5a — Completed: coordinate precedence, coalescing, and occurrence supersession** (`L`, depends on 3.4c): the Application coordinator acquires tenant-wide source identity before tenant/event precedence, verifies session/event authority, normalizes PostgreSQL timestamp precision, applies conditional supersession in the caller UoW, and emits one stable pointer only for a new winner. Exact replay follows only valid event/scope/priority/order chains; cancellation/heavy work is immediate and important updates preserve earliest-before/latest-after/latest-cutoff data across a sliding five-minute window.
 - **3.5b — Completed: suppress already-materialized work at the handoff fence** (`M`, depends on 3.5a): a shared event advisory lock now orders supersession against final SMTP eligibility; exact tenant/occurrence-linked SQL supersedes only active email delivery and skips only unsent or unfenced SMTP work, while the evaluator reloads authoritative occurrence state before provider-handoff evidence and preserves immutable terminal/fenced evidence.
 - **3.6a — Completed: add fair runnable selection and cross-instance tenant claim limits** (`L`, depends on 3.5b): one bounded PostgreSQL round ranks existing due runs one per tenant by priority/time/UUID; exact claims require the tenant ceiling, share tenant/event/occurrence locks with supersession, preserve expired cursors, and use one reversible partial global due index.
-- **3.6b — Add processor settings, optional-work backpressure, metrics, and health** (`M`, depends on 3.6a): run each claimed occurrence in a fresh scope, bound global/per-tenant work, stop optional reminders above the threshold without blocking required work, and expose backlog/oldest-age/processed/remaining/lease-contention signals without PII.
+- **3.6b — Completed: add processor settings, optional-work backpressure, metrics, and health** (`M`, depends on 3.6a): each claim runs in a fresh scope; PostgreSQL enforces global/per-tenant ceilings and a persisted high/low-watermark state under one producer/claim global lock; optional reminder work stays durable but deferred while core backlog is high; aggregate health/metrics expose backlog, age, progress, contention, supersession, and backpressure without PII.
 
 Phase-end verification (run once after 3.4a–3.6b):
 
@@ -417,7 +417,7 @@ dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTe
 
 ### Phase 4 — Event and session triggers (Tasks 4.1–4.5)
 
-Wire whole-event cancellation first, then session cancellation, material session updates, and timezone reprojection. Each mutation persists immutable before/after values and one occurrence pointer in its transaction; cache invalidation remains post-commit.
+Whole-event cancellation, published-session cancellation, material published-session time/location/room updates, explicit published rescheduling, and event-timezone reprojection are implemented with retry-stable occurrence/pointer identities, immutable snapshots, correct event/session precedence, deterministic five-minute coalescing/replay, recipient-bound disclosure, and post-commit cache invalidation. Phase 4 implementation is complete; its runtime gate remains open under the user's no-tests instruction. Next split reporter consent before any reporting email is enabled.
 
 Phase-end verification (run once after Tasks 4.1–4.5):
 
@@ -428,7 +428,7 @@ dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTe
 
 ### Phase 5 — Reporting email and provider convergence (Tasks 5.1–5.9)
 
-Implement split consent, submission UI, withdrawal HAL affordance, receipt, final outcome, follow-up contact, and source-convergence evidence. Coop is enabled only if the Phase 0 prerequisite is live; otherwise local API remains functional and Coop email stays disabled. Osprey remains signal-only.
+Split consent, explicit reporter contracts, accessible default-unchecked submission choices, the provider/owner/tenant-authorized withdrawal endpoint, and HAL-gated authoritative My Reports controls are implemented. Next queue the consented report receipt, then final outcome, follow-up contact, and source-convergence evidence. Coop is enabled only if the Phase 0 prerequisite is live; otherwise local API remains functional and Coop email stays disabled. Osprey remains signal-only.
 
 `EventReportDecision` remains the sole business-decision authority. A one-to-one `EventReportDecisionExecution` keyed by `DecisionId` stores only operational effect state: `Requested`, `InProgress`, an idempotent enforcement receipt, `CompletionPending`, and `Completed`. Reporter outcome channels materialize only in the completion transaction after successful enforcement. Escalation is nonterminal; stale/out-of-order Coop work cannot reopen a completed decision, and a crash between enforcement and completion resumes without repeating enforcement or email.
 
@@ -543,4 +543,4 @@ Implementation slice summaries must state: implemented architecture and control 
 
 ## 18. Potential Risks and Unknowns
 
-The highest-risk near-term area is now processor orchestration and backpressure. Task 3.6b must run every durable claim in a fresh scope, bind settings to the already-authoritative repository ceiling, keep optional reminders from increasing a high-water backlog while required work continues, and expose bounded backlog/age/progress/contention/supersession signals without tenant or recipient PII. Task 3.6a now provides independently confirmed one-per-tenant ranking, cross-replica active-claim ceilings, supersession-safe lock ordering, and expired-cursor recovery. The compiled PostgreSQL email/fanout scenarios and explicit Mailpit lane remain runtime-unproven because tests were stopped and the separately recorded shared-fixture migration failure has not been revalidated.
+The highest-risk implementation area is now heavy-moderation attendee notification. Task 6.1 must reuse the immutable event-wide occurrence/fanout engine and `ModerationAvailabilityRequired` policy so successful irreversible heavy enforcement creates exactly one immediate occurrence and required in-app/email channel decisions per eligible attendee, with current verified-address skips and idempotent replay. Task 5.9 production routing/source coverage is complete but its integration proof remains unchecked because tests are explicitly prohibited; that evidence gap does not authorize weakening the provider or notification invariants.

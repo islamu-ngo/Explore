@@ -7,10 +7,10 @@ Last Updated: 2026-07-19 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** All planned implementation tasks and documentation reconciliation are complete. Canonical verification has been executed; focused ATProto gates are green and the remaining broad failures are unrelated shared-tree blockers.
+- **Overall status:** All 27 planned implementation tasks are complete. Todo 15 documentation reconciliation is in final QA; focused ATProto gates are green, broad gates remain blocked or indeterminate, and no release-readiness claim is made.
 - **Completed:** 27/27 implementation tasks; phase verification tracked separately.
-- **Current priority:** Handoff the completed ATProto work with an exact verification matrix and preserve unrelated concurrent work.
-- **Next recommended slice:** Re-run only the open broad gates after the notification, email-metrics, and architecture baseline owners repair their failures.
+- **Current priority:** Finish Todo 15 documentation evidence and preserve unrelated concurrent work.
+- **Next recommended slice:** Run Todo 16's canonical matrix after Todo 15 closes and the shared notification, cache-fixture, email-metrics, persistence-fixture, and architecture blockers are repaired.
 - **OAuth scope:** Phases 1-6.
 - **Federation scope:** Executable Phases 7-12; ADR-015 is Task 9.1.
 
@@ -18,9 +18,11 @@ Last Updated: 2026-07-19 Europe/Brussels
 
 The Release build and all nine per-project commands from `docs/TESTING.md` were attempted individually. ATProto-focused Application, Infrastructure, API, BFF, persistence, architecture, and component suites remain green.
 
+This is the last complete per-project matrix, not an all-green or release-readiness claim. A fresh Todo 15 Release build on the current shared tree also exited 1 with five direct unrelated test-source errors: one missing `TryClaimOccurrenceAsync` cancellation argument, two ambiguous `HybridCache.RemoveAsync` calls, and the two required-member fixture errors listed below. Fourteen downstream `CS0006` errors were compilation fallout; Todo 16 must rerun the full matrix after those owners repair the tree.
+
 | Gate | Result | Evidence / classification |
 |---|---|---|
-| Release solution build | Blocked | Exit 1 solely from two `CS9035` errors at `NotificationFanoutOccurrenceRepositoryTests.cs:789`: unrelated `Event.Tenant` and `Event.VisibilityType` fixture members are missing. The affected ATProto production projects build successfully. |
+| Release solution build | Blocked | At the frozen canonical snapshot, exit 1 came from two `CS9035` errors at `NotificationFanoutOccurrenceRepositoryTests.cs:789`: unrelated `Event.Tenant` and `Event.VisibilityType` fixture members were missing. The fresh Todo 15 build found the three additional direct test-source errors summarized above; affected ATProto production projects remain source-unrelated. |
 | Event.Domain.UnitTests | Passed | Exact project command exited 0. |
 | Event.Application.UnitTests | Blocked | 2,734 passed, 2 failed, 2 skipped. Both failures are unrelated notification/email metrics tests: `NotificationFanoutPageProcessorTests.ReplayAfterPartialPageConvergesAndAdvancesOnce` and `BusinessMetricsEmailDispatchTests.RecordEmailDispatchOperationalSignalsUsesOnlyBoundedSafeTags`. |
 | Event.Architecture.Tests | Blocked | 255 passed, 2 failed, 1 skipped. Every ATProto-owned violation was removed; the remaining failures are `EmailDispatchProcessorControlLinkPolicy` and the pre-existing `CustomPropertyExposureScope` naming violation. |

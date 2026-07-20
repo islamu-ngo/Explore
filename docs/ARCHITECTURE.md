@@ -120,6 +120,18 @@ Not fully implemented today:
 - Complete ActivityPub gateway endpoint surface.
 - First-party ATProto PDS/AppView hosting and ActivityPub interoperability expected by third-party federated servers.
 
+## AT Protocol Ownership
+
+1. `Explore.Blazor` owns CarpaNet confidential-client OAuth, protected single-use state, canonical callback/handoff, and the server cookie. PDS credentials and private key material never enter the browser.
+2. `Explore.API` owns the server-private bootstrap/session trust boundary, first-party JWT validation, ATProto HTTP/HAL contracts, and hosted-worker registration.
+3. `Explore.Application` owns effective capability and self-consent resolution, exhaustive public event/RSVP snapshots, deterministic untruncated description rendering, durable publication planning, and the fenced delivery processor. Request handlers create database intent only and perform no PDS I/O.
+4. `Explore.Persistence` owns encrypted-session metadata persistence, immutable `PdsSyncOutbox` intent, fenced lease/settlement state, and globally canonical Jetstream record, quarantine, presentation, and cursor state.
+5. `Explore.Infrastructure` owns the hardened CarpaNet OAuth/PDS adapters, encrypted session envelope protection, record mapping/validation, and the fixed-endpoint two-collection Jetstream client.
+6. The API-hosted `PdsSyncWorker` drains committed outbound intent; the API-hosted Infrastructure `AtprotoJetstreamSubscriber` holds one global fenced lease for canonical inbound materialization.
+7. `Explore.Blazor.Client` consumes generated safe DTOs. HAL link presence gates Edit/Delete, federated source/RSVP/retry/sync, and instance-governance actions. Generic tenant-setting controls instead use server-derived `EffectiveSettingDto.CanEdit` and `Reason` metadata for writability and explanation. Neither mechanism inspects local roles or claims, and resource actions are never inferred from source type.
+
+Outbound delivery remains database-first: capability, self-consent, linked session, source version, and `EventLocationDisclosurePurpose.Public` are rechecked immediately before remote I/O. Remote failure changes only delivery state; it never rolls back or deletes the committed local event.
+
 ## Outbox Pattern
 
 The system uses a transactional outbox for reliable asynchronous event delivery:
@@ -143,9 +155,11 @@ Specialized outbox variants exist for specific subsystems:
 - `EmailDispatchOutbox` — Basic Dispatch Mode email delivery state for registration confirmation and future lifecycle email workflows. PostgreSQL owns delivery state; TickerQ schedules drain execution; SMTP/RabbitMQ are transports only.
 - `IntegrationSyncOutbox` — durable external integration sync intent for Listmonk and future providers. Handlers enqueue provider/resource payload snapshots; background drains own external I/O and retry/dead-letter state.
 
-### Approved lifecycle-email target (planned, not implemented)
+### Lifecycle email delivery architecture
 
-The approved workstream at `dev/active/email-responsibility-architecture/` separates one recipient occurrence into `NotificationIntent` (business meaning), `NotificationDelivery` (channel authorization/outcome), and `EmailDispatchOutbox` (SMTP execution). PostgreSQL remains the only SMTP ledger; TickerQ and RabbitMQ carry pointers only. Application-owned transactions atomically persist all recipient channel rows, while fanout mutations persist one immutable occurrence and a PII-free pointer for a resumable worker.
+The workstream at `dev/active/email-responsibility-architecture/` separates one recipient occurrence into `NotificationIntent` (business meaning), `NotificationDelivery` (channel authorization/outcome), and `EmailDispatchOutbox` (SMTP execution). PostgreSQL remains the only SMTP ledger; TickerQ and RabbitMQ carry pointers only. Application-owned transactions atomically persist all recipient channel rows, while fanout mutations persist one immutable occurrence and a PII-free pointer for a resumable worker.
+
+Report-decision execution adds a separate decision-owned durability seam. Each local or Coop `EventReportDecision` owns one `EventReportDecisionExecution`; conditional PostgreSQL updates fence enforcement and completion leases. Light/heavy actions must resolve the exact source-bound `EventModerationRecord` before the execution enters `CompletionPending`. Case/report mutation, organizer warnings, reporter outcome intent/deliveries, and execution completion then commit in one serializable transaction. This prevents a response-loss retry from repeating moderation or sending an outcome before truthful enforcement.
 
 The target schema uses tenant-aware composite keys and explicit recipient authority. Dispatch revalidates current eligibility and may narrow the immutable policy/consent/preference/disclosure snapshot, never broaden it. `ProviderHandoff` is the suppression fence; uncertainty after that fence settles as `Unknown` and is never blindly retried. Phase 0B's specialized `IncomingWebhookEffectOutbox` Coop repair is independent of the recipient schema lane and blocks only provider convergence.
 

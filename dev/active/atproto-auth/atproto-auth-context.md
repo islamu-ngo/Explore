@@ -36,16 +36,18 @@ Last Updated: 2026-07-19 Europe/Brussels
 
 ### IN PROGRESS
 
-- No ATProto implementation or documentation work remains. Only unrelated shared-tree broad-gate failures remain open.
+- Todo 15 cross-document QA and evidence consolidation. No ATProto product-code task remains.
 
 ### NEXT
 
-1. Re-run the open Release/Application/Architecture/Persistence/API broad gates after their unrelated owners repair the shared-tree failures.
-2. Keep ATProto focused verification green and do not absorb unrelated notification/email/location work into this workstream.
+1. Finish Todo 15 evidence and contradiction/link/secret scans.
+2. Run Todo 16's open Release/Application/Architecture/Persistence/API broad gates after their unrelated owners repair the shared-tree failures.
+3. Keep ATProto focused verification green and do not absorb unrelated notification/email/location work into this workstream.
 
 ### BLOCKERS
 
 - **Shared-tree Release/persistence compile limitation:** unrelated notification work currently leaves required `Event.Tenant` and `Event.VisibilityType` members unset at `NotificationFanoutOccurrenceRepositoryTests.cs:789`; the ATProto production projects themselves build successfully.
+- **Fresh Release compile limitation:** the Todo 15 source-freshness build additionally found one missing `TryClaimOccurrenceAsync` cancellation argument and two ambiguous `HybridCache.RemoveAsync` test calls; the remaining fourteen `CS0006` errors are downstream fallout from the five direct test-source errors.
 - **Shared-tree Application limitation:** the canonical Application suite has 2,734 passes, two unrelated notification/email-metrics failures, and two skips.
 - **Shared-tree architecture limitation:** every ATProto-owned violation is fixed; only unrelated `EmailDispatchProcessorControlLinkPolicy` and pre-existing `CustomPropertyExposureScope` violations remain (255 passed, 2 failed, 1 skipped).
 - **Broad API evidence limitation:** the full API command was terminated at the tool/process boundary without a test verdict; all focused ATProto API suites are green.
@@ -69,19 +71,21 @@ Last Updated: 2026-07-19 Europe/Brussels
 
 | Field | Value |
 |---|---|
-| Overall status | 27/27 implementation tasks and documentation reconciliation complete; canonical verification executed and remaining failures classified as unrelated |
+| Overall status | 27/27 implementation tasks complete; Todo 15 documentation reconciliation is in final QA; broad verification is not all green |
 | Completed implementation tasks | 27/27; final API/discovery slice independently confirmed |
-| Current priority | Completed-work handoff and preservation of unrelated concurrent changes |
-| Next executable slice | Re-run only the open broad gates after their unrelated blockers are repaired |
-| OAuth release | Fully planned in Phases 1-6 |
-| Federation release | Fully planned in Phases 7-12; ADR-015 is the first persistence task, not an external blocker |
+| Current priority | Finish Todo 15 documentation evidence while preserving unrelated concurrent changes |
+| Next executable slice | Todo 16 canonical verification after Todo 15 closes and unrelated blockers are repaired |
+| OAuth implementation | Complete in Phases 1-6; live-provider release evidence remains outside automated gates |
+| Federation implementation | Complete in Phases 7-12; ADR-015 is implemented and is not an external blocker |
 | Baseline build | Fresh green baseline at HEAD aefa7797 on 2026-07-18; 25 projects, 0 errors, 0 warnings |
 
 ## Final Canonical Verification Matrix
 
+This is the last complete per-project matrix recorded by the ATProto workstream. It is not an all-green or release-readiness claim. A fresh Todo 15 Release build on the current shared tree also exited 1 with five direct unrelated test-source compile errors: one missing `TryClaimOccurrenceAsync` cancellation argument, two ambiguous `HybridCache.RemoveAsync` calls, and the two required-member fixture errors below; fourteen downstream `CS0006` errors were compilation fallout.
+
 | Command | Result |
 |---|---|
-| `dotnet build --configuration Release --verbosity quiet` | Blocked only by two unrelated `CS9035` errors in `NotificationFanoutOccurrenceRepositoryTests.cs:789`. |
+| `dotnet build --configuration Release --verbosity quiet` | At the frozen canonical snapshot, blocked by two unrelated `CS9035` errors in `NotificationFanoutOccurrenceRepositoryTests.cs:789`; the fresh Todo 15 build found the additional current errors summarized above. |
 | Event.Domain.UnitTests | Passed. |
 | Event.Application.UnitTests | 2,734 passed, 2 unrelated failures, 2 skipped. |
 | Event.Architecture.Tests | 255 passed, 2 unrelated failures, 1 skipped; all ATProto-owned failures are green. |

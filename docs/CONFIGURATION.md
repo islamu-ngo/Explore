@@ -214,8 +214,18 @@ AT Protocol login is enabled by the instance governance setting `auth.atproto_lo
 | `Atproto:StateLifetimeSeconds` | `300` | One-time protected OAuth state lifetime; runtime clamps it to 30–600 seconds. |
 | `Atproto:HandoffLifetimeSeconds` | `60` | One-time cross-tenant-host handoff lifetime; runtime clamps it to 30–300 seconds. |
 | `Atproto:TenantOrigins` | empty | Bounded canonical tenant origins with their tenant ID and slug. Each origin must pass the same HTTPS/loopback policy as the public URL. |
+| `Atproto:ClientName` | empty | Optional display name in client metadata. |
+| `Atproto:ClientUri` | empty | Optional canonical HTTPS client homepage in client metadata. Invalid values are omitted. |
+| `Atproto:LogoUri` | empty | Optional canonical HTTPS logo URL in client metadata. Invalid values are omitted. |
+| `Atproto:PolicyUri` | empty | Optional canonical HTTPS privacy-policy URL in client metadata. Invalid values are omitted. |
+| `Atproto:TermsOfServiceUri` | empty | Optional canonical HTTPS terms URL in client metadata. Invalid values are omitted. |
+| `Atproto:Jwt:SessionLifetime` | `00:15:00` | First-party API session JWT lifetime. API startup validation requires one through sixty minutes. |
+| `RateLimiting:AtprotoAuthentication:PermitLimit` | `10` | Per-IP fixed-window limit shared by the ATProto challenge and callback endpoints; runtime clamps it to 1–1000. |
+| `RateLimiting:AtprotoAuthentication:WindowSeconds` | `60` | ATProto authentication rate-limit window; runtime clamps it to 1–3600 seconds. |
 
-`ATPROTO_OAUTH_CLIENT_PRIVATE_JWKS` maps to `Atproto:OAuthClientPrivateJwks` in the BFF and must come from server-side secret configuration. Durable session encryption and first-party API session signing use the separate secrets documented in [SECRETS.md](SECRETS.md#atproto-oauth-session-envelopes). Readiness exposes only `enabled` and a bounded failure code; readiness logs, metrics, health JSON, and support output must not contain handles, DIDs, endpoint queries, tokens, JWK values, or provider response bodies.
+The governance value `auth.atproto_public_url` records the administrator-facing provider URL, but it does not replace the static runtime authority `Atproto:PublicUrl`; keep them consistent. `ATPROTO_OAUTH_CLIENT_PRIVATE_JWKS` maps to `Atproto:OAuthClientPrivateJwks` in the BFF and must come from server-side secret configuration. Durable session encryption and first-party API session signing use `ATPROTO_SESSION_ENCRYPTION_KEYRING` and `ATPROTO_SESSION_JWT_PRIVATE_JWKS`, documented in [SECRETS.md](SECRETS.md#atproto-oauth-session-envelopes).
+
+The `atproto-authentication` readiness check is deliberately local and passive. When enabled, it validates the public URL/callback, the BFF OAuth signing ring, and that the OAuth state/session adapter services are registered; it does not test Redis connectivity, parse the Infrastructure encryption ring or API session-JWT ring, contact a PDS, or perform OAuth discovery. Those dependencies fail through their own health checks or at the bounded operation that uses them. Readiness exposes only `enabled` and a bounded failure code; logs, metrics, health JSON, and support output must not contain handles, DIDs, endpoint queries, tokens, JWK values, or provider response bodies.
 
 ### AT Protocol Events Governance And Workers
 
@@ -236,9 +246,11 @@ ATProto login and ATProto Events are independent. The effective administrator ca
 | `Atproto:PdsSync:LeaseDurationSeconds` | `90` | 30–900 seconds. Expired processing claims are reclaimable. |
 | `Atproto:Jetstream:Endpoint` | `https://jetstream1.us-east.bsky.network` | Fixed HTTPS origin without credentials, path, query, or fragment. |
 | `Atproto:Jetstream:MaxMessageSizeBytes` | `2113536` | Bounded near the verified community-record maximum; startup validation accepts 2,097,152–2,162,688 bytes. |
-| `Atproto:Jetstream:LeaseDurationSeconds` / `LeaseRenewalSeconds` | `60` / `20` | One shared canonical consumer lease; renewal must remain shorter than the lease. |
+| `Atproto:Jetstream:LeaseDurationSeconds` | `60` | One shared canonical consumer lease; startup validation accepts 15–300 seconds. |
+| `Atproto:Jetstream:LeaseRenewalSeconds` | `20` | Renews the shared lease every 5–120 seconds and must remain shorter than `LeaseDurationSeconds`. |
 | `Atproto:Jetstream:CapabilityPollMilliseconds` | `5000` | Polls for an effective enabled scope without opening per-tenant sockets. |
-| `Atproto:Jetstream:RetryMinimumMilliseconds` / `RetryMaximumMilliseconds` | `1000` / `30000` | Bounded reconnect backoff. |
+| `Atproto:Jetstream:RetryMinimumMilliseconds` | `1000` | Reconnect backoff floor; startup validation accepts 10–60,000 milliseconds. |
+| `Atproto:Jetstream:RetryMaximumMilliseconds` | `30000` | Reconnect backoff ceiling; it must be at least `RetryMinimumMilliseconds` and no more than 300,000 milliseconds. |
 | `Atproto:Jetstream:AllowedDids` | empty | Curated unique DID allowlist, maximum 10,000. Empty is a valid dormant host configuration but readiness fails closed if capability is enabled with no admitted DIDs. |
 
 The PDS worker calls CarpaNet only for committed outbox rows. Event creation/update request transactions never call a PDS. Projection coverage, privacy, unsafe values, or encoded-size overflow prevent PDS enqueue; the implementation never truncates or silently omits public snapshot values to force a record through.
@@ -442,14 +454,14 @@ Local report-intake keys are application-layer submission controls:
 | `Reporting:ReporterTextRetentionDays` | `180` | Retention horizon stamped on reporter-text evidence. Values below `1` are normalized to `1`. |
 | `Reporting:MaxReporterTextLength` | `4000` | Maximum reporter text length accepted by the command validator. Values below `1` are normalized to `1`. |
 | `Reporting:DefaultQueueCode` | `default` | Local report-case queue assigned at intake. Blank values normalize to `default`. |
-| `Reporting:CaseSlaHours` | `48` | Initial SLA due timestamp offset for the local report case. Values below `1` are normalized to `1`. |
+| `Reporting:CaseSlaHours` | `48` | Sole report-response SLA input and local case due-at offset. Inclusive range `1..720`; invalid startup configuration fails validation. |
 | `Reporting:ReporterFingerprintPepper` | empty | Optional deployment secret used by the API to HMAC tenant-scoped reporter IP and User-Agent fingerprints before they reach the Application layer. Set this in production/self-hosted deployments. |
 
 Reporter text is protected through ASP.NET Core Data Protection before persistence and stored only in `EventReportEvidence.TextBodyEncrypted`. The outbox payload intentionally excludes reporter text, reporter IP hash, and user-agent hash. Reporting metrics use bounded outcome/failure tags and must not include reporter content, event titles, slugs, URLs, provider payloads, or raw errors.
 
-### Approved lifecycle-email settings (planned)
+### Lifecycle-email settings
 
-`Reporting:CaseSlaHours` remains the sole report-response SLA input; no minimum/maximum business-day settings are permitted. Receipt materialization snapshots the resolved value and template so later configuration cannot rewrite queued copy. The sole reminder lead setting will be `EmailDispatch:EventReminderLeadTimeHours`, default `24`, inclusive range `1..168`; invalid configuration fails validation. A future session whose due-at is already past becomes due immediately after commit, while a started session creates no reminder.
+`Reporting:CaseSlaHours` remains the sole report-response SLA input; no minimum/maximum business-day settings are permitted. Report submission snapshots the resolved `1..720` hour value, template version, and rendered receipt copy in the same transaction as the report and delivery graph, so later configuration cannot rewrite queued copy. The sole reminder lead setting will be `EmailDispatch:EventReminderLeadTimeHours`, default `24`, inclusive range `1..168`; invalid configuration fails validation. A future session whose due-at is already past becomes due immediately after commit, while a started session creates no reminder.
 
 Retention, SMTP/fanout global and per-tenant concurrency, fair scheduling, token-bucket rate limits, high/low backlog watermarks, and persisted pause controls will be added under their owning options groups in Tasks 1.5, 1.6, and 3.6. Those tasks must document exact keys/defaults with validators when runtime bindings exist; this approved policy does not invent duplicate settings in advance.
 
@@ -566,6 +578,32 @@ Rate deferral is not an SMTP attempt. It releases the processing lease as `Retry
 SMTP settings still come from the `email.*` governance/secret keys resolved by `SmtpConfigResolver`; the dispatch processor does not introduce new SMTP credential keys. Local development defaults are seeded from `MAIL_SMTP_*`, then `SMTP_*` aliases, then local Mailpit values when the instance SMTP host is empty. In Aspire `FullLocal` mode, Development seeding refreshes those SMTP rows on each run so persistent local database volumes follow the current `--isolated` Mailpit SMTP port. RabbitMQ Dispatch Mode is not part of Basic mode.
 
 The `email-dispatch` readiness payload reports active non-paused `dueDispatchCount`, `retryScheduledCount`, `staleProcessingCount`, `unknownCount`, `parkedCount`, `deadLetteredCount`, `oldestActivePendingAgeSeconds`, persisted `optionalReminderDeferralActive`, and sanitized `globalPaused`/`globalSmtpRateLimitOverrideActive` booleans. A deliberate global pause degrades readiness while backlog counts stay visible. Future retries remain informational until due, and `Parked` remains visible without degrading readiness. Public health serialization redacts tenant/user/provider identifiers, addresses, subjects, bodies, event titles, reasons, actors, and evidence.
+
+### Notification Fanout Processor Configuration
+
+Recipient-level notification fanout uses PostgreSQL occurrences and run leases as its only work authority. Static settings bind from `NotificationFanoutProcessor` and fail startup validation when concurrency, paging, lease, backpressure, or readiness limits are unsafe:
+
+| Key | Default | Description |
+|---|---:|---|
+| `Enabled` | `true` | Enables API-hosted recipient fanout processing. Disabled mode degrades `notification-fanout` readiness. |
+| `PollingIntervalSeconds` | `5` | Delay between completed claim rounds. Valid range `1..300`. |
+| `PageSize` | `250` | Maximum deterministic attendee records read before each durable cursor checkpoint. Valid range `1..1000`. |
+| `MaxClaimsPerRound` | `8` | Local claim/execution bound per poll. Must be between `1` and `MaxActiveClaims`, up to `256`. |
+| `MaxActiveClaims` | `8` | PostgreSQL-enforced active claim ceiling shared by every replica. Valid range `1..256`. |
+| `MaxActiveClaimsPerTenant` | `2` | PostgreSQL-enforced active claim ceiling for one tenant. Must not exceed `MaxActiveClaims`. |
+| `ClaimLeaseSeconds` | `120` | Lease horizon renewed by the page processor before audience work. Valid range `30..3600`. |
+| `OptionalReminderBacklogHighWatermark` | `1000` | Active non-reminder occurrence backlog that durably enables reminder deferral. Valid range `1..1000000`. |
+| `OptionalReminderBacklogLowWatermark` | `500` | Backlog at or below which deferred reminders resume. Must be lower than the high watermark. |
+| `HealthDueOccurrenceWarningThreshold` | `1000` | Degrades readiness when runnable due occurrences reach this count. Valid range `1..1000000`. |
+| `HealthExpiredClaimWarningThreshold` | `1` | Degrades readiness when expired processing leases reach this count. Valid range `1..10000`. |
+| `HealthOldestDueWarningSeconds` | `900` | Degrades readiness when the oldest due occurrence business age reaches this value. Valid range `1..604800`. |
+| `ConsumerId` | machine name | Bounded lease owner identity. Required and limited to 200 characters; it is not exposed in metrics or health payloads. |
+
+Global claim admission is serialized with a PostgreSQL advisory lock, then tenant, event-precedence, and occurrence locks are acquired in that order. Exact post-lock counts enforce both active ceilings across replicas; `MaxClaimsPerRound` is only a local optimization. One fair round chooses at most one occurrence per tenant by priority descending, occurrence time, and occurrence ID.
+
+The singleton `notification_fanout_processor_states` row persists optional-reminder hysteresis across hosts and restarts. Backlog pressure counts due and processing non-reminder occurrences. While deferred, reminder occurrences and their run rows remain durable but are excluded from claim selection; required and other core work continues. No occurrence is superseded or deleted by backpressure.
+
+The `notification-fanout` readiness payload exposes enabled state, aggregate due/core/reminder/active/expired/remaining occurrence counts, the current processed-recipient count for unfinished runs, lifetime superseded occurrence count, oldest due age, and the durable reminder-deferral boolean. It never exposes consumer, tenant, event, session, run, occurrence, recipient, template payload, or address data.
 
 Email content retention binds from `EmailDispatchRetention` and is validated at startup:
 

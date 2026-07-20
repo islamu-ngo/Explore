@@ -40,7 +40,7 @@ Three instance-scoped, rotation-capable secret purposes are mandatory:
 - `auth.atproto.session_encryption_keyring` encrypts persisted CarpaNet OAuth-session envelopes.
 - `auth.atproto.session_jwt_private_jwks` signs first-party API session JWTs.
 
-Keys are never reused across these purposes. ES256 signing rings have unique nonblank `kid` values and exactly one active key. Retired public OAuth client keys remain in `/oauth/jwks.json` for the overlap window required by in-flight assertions and bound sessions. Private `d` values remain server-only and are excluded from public JSON, logs, health output, exceptions, traces, and diagnostics. Malformed rings, unknown fields/statuses, duplicate key IDs, or an invalid active-key count fail readiness closed.
+Keys are never reused across these purposes. ES256 signing rings have unique nonblank `kid` values and exactly one active key. Retired public OAuth client keys remain in `/oauth/jwks.json` for the overlap window required by in-flight assertions and bound sessions. Private `d` values remain server-only and are excluded from public JSON, logs, health output, exceptions, traces, and diagnostics. A malformed OAuth-client ring fails BFF readiness closed; malformed session-encryption or session-JWT rings fail closed when their Infrastructure or API consumer uses them.
 
 The BFF's URL-form client ID is its exact canonical HTTPS `/oauth/client-metadata.json` URL. The anonymous metadata and JWKS endpoints serve exact JSON without redirects only on that configured host, use bounded public caching and document size, advertise `private_key_jwt` with ES256 and DPoP-bound access tokens, and publish only EC P-256 public parameters. Loopback helpers may be used only in Development where CarpaNet explicitly supports them; they cannot weaken production canonical-host, HTTPS, key, or egress policy.
 
@@ -57,8 +57,8 @@ The BFF's URL-form client ID is its exact canonical HTTPS `/oauth/client-metadat
 
 - The browser receives only an HttpOnly BFF cookie; the API receives only a short-lived first-party bearer token after PDS verification.
 - BFF, API, and Infrastructure need separate adapters and key consumers while Domain remains unaware of CarpaNet types.
-- Key rotation requires overlap publication, `kid`-based verification/decryption, multi-node consistency, and operator readiness checks.
-- CarpaNet outbound traffic must pass the separately implemented constrained transport/readiness gate before ATProto login is advertised.
+- Key rotation requires overlap publication, `kid`-based verification/decryption, multi-node consistency, and consumer-specific verification before retired-key removal.
+- CarpaNet outbound traffic passes the constrained transport boundary when an OAuth or PDS operation runs. The advertised BFF readiness signal is a passive local check and does not probe Redis, DNS, a PDS, authorization-server discovery, or the Infrastructure/API key rings.
 - Existing development sessions may be invalidated; backward-compatible plaintext or FishyFlip paths are intentionally not retained.
 
 ## Related

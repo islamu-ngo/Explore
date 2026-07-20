@@ -1,5 +1,5 @@
-<!-- ABOUTME: Architectural exploration and implementation strategy for the Osprey machine-moderation integration. -->
-<!-- ABOUTME: Outlines multi-tenant isolation challenges and the hybrid local + payload-driven policy design. -->
+<!-- ABOUTME: Architecture and authority boundaries for the Osprey machine-moderation integration. -->
+<!-- ABOUTME: Documents multi-tenant isolation, signal-only callbacks, and local decision convergence. -->
 
 # Osprey Machine-Moderation Integration
 
@@ -91,7 +91,7 @@ To bypass these limitations while preserving the platform promise of low operati
 
 ## 4. Native Policy Management UI
 
-The platform provides a premium, native policy editing interface developed with **MudBlazor v9** for both Instance and Tenant Admins.
+This section describes the product direction for a native policy-management experience. It is not the authority path for provider callbacks or report decisions.
 
 ### The Policy Designer Dashboard
 * **The Canvas:** Visual list of active moderation rules in a drag-and-drop workspace to reorder priority.
@@ -101,9 +101,30 @@ The platform provides a premium, native policy editing interface developed with 
 
 ---
 
-## 5. Implementation Reference
+## 5. Callback Authority and Decision Convergence
 
-* **Osprey Signal Provider:** [OspreyModerationSignalProvider.cs](file:///home/amir/ISLAMU/Github/Event/Explore.Infrastructure/Services/Moderation/OspreyModerationSignalProvider.cs)
-* **API Simulation Endpoint:** `POST /api/tenant/moderation/policies/simulate`
-* **Domain Model Rule:** `Explore.Domain/Entities/ModerationRule.cs`
-* **Blazor Editor Component:** `Explore.Blazor/Pages/Admin/ModerationPolicies.razor`
+Osprey is signal-only. `POST /api/integrations/moderation/osprey/callback` authorizes the provider request and sends `RecordOspreySignalCallbackCommand`. The handler may add idempotent `EventReportSignal` rows, synchronize the Osprey external link, and raise nonterminal report/case priority for human review. It does not create `EventReportDecision`, invoke `ExecuteReportDecisionCommand`, enforce an event action, complete a case, or materialize a reporter outcome email.
+
+Signal replay is deduplicated by provider target plus external signal identity, or by normalized signal and correlation identity when the provider omits an external signal ID. A signal can inform a human moderator, but it cannot replace `EventReportCase.CurrentDecisionId` or reopen a completed case.
+
+A later local moderator action remains an explicit two-step API flow:
+
+```text
+POST .../decision
+    -> DecideEventReportCommand (capture/select local decision)
+POST .../decision/execute
+    -> ExecuteReportDecisionCommand (enforce, receipt, complete, notify)
+```
+
+The second call is the canonical completion seam. Reporter outcome and needs-more-information notification intents are created there only after the exact decision enforcement receipt is valid. This keeps Osprey recommendations advisory while local and Coop decisions converge on one execution and notification owner.
+
+---
+
+## 6. Implementation Reference
+
+* **Osprey Signal Provider:** `src/Explore.Infrastructure/Services/Moderation/OspreyModerationSignalProvider.cs`
+* **Routing Policy Resolver:** `src/Explore.Infrastructure/Services/Moderation/ReportingRoutingPolicyResolver.cs`
+* **Callback API:** `src/Explore.API/Controllers/ModerationIntegrationController.cs`
+* **Signal Callback Handler:** `src/Explore.Application/Features/EventReporting/Handlers/Commands/RecordOspreySignalCallbackCommandHandler.cs`
+* **Local Decision Capture:** `src/Explore.Application/Features/EventReporting/Handlers/Commands/DecideEventReportCommandHandler.cs`
+* **Canonical Decision Executor:** `src/Explore.Application/Features/EventReporting/Handlers/Commands/ExecuteReportDecisionCommandHandler.cs`

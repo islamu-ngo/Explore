@@ -39,6 +39,8 @@ Roadmap protocol surface:
 - Full ActivityPub gateway/interoperability endpoints.
 - First-party ATProto PDS or AppView hosting.
 
+This implemented-surface inventory is not a release-readiness claim. The Bluesky, Eurosky, and self-hosted-PDS live-provider matrix remains release evidence outside the automated ATProto phase gates.
+
 ## Non-Inferable Product Notes
 1. Deployment mode (`SingleTenant` / `MultiTenant`) is runtime-governed, not compile-time.
 2. Instance and tenant governance settings can lock or delegate behavior.

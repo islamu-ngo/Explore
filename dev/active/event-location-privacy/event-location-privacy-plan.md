@@ -367,13 +367,11 @@ Global account deletion and tenant membership removal are different operations.
 
 Add a named privacy-erasure repository/query that explicitly bypasses the Tenant filter and is strictly bounded by `OwnerUserId`. It enumerates owned Private Home locations across all current and former tenants. Runtime code must not use unrestricted `IgnoreQueryFilters()`.
 
-The v1 protocol intentionally does not claim cross-database atomicity:
+The startup-selected OREA workflow does not claim cross-database atomicity:
 
-1. require the separately retained PostgreSQL erasure-authority database to be available;
-2. append an immutable PII-free erasure intent first, using a UUIDv7 intent ID as the idempotency key and receiving an authority-assigned monotonic sequence; payload fields are opaque owner/location IDs, reason code, and server UTC metadata only;
-3. retry ambiguous authority acknowledgements with the same intent ID so the same sequence is returned;
-4. in one application-database transaction, load/lock every OwnerUserId Home across tenants, erase/tombstone Location/PII/rooms/derived discovery data, mark EventLocations for review/versioning, complete User/Actor erasure, persist the local `(authority sequence, intent ID)` replay checkpoint, and insert PII-free correction outbox rows;
-5. report success only after that application transaction commits; cache eviction is best effort afterward.
+- `ApplicationDatabase` is the default and uses one application transaction for the PII-free local ledger, OwnerUserId-bounded erasure, checkpoint, and correction outbox. It does not contact a retained authority and has no backup-resurrection protection.
+- `RetainedAuthority` is explicit, requires `ConnectionStrings:LocationPrivacyAuthority`, appends the immutable PII-free UUIDv7 intent to the independent authority first, and then mirrors/applies it in the same application transaction. Ambiguous acknowledgement retries the same intent ID; authority failure never falls back.
+- Both modes report success only after the application transaction commits; cache eviction is best effort afterward.
 
 Rollback of the application transaction leaves PII, labels, state, user erasure, checkpoint, and outbox unchanged, while the already-appended authority intent remains pending. A crash after authority append is therefore safe: retry or startup replay applies the same intent idempotently. A crash after application commit finds both checkpoint and correction outbox durable. Authority unavailability fails deletion closed before application mutation.
 
@@ -396,14 +394,14 @@ Tenant-admin removal changes `TenantUser` / `TenantUserProfile` participation on
 Add `Event Location Privacy Erasure and Restore` to `docs/OPERATIONS.md`:
 
 - backup retention and the limit that historical backups may still contain erased PII;
-- immutable UUIDv7-idempotent PII-free intents with a monotonic sequence in a separately retained and backed-up PostgreSQL authority database outside the application restore set;
-- mandatory erasure replay after restoring an older backup and before serving application traffic;
+- a one-database `ApplicationDatabase` default whose transactional erasure ledger shares the application restore set and therefore cannot prevent backup resurrection;
+- optional `RetainedAuthority` with immutable UUIDv7-idempotent PII-free intents, an independently backed-up PostgreSQL database, and mandatory pre-traffic replay only while that mode is selected;
 - cache purge and search/index rebuild after replay;
 - external projection correction replay and dead-letter inspection;
 - evidence queries proving no resurrected PII or discovery point remains;
 - incident process when replay fails.
 
-There is no cross-database transaction. The authority append happens first; application tombstones, local replay checkpoint, user erasure, and correction outbox then share one application-database transaction. A fresh application database starts its checkpoint at sequence zero and replays every authority intent. Application logical or physical-cluster restore never overwrites the authority: restore/verify the independently retained authority database, then replay it over the application database. Startup blocks API, BFF proxying, MCP, outbox/workers, and readiness until authority availability, sequence continuity, replay, and evidence queries succeed.
+There is no cross-database transaction. Default mode commits the local ledger, application tombstones, checkpoint, user erasure, and correction outbox together and performs no startup replay. Retained mode appends to the authority first; a fresh/restored application database then replays missing authority facts before traffic. Retained startup blocks API, BFF proxying, MCP, outbox/workers, and readiness until authority availability, sequence continuity, replay, and evidence queries succeed, with no fallback.
 
 After Home erasure:
 
@@ -437,7 +435,7 @@ Use three focused additive migrations; never edit merged history:
 - add `EventLocation`, policy audit, local erasure replay checkpoint, and required indexes/constraints;
 - add nullable `EventLocationId` references alongside existing physical references;
 - make `LocationPii` optional without weakening tenant ownership;
-- keep authority-database provisioning outside application EF migrations; configure its append/read-only client and independently retained backup/restore contract, while the app migration adds only the local replay checkpoint;
+- defer authority persistence replacement to OREA-120/140/150: dedicated EF DbContext/repository/generated migrations must safely adopt the current raw authority before its client/schema loader is removed; do not hand-edit that migration lane;
 - deploy fail-closed reads and dual-write for new/changed event-local references.
 
 ### ELP-230B: Backfill
@@ -527,7 +525,7 @@ Tests must prove:
 - tightened policy/governance defeats stale caches and external projections;
 - public calendar is public-only; attendee calendar is authorized/no-store;
 - email, webhook, ticket, export, search, MCP, federation, and reports cannot bypass disclosure authority;
-- backup restore replays erasure before traffic;
+- retained-mode backup restore replays erasure before traffic; default-mode restore has no backup-resurrection guarantee;
 - discovery point is never auto-created from PII and is removed during erasure;
 - batch projection stays within query and authorization count budgets;
 - server time, not client time, controls delayed reveal;
@@ -592,7 +590,7 @@ Completed-wave evidence through Todo 9: managed/API ELP 19/19; API public ELP 11
 | Legacy data becomes public accidentally | Unclassified backfill, conservative fail-closed EventLocation, review queue |
 | Auth cookie changes public response and cache safety | Dedicated public-only route and equivalence test |
 | Policy tightening leaves stale external data | PolicyVersion, correction outbox, cache purge, surface inventory |
-| Backup restores erased PII | Independently retained authority database, sequence-zero replay for fresh app DB, pre-traffic evidence gate |
+| Backup restores erased PII | Explicit retained mode: independently retained authority, sequence-zero replay, and pre-traffic gate; default mode documents that this protection is absent |
 | Future proximity feature reuses exact PII | Separate discovery provenance/consent and no auto-copy rule |
 | Large account erasure exceeds safe transaction limits | Instrument volume; require explicit durable-saga approval before changing v1 semantics |
 
@@ -601,7 +599,7 @@ Completed-wave evidence through Todo 9: managed/API ELP 19/19; API public ELP 11
 - All tasks in `event-location-privacy-tasks.md` are checked with evidence.
 - Plan, context, and tasks remain synchronized after every implementation slice.
 - All event-location outputs pass through the batch disclosure authority or document why they contain no location data.
-- Irreversible Home erasure, global tenant coverage, outbox atomicity, restore replay, and remediation are proven by tests.
+- Irreversible Home erasure, global tenant coverage, outbox atomicity, retained-mode restore replay, default-mode limitation, and remediation are proven by tests.
 - API/HAL/OpenAPI/NSwag/Blazor contracts use EventLocationId and purpose-specific DTOs.
 - No anonymous exact physical-location endpoint remains.
 - Operations, security, privacy, domain, API, federation, localization, accessibility, testing, AI disclosure, and Home Discovery docs reflect shipped behavior.

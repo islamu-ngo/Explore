@@ -524,7 +524,7 @@ Incoming callback rules:
 - The incoming webhook ledger stores the tenant and provider message identifiers needed for idempotency, plus payload hashes, bounded status/failure metadata, and redacted headers only. Logs, metrics, and ProblemDetails use bounded provider/outcome/failure categories and must not include raw payloads, signature headers, secrets, tokens, authorization headers, tenant/user identifiers, provider message IDs, or raw provider errors.
 - Coop effect status exposes only internal lifecycle identifiers/state, bounded failure category/detail, attempts, generation/fence, and timestamps. It excludes callback bytes, callback hash, signed provider decision ID, headers, and raw exceptions. HAL emits `redrive` only for a dead-lettered row and remains the client action authority.
 
-Approved planned reporter communication changes replace `ReporterContactConsent` with independently false-by-default `ReportCaseUpdatesConsent` and `ReportFollowUpContactConsent` across submission/read contracts. A reporter-owned authorized write plus `update-communication-consent` HAL relation will permit withdrawal; clients must regenerate from OpenAPI and render the control only when that relation exists. No compatibility alias is planned before v1.0.
+Reporter communication contracts use two required, independently selected booleans: `ReportCaseUpdatesConsent` covers acknowledgements, status updates, and final outcomes, while `ReportFollowUpContactConsent` covers requests for clarification or additional evidence. `POST /api/event-reports`, reporter-owned reads, and moderation reads expose both values; anonymous submissions force both to `false`. The pre-1.0 `ReporterContactConsent` field was removed without a compatibility alias, so clients must regenerate from OpenAPI. `PUT /api/event-reports/my/{reportId}/communication-consent` updates both purposes for the authenticated reporter's own report and returns the refreshed HAL resource. My Reports detail and collection items expose `update-communication-consent` only after the current-user `User/Update` authorization-provider check succeeds, and the write handler repeats that exact provider decision before opening its transaction. Tenant and `ReporterUserId` ownership checks remain defense in depth; missing identity, provider denial, non-owner, tenant mismatch, and indeterminate authorization fail closed. Clients must render withdrawal controls only when that relation exists.
 
 ---
 
@@ -772,6 +772,24 @@ Gates onboarding endpoints behind the setup secret:
 |---|---|
 | `PerformanceBehavior` | Logs requests taking >500ms as warnings |
 | `AuthorizationBehavior` | Checks `IAuthorizedRequest` / `[AuthorizeResource]` attribute; throws `AuthorizationException` on deny. Reflection results cached via `ConcurrentDictionary`. Emits OpenTelemetry activity spans on `Explore.Authorization` source with `resource.kind`, `resource.action`, and `request.type` tags. |
+
+---
+
+## AT Protocol Event Federation Contract
+
+| Endpoint | Contract |
+|---|---|
+| `GET /api/event` | Anonymous HAL collection of `EventDiscoveryItemDto`. Each item is either the existing local `EventListDto` projection or a bounded `FederatedEventDto`; the federated projection does not return raw provider payloads, credentials, DIDs, record keys, or external source URLs. |
+| `GET /api/event/federated/{atprotoRecordId}/source` | Anonymous, globally rate-limited `302` to the current tenant-visible normalized HTTPS source. Disabled capability, missing/tombstoned/cross-tenant records, and unsafe targets all return `404`. |
+| `GET /api/settings/instance/atproto-federation`; keyed `/api/settings/instance/atproto-federation/{key}` and `/api/settings/instance/atproto-federation/{key}/lock` mutations | Instance-admin HAL surface for the exact capability and validation-profile keys. Update and lock affordances are server-produced. |
+
+`federation.atproto_events_enabled` is the single capability for tenant presentation of inbound community events and eligible outbound event/RSVP enqueue. `federation.atproto_event_validation_profile=community_lexicon` relaxes only the required local business fields for publication; it does not relax supplied-value validation, authorization, privacy, projection completeness, or record validation. Outbound publication additionally requires the owner's self-scoped `federation.atproto_publish_my_events` consent and one exact linked encrypted ATProto session.
+
+Event publication is database-first: the committed local lifecycle mutation and immutable `PdsSyncOutbox` intent share one transaction, and CarpaNet PDS I/O occurs later under a fenced worker claim. Every eligible public event/session/aspect/resolved-lookup/EAV value must be mapped natively or rendered into the one community event `description`; coverage, privacy, JSON/DAG-CBOR size, or validation failure prevents enqueue, with no truncation or silent omission. RSVP egress represents only a committed active registration as `community.lexicon.calendar.rsvp#going`, ignores organizer approval state, and remains blocked until the event's settled URI/CID can form the exact `strongRef`.
+
+Ingress uses one globally leased Jetstream consumer for exactly `community.lexicon.calendar.event` and `community.lexicon.calendar.rsvp`. Canonical DID/collection/record-key state, current source version, typed event projection, tenant presentation, quarantine/tombstone effects, and cursor advancement are persisted atomically. Public clients must treat HAL links as action authority: federated items have no write affordances, and `source` exists only when the server can safely resolve the internal redirect route.
+
+The removed raw `/api/atprotorecord` and generic raw-credential create/update routes have no compatibility aliases. Authenticated session-metadata reads and idempotent local session deletion remain credential-free. The checked-in OpenAPI contract and [API Contract Inventory](API_CONTRACT_INVENTORY.md) are the route/schema authority.
 
 ---
 

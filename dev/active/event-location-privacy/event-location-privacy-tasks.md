@@ -40,8 +40,8 @@ The exact execution order is the wave table in plan Section 16. Critical correct
 
 - [x] **ELP-000 — Re-baseline the approved architecture across all three durable docs**
   - Paths: `dev/active/event-location-privacy/*`.
-  - Result: canonical EventLocation, nullable-TBA XOR, retained internal scheduling IDs, deterministic legacy state, immediate Stage A, staged migrations, separate retained PostgreSQL erasure-authority database, corrected ownership/waves, and verification owners are decision-complete.
-  - Evidence: initial six-file protected-diff capture plus 2026-07-16 re-synchronization to the authority-first two-database protocol; focused architecture documentation/context tests and `git diff --check` pass after the prior authority wording is removed.
+  - Result: canonical EventLocation, nullable-TBA XOR, retained internal scheduling IDs, deterministic legacy state, immediate Stage A, staged migrations, and verification owners are decision-complete. Authority topology is now owned by OREA: one-database default plus explicit retained PostgreSQL mode.
+  - Evidence: initial six-file protected-diff capture plus the historical 2026-07-16 two-database protocol review; OREA now supersedes that universal topology with the approved two-mode contract.
 
 - [x] **ELP-005 — Block stale Home Discovery address/coordinate contract before product edits**
   - Paths: `dev/active/home-discovery-experience/home-discovery-experience-plan.md`, `home-discovery-experience-context.md`, `home-discovery-experience-tasks.md`.
@@ -299,14 +299,14 @@ The following ELP-200/210 tables are authoritative and synchronized with plan Se
 
 - [ ] **ELP-500 — Add adversarial transaction and cross-tenant erasure tests first**
   - Paths: `tests/Event.Application.UnitTests/Features/Users/Commands/DeleteUserCommandHandlerTests.cs`, Persistence integration tests.
-  - Cases: authority unavailable; duplicate/ambiguous UUIDv7 append; crash after authority append before app commit; app rollback leaves authority intent pending; crash after app commit; sequence-zero fresh-DB replay; two tenants/former memberships; room/name tombstone; membership removal; discovery derivative; no PII in authority/outbox.
+  - Cases: default local-ledger atomicity/rollback; retained authority unavailable; duplicate/ambiguous UUIDv7 append; crash after retained append before app commit; retained app rollback leaves authority intent pending; crash after app commit; retained sequence-zero fresh-DB replay; two tenants/former memberships; room/name tombstone; membership removal; discovery derivative; no PII in either ledger/outbox.
   - Confirmed RED only: `AuthorityUnavailable_FailsClosedBeforeDeletingUser` executes the real current `DeleteUserCommandHandler` and failed because no exception was thrown; `TwoTenantOwnedHomes_AreTombstonedBeforeUserDeletion` failed because both Homes remained `Active` (`2`) instead of `Erased` (`3`). The preserved RED receipt is 2 executed, 0 passed, 2 failed, exit 2. Both bodies are now governed pending under `EventLocationPrivacyPending`; the fresh skipped-only receipt is 2 not executed, exit 8 and is not green.
   - Separate retained-authority evidence: duplicate/ambiguous UUIDv7 append already has PostgreSQL coverage, but command orchestration is not claimed.
-  - Deferred Todo 10 inventory (not implemented or executed): (1) crash after authority append before application commit; (2) application rollback keeps authority pending while application PII/checkpoint/outbox roll back; (3) crash after application commit finds checkpoint/outbox; (4) sequence-zero fresh-application-database replay; (5) former-membership plus room-tombstone integration beyond the two-Home/name RED; (6) tenant-membership removal separation; (7) discovery-derivative removal; and (8) the erasure correction-outbox PII-free shape. Current source has no integrated authority dependency in `DeleteUserCommandHandler`, erasure correction-outbox factory/payload, membership-removal handler, replay/startup gate, global-erasure orchestration repository, or discovery derivative store. Migration/cache implications: none yet. Security risk/next: keep this task open; implement the authority-first atomic `ELP-505` + `ELP-515` lane only after its dependencies, then remove the governed skip and execute all cases.
+  - Deferred inventory is re-baselined to OREA-040/100/110/120/130/140: default local-ledger atomicity; retained append/application crash boundaries; rollback/checkpoint/outbox; retained sequence-zero replay; former-membership/room integration; membership separation; discovery cleanup; and PII-free ledger/outbox shape. Keep this task open until both startup-selected workflows and their generated migrations have dedicated evidence.
 
 - [ ] **ELP-505 — Implement global cross-tenant Home erasure and durable tombstones**
-  - Paths: `src/Explore.Application/Features/Users/Handlers/Commands/DeleteUserCommandHandler.cs`, planned erasure-authority client contract/Infrastructure adapter, `IGlobalLocationPrivacyErasureRepository.cs`, `GlobalLocationPrivacyErasureRepository.cs`, `Location.cs`, `LocationRepository.cs`, local replay checkpoint repository/configuration, and two-database tests.
-  - Result: fail closed when authority is unavailable; append immutable PII-free UUIDv7-idempotent monotonic-sequence intent first; then one app-DB transaction erases/tombstones all OwnerUserId Homes across tenants, clears owner, preserves references, writes local checkpoint/correction outbox, and completes user erasure. Success is returned only after app commit; pending authority intent makes a pre-commit crash replay-safe.
+  - Paths: OREA-selected application/retained workflows, `DeleteUserCommandHandler.cs`, `IGlobalLocationPrivacyErasureRepository.cs`, `GlobalLocationPrivacyErasureRepository.cs`, `Location.cs`, `LocationRepository.cs`, local ledger/checkpoint repositories/configurations, and cross-mode tests.
+  - Result: default mode atomically appends its PII-free local ledger fact with erasure/checkpoint/outbox; retained mode appends the independent authority first and fails closed without fallback. Both erase all OwnerUserId Homes across tenants and return success only after the app transaction commits.
   - Atomic lane: implement and verify together with ELP-515; neither task can be checked independently.
 
 - [ ] **ELP-510 — Separate tenant membership removal from global deletion**
@@ -316,8 +316,8 @@ The following ELP-200/210 tables are authoritative and synchronized with plan Se
 - [ ] **ELP-515 — Persist privacy correction outbox inside the erasure transaction**
   - Paths: `src/Explore.Application/Services/LocationPrivacyOutboxMessageFactory.cs`, `IOutboxRepository.cs`, `DeleteUserCommandHandler.cs`, tests.
   - Messages: `LocationPiiErased` and required external-correction intents with IDs/versions only.
-  - Result: app rollback preserves PII/checkpoint/outbox while the authority intent remains pending; committed app erasure always has its local checkpoint and durable outbox rows before cache eviction.
-  - Atomic lane: same app-DB transaction and evidence as ELP-505 after the authority-first append; neither task can be checked independently.
+  - Result: app rollback preserves PII/ledger/checkpoint/outbox together; in retained mode the external authority intent remains pending. Committed erasure always has its local ledger/checkpoint and durable outbox rows before cache eviction.
+  - Atomic lane: same app-DB transaction and cross-mode evidence as ELP-505; neither task can be checked independently.
 
 - [ ] **ELP-520 — Verify concrete correction dispatch, idempotency, retry, and dead-letter recovery**
   - Paths: `src/Explore.Infrastructure/Messaging/CompositeOutboxMessageDispatcher.cs`, planned concrete location-privacy correction dispatcher/service, `InfrastructureServicesRegistration.cs`, `tests/Explore.Infrastructure.Tests/Infrastructure/CompositeOutboxMessageDispatcherTests.cs`, API outbox dead-letter tests.
@@ -325,8 +325,8 @@ The following ELP-200/210 tables are authoritative and synchronized with plan Se
 
 - [ ] **ELP-525 — Add backup/restore erasure replay runbook and pre-traffic gate**
   - Paths: `docs/OPERATIONS.md`, planned `src/Explore.Application/Contracts/Services/ILocationErasureReplayService.cs`, `src/Explore.Infrastructure/Services/Privacy/LocationErasureReplayService.cs`, `src/Explore.API/BackgroundServices/LocationPrivacyStartupGate.cs`, registration in `src/Explore.API/Program.cs`, and integration/operational tests.
-  - Content: retention limits; separately retained/backed-up PostgreSQL authority database outside app restore set; immutable intents and monotonic sequence; local checkpoint; sequence-zero fresh-DB replay before traffic; independent physical-cluster restore/authority overlay; cache/index purge; correction replay; evidence SQL; failure incident path.
-  - Result: older/fresh app database cannot serve resurrected Home PII; authority unavailable fails startup closed; API, BFF proxying, MCP, outbox/workers, and readiness all remain blocked on continuity/replay evidence.
+  - Content: `ApplicationDatabase` default startup with no authority resolution and an explicit no-backup-resurrection guarantee; `RetainedAuthority` opt-in with named connection, immutable facts/sequence, checkpoint, sequence-zero replay, independent restore overlay, cache/correction replay, evidence SQL, and fail-closed incident path.
+  - Result: default mode starts with one database; retained mode alone guarantees replay before listeners/workers and blocks without fallback when authority continuity cannot be proven. OREA-120/140/150 own the dedicated DbContext, generated migrations, and raw-client retirement.
 
 - [ ] **ELP-530 — Implement post-erasure EventLocation remediation workflow**
   - Paths: EventLocation review query/commands, notification outbox, publication validator, admin dashboard API, tests.
@@ -430,7 +430,7 @@ The following ELP-200/210 tables are authoritative and synchronized with plan Se
 | Public calendar public-only; attendee calendar authorized/no-store | ELP-440 | `EventCalendarPrivacyTests` in API Integration |
 | Email/webhook/export/ticket/search/report cannot bypass authority | ELP-715 | Focused test beside every ELP-020 inventory owner |
 | Concrete correction dispatcher is idempotent/retryable/dead-letter visible | ELP-520 | `CompositeOutboxMessageDispatcherTests` in Infrastructure plus API dead-letter tests |
-| Separate authority survives app restore; fresh app DB replays sequence zero before every traffic/worker surface; unavailability fails closed | ELP-525 | `LocationPrivacyStartupGateTests` in API Integration |
+| Default never resolves authority; explicit retained mode survives app restore, replays before traffic/workers, and fails closed without fallback | ELP-525 / OREA-210 | `LocationPrivacyStartupGateTests` in API Integration |
 | Discovery data is absent today or never auto-created from PII and erases transactionally | ELP-730 | Architecture absence proof or `LocationDiscoveryPrivacyTests` in Persistence Integration |
 | Batch projection stays within query/auth count budget | ELP-315 | `EventLocationDisclosureBatchTests` in Persistence Integration |
 | Server time controls reveal and cannot bypass entitlement | ELP-130 / ELP-310 / ELP-340 | `EventLocationDisclosureEvaluatorTests` in Application Unit |

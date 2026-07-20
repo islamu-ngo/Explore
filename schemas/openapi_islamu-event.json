@@ -14832,7 +14832,7 @@
           "Event"
         ],
         "summary": "Download Event Calendar",
-        "description": "Downloads a published public event as an RFC 5545 iCalendar file.",
+        "description": "Downloads a published public event as an RFC 5545 iCalendar file using only public-purpose location disclosure. Third-party calendar providers may retain imported event and location details after access is revoked or the event changes; the warning is also returned in X-Calendar-Retention-Warning.",
         "operationId": "GetEventCalendar",
         "parameters": [
           {
@@ -14888,6 +14888,83 @@
           }
         },
         "x-endpoint-class": "Public"
+      }
+    },
+    "/api/event/{id}/calendar/my-access": {
+      "get": {
+        "tags": [
+          "Event"
+        ],
+        "summary": "Download Attendee Event Calendar",
+        "description": "Downloads an RFC 5545 iCalendar file using attendee-purpose location disclosure after registration authorization. Third-party calendar providers may retain imported event and location details after access is revoked or the event changes; the warning is also returned in X-Calendar-Retention-Warning.",
+        "operationId": "GetAttendeeEventCalendar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/calendar; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileContentResult"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { },
+              "text/calendar": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/calendar; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { },
+              "text/calendar": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/calendar; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { },
+              "text/calendar": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/event/import": {
@@ -17584,6 +17661,509 @@
         "x-output-cache-policy": "DetailData"
       }
     },
+    "/api/events/{eventId}/locations/public": {
+      "get": {
+        "tags": [
+          "EventLocation"
+        ],
+        "summary": "Get public event locations",
+        "description": "Returns only public-purpose EventLocation disclosures for a published public event.",
+        "operationId": "GetPublicEventLocations",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventLocationPublicDto"
+                  }
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventLocationPublicDto"
+                  }
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventLocationPublicDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      }
+    },
+    "/api/events/{eventId}/locations/my-access": {
+      "get": {
+        "tags": [
+          "EventLocation"
+        ],
+        "summary": "Get attendee event location access",
+        "description": "Returns registration-scoped EventLocation disclosures for the authenticated requester.",
+        "operationId": "GetAttendeeEventLocations",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventLocationAttendeeDto"
+                  }
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventLocationAttendeeDto"
+                  }
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventLocationAttendeeDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/events/{eventId}/locations/{eventLocationId}/management": {
+      "get": {
+        "tags": [
+          "EventLocation"
+        ],
+        "summary": "Get managed event location",
+        "description": "Returns exact operational and disclosure-policy details after event management authorization.",
+        "operationId": "GetManagementEventLocation",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "eventLocationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventLocationManagementDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventLocationManagementDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventLocationManagementDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/events/{eventId}/locations/{eventLocationId}/disclosure": {
+      "put": {
+        "tags": [
+          "EventLocation"
+        ],
+        "summary": "Update event location disclosure",
+        "description": "Updates organizer-selected disclosure fields using required policy and aggregate concurrency tokens.",
+        "operationId": "UpdateEventLocationDisclosure",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "eventLocationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventLocationDisclosureDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventLocationDisclosureDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/eventregistration": {
       "get": {
         "tags": [
@@ -18872,6 +19452,162 @@
         },
         "x-endpoint-class": "Authenticated",
         "x-rate-limit-policy": "Authenticated"
+      }
+    },
+    "/api/event-reports/my/{reportId}/communication-consent": {
+      "put": {
+        "tags": [
+          "EventReports"
+        ],
+        "summary": "Update My Event Report Communication Consent",
+        "description": "Updates case-update and follow-up communication consent on the authenticated reporter's own event report.",
+        "operationId": "UpdateMyEventReportCommunicationConsent",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMyReportCommunicationConsentDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMyReportCommunicationConsentDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfMyEventReportDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfMyEventReportDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write"
       }
     },
     "/api/eventseries": {
@@ -70905,6 +71641,118 @@
           }
         }
       },
+      "EventLocationAttendeeDto": {
+        "type": "object",
+        "properties": {
+          "eventLocationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "$ref": "#/components/schemas/EventLocationDisclosureState"
+          },
+          "fields": {
+            "$ref": "#/components/schemas/EventLocationAttendeeFieldsDto"
+          }
+        }
+      },
+      "EventLocationAttendeeFieldsDto": {
+        "required": [
+          "country",
+          "timezone",
+          "city",
+          "venueName",
+          "roomName",
+          "streetAddress",
+          "postcode",
+          "latitude",
+          "longitude",
+          "formattedAddress",
+          "mapUrl",
+          "geohash"
+        ],
+        "type": "object",
+        "properties": {
+          "country": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "timezone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "city": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "venueName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "roomName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "streetAddress": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "postcode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "latitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "longitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "formattedAddress": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "mapUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "geohash": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "EventLocationDisclosureState": {
         "enum": [
           "Hidden",
@@ -70915,6 +71763,194 @@
           "NeedsPrivacyReview"
         ],
         "type": "string"
+      },
+      "EventLocationManagementDto": {
+        "type": "object",
+        "properties": {
+          "eventLocationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "locationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "state": { },
+          "fields": {
+            "required": [
+              "country",
+              "timezone",
+              "city",
+              "venueName",
+              "roomName",
+              "roomDescription",
+              "streetAddress",
+              "postcode",
+              "latitude",
+              "longitude",
+              "formattedAddress",
+              "mapUrl",
+              "geohash"
+            ],
+            "type": "object",
+            "properties": {
+              "country": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "timezone": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "city": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "venueName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "roomName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "roomDescription": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "streetAddress": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "postcode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "latitude": {
+                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                "type": [
+                  "null",
+                  "number",
+                  "string"
+                ],
+                "format": "double"
+              },
+              "longitude": {
+                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                "type": [
+                  "null",
+                  "number",
+                  "string"
+                ],
+                "format": "double"
+              },
+              "formattedAddress": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "mapUrl": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "geohash": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              }
+            }
+          },
+          "policy": {
+            "required": [
+              "showVenueName",
+              "showCity",
+              "showCountry",
+              "showRoomName",
+              "showStreetAddress",
+              "showPostcode",
+              "showCoordinates",
+              "fullDetailsAudienceId",
+              "revealFullDetailsFromUtc"
+            ],
+            "type": "object",
+            "properties": {
+              "showVenueName": {
+                "type": "boolean"
+              },
+              "showCity": {
+                "type": "boolean"
+              },
+              "showCountry": {
+                "type": "boolean"
+              },
+              "showRoomName": {
+                "type": "boolean"
+              },
+              "showStreetAddress": {
+                "type": "boolean"
+              },
+              "showPostcode": {
+                "type": "boolean"
+              },
+              "showCoordinates": {
+                "type": "boolean"
+              },
+              "fullDetailsAudienceId": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "revealFullDetailsFromUtc": {
+                "type": [
+                  "null",
+                  "string"
+                ],
+                "format": "date-time"
+              }
+            }
+          },
+          "needsPrivacyReview": {
+            "type": "boolean"
+          },
+          "policyVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
       },
       "EventLocationPublicDto": {
         "type": "object",
@@ -83465,6 +84501,208 @@
           }
         }
       },
+      "HalResourceOfEventLocationManagementDto": {
+        "type": "object",
+        "properties": {
+          "eventLocationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "locationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "state": { },
+          "fields": {
+            "required": [
+              "country",
+              "timezone",
+              "city",
+              "venueName",
+              "roomName",
+              "roomDescription",
+              "streetAddress",
+              "postcode",
+              "latitude",
+              "longitude",
+              "formattedAddress",
+              "mapUrl",
+              "geohash"
+            ],
+            "type": "object",
+            "properties": {
+              "country": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "timezone": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "city": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "venueName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "roomName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "roomDescription": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "streetAddress": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "postcode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "latitude": {
+                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                "type": [
+                  "null",
+                  "number",
+                  "string"
+                ],
+                "format": "double"
+              },
+              "longitude": {
+                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                "type": [
+                  "null",
+                  "number",
+                  "string"
+                ],
+                "format": "double"
+              },
+              "formattedAddress": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "mapUrl": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "geohash": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              }
+            }
+          },
+          "policy": {
+            "required": [
+              "showVenueName",
+              "showCity",
+              "showCountry",
+              "showRoomName",
+              "showStreetAddress",
+              "showPostcode",
+              "showCoordinates",
+              "fullDetailsAudienceId",
+              "revealFullDetailsFromUtc"
+            ],
+            "type": "object",
+            "properties": {
+              "showVenueName": {
+                "type": "boolean"
+              },
+              "showCity": {
+                "type": "boolean"
+              },
+              "showCountry": {
+                "type": "boolean"
+              },
+              "showRoomName": {
+                "type": "boolean"
+              },
+              "showStreetAddress": {
+                "type": "boolean"
+              },
+              "showPostcode": {
+                "type": "boolean"
+              },
+              "showCoordinates": {
+                "type": "boolean"
+              },
+              "fullDetailsAudienceId": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              },
+              "revealFullDetailsFromUtc": {
+                "type": [
+                  "null",
+                  "string"
+                ],
+                "format": "date-time"
+              }
+            }
+          },
+          "needsPrivacyReview": {
+            "type": "boolean"
+          },
+          "policyVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
       "HalResourceOfEventReportOptionsDto": {
         "type": "object",
         "properties": {
@@ -87193,7 +88431,9 @@
           "priorityCode",
           "priorityName",
           "reasonCode",
-          "reasonName"
+          "reasonName",
+          "reportCaseUpdatesConsent",
+          "reportFollowUpContactConsent"
         ],
         "type": "object",
         "properties": {
@@ -87310,7 +88550,10 @@
             ],
             "format": "uuid"
           },
-          "reporterContactConsent": {
+          "reportCaseUpdatesConsent": {
+            "type": "boolean"
+          },
+          "reportFollowUpContactConsent": {
             "type": "boolean"
           },
           "reporterLocale": {
@@ -87929,7 +89172,9 @@
           "priorityCode",
           "priorityName",
           "reasonCode",
-          "reasonName"
+          "reasonName",
+          "reportCaseUpdatesConsent",
+          "reportFollowUpContactConsent"
         ],
         "type": "object",
         "properties": {
@@ -88039,7 +89284,10 @@
               "string"
             ]
           },
-          "reporterContactConsent": {
+          "reportCaseUpdatesConsent": {
+            "type": "boolean"
+          },
+          "reportFollowUpContactConsent": {
             "type": "boolean"
           },
           "submittedAtUtc": {
@@ -88185,7 +89433,9 @@
           "statusCode",
           "statusName",
           "reasonCode",
-          "reasonName"
+          "reasonName",
+          "reportCaseUpdatesConsent",
+          "reportFollowUpContactConsent"
         ],
         "type": "object",
         "properties": {
@@ -88250,7 +89500,10 @@
             ],
             "format": "date-time"
           },
-          "reporterContactConsent": {
+          "reportCaseUpdatesConsent": {
+            "type": "boolean"
+          },
+          "reportFollowUpContactConsent": {
             "type": "boolean"
           },
           "_links": {
@@ -94526,7 +95779,9 @@
           "priorityCode",
           "priorityName",
           "reasonCode",
-          "reasonName"
+          "reasonName",
+          "reportCaseUpdatesConsent",
+          "reportFollowUpContactConsent"
         ],
         "type": "object",
         "properties": {
@@ -94643,7 +95898,10 @@
             ],
             "format": "uuid"
           },
-          "reporterContactConsent": {
+          "reportCaseUpdatesConsent": {
+            "type": "boolean"
+          },
+          "reportFollowUpContactConsent": {
             "type": "boolean"
           },
           "reporterLocale": {
@@ -95248,7 +96506,9 @@
           "priorityCode",
           "priorityName",
           "reasonCode",
-          "reasonName"
+          "reasonName",
+          "reportCaseUpdatesConsent",
+          "reportFollowUpContactConsent"
         ],
         "type": "object",
         "properties": {
@@ -95358,7 +96618,10 @@
               "string"
             ]
           },
-          "reporterContactConsent": {
+          "reportCaseUpdatesConsent": {
+            "type": "boolean"
+          },
+          "reportFollowUpContactConsent": {
             "type": "boolean"
           },
           "submittedAtUtc": {
@@ -95647,7 +96910,9 @@
           "statusCode",
           "statusName",
           "reasonCode",
-          "reasonName"
+          "reasonName",
+          "reportCaseUpdatesConsent",
+          "reportFollowUpContactConsent"
         ],
         "type": "object",
         "properties": {
@@ -95712,7 +96977,10 @@
             ],
             "format": "date-time"
           },
-          "reporterContactConsent": {
+          "reportCaseUpdatesConsent": {
+            "type": "boolean"
+          },
+          "reportFollowUpContactConsent": {
             "type": "boolean"
           }
         }
@@ -100206,6 +101474,10 @@
         }
       },
       "SubmitEventReportDto": {
+        "required": [
+          "reportCaseUpdatesConsent",
+          "reportFollowUpContactConsent"
+        ],
         "type": "object",
         "properties": {
           "eventId": {
@@ -100234,7 +101506,10 @@
               }
             ]
           },
-          "reporterContactConsent": {
+          "reportCaseUpdatesConsent": {
+            "type": "boolean"
+          },
+          "reportFollowUpContactConsent": {
             "type": "boolean"
           },
           "reporterLocale": {
@@ -101026,12 +102301,6 @@
             "type": "boolean"
           },
           "lockTenantAiAssistant": {
-            "type": "boolean"
-          },
-          "decentralizationEnabled": {
-            "type": "boolean"
-          },
-          "lockDecentralizationEnabled": {
             "type": "boolean"
           },
           "authorizationProvider": {
@@ -103681,6 +104950,72 @@
           }
         }
       },
+      "UpdateEventLocationDisclosureDto": {
+        "required": [
+          "showVenueName",
+          "showCity",
+          "showCountry",
+          "showRoomName",
+          "showStreetAddress",
+          "showPostcode",
+          "showCoordinates",
+          "fullDetailsAudienceId",
+          "revealFullDetailsFromUtc",
+          "expectedPolicyVersion",
+          "expectedConcurrencyStamp"
+        ],
+        "type": "object",
+        "properties": {
+          "showVenueName": {
+            "type": "boolean"
+          },
+          "showCity": {
+            "type": "boolean"
+          },
+          "showCountry": {
+            "type": "boolean"
+          },
+          "showRoomName": {
+            "type": "boolean"
+          },
+          "showStreetAddress": {
+            "type": "boolean"
+          },
+          "showPostcode": {
+            "type": "boolean"
+          },
+          "showCoordinates": {
+            "type": "boolean"
+          },
+          "fullDetailsAudienceId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "revealFullDetailsFromUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "expectedPolicyVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "expectedConcurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "UpdateEventMadhabDto": {
         "type": "object",
         "properties": {
@@ -105313,6 +106648,21 @@
         "properties": {
           "value": {
             "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "UpdateMyReportCommunicationConsentDto": {
+        "required": [
+          "reportCaseUpdatesConsent",
+          "reportFollowUpContactConsent"
+        ],
+        "type": "object",
+        "properties": {
+          "reportCaseUpdatesConsent": {
+            "type": "boolean"
+          },
+          "reportFollowUpContactConsent": {
+            "type": "boolean"
           }
         }
       },
@@ -108409,6 +109759,9 @@
     },
     {
       "name": "EventFormat"
+    },
+    {
+      "name": "EventLocation"
     },
     {
       "name": "EventRegistration"

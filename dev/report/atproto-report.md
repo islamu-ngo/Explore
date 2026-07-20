@@ -7,7 +7,7 @@
 > **Date:** 2026-07-18
 > **Author:** architect-agent
 > **Library:** [CarpaNet](https://www.nuget.org/packages/CarpaNet/) — the official replacement for FishyFlip by the same author (docs reviewed at `~/dev/Github/CarpaNet/docs/docs/`)
-> **Related settings:** `auth.atproto_login_enabled`, `AtprotoPublicUrl`, `federation.decentralization_enabled` (+ new keys in Part B §B3)
+> **Related settings:** `auth.atproto_login_enabled`, `AtprotoPublicUrl`, `federation.atproto_events_enabled` (+ related keys in Part B §B3)
 > **Related docs:** `docs/FEDERATION.md`, `docs/LEXICONS.md`, `docs/OUTBOX_PATTERN.md`, `docs/SECURITY-MODEL.md`, `docs/AUTHORIZATION.md`, `docs/adr/`
 
 | Part | Feature | Independent toggle |

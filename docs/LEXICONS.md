@@ -1,113 +1,79 @@
-ABOUTME: Canonical decision document for ATProto-compatible NSID lexicon hierarchy and evolution.
-ABOUTME: Covers EAV extensions, sector profiles, and aggregate read models.
+ABOUTME: Documents the exact vendored AT Protocol lexicons compiled and accepted by ISLAMU Event.
+ABOUTME: Defines event/RSVP mapping, exhaustive description, strongRef ordering, and evolution boundaries.
 
-# Lexicon Decisions and NSID Hierarchy
+# AT Protocol Lexicons
 
-Last Updated: 2026-04-24
+> **Audience:** Contributors | Integrators | AI agents
+> **Status:** Implemented
+> **Owner:** Federation
+> **Last Verified:** 2026-07-19
+> **Source Anchors:** `schemas/lexicons/`, `src/Explore.Infrastructure/Explore.Infrastructure.csproj`, `src/Explore.Infrastructure/Services/Federation/`, `src/Explore.Application/Features/Federation/Atproto/`
 
 ## Purpose
 
-This document defines the canonical NSID (Namespaced Identifier) hierarchy used to represent the platform's multi-layered event data model in an ATProto-compatible format. These lexicons provide stable semantic keys for data projections, aggregate read models, and interoperability surfaces.
+The JSON files under `schemas/lexicons/` are the executable AT Protocol vocabulary. `Explore.Infrastructure.csproj` includes them as `LexiconFiles`, and the pinned CarpaNet source generator produces the typed JSON and DAG-CBOR bindings used by outbound mapping and Jetstream parsing. Runtime lexicon discovery and network auto-resolution are not enabled.
 
-The NSID system serves as the source of truth for:
-- Mapping runtime EAV custom properties to stable machine-readable keys.
-- Defining the boundaries between universal core fields, typed sector profiles, and local extensions.
-- Guiding the evolution of data schemas using add-only discipline.
+Unvendored proposal namespaces are not accepted federation collections. Only the checked-in lexicons below are executable.
 
-**Explicitly Out of Scope:**
-- ATProto PDS (Personal Data Server) publication.
-- bridgy-fed wiring or ActivityPub federation.
-- Outbox or publication machinery.
-- Cross-tenant aggregate views.
-- Materialized views (rejected in favor of live projections and keyless entities).
-- `$extensions` ATProto pattern (not yet standardized upstream).
-- Lexicon code generation pipelines.
+## Executable Boundary
 
-## Canonical NSID Hierarchy
+| NSID | Runtime use |
+|---|---|
+| `community.lexicon.calendar.event` | The only event collection accepted from Jetstream or emitted to an owner's PDS. |
+| `community.lexicon.calendar.rsvp` | The only RSVP collection accepted from Jetstream. Outbound ISLAMU RSVP is stricter and emits only `#going`. |
+| `com.atproto.repo.strongRef` | RSVP subject with required settled event `at://` URI and CID. |
+| `community.lexicon.location.address` | Typed address member allowed by the event `locations` union after public-disclosure evaluation. |
+| `community.lexicon.location.geo` | Typed geographic point allowed only after public-disclosure evaluation. |
+| `community.lexicon.location.fsq` | Typed Foursquare location reference accepted by the event union. |
+| `community.lexicon.location.hthree` | Typed H3 location reference accepted by the event union. |
+| `com.atproto.server.getSession` | OAuth/session verification binding; not a federation record collection. |
 
-The platform uses a 3-layer architecture represented by the following NSID taxonomy:
+The global Jetstream subscriber requests exactly the event and RSVP collections. Unknown/wildcard collections are never subscribed, and the parser quarantines an admitted envelope whose collection, `$type`, operation, DID, CID, record key, shape, or encoded size is invalid.
 
-| NSID | Layer | Domain Entity | Status |
-|---|---|---|---|
-| `im.islamu.event.core.v1` | 1 | `Event` | Stable |
-| `im.islamu.eventsession.core.v1` | 1 | `EventSession` | Stable |
-| `im.islamu.event.islamic.v1` | 2 | `EventIslamicAspect` | Stable |
-| `im.islamu.event.tech.v1` | 2 | `EventTechAspect` | Stable |
-| `im.islamu.eventsession.islamic.v1` | 2 | `EventSessionIslamicAspect` | Stable |
-| `im.islamu.event.extension.v1` | 3 | `EventCustomPropertyProjection` | Stable |
-| `im.islamu.eventsession.extension.v1` | 3 | `EventSessionCustomPropertyProjection` | Stable |
-| `im.islamu.event.withSessions.v1` | Agg | `EventWithSessionsView` | Stable |
-| `im.islamu.event.temp.*` | 0 | (Various) | Experimental |
+## Community Event Record
 
-### Layer Descriptions
+The vendored event lexicon requires `name` and `createdAt`. It also defines optional `description`, `startsAt`, `endsAt`, `mode`, `status`, `locations`, `uris`, and `rsvpExpected` fields. Known mode tokens are `#inperson`, `#virtual`, and `#hybrid`; known status tokens are `#planned`, `#scheduled`, `#rescheduled`, `#cancelled`, and `#postponed`.
 
-1.  **Layer 1 (Core)**: Universal fields shared by all events and sessions (e.g., Title, StartTime, Organizer).
-2.  **Layer 2 (Sector Profiles)**: First-class typed schema for domain-specific aspects (e.g., Islamic madhab, Tech skill levels).
-3.  **Layer 3 (Extensions)**: Local tenant-specific custom properties projected into a stable facet format.
-4.  **Aggregate View**: A composed read model merging core, sector, and extension data into a single projection.
+ISLAMU uses one record for the complete public event graph:
 
-## Evolution Rules (Add-Only Lexicon Evolution)
+- Native lexicon values are mapped by `AtprotoCalendarEventRecordMapper`.
+- `AtprotoEventSourceFieldManifest` independently classifies every public source value as native, rendered in the single `description`, or excluded for a precise privacy/internal reason.
+- `AtprotoEventDescriptionFormatter` deterministically renders all remaining eligible event, session, agenda, group, speaker, aspect, resolved-lookup, public-media, and public EAV values into that one description.
+- Raw locations and location PII are never sources. Only the public disclosure evaluator's returned values may enter native location fields or the description.
+- Any uncovered field, invalid projection, unsafe URI, privacy failure, invalid lexicon value, JSON size above 2,097,152 bytes, or DAG-CBOR size above 1,048,576 bytes prevents enqueue. No value is truncated or silently dropped.
 
-To maintain backward compatibility and interoperability, the platform enforces "Add-Only" evolution for stable lexicons (Rule 14):
+`federation.atproto_event_validation_profile=community_lexicon` relaxes only which local business fields must be present to publish: title, tenant, owner, and status remain required. It does not relax validation of supplied values, authorization, moderation, privacy, complete source-field disposition, or final record validation.
 
-1.  **Immutability of Constraints**: NEVER tighten existing field constraints (e.g., making an optional field required or shrinking a maximum length) within the same major-version NSID.
-2.  **Safe Additions**: New optional fields may be added to an existing NSID at any time.
-3.  **Breaking Changes**: Any breaking change (field deletion, renaming, or constraint tightening) requires a new major-version NSID (e.g., `im.islamu.event.core.v2`). The previous version must remain available and frozen.
-4.  **Experimental Promotion**: Experimental lexicons in the `im.islamu.event.temp.*` namespace must be promoted to a stable versioned NSID before being relied upon by production discovery paths.
-5.  **Field Retirement**: Fields are retired by adding an `IsRetired` or `is_deprecated` flag. Physical deletion is forbidden to preserve historical data provenance.
+## Community RSVP Record
 
-## NSID Versioning Discipline
+The vendored RSVP lexicon requires `subject` and `status`. Its `strongRef` subject requires an event URI and CID; its vocabulary recognizes `#interested`, `#going`, and `#notgoing` for inbound interoperability.
 
-Decisions to version an NSID follow this classification tree:
+The local outbound contract is intentionally narrower:
 
-- **Is the change additive?** (New optional field) → Update existing NSID version (revision only).
-- **Is the change breaking?** (Renaming, tightening, deletion) → Create new major version NSID.
-- **Rollout Control**: Use feature flags (e.g., `custom_properties.projection_discovery_enabled`) to control the adoption of new lexicon projections per tenant.
-- **Safety Rails**: Quota settings (Rule 16) prevent extension abuse and ensure performance stability.
+- Only a successfully committed, active `EventRegistrationIntent` maps to `community.lexicon.calendar.rsvp#going`.
+- Organizer `ApprovalStatus` never changes that user-intent mapping.
+- `#interested` and `#notgoing` have no local user-intent model and are rejected for outbound publication.
+- RSVP enqueue waits for the locally owned event record to settle its exact URI/CID. The outbox stores both the event-record dependency and captured CID before a worker can claim it.
+- Final cancellation deletes a known remote RSVP only when no active registration intent remains.
+- Attendee profile/PII, registration answers, payment, moderation, audit, approval state, and local IDs never enter the RSVP payload.
 
-## Lexicon to Projection / Aggregate-View Mapping
+## Ownership And Persistence
 
-| NSID | Domain Entity | EF Configuration | Projection Table | DTO | CQRS Query |
-|---|---|---|---|---|---|
-| `im.islamu.event.core.v1` | `Event` | `EventConfiguration` | `events` | `EventDto` | `GetEventDetailQuery` |
-| `im.islamu.eventsession.core.v1` | `EventSession` | `EventSessionConfiguration` | `event_sessions` | `EventSessionDto` | `GetEventSessionDetailQuery` |
-| `im.islamu.event.islamic.v1` | `EventIslamicAspect` | `EventIslamicAspectConfiguration` | `event_islamic_aspects` | `EventIslamicAspectDto` | (Part of Event query) |
-| `im.islamu.event.tech.v1` | `EventTechAspect` | `EventTechAspectConfiguration` | `event_tech_aspects` | `EventTechAspectDto` | (Part of Event query) |
-| `im.islamu.event.extension.v1` | `EventCustomPropertyProjection` | `EventCustomPropertyProjectionConfiguration` | `event_custom_property_projections` | `EventCustomPropertyProjectionDto` | `GetEventListQuery` |
-| `im.islamu.event.withSessions.v1` | `EventWithSessionsView` | `EventWithSessionsViewConfiguration` | `vw_event_with_sessions` | `EventWithSessionsViewDto` | `GetEventWithSessionsAggregateViewQuery` |
+Lexicons define wire shapes, not mutation authority. Local event and registration lifecycle handlers are the only outbound authority and write immutable `PdsSyncOutbox` intents inside the local transaction. CarpaNet PDS I/O happens only after commit and under a renewable fenced worker claim.
 
-## Promotion Criteria (Atlassian 4 Questions)
+Inbound records are globally canonical by DID, collection, and record key with one current source version. Canonical materialization, typed event projection, tenant presentation, tombstone/quarantine effects, and cursor advancement are atomic under the one leased consumer. Tenant discovery remains separately gated by the effective `federation.atproto_events_enabled` capability.
 
-Layer 3 custom properties earn promotion to Layer 2 or Layer 1 based on the Atlassian 4-Question Framework (Rule 12). Promotion is considered if 2 or more answers are **Yes**:
+## Evolution Rules
 
-1.  **Cross-tenant reporting required?**: Is the attribute aggregated or reported across multiple tenants?
-2.  **Automation / AI consumer required?**: Do automated systems (LLMs, recommendation engines) depend on this field?
-3.  **Search / filter affordance needed?**: Is the field required for discovery filters or search facets on public surfaces?
-4.  **Long-term stability intended?**: Is the attribute expected to remain semantically stable for ≥ 2 years?
+1. Change a record shape only by updating its vendored JSON and the typed mapper/parser/validator tests in the same workstream.
+2. Keep `LexiconFiles` explicit and hermetic; do not add runtime resolution or wildcard imports.
+3. Treat constraint tightening, required-field additions, token removal, or field removal as compatibility-impacting changes that need an upstream/versioning decision before adoption.
+4. An internal EAV field does not create a new AT Protocol schema. Eligible public EAV values continue through the exhaustive description contract until an approved vendored lexicon field exists.
+5. Adding a third ingress collection requires an explicit product/architecture decision plus subscriber, parser, persistence, privacy, HAL, and recovery coverage. Do not widen `WantedCollections` speculatively.
 
-**Promotion Procedure**:
-- Candidates are identified via the property governance admin surface.
-- Promoted fields are implemented as first-class typed columns in Layer 2 aspects or Layer 1 core.
-- Data migration is performed from EAV storage to the new typed home.
+## Related
 
-## Experimental (`im.islamu.event.temp.*`) Namespace Guidelines
-
-The `temp.*` namespace is reserved for rapid iteration and unstable schemas:
-
-- **Registration**: Register a temp lexicon in `dev/active/` documentation before use.
-- **Expiration**: Temp lexicons should expire or be promoted to stable within 6 months.
-- **Graduation Checklist**:
-  - Semantic stability achieved.
-  - Test coverage complete (Unit + Integration).
-  - Documentation updated in this registry.
-  - Versioned rename to stable NSID.
-- **Isolation**: NEVER deploy `temp.*` lexicons to public federation channels or external publication targets.
-
-## References
-
-- [AGENTS.md](../AGENTS.md) — agent contract.
-- [QUICK_REFERENCE.md](QUICK_REFERENCE.md) — hard invariants.
-- [GOVERNANCE.md](GOVERNANCE.md) — governance + decision frameworks.
-- [ARCHITECTURE.md](ARCHITECTURE.md) — layering + request flow.
-- `dev/active/eav-custom-properties/` — EAV plan and context.
-- [ATProto NSID Specification](https://atproto.com/specs/nsid) — upstream format definition.
+- [FEDERATION.md](FEDERATION.md) — governance, DB-first delivery, Jetstream ownership, and roadmap boundary.
+- [API.md](API.md#at-protocol-event-federation-contract) — typed discovery, safe source redirect, and absent raw mutation surface.
+- [ADR-015](adr/ADR-015-atproto-event-federation-ownership.md) — canonical ingress and lifecycle-owned egress decision.
+- [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) — generic and PDS-specific transactional outbox boundaries.
