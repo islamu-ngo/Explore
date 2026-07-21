@@ -119,4 +119,43 @@ public class GovernanceSettingKeysTests
             await Assert.That(string.IsNullOrWhiteSpace(definition.Category)).IsFalse();
         }
     }
+
+    [Test]
+    public async Task UiShellSettingsShouldRegisterExplicitGovernanceAndPreferenceScopes()
+    {
+        string[] governanceKeys =
+        [
+            GovernanceSettingKeys.UiShell.RailPublicVisibility,
+            GovernanceSettingKeys.UiShell.DefaultNavModeEvents,
+            GovernanceSettingKeys.UiShell.DefaultNavModeStudio,
+            GovernanceSettingKeys.UiShell.DefaultNavModeAi,
+            GovernanceSettingKeys.UiShell.DefaultNavModeSettings,
+            GovernanceSettingKeys.UiShell.AllowUserNavOverride,
+            GovernanceSettingKeys.UiShell.OrganizerDefaultWorkspace
+        ];
+        string[] preferenceKeys =
+        [
+            GovernanceSettingKeys.UiShellPreferences.Layout,
+            GovernanceSettingKeys.UiShellPreferences.LastWorkspace,
+            GovernanceSettingKeys.UiShellPreferences.LastActor
+        ];
+
+        foreach (var key in governanceKeys)
+        {
+            var definition = SettingRegistry.Get(key);
+            await Assert.That(definition).IsNotNull();
+            await Assert.That(definition!.MinScope).IsEqualTo(SettingScope.Instance);
+            await Assert.That(definition.MaxScope).IsEqualTo(SettingScope.Tenant);
+            await Assert.That(definition.IsLockable).IsTrue();
+        }
+
+        foreach (var key in preferenceKeys)
+        {
+            var definition = SettingRegistry.Get(key);
+            await Assert.That(definition).IsNotNull();
+            await Assert.That(definition!.MinScope).IsEqualTo(SettingScope.User);
+            await Assert.That(definition.MaxScope).IsEqualTo(SettingScope.User);
+            await Assert.That(definition.IsLockable).IsFalse();
+        }
+    }
 }

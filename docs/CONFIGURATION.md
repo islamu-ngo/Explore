@@ -814,6 +814,7 @@ Major groups:
 - `cerbos.*`
 - `analytics.*`
 - `ai_assistant.*`
+- `ui_shell.*` and `ui_shell_preferences.*`
 - `auth.*`
 - `federation.*`
 - `localization.*`
@@ -832,6 +833,27 @@ Sensitive runtime credentials use a separate secret-setting key space. Do not ex
 | Support access | `support_access.*` | none |
 
 `SecretDefinitionRegistry` recognizes provider folders for `/api`, `/storage`, `/keycloak`, `/cerbos`, `/postgresql`, `/smtp`, `/analytics`, and `/ai`. The `/smtp` folder uses `MAIL_SMTP_HOST`, `MAIL_SMTP_PORT`, `MAIL_SMTP_USERNAME`, `MAIL_SMTP_PASSWORD`, `MAIL_SMTP_FROM_ADDRESS`, and `MAIL_SMTP_FROM_NAME`. Blazor maps Google client values from `/blazor`; do not claim Google is part of the current secret-catalog folder list unless the registry changes.
+
+### Workspace Shell Settings
+
+Workspace-shell policy uses lockable Instance/Tenant settings. Personal layout state uses non-lockable User-only preferences and must never be written by tenant administrators.
+
+These definitions are registered for contract stability. The current shell renders the public Events rail and authenticated Settings item directly; runtime resolution of `ui_shell.*` policy begins in Phase 7 of the active dynamic-event-management-ui workstream. Until that wiring lands, changing these governance values does not alter shell behavior. User preference persistence is likewise registered here but implemented in Phase 7.
+
+| Key | Scope | Type | Default | Allowed values | Description |
+|---|---|---|---|---|---|
+| `ui_shell.rail_public_visibility` | Instance → Tenant, lockable | string | `"AuthenticatedOnly"` | `AuthenticatedOnly`, `Always` | Controls whether anonymous visitors see the workspace rail. |
+| `ui_shell.default_nav_mode.events` | Instance → Tenant, lockable | string | `"Docked"` | `Docked`, `Collapsed` | Default Events workspace navigation mode. |
+| `ui_shell.default_nav_mode.studio` | Instance → Tenant, lockable | string | `"Docked"` | `Docked`, `Collapsed` | Default Studio workspace navigation mode. |
+| `ui_shell.default_nav_mode.ai` | Instance → Tenant, lockable | string | `"Docked"` | `Docked`, `Collapsed` | Default AI workspace navigation mode. |
+| `ui_shell.default_nav_mode.settings` | Instance → Tenant, lockable | string | `"Docked"` | `Docked`, `Collapsed` | Default Settings workspace navigation mode. |
+| `ui_shell.allow_user_nav_override` | Instance → Tenant, lockable | bool | `true` | — | Allows users to override tenant navigation-mode defaults. |
+| `ui_shell.organizer_default_workspace` | Instance → Tenant, lockable | string | `"Events"` | `Events`, `Studio` | Default workspace for authenticated organizers. |
+| `ui_shell_preferences.layout.v1` | User only, non-lockable | JSON | `null` | — | Versioned workspace-shell layout snapshot. |
+| `ui_shell_preferences.last_workspace` | User only, non-lockable | string | `""` | — | Last valid workspace selected by the user. |
+| `ui_shell_preferences.last_actor` | User only, non-lockable | string | `""` | — | Last managed actor selected by the user. |
+
+The default `null` layout means no server snapshot exists yet, which allows the client to promote a tenant-discriminated anonymous snapshot on first authenticated use. Viewport-projected dock state is never persisted.
 
 ## AI Assistant Settings (Governance)
 
