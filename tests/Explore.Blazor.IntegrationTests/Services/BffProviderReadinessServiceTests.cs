@@ -65,7 +65,7 @@ public sealed class BffProviderReadinessServiceTests
         availability.IsService(typeof(IOAuthStateStore)).Returns(true);
         availability.IsService(typeof(IOAuthSessionStore)).Returns(true);
         var transportFactory = Substitute.For<IAtprotoOAuthTransportFactory>();
-        var factory = new AtprotoOAuthClientFactory(
+        using var factory = new AtprotoOAuthClientFactory(
             new AtprotoClientKeyProvider(Options.Create(new AtprotoClientKeyOptions
             {
                 OAuthClientPrivateJwks = CreatePrivateJwks()

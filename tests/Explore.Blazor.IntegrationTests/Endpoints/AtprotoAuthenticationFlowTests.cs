@@ -304,6 +304,36 @@ public sealed class AtprotoAuthenticationFlowTests
         }
     }
 
+    [Test]
+    public async Task RepeatedChallengesReuseIdentityResolutionButKeepAuthorizationFlowsIndependent()
+    {
+        using var atprotoServer = new HermeticAtprotoServer();
+        using var apiServer = new HermeticBffApiServer();
+        await using var factory = CreateHappyPathFactory(false, atprotoServer, apiServer);
+        using var client = CreateClient(factory);
+        var antiforgeryToken = await IssueAntiforgeryTokenAsync(client);
+
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/auth/atproto/challenge")
+            {
+                Content = new StringContent(
+                    "{\"handle\":\"alice.example\"}",
+                    Encoding.UTF8,
+                    "application/json")
+            };
+            request.Headers.Add("X-CSRF-TOKEN", antiforgeryToken);
+
+            using var response = await client.SendAsync(request);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        atprotoServer.DnsRequestCount.Should().Be(1);
+        atprotoServer.DidDocumentRequestCount.Should().Be(1);
+        atprotoServer.PushedAuthorizationRequestCount.Should().Be(2);
+    }
+
     private static WebApplicationFactory<Program> CreateFactory(
         bool withSigningKey = false,
         bool bypassAntiforgery = false,
@@ -603,21 +633,27 @@ public sealed class AtprotoAuthenticationFlowTests
             Explore.Atproto.Transport.AtprotoOutboundPolicy policy,
             TimeSpan connectTimeout) => server;
 
-        public IDnsResolver CreateDnsResolver() => new HermeticDnsResolver();
+        public IDnsResolver CreateDnsResolver() => new HermeticDnsResolver(server);
     }
 
-    private sealed class HermeticDnsResolver : IDnsResolver
+    private sealed class HermeticDnsResolver(HermeticAtprotoServer server) : IDnsResolver
     {
         public Task<IReadOnlyList<string>> GetTxtRecordsAsync(
             string name,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<string>>(
+            CancellationToken cancellationToken = default)
+        {
+            server.DnsRequestCount++;
+            return Task.FromResult<IReadOnlyList<string>>(
                 name == "_atproto.alice.example" ? ["did=did:plc:alice"] : []);
+        }
     }
 
     private sealed class HermeticAtprotoServer : HttpMessageHandler
     {
         public string? State { get; private set; }
+        public int DnsRequestCount { get; set; }
+        public int DidDocumentRequestCount { get; private set; }
+        public int PushedAuthorizationRequestCount { get; private set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
@@ -628,6 +664,7 @@ public sealed class AtprotoAuthenticationFlowTests
                 && uri.Host == "plc.directory"
                 && uri.AbsolutePath == "/did:plc:alice")
             {
+                DidDocumentRequestCount++;
                 return Json("""
                     {"id":"did:plc:alice","alsoKnownAs":["at://alice.example"],"service":[{"id":"#atproto_pds","type":"AtprotoPersonalDataServer","serviceEndpoint":"https://pds.example"}]}
                     """);
@@ -649,6 +686,7 @@ public sealed class AtprotoAuthenticationFlowTests
 
             if (request.Method == HttpMethod.Post && uri.AbsolutePath == "/oauth/par")
             {
+                PushedAuthorizationRequestCount++;
                 var body = await request.Content!.ReadAsStringAsync(cancellationToken);
                 State = ParseForm(body)["state"];
                 return JsonWithNonce("{\"request_uri\":\"urn:ietf:params:oauth:request_uri:hermetic\",\"expires_in\":90}");

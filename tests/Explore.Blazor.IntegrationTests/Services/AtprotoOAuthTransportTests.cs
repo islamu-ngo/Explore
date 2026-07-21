@@ -752,7 +752,7 @@ public sealed class AtprotoOAuthTransportTests
             CallbackPath = "/signin-atproto"
         });
         var unavailableServices = Substitute.For<IServiceProviderIsService>();
-        var unavailable = new AtprotoOAuthClientFactory(
+        using var unavailable = new AtprotoOAuthClientFactory(
             keyProvider,
             options,
             environment,
@@ -763,7 +763,7 @@ public sealed class AtprotoOAuthTransportTests
         var availableServices = Substitute.For<IServiceProviderIsService>();
         availableServices.IsService(typeof(IOAuthStateStore)).Returns(true);
         availableServices.IsService(typeof(IOAuthSessionStore)).Returns(true);
-        var ready = new AtprotoOAuthClientFactory(
+        using var ready = new AtprotoOAuthClientFactory(
             keyProvider,
             options,
             environment,

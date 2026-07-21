@@ -23,12 +23,13 @@ public sealed class AtprotoOAuthClientFactory(
     IOptions<AtprotoAuthenticationOptions> configuredOptions,
     IWebHostEnvironment environment,
     IServiceProviderIsService serviceAvailability,
-    IAtprotoOAuthTransportFactory transportFactory)
+    IAtprotoOAuthTransportFactory transportFactory) : IDisposable
 {
     private const string RequiredScope = "atproto transition:generic";
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(15);
     private const int MaximumResponseBytes = 1024 * 1024;
+    private readonly AtprotoIdentityCache _identityCache = new();
 
     public AtprotoOAuthReadiness GetReadiness()
     {
@@ -95,10 +96,10 @@ public sealed class AtprotoOAuthClientFactory(
             pinnedKeyId,
             metadata);
         var httpClient = new HttpClient(assertions, disposeHandler: true) { Timeout = RequestTimeout };
-        var identityResolver = new IdentityResolver(
+        var identityResolver = IdentityResolver.CreateWithCache(
+            _identityCache,
             httpClient,
-            dnsResolver: transportFactory.CreateDnsResolver(),
-            cache: new MemoryIdentityCache());
+            dnsResolver: transportFactory.CreateDnsResolver());
         var config = new OAuthClientConfig
         {
             ClientId = identity.ClientId,
@@ -132,6 +133,8 @@ public sealed class AtprotoOAuthClientFactory(
         AtprotoAuthenticationOptions options) => new(
         string.Equals(environment.EnvironmentName, Environments.Development, StringComparison.Ordinal)
         && options.AllowDevelopmentLoopback);
+
+    public void Dispose() => _identityCache.Dispose();
 }
 
 public sealed class AtprotoOAuthSessionLease(
