@@ -114081,6 +114081,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("actorId")]
         public System.Guid? ActorId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("scopeId")]
+        public System.Guid? ScopeId { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("actorType")]
         public string? ActorType { get; set; } = default!;
 
@@ -115220,6 +115223,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("actorId")]
         public System.Guid? ActorId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("scopeId")]
+        public System.Guid? ScopeId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("actorType")]
         public string? ActorType { get; set; } = default!;
