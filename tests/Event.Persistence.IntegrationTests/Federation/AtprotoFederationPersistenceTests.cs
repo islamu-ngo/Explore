@@ -5,6 +5,7 @@ using System.Data.Common;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Features.Federation.Atproto.Models;
 using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -354,6 +355,258 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         await Assert.That(persisted.Provenance).IsEqualTo(AtprotoRecordProvenance.JetstreamEcho);
         await Assert.That(persisted.SourceVersion).IsEqualTo(2);
         await Assert.That(await context.AtprotoRecords.CountAsync()).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task PdsSnapshotReconcile_AllDidsCommitAtomicallyWithoutAdvancingCursor()
+    {
+        await fixture.ResetAsync();
+        FederationScope scope = await SeedScopeAsync("snapshot-all-dids");
+        await using var context = fixture.CreateDbContext();
+        var repository = new AtprotoJetstreamRepository(context);
+        DateTime now = DateTime.UtcNow;
+        AtprotoJetstreamClaim claim = await repository.TryClaimAsync(
+            "https://jetstream.example",
+            "snapshot-worker",
+            now,
+            TimeSpan.FromMinutes(5)) ?? throw new InvalidOperationException("Claim was not acquired.");
+        await repository.TryApplyAndAdvanceAsync(new AtprotoJetstreamApplyRequest(
+            claim,
+            0,
+            100,
+            IncomingRecord(100, now),
+            [],
+            null,
+            now));
+        const string didA = "did:plc:snapshot-a";
+        const string didB = "did:plc:snapshot-b";
+        AtprotoRecord eventA = SnapshotRecord(didA, "event-a", now);
+        AtprotoRecord eventB = SnapshotRecord(didB, "event-b", now);
+        var request = new AtprotoPdsSnapshotApplyRequest(
+            claim,
+            [didA, didB],
+            [
+                Snapshot(didA, eventA, "Event A", now),
+                Snapshot(didB, eventB, "Event B", now)
+            ],
+            [scope.TenantId],
+            SnapshotVersion: 200,
+            ObservedAt: now.AddSeconds(1));
+
+        bool applied = await repository.TryReconcileAsync(request, CancellationToken.None);
+        bool replayed = await repository.TryReconcileAsync(request, CancellationToken.None);
+
+        context.ChangeTracker.Clear();
+        AtprotoRecord[] recovered = await context.AtprotoRecords.AsNoTracking()
+            .Where(value => value.Did == didA || value.Did == didB)
+            .OrderBy(value => value.Did)
+            .ToArrayAsync();
+        await Assert.That(applied).IsTrue();
+        await Assert.That(replayed).IsTrue();
+        await Assert.That(recovered).Count().IsEqualTo(2);
+        await Assert.That(recovered.All(value => value.SourceVersion == 200 && value.SourceCursor is null)).IsTrue();
+        await Assert.That(await context.AtprotoEventProjections.CountAsync()).IsEqualTo(2);
+        await Assert.That(await context.AtprotoRecordTenantPresentations.IgnoreQueryFilters().CountAsync()).IsEqualTo(2);
+        await Assert.That(await context.Events.CountAsync()).IsEqualTo(0);
+        await Assert.That(await context.EventRegistrations.CountAsync()).IsEqualTo(0);
+        await Assert.That(await context.AtprotoJetstreamConsumerStates.Select(value => value.Cursor).SingleAsync())
+            .IsEqualTo(100);
+    }
+
+    [Test]
+    public async Task PdsSnapshotReconcile_NewerJetstreamWinsAndCompleteAbsenceTombstonesSafely()
+    {
+        await fixture.ResetAsync();
+        FederationScope scope = await SeedScopeAsync("snapshot-reconcile");
+        await using var context = fixture.CreateDbContext();
+        var repository = new AtprotoJetstreamRepository(context);
+        DateTime now = DateTime.UtcNow;
+        AtprotoJetstreamClaim claim = await repository.TryClaimAsync(
+            "https://jetstream.example",
+            "snapshot-worker",
+            now,
+            TimeSpan.FromMinutes(5)) ?? throw new InvalidOperationException("Claim was not acquired.");
+        const string did = "did:plc:snapshot-owner";
+        AtprotoRecord missingEvent = SnapshotRecord(did, "missing-event", now, sourceVersion: 100);
+        AtprotoRecord rejectedEvent = SnapshotRecord(did, "rejected-event", now, sourceVersion: 100);
+        AtprotoRecord newerEvent = SnapshotRecord(did, "newer-event", now, sourceVersion: 300);
+        AtprotoRecord dependentRsvp = SnapshotRecord(
+            did,
+            "dependent-rsvp",
+            now,
+            sourceVersion: 100,
+            collection: "community.lexicon.calendar.rsvp");
+        dependentRsvp.SubjectUri = missingEvent.Uri;
+        dependentRsvp.SubjectCid = missingEvent.Cid;
+        AtprotoRecord localOnly = SnapshotRecord(did, "local-only", now, sourceVersion: 0);
+        localOnly.Direction = AtprotoRecordDirection.Outbound;
+        localOnly.Provenance = AtprotoRecordProvenance.LocalLifecycle;
+        AtprotoRecord missingEcho = SnapshotRecord(did, "missing-echo", now, sourceVersion: 100);
+        missingEcho.Direction = AtprotoRecordDirection.Reconciled;
+        missingEcho.Provenance = AtprotoRecordProvenance.JetstreamEcho;
+        context.AtprotoRecords.AddRange(
+            missingEvent,
+            rejectedEvent,
+            newerEvent,
+            dependentRsvp,
+            localOnly,
+            missingEcho);
+        context.AtprotoEventProjections.AddRange(
+            Projection(missingEvent.Id, 100, "Missing event"),
+            Projection(rejectedEvent.Id, 100, "Rejected event"),
+            Projection(newerEvent.Id, 300, "Newer event"));
+        foreach (AtprotoRecord record in new[] { missingEvent, rejectedEvent, newerEvent, dependentRsvp })
+        {
+            context.AtprotoRecordTenantPresentations.Add(new()
+            {
+                TenantId = scope.TenantId,
+                AtprotoRecordId = record.Id,
+                IsVisible = true,
+                SourceVersion = record.SourceVersion,
+                EvaluatedAt = now
+            });
+        }
+        await context.SaveChangesAsync();
+        AtprotoRecord staleNewerSnapshot = SnapshotRecord(did, newerEvent.RecordKey, now, sourceVersion: 200);
+        staleNewerSnapshot.RecordJson = "{\"name\":\"Stale snapshot\"}";
+        var snapshot = new AtprotoPdsSnapshot(
+            did,
+            [
+                new("community.lexicon.calendar.event", rejectedEvent.RecordKey),
+                new("community.lexicon.calendar.event", newerEvent.RecordKey),
+                new("community.lexicon.calendar.rsvp", dependentRsvp.RecordKey)
+            ],
+            [
+                new(staleNewerSnapshot, Projection(staleNewerSnapshot.Id, 200, "Stale snapshot")),
+                new(dependentRsvp, null)
+            ]);
+
+        bool applied = await repository.TryReconcileAsync(
+            new(
+                claim,
+                [did],
+                [snapshot],
+                [scope.TenantId],
+                SnapshotVersion: 200,
+                ObservedAt: now.AddSeconds(1)),
+            CancellationToken.None);
+
+        context.ChangeTracker.Clear();
+        AtprotoRecord persistedMissing = await context.AtprotoRecords.AsNoTracking()
+            .SingleAsync(value => value.RecordKey == missingEvent.RecordKey);
+        AtprotoRecord persistedRejected = await context.AtprotoRecords.AsNoTracking()
+            .SingleAsync(value => value.RecordKey == rejectedEvent.RecordKey);
+        AtprotoRecord persistedNewer = await context.AtprotoRecords.AsNoTracking()
+            .SingleAsync(value => value.RecordKey == newerEvent.RecordKey);
+        AtprotoRecord persistedLocal = await context.AtprotoRecords.AsNoTracking()
+            .SingleAsync(value => value.RecordKey == localOnly.RecordKey);
+        AtprotoRecord persistedEcho = await context.AtprotoRecords.AsNoTracking()
+            .SingleAsync(value => value.RecordKey == missingEcho.RecordKey);
+        Dictionary<Guid, bool> visibility = await context.AtprotoRecordTenantPresentations
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .ToDictionaryAsync(value => value.AtprotoRecordId, value => value.IsVisible);
+        await Assert.That(applied).IsTrue();
+        await Assert.That(persistedMissing.TombstonedAt).IsNotNull();
+        await Assert.That(persistedMissing.SourceVersion).IsEqualTo(200);
+        await Assert.That(persistedMissing.SourceCursor).IsNull();
+        await Assert.That(visibility[missingEvent.Id]).IsFalse();
+        await Assert.That(visibility[dependentRsvp.Id]).IsFalse();
+        await Assert.That(persistedRejected.TombstonedAt).IsNull();
+        await Assert.That(persistedRejected.SourceVersion).IsEqualTo(100);
+        await Assert.That(visibility[rejectedEvent.Id]).IsFalse();
+        await Assert.That(persistedNewer.SourceVersion).IsEqualTo(300);
+        await Assert.That(persistedNewer.RecordJson).IsEqualTo(newerEvent.RecordJson);
+        await Assert.That(visibility[newerEvent.Id]).IsTrue();
+        await Assert.That(persistedLocal.Direction).IsEqualTo(AtprotoRecordDirection.Outbound);
+        await Assert.That(persistedLocal.Provenance).IsEqualTo(AtprotoRecordProvenance.LocalLifecycle);
+        await Assert.That(persistedLocal.TombstonedAt).IsNull();
+        await Assert.That(persistedEcho.Direction).IsEqualTo(AtprotoRecordDirection.Reconciled);
+        await Assert.That(persistedEcho.Provenance).IsEqualTo(AtprotoRecordProvenance.JetstreamEcho);
+        await Assert.That(persistedEcho.TombstonedAt).IsNotNull();
+        await Assert.That(await context.AtprotoEventProjections.CountAsync()).IsEqualTo(1);
+        await Assert.That(await context.AtprotoJetstreamConsumerStates.Select(value => value.Cursor).SingleAsync())
+            .IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task PdsSnapshotReconcile_IncompleteRunOrExpiredFenceWritesNothing()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var repository = new AtprotoJetstreamRepository(context);
+        DateTime now = DateTime.UtcNow;
+        AtprotoJetstreamClaim claim = await repository.TryClaimAsync(
+            "https://jetstream.example",
+            "snapshot-worker",
+            now,
+            TimeSpan.FromSeconds(1)) ?? throw new InvalidOperationException("Claim was not acquired.");
+        const string didA = "did:plc:incomplete-a";
+        const string didB = "did:plc:incomplete-b";
+        AtprotoPdsSnapshot snapshot = Snapshot(didA, SnapshotRecord(didA, "event-a", now), "Event A", now);
+
+        bool incomplete = await repository.TryReconcileAsync(
+            new(claim, [didA, didB], [snapshot], [], 100, now),
+            CancellationToken.None);
+        bool expired = await repository.TryReconcileAsync(
+            new(claim, [didA], [snapshot], [], 100, now.AddSeconds(2)),
+            CancellationToken.None);
+
+        await Assert.That(incomplete).IsFalse();
+        await Assert.That(expired).IsFalse();
+        await Assert.That(await context.AtprotoRecords.CountAsync()).IsEqualTo(0);
+        await Assert.That(await context.AtprotoEventProjections.CountAsync()).IsEqualTo(0);
+        await Assert.That(await context.AtprotoRecordTenantPresentations.IgnoreQueryFilters().CountAsync()).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task PdsSnapshotReconcile_FenceExpiryDuringSaveRollsBackEverySnapshotWrite()
+    {
+        await fixture.ResetAsync();
+        DateTime now = DateTime.UtcNow;
+        AtprotoJetstreamClaim claim;
+        await using (var claimContext = fixture.CreateDbContext())
+        {
+            claim = await new AtprotoJetstreamRepository(claimContext).TryClaimAsync(
+                "https://jetstream.example",
+                "snapshot-worker",
+                now,
+                TimeSpan.FromMinutes(5)) ?? throw new InvalidOperationException("Claim was not acquired.");
+        }
+
+        var interceptor = new ReclaimOnSaveInterceptor(async () =>
+        {
+            await using ExploreDbContext expiryContext = fixture.CreateDbContext();
+            await expiryContext.AtprotoJetstreamConsumerStates
+                .Where(value => value.Id == claim.ConsumerStateId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(value => value.LeaseExpiresAt, now.AddSeconds(-1)));
+        });
+        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseNpgsql(fixture.ConnectionString)
+            .UseSnakeCaseNamingConvention()
+            .ConfigureWarnings(value => value.Ignore(RelationalEventId.PendingModelChangesWarning))
+            .AddInterceptors(interceptor)
+            .Options;
+        await using var context = new ExploreDbContext(options);
+        context.EnableTenantFilterBypass("ATProto snapshot settlement fence race test.");
+        const string did = "did:plc:expiry-during-save";
+        AtprotoPdsSnapshot snapshot = Snapshot(
+            did,
+            SnapshotRecord(did, "event-a", now),
+            "Event A",
+            now);
+
+        bool reconciled = await new AtprotoJetstreamRepository(context).TryReconcileAsync(
+            new(claim, [did], [snapshot], [], 100, now),
+            CancellationToken.None);
+
+        await using ExploreDbContext verifyContext = fixture.CreateDbContext();
+        await Assert.That(reconciled).IsFalse();
+        await Assert.That(await verifyContext.AtprotoRecords.CountAsync()).IsEqualTo(0);
+        await Assert.That(await verifyContext.AtprotoEventProjections.CountAsync()).IsEqualTo(0);
+        await Assert.That(await verifyContext.AtprotoRecordTenantPresentations.IgnoreQueryFilters().CountAsync())
+            .IsEqualTo(0);
     }
 
     [Test]
@@ -903,6 +1156,45 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             SourceUrl = "https://events.example/source",
             SourceVersion = sourceVersion,
             MaterializedAt = Utc(10)
+        };
+
+    private static AtprotoPdsSnapshot Snapshot(
+        string did,
+        AtprotoRecord record,
+        string name,
+        DateTime observedAt)
+    {
+        AtprotoEventProjection projection = Projection(record.Id, record.SourceVersion, name);
+        projection.MaterializedAt = observedAt;
+        return new(
+            did,
+            [new(record.Collection, record.RecordKey)],
+            [new(record, projection)]);
+    }
+
+    private static AtprotoRecord SnapshotRecord(
+        string did,
+        string recordKey,
+        DateTime observedAt,
+        long sourceVersion = 0,
+        string collection = "community.lexicon.calendar.event") => new()
+        {
+            Id = Guid.CreateVersion7(),
+            Did = did,
+            Collection = collection,
+            RecordKey = recordKey,
+            Direction = AtprotoRecordDirection.Inbound,
+            Provenance = AtprotoRecordProvenance.Jetstream,
+            Cid = $"bafy-{recordKey}",
+            Uri = $"at://{did}/{collection}/{recordKey}",
+            SourceVersion = sourceVersion,
+            SourceCursor = sourceVersion,
+            RecordJson = collection == "community.lexicon.calendar.event"
+                ? $"{{\"name\":\"{recordKey}\",\"createdAt\":\"2026-07-18T10:00:00Z\"}}"
+                : "{\"status\":\"community.lexicon.calendar.rsvp#going\"}",
+            RecordHash = new string('d', 64),
+            IndexedAt = observedAt,
+            UpdatedAt = observedAt
         };
 
     private static PdsSyncOutbox CreateOutbox(

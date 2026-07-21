@@ -200,6 +200,7 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IEventLifecycleScheduler, EventLifecycleScheduler>();
         services.AddScoped<AtprotoEventGovernanceResolver>();
         services.AddScoped<AtprotoJetstreamTenantPresentationResolver>();
+        services.AddScoped<AtprotoPdsRecoveryPolicyResolver>();
         services.AddScoped<IEventLifecyclePolicyProvider, EventLifecyclePolicyProvider>();
         services.AddScoped<IEventLifecycleReadinessEvaluator, EventLifecycleReadinessEvaluator>();
         services.AddScoped<IScheduledEmailDispatchTrigger, NoOpScheduledEmailDispatchTrigger>();

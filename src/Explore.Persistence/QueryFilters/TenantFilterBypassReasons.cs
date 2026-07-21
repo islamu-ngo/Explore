@@ -68,6 +68,9 @@ public static class TenantFilterBypassReasons
     public const string AtprotoJetstreamGlobalMaterialization =
         "The single fenced Jetstream consumer materializes global records and explicit tenant presentation rows atomically.";
 
+    public const string AtprotoPdsSnapshotGlobalReconciliation =
+        "The fenced AT Protocol recovery worker reconciles bounded current snapshots and explicit tenant presentations across configured DIDs.";
+
     public const string AtprotoJetstreamGovernanceResolution =
         "The single Jetstream consumer resolves one exact governance key across active tenants before presentation materialization.";
 

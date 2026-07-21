@@ -1,0 +1,21 @@
+// ABOUTME: Defines atomic fenced persistence for a complete current-state ATProto repository snapshot.
+// ABOUTME: Keeps cursor ownership unchanged while applying canonical records, projections, presentations, and tombstones.
+
+using Explore.Application.Features.Federation.Atproto.Models;
+
+namespace Explore.Application.Contracts.Persistence;
+
+public sealed record AtprotoPdsSnapshotApplyRequest(
+    AtprotoJetstreamClaim Claim,
+    IReadOnlyList<string> ScannedDids,
+    IReadOnlyList<AtprotoPdsSnapshot> Snapshots,
+    IReadOnlyList<Guid> PresentationTenantIds,
+    long SnapshotVersion,
+    DateTime ObservedAt);
+
+public interface IAtprotoPdsSnapshotRepository
+{
+    Task<bool> TryReconcileAsync(
+        AtprotoPdsSnapshotApplyRequest request,
+        CancellationToken cancellationToken);
+}
