@@ -21,6 +21,7 @@ public sealed class AiAssistantBootstrapDto
 public sealed class AiAssistantActorContextDto
 {
     public Guid ActorId { get; set; }
+    public Guid? ScopeId { get; set; }
     public string ActorType { get; set; } = string.Empty;
     public string ActorDisplayName { get; set; } = string.Empty;
 }

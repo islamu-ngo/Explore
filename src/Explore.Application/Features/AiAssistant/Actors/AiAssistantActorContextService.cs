@@ -51,7 +51,8 @@ public sealed class AiAssistantActorContextService(
                 seenActorIds,
                 membership.Organization.ActorId!.Value,
                 nameof(ActorTypeEnum.Organization),
-                membership.Organization.FullName);
+                membership.Organization.FullName,
+                membership.OrganizationId);
         }
 
         var allowedGroupIds = (await groupMemberRepository.GetGroupIdsWhereUserHasPermission(
@@ -69,7 +70,8 @@ public sealed class AiAssistantActorContextService(
                 seenActorIds,
                 membership.Group.ActorId!.Value,
                 nameof(ActorTypeEnum.Group),
-                membership.Group.FullName);
+                membership.Group.FullName,
+                membership.GroupId);
         }
 
         return contexts;
@@ -122,7 +124,8 @@ public sealed class AiAssistantActorContextService(
         ISet<Guid> seenActorIds,
         Guid actorId,
         string actorType,
-        string? actorDisplayName)
+        string? actorDisplayName,
+        Guid? scopeId = null)
     {
         if (actorId == Guid.Empty || !seenActorIds.Add(actorId))
         {
@@ -132,6 +135,7 @@ public sealed class AiAssistantActorContextService(
         contexts.Add(new AiAssistantActorContextDto
         {
             ActorId = actorId,
+            ScopeId = scopeId,
             ActorType = actorType,
             ActorDisplayName = string.IsNullOrWhiteSpace(actorDisplayName) ? actorType : actorDisplayName.Trim()
         });
