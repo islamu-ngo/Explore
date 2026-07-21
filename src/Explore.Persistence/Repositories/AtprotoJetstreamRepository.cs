@@ -282,7 +282,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             foreach ((string did, string collection, string recordKey) in present.Except(accepted))
             {
                 if (!canonicalByIdentity.TryGetValue((did, collection, recordKey), out AtprotoRecord? canonical)
-                    || canonical.SourceVersion > request.SnapshotVersion)
+                    || canonical.SourceVersion >= request.SnapshotVersion)
                 {
                     continue;
                 }

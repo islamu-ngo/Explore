@@ -62,13 +62,17 @@ public sealed class AtprotoPdsRecoveryPolicyResolver(
             .OrderBy(value => value.TenantId)
             .ToArray();
         bool anyFull = effective.Any(value => value.Mode == AtprotoPdsRecoveryMode.Full);
+        Guid[] recoveryTenantIds = effective
+            .Where(value => !anyFull || value.Mode == AtprotoPdsRecoveryMode.Full)
+            .Select(value => value.TenantId)
+            .ToArray();
         string fingerprint = Hash(string.Join(
             '\n',
             effective.Select(value => $"{value.TenantId:N}:{(int)value.Mode}")));
         return new(
             effective.Length > 0,
             anyFull ? AtprotoPdsRecoveryMode.Full : AtprotoPdsRecoveryMode.DowntimeOnly,
-            effective.Select(value => value.TenantId).ToArray(),
+            recoveryTenantIds,
             fingerprint);
     }
 

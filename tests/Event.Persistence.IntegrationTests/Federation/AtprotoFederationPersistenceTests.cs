@@ -429,6 +429,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         const string did = "did:plc:snapshot-owner";
         AtprotoRecord missingEvent = SnapshotRecord(did, "missing-event", now, sourceVersion: 100);
         AtprotoRecord rejectedEvent = SnapshotRecord(did, "rejected-event", now, sourceVersion: 100);
+        AtprotoRecord equalVersionEvent = SnapshotRecord(did, "equal-version-event", now, sourceVersion: 200);
         AtprotoRecord newerEvent = SnapshotRecord(did, "newer-event", now, sourceVersion: 300);
         AtprotoRecord dependentRsvp = SnapshotRecord(
             did,
@@ -447,6 +448,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         context.AtprotoRecords.AddRange(
             missingEvent,
             rejectedEvent,
+            equalVersionEvent,
             newerEvent,
             dependentRsvp,
             localOnly,
@@ -454,8 +456,16 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         context.AtprotoEventProjections.AddRange(
             Projection(missingEvent.Id, 100, "Missing event"),
             Projection(rejectedEvent.Id, 100, "Rejected event"),
+            Projection(equalVersionEvent.Id, 200, "Equal-version event"),
             Projection(newerEvent.Id, 300, "Newer event"));
-        foreach (AtprotoRecord record in new[] { missingEvent, rejectedEvent, newerEvent, dependentRsvp })
+        foreach (AtprotoRecord record in new[]
+                 {
+                     missingEvent,
+                     rejectedEvent,
+                     equalVersionEvent,
+                     newerEvent,
+                     dependentRsvp
+                 })
         {
             context.AtprotoRecordTenantPresentations.Add(new()
             {
@@ -473,6 +483,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             did,
             [
                 new("community.lexicon.calendar.event", rejectedEvent.RecordKey),
+                new("community.lexicon.calendar.event", equalVersionEvent.RecordKey),
                 new("community.lexicon.calendar.event", newerEvent.RecordKey),
                 new("community.lexicon.calendar.rsvp", dependentRsvp.RecordKey)
             ],
@@ -496,6 +507,8 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             .SingleAsync(value => value.RecordKey == missingEvent.RecordKey);
         AtprotoRecord persistedRejected = await context.AtprotoRecords.AsNoTracking()
             .SingleAsync(value => value.RecordKey == rejectedEvent.RecordKey);
+        AtprotoRecord persistedEqualVersion = await context.AtprotoRecords.AsNoTracking()
+            .SingleAsync(value => value.RecordKey == equalVersionEvent.RecordKey);
         AtprotoRecord persistedNewer = await context.AtprotoRecords.AsNoTracking()
             .SingleAsync(value => value.RecordKey == newerEvent.RecordKey);
         AtprotoRecord persistedLocal = await context.AtprotoRecords.AsNoTracking()
@@ -515,6 +528,9 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         await Assert.That(persistedRejected.TombstonedAt).IsNull();
         await Assert.That(persistedRejected.SourceVersion).IsEqualTo(100);
         await Assert.That(visibility[rejectedEvent.Id]).IsFalse();
+        await Assert.That(persistedEqualVersion.SourceVersion).IsEqualTo(200);
+        await Assert.That(persistedEqualVersion.SourceCursor).IsEqualTo(200);
+        await Assert.That(visibility[equalVersionEvent.Id]).IsTrue();
         await Assert.That(persistedNewer.SourceVersion).IsEqualTo(300);
         await Assert.That(persistedNewer.RecordJson).IsEqualTo(newerEvent.RecordJson);
         await Assert.That(visibility[newerEvent.Id]).IsTrue();
@@ -524,7 +540,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         await Assert.That(persistedEcho.Direction).IsEqualTo(AtprotoRecordDirection.Reconciled);
         await Assert.That(persistedEcho.Provenance).IsEqualTo(AtprotoRecordProvenance.JetstreamEcho);
         await Assert.That(persistedEcho.TombstonedAt).IsNotNull();
-        await Assert.That(await context.AtprotoEventProjections.CountAsync()).IsEqualTo(1);
+        await Assert.That(await context.AtprotoEventProjections.CountAsync()).IsEqualTo(2);
         await Assert.That(await context.AtprotoJetstreamConsumerStates.Select(value => value.Cursor).SingleAsync())
             .IsEqualTo(0);
     }

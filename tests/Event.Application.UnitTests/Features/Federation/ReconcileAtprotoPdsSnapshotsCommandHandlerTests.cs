@@ -160,6 +160,28 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_FullPolicy_ExcludesDowntimeOnlyTenantsFromHistoricalPresentation()
+    {
+        var fixture = new Fixture();
+        Guid downtimeOnlyTenantId = Guid.CreateVersion7();
+        fixture.SetTenants(fixture.TenantId, downtimeOnlyTenantId);
+        fixture.SetBackfill(enabled: true, mode: "downtime_only", locked: false);
+        fixture.SetTenantBackfill(fixture.TenantId, enabled: true, mode: "full");
+        fixture.Gateway.FetchAsync(Did, Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(CompleteSnapshot(Did));
+        fixture.Repository.TryReconcileAsync(Arg.Any<AtprotoPdsSnapshotApplyRequest>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        AtprotoPdsRecoveryResult result = await fixture.Handler.Handle(Command([Did]), CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.Completed);
+        await fixture.Repository.Received(1).TryReconcileAsync(
+            Arg.Is<AtprotoPdsSnapshotApplyRequest>(request =>
+                request.PresentationTenantIds.SequenceEqual(new[] { fixture.TenantId })),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Handle_FullPolicy_PresentationAudienceChangeInvalidatesFingerprint()
     {
         var fixture = new Fixture();
@@ -335,7 +357,7 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
     }
 
     [Test]
-    public async Task ResolvePolicy_CurrentMixedModePolicyIncludesAllEnabledTenantsInFullAudience()
+    public async Task ResolvePolicy_MixedModes_FullAudienceContainsOnlyFullTenantsAndTracksModeChanges()
     {
         var fixture = new Fixture();
         Guid downtimeOnlyTenantId = Guid.CreateVersion7();
@@ -343,11 +365,18 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         fixture.SetBackfill(enabled: true, mode: "downtime_only", locked: false);
         fixture.SetTenantBackfill(fixture.TenantId, enabled: true, mode: "full");
 
-        AtprotoPdsRecoveryPolicy policy = await fixture.PolicyResolver.ResolveAsync(CancellationToken.None);
+        AtprotoPdsRecoveryPolicy mixed = await fixture.PolicyResolver.ResolveAsync(CancellationToken.None);
 
-        await Assert.That(policy.Mode).IsEqualTo(AtprotoPdsRecoveryMode.Full);
-        await Assert.That(policy.EffectiveTenantIds)
+        await Assert.That(mixed.Mode).IsEqualTo(AtprotoPdsRecoveryMode.Full);
+        await Assert.That(mixed.EffectiveTenantIds).IsEquivalentTo(new[] { fixture.TenantId });
+
+        fixture.SetTenantBackfill(downtimeOnlyTenantId, enabled: true, mode: "full");
+        AtprotoPdsRecoveryPolicy allFull = await fixture.PolicyResolver.ResolveAsync(CancellationToken.None);
+
+        await Assert.That(allFull.Mode).IsEqualTo(AtprotoPdsRecoveryMode.Full);
+        await Assert.That(allFull.EffectiveTenantIds)
             .IsEquivalentTo(new[] { fixture.TenantId, downtimeOnlyTenantId });
+        await Assert.That(allFull.AudienceFingerprint).IsNotEqualTo(mixed.AudienceFingerprint);
     }
 
     private static AtprotoPdsSnapshotFetchResult CompleteSnapshot(string did, bool includeAcceptedItem = false)
