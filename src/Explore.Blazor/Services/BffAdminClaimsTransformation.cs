@@ -37,6 +37,7 @@ public sealed class BffAdminClaimsTransformation
     private const string TenantAdminClaim = "explore:admin:tenant";
     private const string OrganizationAdminClaim = "explore:admin:organization";
     private const string GroupAdminClaim = "explore:admin:group";
+    private const string InternalUserIdClaim = "internal_user_id";
 
     public BffAdminClaimsTransformation(
         IHttpClientFactory httpClientFactory,
@@ -54,6 +55,7 @@ public sealed class BffAdminClaimsTransformation
         ClaimsPrincipal principal,
         AuthenticationProperties? properties,
         bool forceRefresh = false,
+        bool synchronizeUser = false,
         CancellationToken cancellationToken = default)
     {
         if (principal.Identity?.IsAuthenticated != true)
@@ -82,7 +84,25 @@ public sealed class BffAdminClaimsTransformation
             return false;
         }
 
+        var accessToken = properties?.GetTokenValue("access_token");
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            _logger.LogDebug("BffAdminClaimsTransformation: No access token available for user {UserId}", sub);
+            return HasAnyAdminClaims(principal);
+        }
+
         var cacheKey = $"{CacheKeyPrefix}{sub}";
+
+        if (synchronizeUser)
+        {
+            var internalUserId = await SynchronizeUserAsync(sub, accessToken, cancellationToken);
+            if (internalUserId is not null)
+            {
+                ReplaceInternalUserIdClaim(principal, internalUserId.Value);
+            }
+
+            _cache.Remove(cacheKey);
+        }
 
         if (forceRefresh)
         {
@@ -100,13 +120,6 @@ public sealed class BffAdminClaimsTransformation
             return HasAnyAdminClaims(principal);
         }
 
-        var accessToken = properties?.GetTokenValue("access_token");
-        if (string.IsNullOrWhiteSpace(accessToken))
-        {
-            _logger.LogDebug("BffAdminClaimsTransformation: No access token available for user {UserId}", sub);
-            return HasAnyAdminClaims(principal);
-        }
-
         var authority = await FetchAdminAuthorityAsync(sub, accessToken, cancellationToken);
         if (authority is not null)
         {
@@ -118,6 +131,46 @@ public sealed class BffAdminClaimsTransformation
 
         _cache.Set(cacheKey, BffAdminAuthorityCacheEntry.Failure, FailureCacheDuration);
         return HasAnyAdminClaims(principal);
+    }
+
+    private async Task<Guid?> SynchronizeUserAsync(
+        string userId,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient(HttpClientName);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            var apiClient = new EventApiClient(client);
+            var response = await apiClient.SyncUserAsync(cancellationToken: cancellationToken);
+            return response.Success == true && response.Id is { } internalUserId && internalUserId != Guid.Empty
+                ? internalUserId
+                : null;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogWarning(
+                "BffAdminClaimsTransformation: User synchronization returned HTTP {StatusCode} for user {UserId}. Continuing authority resolution.",
+                ex.StatusCode,
+                userId);
+            return null;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning(
+                "BffAdminClaimsTransformation: Timed out while synchronizing user {UserId}. Continuing authority resolution.",
+                userId);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                "BffAdminClaimsTransformation: User synchronization failed with {FailureType} for user {UserId}. Continuing authority resolution.",
+                ex.GetType().Name,
+                userId);
+            return null;
+        }
     }
 
     private async Task<AdminAuthorityDto?> FetchAdminAuthorityAsync(
@@ -183,6 +236,19 @@ public sealed class BffAdminClaimsTransformation
         {
             principal.AddIdentity(identity);
         }
+    }
+
+    private static void ReplaceInternalUserIdClaim(ClaimsPrincipal principal, Guid internalUserId)
+    {
+        foreach (var identity in principal.Identities)
+        {
+            foreach (var claim in identity.Claims.Where(claim => claim.Type == InternalUserIdClaim).ToList())
+            {
+                identity.RemoveClaim(claim);
+            }
+        }
+
+        principal.AddIdentity(new ClaimsIdentity([new Claim(InternalUserIdClaim, internalUserId.ToString())]));
     }
 
     private static bool HasAnyAdminClaims(ClaimsPrincipal principal)

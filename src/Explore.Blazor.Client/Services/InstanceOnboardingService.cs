@@ -363,7 +363,9 @@ public sealed class InstanceOnboardingService(
         api.GetInstanceOnboardingAuthorizationProviderConfigurationInternalAsync(cancellationToken: CancellationToken.None);
 
     public Task<AuthorizationProviderConfigurationDto> GetAuthorizationProviderConfigurationAsAdminAsync() =>
-        api.GetInstanceAuthorizationProviderConfigurationAsync(cancellationToken: CancellationToken.None);
+        GetSettingsAsync(
+            ct => api.GetInstanceAuthorizationProviderConfigurationAsync(cancellationToken: ct),
+            () => new());
 
     public Task<BaseCommandResponseOfGuid> SaveAuthorizationProviderConfigurationAsync(AuthorizationProviderConfigurationDto config) =>
         SendCommandAsync(ct => api.SaveInstanceOnboardingAuthorizationProviderConfigurationAsync(config, cancellationToken: ct));

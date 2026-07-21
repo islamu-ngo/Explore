@@ -442,6 +442,20 @@ public class InstanceOnboardingServiceTests
     }
 
     [Test]
+    [Arguments(401)]
+    [Arguments(403)]
+    public async Task GetAuthorizationProviderConfigurationAsAdminAsync_WhenIdentityIsNotReady_ReturnsEmptyConfiguration(
+        int statusCode)
+    {
+        SetupBffClient(new HttpResponseMessage((HttpStatusCode)statusCode));
+
+        var result = await _service.GetAuthorizationProviderConfigurationAsAdminAsync();
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.Provider).IsNull();
+    }
+
+    [Test]
     [Arguments(true, false, "pending", true)]
     [Arguments(true, false, "failed", false)]
     [Arguments(false, true, null, true)]

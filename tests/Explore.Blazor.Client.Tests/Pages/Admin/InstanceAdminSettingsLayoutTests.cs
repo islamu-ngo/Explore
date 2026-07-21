@@ -204,6 +204,29 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     }
 
     [Test]
+    public async Task InstanceAdminSettingsLayout_WhenIdentityIsNotReady_ShowsInlineRecoveryInsteadOfProviderEditor()
+    {
+        _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
+            .Returns(new AuthorizationProviderConfigurationDto());
+
+        IRenderedComponent<DynamicComponent> cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
+            parameters.Add(component => component.Type, GetLayoutComponentType()));
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("admin session is still becoming ready", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected inline identity-readiness guidance.");
+            }
+        });
+
+        await Assert.That(cut.Markup).Contains("Reload settings", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).Contains("sign out and back in", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).DoesNotContain("Exactly one authorization provider is active", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).DoesNotContain("Enable Cerbos Authorization", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Test]
     public async Task InstanceAdminSettingsLayout_AuthProvidersSave_UpdatesAuthenticationAndAuthorizationProviders()
     {
         // Arrange

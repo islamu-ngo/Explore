@@ -23,6 +23,7 @@ public sealed class ExploreBffCookieSessionHandler(
         await adminClaimsTransformation.EnrichPrincipalAsync(
             context.Principal,
             context.Properties,
+            synchronizeUser: true,
             cancellationToken: context.HttpContext.RequestAborted);
     }
 

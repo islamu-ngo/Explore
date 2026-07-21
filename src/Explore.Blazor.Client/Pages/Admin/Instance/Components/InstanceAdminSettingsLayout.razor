@@ -44,6 +44,20 @@
                 You do not have instance administrator permissions to view or modify these settings.
             </MudAlert>
         }
+        else if (!_identityReady)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                <MudStack Spacing="2">
+                    <MudText>Your admin session is still becoming ready. Reload settings and try again. If the problem continues, sign out and back in.</MudText>
+                    <MudButton Color="Color.Primary"
+                               Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Filled.Refresh"
+                               OnClick="ReloadSettings">
+                        Reload settings
+                    </MudButton>
+                </MudStack>
+            </MudAlert>
+        }
         else
         {
             <!-- Main Layout: Sidebar + Content -->
@@ -290,6 +304,7 @@
     private bool _isLoading = true;
     private FormSubmitState _submitState = new();
     private bool _canEdit;
+    private bool _identityReady;
     private bool _canManageTenant;
     private bool _hasAnnouncementBar;
     private bool _lastAnnouncementSaveStartedWithExistingBar;
@@ -358,6 +373,7 @@
         _smtpModel = smtpTask.Result;
         _authProviderModel = authTask.Result;
         _authorizationProviderModel = authorizationTask.Result;
+        _identityReady = !string.IsNullOrWhiteSpace(_authorizationProviderModel.Provider);
         _analyticsModel = analyticsTask.Result;
         _footerGovernance = footerGovTask.Result;
         _tenantCount = tenantCountTask.Result;
@@ -729,6 +745,11 @@
     private void BackToMenu()
     {
         _showMobileMenu = true;
+    }
+
+    private void ReloadSettings()
+    {
+        Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
     }
 
     private async Task<bool> EnsureFreshAuthSessionAsync()
