@@ -74,6 +74,7 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IAtprotoOAuthSecurityGateway, AtprotoOAuthSecurityGateway>();
         services.AddScoped<IAtprotoPublicationPayloadBuilder, AtprotoPublicationPayloadBuilder>();
         services.AddScoped<IAtprotoPdsDeliveryGateway, AtprotoPdsDeliveryGateway>();
+        services.AddSingleton<IAtprotoPdsSnapshotGateway, AtprotoPdsSnapshotGateway>();
 
         PrivacyErasureDurabilityOptions erasureDurability =
             PrivacyErasureDurabilityOptions.FromConfiguration(configuration);
