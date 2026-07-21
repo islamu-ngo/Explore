@@ -49,7 +49,9 @@
       "Bash(rtk ls *)",
       "Bash(rtk grep *)",
       "Bash(rtk git *)",
-      "Bash(rtk proxy *)"
+      "Bash(rtk proxy *)",
+      "Bash(rtk rg *)",
+      "Bash(rtk wc *)"
     ]
   },
   "enableAllProjectMcpServers": true,
