@@ -26,13 +26,21 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             .OrderBy(setting => setting.DisplayOrder)
             .ToArrayAsync();
 
-        await Assert.That(settings).Count().IsEqualTo(2);
+        await Assert.That(settings).Count().IsEqualTo(4);
         await Assert.That(settings[0].SettingKey).IsEqualTo(GovernanceSettingKeys.Federation.AtprotoEventsEnabled);
         await Assert.That(settings[0].Value).IsEqualTo("false");
         await Assert.That(settings[0].IsLocked).IsTrue();
         await Assert.That(settings[1].SettingKey).IsEqualTo(GovernanceSettingKeys.Federation.AtprotoEventValidationProfile);
         await Assert.That(settings[1].Value).IsEqualTo("\"platform\"");
         await Assert.That(settings[1].IsLocked).IsTrue();
+        await Assert.That(settings[2].SettingKey).IsEqualTo("federation.atproto_events_backfill_enabled");
+        await Assert.That(settings[2].Value).IsEqualTo("false");
+        await Assert.That(settings[2].IsLocked).IsTrue();
+        await Assert.That(settings[3].SettingKey).IsEqualTo("federation.atproto_events_backfill_mode");
+        await Assert.That(settings[3].Value).IsEqualTo("\"downtime_only\"");
+        var allowedModes = System.Text.Json.JsonSerializer.Deserialize<string[]>(settings[3].AllowedValues!);
+        await Assert.That(allowedModes).IsEquivalentTo(["downtime_only", "full"]);
+        await Assert.That(settings[3].IsLocked).IsTrue();
         await Assert.That(settings.Any(setting =>
             setting.SettingKey == GovernanceSettingKeys.Federation.AtprotoPublishMyEvents)).IsFalse();
     }

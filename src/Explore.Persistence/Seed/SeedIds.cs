@@ -193,6 +193,8 @@ public static class SeedIds
     public static readonly Guid SystemSettingSupportAccessOneActiveSessionPerActorId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000575");
     public static readonly Guid SystemSettingAtprotoEventsEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000580");
     public static readonly Guid SystemSettingAtprotoEventValidationProfileId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000581");
+    public static readonly Guid SystemSettingAtprotoEventsBackfillEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000582");
+    public static readonly Guid SystemSettingAtprotoEventsBackfillModeId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000583");
 
     // ===== Module Definitions =====
     public static readonly Guid ModuleCoreId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000600");

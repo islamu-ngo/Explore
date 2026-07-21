@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Client.Contracts.Services.Federation;
 using Explore.Blazor.Client.Pages.Admin.Tenant.Components;
+using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
 
@@ -33,7 +34,10 @@ public sealed class TenantPoliciesSectionTests : IDisposable
         var cut = RenderComponent();
         cut.WaitForState(() => cut.Markup.Contains("Enable AT Protocol events", StringComparison.OrdinalIgnoreCase));
 
-        cut.FindAll("input[type='checkbox']").Last().Change(true);
+        var eventsLabel = cut.FindAll("label").Single(label =>
+            label.TextContent.Contains("Enable AT Protocol events", StringComparison.OrdinalIgnoreCase));
+        (eventsLabel.QuerySelector("input") ?? throw new InvalidOperationException("AT Protocol events switch input not found."))
+            .Change(true);
 
         await _settingsService.Received(1).UpdateTenantAsync(
             "federation.atproto_events_enabled",
@@ -57,7 +61,10 @@ public sealed class TenantPoliciesSectionTests : IDisposable
 
         var cut = RenderComponent();
         cut.WaitForState(() => cut.Markup.Contains("Enable AT Protocol events", StringComparison.OrdinalIgnoreCase));
-        var atprotoSwitch = cut.FindAll("input[type='checkbox']").Last();
+        var eventsLabel = cut.FindAll("label").Single(label =>
+            label.TextContent.Contains("Enable AT Protocol events", StringComparison.OrdinalIgnoreCase));
+        var atprotoSwitch = eventsLabel.QuerySelector("input")
+            ?? throw new InvalidOperationException("AT Protocol events switch input not found.");
 
         await Assert.That(atprotoSwitch.HasAttribute("disabled")).IsTrue();
         await Assert.That(cut.Markup).Contains("Source: System locked", StringComparison.OrdinalIgnoreCase);
@@ -126,7 +133,10 @@ public sealed class TenantPoliciesSectionTests : IDisposable
         var cut = RenderComponent(useInstanceScope: true);
         cut.WaitForState(() => cut.Markup.Contains("Enable AT Protocol events", StringComparison.OrdinalIgnoreCase));
 
-        cut.FindAll("input[type='checkbox']").Last().Change(true);
+        var eventsLabel = cut.FindAll("label").Single(label =>
+            label.TextContent.Contains("Enable AT Protocol events", StringComparison.OrdinalIgnoreCase));
+        (eventsLabel.QuerySelector("input") ?? throw new InvalidOperationException("AT Protocol events switch input not found."))
+            .Change(true);
 
         await _settingsService.Received(1).UpdateInstanceAsync(
             "federation.atproto_events_enabled",
@@ -160,6 +170,129 @@ public sealed class TenantPoliciesSectionTests : IDisposable
         await _settingsService.Received(1).SetInstanceLockAsync(
             "federation.atproto_events_enabled",
             false,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task BackfillControls_WhenEditable_SubmitPlainTenantValues()
+    {
+        const string enabledKey = "federation.atproto_events_backfill_enabled";
+        const string modeKey = "federation.atproto_events_backfill_mode";
+        var settings = CreateSettings(eventsCanEdit: true);
+        settings.Settings.Add(new EffectiveSettingDto
+        {
+            Key = enabledKey,
+            Value = "false",
+            CanEdit = true,
+            Source = SettingSource.TenantOverride,
+            IsLocked = false,
+            IsLockable = true
+        });
+        settings.Settings.Add(new EffectiveSettingDto
+        {
+            Key = modeKey,
+            Value = "\"downtime_only\"",
+            CanEdit = true,
+            Source = SettingSource.TenantOverride,
+            IsLocked = false,
+            IsLockable = true
+        });
+        _settingsService.GetTenantAsync(Arg.Any<CancellationToken>()).Returns(settings);
+        _settingsService.UpdateTenantAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
+
+        var cut = RenderComponent();
+        cut.WaitForState(() => cut.Markup.Contains("Enable inbound event recovery", StringComparison.Ordinal));
+
+        var backfillLabel = cut.FindAll("label").Single(label =>
+            label.TextContent.Contains("Enable inbound event recovery", StringComparison.Ordinal));
+        (backfillLabel.QuerySelector("input") ?? throw new InvalidOperationException("Backfill switch input not found."))
+            .Change(true);
+        var modeSelect = cut.FindComponents<MudSelect<string>>()
+            .Single(component => component.Instance.Label == "Inbound recovery mode");
+        await cut.InvokeAsync(() => modeSelect.Instance.ValueChanged.InvokeAsync("full"));
+
+        await _settingsService.Received(1).UpdateTenantAsync(
+            enabledKey,
+            "true",
+            Arg.Any<CancellationToken>());
+        await _settingsService.Received(1).UpdateTenantAsync(
+            modeKey,
+            "full",
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task BackfillControls_WhenLocked_AreDisabledAndShowReason()
+    {
+        const string reason = "Inbound recovery is locked by instance policy until the receiver checkpoint has been reviewed by an administrator.";
+        var settings = CreateSettings(eventsCanEdit: true);
+        settings.Settings.Add(new EffectiveSettingDto
+        {
+            Key = "federation.atproto_events_backfill_enabled",
+            Value = "false",
+            CanEdit = false,
+            Source = SettingSource.SystemLocked,
+            IsLocked = true,
+            IsLockable = true,
+            Reason = reason
+        });
+        settings.Settings.Add(new EffectiveSettingDto
+        {
+            Key = "federation.atproto_events_backfill_mode",
+            Value = "\"downtime_only\"",
+            CanEdit = false,
+            Source = SettingSource.SystemLocked,
+            IsLocked = true,
+            IsLockable = true,
+            Reason = reason
+        });
+        _settingsService.GetTenantAsync(Arg.Any<CancellationToken>()).Returns(settings);
+
+        var cut = RenderComponent();
+        cut.WaitForState(() => cut.Markup.Contains("Enable inbound event recovery", StringComparison.Ordinal));
+
+        var backfillLabel = cut.FindAll("label").Single(label =>
+            label.TextContent.Contains("Enable inbound event recovery", StringComparison.Ordinal));
+        var backfillInput = backfillLabel.QuerySelector("input")
+            ?? throw new InvalidOperationException("Backfill switch input not found.");
+        var modeSelect = cut.FindComponents<MudSelect<string>>()
+            .Single(component => component.Instance.Label == "Inbound recovery mode");
+
+        await Assert.That(backfillInput.HasAttribute("disabled")).IsTrue();
+        await Assert.That(modeSelect.Instance.Disabled).IsTrue();
+        await Assert.That(cut.Markup).Contains("Source: System locked", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).Contains(reason, StringComparison.Ordinal);
+        await _settingsService.DidNotReceive().UpdateTenantAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ValidationProfile_WhenEditable_SubmitsPlainTenantCode()
+    {
+        const string key = "federation.atproto_event_validation_profile";
+        _settingsService.GetTenantAsync(Arg.Any<CancellationToken>())
+            .Returns(CreateSettings(eventsCanEdit: true));
+        _settingsService.UpdateTenantAsync(
+                key,
+                "community_lexicon",
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
+
+        var cut = RenderComponent();
+        cut.WaitForState(() => cut.Markup.Contains("Event creation validation", StringComparison.Ordinal));
+        var profileSelect = cut.FindComponents<MudSelect<string>>()
+            .Single(component => component.Instance.Label == "Event creation validation");
+        await cut.InvokeAsync(() => profileSelect.Instance.ValueChanged.InvokeAsync("community_lexicon"));
+
+        await _settingsService.Received(1).UpdateTenantAsync(
+            key,
+            "community_lexicon",
             Arg.Any<CancellationToken>());
     }
 
@@ -204,21 +337,21 @@ public sealed class TenantPoliciesSectionTests : IDisposable
             Category = "AtprotoFederation",
             Settings =
             [
-                new Settings
+                new EffectiveSettingDto
                 {
                     Key = "federation.atproto_events_enabled",
                     Value = "false",
                     CanEdit = true,
-                    Source = (int)SettingSource.SystemLocked,
+                    Source = SettingSource.SystemLocked,
                     IsLocked = true,
                     IsLockable = true
                 },
-                new Settings
+                new EffectiveSettingDto
                 {
                     Key = "federation.atproto_event_validation_profile",
                     Value = "\"platform\"",
                     CanEdit = true,
-                    Source = (int)SettingSource.SystemLocked,
+                    Source = SettingSource.SystemLocked,
                     IsLocked = true,
                     IsLockable = true
                 }

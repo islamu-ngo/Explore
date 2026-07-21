@@ -318,6 +318,110 @@ public class HierarchicalSettingsResolverTests : IDisposable
         await Assert.That(group.EventValidationProfile).IsEqualTo(expected);
     }
 
+    [Test]
+    [Arguments(false, "downtime_only", true, true, "full", false, "downtime_only")]
+    [Arguments(false, "downtime_only", false, true, "full", true, "full")]
+    [Arguments(true, "full", true, false, "downtime_only", true, "full")]
+    [Arguments(true, "full", false, false, "downtime_only", false, "downtime_only")]
+    public async Task ResolveGroupAsync_AtprotoBackfillHonorsTenantOverrideAndInstanceLock(
+        bool instanceEnabled,
+        string instanceMode,
+        bool instanceLocked,
+        bool tenantEnabled,
+        string tenantMode,
+        bool expectedEnabled,
+        string expectedMode)
+    {
+        const string enabledKey = "federation.atproto_events_backfill_enabled";
+        const string modeKey = "federation.atproto_events_backfill_mode";
+        var tenantId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+        SetupSystemSettings(
+            new SystemSetting
+            {
+                SettingKey = enabledKey,
+                Value = instanceEnabled ? "true" : "false",
+                ValueType = SettingValueType.Boolean,
+                IsLocked = instanceLocked
+            },
+            new SystemSetting
+            {
+                SettingKey = modeKey,
+                Value = $"\"{instanceMode}\"",
+                ValueType = SettingValueType.String,
+                IsLocked = instanceLocked
+            });
+        SetupTenantSettings(
+            tenantId,
+            new TenantSetting
+            {
+                TenantId = tenantId,
+                Tenant = null!,
+                SettingKey = enabledKey,
+                Value = tenantEnabled ? "true" : "false"
+            },
+            new TenantSetting
+            {
+                TenantId = tenantId,
+                Tenant = null!,
+                SettingKey = modeKey,
+                Value = $"\"{tenantMode}\""
+            });
+
+        var group = await _resolver.ResolveGroupAsync<AtprotoFederationSettingGroup>(
+            new SettingContext(TenantId: tenantId));
+        var enabledProperty = typeof(AtprotoFederationSettingGroup).GetProperty("EventsBackfillEnabled");
+        var modeProperty = typeof(AtprotoFederationSettingGroup).GetProperty("EventsBackfillMode");
+
+        await Assert.That(enabledProperty).IsNotNull();
+        await Assert.That(modeProperty).IsNotNull();
+        await Assert.That((bool)enabledProperty!.GetValue(group)!).IsEqualTo(expectedEnabled);
+        await Assert.That((string)modeProperty!.GetValue(group)!).IsEqualTo(expectedMode);
+    }
+
+    [Test]
+    public async Task ResolveGroupAsync_AtprotoBackfillRefreshesAfterTenantCacheInvalidation()
+    {
+        const string enabledKey = "federation.atproto_events_backfill_enabled";
+        const string modeKey = "federation.atproto_events_backfill_mode";
+        var tenantId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        SetupSystemSettings(
+            new SystemSetting
+            {
+                SettingKey = enabledKey,
+                Value = "false",
+                ValueType = SettingValueType.Boolean,
+                IsLocked = false
+            },
+            new SystemSetting
+            {
+                SettingKey = modeKey,
+                Value = "\"downtime_only\"",
+                ValueType = SettingValueType.String,
+                IsLocked = false
+            });
+        SetupTenantSettings(
+            tenantId,
+            new TenantSetting { TenantId = tenantId, Tenant = null!, SettingKey = enabledKey, Value = "false" },
+            new TenantSetting { TenantId = tenantId, Tenant = null!, SettingKey = modeKey, Value = "\"downtime_only\"" });
+        var context = new SettingContext(TenantId: tenantId);
+
+        var initial = await _resolver.ResolveGroupAsync<AtprotoFederationSettingGroup>(context);
+        SetupTenantSettings(
+            tenantId,
+            new TenantSetting { TenantId = tenantId, Tenant = null!, SettingKey = enabledKey, Value = "true" },
+            new TenantSetting { TenantId = tenantId, Tenant = null!, SettingKey = modeKey, Value = "\"full\"" });
+        var cached = await _resolver.ResolveGroupAsync<AtprotoFederationSettingGroup>(context);
+        _resolver.InvalidateCache(SettingScope.Tenant, tenantId);
+        var refreshed = await _resolver.ResolveGroupAsync<AtprotoFederationSettingGroup>(context);
+
+        await Assert.That(initial.EventsBackfillEnabled).IsFalse();
+        await Assert.That(initial.EventsBackfillMode).IsEqualTo("downtime_only");
+        await Assert.That(cached.EventsBackfillEnabled).IsFalse();
+        await Assert.That(cached.EventsBackfillMode).IsEqualTo("downtime_only");
+        await Assert.That(refreshed.EventsBackfillEnabled).IsTrue();
+        await Assert.That(refreshed.EventsBackfillMode).IsEqualTo("full");
+    }
+
     // --- Batch resolution ---
 
     [Test]

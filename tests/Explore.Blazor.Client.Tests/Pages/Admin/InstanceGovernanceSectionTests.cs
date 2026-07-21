@@ -4,6 +4,7 @@
 using Explore.Blazor.Client.Contracts.ControlPlane;
 using Explore.Blazor.Client.Contracts.Services.ControlPlane;
 using Explore.Blazor.Client.Contracts.Services.Federation;
+using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
 
@@ -216,7 +217,7 @@ public class InstanceGovernanceSectionTests : IDisposable
         var settings = CreateAtprotoSettings();
         var eventsSetting = settings.Settings.Single(setting =>
             setting.Key == "federation.atproto_events_enabled");
-        eventsSetting.Source = (int)SettingSource.SystemLocked;
+        eventsSetting.Source = SettingSource.SystemLocked;
         eventsSetting.IsLocked = true;
         eventsSetting.Reason = "Instance policy denied this mutation.";
         _settingsService.GetInstanceAsync(Arg.Any<CancellationToken>()).Returns(settings);
@@ -292,6 +293,130 @@ public class InstanceGovernanceSectionTests : IDisposable
             StringComparison.OrdinalIgnoreCase);
         await Assert.That(cut.Markup).Contains("application commits and validates the event before any PDS record", StringComparison.OrdinalIgnoreCase);
         await Assert.That(cut.Markup).DoesNotContain("decentralization", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Test]
+    public async Task AtprotoGovernance_BackfillControlsUseHalAndSubmitPlainCodes()
+    {
+        const string enabledKey = "federation.atproto_events_backfill_enabled";
+        const string modeKey = "federation.atproto_events_backfill_mode";
+        var settings = CreateAtprotoSettings($"update-{enabledKey}", $"update-{modeKey}");
+        settings.Settings.Add(new EffectiveSettingDto
+        {
+            Key = enabledKey,
+            Value = "false",
+            CanEdit = true,
+            Source = SettingSource.SystemDefault,
+            IsLocked = false,
+            IsLockable = true
+        });
+        settings.Settings.Add(new EffectiveSettingDto
+        {
+            Key = modeKey,
+            Value = "\"downtime_only\"",
+            CanEdit = true,
+            Source = SettingSource.SystemDefault,
+            IsLocked = false,
+            IsLockable = true
+        });
+        _settingsService.GetInstanceAsync(Arg.Any<CancellationToken>()).Returns(settings);
+        _settingsService.UpdateInstanceAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
+
+        var cut = RenderGovernanceSection(displayMode: "advanced");
+        cut.WaitForState(() => cut.Markup.Contains("Enable inbound event recovery", StringComparison.Ordinal));
+
+        var backfillLabel = cut.FindAll("label").Single(label =>
+            label.TextContent.Contains("Enable inbound event recovery", StringComparison.Ordinal));
+        (backfillLabel.QuerySelector("input") ?? throw new InvalidOperationException("Backfill switch input not found."))
+            .Change(true);
+        var modeSelect = cut.FindComponents<MudSelect<string>>()
+            .Single(component => component.Instance.Label == "Inbound recovery mode");
+        await cut.InvokeAsync(() => modeSelect.Instance.ValueChanged.InvokeAsync("full"));
+
+        await _settingsService.Received(1).UpdateInstanceAsync(
+            enabledKey,
+            "true",
+            Arg.Any<CancellationToken>());
+        await _settingsService.Received(1).UpdateInstanceAsync(
+            modeKey,
+            "full",
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task AtprotoGovernance_BackfillWithoutHal_IsDisabledAndShowsServerReason()
+    {
+        const string reason = "Inbound recovery is locked by deployment governance until the receiver checkpoint has been reviewed by an instance administrator.";
+        var settings = CreateAtprotoSettings();
+        settings.Settings.Add(new EffectiveSettingDto
+        {
+            Key = "federation.atproto_events_backfill_enabled",
+            Value = "false",
+            CanEdit = true,
+            Source = SettingSource.SystemLocked,
+            IsLocked = true,
+            IsLockable = true,
+            Reason = reason
+        });
+        settings.Settings.Add(new EffectiveSettingDto
+        {
+            Key = "federation.atproto_events_backfill_mode",
+            Value = "\"unknown\"",
+            CanEdit = true,
+            Source = SettingSource.SystemLocked,
+            IsLocked = true,
+            IsLockable = true,
+            Reason = reason
+        });
+        _settingsService.GetInstanceAsync(Arg.Any<CancellationToken>()).Returns(settings);
+
+        var cut = RenderGovernanceSection(displayMode: "advanced");
+        cut.WaitForState(() => cut.Markup.Contains("Enable inbound event recovery", StringComparison.Ordinal));
+
+        var backfillLabel = cut.FindAll("label").Single(label =>
+            label.TextContent.Contains("Enable inbound event recovery", StringComparison.Ordinal));
+        var backfillInput = backfillLabel.QuerySelector("input")
+            ?? throw new InvalidOperationException("Backfill switch input not found.");
+        var modeSelect = cut.FindComponents<MudSelect<string>>()
+            .Single(component => component.Instance.Label == "Inbound recovery mode");
+
+        await Assert.That(backfillInput.HasAttribute("disabled")).IsTrue();
+        await Assert.That(modeSelect.Instance.Disabled).IsTrue();
+        await Assert.That(modeSelect.Instance.Value).IsEqualTo("downtime_only");
+        await Assert.That(cut.Markup).Contains("Source: System locked", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).Contains(reason, StringComparison.Ordinal);
+        await _settingsService.DidNotReceive().UpdateInstanceAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task AtprotoGovernance_ValidationProfileSubmitsPlainCode()
+    {
+        const string key = "federation.atproto_event_validation_profile";
+        _settingsService.GetInstanceAsync(Arg.Any<CancellationToken>())
+            .Returns(CreateAtprotoSettings($"update-{key}"));
+        _settingsService.UpdateInstanceAsync(
+                key,
+                "community_lexicon",
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
+
+        var cut = RenderGovernanceSection(displayMode: "advanced");
+        cut.WaitForState(() => cut.Markup.Contains("Event creation validation", StringComparison.Ordinal));
+        var profileSelect = cut.FindComponents<MudSelect<string>>()
+            .Single(component => component.Instance.Label == "Event creation validation");
+        await cut.InvokeAsync(() => profileSelect.Instance.ValueChanged.InvokeAsync("community_lexicon"));
+
+        await _settingsService.Received(1).UpdateInstanceAsync(
+            key,
+            "community_lexicon",
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -380,7 +505,7 @@ public class InstanceGovernanceSectionTests : IDisposable
             Category = "AtprotoFederation",
             Settings =
             [
-                new Explore.Blazor.Client.Clients.Settings
+                new EffectiveSettingDto
                 {
                     Key = "federation.atproto_events_enabled",
                     Value = "false",
@@ -388,7 +513,7 @@ public class InstanceGovernanceSectionTests : IDisposable
                     IsLocked = false,
                     IsLockable = true
                 },
-                new Explore.Blazor.Client.Clients.Settings
+                new EffectiveSettingDto
                 {
                     Key = "federation.atproto_event_validation_profile",
                     Value = "\"platform\"",

@@ -11,9 +11,11 @@ using Explore.Application.Features.Settings.Requests.Commands;
 using Explore.Application.Notifications;
 using Explore.Application.Services.Federation;
 using Explore.Application.Settings;
+using Explore.Application.Settings.Groups;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Settings;
+using Explore.Domain.Settings.Definitions;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -24,6 +26,68 @@ public sealed class AtprotoFederationGovernanceTests
 {
     private static readonly Guid TenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
     private static readonly Guid CurrentUserId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000099");
+
+    [Test]
+    public async Task BackfillSettings_AreRegisteredAndExposedByTheTypedGroup()
+    {
+        const string enabledKey = "federation.atproto_events_backfill_enabled";
+        const string modeKey = "federation.atproto_events_backfill_mode";
+
+        var enabled = SettingRegistry.Get(enabledKey);
+        var mode = SettingRegistry.Get(modeKey);
+        var settingKeys = AtprotoFederationSettingGroup.SettingKeys.ToArray();
+
+        await Assert.That(enabled).IsNotNull();
+        await Assert.That(enabled!.ValueType).IsEqualTo(SettingValueType.Boolean);
+        await Assert.That(enabled.DefaultValue).IsEqualTo("false");
+        await Assert.That(enabled.MaxScope).IsEqualTo(SettingScope.Tenant);
+        await Assert.That(enabled.IsLockable).IsTrue();
+        await Assert.That(mode).IsNotNull();
+        await Assert.That(mode!.ValueType).IsEqualTo(SettingValueType.String);
+        await Assert.That(mode.DefaultValue).IsEqualTo("\"downtime_only\"");
+        await Assert.That(mode.AllowedValues).IsEquivalentTo(["downtime_only", "full"]);
+        await Assert.That(mode.MaxScope).IsEqualTo(SettingScope.Tenant);
+        await Assert.That(mode.IsLockable).IsTrue();
+        await Assert.That(settingKeys).Contains(enabledKey);
+        await Assert.That(settingKeys).Contains(modeKey);
+        await Assert.That(AtprotoFederationSettingDefinitions.AdministratorKeys).Contains(enabledKey);
+        await Assert.That(AtprotoFederationSettingDefinitions.AdministratorKeys).Contains(modeKey);
+        await Assert.That(typeof(AtprotoFederationSettingGroup).GetProperty("EventsBackfillEnabled")).IsNotNull();
+        await Assert.That(typeof(AtprotoFederationSettingGroup).GetProperty("EventsBackfillMode")).IsNotNull();
+    }
+
+    [Test]
+    [Arguments("federation.atproto_events_backfill_enabled", "yes")]
+    [Arguments("federation.atproto_events_backfill_mode", "continuous")]
+    public async Task BackfillWrite_MalformedValueIsRejectedBeforePersistence(string key, string value)
+    {
+        var settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var currentUser = Substitute.For<ICurrentUserService>();
+        var admin = Substitute.For<IAdminContext>();
+        tenantContext.TenantId.Returns(TenantId);
+        currentUser.UserId.Returns(CurrentUserId);
+        currentUser.IsAuthenticated.Returns(true);
+        admin.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        var handler = new UpdateSettingCommandHandler(
+            settingsResolver,
+            Substitute.For<IUserPreferenceRepository>(),
+            tenantContext,
+            currentUser,
+            admin,
+            Substitute.For<IMediator>(),
+            Substitute.For<ILogger<UpdateSettingCommandHandler>>());
+
+        var result = await handler.Handle(new UpdateSettingCommand
+        {
+            Key = key,
+            Value = value,
+            Scope = SettingScope.Instance
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await settingsResolver.DidNotReceiveWithAnyArgs().SetValueAsync(default!, default!, default, default, default);
+    }
 
     [Test]
     [Arguments(false, "platform", false, "platform")]

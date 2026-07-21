@@ -235,6 +235,8 @@ public static class GovernanceSettingKeys
     {
         public const string AtprotoEventsEnabled = "federation.atproto_events_enabled";
         public const string AtprotoEventValidationProfile = "federation.atproto_event_validation_profile";
+        public const string AtprotoEventsBackfillEnabled = "federation.atproto_events_backfill_enabled";
+        public const string AtprotoEventsBackfillMode = "federation.atproto_events_backfill_mode";
         public const string AtprotoPublishMyEvents = "federation.atproto_publish_my_events";
     }
 

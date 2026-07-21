@@ -393,6 +393,94 @@
                                 </MudButton>
                             }
                         </MudStack>
+
+                        <MudDivider />
+
+                        <MudStack Spacing="1">
+                            @{ var backfillEnabledSetting = FindAtprotoSetting(AtprotoEventsBackfillEnabledKey); }
+                            <MudSwitch T="bool"
+                                       Value="@AtprotoEventsBackfillEnabled"
+                                       ValueChanged="SetAtprotoEventsBackfillEnabledAsync"
+                                       Color="Color.Primary"
+                                       Disabled="@(_atprotoSaving || !HasAtprotoAffordance(UpdateRelation(AtprotoEventsBackfillEnabledKey)))">
+                                Enable inbound event recovery
+                            </MudSwitch>
+                            <MudText Typo="Typo.caption" Color="Color.Default">
+                                Recover inbound AT Protocol events missed while processing was unavailable. Outbound publication is unaffected.
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Default">
+                                Source: @SettingSourceLabel(backfillEnabledSetting?.Source). Lock: @LockStateLabel(backfillEnabledSetting?.IsLocked).
+                            </MudText>
+                            @if (!HasAtprotoAffordance(UpdateRelation(AtprotoEventsBackfillEnabledKey)))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Warning" role="status">
+                                    @(backfillEnabledSetting?.Reason ?? "The server has not granted an update affordance for this setting.")
+                                </MudText>
+                            }
+                            @if (HasAtprotoAffordance(LockRelation(AtprotoEventsBackfillEnabledKey)))
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Warning"
+                                           Disabled="@_atprotoSaving"
+                                           OnClick="@(() => SetAtprotoLockAsync(AtprotoEventsBackfillEnabledKey, true))"
+                                           aria-label="Lock inbound event recovery for tenants">
+                                    Lock tenant override
+                                </MudButton>
+                            }
+                            else if (HasAtprotoAffordance(UnlockRelation(AtprotoEventsBackfillEnabledKey)))
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                           Disabled="@_atprotoSaving"
+                                           OnClick="@(() => SetAtprotoLockAsync(AtprotoEventsBackfillEnabledKey, false))"
+                                           aria-label="Unlock inbound event recovery for tenants">
+                                    Unlock tenant override
+                                </MudButton>
+                            }
+                        </MudStack>
+
+                        <MudDivider />
+
+                        <MudStack Spacing="1">
+                            @{ var backfillModeSetting = FindAtprotoSetting(AtprotoEventsBackfillModeKey); }
+                            <MudSelect T="string"
+                                       Label="Inbound recovery mode"
+                                       Value="@AtprotoEventsBackfillMode"
+                                       ValueChanged="SetAtprotoEventsBackfillModeAsync"
+                                       Variant="Variant.Outlined"
+                                       Disabled="@(_atprotoSaving || !HasAtprotoAffordance(UpdateRelation(AtprotoEventsBackfillModeKey)))">
+                                <MudSelectItem Value="@DowntimeOnlyBackfillMode">Downtime gaps only</MudSelectItem>
+                                <MudSelectItem Value="@FullBackfillMode">Full replay</MudSelectItem>
+                            </MudSelect>
+                            <MudText Typo="Typo.caption" Color="Color.Default">
+                                Downtime gaps only is the safe default. Full replay requests recovery across all available history.
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Default">
+                                Source: @SettingSourceLabel(backfillModeSetting?.Source). Lock: @LockStateLabel(backfillModeSetting?.IsLocked).
+                            </MudText>
+                            @if (!HasAtprotoAffordance(UpdateRelation(AtprotoEventsBackfillModeKey)))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Warning" role="status">
+                                    @(backfillModeSetting?.Reason ?? "The server has not granted an update affordance for this setting.")
+                                </MudText>
+                            }
+                            @if (HasAtprotoAffordance(LockRelation(AtprotoEventsBackfillModeKey)))
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Warning"
+                                           Disabled="@_atprotoSaving"
+                                           OnClick="@(() => SetAtprotoLockAsync(AtprotoEventsBackfillModeKey, true))"
+                                           aria-label="Lock inbound recovery mode for tenants">
+                                    Lock tenant override
+                                </MudButton>
+                            }
+                            else if (HasAtprotoAffordance(UnlockRelation(AtprotoEventsBackfillModeKey)))
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                           Disabled="@_atprotoSaving"
+                                           OnClick="@(() => SetAtprotoLockAsync(AtprotoEventsBackfillModeKey, false))"
+                                           aria-label="Unlock inbound recovery mode for tenants">
+                                    Unlock tenant override
+                                </MudButton>
+                            }
+                        </MudStack>
                     }
 
                     @if (!string.IsNullOrWhiteSpace(_atprotoMessage) && _atprotoSettings is not null)
@@ -584,8 +672,12 @@
     private const string RecommendedPreset = "AllInteractiveServer";
     private const string AtprotoEventsEnabledKey = "federation.atproto_events_enabled";
     private const string AtprotoValidationProfileKey = "federation.atproto_event_validation_profile";
+    private const string AtprotoEventsBackfillEnabledKey = "federation.atproto_events_backfill_enabled";
+    private const string AtprotoEventsBackfillModeKey = "federation.atproto_events_backfill_mode";
     private const string PlatformValidationProfile = "platform";
     private const string CommunityValidationProfile = "community_lexicon";
+    private const string DowntimeOnlyBackfillMode = "downtime_only";
+    private const string FullBackfillMode = "full";
 
     private static readonly IReadOnlyList<PresetOption> PresetOptions =
     [
@@ -664,6 +756,14 @@
         ReadString(FindAtprotoSetting(AtprotoValidationProfileKey)?.Value) is CommunityValidationProfile
             ? CommunityValidationProfile
             : PlatformValidationProfile;
+
+    private bool AtprotoEventsBackfillEnabled =>
+        ReadBool(FindAtprotoSetting(AtprotoEventsBackfillEnabledKey)?.Value);
+
+    private string AtprotoEventsBackfillMode =>
+        ReadString(FindAtprotoSetting(AtprotoEventsBackfillModeKey)?.Value) is FullBackfillMode
+            ? FullBackfillMode
+            : DowntimeOnlyBackfillMode;
 
     private string SectionTitle => DisplayMode switch
     {
@@ -912,7 +1012,15 @@
     private Task SetAtprotoValidationProfileAsync(string profile) =>
         SaveAtprotoSettingAsync(
             AtprotoValidationProfileKey,
-            profile == CommunityValidationProfile ? "\"community_lexicon\"" : "\"platform\"");
+            profile == CommunityValidationProfile ? CommunityValidationProfile : PlatformValidationProfile);
+
+    private Task SetAtprotoEventsBackfillEnabledAsync(bool enabled) =>
+        SaveAtprotoSettingAsync(AtprotoEventsBackfillEnabledKey, enabled ? "true" : "false");
+
+    private Task SetAtprotoEventsBackfillModeAsync(string mode) =>
+        SaveAtprotoSettingAsync(
+            AtprotoEventsBackfillModeKey,
+            mode == FullBackfillMode ? FullBackfillMode : DowntimeOnlyBackfillMode);
 
     private async Task SaveAtprotoSettingAsync(string key, string value)
     {
@@ -993,7 +1101,7 @@
         }
     }
 
-    private Explore.Blazor.Client.Clients.Settings? FindAtprotoSetting(string key) =>
+    private EffectiveSettingDto? FindAtprotoSetting(string key) =>
         _atprotoSettings?.Settings?.FirstOrDefault(setting =>
             string.Equals(setting.Key, key, StringComparison.Ordinal));
 
@@ -1018,9 +1126,9 @@
         null => "Unknown"
     };
 
-    private static string SettingSourceLabel(int? source) =>
-        source is { } value && Enum.IsDefined((SettingSource)value)
-            ? SettingSourceLabel((SettingSource)value)
+    private static string SettingSourceLabel(SettingSource? source) =>
+        source is { } value
+            ? SettingSourceLabel(value)
             : "Unknown";
 
     private static string SettingSourceLabel(SettingSource source) => source switch

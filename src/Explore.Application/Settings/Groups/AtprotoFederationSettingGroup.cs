@@ -1,5 +1,5 @@
-// ABOUTME: Strongly typed ATProto event settings resolved from the hierarchical governance engine.
-// ABOUTME: Fails closed to platform validation whenever capability or stored profile state is invalid.
+// ABOUTME: Strongly typed ATProto event and inbound-recovery settings from the hierarchical governance engine.
+// ABOUTME: Fails closed to platform validation and downtime-only recovery when stored state is invalid.
 
 namespace Explore.Application.Settings.Groups;
 
@@ -10,15 +10,21 @@ public sealed class AtprotoFederationSettingGroup : ISettingGroup
 {
     public const string PlatformProfile = "platform";
     public const string CommunityLexiconProfile = "community_lexicon";
+    public const string DowntimeOnlyBackfillMode = "downtime_only";
+    public const string FullBackfillMode = "full";
 
     public bool EventsEnabled { get; private set; }
     public string EventValidationProfile { get; private set; } = PlatformProfile;
+    public bool EventsBackfillEnabled { get; private set; }
+    public string EventsBackfillMode { get; private set; } = DowntimeOnlyBackfillMode;
     public bool PublishMyEvents { get; private set; }
 
     public static IEnumerable<string> SettingKeys =>
     [
         GovernanceSettingKeys.Federation.AtprotoEventsEnabled,
         GovernanceSettingKeys.Federation.AtprotoEventValidationProfile,
+        GovernanceSettingKeys.Federation.AtprotoEventsBackfillEnabled,
+        GovernanceSettingKeys.Federation.AtprotoEventsBackfillMode,
         GovernanceSettingKeys.Federation.AtprotoPublishMyEvents
     ];
 
@@ -32,6 +38,19 @@ public sealed class AtprotoFederationSettingGroup : ISettingGroup
         if (settings.TryGetValue(GovernanceSettingKeys.Federation.AtprotoPublishMyEvents, out var consent))
         {
             PublishMyEvents = SettingValueSerializer.DeserializeBool(consent.Value, false);
+        }
+
+        if (settings.TryGetValue(GovernanceSettingKeys.Federation.AtprotoEventsBackfillEnabled, out var backfillEnabled))
+        {
+            EventsBackfillEnabled = SettingValueSerializer.DeserializeBool(backfillEnabled.Value, false);
+        }
+
+        if (settings.TryGetValue(GovernanceSettingKeys.Federation.AtprotoEventsBackfillMode, out var backfillMode))
+        {
+            var mode = SettingValueSerializer.DeserializeString(backfillMode.Value, DowntimeOnlyBackfillMode);
+            EventsBackfillMode = string.Equals(mode, FullBackfillMode, StringComparison.OrdinalIgnoreCase)
+                ? FullBackfillMode
+                : DowntimeOnlyBackfillMode;
         }
 
         if (!EventsEnabled

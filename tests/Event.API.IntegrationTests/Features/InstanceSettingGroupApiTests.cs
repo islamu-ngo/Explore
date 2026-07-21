@@ -90,6 +90,30 @@ public sealed class InstanceSettingGroupApiTests
     }
 
     [Test]
+    [Arguments("federation.atproto_events_backfill_enabled", "true")]
+    [Arguments("federation.atproto_events_backfill_mode", "full")]
+    public async Task BackfillSettingUpdate_UsesGenericInstanceCommand(string key, string value)
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<UpdateSettingCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SuccessfulResponse());
+        var controller = CreateController(mediator, Substitute.For<IAdminContext>());
+
+        var result = await controller.UpdateInstanceSetting(
+            key,
+            new UpdateSettingValueDto { Value = value },
+            CancellationToken.None);
+
+        await Assert.That(result.Result).IsTypeOf<OkObjectResult>();
+        await mediator.Received(1).Send(
+            Arg.Is<UpdateSettingCommand>(command =>
+                command.Key == key
+                && command.Value == value
+                && command.Scope == SettingScope.Instance),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task LockAndUnlockInstanceSetting_DispatchGenericCommandsAtInstanceScope()
     {
         var mediator = Substitute.For<IMediator>();
@@ -148,6 +172,10 @@ public sealed class InstanceSettingGroupApiTests
             .IsTrue();
         await Assert.That(links.Any(link => link.Rel == $"lock-{GovernanceSettingKeys.Federation.AtprotoEventsEnabled}"))
             .IsFalse();
+        await Assert.That(links.Any(link => link.Rel == $"update-{GovernanceSettingKeys.Federation.AtprotoEventsBackfillEnabled}"))
+            .IsTrue();
+        await Assert.That(links.Any(link => link.Rel == $"update-{GovernanceSettingKeys.Federation.AtprotoEventsBackfillMode}"))
+            .IsTrue();
         await Assert.That(links.All(link => link.PermissionResourceKind == ResourceKinds.InstanceSetting))
             .IsTrue();
     }
@@ -187,6 +215,26 @@ public sealed class InstanceSettingGroupApiTests
                 {
                     Key = GovernanceSettingKeys.Federation.AtprotoEventValidationProfile,
                     Value = "\"community_lexicon\"",
+                    SettingValueTypeCode = "string",
+                    SettingValueTypeName = "String",
+                    CanEdit = true,
+                    IsLockable = true,
+                    IsLocked = false
+                },
+                new EffectiveSettingDto
+                {
+                    Key = GovernanceSettingKeys.Federation.AtprotoEventsBackfillEnabled,
+                    Value = "false",
+                    SettingValueTypeCode = "boolean",
+                    SettingValueTypeName = "Boolean",
+                    CanEdit = true,
+                    IsLockable = true,
+                    IsLocked = false
+                },
+                new EffectiveSettingDto
+                {
+                    Key = GovernanceSettingKeys.Federation.AtprotoEventsBackfillMode,
+                    Value = "\"downtime_only\"",
                     SettingValueTypeCode = "string",
                     SettingValueTypeName = "String",
                     CanEdit = true,
