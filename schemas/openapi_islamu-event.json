@@ -90779,65 +90779,7 @@
           "settings": {
             "type": "array",
             "items": {
-              "required": [
-                "key",
-                "value",
-                "settingValueTypeCode",
-                "settingValueTypeName"
-              ],
-              "type": "object",
-              "properties": {
-                "key": {
-                  "type": "string"
-                },
-                "value": {
-                  "type": "string"
-                },
-                "settingValueTypeId": {
-                  "pattern": "^-?(?:0|[1-9]\\d*)$",
-                  "type": [
-                    "integer",
-                    "string"
-                  ],
-                  "format": "int32"
-                },
-                "settingValueTypeCode": {
-                  "type": "string"
-                },
-                "settingValueTypeName": {
-                  "type": "string"
-                },
-                "source": {
-                  "type": "integer"
-                },
-                "isLocked": {
-                  "type": "boolean"
-                },
-                "isLockable": {
-                  "type": "boolean"
-                },
-                "canEdit": {
-                  "type": "boolean"
-                },
-                "reason": {
-                  "type": [
-                    "null",
-                    "string"
-                  ]
-                },
-                "description": {
-                  "type": [
-                    "null",
-                    "string"
-                  ]
-                },
-                "allowedValues": {
-                  "type": [
-                    "null",
-                    "string"
-                  ]
-                }
-              }
+              "$ref": "#/components/schemas/EffectiveSettingDto"
             }
           },
           "_links": {

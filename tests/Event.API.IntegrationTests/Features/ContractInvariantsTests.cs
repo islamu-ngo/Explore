@@ -223,6 +223,19 @@ public class ContractInvariantsTests
     }
 
     [Test]
+    public async Task OpenApiDocument_AtprotoSettingItemsReferenceEffectiveSettingDto()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+
+        JsonElement properties = GetSchemaProperties(document, "HalResourceOfSettingGroupResponseDto");
+        JsonElement items = properties.GetProperty("settings").GetProperty("items");
+
+        await Assert.That(GetReference(items))
+            .IsEqualTo("#/components/schemas/EffectiveSettingDto")
+            .Because("ATProto setting items must reuse the DTO schema whose source enum is serialized as a string.");
+    }
+
+    [Test]
     public async Task OpenApiDocument_HalCollectionEmbeddedItemsReferenceTypedHalResources()
     {
         using var document = await GetOpenApiDocumentAsync();

@@ -164,6 +164,7 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.Notification.NotificationPreferenceMatrixDto),
         typeof(Explore.Application.DTOs.Notification.WebPushSubscriptionDto),
         typeof(Explore.Application.DTOs.Tenant.TenantStorageSettingsDto),
+        typeof(Explore.Application.DTOs.Settings.EffectiveSettingDto),
         typeof(Explore.Application.DTOs.Settings.SettingGroupResponseDto),
     ];
 

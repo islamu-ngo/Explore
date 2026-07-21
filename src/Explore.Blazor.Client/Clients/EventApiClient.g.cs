@@ -96981,7 +96981,7 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("settings")]
         [System.ComponentModel.DataAnnotations.Required]
-        public System.Collections.Generic.ICollection<Settings> Settings { get; set; } = new System.Collections.Generic.List<Settings>();
+        public System.Collections.Generic.ICollection<EffectiveSettingDto> Settings { get; set; } = new System.Collections.Generic.List<EffectiveSettingDto>();
 
         /// <summary>
         /// HAL hypermedia links
@@ -117127,62 +117127,6 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("lockReason")]
         public string? LockReason { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Settings
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("key")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Key { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("value")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Value { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("settingValueTypeId")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? SettingValueTypeId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("settingValueTypeCode")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string SettingValueTypeCode { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("settingValueTypeName")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string SettingValueTypeName { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("source")]
-        public int? Source { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isLocked")]
-        public bool? IsLocked { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isLockable")]
-        public bool? IsLockable { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("canEdit")]
-        public bool? CanEdit { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("reason")]
-        public string? Reason { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("description")]
-        public string? Description { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("allowedValues")]
-        public string? AllowedValues { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 

@@ -45,6 +45,40 @@ public sealed class EventApiClientSerializationTests
         await Assert.That(result.Context?.Mode).IsEqualTo(HomeDiscoveryMode.All);
     }
 
+    [Test]
+    public async Task GetInstanceAtprotoFederationSettingsAsyncDeserializesStringSettingSource()
+    {
+        const string responseBody = """
+            {
+              "category": "AtprotoFederation",
+              "settings": [
+                {
+                  "key": "atproto.eventPublishing.capability",
+                  "value": "Enabled",
+                  "settingValueTypeId": 1,
+                  "settingValueTypeCode": "String",
+                  "settingValueTypeName": "String",
+                  "source": "SystemLocked",
+                  "isLocked": true,
+                  "isLockable": true,
+                  "canEdit": true
+                }
+              ],
+              "_links": {}
+            }
+            """;
+        using var httpClient = new HttpClient(new StaticResponseHandler(responseBody))
+        {
+            BaseAddress = new Uri("https://example.test/")
+        };
+        var client = new EventApiClient(httpClient);
+
+        var result = await client.GetInstanceAtprotoFederationSettingsAsync();
+
+        var setting = await Assert.That(result.Settings).HasSingleItem();
+        await Assert.That(setting.Source).IsEqualTo(SettingSource.SystemLocked);
+    }
+
     private sealed class StaticResponseHandler(string responseBody) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(
