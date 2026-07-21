@@ -29,7 +29,7 @@ public sealed class GetUiShellContextRequestHandler(
 {
     private static readonly string[] SettingKeys =
     [
-        GovernanceSettingKeys.Event.UserSubmissionEnabled,
+        GovernanceSettingKeys.Events.UserSubmissionEnabled,
         GovernanceSettingKeys.UiShell.DefaultNavModeEvents,
         GovernanceSettingKeys.UiShell.DefaultNavModeStudio,
         GovernanceSettingKeys.UiShell.DefaultNavModeAi,
@@ -85,8 +85,8 @@ public sealed class GetUiShellContextRequestHandler(
 
         bool personalCreationAllowed = ReadBool(
             settings,
-            GovernanceSettingKeys.Event.UserSubmissionEnabled,
-            defaultValue: true);
+            GovernanceSettingKeys.Events.UserSubmissionEnabled,
+            defaultValue: false);
         List<SettingsScopeDto> settingsScopes = BuildSettingsScopes(
             userId,
             tenantId,

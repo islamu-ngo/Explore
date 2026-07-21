@@ -41,7 +41,7 @@ public sealed class GetUiShellContextRequestHandlerTests
                 Arg.Any<IEnumerable<string>>(),
                 Arg.Any<SettingContext>(),
                 Arg.Any<CancellationToken>())
-            .Returns([Setting(GovernanceSettingKeys.Event.UserSubmissionEnabled, false)]);
+            .Returns([Setting(GovernanceSettingKeys.Events.UserSubmissionEnabled, false)]);
         _settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(
                 Arg.Any<SettingContext>(),
                 Arg.Any<CancellationToken>())
@@ -99,9 +99,22 @@ public sealed class GetUiShellContextRequestHandlerTests
     }
 
     [Test]
+    public async Task Handle_MissingSettings_FailsClosedForStudioAndUsesNavigationDefaults()
+    {
+        ConfigureSettings();
+
+        var result = await CreateHandler().Handle(new GetUiShellContextRequest(), CancellationToken.None);
+
+        await Assert.That(result.Workspaces.Studio).IsFalse();
+        await Assert.That(result.NavigationDefaults.Events).IsEqualTo("Docked");
+        await Assert.That(result.NavigationDefaults.AllowUserOverride).IsTrue();
+        await Assert.That(result.NavigationDefaults.OrganizerDefaultWorkspace).IsEqualTo("Events");
+    }
+
+    [Test]
     public async Task Handle_PersonalPublisher_ExposesStudioWithoutManagedActor()
     {
-        ConfigureSettings(Setting(GovernanceSettingKeys.Event.UserSubmissionEnabled, true));
+        ConfigureSettings(Setting(GovernanceSettingKeys.Events.UserSubmissionEnabled, true));
 
         var result = await CreateHandler().Handle(new GetUiShellContextRequest(), CancellationToken.None);
 
@@ -148,7 +161,7 @@ public sealed class GetUiShellContextRequestHandlerTests
         Guid actorId = Guid.CreateVersion7();
         ConfigureActors(Actor(actorId, organizationId, nameof(ActorTypeEnum.Organization), "Pinned community"));
         ConfigureSettings(
-            Setting(GovernanceSettingKeys.Event.UserSubmissionEnabled, false),
+            Setting(GovernanceSettingKeys.Events.UserSubmissionEnabled, false),
             Setting(GovernanceSettingKeys.PublicExperience.Mode, "OrganizationCentric"),
             Setting(GovernanceSettingKeys.PublicExperience.PrimaryOrganizationId, organizationId.ToString()),
             Setting(GovernanceSettingKeys.UiShell.DefaultNavModeStudio, "Collapsed"));
