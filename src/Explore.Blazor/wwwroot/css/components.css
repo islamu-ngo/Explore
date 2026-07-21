@@ -52,7 +52,7 @@
 }
 
 .dock-side-host--shell.dock-side-host--start {
-    inset-inline-start: 0 !important;
+    inset-inline-start: var(--isl-shell-start-inset, 0px) !important;
     inline-size: var(--dock-layout-start-width, 0px) !important;
 }
 

@@ -1,3 +1,6 @@
+/* ABOUTME: Scoped layout styles for fixed app chrome, dock content, and responsive workspace projection. */
+/* ABOUTME: Uses logical properties and shared shell insets so rail and dock panels never overlap. */
+
 /* ==========================================================================
    MainLayout Component - BEM Methodology
    Block: main-layout
@@ -117,6 +120,35 @@
    -------------------------------------------------------------------------- */
 ::deep .site-footer-root {
     flex-shrink: 0;
+}
+
+/* Modifier: main-layout-root--has-rail
+   When the permanent workspace rail is present, reserve inline-start space for
+   the fixed 64px rail on desktop so the dock host content does not slide under it.
+   On mobile (Xs) the rail projects to a bottom navigation bar, so the inline
+   offset is removed and the main content gains block-end padding instead. */
+.main-layout-root--has-rail {
+    --isl-workspace-rail-width: 4rem;
+    --isl-workspace-rail-bottom-height: 4rem;
+    --isl-shell-start-inset: var(--isl-workspace-rail-width);
+}
+
+.main-layout-root--has-rail ::deep .dock-layout-host--shell {
+    margin-inline-start: var(--isl-workspace-rail-width);
+}
+
+@media (max-width: 37.5em) {
+    .main-layout-root--has-rail {
+        --isl-shell-start-inset: 0px;
+    }
+
+    .main-layout-root--has-rail ::deep .dock-layout-host--shell {
+        margin-inline-start: 0;
+    }
+
+    .main-layout-root--has-rail ::deep .main-layout__main {
+        padding-block-end: var(--isl-workspace-rail-bottom-height);
+    }
 }
 
 /* Modifier: main-layout-root--hide-chrome

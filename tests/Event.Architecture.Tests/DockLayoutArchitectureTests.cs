@@ -120,8 +120,62 @@ public class DockLayoutArchitectureTests
             .Because("shell side panels must not drift while the page scrolls.");
         await Assert.That(globalComponentsCss).Contains("position: fixed !important;")
             .Because("the global cross-component shell dock rule must match the isolated component rule.");
+        await Assert.That(globalComponentsCss).Contains("inset-inline-start: var(--isl-shell-start-inset, 0px) !important;")
+            .Because("the fixed Start dock must honor permanent inline-start shell chrome such as the workspace rail.");
         await Assert.That(globalComponentsCss).DoesNotContain("position: sticky !important;")
             .Because("sticky shell docks move during scroll boundary transitions.");
+    }
+
+    [Test]
+    public async Task AppWorkspaceRailIsSanctionedShellChromeNotDockPanel()
+    {
+        var railRazorPath = Path.Combine(BlazorClientRoot, "Components", "Shell", "AppWorkspaceRail.razor");
+        var railCssPath = Path.Combine(BlazorClientRoot, "Components", "Shell", "AppWorkspaceRail.razor.css");
+        var railCodePath = Path.Combine(BlazorClientRoot, "Components", "Shell", "AppWorkspaceRail.razor.cs");
+
+        await Assert.That(File.Exists(railRazorPath)).IsTrue()
+            .Because("AppWorkspaceRail is sanctioned permanent shell chrome per ADR-019 D1.");
+        await Assert.That(File.Exists(railCssPath)).IsTrue()
+            .Because("the rail must use BEM isolated CSS.");
+        await Assert.That(File.Exists(railCodePath)).IsTrue()
+            .Because("the rail code-behind must exist for DI and lifecycle management.");
+
+        var railRazor = await File.ReadAllTextAsync(railRazorPath);
+        var railCss = await File.ReadAllTextAsync(railCssPath);
+        await Assert.That(railRazor).Contains("aria-label=\"Application workspaces\"")
+            .Because("the rail must be a named navigation landmark.");
+        await Assert.That(railRazor).Contains("data-testid=\"app-workspace-rail\"")
+            .Because("the rail must expose a stable test hook.");
+        await Assert.That(railCss).Contains("@media (max-width: 37.5em)")
+            .Because("the desktop rail must project to bottom navigation at the Xs breakpoint.");
+        await Assert.That(railCss).Contains("inset-block-end: 0;")
+            .Because("the Xs projection must anchor to the logical block end.");
+        await Assert.That(railCss).Contains("flex-direction: row;")
+            .Because("the Xs projection must present workspace links horizontally.");
+
+        var railCode = await File.ReadAllTextAsync(railCodePath);
+        await Assert.That(railCode).DoesNotContain("DockPanelDescriptor")
+            .Because("the rail is permanent chrome, not a dock panel (ADR-019 D1).");
+        await Assert.That(railCode).DoesNotContain("DockLayoutState")
+            .Because("the rail must not register with the dock layout state.");
+        await Assert.That(railCode).Contains("IWorkspaceRegistry")
+            .Because("the rail must consume the compile-time workspace registry.");
+        await Assert.That(railCode).Contains("UiShellState")
+            .Because("the rail must derive the active workspace from route-derived shell state.");
+
+        var mainLayoutRazor = await File.ReadAllTextAsync(Path.Combine(
+            BlazorClientRoot, "Layout", "MainLayout.razor"));
+        await Assert.That(mainLayoutRazor).Contains("<AppWorkspaceRail />")
+            .Because("MainLayout must render the rail as permanent chrome.");
+        await Assert.That(mainLayoutRazor).Contains("main-layout-root--has-rail")
+            .Because("MainLayout must flag the root for rail offset adjustments.");
+
+        var mainLayoutCss = await File.ReadAllTextAsync(Path.Combine(
+            BlazorClientRoot, "Layout", "MainLayout.razor.css"));
+        await Assert.That(mainLayoutCss).Contains("--isl-shell-start-inset: var(--isl-workspace-rail-width);")
+            .Because("desktop Start docks must begin after the permanent rail.");
+        await Assert.That(mainLayoutCss).Contains("--isl-shell-start-inset: 0px;")
+            .Because("mobile dock projection must not retain a desktop inline-start offset.");
     }
 
     private static string ResolveBlazorClientRoot()
