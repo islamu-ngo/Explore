@@ -23,7 +23,7 @@ The platform must also operate safely on multiple nodes. A consumer or outbox wo
 
 1. Inbound event and RSVP records are global canonical observations identified by DID, collection, and record key. Each row carries the current monotonic source version/cursor; a tenant does not own or duplicate the canonical record.
 2. Tenant visibility is represented separately through tenant presentation joins. The effective `federation.atproto_events_enabled` setting controls whether a tenant receives or presents inbound records; it does not create per-tenant copies or sockets.
-3. `Atproto:Jetstream:AllowedDids` is the bounded curated ingress allowlist. An empty allowlist is deny-all: the subscriber does not open the stream, and the event source rejects an empty subscription before network access. Tenant governance controls presentation and whether any stream demand exists; it is not a second DID allowlist.
+3. `Atproto:Jetstream:AllowedDids` is an optional bounded ingress filter. Empty subscribes to all publishers of the two exact community collections; a non-empty list restricts ingestion to those curated DIDs. Tenant governance controls presentation and whether any stream demand exists; it is not a second DID filter.
 4. Exactly one logical Jetstream consumer owns the global stream. Multi-node hosts coordinate through a renewable lease carrying owner, generation/fence, and expiry. A stale generation cannot advance the cursor or settle materialization.
 5. Accepted record materialization, dependent RSVP changes, tombstone effects, quarantine state, and cursor advancement commit atomically. A rejected or malformed envelope can be quarantined with bounded metadata in that same transaction; no path advances the cursor while losing its required record, tombstone, or quarantine effect.
 6. Tombstones suppress or remove the canonical version and its dependent RSVP presentation. They never invoke local event lifecycle handlers or create outbound work. Locally owned URI/CID matches reconcile as echoes instead of producing duplicate federated events.
@@ -70,6 +70,7 @@ Disabling capability or revoking consent stops pending and future eligible remot
 ## Consequences
 
 - Read-only ATProto discovery remains available through tenant-scoped CQRS queries and HAL navigation.
+- Enabling inbound federation opens exact-collection public discovery without requiring ATProto authentication or a separately provisioned DID list; operators may still curate publishers with `AllowedDids`.
 - Persistence now encodes global inbound identity, typed event materialization, tenant presentation joins, payload-free quarantine, fenced leases, atomic checkpoints, immutable outbound payloads, version/supersession, dependencies, and URI/CID settlement.
 - Event publication remains local-first and eventually consistent with the PDS; remote outage never rolls back a committed application event.
 - RSVP publication has an explicit event-before-RSVP dependency and cannot fabricate a subject strong reference.

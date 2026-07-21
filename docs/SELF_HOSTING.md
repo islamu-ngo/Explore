@@ -243,8 +243,8 @@ Event federation is disabled by default through `federation.atproto_events_enabl
 
 Before enabling the capability:
 
-1. Complete ATProto OAuth configuration and verify the BFF `atproto-authentication` health check.
-2. Configure `Atproto:Jetstream:AllowedDids` with the curated DIDs admitted to public discovery. Empty is safe for a dormant host but fails closed when federation is enabled.
+1. Choose the required direction: inbound public discovery does not require ATProto OAuth; outbound event/RSVP publication does, and must pass the BFF `atproto-authentication` health check.
+2. Leave `Atproto:Jetstream:AllowedDids` empty to discover all public publishers of the exact community event/RSVP collections, or configure up to 10,000 curated DIDs to restrict ingress.
 3. Verify PostgreSQL migrations include the hardened `AtprotoRecord`, ownership/presentation, event projection, cursor/quarantine, and `PdsSyncOutbox` schema.
 4. Keep `Atproto:PdsSync` and `Atproto:Jetstream` worker settings within the validated bounds documented in [CONFIGURATION.md](CONFIGURATION.md#at-protocol-events-governance-and-workers).
 5. Select `platform` validation unless the operator intentionally wants the community lexicon's minimum business requirements. `community_lexicon` never relaxes authorization, tenant isolation, consent, privacy, storage, reference integrity, concurrency, or validation of supplied optional values.

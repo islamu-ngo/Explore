@@ -307,7 +307,7 @@ Readiness interpretation:
 | `storage-reconciliation` | API | Storage reconciliation worker is enabled in dry-run or mutation mode | Reconciliation is intentionally disabled | Invalid reconciliation options fail startup |
 | `ai-provider` | API | AI provider integration is disabled, deterministic fake provider is enabled, or OpenAI Responses/OpenAI-compatible/Anthropic/Anthropic-compatible/Azure OpenAI settings are valid | Not used | AI provider is enabled but no runnable provider is configured, or provider endpoint/settings fail egress validation |
 | `cerbos` | API | Local provider mode is selected, or configured Cerbos PDP passes gRPC health | Not used | Instance `authorization.provider` is `cerbos` and the PDP is missing or unreachable |
-| `atproto-jetstream` | API | Ingestion is dormant because no tenant capability is enabled, or capability plus a curated DID allowlist are ready | Not used | Capability is enabled without an allowlist, or capability readiness cannot be resolved |
+| `atproto-jetstream` | API | Ingestion is dormant because no tenant capability is enabled, or capability plus public/curated exact-collection subscription is ready | Not used | Capability readiness cannot be resolved |
 | `islamu-event-api` | Blazor, Control Plane BFF | BFF can reach API readiness endpoint | Not used | API readiness endpoint is unavailable or unhealthy |
 | `secret_provider` | API, Blazor, Control Plane BFF | Secret backend path is healthy | Secret backend has transient failures within the configured threshold | Secret backend crossed the unhealthy threshold |
 
@@ -1082,7 +1082,7 @@ Admin settings management:
 
 ### AT Protocol Operations
 
-AT Protocol event federation is disabled by governance by default. Before enabling `federation.atproto_events_enabled`, verify the OAuth health check is ready, the migrations are current, the curated Jetstream DID allowlist is non-empty, and the PDS/Jetstream worker bounds match [CONFIGURATION.md](CONFIGURATION.md). The administrator capability enables both inbound event discovery and eligibility for outbound publication; each owner must still opt in through `federation.atproto_publish_my_events`.
+AT Protocol event federation is disabled by governance by default. Before enabling `federation.atproto_events_enabled`, verify migrations are current and the Jetstream worker bounds match [CONFIGURATION.md](CONFIGURATION.md); leave `AllowedDids` empty for public exact-collection discovery or configure it for curated ingress. Inbound discovery does not require ATProto authentication. For outbound publication, verify the OAuth health check is ready; each owner must still opt in through `federation.atproto_publish_my_events`.
 
 `Explore.API` hosts both runtime loops. `PdsSyncWorker` polls committed `PdsSyncOutbox` rows every 5 seconds by default, claims at most 20 with 90-second fenced leases, and processes at most 10 concurrently in fresh scopes. `AtprotoJetstreamSubscriber` is implemented in Infrastructure but hosted by the API; it opens one capability-aware global stream, renews its 60-second lease every 20 seconds, and cancels the stream immediately when renewal is fenced or fails. Jetstream never opens per-tenant streams.
 
@@ -1094,7 +1094,7 @@ Operational signals are intentionally bounded:
 | `atproto.authentication.duration` | Matching authentication duration histogram in seconds. |
 | `atproto.jetstream.envelopes` | Jetstream connection, replay, fencing, materialization, quarantine, and lease outcomes; the optional `collection` tag is normalized to `event`, `rsvp`, or `unsupported`. |
 | `atproto-authentication` health check | BFF readiness for canonical public URL/callback, signing material, state/session stores, and provider configuration; failure detail is reduced to a stable code. |
-| `atproto-jetstream` health check | API readiness for capability resolution and the curated DID allowlist; dormant disabled capability is healthy, while enabled-without-allowlist fails closed. |
+| `atproto-jetstream` health check | API readiness for capability resolution and public or DID-curated exact-collection subscription; dormant disabled capability is also healthy. |
 | `PdsSyncWorker` structured logs | Per-claim completion or bounded `FailureCode`/`FailureDisposition`; provider response bodies, OAuth material, DIDs, record keys, and payloads must not be logged. |
 
 For delayed or failed publication, keep the local event authoritative. Inspect the newest non-superseded `PdsSyncOutbox` row for the tenant/event, verify capability, consent, linked session, and public-location eligibility, then follow the stable recovery guidance in [TROUBLESHOOTING.md](TROUBLESHOOTING.md). Do not create a PDS record manually and do not replay by changing the stable record key.

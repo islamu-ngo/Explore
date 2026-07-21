@@ -251,7 +251,7 @@ ATProto login and ATProto Events are independent. The effective administrator ca
 | `Atproto:Jetstream:CapabilityPollMilliseconds` | `5000` | Polls for an effective enabled scope without opening per-tenant sockets. |
 | `Atproto:Jetstream:RetryMinimumMilliseconds` | `1000` | Reconnect backoff floor; startup validation accepts 10–60,000 milliseconds. |
 | `Atproto:Jetstream:RetryMaximumMilliseconds` | `30000` | Reconnect backoff ceiling; it must be at least `RetryMinimumMilliseconds` and no more than 300,000 milliseconds. |
-| `Atproto:Jetstream:AllowedDids` | empty | Curated unique DID allowlist, maximum 10,000. Empty is a valid dormant host configuration but readiness fails closed if capability is enabled with no admitted DIDs. |
+| `Atproto:Jetstream:AllowedDids` | empty | Optional unique DID filter, maximum 10,000. Empty discovers all public publishers of the exact event/RSVP collections; a non-empty list restricts ingestion to curated DIDs. |
 
 The PDS worker calls CarpaNet only for committed outbox rows. Event creation/update request transactions never call a PDS. Projection coverage, privacy, unsafe values, or encoded-size overflow prevent PDS enqueue; the implementation never truncates or silently omits public snapshot values to force a record through.
 

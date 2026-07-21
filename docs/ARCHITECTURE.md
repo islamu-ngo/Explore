@@ -113,7 +113,7 @@ Write operations support `Idempotency-Key` header for safe retries. `Idempotency
 Implemented today:
 - AT Protocol confidential-client OAuth for already-linked platform accounts, with a server-private trust bridge and encrypted DID-keyed sessions.
 - Database-first event/RSVP publication through immutable `PdsSyncOutbox` intent, fenced leases, stable record keys, retry/reconciliation, and URI/CID settlement.
-- One globally leased, allowlisted Jetstream consumer for canonical community event/RSVP records, tombstones, quarantine evidence, and durable cursor state.
+- One globally leased, exact-collection Jetstream consumer with optional DID curation for canonical community event/RSVP records, tombstones, quarantine evidence, and durable cursor state.
 - Tenant-governed typed event discovery, safe source HAL, administrator controls, user consent, and delivery-status client surfaces.
 
 Not fully implemented today:
