@@ -1,9 +1,12 @@
-// ABOUTME: Bridges the singleton Jetstream subscriber to fresh scoped governance and fenced persistence operations.
-// ABOUTME: Prevents concurrent BackgroundService work from sharing one pooled EF Core DbContext.
+// ABOUTME: Bridges the singleton Jetstream subscriber to scoped governance and fenced persistence operations.
+// ABOUTME: Invalidates public discovery caches only after successful scoped ingestion or recovery mutations.
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Features.Federation.Atproto.Models;
+using Explore.Application.Features.Federation.Atproto.Requests.Commands;
 using Explore.Application.Services.Federation;
+using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Explore.Infrastructure.Services.Federation;
@@ -24,6 +27,9 @@ public interface IAtprotoJetstreamRuntimeStore
         CancellationToken cancellationToken);
     Task<bool> TryApplyAndAdvanceAsync(
         AtprotoJetstreamApplyRequest request,
+        CancellationToken cancellationToken);
+    Task<AtprotoPdsRecoveryResult> ReconcilePdsSnapshotsAsync(
+        ReconcileAtprotoPdsSnapshotsCommand command,
         CancellationToken cancellationToken);
 }
 
@@ -76,6 +82,22 @@ internal sealed class AtprotoJetstreamRuntimeStore(IServiceScopeFactory scopeFac
         }
 
         return applied;
+    }
+
+    public async Task<AtprotoPdsRecoveryResult> ReconcilePdsSnapshotsAsync(
+        ReconcileAtprotoPdsSnapshotsCommand command,
+        CancellationToken cancellationToken)
+    {
+        await using AsyncServiceScope scope = scopeFactory.CreateAsyncScope();
+        AtprotoPdsRecoveryResult result = await scope.ServiceProvider.GetRequiredService<IMediator>()
+            .Send(command, cancellationToken);
+        if (result.Outcome == AtprotoPdsRecoveryOutcome.Completed
+            && scope.ServiceProvider.GetService<IAtprotoDiscoveryCacheInvalidator>() is { } cacheInvalidator)
+        {
+            await cacheInvalidator.InvalidateAsync(cancellationToken);
+        }
+
+        return result;
     }
 
     private static bool AffectsEventDiscovery(AtprotoJetstreamApplyRequest request) =>

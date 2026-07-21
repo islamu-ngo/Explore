@@ -1,5 +1,5 @@
 // ABOUTME: Tests capability-aware ATProto Jetstream readiness without exposing tenant or DID identities.
-// ABOUTME: Proves dormant empty configuration is healthy while enabled empty configuration fails closed.
+// ABOUTME: Proves empty DID filtering enables public discovery while a configured list enables curation.
 
 using Explore.Infrastructure.HealthChecks;
 using Explore.Infrastructure.Services.Federation;
@@ -12,7 +12,7 @@ namespace Explore.Infrastructure.Tests.Federation;
 public sealed class AtprotoJetstreamReadinessHealthCheckTests
 {
     [Test]
-    public async Task CheckHealthAsync_DormantCapabilityWithEmptyAllowlistIsHealthy()
+    public async Task CheckHealthAsync_DormantCapabilityWithEmptyDidFilterIsHealthy()
     {
         IAtprotoJetstreamRuntimeStore store = StoreWithEnabledTenants([]);
         var healthCheck = CreateHealthCheck(store, []);
@@ -25,21 +25,21 @@ public sealed class AtprotoJetstreamReadinessHealthCheckTests
     }
 
     [Test]
-    public async Task CheckHealthAsync_EnabledCapabilityWithEmptyAllowlistIsUnhealthyAndBounded()
+    public async Task CheckHealthAsync_EnabledCapabilityWithEmptyDidFilterIsHealthyForPublicDiscovery()
     {
         IAtprotoJetstreamRuntimeStore store = StoreWithEnabledTenants([Guid.CreateVersion7()]);
         var healthCheck = CreateHealthCheck(store, []);
 
         HealthCheckResult result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
 
-        await Assert.That(result.Status).IsEqualTo(HealthStatus.Unhealthy);
-        await Assert.That(result.Description).Contains("curated DID allowlist");
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Healthy);
+        await Assert.That(result.Description).Contains("public collection");
         await Assert.That(result.Data.Keys).IsEquivalentTo(["capabilityEnabled", "allowlistConfigured"]);
         await Assert.That(result.Data.Values).DoesNotContain(value => value is Guid or string);
     }
 
     [Test]
-    public async Task CheckHealthAsync_EnabledCapabilityWithCuratedAllowlistIsHealthy()
+    public async Task CheckHealthAsync_EnabledCapabilityWithCuratedDidFilterIsHealthy()
     {
         IAtprotoJetstreamRuntimeStore store = StoreWithEnabledTenants([Guid.CreateVersion7()]);
         var healthCheck = CreateHealthCheck(store, ["did:plc:curated-owner"]);

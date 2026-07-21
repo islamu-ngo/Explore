@@ -1,11 +1,14 @@
 // ABOUTME: Tests the bounded exact-collection Jetstream subscriber with fake stream and fenced store boundaries.
-// ABOUTME: Covers valid ingestion, quarantine, replay, failed apply recovery, capability gates, and cancellation.
+// ABOUTME: Covers ingestion, replay, dynamic filters, governed PDS recovery, lease fencing, and cancellation.
 
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Threading.Channels;
 using CarpaNet;
 using CarpaNet.Jetstream;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Features.Federation.Atproto.Models;
+using Explore.Application.Features.Federation.Atproto.Requests.Commands;
 using Explore.Domain.Federation;
 using Explore.Infrastructure.Services.Federation;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -56,7 +59,7 @@ public sealed class AtprotoJetstreamSubscriberTests
     }
 
     [Test]
-    public async Task RunSingleLease_EnabledCapabilityWithMissingDidAllowlistDoesNotOpenStream()
+    public async Task RunSingleLease_EnabledCapabilityWithEmptyDidFilterOpensPublicCollectionStream()
     {
         var store = new FakeRuntimeStore([Guid.CreateVersion7()]);
         var source = new FakeEventSource([EventEnvelope(100)]);
@@ -64,13 +67,14 @@ public sealed class AtprotoJetstreamSubscriberTests
 
         bool consumed = await subscriber.RunSingleLeaseAsync(CancellationToken.None);
 
-        await Assert.That(consumed).IsFalse();
-        await Assert.That(source.Subscription).IsNull();
-        await Assert.That(store.Applied).IsEmpty();
+        await Assert.That(consumed).IsTrue();
+        await Assert.That(source.Subscription!.WantedDids).IsEmpty();
+        await Assert.That(store.Applied).HasSingleItem();
+        await Assert.That(store.Applied[0].Record).IsNotNull();
     }
 
     [Test]
-    public async Task EventSource_EmptyDidAllowlistIsRejectedBeforeNetworkAccess()
+    public async Task EventSource_EmptyDidFilterDoesNotFailConfigurationValidation()
     {
         var source = new CarpaNetJetstreamEventSource();
         var subscription = new AtprotoJetstreamSubscription(
@@ -79,11 +83,13 @@ public sealed class AtprotoJetstreamSubscriberTests
             WantedDids: [],
             Cursor: null,
             MaxMessageSizeBytes: 2_113_536);
-        await using IAsyncEnumerator<JetstreamEvent> enumerator = source
-            .SubscribeAsync(subscription, CancellationToken.None)
-            .GetAsyncEnumerator();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => await enumerator.MoveNextAsync());
+        await Assert.ThrowsAsync<OperationCanceledException>(() => source.OpenSessionAsync(
+            subscription,
+            TimeSpan.FromMilliseconds(100),
+            cancellation.Token));
     }
 
     [Test]
@@ -160,6 +166,414 @@ public sealed class AtprotoJetstreamSubscriberTests
     }
 
     [Test]
+    public async Task RunSingleLease_ChangedAllowedDidsSendsOneUpdateOnExistingSession()
+    {
+        var store = new FakeRuntimeStore([Guid.CreateVersion7()]);
+        var source = new FakeEventSource([]) { WaitForCancellation = true };
+        var configuredOptions = TestOptions([AllowedDid]);
+        var options = new FakeOptionsMonitor(configuredOptions);
+        var time = new ManualTimeProvider(ObservedAt);
+        using var subscriber = new AtprotoJetstreamSubscriber(
+            store,
+            source,
+            options,
+            time,
+            NullLogger<AtprotoJetstreamSubscriber>.Instance);
+        using var cancellation = new CancellationTokenSource();
+        Task<bool> run = subscriber.RunSingleLeaseAsync(cancellation.Token);
+
+        try
+        {
+            await source.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            options.Set(TestOptions(["did:plc:updated-owner"]));
+            await time.WaitForTimerAsync(TimeSpan.FromMilliseconds(100)).WaitAsync(TimeSpan.FromSeconds(5));
+            time.Advance(TimeSpan.FromMilliseconds(100));
+            await source.Sessions[0].UpdateAttempted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+            await Assert.That(source.SubscriptionCount).IsEqualTo(1);
+            await Assert.That(source.Sessions[0].OptionsUpdates).HasSingleItem();
+            JetstreamOptionsPayload payload = source.Sessions[0].OptionsUpdates[0].Payload;
+            await Assert.That(payload.WantedDids).IsEquivalentTo(["did:plc:updated-owner"]);
+            await Assert.That(payload.WantedCollections)
+                .IsEquivalentTo([AtprotoJetstreamConstants.EventCollection, AtprotoJetstreamConstants.RsvpCollection]);
+            await Assert.That(payload.MaxMessageSizeBytes).IsEqualTo(configuredOptions.MaxMessageSizeBytes);
+            source.Sessions[0].Push(EventEnvelope(100, did: "did:plc:updated-owner"));
+            await store.ApplyCalled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await Assert.That(store.Applied).HasSingleItem();
+            await Assert.That(store.Applied[0].Record!.Did).IsEqualTo("did:plc:updated-owner");
+        }
+        finally
+        {
+            cancellation.Cancel();
+            try
+            {
+                await run;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+    }
+
+    [Test]
+    public async Task RunSingleLease_ReorderedDuplicateEquivalentDidsDoNotSendUpdate()
+    {
+        string secondDid = "did:plc:second-owner";
+        var source = new FakeEventSource([]) { WaitForCancellation = true };
+        var options = new FakeOptionsMonitor(TestOptions([AllowedDid, secondDid]));
+        var time = new ManualTimeProvider(ObservedAt);
+        using var subscriber = new AtprotoJetstreamSubscriber(
+            new FakeRuntimeStore([Guid.CreateVersion7()]),
+            source,
+            options,
+            time,
+            NullLogger<AtprotoJetstreamSubscriber>.Instance);
+        using var cancellation = new CancellationTokenSource();
+        Task<bool> run = subscriber.RunSingleLeaseAsync(cancellation.Token);
+
+        try
+        {
+            await source.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            AtprotoJetstreamOptions equivalent = TestOptions([secondDid, AllowedDid, AllowedDid]);
+            equivalent.Endpoint = "https://ignored-runtime-change.example.test";
+            equivalent.MaxMessageSizeBytes++;
+            options.Set(equivalent);
+
+            await Assert.That(source.SubscriptionCount).IsEqualTo(1);
+            await Assert.That(source.Sessions[0].OptionsUpdateAttempts).IsEmpty();
+        }
+        finally
+        {
+            cancellation.Cancel();
+            await IgnoreCancellationAsync(run);
+        }
+    }
+
+    [Test]
+    public async Task RunSingleLease_FilterUpdateStormCoalescesToLatestValue()
+    {
+        var source = new FakeEventSource([]) { WaitForCancellation = true };
+        var options = new FakeOptionsMonitor(TestOptions([AllowedDid]));
+        var time = new ManualTimeProvider(ObservedAt);
+        using var subscriber = new AtprotoJetstreamSubscriber(
+            new FakeRuntimeStore([Guid.CreateVersion7()]),
+            source,
+            options,
+            time,
+            NullLogger<AtprotoJetstreamSubscriber>.Instance);
+        using var cancellation = new CancellationTokenSource();
+        Task<bool> run = subscriber.RunSingleLeaseAsync(cancellation.Token);
+
+        try
+        {
+            await source.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            options.Set(TestOptions(["did:plc:first-change"]));
+            await time.WaitForTimerAsync(TimeSpan.FromMilliseconds(100)).WaitAsync(TimeSpan.FromSeconds(5));
+            options.Set(TestOptions(["did:plc:second-change"]));
+            options.Set(TestOptions(["did:plc:final-change"]));
+            time.Advance(TimeSpan.FromMilliseconds(100));
+            await source.Sessions[0].UpdateAttempted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+            await Assert.That(source.SubscriptionCount).IsEqualTo(1);
+            await Assert.That(source.Sessions[0].OptionsUpdates).HasSingleItem();
+            await Assert.That(source.Sessions[0].OptionsUpdates[0].Payload.WantedDids)
+                .IsEquivalentTo(["did:plc:final-change"]);
+        }
+        finally
+        {
+            cancellation.Cancel();
+            await IgnoreCancellationAsync(run);
+        }
+    }
+
+    [Test]
+    public async Task HostedSubscriber_FailedUpdateReconnectsFromSameCursorWithLatestDesiredFilter()
+    {
+        const long savedCursor = 123_456;
+        var store = new FakeRuntimeStore([Guid.CreateVersion7()], savedCursor);
+        var source = new FakeEventSource([])
+        {
+            WaitForCancellation = true,
+            FailNextOptionsUpdate = true
+        };
+        var options = new FakeOptionsMonitor(TestOptions([AllowedDid]));
+        var time = new ManualTimeProvider(ObservedAt);
+        using var subscriber = new AtprotoJetstreamSubscriber(
+            store,
+            source,
+            options,
+            time,
+            NullLogger<AtprotoJetstreamSubscriber>.Instance);
+
+        await subscriber.StartAsync(CancellationToken.None);
+        try
+        {
+            await source.WaitForSessionCountAsync(1).WaitAsync(TimeSpan.FromSeconds(5));
+            options.Set(TestOptions(["did:plc:latest-desired"]));
+            await time.WaitForTimerAsync(TimeSpan.FromMilliseconds(100)).WaitAsync(TimeSpan.FromSeconds(5));
+            time.Advance(TimeSpan.FromMilliseconds(100));
+            await source.Sessions[0].UpdateAttempted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await time.WaitForTimerAsync(TimeSpan.FromMilliseconds(10)).WaitAsync(TimeSpan.FromSeconds(5));
+            time.Advance(TimeSpan.FromMilliseconds(10));
+            await source.WaitForSessionCountAsync(2).WaitAsync(TimeSpan.FromSeconds(5));
+
+            await Assert.That(source.SubscriptionCount).IsEqualTo(2);
+            await Assert.That(source.Subscriptions.Select(value => value.Cursor).ToArray())
+                .IsEquivalentTo(new long?[] { savedCursor, savedCursor });
+            await Assert.That(source.Sessions[0].OptionsUpdates).IsEmpty();
+            await Assert.That(source.Sessions[0].Disposed).IsTrue();
+            await Assert.That(source.InitialOptionsUpdates[1].Payload.WantedDids)
+                .IsEquivalentTo(["did:plc:latest-desired"]);
+            await Assert.That(store.Cursor).IsEqualTo(savedCursor);
+        }
+        finally
+        {
+            await subscriber.StopAsync(CancellationToken.None);
+        }
+    }
+
+    [Test]
+    public async Task RunSingleLease_RecoveryRunsAlongsideLiveStreamUnderCurrentClaim()
+    {
+        var store = new FakeRuntimeStore([Guid.CreateVersion7()]);
+        var source = new FakeEventSource([]) { WaitForCancellation = true };
+        var time = new ManualTimeProvider(ObservedAt);
+        var releaseRecovery = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        store.RecoveryHandler = async (_, cancellationToken) =>
+        {
+            await releaseRecovery.Task.WaitAsync(cancellationToken);
+            return new AtprotoPdsRecoveryResult(AtprotoPdsRecoveryOutcome.Completed, new string('a', 64), 1);
+        };
+        using var subscriber = new AtprotoJetstreamSubscriber(
+            store,
+            source,
+            new FakeOptionsMonitor(TestOptions([AllowedDid])),
+            time,
+            NullLogger<AtprotoJetstreamSubscriber>.Instance);
+        using var cancellation = new CancellationTokenSource();
+        Task<bool> run = subscriber.RunSingleLeaseAsync(cancellation.Token);
+
+        try
+        {
+            await source.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await store.RecoveryCalled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+            source.Sessions[0].Push(EventEnvelope(100));
+            await store.ApplyCalled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+            await Assert.That(store.Applied).HasSingleItem();
+            await Assert.That(store.RecoveryCommands).HasSingleItem();
+            await Assert.That(store.RecoveryCommands[0].Claim.LeaseToken)
+                .IsEqualTo(store.LastClaim!.LeaseToken);
+            await Assert.That(store.RecoveryCommands[0].AllowedDids).IsEquivalentTo([AllowedDid]);
+            await Assert.That(store.RecoveryCommands[0].SnapshotStartedAt)
+                .IsEqualTo(ObservedAt);
+        }
+        finally
+        {
+            releaseRecovery.TrySetResult();
+            cancellation.Cancel();
+            await IgnoreCancellationAsync(run);
+        }
+    }
+
+    [Test]
+    [Arguments(AtprotoPdsRecoveryOutcome.Disabled)]
+    [Arguments(AtprotoPdsRecoveryOutcome.DowntimeOnly)]
+    [Arguments(AtprotoPdsRecoveryOutcome.Unchanged)]
+    [Arguments(AtprotoPdsRecoveryOutcome.Completed)]
+    public async Task RunSingleLease_SuccessfulRecoveryMemoizesFingerprintAndUsesChangedDidScope(
+        AtprotoPdsRecoveryOutcome outcome)
+    {
+        string fingerprint = new('b', 64);
+        var store = new FakeRuntimeStore([Guid.CreateVersion7()])
+        {
+            RecoveryHandler = (_, _) => Task.FromResult(new AtprotoPdsRecoveryResult(outcome, fingerprint))
+        };
+        var source = new FakeEventSource([]) { WaitForCancellation = true };
+        var options = new FakeOptionsMonitor(TestOptions([AllowedDid]));
+        var time = new ManualTimeProvider(ObservedAt);
+        using var subscriber = new AtprotoJetstreamSubscriber(
+            store,
+            source,
+            options,
+            time,
+            NullLogger<AtprotoJetstreamSubscriber>.Instance);
+        using var cancellation = new CancellationTokenSource();
+        Task<bool> run = subscriber.RunSingleLeaseAsync(cancellation.Token);
+
+        try
+        {
+            await store.WaitForRecoveryCountAsync(1).WaitAsync(TimeSpan.FromSeconds(5));
+            await time.WaitForTimerAsync(TimeSpan.FromMilliseconds(100)).WaitAsync(TimeSpan.FromSeconds(5));
+            options.Set(TestOptions(["did:plc:changed-recovery-owner"]));
+            time.Advance(TimeSpan.FromMilliseconds(100));
+            await store.WaitForRecoveryCountAsync(2).WaitAsync(TimeSpan.FromSeconds(5));
+
+            await Assert.That(store.RecoveryCommands[1].LastCompletedFingerprint).IsEqualTo(fingerprint);
+            await Assert.That(store.RecoveryCommands[1].AllowedDids)
+                .IsEquivalentTo(["did:plc:changed-recovery-owner"]);
+        }
+        finally
+        {
+            cancellation.Cancel();
+            await IgnoreCancellationAsync(run);
+        }
+    }
+
+    [Test]
+    public async Task RunSingleLease_RecoveryBackoffIncreasesCapsAndResetsWithoutStoppingLiveIngestion()
+    {
+        int attempt = 0;
+        var store = new FakeRuntimeStore([Guid.CreateVersion7()]);
+        store.RecoveryHandler = async (_, cancellationToken) => ++attempt switch
+        {
+            1 => new AtprotoPdsRecoveryResult(
+                AtprotoPdsRecoveryOutcome.ScopeRejected,
+                new string('c', 64),
+                FailedDids: 1),
+            2 => new AtprotoPdsRecoveryResult(
+                AtprotoPdsRecoveryOutcome.PartialFailure,
+                new string('d', 64),
+                AppliedDids: 1,
+                FailedDids: 1),
+            3 => throw new HttpRequestException("simulated_network_failure"),
+            4 => new AtprotoPdsRecoveryResult(
+                AtprotoPdsRecoveryOutcome.PartialFailure,
+                new string('e', 64),
+                FailedDids: 1),
+            5 => new AtprotoPdsRecoveryResult(
+                AtprotoPdsRecoveryOutcome.Completed,
+                new string('f', 64),
+                AppliedDids: 1),
+            _ => await WaitForCancellationAsync(cancellationToken)
+        };
+        var source = new FakeEventSource([]) { WaitForCancellation = true };
+        var time = new ManualTimeProvider(ObservedAt);
+        AtprotoJetstreamOptions options = TestOptions([AllowedDid]);
+        options.RetryMinimumMilliseconds = 100;
+        options.RetryMaximumMilliseconds = 400;
+        using var subscriber = new AtprotoJetstreamSubscriber(
+            store,
+            source,
+            new FakeOptionsMonitor(options),
+            time,
+            NullLogger<AtprotoJetstreamSubscriber>.Instance);
+        using var cancellation = new CancellationTokenSource();
+        Task<bool> run = subscriber.RunSingleLeaseAsync(cancellation.Token);
+
+        try
+        {
+            await store.WaitForRecoveryCountAsync(1).WaitAsync(TimeSpan.FromSeconds(5));
+            await time.WaitForTimerCountAsync(2).WaitAsync(TimeSpan.FromSeconds(5));
+            await Assert.That(time.CreatedDueTimes[^1]).IsEqualTo(TimeSpan.FromMilliseconds(100));
+            time.Advance(TimeSpan.FromMilliseconds(100));
+
+            await store.WaitForRecoveryCountAsync(2).WaitAsync(TimeSpan.FromSeconds(5));
+            await time.WaitForTimerCountAsync(3).WaitAsync(TimeSpan.FromSeconds(5));
+            await Assert.That(time.CreatedDueTimes[^1]).IsEqualTo(TimeSpan.FromMilliseconds(200));
+
+            source.Sessions[0].Push(EventEnvelope(100));
+            await store.ApplyCalled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            time.Advance(TimeSpan.FromMilliseconds(200));
+
+            await store.WaitForRecoveryCountAsync(3).WaitAsync(TimeSpan.FromSeconds(5));
+            await time.WaitForTimerCountAsync(4).WaitAsync(TimeSpan.FromSeconds(5));
+            await Assert.That(time.CreatedDueTimes[^1]).IsEqualTo(TimeSpan.FromMilliseconds(400));
+            time.Advance(TimeSpan.FromMilliseconds(400));
+
+            await store.WaitForRecoveryCountAsync(4).WaitAsync(TimeSpan.FromSeconds(5));
+            await time.WaitForTimerCountAsync(5).WaitAsync(TimeSpan.FromSeconds(5));
+            await Assert.That(time.CreatedDueTimes[^1]).IsEqualTo(TimeSpan.FromMilliseconds(400));
+            time.Advance(TimeSpan.FromMilliseconds(400));
+
+            await store.WaitForRecoveryCountAsync(5).WaitAsync(TimeSpan.FromSeconds(5));
+            await time.WaitForTimerCountAsync(6).WaitAsync(TimeSpan.FromSeconds(5));
+
+            await Assert.That(time.CreatedDueTimes[^1]).IsEqualTo(TimeSpan.FromMilliseconds(100));
+            await Assert.That(store.RecoveryCommands.Take(5).All(command => command.LastCompletedFingerprint is null))
+                .IsTrue();
+            await Assert.That(store.Applied).HasSingleItem();
+            await Assert.That(source.SubscriptionCount).IsEqualTo(1);
+        }
+        finally
+        {
+            cancellation.Cancel();
+            await IgnoreCancellationAsync(run);
+        }
+    }
+
+    [Test]
+    public async Task Execute_FenceRejectedReacquiresBeforeFurtherRecovery()
+    {
+        int attempt = 0;
+        var store = new FakeRuntimeStore([Guid.CreateVersion7()]);
+        store.RecoveryHandler = async (_, cancellationToken) =>
+        {
+            if (Interlocked.Increment(ref attempt) == 1)
+            {
+                return new AtprotoPdsRecoveryResult(
+                    AtprotoPdsRecoveryOutcome.FenceRejected,
+                    new string('a', 64),
+                    FailedDids: 1);
+            }
+
+            return await WaitForCancellationAsync(cancellationToken);
+        };
+        var source = new FakeEventSource([]) { WaitForCancellation = true };
+        var time = new ManualTimeProvider(ObservedAt);
+        using var subscriber = new AtprotoJetstreamSubscriber(
+            store,
+            source,
+            new FakeOptionsMonitor(TestOptions([AllowedDid])),
+            time,
+            NullLogger<AtprotoJetstreamSubscriber>.Instance);
+
+        await subscriber.StartAsync(CancellationToken.None);
+        try
+        {
+            await store.WaitForRecoveryCountAsync(1).WaitAsync(TimeSpan.FromSeconds(5));
+            await time.WaitForTimerAsync(TimeSpan.FromMilliseconds(100)).WaitAsync(TimeSpan.FromSeconds(5));
+            time.Advance(TimeSpan.FromMilliseconds(100));
+            await store.WaitForRecoveryCountAsync(2).WaitAsync(TimeSpan.FromSeconds(5));
+
+            await Assert.That(store.RecoveryCommands[1].Claim.LeaseToken)
+                .IsNotEqualTo(store.RecoveryCommands[0].Claim.LeaseToken);
+            await Assert.That(store.RecoveryCommands[1].Claim.LeaseFence)
+                .IsGreaterThan(store.RecoveryCommands[0].Claim.LeaseFence);
+            await Assert.That(source.SubscriptionCount).IsEqualTo(2);
+            await Assert.That(source.Sessions[0].Disposed).IsTrue();
+        }
+        finally
+        {
+            await subscriber.StopAsync(CancellationToken.None);
+        }
+    }
+
+    [Test]
+    public async Task EventSource_OptionsUpdateUsesExactNestedWirePayload()
+    {
+        var subscription = new AtprotoJetstreamSubscription(
+            new Uri("https://jetstream.example.test"),
+            AtprotoJetstreamConstants.Collections,
+            WantedDids: [],
+            Cursor: 42,
+            MaxMessageSizeBytes: 2_113_536);
+
+        JetstreamOptionsUpdate update = CarpaNetJetstreamEventSource.CreateOptionsUpdate(subscription);
+        JsonElement json = JsonSerializer.SerializeToElement(update);
+
+        await Assert.That(update.Type).IsEqualTo("options_update");
+        await Assert.That(update.Payload.WantedCollections)
+            .IsEquivalentTo([AtprotoJetstreamConstants.EventCollection, AtprotoJetstreamConstants.RsvpCollection]);
+        await Assert.That(update.Payload.WantedCollections).DoesNotContain(collection => collection.Contains('*'));
+        await Assert.That(update.Payload.WantedDids).IsEmpty();
+        await Assert.That(update.Payload.MaxMessageSizeBytes).IsEqualTo(2_113_536);
+        await Assert.That(json.GetProperty("payload").GetProperty("wantedCollections").GetArrayLength()).IsEqualTo(2);
+        await Assert.That(json.TryGetProperty("wantedCollections", out _)).IsFalse();
+    }
+
+    [Test]
     public async Task RunSingleLease_RenewalExceptionCancelsActiveStream()
     {
         var store = new FakeRuntimeStore([Guid.CreateVersion7()])
@@ -167,9 +581,20 @@ public sealed class AtprotoJetstreamSubscriberTests
             RenewalException = new InvalidOperationException("simulated_renewal_failure")
         };
         var source = new FakeEventSource([]) { WaitForCancellation = true };
-        using var subscriber = CreateSubscriber(store, source, leaseRenewalSeconds: 1);
+        var configuredOptions = TestOptions([AllowedDid]);
+        configuredOptions.LeaseRenewalSeconds = 5;
+        var time = new ManualTimeProvider(ObservedAt);
+        using var subscriber = new AtprotoJetstreamSubscriber(
+            store,
+            source,
+            new FakeOptionsMonitor(configuredOptions),
+            time,
+            NullLogger<AtprotoJetstreamSubscriber>.Instance);
 
         Task<bool> run = subscriber.RunSingleLeaseAsync(CancellationToken.None);
+        await source.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await time.WaitForTimerAsync(TimeSpan.FromSeconds(5)).WaitAsync(TimeSpan.FromSeconds(5));
+        time.Advance(TimeSpan.FromSeconds(5));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => run);
         await Assert.That(source.CancellationObserved).IsTrue();
@@ -192,7 +617,7 @@ public sealed class AtprotoJetstreamSubscriberTests
     }
 
     [Test]
-    public async Task Parser_EmptyDidAllowlistRejectsOtherwiseValidRecord()
+    public async Task Parser_EmptyDidFilterAcceptsOtherwiseValidPublicRecord()
     {
         AtprotoJetstreamParsedEnvelope outcome = AtprotoJetstreamEnvelopeParser.Parse(
             EventEnvelope(101),
@@ -200,8 +625,8 @@ public sealed class AtprotoJetstreamSubscriberTests
             [],
             ObservedAt);
 
-        await Assert.That(outcome.Record).IsNull();
-        await Assert.That(outcome.Quarantine!.ReasonCode).IsEqualTo("did_not_allowed");
+        await Assert.That(outcome.Record).IsNotNull();
+        await Assert.That(outcome.Quarantine).IsNull();
     }
 
     [Test]
@@ -304,6 +729,7 @@ public sealed class AtprotoJetstreamSubscriberTests
 
         await Assert.ThrowsAsync<OperationCanceledException>(() => run);
         await Assert.That(source.CancellationObserved).IsTrue();
+        await Assert.That(source.Sessions[0].Disposed).IsTrue();
     }
 
     [Test]
@@ -342,13 +768,38 @@ public sealed class AtprotoJetstreamSubscriberTests
     }
 
     [Test]
-    public async Task OptionsValidator_AllowsEmptyDormantDidAllowlist()
+    public async Task OptionsValidator_AllowsEmptyPublicDidFilter()
     {
         var validator = new AtprotoJetstreamOptionsValidator();
 
         ValidateOptionsResult result = validator.Validate(null, new AtprotoJetstreamOptions());
 
         await Assert.That(result.Succeeded).IsTrue();
+    }
+
+    [Test]
+    public async Task OptionsValidator_EnforcesDidCountAndShapeBoundaries()
+    {
+        var validator = new AtprotoJetstreamOptionsValidator();
+        string[] maximum = Enumerable.Range(0, 10_000).Select(index => $"did:plc:owner-{index}").ToArray();
+
+        ValidateOptionsResult maximumResult = validator.Validate(
+            null,
+            new AtprotoJetstreamOptions { AllowedDids = maximum });
+        ValidateOptionsResult oversizedResult = validator.Validate(
+            null,
+            new AtprotoJetstreamOptions { AllowedDids = [.. maximum, "did:plc:one-too-many"] });
+        ValidateOptionsResult malformedResult = validator.Validate(
+            null,
+            new AtprotoJetstreamOptions { AllowedDids = ["not-a-did"] });
+        ValidateOptionsResult duplicatesResult = validator.Validate(
+            null,
+            new AtprotoJetstreamOptions { AllowedDids = [AllowedDid, AllowedDid] });
+
+        await Assert.That(maximumResult.Succeeded).IsTrue();
+        await Assert.That(oversizedResult.Failed).IsTrue();
+        await Assert.That(malformedResult.Failed).IsTrue();
+        await Assert.That(duplicatesResult.Succeeded).IsTrue();
     }
 
     private static AtprotoJetstreamSubscriber CreateSubscriber(
@@ -359,7 +810,7 @@ public sealed class AtprotoJetstreamSubscriberTests
         => new(
             store,
             source,
-            Options.Create(new AtprotoJetstreamOptions
+            new FakeOptionsMonitor(new AtprotoJetstreamOptions
             {
                 Endpoint = "https://jetstream.example.test",
                 LeaseDurationSeconds = 30,
@@ -371,20 +822,52 @@ public sealed class AtprotoJetstreamSubscriberTests
             TimeProvider.System,
             NullLogger<AtprotoJetstreamSubscriber>.Instance);
 
+    private static AtprotoJetstreamOptions TestOptions(string[] allowedDids) => new()
+    {
+        Endpoint = "https://jetstream.example.test",
+        LeaseDurationSeconds = 30,
+        LeaseRenewalSeconds = 10,
+        CapabilityPollMilliseconds = 100,
+        RetryMinimumMilliseconds = 10,
+        RetryMaximumMilliseconds = 100,
+        AllowedDids = allowedDids
+    };
+
+    private static async Task IgnoreCancellationAsync(Task task)
+    {
+        try
+        {
+            await task;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private static async Task<AtprotoPdsRecoveryResult> WaitForCancellationAsync(
+        CancellationToken cancellationToken)
+    {
+        await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        return new AtprotoPdsRecoveryResult(
+            AtprotoPdsRecoveryOutcome.DowntimeOnly,
+            new string('0', 64));
+    }
+
     private static JetstreamEvent EventEnvelope(
         long cursor,
         string collection = AtprotoJetstreamConstants.EventCollection,
         string? type = AtprotoJetstreamConstants.EventCollection,
         string? json = null,
         string operation = "create",
-        JsonElement? record = default)
+        JsonElement? record = default,
+        string did = "did:plc:remote-owner")
     {
         JsonElement? payload = operation == "delete"
             ? record
             : record ?? JsonDocument.Parse(json ?? $$"""{"$type":"{{type}}","name":"Remote event","createdAt":"2026-07-19T10:00:00Z"}""").RootElement.Clone();
         return new JetstreamEvent
         {
-            Did = "did:plc:remote-owner",
+            Did = did,
             TimeUs = cursor,
             Kind = "commit",
             Commit = new JetstreamCommit
@@ -400,58 +883,147 @@ public sealed class AtprotoJetstreamSubscriberTests
 
     private sealed class FakeEventSource(IReadOnlyList<JetstreamEvent> events) : IAtprotoJetstreamEventSource
     {
+        private readonly object _lock = new();
+        private readonly List<(int Count, TaskCompletionSource Completion)> _sessionWaiters = [];
         public AtprotoJetstreamSubscription? Subscription { get; private set; }
+        public List<AtprotoJetstreamSubscription> Subscriptions { get; } = [];
+        public List<JetstreamOptionsUpdate> InitialOptionsUpdates { get; } = [];
+        public List<FakeSession> Sessions { get; } = [];
         public bool WaitForCancellation { get; init; }
         public bool CancellationObserved { get; private set; }
+        public bool FailNextOptionsUpdate { get; set; }
         public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public Action? BeforeYield { get; init; }
         public int FailuresRemaining { get; set; }
         public int SubscriptionCount { get; private set; }
 
-        public async IAsyncEnumerable<JetstreamEvent> SubscribeAsync(
+        public Task<IAtprotoJetstreamSession> OpenSessionAsync(
             AtprotoJetstreamSubscription subscription,
-            [EnumeratorCancellation] CancellationToken cancellationToken)
+            TimeSpan readinessTimeout,
+            CancellationToken cancellationToken)
         {
-            Subscription = subscription;
-            SubscriptionCount++;
-            Started.TrySetResult();
-            if (FailuresRemaining > 0)
+            cancellationToken.ThrowIfCancellationRequested();
+            lock (_lock)
             {
-                FailuresRemaining--;
-                throw new InvalidOperationException("simulated_stream_failure");
+                Subscription = subscription;
+                Subscriptions.Add(subscription);
+                InitialOptionsUpdates.Add(CarpaNetJetstreamEventSource.CreateOptionsUpdate(subscription));
+                SubscriptionCount++;
+                if (FailuresRemaining > 0)
+                {
+                    FailuresRemaining--;
+                    throw new InvalidOperationException("simulated_stream_failure");
+                }
+
+                var session = new FakeSession(this, events)
+                {
+                    FailNextOptionsUpdate = FailNextOptionsUpdate
+                };
+                FailNextOptionsUpdate = false;
+                Sessions.Add(session);
+                Started.TrySetResult();
+                foreach ((int count, TaskCompletionSource completion) in _sessionWaiters.Where(value => value.Count <= Sessions.Count))
+                {
+                    completion.TrySetResult();
+                }
+
+                return Task.FromResult<IAtprotoJetstreamSession>(session);
+            }
+        }
+
+        public Task WaitForSessionCountAsync(int count)
+        {
+            lock (_lock)
+            {
+                if (Sessions.Count >= count)
+                {
+                    return Task.CompletedTask;
+                }
+
+                var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                _sessionWaiters.Add((count, completion));
+                return completion.Task;
+            }
+        }
+
+        public sealed class FakeSession(
+            FakeEventSource source,
+            IReadOnlyList<JetstreamEvent> events) : IAtprotoJetstreamSession
+        {
+            private readonly Channel<JetstreamEvent> _pushedEvents = Channel.CreateUnbounded<JetstreamEvent>();
+            public List<JetstreamOptionsUpdate> OptionsUpdateAttempts { get; } = [];
+            public List<JetstreamOptionsUpdate> OptionsUpdates { get; } = [];
+            public TaskCompletionSource UpdateAttempted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            public bool FailNextOptionsUpdate { get; init; }
+            public bool Disposed { get; private set; }
+
+            public async IAsyncEnumerable<JetstreamEvent> ReadEventsAsync(
+                [EnumeratorCancellation] CancellationToken cancellationToken)
+            {
+                foreach (JetstreamEvent value in events)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    source.BeforeYield?.Invoke();
+                    yield return value;
+                }
+
+                if (source.WaitForCancellation)
+                {
+                    using CancellationTokenRegistration registration = cancellationToken.Register(
+                        () => source.CancellationObserved = true);
+                    await foreach (JetstreamEvent value in _pushedEvents.Reader.ReadAllAsync(cancellationToken))
+                    {
+                        yield return value;
+                    }
+                }
             }
 
-            foreach (JetstreamEvent value in events)
+            public void Push(JetstreamEvent value) => _pushedEvents.Writer.TryWrite(value);
+
+            public Task SendOptionsUpdateAsync(
+                JetstreamOptionsUpdate update,
+                CancellationToken cancellationToken)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                BeforeYield?.Invoke();
-                yield return value;
+                OptionsUpdateAttempts.Add(update);
+                UpdateAttempted.TrySetResult();
+                if (FailNextOptionsUpdate)
+                {
+                    throw new InvalidOperationException("simulated_options_update_failure");
+                }
+
+                OptionsUpdates.Add(update);
+                return Task.CompletedTask;
             }
 
-            if (WaitForCancellation)
+            public ValueTask DisposeAsync()
             {
-                try
-                {
-                    await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    CancellationObserved = true;
-                    throw;
-                }
+                Disposed = true;
+                return ValueTask.CompletedTask;
             }
         }
     }
 
-    private sealed class FakeRuntimeStore(IReadOnlyList<Guid> enabledTenants) : IAtprotoJetstreamRuntimeStore
+    private sealed class FakeRuntimeStore(
+        IReadOnlyList<Guid> enabledTenants,
+        long initialCursor = 0) : IAtprotoJetstreamRuntimeStore
     {
         private readonly Guid _stateId = Guid.CreateVersion7();
+        private readonly object _recoveryLock = new();
+        private readonly List<(int Count, TaskCompletionSource Completion)> _recoveryWaiters = [];
+        private long _nextFence = initialCursor;
         public List<AtprotoJetstreamApplyRequest> Applied { get; } = [];
+        public TaskCompletionSource ApplyCalled { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public bool FailNextApply { get; set; }
         public bool ThrowAfterNextApply { get; set; }
         public Exception? RenewalException { get; set; }
-        public long Cursor { get; private set; }
+        public Func<ReconcileAtprotoPdsSnapshotsCommand, CancellationToken, Task<AtprotoPdsRecoveryResult>>?
+            RecoveryHandler { get; set; }
+        public long Cursor { get; private set; } = initialCursor;
         public IReadOnlyList<Guid> EnabledTenants { get; set; } = enabledTenants;
+        public AtprotoJetstreamClaim? LastClaim { get; private set; }
+        public List<ReconcileAtprotoPdsSnapshotsCommand> RecoveryCommands { get; } = [];
+        public TaskCompletionSource RecoveryCalled { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public Task<IReadOnlyList<Guid>> ResolveEnabledTenantIdsAsync(CancellationToken cancellationToken) =>
             Task.FromResult(EnabledTenants);
@@ -461,8 +1033,59 @@ public sealed class AtprotoJetstreamSubscriberTests
             string owner,
             DateTime claimedAt,
             TimeSpan leaseDuration,
-            CancellationToken cancellationToken) =>
-            Task.FromResult<AtprotoJetstreamClaim?>(new(_stateId, service, Cursor, Guid.CreateVersion7(), Cursor + 1));
+            CancellationToken cancellationToken)
+        {
+            LastClaim = new(
+                _stateId,
+                service,
+                Cursor,
+                Guid.CreateVersion7(),
+                Interlocked.Increment(ref _nextFence));
+            return Task.FromResult(LastClaim);
+        }
+
+        public Task<AtprotoPdsRecoveryResult> ReconcilePdsSnapshotsAsync(
+            ReconcileAtprotoPdsSnapshotsCommand command,
+            CancellationToken cancellationToken)
+        {
+            lock (_recoveryLock)
+            {
+                RecoveryCommands.Add(command);
+                RecoveryCalled.TrySetResult();
+                foreach ((int count, TaskCompletionSource completion) in
+                    _recoveryWaiters.Where(value => value.Count <= RecoveryCommands.Count))
+                {
+                    completion.TrySetResult();
+                }
+            }
+
+            return RecoveryHandler?.Invoke(command, cancellationToken)
+                ?? WaitForCancellationAsync(cancellationToken);
+        }
+
+        private static async Task<AtprotoPdsRecoveryResult> WaitForCancellationAsync(
+            CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return new AtprotoPdsRecoveryResult(
+                AtprotoPdsRecoveryOutcome.DowntimeOnly,
+                new string('0', 64));
+        }
+
+        public Task WaitForRecoveryCountAsync(int count)
+        {
+            lock (_recoveryLock)
+            {
+                if (RecoveryCommands.Count >= count)
+                {
+                    return Task.CompletedTask;
+                }
+
+                var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                _recoveryWaiters.Add((count, completion));
+                return completion.Task;
+            }
+        }
 
         public Task<bool> TryRenewAsync(
             AtprotoJetstreamClaim claim,
@@ -477,6 +1100,7 @@ public sealed class AtprotoJetstreamSubscriberTests
             CancellationToken cancellationToken)
         {
             Applied.Add(request);
+            ApplyCalled.TrySetResult();
             if (FailNextApply)
             {
                 FailNextApply = false;
@@ -494,6 +1118,263 @@ public sealed class AtprotoJetstreamSubscriberTests
             }
 
             return Task.FromResult(true);
+        }
+    }
+
+    private sealed class FakeOptionsMonitor : IOptionsMonitor<AtprotoJetstreamOptions>
+    {
+        private readonly object _lock = new();
+        private readonly AtprotoJetstreamOptionsValidator _validator = new();
+        private Action<AtprotoJetstreamOptions, string?>? _listener;
+        private AtprotoJetstreamOptions _currentValue;
+
+        public FakeOptionsMonitor(AtprotoJetstreamOptions currentValue)
+        {
+            EnsureValid(currentValue);
+            _currentValue = currentValue;
+        }
+
+        public AtprotoJetstreamOptions CurrentValue
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _currentValue;
+                }
+            }
+        }
+
+        public AtprotoJetstreamOptions Get(string? name) => CurrentValue;
+
+        public IDisposable OnChange(Action<AtprotoJetstreamOptions, string?> listener)
+        {
+            lock (_lock)
+            {
+                _listener += listener;
+            }
+
+            return new CallbackDisposable(() =>
+            {
+                lock (_lock)
+                {
+                    _listener -= listener;
+                }
+            });
+        }
+
+        public void Set(AtprotoJetstreamOptions value)
+        {
+            EnsureValid(value);
+            Action<AtprotoJetstreamOptions, string?>? listener;
+            lock (_lock)
+            {
+                _currentValue = value;
+                listener = _listener;
+            }
+
+            listener?.Invoke(value, null);
+        }
+
+        private void EnsureValid(AtprotoJetstreamOptions value)
+        {
+            ValidateOptionsResult result = _validator.Validate(null, value);
+            if (result.Failed)
+            {
+                throw new OptionsValidationException(
+                    Options.DefaultName,
+                    typeof(AtprotoJetstreamOptions),
+                    result.Failures);
+            }
+        }
+    }
+
+    private sealed class CallbackDisposable(Action callback) : IDisposable
+    {
+        private Action? _callback = callback;
+
+        public void Dispose() => Interlocked.Exchange(ref _callback, null)?.Invoke();
+    }
+
+    private sealed class ManualTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        private readonly object _lock = new();
+        private readonly List<ManualTimer> _timers = [];
+        private readonly Dictionary<long, TaskCompletionSource> _timerWaiters = [];
+        private readonly List<(int Count, TaskCompletionSource Completion)> _timerCountWaiters = [];
+        private DateTimeOffset _utcNow = utcNow;
+
+        public IReadOnlyList<TimeSpan> CreatedDueTimes
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _timers.Select(timer => timer.InitialDueTime).ToArray();
+                }
+            }
+        }
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            lock (_lock)
+            {
+                return _utcNow;
+            }
+        }
+
+        public override long GetTimestamp()
+        {
+            lock (_lock)
+            {
+                return _utcNow.UtcTicks;
+            }
+        }
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+        public override ITimer CreateTimer(
+            TimerCallback callback,
+            object? state,
+            TimeSpan dueTime,
+            TimeSpan period)
+        {
+            lock (_lock)
+            {
+                var timer = new ManualTimer(this, callback, state, _utcNow, dueTime, period);
+                _timers.Add(timer);
+                if (_timerWaiters.Remove(dueTime.Ticks, out TaskCompletionSource? waiter))
+                {
+                    waiter.TrySetResult();
+                }
+
+                foreach ((int count, TaskCompletionSource completion) in
+                    _timerCountWaiters.Where(value => value.Count <= _timers.Count))
+                {
+                    completion.TrySetResult();
+                }
+
+                return timer;
+            }
+        }
+
+        public Task WaitForTimerCountAsync(int count)
+        {
+            lock (_lock)
+            {
+                if (_timers.Count >= count)
+                {
+                    return Task.CompletedTask;
+                }
+
+                var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                _timerCountWaiters.Add((count, completion));
+                return completion.Task;
+            }
+        }
+
+        public Task WaitForTimerAsync(TimeSpan dueTime)
+        {
+            lock (_lock)
+            {
+                if (_timers.Any(timer => timer.Active && timer.InitialDueTime == dueTime))
+                {
+                    return Task.CompletedTask;
+                }
+
+                var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                _timerWaiters[dueTime.Ticks] = completion;
+                return completion.Task;
+            }
+        }
+
+        public int CountActiveTimers(TimeSpan dueTime)
+        {
+            lock (_lock)
+            {
+                return _timers.Count(timer => timer.Active && timer.InitialDueTime == dueTime);
+            }
+        }
+
+        public void Advance(TimeSpan elapsed)
+        {
+            List<(TimerCallback Callback, object? State)> callbacks;
+            lock (_lock)
+            {
+                _utcNow = _utcNow.Add(elapsed);
+                callbacks = _timers
+                    .Where(timer => timer.Active && timer.DueAt <= _utcNow)
+                    .Select(timer => timer.Fire(_utcNow))
+                    .ToList();
+            }
+
+            foreach ((TimerCallback callback, object? state) in callbacks)
+            {
+                callback(state);
+            }
+        }
+
+        private bool Change(ManualTimer timer, TimeSpan dueTime, TimeSpan period)
+        {
+            lock (_lock)
+            {
+                timer.Set(_utcNow, dueTime, period);
+                return true;
+            }
+        }
+
+        private void Dispose(ManualTimer timer)
+        {
+            lock (_lock)
+            {
+                timer.Active = false;
+            }
+        }
+
+        private sealed class ManualTimer(
+            ManualTimeProvider owner,
+            TimerCallback callback,
+            object? state,
+            DateTimeOffset now,
+            TimeSpan dueTime,
+            TimeSpan period) : ITimer
+        {
+            public bool Active { get; set; } = dueTime != Timeout.InfiniteTimeSpan;
+            public DateTimeOffset DueAt { get; private set; } = now.Add(dueTime);
+            public TimeSpan InitialDueTime { get; } = dueTime;
+            private TimeSpan Period { get; set; } = period;
+
+            public bool Change(TimeSpan newDueTime, TimeSpan newPeriod) =>
+                owner.Change(this, newDueTime, newPeriod);
+
+            public void Dispose() => owner.Dispose(this);
+
+            public ValueTask DisposeAsync()
+            {
+                Dispose();
+                return ValueTask.CompletedTask;
+            }
+
+            public (TimerCallback Callback, object? State) Fire(DateTimeOffset now)
+            {
+                if (Period == Timeout.InfiniteTimeSpan)
+                {
+                    Active = false;
+                }
+                else
+                {
+                    DueAt = now.Add(Period);
+                }
+
+                return (callback, state);
+            }
+
+            public void Set(DateTimeOffset now, TimeSpan newDueTime, TimeSpan newPeriod)
+            {
+                Active = newDueTime != Timeout.InfiniteTimeSpan;
+                DueAt = now.Add(newDueTime);
+                Period = newPeriod;
+            }
         }
     }
 }

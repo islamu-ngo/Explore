@@ -1,5 +1,5 @@
 // ABOUTME: Defines bounded fixed-endpoint configuration for the global ATProto Jetstream subscriber.
-// ABOUTME: Validates lease, retry, message-size, and bounded curated DID allowlist entries at startup.
+// ABOUTME: Validates lease, retry, message-size, and optional bounded DID filter entries at startup.
 
 using CarpaNet;
 using Microsoft.Extensions.Options;
@@ -56,10 +56,9 @@ public sealed class AtprotoJetstreamOptionsValidator : IValidateOptions<AtprotoJ
         }
 
         if (options.AllowedDids is not { Length: <= 10_000 }
-            || options.AllowedDids.Any(did => !IsValidDid(did))
-            || options.AllowedDids.Distinct(StringComparer.Ordinal).Count() != options.AllowedDids.Length)
+            || options.AllowedDids.Any(did => !IsValidDid(did)))
         {
-            failures.Add("Atproto:Jetstream:AllowedDids must contain at most 10000 unique valid curated DIDs.");
+            failures.Add("Atproto:Jetstream:AllowedDids must contain at most 10000 valid DIDs when filtering is configured.");
         }
 
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);

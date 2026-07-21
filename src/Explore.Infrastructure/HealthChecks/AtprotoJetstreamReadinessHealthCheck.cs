@@ -1,5 +1,5 @@
 // ABOUTME: Reports whether capability-aware ATProto Jetstream ingestion can safely become active.
-// ABOUTME: Keeps dormant federation healthy while exposing bounded readiness when curated DIDs are missing.
+// ABOUTME: Reports public-collection or DID-curated readiness without exposing source identities.
 
 using Explore.Infrastructure.Services.Federation;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -38,15 +38,12 @@ public sealed class AtprotoJetstreamReadinessHealthCheck(
                 data);
         }
 
-        if (options.Value.AllowedDids is not { Length: > 0 })
-        {
-            return HealthCheckResult.Unhealthy(
-                "ATProto Jetstream is enabled but no curated DID allowlist is configured; ingestion remains stopped.",
-                data: data);
-        }
-
-        return HealthCheckResult.Healthy(
-            "ATProto Jetstream capability and curated DID allowlist are ready.",
-            data);
+        return options.Value.AllowedDids is { Length: > 0 }
+            ? HealthCheckResult.Healthy(
+                "ATProto Jetstream capability and curated DID filter are ready.",
+                data)
+            : HealthCheckResult.Healthy(
+                "ATProto Jetstream capability and public collection subscription are ready.",
+                data);
     }
 }

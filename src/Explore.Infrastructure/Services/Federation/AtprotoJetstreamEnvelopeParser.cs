@@ -94,7 +94,7 @@ internal static class AtprotoJetstreamEnvelopeParser
             return Reject("invalid_did");
         }
 
-        if (allowedDids.Count == 0 || !allowedDids.Contains(envelope.Did, StringComparer.Ordinal))
+        if (allowedDids.Count > 0 && !allowedDids.Contains(envelope.Did, StringComparer.Ordinal))
         {
             return Reject("did_not_allowed");
         }

@@ -199,10 +199,22 @@ public sealed class AtprotoDependencyBoundaryTests
             .Select(Path.GetFileName)
             .ToArray()!;
         string source = await File.ReadAllTextAsync(Path.Combine(federationRoot, "AtprotoJetstreamEventSource.cs"));
+        string subscriber = await File.ReadAllTextAsync(Path.Combine(federationRoot, "AtprotoJetstreamSubscriber.cs"));
         string constants = await File.ReadAllTextAsync(Path.Combine(federationRoot, "AtprotoJetstreamEnvelopeParser.cs"));
 
         await Assert.That(jetstreamClientOwners).IsEquivalentTo(["AtprotoJetstreamEventSource.cs"]);
-        await Assert.That(source).Contains("WantedCollections = subscription.WantedCollections");
+        await Assert.That(Regex.IsMatch(
+            source,
+            @"SendInitialOptionsAsync\s*\(\s*CreateOptionsUpdate\s*\(\s*subscription\s*\)",
+            RegexOptions.CultureInvariant)).IsTrue();
+        await Assert.That(Regex.IsMatch(
+            subscriber,
+            @"SendOptionsUpdateAsync\s*\(\s*CarpaNetJetstreamEventSource\.CreateOptionsUpdate\s*\(",
+            RegexOptions.CultureInvariant)).IsTrue();
+        await Assert.That(Regex.IsMatch(
+            source,
+            @"CreateOptionsUpdate\s*\(\s*AtprotoJetstreamSubscription subscription\s*\)\s*=>\s*new\s*\(\s*\)\s*\{\s*Payload\s*=\s*new JetstreamOptionsPayload\s*\{\s*WantedCollections\s*=\s*\[\s*AtprotoJetstreamConstants\.EventCollection\s*,\s*AtprotoJetstreamConstants\.RsvpCollection\s*\]",
+            RegexOptions.CultureInvariant)).IsTrue();
         await Assert.That(source).DoesNotContain("new ClientWebSocket");
         await Assert.That(constants).Contains("community.lexicon.calendar.event");
         await Assert.That(constants).Contains("community.lexicon.calendar.rsvp");
