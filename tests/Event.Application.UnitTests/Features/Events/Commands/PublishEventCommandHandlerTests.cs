@@ -28,6 +28,7 @@ namespace Event.Application.UnitTests.Features.Events.Commands;
 public class PublishEventCommandHandlerTests
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IEventLocationRepository _eventLocationRepository;
     private readonly IOutboxRepository _outboxRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEventLifecyclePolicyProvider _policyProvider;
@@ -38,6 +39,10 @@ public class PublishEventCommandHandlerTests
     public PublishEventCommandHandlerTests()
     {
         _eventRepository = Substitute.For<IEventRepository>();
+        _eventLocationRepository = Substitute.For<IEventLocationRepository>();
+        _eventLocationRepository
+            .GetByEventIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new List<EventLocation>().AsReadOnly());
         _outboxRepository = Substitute.For<IOutboxRepository>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
         _policyProvider = Substitute.For<IEventLifecyclePolicyProvider>();
@@ -62,6 +67,7 @@ public class PublishEventCommandHandlerTests
 
         _handler = new PublishEventCommandHandler(
             _eventRepository,
+            _eventLocationRepository,
             _outboxRepository,
             _unitOfWork,
             _cache,
@@ -224,6 +230,7 @@ public class PublishEventCommandHandlerTests
             Microsoft.Extensions.Logging.Abstractions.NullLogger<AtprotoEventPublicationPlanner>.Instance);
         var handler = new PublishEventCommandHandler(
             _eventRepository,
+            _eventLocationRepository,
             _outboxRepository,
             _unitOfWork,
             _cache,

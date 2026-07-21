@@ -16,12 +16,17 @@ namespace Event.Application.UnitTests.Features.Events.Queries;
 public class GetEventPublishReadinessRequestHandlerTests
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IEventLocationRepository _eventLocationRepository;
     private readonly IEventLifecyclePolicyProvider _policyProvider;
     private readonly GetEventPublishReadinessRequestHandler _handler;
 
     public GetEventPublishReadinessRequestHandlerTests()
     {
         _eventRepository = Substitute.For<IEventRepository>();
+        _eventLocationRepository = Substitute.For<IEventLocationRepository>();
+        _eventLocationRepository
+            .GetByEventIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new List<EventLocation>().AsReadOnly());
         _policyProvider = Substitute.For<IEventLifecyclePolicyProvider>();
         _policyProvider
             .GetEffectivePolicyAsync(Arg.Any<Guid?>(), ValidationProfile.EventPublish, Arg.Any<CancellationToken>())
@@ -29,6 +34,7 @@ public class GetEventPublishReadinessRequestHandlerTests
 
         _handler = new GetEventPublishReadinessRequestHandler(
             _eventRepository,
+            _eventLocationRepository,
             _policyProvider,
             new EventLifecycleReadinessEvaluator());
     }
