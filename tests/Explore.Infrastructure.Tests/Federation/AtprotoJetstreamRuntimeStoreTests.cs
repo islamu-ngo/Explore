@@ -129,7 +129,7 @@ public sealed class AtprotoJetstreamRuntimeStoreTests
             CreateRecoveryStore(mediator, invalidator);
         await using ServiceProvider provider = fixture.Provider;
 
-        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
             () => fixture.Store.ReconcilePdsSnapshotsAsync(command, CancellationToken.None));
 
         await Assert.That(exception).IsSameReferenceAs(expected);
