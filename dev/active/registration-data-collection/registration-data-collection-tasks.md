@@ -3,10 +3,10 @@
 
 # Registration Data Collection & Participation Platform — Task Checklist
 
-Last Updated: 2026-07-20 Europe/Brussels
+Last Updated: 2026-07-21 Europe/Brussels
 
 ## Status Summary
-- **Overall status:** Draft — re-baselined 2026-07-20 (Hi.Events research + D17 pricing modes + D18 instance monetization); awaiting user review; no implementation started
+- **Overall status:** Draft — re-baselined 2026-07-20 (Hi.Events research + D17 pricing modes + D18 instance monetization); licensing rule corrected 2026-07-21 (no Hi.Events code copy — CLA/dual-licensing); awaiting user review; no implementation started
 - **Completed:** 0/88 implementation tasks (phase verification tracked separately)
 - **Current priority:** User review of the plan (esp. D4, D8, D13, and the new D17/D18 pricing/monetization decisions)
 - **Next recommended slice:** Task 0.1 → 0.2 → 0.3 (ADRs + contract intent), with 0.4 in parallel
@@ -23,6 +23,7 @@ Last Updated: 2026-07-20 Europe/Brussels
 - Do not run build/tests after individual tasks; verify once at phase end.
 - Do not start the app, browser, Docker, Aspire, Playwright, Chrome DevTools MCP, or live services for verification.
 - ⚠️ **Standing gate:** no `dotnet ef migrations add` until Task 0.4 resolves ordering with the erasure workstream's init lanes.
+- ⚠️ **Standing gate — NO Hi.Events code copy (plan §4.13, D19):** ISLAMU's CLA enables dual-licensing; copying any AGPLv3 code/snippet/SQL/asset from the Hi.Events repository is forbidden. Clean-room implementation from `hi-events-report.md` + this plan only; never open the Hi.Events repo while coding. The report's §10 code-reuse permission is overridden.
 
 ## Phase 0: Governance, ADRs, And Contract Intent ⏳ NOT STARTED
 - [ ] **0.1 Author ADR-016 (bounded context & provider channels)**
@@ -31,7 +32,7 @@ Last Updated: 2026-07-20 Europe/Brussels
   - **Effort:** M — **Dependencies:** none
 - [ ] **0.2 Author ADR-017 (participation authority) + ADR-018 (order/ticket aggregate)**
   - **Files:** `docs/adr/ADR-017-event-participation-authority-model.md` (new), `docs/adr/ADR-018-registration-order-ticketing-aggregate.md` (new)
-  - **Acceptance:** D8/D9/D10/D12 and D4/D11/D16/D17/D18 recorded; §33 anti-patterns; payment boundary named; Hi.Events adopt/adapt/reject boundary + AGPLv3/branding/provenance rule recorded (report §9–§10, D19)
+  - **Acceptance:** D8/D9/D10/D12 and D4/D11/D16/D17/D18 recorded; §33 anti-patterns; payment boundary named; Hi.Events adopt/adapt/reject boundary + CLA/dual-licensing **no-code-copy** rule recorded (report §9–§10, D19; §10 override stated)
   - **Effort:** M — **Dependencies:** 0.1
 - [ ] **0.3 Add `registration-data-collection` intent to `.claude/contract/intents.yaml`**
   - **Files:** `.claude/contract/intents.yaml` (existing)
