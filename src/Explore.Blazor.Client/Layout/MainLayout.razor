@@ -1,3 +1,5 @@
+@* ABOUTME: Primary application layout composing fixed shell chrome around descriptor-driven dock content. *@
+@* ABOUTME: Preserves setup-route isolation, accessibility landmarks, responsive workspaces, and user appearance. *@
 @using Explore.Blazor.Client.Services.Docking
 @using Explore.Blazor.Client.Components.Docking
 @using Explore.Blazor.Client.Components.Shell
@@ -12,7 +14,7 @@
 @* Skip-to-content link — first focusable element on every page (WCAG 2.4.1) *@
 <a href="#main-content" class="skip-link">Skip to main content</a>
 
-<div class="main-layout-root @(_hideChrome ? "main-layout-root--hide-chrome" : "")">
+<div class="main-layout-root @(_hideChrome ? "main-layout-root--hide-chrome" : "main-layout-root--has-rail")">
 <MudRTLProvider RightToLeft="@_isRtl">
     <MudLayout class="main-layout">
         @if (!_hideChrome)
@@ -24,6 +26,7 @@
                 </nav>
                 <SupportAccessBanner OnVisibilityChanged="OnSupportAccessBannerVisibilityChanged" />
             </header>
+            <AppWorkspaceRail />
         }
         else
         {

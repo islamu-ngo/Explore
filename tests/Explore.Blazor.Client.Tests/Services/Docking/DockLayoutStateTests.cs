@@ -7,7 +7,7 @@ namespace Explore.Blazor.Client.Tests.Services.Docking;
 
 public sealed class DockLayoutStateTests
 {
-    private static readonly DockPanelId ShellNavId = new("shell.left-nav");
+    private static readonly DockPanelId ShellNavId = new("shell.workspace-nav");
     private static readonly DockPanelId ShellAiId = new("shell.ai-assistant");
 
     [Test]
@@ -443,7 +443,7 @@ public sealed class DockLayoutStateTests
     public async Task Snapshot_CreatesScopeOwnedPanelStateOnly()
     {
         var state = new DockLayoutState();
-        var shellId = new DockPanelId("shell.left-nav");
+        var shellId = new DockPanelId("shell.workspace-nav");
         var workspaceId = new DockPanelId("events.customize-view");
 
         state.Register(CreateDescriptor(shellId, DockScope.Shell, DockSide.Start, persistState: true), _ => { });
@@ -464,7 +464,7 @@ public sealed class DockLayoutStateTests
     public async Task RestoreSnapshot_IgnoresWrongLayoutKeyAndForeignScopePanels()
     {
         var state = new DockLayoutState();
-        var shellId = new DockPanelId("shell.left-nav");
+        var shellId = new DockPanelId("shell.workspace-nav");
         var workspaceId = new DockPanelId("events.customize-view");
 
         state.Register(CreateDescriptor(shellId, DockScope.Shell, DockSide.Start, persistState: true), _ => { });
@@ -489,6 +489,24 @@ public sealed class DockLayoutStateTests
 
         await Assert.That(state.GetPanel(shellId)?.State.IsOpen).IsFalse();
         await Assert.That(state.GetPanel(workspaceId)?.State.IsOpen).IsTrue();
+    }
+
+    [Test]
+    public async Task RestoreSnapshot_IgnoresLegacyLeftNavSnapshotWhenOnlyWorkspaceNavRegistered()
+    {
+        var state = new DockLayoutState();
+        var workspaceNavId = new DockPanelId("shell.workspace-nav");
+        var legacyLeftNavId = new DockPanelId("shell.left-nav");
+        state.Register(CreateDescriptor(workspaceNavId, DockScope.Shell, DockSide.Start, persistState: true), _ => { });
+
+        var staleSnapshot = new DockLayoutSnapshot(
+            "shell",
+            [new DockPanelState(legacyLeftNavId, IsOpen: true, Mode: DockMode.Docked, Width: 300, Order: 10, IsActive: true)],
+            DateTimeOffset.UtcNow);
+        state.RestoreSnapshot(staleSnapshot, "shell", DockScope.Shell);
+
+        await Assert.That(state.GetPanel(legacyLeftNavId)).IsNull();
+        await Assert.That(state.GetPanel(workspaceNavId)?.State.IsOpen).IsFalse();
     }
 
     [Test]

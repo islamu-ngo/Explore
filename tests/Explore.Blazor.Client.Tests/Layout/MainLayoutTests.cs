@@ -8,6 +8,7 @@ using Explore.Blazor.Client.Contracts.Services.SupportAccess;
 using Explore.Blazor.Client.Layout;
 using Explore.Blazor.Client.Services.Ai;
 using Explore.Blazor.Client.Services.Docking;
+using Explore.Blazor.Client.Services.Shell;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Layout;
@@ -39,6 +40,9 @@ public class MainLayoutTests : IDisposable
         _ctx.Services.AddScoped<TenantNavLinksState>();
         _ctx.Services.AddScoped<DockLayoutState>();
         _ctx.Services.AddScoped<IDockPanelRegistry>(provider => provider.GetRequiredService<DockLayoutState>());
+        _ctx.Services.AddScoped<IWorkspaceRegistry, WorkspaceRegistry>();
+        _ctx.Services.AddScoped<WorkspaceRouteClassifier>();
+        _ctx.Services.AddScoped<UiShellState>();
         var aiClientService = Substitute.For<IAiAssistantClientService>();
         aiClientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(new HalCollectionResourceOfAiConversationSummaryDto
@@ -56,7 +60,6 @@ public class MainLayoutTests : IDisposable
             .Returns(Task.FromResult(true));
         _ctx.Services.AddSingleton(_dockLayoutPersistence);
 
-        // Bulk NavMenu deps (IUserService, IPublicExperienceService, SidebarState, etc.)
         NavMenuTestServices.Register(_ctx);
 
         // Override IUserService for SyncUserAsync assertions (last AddSingleton wins)
@@ -98,12 +101,12 @@ public class MainLayoutTests : IDisposable
             p.Add(l => l.Body, (RenderFragment)(b => b.AddContent(0, "Test body content"))));
     }
 
-    private static DockLayoutSnapshot CreateShellSnapshot(bool leftNavOpen, bool aiAssistantOpen)
+    private static DockLayoutSnapshot CreateShellSnapshot(bool workspaceNavOpen, bool aiAssistantOpen)
     {
         return new DockLayoutSnapshot(
             "shell",
             [
-                new DockPanelState(ShellDockPanels.LeftNavId, leftNavOpen, DockMode.Docked, Width: 320, Order: 10, IsActive: leftNavOpen),
+                new DockPanelState(ShellDockPanels.WorkspaceNavId, workspaceNavOpen, DockMode.Docked, Width: 320, Order: 10, IsActive: workspaceNavOpen),
                 new DockPanelState(ShellDockPanels.AiAssistantId, aiAssistantOpen, DockMode.Docked, Width: 420, Order: 20, IsActive: aiAssistantOpen)
             ],
             DateTimeOffset.UtcNow);
@@ -249,6 +252,9 @@ public class MainLayoutTests : IDisposable
             if (cut.FindAll("footer.site-footer").Count > 0)
                 throw new InvalidOperationException("Expected footer landmark to be hidden on setup route.");
 
+            if (cut.FindAll("nav[aria-label='Application workspaces']").Count > 0)
+                throw new InvalidOperationException("Expected workspace rail to be hidden on setup route.");
+
         });
 
         await Task.CompletedTask;
@@ -265,10 +271,12 @@ public class MainLayoutTests : IDisposable
 
         var root = cut.Find(".main-layout-root");
         await Assert.That(root.ClassList.Contains("main-layout-root--hide-chrome")).IsFalse();
+        await Assert.That(root.ClassList.Contains("main-layout-root--has-rail")).IsTrue();
 
         // Header present on default route
         var headers = cut.FindAll("header.main-layout__header");
         await Assert.That(headers.Count).IsGreaterThan(0);
+        await Assert.That(cut.FindAll("nav[aria-label='Application workspaces']").Count).IsEqualTo(1);
     }
 
     [Test]
@@ -362,14 +370,14 @@ public class MainLayoutTests : IDisposable
         var cut = RenderLayout();
         var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
 
-        var leftNav = dockLayoutState.GetPanel(ShellDockPanels.LeftNavId);
+        var workspaceNav = dockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId);
         var aiAssistant = dockLayoutState.GetPanel(ShellDockPanels.AiAssistantId);
 
-        await Assert.That(leftNav).IsNotNull();
-        await Assert.That(leftNav!.Descriptor.Scope).IsEqualTo(DockScope.Shell);
-        await Assert.That(leftNav.Descriptor.Side).IsEqualTo(DockSide.Start);
-        await Assert.That(leftNav.Descriptor.AriaLabel).IsEqualTo("Sidebar navigation");
-        await Assert.That(leftNav.State.IsOpen).IsTrue();
+        await Assert.That(workspaceNav).IsNotNull();
+        await Assert.That(workspaceNav!.Descriptor.Scope).IsEqualTo(DockScope.Shell);
+        await Assert.That(workspaceNav.Descriptor.Side).IsEqualTo(DockSide.Start);
+        await Assert.That(workspaceNav.Descriptor.AriaLabel).IsEqualTo("Sidebar navigation");
+        await Assert.That(workspaceNav.State.IsOpen).IsTrue();
 
         await Assert.That(aiAssistant).IsNotNull();
         await Assert.That(aiAssistant!.Descriptor.Scope).IsEqualTo(DockScope.Shell);
@@ -378,7 +386,7 @@ public class MainLayoutTests : IDisposable
 
         var shellHost = cut.Find("[data-testid='dock-layout-host'][data-dock-scope='shell']");
         await Assert.That(shellHost.ClassList.Contains("dock-layout-host--has-start")).IsTrue();
-        await Assert.That(cut.FindAll("[data-testid='dock-panel-host'][data-dock-panel-id='shell.left-nav']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll("[data-testid='dock-panel-host'][data-dock-panel-id='shell.workspace-nav']").Count).IsEqualTo(1);
 
         var sidebarToggle = cut.Find(".navbar__sidebar-toggle");
         await Assert.That(sidebarToggle.GetAttribute("aria-controls")).IsNull();
@@ -388,15 +396,15 @@ public class MainLayoutTests : IDisposable
     public async Task FirstRender_HydratesShellDockLayoutAfterDescriptorsRegister()
     {
         _dockLayoutPersistence.LoadAsync("shell", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<DockLayoutSnapshot?>(CreateShellSnapshot(leftNavOpen: false, aiAssistantOpen: true)));
+            .Returns(Task.FromResult<DockLayoutSnapshot?>(CreateShellSnapshot(workspaceNavOpen: false, aiAssistantOpen: true)));
 
         var cut = RenderLayout();
         var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
 
         cut.WaitForAssertion(() =>
         {
-            if (dockLayoutState.GetPanel(ShellDockPanels.LeftNavId)?.State.IsOpen == true)
-                throw new InvalidOperationException("Expected shell snapshot to restore the left nav closed state.");
+            if (dockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId)?.State.IsOpen == true)
+                throw new InvalidOperationException("Expected shell snapshot to restore the workspace nav closed state.");
 
             var aiAssistant = dockLayoutState.GetPanel(ShellDockPanels.AiAssistantId);
             if (aiAssistant?.State is not { IsOpen: true, Width: 420 })
@@ -423,15 +431,15 @@ public class MainLayoutTests : IDisposable
 
         dockLayoutState.Register(CreateWorkspacePersistentDescriptor(workspacePanelId), _ => { });
         await cut.InvokeAsync(() => dockLayoutState.Open(workspacePanelId));
-        await cut.InvokeAsync(() => dockLayoutState.Resize(ShellDockPanels.LeftNavId, 340));
+        await cut.InvokeAsync(() => dockLayoutState.Resize(ShellDockPanels.WorkspaceNavId, 340));
 
         await WaitForAsync(() =>
             _dockLayoutPersistence.Received(1).SaveAsync(
                 Arg.Is<DockLayoutSnapshot>(snapshot => snapshot != null
                     && snapshot.LayoutKey == "shell"
                     && snapshot.Panels.Count == 2
-                    && snapshot.Panels.All(panel => panel.Id == ShellDockPanels.LeftNavId || panel.Id == ShellDockPanels.AiAssistantId)
-                    && snapshot.Panels.Any(panel => panel.Id == ShellDockPanels.LeftNavId && panel.Width == 340)
+                    && snapshot.Panels.All(panel => panel.Id == ShellDockPanels.WorkspaceNavId || panel.Id == ShellDockPanels.AiAssistantId)
+                    && snapshot.Panels.Any(panel => panel.Id == ShellDockPanels.WorkspaceNavId && panel.Width == 340)
                     && snapshot.Panels.All(panel => panel.Id != workspacePanelId)),
                 Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
     }
@@ -463,15 +471,15 @@ public class MainLayoutTests : IDisposable
     public async Task ResponsiveViewportPolicy_AfterHydration_DoesNotAutosaveProjectedShellState()
     {
         _dockLayoutPersistence.LoadAsync("shell", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<DockLayoutSnapshot?>(CreateShellSnapshot(leftNavOpen: true, aiAssistantOpen: true)));
+            .Returns(Task.FromResult<DockLayoutSnapshot?>(CreateShellSnapshot(workspaceNavOpen: true, aiAssistantOpen: true)));
 
         var cut = RenderLayout();
         var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
 
         cut.WaitForAssertion(() =>
         {
-            if (dockLayoutState.GetPanel(ShellDockPanels.LeftNavId)?.State.IsOpen != true)
-                throw new InvalidOperationException("Expected shell snapshot to open the left nav before viewport projection.");
+            if (dockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId)?.State.IsOpen != true)
+                throw new InvalidOperationException("Expected shell snapshot to open the workspace nav before viewport projection.");
         });
 
         _dockLayoutPersistence.ClearReceivedCalls();
@@ -485,23 +493,7 @@ public class MainLayoutTests : IDisposable
     }
 
     [Test]
-    public async Task SidebarState_WhenToggled_MirrorsLeftNavDockPanelOpenState()
-    {
-        var cut = RenderLayout();
-        var sidebarState = _ctx.Services.GetRequiredService<SidebarState>();
-        var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
-
-        await cut.InvokeAsync(() => sidebarState.SetOpen(false));
-
-        await Assert.That(dockLayoutState.GetPanel(ShellDockPanels.LeftNavId)?.State.IsOpen).IsFalse();
-
-        await cut.InvokeAsync(() => sidebarState.SetOpen(true));
-
-        await Assert.That(dockLayoutState.GetPanel(ShellDockPanels.LeftNavId)?.State.IsOpen).IsTrue();
-    }
-
-    [Test]
-    public async Task NavMenuSidebarToggle_MirrorsLeftNavDockPanelByShellId()
+    public async Task NavMenuSidebarToggle_MirrorsWorkspaceNavDockPanelByShellId()
     {
         var cut = RenderLayout();
         var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
@@ -511,16 +503,16 @@ public class MainLayoutTests : IDisposable
 
         cut.WaitForAssertion(() =>
         {
-            if (dockLayoutState.GetPanel(ShellDockPanels.LeftNavId)?.State.IsOpen == true)
-                throw new InvalidOperationException("Expected sidebar toggle to close the shell left-nav dock panel.");
+            if (dockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId)?.State.IsOpen == true)
+                throw new InvalidOperationException("Expected sidebar toggle to close the shell workspace-nav dock panel.");
         });
 
         cut.Find(".navbar__sidebar-toggle").Click();
 
         cut.WaitForAssertion(() =>
         {
-            if (dockLayoutState.GetPanel(ShellDockPanels.LeftNavId)?.State.IsOpen != true)
-                throw new InvalidOperationException("Expected sidebar toggle to reopen the shell left-nav dock panel.");
+            if (dockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId)?.State.IsOpen != true)
+                throw new InvalidOperationException("Expected sidebar toggle to reopen the shell workspace-nav dock panel.");
         });
 
         await Task.CompletedTask;
@@ -607,19 +599,78 @@ public class MainLayoutTests : IDisposable
             aiAssistantState.Open();
         });
 
-        await Assert.That(dockLayoutState.GetPanel(ShellDockPanels.LeftNavId)?.State.IsOpen).IsTrue();
+        await Assert.That(dockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId)?.State.IsOpen).IsTrue();
         await Assert.That(dockLayoutState.GetPanel(ShellDockPanels.AiAssistantId)?.State.IsOpen).IsTrue();
 
         navigationManager.NavigateTo("/setup");
 
         cut.WaitForAssertion(() =>
         {
-            var leftNav = dockLayoutState.GetPanel(ShellDockPanels.LeftNavId);
+            var workspaceNav = dockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId);
             var aiAssistant = dockLayoutState.GetPanel(ShellDockPanels.AiAssistantId);
 
-            if (leftNav?.State.IsOpen == true || aiAssistant?.State.IsOpen == true)
+            if (workspaceNav?.State.IsOpen == true || aiAssistant?.State.IsOpen == true)
                 throw new InvalidOperationException("Expected hidden chrome route to close shell dock panels.");
         });
+    }
+
+    [Test]
+    public async Task HiddenChromeRoundTrip_PreservesUserClosedWorkspaceNavigation()
+    {
+        var cut = RenderLayout();
+        var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
+        var navigationManager = _ctx.Services.GetRequiredService<NavigationManager>();
+
+        cut.WaitForAssertion(() =>
+            _dockLayoutPersistence.Received(1).LoadAsync("shell", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
+
+        await cut.InvokeAsync(() => dockLayoutState.Close(ShellDockPanels.WorkspaceNavId));
+        await cut.InvokeAsync(() => navigationManager.NavigateTo("/setup"));
+        await cut.InvokeAsync(() => navigationManager.NavigateTo("/events"));
+
+        await Assert.That(dockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId)?.State.IsOpen).IsFalse();
+    }
+
+    [Test]
+    public async Task HiddenChromePolicyClose_DoesNotAutosaveWorkspaceNavigation()
+    {
+        var cut = RenderLayout();
+        var navigationManager = _ctx.Services.GetRequiredService<NavigationManager>();
+
+        cut.WaitForAssertion(() =>
+            _dockLayoutPersistence.Received(1).LoadAsync("shell", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
+        _dockLayoutPersistence.ClearReceivedCalls();
+
+        await cut.InvokeAsync(() => navigationManager.NavigateTo("/setup"));
+        await Task.Delay(TimeSpan.FromMilliseconds(650));
+
+        await _dockLayoutPersistence.DidNotReceive().SaveAsync(
+            Arg.Any<DockLayoutSnapshot>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task PendingUserAutosave_CapturesWorkspaceNavigationStateBeforeHiddenChromePolicy()
+    {
+        var cut = RenderLayout();
+        var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
+        var navigationManager = _ctx.Services.GetRequiredService<NavigationManager>();
+
+        cut.WaitForAssertion(() =>
+            _dockLayoutPersistence.Received(1).LoadAsync("shell", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
+        _dockLayoutPersistence.ClearReceivedCalls();
+
+        await cut.InvokeAsync(() => dockLayoutState.Resize(ShellDockPanels.WorkspaceNavId, 340));
+        await cut.InvokeAsync(() => navigationManager.NavigateTo("/setup"));
+
+        await WaitForAsync(() =>
+            _dockLayoutPersistence.Received(1).SaveAsync(
+                Arg.Is<DockLayoutSnapshot>(snapshot => snapshot.Panels != null
+                    && snapshot.Panels.Any(panel =>
+                        panel.Id == ShellDockPanels.WorkspaceNavId
+                        && panel.IsOpen
+                        && panel.Width == 340)),
+                Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
     }
 
     [Test]
@@ -628,12 +679,12 @@ public class MainLayoutTests : IDisposable
         var cut = RenderLayout();
         var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
 
-        await Assert.That(dockLayoutState.GetPanel(ShellDockPanels.LeftNavId)).IsNotNull();
+        await Assert.That(dockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId)).IsNotNull();
         await Assert.That(dockLayoutState.GetPanel(ShellDockPanels.AiAssistantId)).IsNotNull();
 
         cut.Instance.Dispose();
 
-        await Assert.That(dockLayoutState.GetPanel(ShellDockPanels.LeftNavId)).IsNull();
+        await Assert.That(dockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId)).IsNull();
         await Assert.That(dockLayoutState.GetPanel(ShellDockPanels.AiAssistantId)).IsNull();
     }
 
@@ -769,7 +820,7 @@ public class MainLayoutTests : IDisposable
 
         cut.WaitForAssertion(() =>
         {
-            var sideNav = cut.Find("[data-testid='app-side-nav']");
+            var sideNav = cut.Find("[data-testid='events-workspace-navigation']");
             if (!sideNav.TextContent.Contains("My Test Brand", StringComparison.Ordinal))
                 throw new InvalidOperationException("Expected brand name 'My Test Brand' in sidebar");
         });
@@ -792,7 +843,7 @@ public class MainLayoutTests : IDisposable
         // Wait for settings to load, re-render, and community guidelines link to disappear
         cut.WaitForAssertion(() =>
         {
-            var sideNav = cut.Find("[data-testid='app-side-nav']");
+            var sideNav = cut.Find("[data-testid='events-workspace-navigation']");
             var links = sideNav.QuerySelectorAll("a[href='/community-guidelines']");
             if (links.Count > 0)
                 throw new InvalidOperationException("Expected community guidelines link to be hidden");

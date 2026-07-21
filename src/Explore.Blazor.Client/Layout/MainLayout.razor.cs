@@ -3,8 +3,10 @@
 
 using Explore.Blazor.Client.Components.Shell;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Docking;
+using Explore.Blazor.Client.Services.Shell;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -32,9 +34,11 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     private bool _showCommunityGuidelinesLink = true;
     private string _brandDisplayName = string.Empty;
     private string _brandLogoUrl = string.Empty;
-    private bool _syncingShellLegacyState;
+    private bool _syncingAiAssistantState;
     private bool _shellDockLayoutHydrated;
     private bool _suppressShellDockLayoutAutosave;
+    private bool _closedByNoNavigation;
+    private bool _workspaceNavClosedByHiddenChrome;
     private DockLayoutSnapshot? _lastPersistedShellDockLayoutSnapshot;
     private CancellationTokenSource? _shellDockLayoutAutosaveCts;
 
@@ -49,9 +53,6 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = null!;
-
-    [Inject]
-    protected SidebarState SidebarState { get; set; } = null!;
 
     [Inject]
     protected MainContentAppearanceState MainContentAppearanceState { get; set; } = null!;
@@ -80,6 +81,12 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     [Inject]
     protected IAccessibilityFocusService AccessibilityFocusService { get; set; } = null!;
 
+    [Inject]
+    protected IWorkspaceRegistry WorkspaceRegistry { get; set; } = null!;
+
+    [Inject]
+    protected UiShellState UiShellState { get; set; } = null!;
+
     [CascadingParameter(Name = "InitialTheme")]
     public bool? InitialTheme { get; set; }
 
@@ -94,6 +101,9 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
     private string MainContentStyle => MainContentAppearanceState.Style;
 
+    private bool ActiveWorkspaceHasNavigation => WorkspaceRegistry.Workspaces.Any(workspace =>
+        workspace.Key == UiShellState.ActiveWorkspace && workspace.NavigationProviderType is not null);
+
     public string DarkLightModeButtonIcon => _isDarkMode switch
     {
         true => Icons.Material.Rounded.AutoMode,
@@ -107,13 +117,17 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         RegisterShellDockPanels();
 
         NavigationManager.LocationChanged += OnLocationChanged;
-        SidebarState.OnChange += OnLegacySidebarStateChanged;
         MainContentAppearanceState.Changed += OnMainContentAppearanceChanged;
-        AiAssistantState.OnChange += OnLegacyAiAssistantStateChanged;
+        AiAssistantState.OnChange += OnAiAssistantStateChanged;
         TenantNavLinksState.OnChange += OnTenantNavLinksChanged;
         DockLayoutState.Changed += OnDockLayoutChanged;
+        UiShellState.Changed += OnShellStateChanged;
         UpdateChromeVisibility();
-        SyncShellDockState();
+        if (!_hideChrome && ActiveWorkspaceHasNavigation)
+        {
+            SyncWorkspaceNavigationPolicyState(shouldBeOpen: true);
+        }
+        SyncWorkspaceNavigationPanel();
 
         if (InitialTheme.HasValue)
         {
@@ -236,11 +250,48 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         UpdateChromeVisibility();
+        SyncWorkspaceNavigationPanel();
         _ = InvokeAsync(async () =>
         {
             StateHasChanged();
             await AccessibilityFocusService.FocusOnNavigateAsync();
         });
+    }
+
+    private void OnShellStateChanged()
+    {
+        SyncWorkspaceNavigationPanel();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void SyncWorkspaceNavigationPanel()
+    {
+        if (_hideChrome)
+        {
+            return;
+        }
+
+        var hasNavigation = ActiveWorkspaceHasNavigation;
+        var panel = DockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId);
+        var isPanelOpen = panel?.State.IsOpen == true;
+
+        if (!hasNavigation && isPanelOpen)
+        {
+            _closedByNoNavigation = true;
+            SyncWorkspaceNavigationPolicyState(shouldBeOpen: false);
+        }
+        else if (hasNavigation)
+        {
+            if (_closedByNoNavigation && !isPanelOpen)
+            {
+                _closedByNoNavigation = false;
+                SyncWorkspaceNavigationPolicyState(shouldBeOpen: true);
+            }
+            else if (isPanelOpen)
+            {
+                _closedByNoNavigation = false;
+            }
+        }
     }
 
     private void UpdateChromeVisibility()
@@ -264,33 +315,43 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
             || path.StartsWith("/onboarding/", StringComparison.OrdinalIgnoreCase)
             || path.Equals("/startup", StringComparison.OrdinalIgnoreCase);
 
-        SidebarState.SetHasSidebar(!_hideChrome);
-
-        if (wasHidden && !_hideChrome)
+        if (_hideChrome)
         {
-            if (!DockLayoutState.IsMobileViewport)
+            if (!wasHidden)
             {
-                SidebarState.SetOpen(true);
+                _workspaceNavClosedByHiddenChrome = DockLayoutState
+                    .GetPanel(ShellDockPanels.WorkspaceNavId)?.State.IsOpen == true;
+            }
+
+            SyncWorkspaceNavigationPolicyState(shouldBeOpen: false);
+        }
+        else if (wasHidden)
+        {
+            var shouldRestoreWorkspaceNav = _workspaceNavClosedByHiddenChrome;
+            _workspaceNavClosedByHiddenChrome = false;
+
+            if (shouldRestoreWorkspaceNav && !DockLayoutState.IsMobileViewport && ActiveWorkspaceHasNavigation)
+            {
+                SyncWorkspaceNavigationPolicyState(shouldBeOpen: true);
             }
         }
+
+        SyncAiAssistantDockState();
     }
 
 
     private void RegisterShellDockPanels()
     {
-        DockLayoutState.Register(ShellDockPanels.LeftNav, RenderShellLeftNav);
+        DockLayoutState.Register(ShellDockPanels.WorkspaceNav, RenderShellWorkspaceNav);
         DockLayoutState.Register(ShellDockPanels.AiAssistant, RenderShellAiAssistant);
     }
 
-    private void RenderShellLeftNav(RenderTreeBuilder builder)
+    private void RenderShellWorkspaceNav(RenderTreeBuilder builder)
     {
-        builder.OpenComponent<AppSideNav>(0);
-        builder.AddAttribute(1, "AriaLabel", "Sidebar navigation");
-        builder.AddAttribute(2, "BrandDisplayName", _brandDisplayName);
-        builder.AddAttribute(3, "BrandLogoUrl", _brandLogoUrl);
-        builder.AddAttribute(4, "ShowCommunityGuidelinesLink", _showCommunityGuidelinesLink);
-        builder.AddAttribute(5, "TenantLinks", TenantNavLinksState.Links);
-        builder.AddAttribute(6, "OnCloseRequested", EventCallback.Factory.Create(this, CloseShellLeftNav));
+        builder.OpenComponent<WorkspaceNavigationHost>(0);
+        builder.AddAttribute(1, "BrandDisplayName", _brandDisplayName);
+        builder.AddAttribute(2, "BrandLogoUrl", _brandLogoUrl);
+        builder.AddAttribute(3, "OnCloseRequested", EventCallback.Factory.Create(this, CloseShellWorkspaceNav));
         builder.CloseComponent();
     }
 
@@ -301,38 +362,24 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         builder.CloseComponent();
     }
 
-    private void OnLegacySidebarStateChanged()
+    private void OnAiAssistantStateChanged()
     {
-        if (_syncingShellLegacyState)
+        if (_syncingAiAssistantState)
         {
             return;
         }
 
-        SyncShellDockState();
-        StateHasChanged();
-    }
-
-    private void OnLegacyAiAssistantStateChanged()
-    {
-        if (_syncingShellLegacyState)
-        {
-            return;
-        }
-
-        SyncShellDockState();
+        SyncAiAssistantDockState();
         StateHasChanged();
     }
 
     private void OnDockLayoutChanged()
     {
-        var leftNavOpen = DockLayoutState.GetPanel(ShellDockPanels.LeftNavId)?.State.IsOpen == true;
         var aiOpen = DockLayoutState.GetPanel(ShellDockPanels.AiAssistantId)?.State.IsOpen == true;
 
-        _syncingShellLegacyState = true;
+        _syncingAiAssistantState = true;
         try
         {
-            SidebarState.SetOpen(leftNavOpen);
-
             if (aiOpen && !AiAssistantState.IsOpen)
             {
                 AiAssistantState.Open();
@@ -344,7 +391,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         }
         finally
         {
-            _syncingShellLegacyState = false;
+            _syncingAiAssistantState = false;
         }
 
         if (ShouldAutosaveShellDockLayout())
@@ -369,6 +416,8 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
             if (snapshot is not null)
             {
                 DockLayoutState.RestoreSnapshot(snapshot, ShellDockLayoutKey, DockScope.Shell);
+                _closedByNoNavigation = false;
+                SyncWorkspaceNavigationPanel();
             }
         }
         catch (Exception ex)
@@ -395,15 +444,17 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
         var autosaveCts = new CancellationTokenSource();
         _shellDockLayoutAutosaveCts = autosaveCts;
-        _ = PersistShellDockLayoutAfterDelayAsync(autosaveCts);
+        var snapshot = CreateShellDockLayoutSnapshot();
+        _ = PersistShellDockLayoutAfterDelayAsync(autosaveCts, snapshot);
     }
 
-    private async Task PersistShellDockLayoutAfterDelayAsync(CancellationTokenSource autosaveCts)
+    private async Task PersistShellDockLayoutAfterDelayAsync(
+        CancellationTokenSource autosaveCts,
+        DockLayoutSnapshot snapshot)
     {
         try
         {
             await Task.Delay(DockLayoutAutosaveDelay, autosaveCts.Token);
-            var snapshot = CreateShellDockLayoutSnapshot();
             if (SnapshotPanelsEqual(_lastPersistedShellDockLayoutSnapshot, snapshot))
             {
                 return;
@@ -428,11 +479,11 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
         try
         {
-            ResetShellPanelToDefaults(ShellDockPanels.LeftNav);
+            ResetShellPanelToDefaults(ShellDockPanels.WorkspaceNav);
             ResetShellPanelToDefaults(ShellDockPanels.AiAssistant);
             await DockLayoutPersistence.DeleteAsync(ShellDockLayoutKey);
             _lastPersistedShellDockLayoutSnapshot = CreateShellDockLayoutSnapshot();
-            SyncShellDockState();
+            SyncAiAssistantDockState();
         }
         catch (Exception ex)
         {
@@ -481,9 +532,24 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         return previous is not null && previous.Panels.SequenceEqual(current.Panels);
     }
 
-    private void CloseShellLeftNav()
+    private void CloseShellWorkspaceNav()
     {
-        SyncPanelState(ShellDockPanels.LeftNavId, shouldBeOpen: false);
+        SyncPanelState(ShellDockPanels.WorkspaceNavId, shouldBeOpen: false);
+    }
+
+    private void SyncWorkspaceNavigationPolicyState(bool shouldBeOpen)
+    {
+        var wasAutosaveSuppressed = _suppressShellDockLayoutAutosave;
+        _suppressShellDockLayoutAutosave = true;
+
+        try
+        {
+            SyncPanelState(ShellDockPanels.WorkspaceNavId, shouldBeOpen);
+        }
+        finally
+        {
+            _suppressShellDockLayoutAutosave = wasAutosaveSuppressed;
+        }
     }
 
     private void OnTenantNavLinksChanged()
@@ -492,9 +558,8 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         StateHasChanged();
     }
 
-    private void SyncShellDockState()
+    private void SyncAiAssistantDockState()
     {
-        SyncPanelState(ShellDockPanels.LeftNavId, !_hideChrome && SidebarState.HasSidebar && SidebarState.IsOpen);
         SyncPanelState(ShellDockPanels.AiAssistantId, !_hideChrome && AiAssistantState.IsAvailable && AiAssistantState.IsOpen);
     }
 
@@ -549,13 +614,13 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         _shellDockLayoutAutosaveCts?.Cancel();
         _shellDockLayoutAutosaveCts?.Dispose();
         NavigationManager.LocationChanged -= OnLocationChanged;
-        SidebarState.OnChange -= OnLegacySidebarStateChanged;
         MainContentAppearanceState.Changed -= OnMainContentAppearanceChanged;
-        AiAssistantState.OnChange -= OnLegacyAiAssistantStateChanged;
+        AiAssistantState.OnChange -= OnAiAssistantStateChanged;
         TenantNavLinksState.OnChange -= OnTenantNavLinksChanged;
         DockLayoutState.Changed -= OnDockLayoutChanged;
+        UiShellState.Changed -= OnShellStateChanged;
         AppearanceThemeService.Changed -= OnAppearanceChanged;
-        DockLayoutState.Unregister(ShellDockPanels.LeftNavId);
+        DockLayoutState.Unregister(ShellDockPanels.WorkspaceNavId);
         DockLayoutState.Unregister(ShellDockPanels.AiAssistantId);
         GC.SuppressFinalize(this);
     }

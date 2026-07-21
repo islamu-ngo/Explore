@@ -6,7 +6,9 @@ using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Docking;
+using Explore.Blazor.Client.Services.Shell;
 using Explore.Blazor.Client.Tests.Common.Authentication;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using NSubstitute;
 
 namespace Explore.Blazor.Client.Tests.Common;
@@ -15,11 +17,6 @@ namespace Explore.Blazor.Client.Tests.Common;
 /// Registers all services required by the NavMenu component.
 /// Eliminates duplication across test files that render NavMenu or full-page layouts.
 /// </summary>
-/// <remarks>
-/// NavMenu injects: IUserService, IUserSettingsService, IPublicExperienceService, IInstanceOnboardingService,
-/// ITenantNavigationService, IEventCreationEligibilityService, IOrganizationService,
-/// IGroupService, SidebarState, NotificationService, ITranslationService, IHttpClientFactory.
-/// </remarks>
 public static class NavMenuTestServices
 {
     /// <summary>
@@ -112,9 +109,11 @@ public static class NavMenuTestServices
         groupService.GetMyGroupsAsync().Returns(new List<GroupListDto>());
         ctx.Services.AddSingleton(groupService);
 
-        ctx.Services.AddSingleton(new Explore.Blazor.Client.Services.SidebarState());
         ctx.Services.AddScoped<DockLayoutState>();
         ctx.Services.AddScoped<IDockPanelRegistry>(provider => provider.GetRequiredService<DockLayoutState>());
+        ctx.Services.TryAddScoped<IWorkspaceRegistry, WorkspaceRegistry>();
+        ctx.Services.TryAddScoped<WorkspaceRouteClassifier>();
+        ctx.Services.TryAddScoped<UiShellState>();
         ctx.Services.AddSingleton(MockServiceFactory.CreateNotificationService());
         ctx.Services.AddSingleton(MockServiceFactory.CreateTranslationService());
         ctx.Services.AddSingleton(Substitute.For<IHttpClientFactory>());

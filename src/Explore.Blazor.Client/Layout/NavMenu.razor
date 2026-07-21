@@ -18,8 +18,8 @@
 
 <div class="navbar">
     <div class="navbar__content">
-        <!-- Sidebar Toggle (shown only when a page registers a sidebar) -->
-        @if (SidebarState.HasSidebar)
+        <!-- Workspace navigation toggle (shown only when the active workspace has navigation) -->
+        @if (HasWorkspaceNavigation)
         {
             <MudIconButton Icon="@Icons.Material.Filled.Menu"
                            Color="Color.Inherit"

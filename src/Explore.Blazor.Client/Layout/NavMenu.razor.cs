@@ -12,6 +12,7 @@ using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Docking;
+using Explore.Blazor.Client.Services.Shell;
 using Explore.Blazor.Client.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -62,9 +63,6 @@ public partial class NavMenu : IDisposable
     protected IDialogService DialogService { get; set; } = null!;
 
     [Inject]
-    protected SidebarState SidebarState { get; set; } = null!;
-
-    [Inject]
     protected CurrentUserState CurrentUserState { get; set; } = null!;
 
     [Inject]
@@ -75,6 +73,12 @@ public partial class NavMenu : IDisposable
 
     [Inject]
     protected DockLayoutState DockLayoutState { get; set; } = null!;
+
+    [Inject]
+    protected IWorkspaceRegistry WorkspaceRegistry { get; set; } = null!;
+
+    [Inject]
+    protected UiShellState UiShellState { get; set; } = null!;
 
     private bool _dropdownOpen = false;
     private UserDto? _currentUser;
@@ -100,10 +104,10 @@ public partial class NavMenu : IDisposable
 
     protected override async Task OnInitializedAsync()
     {
-        SidebarState.OnChange += StateHasChanged;
         AiAssistantState.OnChange += StateHasChanged;
         TenantNavLinksState.OnChange += StateHasChanged;
         DockLayoutState.Changed += OnDockLayoutChanged;
+        UiShellState.Changed += StateHasChanged;
         CurrentUserState.OnChanged += OnCurrentUserChanged;
         await LoadPublicExperienceAsync();
         await LoadCurrentUserAsync();
@@ -249,7 +253,7 @@ public partial class NavMenu : IDisposable
 
     private void ToggleSidebarPanel()
     {
-        DockLayoutState.Toggle(ShellDockPanels.LeftNavId);
+        DockLayoutState.Toggle(ShellDockPanels.WorkspaceNavId);
     }
 
     private void ToggleAiAssistantPanel()
@@ -282,7 +286,11 @@ public partial class NavMenu : IDisposable
         _groupSubmenuOpen = false;
     }
 
-    private bool IsSidebarDockOpen => DockLayoutState.GetPanel(ShellDockPanels.LeftNavId)?.State.IsOpen == true;
+    private bool IsSidebarDockOpen => DockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId)?.State.IsOpen == true;
+
+    private bool HasWorkspaceNavigation => DockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId) is not null
+        && WorkspaceRegistry.Workspaces.Any(workspace =>
+            workspace.Key == UiShellState.ActiveWorkspace && workspace.NavigationProviderType is not null);
 
     private void OnDockLayoutChanged()
     {
@@ -464,10 +472,10 @@ public partial class NavMenu : IDisposable
 
     public void Dispose()
     {
-        SidebarState.OnChange -= StateHasChanged;
         AiAssistantState.OnChange -= StateHasChanged;
         TenantNavLinksState.OnChange -= StateHasChanged;
         DockLayoutState.Changed -= OnDockLayoutChanged;
+        UiShellState.Changed -= StateHasChanged;
         CurrentUserState.OnChanged -= OnCurrentUserChanged;
         GC.SuppressFinalize(this);
     }

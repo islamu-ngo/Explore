@@ -59,7 +59,6 @@ public class EventListTests : IDisposable
         _ctx.Services.AddSingleton(Substitute.For<ILogger<EventList>>());
         _ctx.Services.AddSingleton(Substitute.For<IAuthStateService>());
         _ctx.Services.AddSingleton(Substitute.For<IContactShareConsentService>());
-        _ctx.Services.AddSingleton(new Explore.Blazor.Client.Services.SidebarState());
         _ctx.Services.AddSingleton(Substitute.For<IUserSettingsService>());
         _ctx.Services.AddSingleton(new FeatureStateContainer());
 
@@ -122,7 +121,7 @@ public class EventListTests : IDisposable
             && snapshot.Panels.Count == 1
             && snapshot.Panels.Any(panel => panel.Id == EventDockPanels.CustomizeViewId && panel.IsOpen)
             && snapshot.Panels.All(panel => panel.Id != EventDockPanels.EventPreviewId)
-            && snapshot.Panels.All(panel => panel.Id != ShellDockPanels.LeftNavId)
+            && snapshot.Panels.All(panel => panel.Id != ShellDockPanels.WorkspaceNavId)
             && snapshot.Panels.All(panel => panel.Id != ShellDockPanels.AiAssistantId);
     }
 
@@ -460,10 +459,10 @@ public class EventListTests : IDisposable
         cut.WaitForAssertion(() =>
             _dockLayoutPersistence.Received(1).LoadAsync("events", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
 
-        _dockLayoutState.Register(CreateShellPersistentDescriptor(ShellDockPanels.LeftNavId, DockSide.Start), _ => { });
+        _dockLayoutState.Register(CreateShellPersistentDescriptor(ShellDockPanels.WorkspaceNavId, DockSide.Start), _ => { });
         _dockLayoutPersistence.ClearReceivedCalls();
 
-        await cut.InvokeAsync(() => _dockLayoutState.Open(ShellDockPanels.LeftNavId));
+        await cut.InvokeAsync(() => _dockLayoutState.Open(ShellDockPanels.WorkspaceNavId));
         await Task.Delay(TimeSpan.FromMilliseconds(650));
 
         await _dockLayoutPersistence.DidNotReceive().SaveAsync(

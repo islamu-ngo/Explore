@@ -28,7 +28,7 @@ public sealed class DockHostTests : IDisposable
     [Test]
     public async Task DockLayoutHost_RendersChildContentAndOpenDockedPanels()
     {
-        var panelId = new DockPanelId("shell.left-nav");
+        var panelId = new DockPanelId("shell.workspace-nav");
         _dockLayoutState.Register(CreateDescriptor(panelId, DockScope.Shell, DockSide.Start, order: 10), CreateContent("Navigation content"));
         _dockLayoutState.Open(panelId);
 
@@ -39,7 +39,7 @@ public sealed class DockHostTests : IDisposable
         await Assert.That(cut.Markup).Contains("Main content");
         await Assert.That(cut.Markup).Contains("Navigation content");
         await Assert.That(cut.Find("[data-testid='dock-layout-host']").GetAttribute("style")).Contains("--dock-layout-start-width: 320px;");
-        await Assert.That(cut.Find("[data-dock-panel-id='shell.left-nav']").GetAttribute("aria-label")).IsEqualTo("Panel shell.left-nav");
+        await Assert.That(cut.Find("[data-dock-panel-id='shell.workspace-nav']").GetAttribute("aria-label")).IsEqualTo("Panel shell.workspace-nav");
     }
 
     [Test]
@@ -113,7 +113,7 @@ public sealed class DockHostTests : IDisposable
     [Test]
     public async Task DockLayoutHost_SevenHundredSixtyPixelViewport_RoutesDockedPanelsThroughOverlayChrome()
     {
-        var dockedPanelId = new DockPanelId("shell.left-nav");
+        var dockedPanelId = new DockPanelId("shell.workspace-nav");
         var scrollManager = Substitute.For<IScrollManager>();
         ConfigureScrollManager(scrollManager);
         _ctx.Services.AddSingleton(scrollManager);
@@ -133,7 +133,7 @@ public sealed class DockHostTests : IDisposable
                 throw new InvalidOperationException("Shell dock layout did not collapse the start track at 760px.");
             }
 
-            if (cut.Find("[data-dock-panel-id='shell.left-nav']").GetAttribute("data-dock-mode") != "temporary")
+            if (cut.Find("[data-dock-panel-id='shell.workspace-nav']").GetAttribute("data-dock-mode") != "temporary")
             {
                 throw new InvalidOperationException("Shell docked panel was not projected as a temporary overlay at 760px.");
             }
