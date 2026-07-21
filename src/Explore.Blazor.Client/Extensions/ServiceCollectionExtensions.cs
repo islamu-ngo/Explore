@@ -27,6 +27,7 @@ using Explore.Blazor.Client.Services.EventTemplateSync;
 using Explore.Blazor.Client.Services.Http;
 using Explore.Blazor.Client.Services.Interop;
 using Explore.Blazor.Client.Services.Lookup;
+using Explore.Blazor.Client.Services.Shell;
 using Explore.Blazor.Client.Services.Webhooks;
 using Microsoft.Extensions.DependencyInjection;
 using ExploreControlPlaneApiAdapter = Explore.Blazor.Client.Services.ControlPlane.ControlPlaneApiAdapter;
@@ -156,7 +157,6 @@ public static class ServiceCollectionExtensions
         services.AddTransient<MudBlazor.MudLocalizer, MudBlazorLocalizer>();
 
         // UI state
-        services.AddScoped<SidebarState>();
         services.AddScoped<CurrentUserState>();
         services.AddScoped<MainContentAppearanceState>();
         services.AddScoped<AiAssistantState>();
@@ -165,6 +165,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<DockLayoutState>();
         services.AddScoped<IDockPanelRegistry>(provider => provider.GetRequiredService<DockLayoutState>());
         services.AddScoped<IDockLayoutPersistence, Explore.Blazor.Client.Services.Interop.LocalStorageDockLayoutPersistence>();
+        services.AddScoped<IWorkspaceRegistry, WorkspaceRegistry>();
+        services.AddScoped<WorkspaceRouteClassifier>();
+        services.AddScoped<UiShellState>();
 
         // User-scoped settings (auth-branching: API for authenticated, localStorage for anonymous)
         services.AddScoped<IUserSettingsService, UserSettingsService>();

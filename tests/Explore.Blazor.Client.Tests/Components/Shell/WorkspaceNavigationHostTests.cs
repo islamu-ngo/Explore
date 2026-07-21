@@ -1,0 +1,172 @@
+// ABOUTME: bUnit coverage for WorkspaceNavigationHost contextual navigation swapping.
+// ABOUTME: Verifies provider content swaps on workspace switch without dock panel re-registration.
+
+using Explore.Blazor.Client.Components.Shell;
+using Explore.Blazor.Client.Components.Shell.Workspaces;
+using Explore.Blazor.Client.Services.Docking;
+using Explore.Blazor.Client.Services.Shell;
+using MudBlazor;
+
+namespace Explore.Blazor.Client.Tests.Components.Shell;
+
+public sealed class WorkspaceNavigationHostTests : IDisposable
+{
+    private readonly BlazorTestContext _ctx = new();
+
+    public WorkspaceNavigationHostTests()
+    {
+        _ctx.Services.AddScoped<IWorkspaceRegistry, WorkspaceRegistry>();
+        _ctx.Services.AddScoped<WorkspaceRouteClassifier>();
+        _ctx.Services.AddScoped<UiShellState>();
+        _ctx.Services.AddScoped<DockLayoutState>();
+        _ctx.Services.AddScoped<IDockPanelRegistry>(p => p.GetRequiredService<DockLayoutState>());
+
+        var publicExperience = Substitute.For<IPublicExperienceService>();
+        publicExperience.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsDto());
+        _ctx.Services.AddSingleton(publicExperience);
+
+        _ctx.Services.AddSingleton(new TenantNavLinksState());
+    }
+
+    public void Dispose() => _ctx.Dispose();
+
+    [Test]
+    public async Task Render_EventsWorkspace_ShowsEventsNavigationContent()
+    {
+        _ctx.SetAnonymousUser();
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/events");
+
+        var cut = _ctx.Render<WorkspaceNavigationHost>();
+
+        await Assert.That(cut.Markup).Contains("events-workspace-navigation");
+    }
+
+    [Test]
+    public async Task Render_SettingsWorkspace_ShowsSettingsNavigationContent()
+    {
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/settings");
+
+        var cut = _ctx.Render<WorkspaceNavigationHost>();
+
+        await Assert.That(cut.Markup).Contains("settings-workspace-navigation");
+    }
+
+    [Test]
+    public async Task WorkspaceSwitch_SwapsNavigationContent()
+    {
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/events");
+
+        var cut = _ctx.Render<WorkspaceNavigationHost>();
+        await Assert.That(cut.Markup).Contains("events-workspace-navigation");
+
+        await cut.InvokeAsync(() => navigation.NavigateTo("/settings"));
+
+        await Assert.That(cut.Markup).Contains("settings-workspace-navigation");
+        await Assert.That(cut.Markup).DoesNotContain("events-workspace-navigation");
+    }
+
+    [Test]
+    public async Task Render_HasWorkspaceNavHostTestHook()
+    {
+        _ctx.SetAnonymousUser();
+        var cut = _ctx.Render<WorkspaceNavigationHost>();
+
+        await Assert.That(cut.Find("[data-testid='workspace-nav-host']")).IsNotNull();
+    }
+
+    [Test]
+    public async Task Render_EventsWithOverlay_ShowsSharedOverlayChrome()
+    {
+        _ctx.SetAnonymousUser();
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/events");
+
+        var closeCount = 0;
+        var entry = CreateOverlayDockPanelEntry();
+        var cut = _ctx.Render<CascadingValue<DockPanelEntry>>(parameters => parameters
+            .Add(p => p.Value, entry)
+            .Add(p => p.IsFixed, true)
+            .AddChildContent<WorkspaceNavigationHost>(child => child
+                .Add(p => p.OnCloseRequested, EventCallback.Factory.Create(this, () => closeCount++))));
+
+        await Assert.That(cut.Markup).Contains("workspace-nav-host__overlay-header");
+        await Assert.That(cut.Markup).Contains("Close sidebar navigation");
+        await Assert.That(cut.Markup).Contains("events-workspace-navigation");
+
+        await cut.Find("[aria-label='Close sidebar navigation']").ClickAsync(new MouseEventArgs());
+
+        await Assert.That(closeCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task Render_SettingsWithOverlay_ShowsSharedOverlayChrome()
+    {
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/settings");
+
+        var entry = CreateOverlayDockPanelEntry();
+        var cut = _ctx.Render<CascadingValue<DockPanelEntry>>(parameters => parameters
+            .Add(p => p.Value, entry)
+            .Add(p => p.IsFixed, true)
+            .AddChildContent<WorkspaceNavigationHost>(child => child
+                .Add(p => p.OnCloseRequested, EventCallback.Factory.Create(this, () => { }))));
+
+        await Assert.That(cut.Markup).Contains("workspace-nav-host__overlay-header");
+        await Assert.That(cut.Markup).Contains("Close sidebar navigation");
+        await Assert.That(cut.Markup).Contains("settings-workspace-navigation");
+    }
+
+    [Test]
+    public async Task Render_DockedMode_DoesNotShowOverlayHeader()
+    {
+        _ctx.SetAnonymousUser();
+        var cut = _ctx.Render<WorkspaceNavigationHost>(parameters => parameters
+            .Add(p => p.OnCloseRequested, EventCallback.Factory.Create(this, () => { })));
+
+        await Assert.That(cut.Markup).DoesNotContain("workspace-nav-host__overlay-header");
+    }
+
+    [Test]
+    public async Task Render_NoProvider_RendersNothing()
+    {
+        _ctx.Services.AddScoped<IWorkspaceRegistry>(_ => new TestNoProviderRegistry());
+        _ctx.SetAnonymousUser();
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/no-nav");
+
+        var cut = _ctx.Render<WorkspaceNavigationHost>();
+
+        await Assert.That(cut.Markup).IsEmpty();
+    }
+
+    private static DockPanelEntry CreateOverlayDockPanelEntry()
+    {
+        var id = new DockPanelId("test-workspace-nav");
+        return new DockPanelEntry(
+            new DockPanelDescriptor(
+                id,
+                DockScope.Shell,
+                DockSide.Start,
+                DockMode.Temporary,
+                "Navigation",
+                "Workspace navigation",
+                280, 240, 360, 0, false, true, true),
+            _ => { },
+            new DockPanelState(id, true, DockMode.Temporary, 280, 0, true));
+    }
+
+    private sealed class TestNoProviderRegistry : IWorkspaceRegistry
+    {
+        public IReadOnlyList<WorkspaceDescriptor> Workspaces { get; } =
+        [
+            new(WorkspaceKey.Events, "workspace.events", Icons.Material.Filled.Explore, "/", false, typeof(EventsWorkspaceNavigation)),
+            new(new WorkspaceKey("no-nav"), "workspace.no-nav", Icons.Material.Filled.BugReport, "/no-nav", false, null)
+        ];
+    }
+}

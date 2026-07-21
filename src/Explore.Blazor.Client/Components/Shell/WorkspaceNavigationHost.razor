@@ -1,0 +1,48 @@
+@* ABOUTME: Hosts contextual workspace navigation content inside the shell Start panel. *@
+@* ABOUTME: Swaps provider content on workspace switch without re-registering the dock panel. *@
+@using Explore.Blazor.Client.Services.Shell
+
+@if (_activeProviderType is not null)
+{
+    <div class="workspace-nav-host" data-testid="workspace-nav-host">
+        @if (ShouldRenderOverlayHeader)
+        {
+            <div class="workspace-nav-host__overlay-header">
+                <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                               Color="Color.Inherit"
+                               Size="Size.Medium"
+                               OnClick="OnCloseRequested"
+                               Title="Close sidebar navigation"
+                               aria-label="Close sidebar navigation" />
+                <a href="/" class="workspace-nav-host__overlay-brand" aria-label="@OverlayBrandAriaLabel">
+                    @if (!string.IsNullOrWhiteSpace(BrandLogoUrl))
+                    {
+                        <MudImage Src="@BrandLogoUrl"
+                                  Alt="@BrandDisplayName"
+                                  Class="workspace-nav-host__overlay-brand-logo"
+                                  Width="32"
+                                  Height="32" />
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Explore"
+                                 Color="Color.Primary"
+                                 Size="Size.Large"
+                                 Class="workspace-nav-host__overlay-brand-icon" />
+                    }
+                    @if (!string.IsNullOrWhiteSpace(BrandDisplayName))
+                    {
+                        <span class="workspace-nav-host__overlay-brand-text">@BrandDisplayName</span>
+                    }
+                </a>
+            </div>
+        }
+        @RenderActiveProvider()
+    </div>
+}
+
+@code {
+    [Parameter] public EventCallback OnCloseRequested { get; set; }
+    [Parameter] public string? BrandDisplayName { get; set; }
+    [Parameter] public string? BrandLogoUrl { get; set; }
+}

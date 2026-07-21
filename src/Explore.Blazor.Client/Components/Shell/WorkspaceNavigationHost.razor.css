@@ -1,0 +1,51 @@
+/* ABOUTME: Scoped styles for the workspace navigation host wrapper and shared overlay chrome. */
+/* ABOUTME: Transparent in layout so the provider's own nav element controls semantics. */
+
+.workspace-nav-host {
+    display: contents;
+}
+
+.workspace-nav-host__overlay-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--isl-space-8, 2rem);
+    padding: var(--isl-space-4, 1rem) var(--isl-space-3, 0.75rem) var(--isl-space-4, 1rem);
+}
+
+.workspace-nav-host__overlay-header ::deep .mud-icon-button {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+}
+
+.workspace-nav-host__overlay-header ::deep .mud-icon-root {
+    font-size: 1.625rem;
+}
+
+.workspace-nav-host__overlay-brand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 0;
+    gap: var(--isl-space-2, 0.5rem);
+    color: var(--mud-palette-text-primary);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    font-size: 1.125rem;
+}
+
+::deep .workspace-nav-host__overlay-brand-logo {
+    border-radius: var(--isl-radius-sm, 0.375rem);
+    object-fit: contain;
+}
+
+::deep .workspace-nav-host__overlay-brand-icon {
+    flex: 0 0 auto;
+}
+
+.workspace-nav-host__overlay-brand-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

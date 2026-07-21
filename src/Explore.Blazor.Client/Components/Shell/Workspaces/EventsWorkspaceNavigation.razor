@@ -1,0 +1,94 @@
+@* ABOUTME: Events workspace navigation content rendered through the WorkspaceNavigationHost. *@
+@* ABOUTME: Preserves legacy MainLayout drawer links: catalog, discovery, policies, branding, tenant links. *@
+@using Explore.Blazor.Client.Contracts.Services.Shell
+@implements IWorkspaceNavigationProvider
+
+<nav class="events-workspace-navigation" aria-label="@AriaLabel" data-testid="@DataTestId">
+    <MudNavMenu Dense="false" Class="events-workspace-navigation__menu px-2 pt-2">
+        <div class="events-workspace-navigation__header">
+            <MudText Typo="Typo.h6" Class="events-workspace-navigation__title">
+                @ResolvedEventCatalogLabel
+            </MudText>
+        </div>
+        @if (IsOrganizationCentric)
+        {
+            <MudNavLink Href="@ResolvedEventCatalogUrl"
+                        Icon="@Icons.Material.Filled.Event"
+                        Match="NavLinkMatch.Prefix">
+                @ResolvedEventCatalogLabel
+            </MudNavLink>
+        }
+        else
+        {
+            <MudNavLink Href="/events"
+                        Icon="@Icons.Material.Filled.ManageSearch"
+                        Match="NavLinkMatch.All">
+                Advanced Search
+            </MudNavLink>
+            <MudNavLink Href="/events?sort=recent"
+                        Icon="@Icons.Material.Filled.NewReleases">
+                Recently Added
+            </MudNavLink>
+            <MudNavLink Href="/events?sort=random"
+                        Icon="@Icons.Material.Filled.Shuffle">
+                Random
+            </MudNavLink>
+        }
+
+        <MudDivider Class="my-2" />
+
+        @if (!string.IsNullOrWhiteSpace(ResolvedBrandDisplayName))
+        {
+            <MudText Typo="Typo.h6" Class="events-workspace-navigation__brand-label">
+                @ResolvedBrandDisplayName
+            </MudText>
+        }
+        @if (ResolvedShowCommunityGuidelinesLink)
+        {
+            <MudNavLink Href="/community-guidelines"
+                        Icon="@Icons.Material.Outlined.Gavel">
+                Community Guidelines
+            </MudNavLink>
+        }
+        <MudNavLink Href="/about"
+                    Icon="@Icons.Material.Outlined.Info">
+            About Us
+        </MudNavLink>
+        <MudNavLink Href="/contact"
+                    Icon="@Icons.Material.Outlined.ContactMail">
+            Contact
+        </MudNavLink>
+
+        @if (ResolvedTenantLinks.Count > 0)
+        {
+            <MudDivider Class="my-2" />
+            <MudText Typo="Typo.h6" Class="events-workspace-navigation__tenant-links-label">
+                Quick Links
+            </MudText>
+            @foreach (var link in ResolvedTenantLinks.OrderBy(link => link.Order))
+            {
+                var icon = string.IsNullOrWhiteSpace(link.Icon)
+                    ? Icons.Material.Filled.Link
+                    : link.Icon;
+
+                @if (link.OpenInNewTab == true)
+                {
+                    <MudNavLink Href="@link.Url"
+                                Icon="@icon"
+                                Target="_blank"
+                                rel="noopener noreferrer">
+                        @link.Label
+                    </MudNavLink>
+                }
+                else
+                {
+                    <MudNavLink Href="@link.Url"
+                                Icon="@icon"
+                                Match="NavLinkMatch.Prefix">
+                        @link.Label
+                    </MudNavLink>
+                }
+            }
+        }
+    </MudNavMenu>
+</nav>

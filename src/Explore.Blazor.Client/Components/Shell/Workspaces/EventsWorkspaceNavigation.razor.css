@@ -1,0 +1,48 @@
+/* ABOUTME: Scoped styles for the Events workspace navigation provider. */
+/* ABOUTME: Preserves legacy drawer spacing while serving as a WorkspaceNavigationHost provider. */
+
+.events-workspace-navigation {
+    display: block;
+}
+
+::deep .events-workspace-navigation__menu .mud-nav-link {
+    min-height: 2.75rem;
+    padding-block: var(--isl-space-2, 0.5rem);
+}
+
+::deep .events-workspace-navigation__menu .mud-nav-link .mud-icon-root {
+    font-size: 1.45rem;
+}
+
+::deep .events-workspace-navigation__menu .mud-nav-link-text {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.events-workspace-navigation__header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--isl-space-2, 0.5rem);
+    padding-inline-end: var(--isl-space-2, 0.5rem);
+}
+
+.events-workspace-navigation__title {
+    padding-inline: var(--isl-space-4, 1rem);
+    padding-block-start: var(--isl-space-3, 0.75rem);
+    padding-block-end: var(--isl-space-1, 0.25rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.events-workspace-navigation__brand-label,
+.events-workspace-navigation__tenant-links-label {
+    padding-inline: var(--isl-space-4, 1rem);
+    padding-block-start: var(--isl-space-3, 0.75rem);
+    padding-block-end: var(--isl-space-1, 0.25rem);
+    font-size: 1.125rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--mud-palette-text-primary);
+    text-transform: uppercase;
+}
