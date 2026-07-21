@@ -1,0 +1,106 @@
+/* ABOUTME: Scoped styles for the permanent application workspace rail. */
+/* ABOUTME: Desktop renders a fixed 64px inline-start rail; mobile projects to bottom navigation. */
+
+.app-workspace-rail {
+    position: fixed;
+    inset-block-start: var(--mud-appbar-height, 4rem);
+    inset-inline-start: 0;
+    inline-size: var(--isl-workspace-rail-width, 4rem);
+    block-size: calc(100dvh - var(--mud-appbar-height, 4rem));
+    z-index: var(--isl-dock-z-shell, 1200);
+    background: var(--mud-palette-surface);
+    border-inline-end: 1px solid var(--mud-palette-lines-default);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.app-workspace-rail__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-block-size: 0;
+}
+
+.app-workspace-rail__item {
+    flex: 0 0 auto;
+}
+
+/* Pin the last item (Settings) to the block-end of the rail */
+.app-workspace-rail__item:last-child {
+    margin-block-start: auto;
+}
+
+.app-workspace-rail__link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--isl-space-1);
+    min-block-size: var(--isl-target-min, 1.5rem);
+    min-inline-size: var(--isl-target-min, 1.5rem);
+    padding: var(--isl-space-2) var(--isl-space-1);
+    color: var(--mud-palette-text-secondary);
+    text-decoration: none;
+    transition: background 150ms ease, color 150ms ease;
+}
+
+.app-workspace-rail__link:hover {
+    background: var(--isl-state-hover);
+    color: var(--mud-palette-primary);
+}
+
+.app-workspace-rail__link:focus-visible {
+    outline: var(--isl-focus-ring-width) solid var(--mud-palette-primary);
+    outline-offset: var(--isl-focus-ring-offset);
+}
+
+.app-workspace-rail__link--active {
+    color: var(--mud-palette-primary);
+    background: var(--isl-state-active);
+}
+
+::deep .app-workspace-rail__icon {
+    font-size: 1.5rem;
+}
+
+.app-workspace-rail__label {
+    font-size: 0.75rem;
+    line-height: 1;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-inline-size: 100%;
+}
+
+/* Mobile: project the same links to a bottom navigation bar (Xs breakpoint) */
+@media (max-width: 37.5em) {
+    .app-workspace-rail {
+        position: fixed;
+        inset-block-start: auto;
+        inset-block-end: 0;
+        inset-inline: 0;
+        inline-size: 100%;
+        block-size: auto;
+        border-inline-end: none;
+        border-block-start: 1px solid var(--mud-palette-lines-default);
+        overflow-y: visible;
+    }
+
+    .app-workspace-rail__list {
+        flex-direction: row;
+        justify-content: space-around;
+    }
+
+    .app-workspace-rail__item:last-child {
+        margin-block-start: 0;
+    }
+
+    .app-workspace-rail__link {
+        padding: var(--isl-space-1);
+    }
+}

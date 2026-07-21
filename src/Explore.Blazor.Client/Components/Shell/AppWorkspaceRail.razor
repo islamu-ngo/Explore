@@ -1,0 +1,22 @@
+@* ABOUTME: Permanent application workspace rail with desktop rail and mobile bottom navigation projection. *@
+@* ABOUTME: Consumes IWorkspaceRegistry and UiShellState; filters authenticated workspaces without role checks. *@
+@using Explore.Blazor.Client.Services.Shell
+
+<nav class="app-workspace-rail" aria-label="Application workspaces" data-testid="app-workspace-rail">
+    <ul class="app-workspace-rail__list">
+        @foreach (var workspace in _visibleWorkspaces)
+        {
+            var isActive = IsActive(workspace);
+            <li class="app-workspace-rail__item">
+                <a href="@GetRoute(workspace)"
+                   class="app-workspace-rail__link@(isActive ? " app-workspace-rail__link--active" : "")"
+                   aria-current="@(isActive ? "page" : null)"
+                   title="@GetLabel(workspace)"
+                   aria-label="@GetLabel(workspace)">
+                    <MudIcon Icon="@workspace.Icon" Class="app-workspace-rail__icon" />
+                    <span class="app-workspace-rail__label">@GetLabel(workspace)</span>
+                </a>
+            </li>
+        }
+    </ul>
+</nav>
