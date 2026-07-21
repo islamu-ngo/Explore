@@ -3,13 +3,13 @@
 
 # Dynamic Event Management UI (Workspace Shell) — Implementation Plan
 
-Last Updated: 2026-07-21 Europe/Brussels
+Last Updated: 2026-07-21 Europe/Brussels (re-baselined and approved)
 
 ## 0. Planning Metadata
 
 - **Original request:** Turn the architecture report `dev/active/dynamic-event-management-ui/dynamic-event-management-ui-report.md` into an executable, repo-conventioned implementation plan for a workspace-based shell (Plane-style app rail + contextual secondary navigation + AI dock), Studio organizer workbench, dual-mode AI, scope-aware Settings, and durable layout preferences.
 - **Task directory:** `dev/active/dynamic-event-management-ui/`
-- **Planning status:** Draft (awaiting user review)
+- **Planning status:** Approved / Implementation started
 - **Matched intents:** No single intent covers this cross-cutting UI-platform work. Fallback contract composed from: `add-get-endpoint` (shell-context endpoint), `add-cqrs-handler` (`GetUiShellContextRequest`), `openapi-contract-change` (generated client), `blazor-component-affordance` + `add-hal-link` (HAL-gated Studio navigation), plus canonical docs below. A reusable intent is NOT proposed — this shell restructure is a one-time platform change.
 - **Relevant skills:** `implementation-plan` (this plan), `blazor-ui-conventions`, `blazor-css-isolation`, `design-system`, `blazor-bff-patterns`, `cqrs-mediatr-guidelines`, `clean-architecture-rules`, `auth-patterns`.
 - **Relevant rules:** `.claude/rules/blazor-client.md`, `.claude/rules/blazor-server.md`, `.claude/rules/application-layer.md`, `.claude/rules/api-controllers.md`, `.claude/rules/api-hateoas.md`, `.claude/rules/tests.md`.
@@ -49,8 +49,8 @@ This plan converts the shell into a **workspace-based application**:
 | Per-user settings storage + API exist | Verified: `Explore.Domain/UserPreference.cs` (tenant+user+key), `IUserPreferenceRepository`, `SettingsController` `GET/PUT api/settings/user/{category}` (`RouteNames.GetUserSettings`, `UpdateUserSettingsBatch`, `UpdateUserSetting`) | High | Reuse for shell layout preferences; no new table needed |
 | User AI navbar preference pattern exists | Verified: `NavMenu.razor.cs` reads category `AiAssistantPreferences`, key `ai_assistant_preferences.show_navbar_button`; key constant in `GovernanceSettingKeys` | High | Template for `ui_shell` preference keys |
 | AI conversation API is complete and shared-state-ready | Verified: `AiAssistantController` (bootstrap, conversations, messages, proposed-action confirm/reject, run status/cancel); client `AiAssistantConversationState` (scoped), `IAiAssistantClientService`, `AiAssistantRail HostedInDock` dual mode | High | `/ai` workspace can reuse all of it; no new AI API needed |
-| My-events management surface exists server-side | Verified: `EventController.cs:234` `[HttpGet("my", Name = RouteNames.GetMyEvents)]` → `GetMyEventsRequest` returning HAL collection | High | Studio events list reuses this |
-| Settings surfaces are fragmented | Verified: `Routes.razor` — `/settings` (`Pages/User/Settings` + `SettingsLayout` tabs), `/admin/tenant/settings`, `/admin/instance/settings`, `/admin/organization/:id/settings`, `/admin/group/:id/settings`, `/admin/tenant/navigation` | High | Settings hub unifies routes and navigation |
+| My-events management surface exists server-side | Verified: `EventController.cs` — `GetMyEvents` (personal HAL collection) and `GetManagedEventsByActorAsync` (org/group actor-scoped) | High | Studio uses `GetManagedEventsByActorAsync` for selected actors, `GetMyEventsAsync` as personal/unscoped fallback; no new endpoint needed |
+| Settings surfaces are fragmented | Verified: `Routes.razor` — `/settings` (`Pages/User/Settings` + `SettingsLayout` tabs), `/admin/tenant/settings`, `/admin/instance/settings`, `/admin/organization/:id/settings`, `/admin/group/:id/settings`; `/admin/tenant/navigation` uses `@page` discovery and was never in `Routes.razor` | High | Settings hub unifies routes and navigation; migration must remove both central route rows and old `@page` directives plus all link producers |
 | Governance cascade + locks + single-tenant bypass | Verified: `docs/QUICK_REFERENCE.md` (5-tier cascade), `HierarchicalSettingsResolver`, `SettingRegistry` (`src/Explore.Domain/Settings/SettingRegistry.cs`, frozen definitions) | High | New `ui_shell.*` keys must declare allowed scopes |
 | Accessibility conventions are architecture-tested | Verified: `docs/TESTING.md` — `MainLayout_MustContain_NavigationLandmark`, skip-link, live regions, scoped-CSS logical-property checks; `DockLayoutArchitectureTests` | High | Rail/nav landmark changes must keep these green |
 | Blazor isolation: only generated `IEventApiClient`, HAL-gated affordances | Verified: `docs/QUICK_REFERENCE.md` rules 21/23, `docs/ARCHITECTURE.md`, memory note (NU1605/WASM prevents Application reference) | High | All new client models mirror generated DTOs or are UI-local |
@@ -62,7 +62,7 @@ This plan converts the shell into a **workspace-based application**:
 - **Blazor Client (routing):** Blazouter central table in `Routes.razor` with route guards; `MainLayout` is default layout; `SetupLayout` for setup/onboarding (hide-chrome).
 - **Blazor Client (AI):** `AiAssistantRail` (78K, dock-hosted), `AiAssistantConversationState`, `AiAssistantClientService`; policy state in `AiAssistantState` (tenant enablement + anonymous access + user navbar preference).
 - **API/Application:** `PublicExperienceController` (anonymous shell), `SettingsController` (user/tenant scoped settings by category), `UserController.GetAdminAuthority`, `EventController.GetMyEvents` (HAL), `AiAssistantController` (full conversation lifecycle), `OrganizationController`/`GroupController` "my" lists. Governance keys in `GovernanceSettingKeys`; definitions in `SettingRegistry`.
-- **Persistence:** `UserPreference` (tenant, user, key unique) + repository; tenant navigation links (`TenantNavigationLink` entity, admin editor at `/admin/tenant/navigation`).
+- **Persistence:** `UserPreference` (tenant, user, key unique) + repository; tenant navigation links (`TenantNavigationLink` entity, admin editor at `/admin/tenant/navigation` via `@page`); anonymous dock storage gains a tenant discriminator (`dock_layout:v1:{tenantSlug}:`) with no old-key compatibility read.
 
 ### 2.3 Existing Tests And Coverage
 
@@ -74,7 +74,7 @@ This plan converts the shell into a **workspace-based application**:
 
 ### 2.4 Existing Documentation And Contracts
 
-`docs/DOCK_LAYOUT.md` (authoritative dock behavior incl. compatibility-bridge rule), `docs/BLAZOR.md` (project roles, BFF endpoint families, service/state patterns), `docs/ARCHITECTURE.md`, `docs/DESIGN_SYSTEM.md`, `docs/ACCESSIBILITY.md`, `docs/LOCALIZATION.md` (RTL), `docs/GOVERNANCE.md` (API contract rules, NSwag conventions), `docs/API.md`/`API_CHANGELOG.md`, `docs/CONFIGURATION.md` (settings keys), `schemas/openapi_islamu-event.json` + generated `EventApiClient.g.cs`. ADR catalog ends at ADR-015; this work adds **ADR-016**.
+`docs/DOCK_LAYOUT.md` (authoritative dock behavior incl. compatibility-bridge rule), `docs/BLAZOR.md` (project roles, BFF endpoint families, service/state patterns), `docs/ARCHITECTURE.md`, `docs/DESIGN_SYSTEM.md`, `docs/ACCESSIBILITY.md`, `docs/LOCALIZATION.md` (RTL), `docs/GOVERNANCE.md` (API contract rules, NSwag conventions), `docs/API.md`/`API_CHANGELOG.md`, `docs/CONFIGURATION.md` (settings keys), `schemas/openapi_islamu-event.json` + generated `EventApiClient.g.cs`. ADR-016–018 are reserved by the active registration-data-collection workstream; this work adds **ADR-019**.
 
 ### 2.5 Current Pain Points
 
@@ -91,8 +91,8 @@ This plan converts the shell into a **workspace-based application**:
 |---|---|---|
 | Exact CSS interplay of a fixed rail track with `MudLayout`/`DockLayoutHost` grid and EventList workspace dock at constrained widths | `MainLayout.razor.css`, `DockLayoutHost.razor.css` grid rules read; no rail precedent exists | Task 1.3 (implement + bUnit + responsive matrix in Phase 8) |
 | Whether `Blazouter.Components.Router` supports per-route-group metadata we can attach workspace keys to, or whether classification must be prefix-based | `Routes.razor` uses `RouteConfig { Path, Component, Layout, Guards }`; no metadata dictionary observed | Task 1.2 (classifier is prefix-based first; extend `RouteConfig` only if Blazouter exposes it) |
-| Which internal links point at `/admin/*/settings` routes (for Phase 6 route unification) | Not exhaustively enumerated | Task 6.4 bounded `rg` sweep + link update |
-| Group actors as Studio publishers (does group event submission use the same actor path as organizations?) | `GroupController`/`GetMyGroupsAsync` verified; publisher path not traced | Task 3.1 investigation inside handler design; managed-actor list must come from server |
+| Which internal links point at `/admin/*/settings` routes (for Phase 6 route unification) | Not exhaustively enumerated | Task 6.2 bounded `rg` sweep + link update |
+| Group actors as Studio publishers | Resolved: `IAiAssistantActorContextService` supplies authorized organization/group actors; group event creation uses the existing `/events/create` publisher picker | Task 3.1 reuses the actor service; no group-specific route |
 
 ## 3. Proposed Future State
 
@@ -104,7 +104,7 @@ Desktop shell composition (logical directions):
 - **Studio:** actor-level navigation (actor switcher listing only server-provided managed actors; pinned when `public_experience.primary_organization_id` is set), event-level navigation replacing (not stacking) the secondary nav, sections gated by the event resource's HAL `_links` (`edit`, `publish-readiness`, session/registration/team relations).
 - **AI:** `/ai` + `/ai/chats/{id}` full workspace sharing `AiAssistantConversationState` + `IAiAssistantClientService` with the dock; dock header gains "Open in AI workspace"; product label stays "AI Assistant" (never the model id).
 - **Settings:** one hub with scope navigation (Personal + each authorized Organization/Group + Tenant + Instance from server data), canonical `/settings/**` routes, single-tenant "Site administration" composition.
-- **Preferences:** tenant governs defaults/availability (`ui_shell.*` governance keys, tenant/instance scopes, lockable); the user owns personal layout (`ui.shell.layout.v1` etc. through the existing user-settings API); viewport projection never writes durable state (existing `LastChangeReason` contract).
+- **Preferences:** tenant governs defaults/availability (`ui_shell.*` governance keys, tenant/instance scopes, lockable); the user owns personal layout (`ui_shell_preferences.layout.v1` etc. through the existing user-settings API); viewport projection never writes durable state (existing `LastChangeReason` contract).
 - **Mobile:** rail projects to bottom navigation; workspace nav becomes temporary drawer; AI dock becomes full-screen temporary chrome (existing dock projection).
 
 ## 4. Non-Negotiable Constraints
@@ -131,7 +131,7 @@ Desktop shell composition (logical directions):
 ### D2 — Compile-time workspace registry + route-derived active workspace
 - **Why:** report §5/§15; route is the only truthful activity source; registry gives a stable extension point without runtime plugins.
 - **Alternatives:** booleans in a scoped service (rejected — loses deep links/refresh truth); per-page layout attributes (rejected — Blazouter routes are table-driven, not attribute-driven).
-- **Consequences:** new `Services/Shell/` namespace: `WorkspaceDescriptor` (record: `Key`, `LabelKey`, `Icon`, `BaseRoute`, `RequiresAuthentication`, availability delegate, nav provider), `IWorkspaceRegistry`/`WorkspaceRegistry`, `WorkspaceRouteClassifier` (longest-prefix match over registered base routes), `UiShellState` (active workspace, last-route-per-workspace session map, effective nav mode).
+- **Consequences:** Phase 1 creates `Services/Shell/` with `WorkspaceDescriptor` (`Key`, `LabelKey`, `Icon`, `BaseRoute`, `RequiresAuthentication`), `IWorkspaceRegistry`/`WorkspaceRegistry`, `WorkspaceRouteClassifier` (longest-prefix match over registered base routes), and `UiShellState` (active workspace + last-route-per-workspace session map). Phase 2 adds the optional navigation provider, Phase 3 adds server-authoritative availability, and Phase 7 adds effective navigation-mode policy/preferences.
 - **Files:** new `src/Explore.Blazor.Client/Services/Shell/*.cs`; `Routes.razor` untouched for classification (prefix-based).
 
 ### D3 — Rename `shell.left-nav` → `shell.workspace-nav`; content becomes provider-driven
@@ -143,7 +143,7 @@ Desktop shell composition (logical directions):
 ### D4 — One authenticated shell-context endpoint; anonymous stays on public-experience shell
 - **Why:** report §14; capabilities must be server-authoritative; anonymous surface must not leak memberships.
 - **Alternatives:** keep client-side aggregation of 4+ calls (rejected — races, role-inference, N requests); extend `PublicExperienceShellDto` (rejected — anonymous cacheable contract must not grow private data).
-- **Consequences:** Application: `GetUiShellContextRequest` + `UiShellContextDto` (workspaces availability, managed actors, settings scopes, navigation defaults) composing existing sources (`AdminAuthorityDto` logic, my-orgs/groups with management authority, event-creation eligibility, AI enablement, deployment mode). API: `UiShellController` — `[Route("api/ui-shell")]`, `[HttpGet("context", Name = RouteNames.GetUiShellContext)]`, `[Authorize]`, `[EndpointClassification(EndpointClass.Authenticated)]`, output-cache none (per-user), plain DTO (no HAL: it is a capability projection, not an addressable resource — same posture as `PublicExperienceController`).
+- **Consequences:** Application: `GetUiShellContextRequest` + `UiShellContextDto` (workspaces availability, managed actors, settings scopes, navigation defaults) composing existing sources (`AdminAuthorityDto` logic, my-orgs/groups with management authority, event-creation eligibility, AI enablement, deployment mode). API: `UiShellController` — `[Route("api/ui-shell")]`, `[HttpGet("context", Name = RouteNames.GetUiShellContext)]`, `[Authorize]`, `[EndpointClassification(EndpointClass.Authenticated)]`, `[PrivateNoStore]` (per-user, no HTTP caching), plain DTO (no HAL: it is a capability projection, not an addressable resource — same posture as `PublicExperienceController`).
 - **Files:** new Application feature folder `Features/UiShell/`, new controller, `RouteNames.cs`, OpenAPI + NSwag regen, new client `IUiShellContextService`.
 
 ### D5 — Studio event-level navigation consumes event HAL links
@@ -158,16 +158,16 @@ Desktop shell composition (logical directions):
 ### D7 — Durable layout preferences reuse `UserPreference` via the existing user-settings API
 - **Why:** `(tenant_id, user_id, setting_key)` storage, batch GET/PUT endpoints, and the `AiAssistantPreferences` category pattern already exist; `DockLayoutSnapshot` is schema-versioned and restore is defensive (clamping, unknown-id dropping).
 - **Alternatives:** new `/api/me/ui-preferences` endpoint pair (rejected — duplicates `api/settings/user/{category}`); new table (rejected — `UserPreference` is exactly this).
-- **Consequences:** new preference keys `ui_shell_preferences.layout.v1` (JSON snapshot envelope), `ui_shell_preferences.last_workspace`, `ui_shell_preferences.last_actor` registered in `GovernanceSettingKeys` + `SettingRegistry` (User scope only); client `ServerBackedDockLayoutPersistence` decorating the localStorage implementation (anonymous = local only; authenticated = server, promote local on first login); existing autosave rules unchanged (UserAction/Reset only, 500ms debounce).
+- **Consequences:** new preference keys `ui_shell_preferences.layout.v1` (JSON snapshot envelope), `ui_shell_preferences.last_workspace`, `ui_shell_preferences.last_actor` registered in `GovernanceSettingKeys` + `SettingRegistry` (User scope only); client `ServerBackedDockLayoutPersistence` decorating the localStorage implementation (anonymous = tenant-discriminated localStorage key `dock_layout:v1:{tenantSlug}:` with no old-key compatibility read; authenticated = server, promote local on first login); existing autosave rules unchanged (UserAction/Reset only, 500ms debounce).
 
 ### D8 — Tenant shell defaults are governance settings under `ui_shell.*`
 - **Why:** the 5-tier cascade, locks, and single-tenant bypass already exist; report §11 requires explicit allowed scopes per key.
 - **Keys (tenant/instance scope, instance-lockable):** `ui_shell.rail_public_visibility` (`AuthenticatedOnly|Always`), `ui_shell.default_nav_mode.events|studio|ai|settings` (`Docked|Collapsed`), `ui_shell.allow_user_nav_override` (bool), `ui_shell.organizer_default_workspace` (`Events|Studio`).
-- **Consequences:** `GovernanceSettingKeys` + `SettingRegistry` additions; `GetUiShellContextRequest` resolves them into `navigationDefaults`; anonymous rail visibility resolved into the public-experience shell response for the org-centric public case; tenant admin settings page gains a small "Shell" section; `docs/CONFIGURATION.md` documents keys.
+- **Consequences:** `GovernanceSettingKeys` + `SettingRegistry` additions must be registered before the shell-context handler finalizes (Phase 0 registration); `GetUiShellContextRequest` resolves them into `navigationDefaults`; anonymous rail visibility resolved into the public-experience shell response for the org-centric public case; tenant admin settings page gains a small "Shell" section; `docs/CONFIGURATION.md` documents keys.
 
 ### D9 — Settings hub unifies routes under `/settings/**` reusing existing page components
 - **Why:** deep-linkable scope routes (report §10) with minimum churn: Blazouter table lets us mount existing components (`TenantAdminSettings`, `InstanceAdminSettings`, `OrganizationAdminSettings`, `GroupAdminSettings`) on new canonical paths and delete old rows — no component rewrite in this workstream.
-- **Routes:** `/settings` (personal, existing), `/settings/organization/:organizationId`, `/settings/group/:groupId`, `/settings/tenant`, `/settings/instance`, plus `/settings/tenant/navigation` (move of `/admin/tenant/navigation`). Old `/admin/*/settings` and `/admin/tenant/navigation` rows are deleted (no aliases, dev mode). Route guards are preserved as-is.
+- **Routes:** `/settings` (personal, existing), `/settings/organization/:organizationId`, `/settings/group/:groupId`, `/settings/tenant`, `/settings/instance`, plus `/settings/tenant/navigation` (move of `/admin/tenant/navigation`). Old `/admin/*/settings` central route rows are deleted; old `@page "/admin/tenant/navigation"` directive is removed and all internal link producers updated (bounded `rg` sweep). `/admin/tenant/navigation` was never in `Routes.razor`. No aliases, dev mode. Route guards are preserved as-is.
 - **Single-tenant presentation:** `SettingsWorkspaceNavigation` renders "Site administration" grouping tenant+instance entries when deployment mode is single-tenant and the user holds both authorities (data from shell context); underlying routes/API boundaries unchanged.
 
 ### D10 — AI dual experience shares one conversation stack
@@ -178,16 +178,35 @@ Desktop shell composition (logical directions):
 
 > Effort scale: S ≤ ~1h, M ≤ ~half day, L ≤ ~day, XL > day (per task, for a competent implementation agent).
 
-### Phase 1: Workspace Shell Foundation — Rail, Registry, ADR
-- **Goal:** Permanent app rail + workspace registry/classifier with behavior parity; Explore and Settings destinations only; ADR-016 records the composition.
+### Phase 0: Re-baseline and Governance Foundation 🟡 IN PROGRESS
+- **Goal:** Re-baseline the workstream against current repository state; register governance setting definitions so shell-context handler can resolve them.
 - **Depends on:** —
-- **Relevant files:** existing `MainLayout.razor(.cs/.css)`, `Routes.razor` (read-only), `tests/Event.Architecture.Tests/DockLayoutArchitectureTests.cs`; new `Services/Shell/{WorkspaceDescriptor,WorkspaceKey,IWorkspaceRegistry,WorkspaceRegistry,WorkspaceRouteClassifier,UiShellState}.cs`, `Components/Shell/AppWorkspaceRail.razor(.cs/.css)`, `docs/adr/ADR-016-workspace-shell-composition.md`.
+- **Relevant files:** `src/Explore.Domain/Constants/GovernanceSettingKeys.cs`, `src/Explore.Domain/Settings/SettingRegistry.cs` (+ definitions files), `docs/CONFIGURATION.md`.
+- **Acceptance criteria:** governance keys `ui_shell.*` (tenant/instance) and `ui_shell_preferences.*` (user) are registered with explicit allowed scopes and defaults; registry parity tests green after implementation.
+
+#### Task 0.1: Re-baseline workstream against repository state
+- **Type:** verify | **Layer:** Docs | **Effort:** S
+- **Description:** Re-read `Routes.razor`, `ShellDockPanels.cs`, `NavMenu.razor.cs`, `EventService.cs`, `GovernanceSettingKeys.cs`, `SettingRegistry.cs`, and confirm plan/context/tasks reflect current source. Record findings. Note: AnySearch MCP was unavailable during original planning; fallback evidence sources were official Plane/W3C docs plus Context7 MudBlazor docs.
+- **Acceptance:** [ ] all evidence claims in plan §2.1 re-verified; [ ] `/admin/tenant/navigation` confirmed as `@page` directive, not `Routes.razor` row; [ ] `GetManagedEventsByActorAsync` confirmed in generated client.
+- **Dependencies:** —
+
+#### Task 0.2: Governance setting definitions registration
+- **Type:** create/modify | **Layer:** Domain | **Effort:** M
+- **Files:** modify `src/Explore.Domain/Constants/GovernanceSettingKeys.cs`, `src/Explore.Domain/Settings/SettingRegistry.cs` (+ definitions file per existing layout), `docs/CONFIGURATION.md`.
+- **Description:** Add D8 keys (`ui_shell.rail_public_visibility`, `ui_shell.default_nav_mode.*`, `ui_shell.allow_user_nav_override`, `ui_shell.organizer_default_workspace`) and D7 user-preference keys (`ui_shell_preferences.layout.v1`, `.last_workspace`, `.last_actor`) with explicit allowed scopes, defaults, and instance-lockability. Follow existing definition-file layout (e.g. `UiShellSettingDefinitions`) and document every key.
+- **Acceptance:** [ ] a failing-first registry test covers one representative key; [ ] registry parity/architecture tests green; [ ] lock and single-tenant bypass semantics verifiable for one representative key; [ ] `docs/CONFIGURATION.md` documents every new key; [ ] definitions exist before shell-context handler consumes them.
+- **Dependencies:** 0.1
+
+### Phase 1: Workspace Shell Foundation — Rail, Registry, ADR
+- **Goal:** Permanent app rail + workspace registry/classifier with behavior parity; Explore and Settings destinations only; ADR-019 records the composition.
+- **Depends on:** Task 0.1. Tasks 1.1 and 1.2 may run alongside Task 0.2 in Wave 1; Phase 1 verification waits for Phase 0 verification.
+- **Relevant files:** existing `MainLayout.razor(.cs/.css)`, `Routes.razor` (read-only), `tests/Event.Architecture.Tests/DockLayoutArchitectureTests.cs`; new `Services/Shell/{WorkspaceDescriptor,WorkspaceKey,IWorkspaceRegistry,WorkspaceRegistry,WorkspaceRouteClassifier,UiShellState}.cs`, `Components/Shell/AppWorkspaceRail.razor(.cs/.css)`, `docs/adr/ADR-019-workspace-shell-composition.md`.
 - **Related skills/rules:** `blazor-ui-conventions`, `blazor-css-isolation`, `.claude/rules/blazor-client.md`.
 - **Acceptance criteria:** rail renders on all `MainLayout` routes and never on `SetupLayout` routes; active item derives from URL (deep link + refresh correct); rail items have accessible labels, tooltips, `aria-current`, visible focus; Settings sits at the bottom after flexible space; logical properties only (RTL-ready); existing dock panels and EventList workspace docks behave unchanged; architecture + client dock tests green.
 
-#### Task 1.1: ADR-016 workspace shell composition and vocabulary
+#### Task 1.1: ADR-019 workspace shell composition and vocabulary
 - **Type:** create | **Layer:** Docs | **Effort:** S
-- **Files:** new `docs/adr/ADR-016-workspace-shell-composition.md`
+- **Files:** new `docs/adr/ADR-019-workspace-shell-composition.md`
 - **Description:** Record decisions D1–D3 (+ glossary: workspace, app rail, workspace navigation, contextual dock, experience profile → maps to `PublicExperienceMode`, acting actor, settings scope, policy vs preference). Follow existing ADR format (see ADR-010 for depth). Link from `docs/DOCK_LAYOUT.md` and `docs/BLAZOR.md` in the phase that edits them (Phase 2).
 - **Acceptance:** [ ] ADR exists with status Accepted, decision, consequences, alternatives; [ ] glossary terms match the ones used in code.
 - **Dependencies:** —
@@ -199,12 +218,12 @@ Desktop shell composition (logical directions):
 - **Acceptance:** [ ] classifier resolves every current route in `Routes.razor` to the expected workspace (table-driven test); [ ] last-route map restores `/events/search?...`-style URLs on workspace re-entry.
 - **Dependencies:** —
 
-#### Task 1.3: `AppWorkspaceRail` + MainLayout shell track
+#### Task 1.3: `AppWorkspaceRail` + MainLayout shell track + minimal mobile bottom navigation
 - **Type:** create/modify | **Layer:** Blazor | **Effort:** L
-- **Files:** new `Components/Shell/AppWorkspaceRail.razor(.cs/.css)`; modify `Layout/MainLayout.razor(.cs/.css)`; modify `tests/Event.Architecture.Tests/DockLayoutArchitectureTests.cs` (sanction the rail as shell chrome); new bUnit tests.
-- **Description:** Wrap `DockLayoutHost` with a shell grid whose inline-start track is the rail (`inline-size: 64px`, logical properties, `<nav aria-label="Application workspaces">`). Rail renders registry workspaces filtered by availability (this phase: Events always; Settings authenticated-only via `AuthenticationStateProvider`), Settings pinned to block-end. Items are real links (`href`) with icon + tooltip + visually-hidden label + `aria-current="page"`. Hide-chrome routes unaffected (rail lives inside the `!_hideChrome` branch). Do not register the rail with `DockLayoutState`.
-- **Acceptance:** [ ] rail visible with docked nav + AI dock simultaneously at 1280px without breaking EventList workspace docks; [ ] keyboard traversal and focus ring verified in bUnit markup assertions; [ ] `DockLayoutArchitectureTests` green with explicit allowance comment.
-- **Dependencies:** 1.2
+- **Files:** new `Components/Shell/AppWorkspaceRail.razor(.cs/.css)`; modify `Layout/MainLayout.razor(.cs/.css)`, `Components/Docking/DockSideHost.razor.css`, and `src/Explore.Blazor/wwwroot/css/components.css`; modify `tests/Event.Architecture.Tests/DockLayoutArchitectureTests.cs` (sanction the rail as shell chrome and verify the shared Start inset); new bUnit tests.
+- **Description:** Wrap `DockLayoutHost` with a shell grid whose inline-start track is the rail (`inline-size: 64px`, logical properties, `<nav aria-label="Application workspaces">`). Rail renders registry workspaces filtered by availability (this phase: Events always; Settings authenticated-only via `AuthenticationStateProvider`), Settings pinned to block-end. Items are real links (`href`) with icon + tooltip + visually-hidden label + `aria-current="page"`. Hide-chrome routes unaffected (rail lives inside the `!_hideChrome` branch). Do not register the rail with `DockLayoutState`. **Mobile:** at `Breakpoint.Xs` the rail projects to a minimal bottom navigation (Events | Studio | AI | Settings, availability-filtered) via CSS/media-query only; no start track; workspace nav becomes temporary drawer (existing dock projection).
+- **Acceptance:** [ ] rail visible with docked nav + AI dock simultaneously at 1280px without breaking EventList workspace docks; [ ] keyboard traversal and focus ring verified in bUnit markup assertions; [ ] `DockLayoutArchitectureTests` green with explicit shell-chrome, shared-inset, and Xs CSS-contract coverage; [ ] bUnit proves workspace availability filtering (bUnit does not evaluate media queries); final rendered breakpoint evidence remains in Phase 9.
+- **Dependencies:** 1.1, 1.2
 
 ### Phase 1 Verification (run once)
 - `dotnet build --configuration Release --verbosity quiet`
@@ -234,7 +253,7 @@ Desktop shell composition (logical directions):
 
 #### Task 2.3: Delete `SidebarState`; migrate consumers; update docs
 - **Type:** modify/delete | **Layer:** Blazor + Docs | **Effort:** M
-- **Files:** delete `Services/SidebarState.cs`; modify `NavMenu.razor(.cs)` (toggle via `DockLayoutState.Toggle(ShellDockPanels.WorkspaceNavId)` — already partially true), `MainLayout.razor.cs` (remove mirroring), `TenantAdminSettingsLayout.razor`, `InstanceAdminSettingsLayout.razor`, `ServiceCollectionExtensions.cs`, affected tests; modify `docs/DOCK_LAYOUT.md` (panel table, id rename, bridge-sentence rewrite, ADR-016 link) and `docs/BLAZOR.md` service/state table.
+- **Files:** delete `Services/SidebarState.cs`; modify `NavMenu.razor(.cs)` (toggle via `DockLayoutState.Toggle(ShellDockPanels.WorkspaceNavId)` — already partially true), `MainLayout.razor.cs` (remove mirroring), `TenantAdminSettingsLayout.razor`, `InstanceAdminSettingsLayout.razor`, `ServiceCollectionExtensions.cs`, affected tests; modify `docs/DOCK_LAYOUT.md` (panel table, id rename, bridge-sentence rewrite, ADR-019 link) and `docs/BLAZOR.md` service/state table.
 - **Description:** Replace every `SidebarState` read with `DockLayoutState`/`UiShellState`. `AiAssistantState` stays (policy state, D6). Delete obsolete bridge tests instead of skipping them (TESTING.md governance).
 - **Acceptance:** [ ] solution has zero `SidebarState` references; [ ] docs match shipped panel catalog.
 - **Dependencies:** 2.2
@@ -249,19 +268,19 @@ Desktop shell composition (logical directions):
 - **Depends on:** Phase 2 (consumers exist)
 - **Relevant files:** existing `Features/PublicExperience/**` (pattern), `UserController.cs::GetAdminAuthority`, `EventController.cs::GetMyEvents`, `OrganizationController`/`GroupController` my-lists, `GovernanceSettingKeys.cs`, `RouteNames.cs`, `schemas/openapi_islamu-event.json`, `Clients/EventApiClient.g.cs`; new `src/Explore.Application/Features/UiShell/Requests/Queries/GetUiShellContextRequest.cs`, `Handlers/Queries/GetUiShellContextRequestHandler.cs`, `src/Explore.Application/DTOs/UiShell/UiShellContextDto.cs` (+ nested `ManagedActorDto`, `SettingsScopeDto`, `WorkspaceAvailabilityDto`), new `src/Explore.API/Controllers/UiShellController.cs`, new client `Contracts/Services/Shell/IUiShellContextService.cs` + `Services/Shell/UiShellContextService.cs`.
 - **Related skills/rules:** `cqrs-mediatr-guidelines`, `auth-patterns`, `.claude/rules/application-layer.md`, `.claude/rules/api-controllers.md`.
-- **Acceptance criteria:** endpoint returns 401 anonymous; authenticated response contains only the caller's authorities (instance admin without org membership gets NO Studio and NO tenant scope — report §6 rules 1–2 encoded in handler tests); Studio availability = at least one managed actor OR personal event-creation eligibility; settings scopes = Personal + each org/group with admin authority + Tenant (tenant-admin) + Instance (instance-admin); response carries resolved `ui_shell` navigation defaults (defaults hardcoded until Phase 7 keys exist — marked TODO with task ref).
+- **Acceptance criteria:** endpoint returns 401 anonymous; authenticated response contains only the caller's authorities (instance admin without org membership gets NO Studio and NO tenant scope — report §6 rules 1–2 encoded in handler tests); Studio availability = at least one managed actor OR personal event-creation eligibility; settings scopes = Personal + each org/group with admin authority + Tenant (tenant-admin) + Instance (instance-admin); response carries resolved `ui_shell` navigation defaults from the registered governance keys (Phase 0.2); handler falls back to safe defaults when keys are unset.
 
-#### Task 3.1: Application query + DTO + handler (+ group-publisher investigation)
+#### Task 3.1: Application query + DTO + handler (group-publisher resolved; managed actors reuse `IAiAssistantActorContextService`)
 - **Type:** create/investigate | **Layer:** Application | **Effort:** L
-- **Description:** Compose existing repositories/services already used by `GetAdminAuthorityRequest`, my-organizations/groups, and event-creation eligibility — do not duplicate their logic; extract shared internals only if reuse requires it (no cross-feature reach-ins). Resolve the group-actor publisher question (2.6) inside this task and record it in context. Cache per user via HybridCache with short TTL (≤60s) and explicit invalidation not required (capability drift tolerance documented). Unit tests: instance-admin-only, tenant-admin-only, organizer, seeker, multi-role union, org-centric pinned actor.
-- **Acceptance:** [ ] handler tests cover the eight report §6 scenarios that are representable today; [ ] no repository returns DTOs; [ ] CancellationToken flows.
-- **Dependencies:** —
+- **Description:** Compose existing repositories/services already used by `GetAdminAuthorityRequest`, my-organizations/groups, and event-creation eligibility — do not duplicate their logic; extract shared internals only if reuse requires it (no cross-feature reach-ins). **Managed actors:** reuse `IAiAssistantActorContextService.ListAuthorizedActorContextsAsync` to produce the actor list (organization + group actors) for Studio navigation; personal events fallback uses `GetMyEventsRequest`. **Group-publisher investigation (§2.6):** resolved — group actors are included in the managed-actor list; event creation for groups uses the existing `/events/create` publisher picker (no new group-specific create route). No HybridCache introduction; capability aggregation is computed per request (drift tolerance documented). Unit tests: instance-admin-only, tenant-admin-only, organizer, seeker, multi-role union, org-centric pinned actor. **Failing-first:** write a test that asserts `StudioWorkspaceAvailability = false` for an instance-admin-only principal before the handler implements the rule.
+- **Acceptance:** [ ] handler tests cover the eight report §6 scenarios that are representable today; [ ] no repository returns DTOs; [ ] CancellationToken flows; [ ] `IAiAssistantActorContextService` is the single source of managed actors; [ ] group-publisher finding recorded in context.
+- **Dependencies:** 0.2
 
-#### Task 3.2: API controller + route name + OpenAPI/NSwag regeneration
+#### Task 3.2: API controller + route name + OpenAPI/NSwag regeneration (exact method name verified after regen)
 - **Type:** create/modify | **Layer:** API | **Effort:** M
 - **Files:** new `UiShellController.cs`; modify `RouteNames.cs`, `docs/API.md`, `docs/API_CHANGELOG.md`; regenerate `schemas/openapi_islamu-event.json` + `EventApiClient.g.cs` via the documented msbuild target (`dotnet msbuild src/Explore.Blazor.Client/Explore.Blazor.Client.csproj /t:GenerateApiClient ...`).
-- **Description:** `[Route("api/ui-shell")]`, `GET context`, `Name = RouteNames.GetUiShellContext`, `[Authorize]`, `[EndpointClassification(EndpointClass.Authenticated)]`, `[ProducesResponseType]` for 200/401, `authenticated` rate-limit family (default), no output cache. OperationId `UiShell_GetContext` per naming pattern.
-- **Acceptance:** [ ] controller passes contract architecture tests; [ ] generated client exposes `UiShell_GetContextAsync` with no banned names; [ ] API changelog entry added.
+- **Description:** `[Route("api/ui-shell")]`, `GET context`, `Name = RouteNames.GetUiShellContext`, `[Authorize]`, `[EndpointClassification(EndpointClass.Authenticated)]`, `[PrivateNoStore]`, `[ProducesResponseType]` for 200/401, `authenticated` rate-limit family (default), no output cache. OperationId `UiShell_GetContext` per naming pattern. **NSwag:** exact generated method name is verified after documented regeneration rather than assumed; if the name differs, update the plan/context immediately. Generated OpenAPI/client files are one serialized lane (coordinate with webhook workstream to avoid collision).
+- **Acceptance:** [ ] controller passes contract architecture tests; [ ] generated client exposes the verified method name with no banned names; [ ] API changelog entry added; [ ] dirty-file hunk preservation controls are explicit (unrelated dirty files must not be committed with the regen).
 - **Dependencies:** 3.1
 
 #### Task 3.3: Client service + rail/nav gating
@@ -273,7 +292,7 @@ Desktop shell composition (logical directions):
 ### Phase 3 Verification (run once)
 - `dotnet build --configuration Release --verbosity quiet`
 - `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
-- **Rollback:** endpoint is additive; client falls back to previous role-based gating by reverting Task 3.3 commit. Contract regen is a discrete commit for easy revert.
+- **Rollback:** endpoint is additive; client falls back to previous role-based gating by reverting Task 3.3 changes. Contract regen produces a serialized/isolated generated-artifact diff; no commit unless explicitly requested.
 
 ### Phase 4: Studio Workspace
 - **Goal:** `/studio` route group with actor-level navigation + dashboard + events list; event-level navigation gated by HAL links; create/edit/session flows reachable from Studio.
@@ -292,16 +311,16 @@ Desktop shell composition (logical directions):
 - **Acceptance:** [ ] deep link `/studio/events` renders Studio nav + active state; [ ] single-actor and pinned-actor modes render identity header without switcher.
 - **Dependencies:** —
 
-#### Task 4.2: Studio dashboard + events list
+#### Task 4.2: Studio dashboard + events list (actor-scoped via `GetManagedEventsByActorAsync`)
 - **Type:** create | **Layer:** Blazor | **Effort:** L
-- **Description:** `StudioEvents` consumes `EventController.GetMyEvents` HAL collection through a thin `IStudioEventsService` (page → service → generated client per BLAZOR.md); dashboard shows actor identity + counts + quick actions gated by returned links. Row actions (edit/publish/…) rendered only from item `_links`.
-- **Acceptance:** [ ] list renders with HAL-gated row affordances (bUnit with fabricated `_links` variants); [ ] empty state offers Create only when eligible.
+- **Description:** `StudioEvents` consumes the actor-scoped event list: organization/group actors use `GetManagedEventsByActorAsync(actorId)` (generated client method); personal/unscoped fallback uses `GetMyEventsAsync` (existing HAL collection). Dashboard shows actor identity + counts + quick actions gated by returned links. Row actions (edit/publish/…) rendered only from item `_links`. **Create action:** uses the existing `/events/create` publisher picker (no new group-specific create route).
+- **Acceptance:** [ ] list renders with HAL-gated row affordances (bUnit with fabricated `_links` variants); [ ] empty state offers Create only when eligible; [ ] `GetManagedEventsByActorAsync` called for org/group actors; [ ] `GetMyEventsAsync` called for personal fallback.
 - **Dependencies:** 4.1
 
 #### Task 4.3: Event-level navigation shell (HAL-driven)
 - **Type:** create | **Layer:** Blazor | **Effort:** L
-- **Description:** `StudioEventShell` loads event detail once (existing detail service), cascades the resource; `StudioEventNavigation` replaces actor nav content: back link, title, status chip, and section links mapped `edit→Details`, `publish-readiness→Publication`, session relations→Schedule/Sessions, registration relations→Registration, team relation→Team, delete→Danger zone. Sections without implemented pages link to the existing editor surfaces (`/events/:id/edit` etc.).
-- **Acceptance:** [ ] section visibility flips with `_links` presence (table-driven bUnit test); [ ] no role/claim inspection anywhere in Studio components (`rg "IsInRole" src/Explore.Blazor.Client/Pages/Studio` empty).
+- **Description:** `StudioEventShell` loads event detail once (existing detail service), cascades the resource; `StudioEventNavigation` replaces actor nav content: back link, title, status chip, and section links mapped `edit→Details`, `publish-readiness→Publication`, session relations→Schedule/Sessions, registration relations→Registration, team relation→Team, delete→Danger zone. Sections without implemented pages link to the existing editor surfaces (`/events/:id/edit` etc.). **Group events:** creation/editing flows through the existing `/events/create` publisher picker; no new group-specific route or editor.
+- **Acceptance:** [ ] section visibility flips with `_links` presence (table-driven bUnit test); [ ] no role/claim inspection anywhere in Studio components (`rg "IsInRole" src/Explore.Blazor.Client/Pages/Studio` empty); [ ] group event links target existing `/events/create` picker.
 - **Dependencies:** 4.1, 4.2
 
 #### Task 4.4: Top-bar workspace awareness (search + primary action)
@@ -315,7 +334,7 @@ Desktop shell composition (logical directions):
 - **Depends on:** Phase 3 (AI workspace availability from shell context/`AiAssistantState`)
 - **Relevant files:** existing `AiAssistantRail.razor(.css)`, `Services/Ai/{AiAssistantClientService,AiAssistantConversationState}.cs`, `Components/Shell/AiAssistant/**`; new `Pages/Ai/AiWorkspace.razor(.cs/.css)`, `Pages/Ai/AiConversationPage.razor(.cs/.css)`, `Components/Shell/Workspaces/AiWorkspaceNavigation.razor(.cs/.css)`; modify `Routes.razor`, `WorkspaceRegistry`, `AiAssistantRail` (header "Open in AI workspace"), `NavMenu` (sparkle button unchanged as dock toggle).
 - **Related skills/rules:** `blazor-ui-conventions`; AI proposal/confirmation invariants from `docs/OPERATIONS.md` (HAL-gated proposed actions, no client-side authority).
-- **Acceptance criteria:** `/ai` and `/ai/chats/:conversationId` routes (guard: authenticated unless anonymous AI access allowed — same predicate as `AiAssistantState`); one conversation history for dock and workspace (opening a dock conversation in the workspace shows identical messages without refetch drift); proposed-action cards keep HAL-gated confirm/reject in both surfaces; dock stays available on non-AI pages; workspace title uses product naming ("AI Assistant"), model id only in an info popover from bootstrap data; rail AI item visible only when `AiAssistantState.IsAvailable`.
+- **Acceptance criteria:** `/ai` and `/ai/chats/:conversationId` use `AuthenticatedRouteGuard`; anonymous AI access remains dock-only; one conversation history for dock and workspace (opening a dock conversation in the workspace shows identical messages without refetch drift); proposed-action cards keep HAL-gated confirm/reject in both surfaces; dock stays available on non-AI pages; workspace title uses product naming ("AI Assistant"), model id only in an info popover from bootstrap data; rail AI item visible only when `AiAssistantState.IsAvailable`.
 - **Phase-end verification (run once):**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` (justified repeat: shared conversation components + new pages)
@@ -327,10 +346,10 @@ Desktop shell composition (logical directions):
 - **Acceptance:** [ ] `AiAssistantRail` bUnit suite green unchanged; [ ] extracted components have no rail-specific assumptions.
 - **Dependencies:** —
 
-#### Task 5.2: AI workspace pages + navigation + open-in-workspace
+#### Task 5.2: AI workspace pages + navigation + open-in-workspace (authenticated-only)
 - **Type:** create/modify | **Layer:** Blazor | **Effort:** L
-- **Description:** Pages compose shared components against the same scoped `AiAssistantConversationState`; `AiWorkspaceNavigation` = New conversation, Recent (list from state/service), conversation search; dock header button navigates to `/ai/chats/{selectedId}` (and workspace "return to page" uses `UiShellState` last-route map). Register AI workspace + routes.
-- **Acceptance:** [ ] dock→workspace→dock round trip preserves selected conversation and draft input state where the state object holds it; [ ] anonymous access matches `ai_assistant.allow_anonymous_access`.
+- **Description:** Pages compose shared components against the same scoped `AiAssistantConversationState`; `AiWorkspaceNavigation` = New conversation, Recent (list from state/service), conversation search; dock header button navigates to `/ai/chats/{selectedId}` (and workspace "return to page" uses `UiShellState` last-route map). Register AI workspace + routes. **`/ai` routes are authenticated-only** (`AuthenticatedRouteGuard`); anonymous AI access remains dock-only via the existing `ai_assistant.allow_anonymous_access` policy.
+- **Acceptance:** [ ] dock→workspace→dock round trip preserves selected conversation and draft input state where the state object holds it; [ ] `/ai` routes reject anonymous users (guard test); [ ] anonymous AI access remains dock-only.
 - **Dependencies:** 5.1
 
 ### Phase 6: Settings Workspace Hub
@@ -349,10 +368,10 @@ Desktop shell composition (logical directions):
 - **Acceptance:** [ ] scopes render from shell context (Personal always; others per authority) with org/group names; [ ] instance-admin-only user sees Personal + Instance, never Tenant (test).
 - **Dependencies:** —
 
-#### Task 6.2: Canonical routes + link migration + old-route removal
+#### Task 6.2: Canonical routes + link migration + old-route/`@page` removal
 - **Type:** modify/delete | **Layer:** Blazor | **Effort:** M
-- **Description:** Add new rows; `rg -n "/admin/tenant/settings|/admin/instance/settings|/admin/organization/.*/settings|/admin/group/.*/settings|/admin/tenant/navigation" src/` sweep and update every producer (NavMenu profile dropdown, admin layouts, onboarding links, tests); delete old rows.
-- **Acceptance:** [ ] sweep returns zero stale references; [ ] guards still enforce per-scope access (existing guard tests updated for new paths).
+- **Description:** Add new rows in `Routes.razor`; remove old `/admin/*/settings` central route rows. Remove old `@page` directives from `Pages/Admin/Tenant/Navigation.razor` (`/admin/tenant/navigation` was never in `Routes.razor`). `rg -n "/admin/tenant/settings|/admin/instance/settings|/admin/organization/.*/settings|/admin/group/.*/settings|/admin/tenant/navigation" src/` sweep and update every producer (NavMenu profile dropdown, admin layouts, onboarding links, tests, `@page` directives).
+- **Acceptance:** [ ] sweep returns zero stale references; [ ] guards still enforce per-scope access (existing guard tests updated for new paths); [ ] `/admin/tenant/navigation` `@page` directive removed.
 - **Dependencies:** 6.1
 
 #### Task 6.3: Single-tenant "Site administration" composition
@@ -365,22 +384,22 @@ Desktop shell composition (logical directions):
 - **Depends on:** Phases 2–4 (panels/workspaces exist), Phase 3 (context carries defaults)
 - **Relevant files:** existing `GovernanceSettingKeys.cs`, `src/Explore.Domain/Settings/SettingRegistry.cs` (+ its definitions files), `SettingsController` (no change expected), `Services/Interop/LocalStorageDockLayoutPersistence.cs`, `MainLayout.razor.cs` autosave path, `Pages/Admin/Tenant` settings sections, `docs/CONFIGURATION.md`; new `Services/Interop/ServerBackedDockLayoutPersistence.cs`, client `ShellPreferencesService`.
 - **Related skills/rules:** `dotnet-efcore-guidelines` not needed (no migration — `UserPreference` reused; if `SettingRegistry` requires seeded definitions verify seeding path in Task 7.1), `.claude/rules/application-layer.md` for definition placement.
-- **Acceptance criteria:** authenticated resize/collapse persists across devices via `api/settings/user/{category}` batch writes (one PUT per debounce window, never per pointer event); restore clamps via descriptors and drops unknown ids/revoked actors/workspaces; viewport-driven projection never writes; anonymous users keep tenant-scoped localStorage with optional promote-on-login; tenant defaults (`ui_shell.*`, D8) resolve through the cascade with instance locks honored; user override disabled ⇒ tenant-forced mode wins and the client does not persist overridden values; `docs/CONFIGURATION.md` documents every new key.
+- **Acceptance criteria:** authenticated resize/collapse persists across devices via `api/settings/user/{category}` batch writes (one PUT per debounce window, never per pointer event); restore clamps via descriptors and drops unknown ids/revoked actors/workspaces; viewport-driven projection never writes; anonymous users keep tenant-scoped localStorage and promote it on first authenticated hydrate when the server value is absent; tenant defaults (`ui_shell.*`, D8) resolve through the cascade with instance locks honored; user override disabled ⇒ tenant-forced mode wins and the client does not persist overridden values; `docs/CONFIGURATION.md` documents every new key.
 - **Phase-end verification (run once):**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` (covers settings round-trip, shell-context contract incl. Phase 3 endpoint, and registry-driven governance keys end-to-end)
 - **Rollback / failure handling:** server persistence is a decorating `IDockLayoutPersistence`; DI swap back to localStorage restores prior behavior; governance keys default to current behavior (`Docked` events nav, override allowed, rail authenticated-only for org-centric public), so unset tenants see no change.
 
-#### Task 7.1: Governance keys + registry definitions + shell-context wiring
+#### Task 7.1: Shell-context wiring + public-experience governance resolution
 - **Type:** create/modify | **Layer:** Domain + Application | **Effort:** M
-- **Description:** Add D8 keys and D7 user-preference keys to `GovernanceSettingKeys`; register `SettingDefinition`s with allowed scopes (defaults per D8); resolve into `GetUiShellContextRequestHandler` (`navigationDefaults`, `allowUserOverride`, `organizerDefaultWorkspace`, `railPublicVisibility`); org-centric anonymous rail visibility resolved into the public-experience shell handler. Investigate and follow the existing definition-file layout inside `SettingRegistry` composition (e.g. a `UiShellSettingDefinitions` list).
-- **Acceptance:** [ ] registry parity/architecture tests green; [ ] handler tests prove lock and single-tenant bypass semantics for one representative key.
-- **Dependencies:** —
+- **Description:** Wire registered D8 keys (from Phase 0.2) into `GetUiShellContextRequestHandler` (`navigationDefaults`, `allowUserOverride`, `organizerDefaultWorkspace`, `railPublicVisibility`); org-centric anonymous rail visibility resolved into the public-experience shell handler. Update `docs/CONFIGURATION.md` to document every new key.
+- **Acceptance:** [ ] handler tests prove lock and single-tenant bypass semantics for one representative key; [ ] `docs/CONFIGURATION.md` documents every new key.
+- **Dependencies:** 0.2, 3.1
 
-#### Task 7.2: Server-backed dock persistence + last workspace/actor
+#### Task 7.2: Server-backed dock persistence + last workspace/actor (tenant-discriminated anonymous storage)
 - **Type:** create/modify | **Layer:** Blazor | **Effort:** L
-- **Description:** `ServerBackedDockLayoutPersistence` implements `IDockLayoutPersistence`: authenticated → read/write the versioned snapshot JSON under `ui_shell_preferences.layout.v1` via `UserSettingsService` (batch PUT), anonymous → delegate to localStorage; promote local→server on first authenticated hydrate when server value absent. Persist `last_workspace`/`last_actor` on navigation/actor change (debounced). Honor `allowUserOverride=false` by skipping nav-mode persistence.
-- **Acceptance:** [ ] unit tests cover authenticated/anonymous/promotion/revoked-actor pruning; [ ] autosave still fires only for `UserAction`/`Reset` reasons.
+- **Description:** `ServerBackedDockLayoutPersistence` implements `IDockLayoutPersistence`: authenticated → read/write the versioned snapshot JSON under `ui_shell_preferences.layout.v1` via `UserSettingsService` (batch PUT), anonymous → delegate to `LocalStorageDockLayoutPersistence` with a tenant discriminator (`dock_layout:v1:{tenantSlug}:`). No old-key compatibility read — stale anonymous snapshots from pre-discriminator keys are ignored. Promote local→server on first authenticated hydrate when server value absent. Persist `last_workspace`/`last_actor` on navigation/actor change (debounced). Honor `allowUserOverride=false` by skipping nav-mode persistence.
+- **Acceptance:** [ ] unit tests cover authenticated/anonymous/promotion/revoked-actor pruning; [ ] autosave still fires only for `UserAction`/`Reset` reasons; [ ] anonymous storage key includes tenant slug; [ ] no old-key compatibility read path exists.
 - **Dependencies:** 7.1
 
 #### Task 7.3: Tenant admin "Shell" settings section
@@ -392,7 +411,7 @@ Desktop shell composition (logical directions):
 ### Phase 8: Responsive, RTL, Accessibility Hardening + Scenario Matrix
 - **Goal:** Mobile bottom-nav projection of the rail, workspace canvas minimums, landmark/focus polish, and the table-driven scenario suite.
 - **Depends on:** Phases 1–7
-- **Relevant files:** `AppWorkspaceRail.razor(.css)`, `MainLayout.razor.css`, `DockLayoutState.cs` (workspace-specific content floor), `WorkspaceNavigationHost`, `docs/DOCK_LAYOUT.md` (responsive matrix additions), `docs/ACCESSIBILITY.md` (landmark inventory); tests in `Explore.Blazor.Client.Tests` + `Event.Architecture.Tests` a11y conventions.
+- **Relevant files:** `AppWorkspaceRail.razor(.css)`, `MainLayout.razor.css`, `DockLayoutState.cs` (generic caller-supplied content-floor hint), `WorkspaceNavigationHost`, `docs/DOCK_LAYOUT.md` (responsive matrix additions), `docs/ACCESSIBILITY.md` (landmark inventory); tests in `Explore.Blazor.Client.Tests` + `Event.Architecture.Tests` a11y conventions.
 - **Related skills/rules:** `docs/ACCESSIBILITY.md`, `docs/LOCALIZATION.md`, dock responsive policy.
 - **Acceptance criteria:** ≤ `Breakpoint.Xs` the rail renders as bottom navigation (Events | Studio | AI | Settings, availability-filtered) and never as a start track; workspace nav opens as temporary drawer (existing dock projection); workspace-specific canvas minimums applied via a per-workspace content-floor hint consumed by the projection rule (Events 375, AI 520, Settings 560, Studio 720) without persisting projected state; document title + focus move to `h1`/main on workspace switch; rail and each nav provider expose distinct `aria-label`s; RTL mirrors rail/nav/dock via logical properties (`:dir(rtl)` overrides only where animation direction requires); scenario matrix implemented as table-driven bUnit tests over Profile(Discovery/OrganizationCentric) × Auth(anon/user) × Capabilities(seeker/organizer/tenant-admin/instance-admin/multi-role) × Workspace × Viewport(mobile/desktop) asserting rail items, nav content, settings scopes, default route, and revocation fallback; `docs/DOCK_LAYOUT.md` QA matrix extended with rail scenarios.
 - **Phase-end verification (run once):**
@@ -400,27 +419,38 @@ Desktop shell composition (logical directions):
   - `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` (justified repeat: this phase's scenario matrix lives here)
 - **Rollback / failure handling:** responsive changes are CSS/projection-rule scoped; the per-workspace floor is a pure function change with unit tests; revert restores the global 375px floor.
 
-#### Task 8.1: Mobile bottom navigation + workspace canvas floors — **Effort:** L
-- **Acceptance:** [ ] `DockLayoutStateTests` extended for per-workspace floors; [ ] bottom nav bUnit coverage incl. availability filtering.
+#### Task 8.1: Mobile bottom navigation + generic workspace canvas floors — **Effort:** L
+- **Description:** ≤ `Breakpoint.Xs` the rail projects to bottom navigation (existing Phase 1.3 mobile behavior refined). Workspace content floors are supplied as a generic hint (Events 375, AI 520, Settings 560, Studio 720) consumed by the projection rule; `DockLayoutState` contains no workspace-specific branching — the floor is a pure function of the active workspace key passed from `UiShellState`.
+- **Acceptance:** [ ] `DockLayoutStateTests` extended for generic floor hint; [ ] bottom nav bUnit coverage incl. availability filtering; [ ] `DockLayoutState` has zero workspace-specific conditional logic.
 #### Task 8.2: Focus/landmark/RTL polish — **Effort:** M
 - **Acceptance:** [ ] architecture a11y tests green; [ ] workspace switch moves focus (bUnit assertion on focus service calls).
 #### Task 8.3: Scenario-matrix suite + docs sync — **Effort:** L
 - **Acceptance:** [ ] matrix rows match report §6 table where implemented; [ ] DOCK_LAYOUT/ACCESSIBILITY/BLAZOR docs updated in the same tasks that changed behavior (fold-in rule).
 
+### Phase 9: Final Visual/Browser QA Gate ⏳ NOT STARTED
+- **Goal:** Independent visual and browser QA verifying the integrated shell across workspaces, viewports, and auth states.
+- **Depends on:** Phases 1–8
+- **Relevant files:** all shell components, `MainLayout`, `AppWorkspaceRail`, workspace navigation providers, Studio/AI/Settings pages.
+- **Acceptance criteria:** rail renders correctly on desktop and mobile for anonymous, authenticated seeker, organizer, tenant-admin, and instance-admin principals; workspace switches animate smoothly; bottom nav is reachable and functional; no layout breakage at 320px, 768px, 1280px, 1920px; focus order is logical; no console errors on workspace navigation. This is a final independent gate even though deterministic per-phase tests remain primary.
+- **Phase-end verification:**
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
+  - Manual browser walkthrough of the scenario matrix (documented in `docs/DOCK_LAYOUT.md` QA matrix).
+
 ## 7. Testing Strategy
 
-One build + at most one test project per phase (assignments above). `Explore.Blazor.Client.Tests` repeats in Phases 1/4/5/6/8 because each phase adds new bUnit-covered components — it is the fastest deterministic project owning that surface. Intent-mandated projects distributed: `Event.Architecture.Tests` (Phase 2), `Event.Application.UnitTests` (Phase 3), `Event.API.IntegrationTests` (Phase 7). No E2E/Playwright/browser/Docker-startup verification is planned; `Explore.Blazor.Client.E2ETests` is intentionally unused. Delete obsolete tests (old routes, `SidebarState`, `shell.left-nav`) — never skip them.
+One build + at most one test project per phase (assignments above). `Explore.Blazor.Client.Tests` repeats in Phases 1/4/5/6/8 because each phase adds new bUnit-covered components — it is the fastest deterministic project owning that surface. Intent-mandated projects distributed: `Event.Architecture.Tests` (Phase 2), `Event.Application.UnitTests` (Phase 3), `Event.API.IntegrationTests` (Phase 7). No E2E/Playwright/browser/Docker-startup verification is planned for intermediate phases; `Explore.Blazor.Client.E2ETests` is intentionally unused. **Failing-first test expectation:** every task that changes executable behavior starts with the smallest relevant check that fails before implementation and passes afterward (e.g. guard rejection, actor-list source, tenant-discriminator key, generic floor hint). Delete obsolete tests (old routes, `SidebarState`, `shell.left-nav`) — never skip them.
 
 ## 8. Documentation, Configuration, And Operations Impact
 
 | Artifact | Change | Phase |
 |---|---|---|
-| `docs/adr/ADR-016-workspace-shell-composition.md` | new | 1 |
+| `docs/adr/ADR-019-workspace-shell-composition.md` | new | 1 |
 | `docs/DOCK_LAYOUT.md` | panel rename, bridge removal, rail note, responsive matrix rows | 2, 8 |
 | `docs/BLAZOR.md` | service/state table, workspace shell section, settings routes | 2, 6 |
 | `docs/API.md` + `docs/API_CHANGELOG.md` | `GET api/ui-shell/context` | 3 |
-| `schemas/openapi_islamu-event.json` + `EventApiClient.g.cs` | regeneration (discrete commit) | 3 |
-| `docs/CONFIGURATION.md` | `ui_shell.*` + `ui_shell_preferences.*` keys, scopes, locks, defaults | 7 |
+| `schemas/openapi_islamu-event.json` + `EventApiClient.g.cs` | regeneration (serialized/isolated diff) | 3 |
+| `docs/CONFIGURATION.md` | `ui_shell.*` + `ui_shell_preferences.*` keys, scopes, locks, defaults; wiring notes when consumed | 0, 7 |
 | `docs/ACCESSIBILITY.md` | landmark inventory update | 8 |
 | No Compose/Aspire/deployment/secret changes | — | — |
 
@@ -452,8 +482,8 @@ No new operational surface. The shell-context endpoint participates in standard 
 ## 12. Migration And Compatibility Plan
 
 - **No EF migration.** Storage reuses `UserPreference`; governance keys are registry-defined.
-- **Removed without aliases (dev mode, explicitly approved by request):** `shell.left-nav` panel id, `AppSideNav` component, `SidebarState` service, `/admin/tenant/settings`, `/admin/instance/settings`, `/admin/organization/:id/settings`, `/admin/group/:id/settings`, `/admin/tenant/navigation` route rows (components live on under `/settings/**`).
-- **Generated contract:** one additive endpoint; regeneration is a discrete commit; converges on second generation.
+- **Removed without aliases (dev mode, explicitly approved by request):** `shell.left-nav` panel id, `AppSideNav` component, `SidebarState` service, `/admin/tenant/settings`, `/admin/instance/settings`, `/admin/organization/:id/settings`, `/admin/group/:id/settings` central route rows; `/admin/tenant/navigation` `@page` directive (it was never in `Routes.razor`). Components live on under `/settings/**`.
+- **Generated contract:** one additive endpoint; regeneration produces a serialized/isolated generated-artifact diff; no commit unless explicitly requested.
 - **Stale localStorage snapshots** referencing `shell.left-nav` are dropped by the defensive restore path (verified behavior) — no cleanup code needed.
 
 ## 13. Risk Register
@@ -464,7 +494,7 @@ No new operational surface. The shell-context endpoint participates in standard 
 | `NavMenu` refactor regressions (it owns search, eligibility, admin menu, AI toggle) | Medium | Medium | Incremental edits per phase (2.3, 3.3, 4.4) each with bUnit coverage; never one big rewrite | NavMenu test failures | 2.3/3.3/4.4 |
 | Shell-context handler quietly duplicates authority logic and drifts from `GetAdminAuthority` | Medium | High | Compose existing handlers/repos; parity unit tests comparing both outputs for the same principal | Application unit tests | 3.1 |
 | Settings route removal misses internal links | Medium | Medium | Bounded `rg` sweep is an acceptance criterion; NotFound page catches stragglers in dev | 404s in dev; failing guard tests | 6.2 |
-| NSwag regen churn colliding with parallel workstreams (webhooks intent pins `EventApiClient.g.cs`) | Medium | Medium | Regen is a discrete commit; coordinate with active webhook workstream before Phase 3 lands | git conflicts on `.g.cs` | 3.2 |
+| NSwag regen churn colliding with parallel workstreams (webhooks intent pins `EventApiClient.g.cs`) | Medium | Medium | Regen is a serialized/isolated generated-artifact diff; coordinate with active webhook workstream before Phase 3 lands | git conflicts on `.g.cs` | 3.2 |
 | Studio scope creep (building features instead of shells) | High | Medium | Phase 4 acceptance explicitly limits to shells + links to existing editors; deferred list is authoritative | Task ledger growth | 4.x |
 | `Blazouter` router limitations for workspace metadata | Low | Medium | Prefix classification needs no router changes; extension only if evidence appears | classifier tests | 1.2 |
 | Architecture a11y tests break on landmark moves | Medium | Low | Update tests in the same task as the structural change (Phases 1–2), never delete coverage | `Event.Architecture.Tests` | 1.3, 2.1 |
@@ -475,7 +505,7 @@ No new operational surface. The shell-context endpoint participates in standard 
 - Capability truth: no `IsInRole`/claim inspection in any new shell/Studio/Settings component; Studio visibility flips with server data alone.
 - One conversation system: dock and `/ai` provably share history/state.
 - Preferences: cross-device layout restore for authenticated users; tenant defaults + locks effective; projection never persists.
-- All eight phase gates green: each = one Release build + the phase's single test project run.
+- All ten phase gates green: each = one Release build + the phase's single test project run. Phase 9 adds a final visual/browser QA gate.
 
 ## 15. Implementation Agent Contract — KEEP DEV DOCS CURRENT
 
@@ -506,7 +536,7 @@ Docs updated: yes/no with reason (tasks.md reconciliation confirmed; context/pla
 
 ## 17. Potential Risks & Unknowns
 
-The most likely failure point is **Phase 3's capability aggregation**. The client currently derives Studio-grade eligibility from four independent calls whose semantics were never designed to compose (`AdminAuthorityDto`, onboarding status, my-orgs/my-groups, event-creation eligibility), and the group-actor publisher path is unverified (§2.6). If the handler reproduces these semantics imperfectly, workspace visibility will be silently wrong for edge principals (instance-admin-who-is-also-organizer, group-only organizers, org-centric pinned tenants). The mitigation is real but not free: parity tests against `GetAdminAuthority` outputs and the eight scenario rows. Second-order risk: the Settings route unification (Phase 6) touches many link producers; the `rg` sweep is bounded, but SSR-prerendered links or string-built URLs could hide from the pattern — the NotFound page plus guard tests are the backstop. Finally, the deferred navigation-override model (report §13) is intentionally out of scope; if the user expected the tenant navigation editor in this workstream, that is a scope decision to make at review time.
+The most likely failure point is **Phase 3's capability aggregation**. The client currently derives Studio-grade eligibility from four independent calls whose semantics were never designed to compose (`AdminAuthorityDto`, onboarding status, my-orgs/my-groups, event-creation eligibility). Managed organization/group actors are resolved through `IAiAssistantActorContextService`, and group creation uses the existing `/events/create` publisher picker; the remaining risk is reproducing the broader eligibility semantics imperfectly, which would make workspace visibility silently wrong for edge principals (instance-admin-who-is-also-organizer, group-only organizers, org-centric pinned tenants). The mitigation is real but not free: parity tests against `GetAdminAuthority` outputs and the eight scenario rows. Second-order risk: the Settings route unification (Phase 6) touches many link producers; the `rg` sweep is bounded, but SSR-prerendered links or string-built URLs could hide from the pattern — the NotFound page plus guard tests are the backstop. Finally, the deferred navigation-override model (report §13) is intentionally out of scope; if the user expected the tenant navigation editor in this workstream, that is a scope decision to make at review time.
 
 ## Deferred Work (explicit)
 

@@ -290,7 +290,7 @@ Source-grounded examples:
 
 | Pattern | Examples |
 |---|---|
-| Layout/shell state | `MainLayout.razor.cs`, `AppSideNav.razor.cs`, `AnnouncementBar.razor.cs` |
+| Layout/shell state | `DockLayoutState`, `UiShellState`, `MainLayout.razor.cs`, `WorkspaceNavigationHost.razor.cs`, `Workspaces/EventsWorkspaceNavigation.razor.cs` |
 | AI assistant state | `AiAssistantState`, `AiAssistantConversationState`, `IAiAssistantClientService` |
 | Cross-component event bridge | `CookieConsentStateService` |
 | Public-experience cache | `PublicExperienceService` |

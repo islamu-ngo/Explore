@@ -6,8 +6,8 @@
 > **Audience:** Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Frontend
-> **Last Verified:** 2026-05-21
-> **Source Anchors:** `Explore.Blazor.Client/Services/Docking/`, `Explore.Blazor.Client/Components/Docking/`, `Explore.Blazor.Client/Layout/MainLayout.razor`, `Explore.Blazor.Client/Layout/MainLayout.razor.cs`, `Explore.Blazor.Client/Layout/MainLayout.razor.css`, `Explore.Blazor.Client/Components/Shell/ShellDockPanels.cs`, `Explore.Blazor.Client/Components/Shell/AiAssistantRail.razor`, `Explore.Blazor.Client/Components/Shell/AppSideNav.razor.cs`, `Explore.Blazor.Client/Pages/Events/EventList.razor`, `Explore.Blazor.Client/Pages/Events/EventList.razor.cs`, `Explore.Blazor.Client/Pages/Events/EventList.razor.css`, `Explore.Blazor.Client/Pages/Events/EventListDockingController.cs`, `Explore.Blazor.Client/Pages/Events/EventDockPanels.cs`, `Explore.Blazor.Client/Services/Interop/LocalStorageDockLayoutPersistence.cs`, `Explore.Blazor.Client/wwwroot/js/dock-layout-persistence.js`, `Explore.Blazor.Client.Tests/Services/Docking/`, `Explore.Blazor.Client.Tests/Components/Docking/`, `Explore.Blazor.Client.Tests/Layout/DockRegistrationTests.cs`, `Event.Architecture.Tests/DockLayoutArchitectureTests.cs`
+> **Last Verified:** 2026-07-21
+> **Source Anchors:** `Explore.Blazor.Client/Services/Docking/`, `Explore.Blazor.Client/Components/Docking/`, `Explore.Blazor.Client/Layout/MainLayout.razor`, `Explore.Blazor.Client/Layout/MainLayout.razor.cs`, `Explore.Blazor.Client/Layout/MainLayout.razor.css`, `Explore.Blazor.Client/Components/Shell/ShellDockPanels.cs`, `Explore.Blazor.Client/Components/Shell/AiAssistantRail.razor`, `Explore.Blazor.Client/Components/Shell/WorkspaceNavigationHost.razor.cs`, `Explore.Blazor.Client/Components/Shell/Workspaces/EventsWorkspaceNavigation.razor.cs`, `Explore.Blazor.Client/Pages/Events/EventList.razor`, `Explore.Blazor.Client/Pages/Events/EventList.razor.cs`, `Explore.Blazor.Client/Pages/Events/EventList.razor.css`, `Explore.Blazor.Client/Pages/Events/EventListDockingController.cs`, `Explore.Blazor.Client/Pages/Events/EventDockPanels.cs`, `Explore.Blazor.Client/Services/Interop/LocalStorageDockLayoutPersistence.cs`, `Explore.Blazor.Client/wwwroot/js/dock-layout-persistence.js`, `Explore.Blazor.Client.Tests/Services/Docking/`, `Explore.Blazor.Client.Tests/Components/Docking/`, `Explore.Blazor.Client.Tests/Layout/DockRegistrationTests.cs`, `Event.Architecture.Tests/DockLayoutArchitectureTests.cs`
 
 ## Purpose
 
@@ -32,7 +32,7 @@ The current panel catalog is small and explicit.
 
 | Panel | Id | Scope | Side | Default mode | Width | Resizable | Closeable | Persisted |
 |---|---|---|---|---|---:|---|---|---|
-| Navigation | `shell.left-nav` | `Shell` | `Start` | `Docked` | 280 | Yes | Yes | Yes |
+| Workspace navigation | `shell.workspace-nav` | `Shell` | `Start` | `Docked` | 280 | Yes | Yes | Yes |
 | AI Assistant | `shell.ai-assistant` | `Shell` | `End` | `Docked` | 360 | Yes | Yes | Yes |
 | Customize View | `events.customize-view` | `Workspace` | `End` | `Docked` | 320 | Yes | Yes | Yes |
 | Event Preview | `events.event-preview` | `Workspace` | `End` | `Inspector` | 440 | No | Yes | No |
@@ -75,7 +75,7 @@ The runtime is split into four layers.
 4. Persistence and adapter layer
 
 - `LocalStorageDockLayoutPersistence` stores snapshot state in browser `localStorage`.
-- `MainLayout` adapts shell dock state to legacy `SidebarState` and `AiAssistantState`.
+- `MainLayout` controls workspace navigation directly through `DockLayoutState` and adapts only AI policy state through `AiAssistantState`.
 - `EventListDockingController` adapts workspace dock state to page-local booleans and autosave.
 
 ## State Model
@@ -191,7 +191,7 @@ Current descriptor policy fields:
 
 Production descriptors use those defaults deliberately:
 
-- `shell.left-nav`: tabbed stack strategy and priority `10`.
+- `shell.workspace-nav`: tabbed stack strategy and priority `10`.
 - `shell.ai-assistant`: split stack strategy and priority `20`.
 - `events.customize-view`: split stack strategy and priority `20`.
 - `events.event-preview`: split stack strategy and priority `30`, non-persistent inspector state.
@@ -521,19 +521,19 @@ Responsibilities:
 - registers shell descriptors on initialization
 - renders shell panel content through render fragments
 - hydrates shell snapshot from `layoutKey = "shell"`
-- mirrors legacy `SidebarState` and `AiAssistantState` into dock state
-- mirrors dock state back into those bridge services on dock changes
+- derives workspace-navigation availability from `UiShellState` plus `IWorkspaceRegistry` and controls its panel directly through `DockLayoutState`
+- mirrors `AiAssistantState` policy/open state into the AI dock and back on dock changes
 - autosaves only meaningful user/reset shell layout changes
 - resets shell layout by closing, restoring default mode, restoring default width, and deleting persisted state
 
 Shell content registration is currently:
 
-- `AppSideNav` for `shell.left-nav`
+- `EventsWorkspaceNavigation` through `WorkspaceNavigationHost` for `shell.workspace-nav`
 - `AiAssistantRail HostedInDock="true"` for `shell.ai-assistant`
 
-### `AppSideNav` overlay awareness
+### `WorkspaceNavigationHost` overlay chrome
 
-`AppSideNav` receives the current `DockPanelEntry` as a cascading parameter. It uses that to detect whether it is in overlay-like modes and whether it should render overlay-specific close/header affordances.
+`WorkspaceNavigationHost` receives the current `DockPanelEntry` as a cascading parameter. In overlay-like modes it renders the shared brand header and close action before the active workspace provider, so `EventsWorkspaceNavigation`, Settings navigation, and future providers inherit the same shell chrome.
 
 ### `AiAssistantRail` dual-mode behavior
 
@@ -594,7 +594,7 @@ Only panels whose descriptor sets `PersistState = true` are included in snapshot
 
 Currently that means:
 
-- `shell.left-nav`
+- `shell.workspace-nav`
 - `shell.ai-assistant`
 - `events.customize-view`
 
