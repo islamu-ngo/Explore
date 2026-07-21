@@ -1176,6 +1176,114 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 - **Effort:** M
 - **Required Skills/Rules:** blazor-ui-conventions, blazor-client.md, api-hateoas.md.
 
+### Phase 13: Inbound Event Recovery and Backfill Configuration
+
+- **Goal:** Implement automatic downtime recovery (catching up on Jetstream missed events), dynamic subscription updates via `SendOptionsUpdateAsync`, and tenant-governed event backfilling (both `DowntimeOnly` and `Full` modes) using CarpaNet.
+- **Depends on:** Phase 12.
+- **Related skills/rules:** clean-architecture-rules, cqrs-mediatr-guidelines, dotnet-efcore-guidelines.
+- **Acceptance criteria:**
+  - Tenant admin can toggle backfill enabled and select between downtime-only and full modes.
+  - Ingestion gap recovery dynamically requests missing records from PDS repositories without starting a socket per tenant.
+  - Jetstream dynamically updates allowed DIDs and collections without restarting the background service.
+  - Token refresh automatically propagates back to encrypted database sessions.
+- **Phase-end verification (run once after all tasks):**
+  - dotnet build --configuration Release --verbosity quiet
+  - dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet
+- **Rollback / failure handling:** Disable backfill settings and fall back to the live-only Jetstream cursor.
+
+#### Task 13.1: Add Tenant Settings and Rules for Backfilling
+
+- **Type:** create / modify
+- **Layer:** Domain / Application / API / Blazor Client
+- **Files:**
+  - src/Explore.Domain/Constants/GovernanceSettingKeys.cs (existing)
+  - src/Explore.Domain/Settings/Definitions/AtprotoFederationSettingDefinitions.cs (existing)
+  - src/Explore.Application/Settings/Groups/AtprotoFederationSettingGroup.cs (existing)
+- **Description:** Introduce `federation.atproto_events_backfill_enabled` (Boolean) and `federation.atproto_events_backfill_mode` (Enum: platform-defined platform-neutral codes for `DowntimeOnly` and `Full`) into the setting registry. Ensure they are lockable at the instance tier and cascade through the tenant settings stack. Seed them as disabled/downtime-only by default and instance-locked.
+- **Acceptance Criteria:**
+  - [ ] Both settings can be read, overridden, locked, and unlocked via standard settings API and UI.
+  - [ ] Standard five-tier settings resolution cascade applies.
+- **Dependencies:** Phase 12.
+- **Effort:** L
+- **Required Skills/Rules:** cqrs-mediatr-guidelines, domain-layer.md.
+
+#### Task 13.2: Implement Jetstream Dynamic Filter Updates
+
+- **Type:** modify
+- **Layer:** Infrastructure
+- **Files:**
+  - src/Explore.Infrastructure/Services/Federation/AtprotoJetstreamSubscriber.cs (existing)
+- **Description:** Implement dynamic subscription option updates in the leased Jetstream worker. When allowed DIDs or collections are updated in the configuration or tenant parameters, invoke `client.SendOptionsUpdateAsync` with the updated list of `WantedDids` or `WantedCollections` rather than severing and restarting the WebSocket connection.
+- **Acceptance Criteria:**
+  - [ ] Dynamic updates occur without restarting the background service task.
+  - [ ] Option updates correctly throttle and avoid flooding the Jetstream server.
+- **Dependencies:** 13.1.
+- **Effort:** M
+- **Required Skills/Rules:** error-tracking.
+
+#### Task 13.3: Implement Inbound Event Backfill Engine
+
+- **Type:** create
+- **Layer:** Application / Infrastructure / API
+- **Files:**
+  - src/Explore.Application/Features/Federation/Atproto/Requests/Commands/SyncFederatedEventsCommand.cs (new)
+  - src/Explore.Application/Features/Federation/Atproto/Handlers/Commands/SyncFederatedEventsCommandHandler.cs (new)
+  - src/Explore.Application/Features/Federation/Atproto/Validators/SyncFederatedEventsCommandValidator.cs (new)
+  - src/Explore.Infrastructure/Services/Federation/AtprotoPdsBackfillGateway.cs (new)
+- **Description:** Build the event backfilling engine using CarpaNet repo/sync APIs.
+  - **DowntimeOnly:** Read the saved cursor from `AtprotoJetstreamConsumerState` to calculate the start timestamp, and page through `com.atproto.repo.listRecords` to retrieve events within the downtime gap.
+  - **Full (for ISLAMU's Instance):** Download the full repository CAR file via `com.atproto.sync.getRepo`, parse it with CarpaNet's `Repository.Load(carBytes)` and `CarReader`, and extract all community lexicon calendar events and RSVPs.
+  - Map extracted records into local Event and Registration tables, manually validating each record using `CreateEventValidator` against the active profile (`platform` or `community_lexicon`), and deduplicate against existing local/federated events to prevent duplication.
+- **Acceptance Criteria:**
+  - [ ] Downtime backfill catches up on missed events since the last cursor timestamp without indexing history outside the downtime.
+  - [ ] Full backfill fetches the complete repository CAR file, successfully extracts and stores all event records, and creates local Event entities.
+  - [ ] Ingested events are validated against the tenant's validation profile.
+  - [ ] Deduplication matches by DID, collection, and record key to prevent duplicate index rows.
+- **Dependencies:** 13.2.
+- **Effort:** XL
+- **Required Skills/Rules:** clean-architecture-rules, dotnet-efcore-guidelines, cqrs-mediatr-guidelines.
+
+#### Task 13.4: Automate Ingest Token Refresh Hook
+
+- **Type:** modify
+- **Layer:** Infrastructure / Application
+- **Files:**
+  - src/Explore.Infrastructure/Services/Federation/AtprotoOAuthSecurityGateway.cs (existing)
+- **Description:** Bind the token refreshed event handler in `ATProtoClient` to the encrypted `UserAuthenticationToken` persistence layer. Ensure that whenever CarpaNet performs an automatic token refresh during backfill or session validation, the rotated tokens are immediately re-encrypted and persisted.
+- **Acceptance Criteria:**
+  - [ ] `TokenRefreshed` event is fired and caught.
+  - [ ] Rotated credentials are encrypted and stored in `UserAuthenticationToken` immediately.
+- **Dependencies:** 13.3.
+- **Effort:** L
+- **Required Skills/Rules:** auth-patterns.
+
+### Phase 14: Decoupled PDS Identity and Extensibility
+
+- **Goal:** Ensure PDS independence (Bluesky, Eurosky, self-hosted) and maintain clean abstractions to support future Keycloak + local PDS integration without breaking changes.
+- **Depends on:** Phase 13.
+- **Related skills/rules:** clean-architecture-rules, auth-patterns.
+- **Acceptance criteria:**
+  - Authentication works with accounts in Eurosky, self-hosted, or Bluesky PDS endpoints.
+  - Extensible registration boundaries exist so future PDS custodial registration can be added without architectural rewrites.
+- **Phase-end verification (run once after all tasks):**
+  - dotnet build --configuration Release --verbosity quiet
+  - dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet
+- **Rollback / failure handling:** Revert to default/Bluesky configurations.
+
+#### Task 14.1: Verify Universal PDS OAuth Compatibility
+
+- **Type:** modify / verify
+- **Layer:** Blazor / Infrastructure
+- **Files:**
+  - src/Explore.Blazor/Authentication/AtprotoAuthenticationHandler.cs (existing)
+- **Description:** Verify and document that the BFF's OAuth client metadata and key publication are fully compatible with any compliant PDS. Use `IdentityResolver.CreateWithCache()` to dynamically resolve handles to DIDs and fetch their respective PDS endpoints, rather than hardcoding to Bluesky hosts. Maintain decoupled interfaces so future PDS registration/auth providers can hook into the identity lifecycle.
+- **Acceptance Criteria:**
+  - [ ] Authentication challenge successfully discovers and uses authorization endpoints from non-Bluesky PDS hosts.
+  - [ ] DID document handles resolve efficiently using cached resolution.
+- **Dependencies:** Phase 13.
+- **Effort:** M
+- **Required Skills/Rules:** auth-patterns.
+
 ## 7. Testing Strategy
 
 Each phase owns focused tests with its implementation tasks, then runs one Release build and one fastest relevant non-browser project once.
@@ -1194,13 +1302,15 @@ Each phase owns focused tests with its implementation tasks, then runs one Relea
 | 10 | Explore.Infrastructure.Tests | Proves exact Jetstream collection filters, cursor/replay behavior, parsing, allowlist, echo prevention, reconnect, and tombstones. |
 | 11 | Event.API.IntegrationTests | Proves tenant gating, de-duplication, public API/OpenAPI behavior, and HAL relations for inbound/local federation state. |
 | 12 | Explore.Blazor.Client.Tests | Proves lock-aware admin/user controls, accessible consent/profile UX, federated rendering, and HAL-only action gating. |
+| 13 | Explore.Infrastructure.Tests | Proves Jetstream dynamic updates, backfill logic, CAR reading, and token refresh hooks. |
+| 14 | Explore.Blazor.IntegrationTests | Proves universal PDS OAuth routing and dynamic provider discovery. |
 
-Intent-mandated projects are distributed across the twelve phases. No phase adds a second dotnet test command. Repeated test projects have distinct bounded purposes recorded above. The report's Bluesky/Eurosky/self-hosted-PDS matrix is release evidence outside these implementation phase gates; it is not scheduled as browser/manual/live-service verification in this plan.
+Intent-mandated projects are distributed across the fourteen phases. No phase adds a second dotnet test command. Repeated test projects have distinct bounded purposes recorded above. The report's Bluesky/Eurosky/self-hosted-PDS matrix is release evidence outside these implementation phase gates; it is not scheduled as browser/manual/live-service verification in this plan.
 
 ## 8. Documentation, Configuration, And Operations Impact
 
 - **ADRs:** Create docs/adr/ADR-014-atproto-session-trust-bridge.md and docs/adr/ADR-015-atproto-event-record-and-outbox.md.
-- **Configuration:** Document canonical ATProto public URL, callback, issuer/audience/TTL, Redis atomic-state requirement, loopback-only development behavior, egress policy, the single ATProto Events capability, two administrator locks, validation profile, user consent, Jetstream endpoint/cursor, allowlist, and retry/lease policy.
+- **Configuration:** Document canonical ATProto public URL, callback, issuer/audience/TTL, Redis atomic-state requirement, loopback-only development behavior, egress policy, the single ATProto Events capability, two administrator locks, validation profile, user consent, Jetstream endpoint/cursor, allowlist, retry/lease policy, and backfill settings (`federation.atproto_events_backfill_enabled`, `federation.atproto_events_backfill_mode`).
 - **Secrets:** Register/document OAuth client private JWKS, OAuth-session AES-GCM key ring, and API session-signing private JWKS; describe rotation overlap and recovery.
 - **Schema:** Update schemas/islamu-event.md for DID-keyed encrypted session persistence, hardened AtprotoRecord/PdsSyncOutbox, inbound record/cursor state, and local-event/outbox/settlement ordering.
 - **Lexicons:** Add vendored getSession for OAuth and generate event/RSVP bindings hermetically from the two existing community lexicons.
@@ -1294,7 +1404,10 @@ Intent-mandated projects are distributed across the twelve phases. No phase adds
 | “All data” leaks private/internal information | Medium | Critical | Explicit public/federatable allowlist and privacy exclusions; no EF reflection/raw graph serialization. | Privacy fixture appears in generated description. | 8.1, 8.2 |
 | Split toggle semantics reappear | Low | High | One canonical capability key; delete old assumptions; effective-setting tests. | Fetch and publish resolve differently for same scope. | A8, 7.1 |
 | Jetstream creates echo duplicates or ingests abuse | Medium | High | Two-collection filter, allowlist, lexicon/size validation, URI/CID de-duplication, tombstones. | Duplicate local/federated card or quarantined spike. | A12, 10.1, 11.1 |
-| Missing Part B prose hides a persistence/moderation choice | Medium | High | User clarification is binding; ADR-015 resolves residual choices before runtime federation edits and cannot weaken A8-A12. | ADR unresolved or implementation contradicts plan invariant. | 9.1 |
+| Missing Part B prose hides a persistence/moderation choice | Medium | High | User clarification is binding; Task 9.1 records residual choices before runtime federation edits and cannot weaken A8-A12. | ADR unresolved or implementation contradicts plan invariant. | 9.1 |
+| Jetstream buffer expiry during long downtime | Low | Medium | Detect cursor age, fallback to listRecords downtime-restricted backfill, log critical gap warnings. | critical_ingest_gap log warning / alert | 13.3 |
+| PDS API rate limiting during full backfill | Medium | Medium | Implement standard rate-limiting, retry-after support, and paging limits in CarpaNet sync gateway. | pds_rate_limit_exceeded metrics | 13.3 |
+
 
 ## 14. Success Metrics And Definition Of Done
 
@@ -1318,6 +1431,9 @@ Intent-mandated projects are distributed across the twelve phases. No phase adds
 16. Event URI/CID settles before RSVP strongRef publication; crash retry does not duplicate event records.
 17. Jetstream ingests only the two community collections, de-duplicates local echoes, enforces allowlist/validation, persists cursor, and purges tombstones.
 18. Tenant home/event-list APIs and clients show allowed federation state only when enabled and gate actions solely by HAL.
+19. Tenant admin can configure and trigger a backfill, recovering missing events from downtime or sync all history from CAR files.
+20. Ingested events are created in the database, validating against validation profiles and deduplicated.
+21. OAuth works across Bluesky, Eurosky, and self-hosted PDS hosts; registration abstractions support future integration of PDS custodial registration without architectural rewrites.
 
 ### Security and operations
 
@@ -1327,7 +1443,7 @@ Intent-mandated projects are distributed across the twelve phases. No phase adds
 
 ### Automated phase gates
 
-Each of the twelve phases is complete only when all its tasks are checked and its one Release build plus one selected test project pass. No separate manual/browser/live-provider gate is part of this plan.
+Each of the fourteen phases is complete only when all its tasks are checked and its one Release build plus one selected test project pass. No separate manual/browser/live-provider gate is part of this plan.
 
 ## 15. Implementation Agent Contract — KEEP DEV DOCS CURRENT
 

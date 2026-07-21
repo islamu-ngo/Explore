@@ -1,16 +1,16 @@
-<!-- ABOUTME: Executable checklist for the twelve-phase AT Protocol OAuth and event-federation implementation. -->
+<!-- ABOUTME: Executable checklist for the fourteen-phase AT Protocol OAuth and event-federation implementation. -->
 <!-- ABOUTME: Tracks DB-first publication, exhaustive event projection, governed validation, Jetstream ingress, HAL, and phase gates. -->
 
 # AT Protocol Integration — Task Checklist
 
-Last Updated: 2026-07-19 Europe/Brussels
+Last Updated: 2026-07-21 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** All 27 planned implementation tasks are complete. Todo 15 documentation reconciliation is in final QA; focused ATProto gates are green, broad gates remain blocked or indeterminate, and no release-readiness claim is made.
-- **Completed:** 27/27 implementation tasks; phase verification tracked separately.
-- **Current priority:** Finish Todo 15 documentation evidence and preserve unrelated concurrent work.
-- **Next recommended slice:** Run Todo 16's canonical matrix after Todo 15 closes and the shared notification, cache-fixture, email-metrics, persistence-fixture, and architecture blockers are repaired.
+- **Overall status:** 28/32 implementation tasks complete. Phase 13.1 governed inbound-recovery settings and both administrator surfaces are implemented with focused green evidence; phase verification remains separate.
+- **Completed:** 28/32 implementation tasks; phase verification tracked separately.
+- **Current priority:** Implement Phase 13.2 dynamic Jetstream filter updates while preserving unrelated concurrent work.
+- **Next recommended slice:** Start 13.2 from the governed settings contract proven in `.omo/evidence/atproto-auth/task-16/settings.md`.
 - **OAuth scope:** Phases 1-6.
 - **Federation scope:** Executable Phases 7-12; ADR-015 is Task 9.1.
 
@@ -487,6 +487,64 @@ Focused independent evidence is green: Application handlers 62/62, planners/proc
 
 - [ ] dotnet build --configuration Release --verbosity quiet
 - [x] dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
+
+## Phase 13: Inbound Event Recovery and Backfill Configuration
+
+- [x] **13.1 Add Tenant Settings and Rules for Backfilling**
+  - **Status:** Implemented and focused-verified. The two settings use the existing registry, five-tier resolver, generic settings commands/API/HAL policies, stable locked seed rows, and both current administrator UI surfaces. The adjacent validation-profile controls now submit plain setting codes through the same serialization boundary. Evidence: `.omo/evidence/atproto-auth/task-16/settings.md`.
+  - **Files:** GovernanceSettingKeys.cs; AtprotoFederationSettingDefinitions.cs; AtprotoFederationSettingGroup.cs; SeedIds.cs; LookupTableSeeder.cs; InstanceGovernanceSection.razor; TenantPoliciesSection.razor; focused Application, Infrastructure, Persistence, API, and Blazor tests.
+  - **Acceptance:**
+    - [x] Both settings (`federation.atproto_events_backfill_enabled` and `federation.atproto_events_backfill_mode`) resolve through the standard five-tier resolver and generic API/HAL surfaces.
+    - [x] Settings default to disabled/downtime-only, use stable locked system seed rows, and are lockable through the instance tier without a schema migration.
+  - **Effort:** L
+  - **Dependencies:** Phase 12.
+
+- [ ] **13.2 Implement Jetstream Dynamic Filter Updates**
+  - **Status:** Not started.
+  - **Files:** src/Explore.Infrastructure/Services/Federation/AtprotoJetstreamSubscriber.cs.
+  - **Acceptance:**
+    - [ ] Allowed DIDs/collections updates dynamically push `client.SendOptionsUpdateAsync` to Jetstream without WebSocket reconnect.
+  - **Effort:** M
+  - **Dependencies:** 13.1.
+
+- [ ] **13.3 Implement Inbound Event Backfill Engine**
+  - **Status:** Not started.
+  - **Files:** SyncFederatedEventsCommand.cs/Handler.cs/Validator.cs (new); AtprotoPdsBackfillGateway.cs (new).
+  - **Acceptance:**
+    - [ ] Downtime backfill calculates delta from saved `Cursor` and pages `com.atproto.repo.listRecords`.
+    - [ ] Full backfill retrieves repository CAR file via `com.atproto.sync.getRepo`, parses blocks with `Repository.Load`/`CarReader`, maps to local Events.
+    - [ ] Validation profile rules apply; deduplication matches by DID/Collection/RKey.
+  - **Effort:** XL
+  - **Dependencies:** 13.2.
+
+- [ ] **13.4 Automate Ingest Token Refresh Hook**
+  - **Status:** Not started.
+  - **Files:** AtprotoOAuthSecurityGateway.cs.
+  - **Acceptance:**
+    - [ ] Wire `TokenRefreshed` in `ATProtoClient` to save re-encrypted tokens dynamically to `UserAuthenticationToken`.
+  - **Effort:** L
+  - **Dependencies:** 13.3.
+
+### Phase 13 Verification — RUN ONCE AFTER ALL PHASE TASKS
+
+- [ ] dotnet build --configuration Release --verbosity quiet
+- [ ] dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet
+
+## Phase 14: Decoupled PDS Identity and Extensibility
+
+- [ ] **14.1 Verify Universal PDS OAuth Compatibility**
+  - **Status:** Not started.
+  - **Files:** AtprotoAuthenticationHandler.cs.
+  - **Acceptance:**
+    - [ ] Challenges discover and use endpoints from non-Bluesky PDS hosts via resolved handles and cache.
+    - [ ] Registration abstractions and DB schema structures maintain clean decoupling to support future local PDS custodial registration.
+  - **Effort:** M
+  - **Dependencies:** Phase 13.
+
+### Phase 14 Verification — RUN ONCE AFTER ALL PHASE TASKS
+
+- [ ] dotnet build --configuration Release --verbosity quiet
+- [ ] dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet
 
 ## Remaining / Deferred Work
 

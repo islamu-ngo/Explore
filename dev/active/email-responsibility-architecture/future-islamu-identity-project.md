@@ -97,12 +97,42 @@ The Identity Microservice orchestrates and audits. The account authority mints a
 
 An ISLAMU-operated PDS signup should follow this shape:
 
+```
+┌────────────────────────────────────────────────────────┐
+│               ISLAMU Event WebApp                      │
+├────────────────────────────────────────────────────────┤
+│  User signs up:                                        │
+│  - Captures name, email, credentials, and handle       │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+             ┌──────────────────────────┐
+             │   Registration Handler   │
+             └─────────────┬────────────┘
+                           │
+             ┌─────────────┴────────────┐
+             ▼                          ▼
+   ┌──────────────────┐       ┌──────────────────┐
+   │    Keycloak      │       │    Local PDS     │
+   │  (Identity &     │       │  (Custodial DID  │
+   │   OIDC Auth)     │       │   & Repo Init)   │
+   └────────┬─────────┘       └────────┬─────────┘
+            │                          │
+            └─────────────┬────────────┘
+                          ▼
+            ┌──────────────────────────┐
+            │   Link User Account      │
+            │   - Save DID in DB       │
+            │   - Store OAuth Session  │
+            └──────────────────────────┘
+```
+
 1. User starts signup in ISLAMU-controlled UI.
 2. Identity Microservice validates policy, terms, locale, tenant/org constraints, abuse checks, and desired handle.
 3. Identity Microservice selects a PDS cell using capacity, region, tenant policy, health, and migration constraints.
-4. Identity Microservice asks the selected PDS cell to create the account.
+4. Identity Microservice asks Keycloak Admin API to create the user account and retrieve Keycloak User ID (`sub`), and asks the selected PDS cell to create the account (e.g. via `com.atproto.server.createAccount`) to register the user handle and receive the decentralized Identifier (`DID`).
 5. PDS cell creates account authority state, repository/auth state, DID/handle binding as appropriate, and sends PDS-owned email confirmation through PDS SMTP configuration.
-6. Identity Microservice stores account mapping and delegation audit.
+6. Identity Microservice stores account mapping and delegation audit (saving the DID inside `IndexedDid` and linking it in the `UserExternalLogin` junction table).
 7. ISLAMU Event consumes identity claims/mapping through approved auth/BFF/API paths and continues to send product-domain notifications through ISLAMU notification/outbox flow.
 
 If signup fails after PDS account creation but before local mapping, remediation must be an audited account-authority reconciliation workflow, not a silent local email retry.
@@ -251,3 +281,17 @@ Required operational safeguards for future implementation:
 4. Which account authority identifiers become canonical for ISLAMU Event authorization: Keycloak subject, DID, handle, local user id, or an explicit identity account id?
 5. Which support workflows may trigger account-authority emails, and what local delegation audit fields are mandatory?
 6. When is a dedicated PDS cell justified, and who approves that cost/security tradeoff?
+
+## 13. Custodial OAuth Bridge & Decoupling
+
+For accounts provisioned locally on the ISLAMU PDS:
+* The platform acts as the **custodian** of the user's PDS keys or session credentials.
+* When Keycloak authentication succeeds, the backend BFF automatically restores the PDS session using stored credentials/tokens without requiring the user to complete interactive ATProto OAuth prompts (PKCE loopbacks).
+* Non-custodial users (who bring a DID from an external PDS like Bluesky or Eurosky) will continue to complete standard interactive ATProto OAuth redirect flows.
+
+## 14. Current Extensibility Design Rules (ISLAMU Event)
+
+To ensure that this future integration does not require major code rewrites or cause architectural drift, the active ATProto implementation must adhere to these design guidelines:
+1. **PDS-Agnostic Code:** All handle resolution, discovery, and PDS calls must use `IdentityResolver` to dynamically fetch target PDS endpoints rather than assuming or hardcoding Bluesky or third-party addresses.
+2. **Unified Subject Mapping:** Ensure that the API session token subject (`sub` claim) always points to the platform user Guid (linked to Keycloak), while external identifiers remain mapped via `UserExternalLogin` and `IndexedDid`.
+3. **Extensible Registration Hooks:** Keep the registration CQRS command handler decoupled from OIDC-only structures so that PDS provisioning services can be registered as optional handlers or pipeline behaviors in the future.

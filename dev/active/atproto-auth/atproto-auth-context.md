@@ -15,6 +15,7 @@ Last Updated: 2026-07-19 Europe/Brussels
 - Confirmed the existing Release build is green: 0 errors, 326 existing warnings.
 - Created the repository-grounded six-phase OAuth plan and synchronized task checklist.
 - Re-baselined the workstream to twelve phases after the user's federation clarification.
+- Re-baselined the workstream to fourteen phases after the user's event backfilling and PDS-decoupled dual identity requirements.
 - Verified both local publication seams use IUnitOfWork and that current EventPublish readiness is stricter than the community lexicon's required `name` and `createdAt`.
 - Verified the full event graph spans sessions, days, agenda, locations/rooms, lookups, aspects, categories/tags, speakers/languages, and event/session custom-property EAV values.
 - Re-queried Context7 /drasticactions/carpanet for RestoreSessionAsync, repository record operations, and Jetstream WantedCollections/cursor/commit behavior.
@@ -71,12 +72,12 @@ Last Updated: 2026-07-19 Europe/Brussels
 
 | Field | Value |
 |---|---|
-| Overall status | 27/27 implementation tasks complete; Todo 15 documentation reconciliation is in final QA; broad verification is not all green |
-| Completed implementation tasks | 27/27; final API/discovery slice independently confirmed |
+| Overall status | 27/32 implementation tasks complete; Phases 13 & 14 added for backfill & identity recovery; Todo 15 QA; broad verification is not all green |
+| Completed implementation tasks | 27/32 completed tasks |
 | Current priority | Finish Todo 15 documentation evidence while preserving unrelated concurrent changes |
-| Next executable slice | Todo 16 canonical verification after Todo 15 closes and unrelated blockers are repaired |
+| Next executable slice | Implementation of Phase 13 (Backfill & Recovery) and Phase 14 (PDS Decoupling & Extensibility) |
 | OAuth implementation | Complete in Phases 1-6; live-provider release evidence remains outside automated gates |
-| Federation implementation | Complete in Phases 7-12; ADR-015 is implemented and is not an external blocker |
+| Federation implementation | Phases 7-12 complete; Phase 13 (backfill) and Phase 14 (identity) pending implementation |
 | Baseline build | Fresh green baseline at HEAD aefa7797 on 2026-07-18; 25 projects, 0 errors, 0 warnings |
 
 ## Final Canonical Verification Matrix
