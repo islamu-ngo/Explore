@@ -23,7 +23,7 @@ public sealed class AtprotoJetstreamRuntimeStoreTests
         using var cancellation = new CancellationTokenSource();
         var expected = new AtprotoPdsRecoveryResult(AtprotoPdsRecoveryOutcome.Unchanged, new string('a', 64));
         mediator.Send(command, cancellation.Token).Returns(expected);
-        var scopeProbe = new AsyncScopeProbe();
+        IAsyncDisposable scopeProbe = Substitute.For<IAsyncDisposable>();
         (AtprotoJetstreamRuntimeStore Store, ServiceProvider Provider) fixture =
             CreateRecoveryStore(mediator, invalidator, scopeProbe);
         await using ServiceProvider provider = fixture.Provider;
@@ -36,7 +36,7 @@ public sealed class AtprotoJetstreamRuntimeStoreTests
         await mediator.Received(1).Send(
             Arg.Is<ReconcileAtprotoPdsSnapshotsCommand>(actual => ReferenceEquals(actual, command)),
             cancellation.Token);
-        await Assert.That(scopeProbe.IsDisposed).IsTrue();
+        await scopeProbe.Received(1).DisposeAsync();
     }
 
     [Test]
@@ -216,7 +216,7 @@ public sealed class AtprotoJetstreamRuntimeStoreTests
     private static (AtprotoJetstreamRuntimeStore Store, ServiceProvider Provider) CreateRecoveryStore(
         IMediator mediator,
         IAtprotoDiscoveryCacheInvalidator? invalidator = null,
-        AsyncScopeProbe? scopeProbe = null)
+        IAsyncDisposable? scopeProbe = null)
     {
         var services = new ServiceCollection();
         if (invalidator is not null)
@@ -224,10 +224,14 @@ public sealed class AtprotoJetstreamRuntimeStoreTests
             services.AddScoped(_ => invalidator);
         }
 
-        services.AddScoped(_ => scopeProbe ?? new AsyncScopeProbe());
+        if (scopeProbe is not null)
+        {
+            services.AddScoped(_ => scopeProbe);
+        }
+
         services.AddScoped<IMediator>(provider =>
         {
-            _ = provider.GetRequiredService<AsyncScopeProbe>();
+            _ = provider.GetService<IAsyncDisposable>();
             return mediator;
         });
         ServiceProvider provider = services.BuildServiceProvider();
@@ -273,14 +277,4 @@ public sealed class AtprotoJetstreamRuntimeStoreTests
                 : null);
     }
 
-    private sealed class AsyncScopeProbe : IAsyncDisposable
-    {
-        public bool IsDisposed { get; private set; }
-
-        public ValueTask DisposeAsync()
-        {
-            IsDisposed = true;
-            return ValueTask.CompletedTask;
-        }
-    }
 }

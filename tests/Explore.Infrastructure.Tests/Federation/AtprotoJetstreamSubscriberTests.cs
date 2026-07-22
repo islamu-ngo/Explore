@@ -1018,7 +1018,8 @@ public sealed class AtprotoJetstreamSubscriberTests
         public bool ThrowAfterNextApply { get; set; }
         public Exception? RenewalException { get; set; }
         public Func<ReconcileAtprotoPdsSnapshotsCommand, CancellationToken, Task<AtprotoPdsRecoveryResult>>?
-            RecoveryHandler { get; set; }
+            RecoveryHandler
+        { get; set; }
         public long Cursor { get; private set; } = initialCursor;
         public IReadOnlyList<Guid> EnabledTenants { get; set; } = enabledTenants;
         public AtprotoJetstreamClaim? LastClaim { get; private set; }
