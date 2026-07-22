@@ -1,0 +1,38 @@
+@* ABOUTME: Authenticated full-page host for the shared AI assistant conversation controller. *@
+@* ABOUTME: Reads Blazouter route state and delegates all AI operations to AiAssistantRail. *@
+@page "/ai"
+@page "/ai/chats/{ConversationId:guid}"
+@using Blazouter.Services
+@using Explore.Blazor.Client.Components.Shell
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject RouterStateService RouterState
+@inject NavigationManager Navigation
+
+<PageTitle>AI Assistant</PageTitle>
+
+<section class="ai-workspace" aria-labelledby="ai-workspace-title" data-testid="ai-workspace">
+    <h1 id="ai-workspace-title" class="sr-only">AI Assistant workspace</h1>
+    <AiAssistantRail HostedInWorkspace="true"
+                     ConversationId="@ConversationId"
+                     StartNewConversation="@StartNewConversation" />
+</section>
+
+@code {
+    [Parameter]
+    public Guid? ConversationId { get; set; }
+
+    private bool StartNewConversation { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        ConversationId = Guid.TryParse(RouterState.GetParam("conversationId"), out var conversationId)
+            ? conversationId
+            : null;
+
+        StartNewConversation = new Uri(Navigation.Uri).Query
+            .Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Any(value => string.Equals(value.TrimStart('?'), "new=true", StringComparison.OrdinalIgnoreCase));
+    }
+}

@@ -1,0 +1,75 @@
+@* ABOUTME: Context navigation for authenticated AI conversations with local title search. *@
+@* ABOUTME: Uses shared conversation state and HAL-gated creation while routes select chats. *@
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Shell
+@using Explore.Blazor.Client.Services.Ai
+@implements IWorkspaceNavigationProvider
+@implements IDisposable
+@inject AiAssistantConversationState ConversationState
+
+<nav class="ai-workspace-navigation" aria-label="AI workspace" data-testid="ai-workspace-navigation">
+    <header class="ai-workspace-navigation__header">
+        <MudText Typo="Typo.h6" HtmlTag="h2">AI Assistant</MudText>
+    </header>
+
+    @if (ConversationState.CanCreateConversation)
+    {
+        <a href="/ai?new=true" class="ai-workspace-navigation__new" data-testid="ai-workspace-new-conversation">
+            <MudIcon Icon="@Icons.Material.Filled.EditNote" Size="Size.Small" aria-hidden="true" />
+            <span>New conversation</span>
+        </a>
+    }
+
+    <label class="ai-workspace-navigation__search">
+        <span class="sr-only">Search conversations</span>
+        <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" aria-hidden="true" />
+        <input type="search"
+               value="@_searchText"
+               @oninput="OnSearchInput"
+               placeholder="Search conversations"
+               data-testid="ai-workspace-search" />
+    </label>
+
+    <MudText Typo="Typo.overline" HtmlTag="h3" Class="ai-workspace-navigation__section-title">
+        Recent
+    </MudText>
+
+    <div class="ai-workspace-navigation__list" role="list">
+        @foreach (var conversation in FilteredConversations)
+        {
+            <a href="@($"/ai/chats/{conversation.Id:D}")"
+               class="ai-workspace-navigation__conversation"
+               aria-current="@(ConversationState.SelectedConversation?.Id == conversation.Id ? "page" : null)"
+               role="listitem"
+               data-testid="ai-workspace-conversation">
+                @GetConversationTitle(conversation)
+            </a>
+        }
+    </div>
+</nav>
+
+@code {
+    private string _searchText = string.Empty;
+
+    public string AriaLabel => "AI workspace";
+
+    private IEnumerable<HalResourceOfAiConversationSummaryDto> FilteredConversations =>
+        ConversationState.Conversations.Where(conversation =>
+            string.IsNullOrWhiteSpace(_searchText)
+            || GetConversationTitle(conversation).Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+
+    protected override void OnInitialized() => ConversationState.OnChange += OnConversationStateChanged;
+
+    private void OnSearchInput(ChangeEventArgs args) => _searchText = args.Value?.ToString() ?? string.Empty;
+
+    private void OnConversationStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private static string GetConversationTitle(HalResourceOfAiConversationSummaryDto conversation) =>
+        string.IsNullOrWhiteSpace(conversation.Title) ? "Untitled conversation" : conversation.Title;
+
+    public void Dispose()
+    {
+        ConversationState.OnChange -= OnConversationStateChanged;
+        GC.SuppressFinalize(this);
+    }
+}

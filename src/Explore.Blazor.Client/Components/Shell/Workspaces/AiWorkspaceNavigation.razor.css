@@ -1,0 +1,78 @@
+/* ABOUTME: Scoped navigation styles for AI conversation search and recent chat links. */
+/* ABOUTME: Uses existing spacing, surface, border, and focus tokens without global overrides. */
+
+.ai-workspace-navigation {
+    display: grid;
+    gap: var(--isl-space-3);
+    padding: var(--isl-space-4);
+}
+
+.ai-workspace-navigation__header {
+    padding-block: var(--isl-space-2);
+}
+
+.ai-workspace-navigation__new,
+.ai-workspace-navigation__conversation {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-2);
+    min-inline-size: 0;
+    padding: var(--isl-space-3);
+    border-radius: var(--isl-radius-md, 0.5rem);
+    color: var(--mud-palette-text-primary);
+    text-decoration: none;
+}
+
+.ai-workspace-navigation__new {
+    border: 1px solid var(--mud-palette-lines-default);
+    font-weight: 600;
+}
+
+.ai-workspace-navigation__new:hover,
+.ai-workspace-navigation__new:focus-visible,
+.ai-workspace-navigation__conversation:hover,
+.ai-workspace-navigation__conversation:focus-visible,
+.ai-workspace-navigation__conversation[aria-current="page"] {
+    background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
+    outline: none;
+}
+
+.ai-workspace-navigation__search {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-2);
+    padding-inline: var(--isl-space-3);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-md, 0.5rem);
+    color: var(--mud-palette-text-secondary);
+}
+
+.ai-workspace-navigation__search:focus-within {
+    border-color: var(--mud-palette-primary);
+}
+
+.ai-workspace-navigation__search input {
+    inline-size: 100%;
+    min-inline-size: 0;
+    padding-block: var(--isl-space-3);
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--mud-palette-text-primary);
+    font: inherit;
+}
+
+.ai-workspace-navigation__section-title {
+    color: var(--mud-palette-text-secondary);
+}
+
+.ai-workspace-navigation__list {
+    display: grid;
+    gap: var(--isl-space-1);
+}
+
+.ai-workspace-navigation__conversation {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
