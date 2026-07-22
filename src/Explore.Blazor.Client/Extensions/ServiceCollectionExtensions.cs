@@ -15,8 +15,10 @@ using Explore.Blazor.Client.Contracts.Services.Footer;
 using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Contracts.Services.Notifications;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
+using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Contracts.Services.SupportAccess;
 using Explore.Blazor.Client.Contracts.Services.Webhooks;
+using Explore.Blazor.Client.Pages.Studio;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Accessibility;
 using Explore.Blazor.Client.Services.Ai;
@@ -60,6 +62,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IWebhookOperationsService, WebhookOperationsService>();
         services.AddScoped<IListmonkIntegrationSettingsService, ListmonkIntegrationSettingsService>();
         services.AddScoped<IAtprotoFederationSettingsService, AtprotoFederationSettingsService>();
+        services.AddScoped<ITenantShellSettingsService, TenantShellSettingsService>();
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IOrganizationService, OrganizationService>();
         services.AddScoped<IGroupService, GroupService>();
@@ -164,10 +167,19 @@ public static class ServiceCollectionExtensions
         services.AddScoped<TenantNavLinksState>();
         services.AddScoped<DockLayoutState>();
         services.AddScoped<IDockPanelRegistry>(provider => provider.GetRequiredService<DockLayoutState>());
-        services.AddScoped<IDockLayoutPersistence, Explore.Blazor.Client.Services.Interop.LocalStorageDockLayoutPersistence>();
+        services.AddScoped<LocalStorageDockLayoutPersistence>();
+        services.AddScoped<IDockLayoutPersistence>(provider => new ServerBackedDockLayoutPersistence(
+            provider.GetRequiredService<LocalStorageDockLayoutPersistence>(),
+            provider.GetRequiredService<IUserSettingsService>(),
+            provider.GetRequiredService<IAuthStateService>(),
+            provider.GetRequiredService<IUiShellContextService>(),
+            provider.GetRequiredService<ILogger<ServerBackedDockLayoutPersistence>>()));
         services.AddScoped<IWorkspaceRegistry, WorkspaceRegistry>();
         services.AddScoped<WorkspaceRouteClassifier>();
         services.AddScoped<UiShellState>();
+        services.AddScoped<IShellPreferencesService, ShellPreferencesService>();
+        services.AddScoped<StudioEventContextState>();
+        services.AddScoped<IUiShellContextService, UiShellContextService>();
 
         // User-scoped settings (auth-branching: API for authenticated, localStorage for anonymous)
         services.AddScoped<IUserSettingsService, UserSettingsService>();
