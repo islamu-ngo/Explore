@@ -42,7 +42,7 @@ public class GetUserOrganizationsRequestHandler : IRequestHandler<GetUserOrganiz
             throw new AuthorizationException(ResourceKinds.OrganizationMember, AuthorizationActions.OrganizationMembers.View);
         }
 
-        var memberships = await _organizationMemberRepository.GetMembershipsByUser(request.UserId);
+        var memberships = await _organizationMemberRepository.GetMembershipsByUser(request.UserId, cancellationToken);
 
         var dtos = new List<OrganizationListDto>();
 

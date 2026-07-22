@@ -323,12 +323,8 @@ public sealed class ConfirmAiProposedActionCommandHandler(
         CancellationToken cancellationToken)
     {
         var userId = conversation.UserId;
-        var allowedOrganizationIds = await organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
-            userId,
-            PermissionCodes.EventCreate);
-        var allowedGroupIds = await groupMemberRepository.GetGroupIdsWhereUserHasPermission(
-            userId,
-            PermissionCodes.EventCreate);
+        var allowedOrganizationIds = await organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(userId, PermissionCodes.EventCreate, cancellationToken);
+        var allowedGroupIds = await groupMemberRepository.GetGroupIdsWhereUserHasPermission(userId, PermissionCodes.EventCreate, cancellationToken);
 
         var context = new CreateEventDraftAiActionMappingContext(
             allowedOrganizationIds.ToHashSet(),
@@ -339,7 +335,7 @@ public sealed class ConfirmAiProposedActionCommandHandler(
             return ActorMappingContextResult.Success(context);
         }
 
-        Actor? actor = await actorRepository.GetActorWithDetails(actorId);
+        Actor? actor = await actorRepository.GetActorWithDetails(actorId, cancellationToken);
         if (actor is null || actor.TenantId != tenantContext.TenantId)
         {
             return ActorMappingContextResult.Failure(

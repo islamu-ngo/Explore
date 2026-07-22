@@ -41,18 +41,14 @@ public class GetExternalApiKeyListRequestHandler : IRequestHandler<GetExternalAp
 
         visibleKeys.AddRange(await _externalApiKeyRepository.GetByOwner(ExternalApiKeyOwnerType.User, currentUserId, cancellationToken));
 
-        var organizationIds = await _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
-            currentUserId,
-            PermissionCodes.OrganizationManage);
+        var organizationIds = await _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(currentUserId, PermissionCodes.OrganizationManage, cancellationToken);
 
         if (organizationIds.Count > 0)
         {
             visibleKeys.AddRange(await _externalApiKeyRepository.GetByOwners(ExternalApiKeyOwnerType.Organization, organizationIds, cancellationToken));
         }
 
-        var groupIds = await _groupMemberRepository.GetGroupIdsWhereUserHasPermission(
-            currentUserId,
-            PermissionCodes.GroupManage);
+        var groupIds = await _groupMemberRepository.GetGroupIdsWhereUserHasPermission(currentUserId, PermissionCodes.GroupManage, cancellationToken);
 
         if (groupIds.Count > 0)
         {

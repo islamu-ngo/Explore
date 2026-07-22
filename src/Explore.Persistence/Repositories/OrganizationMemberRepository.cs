@@ -80,7 +80,9 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
             .ToListAsync();
     }
 
-    public async Task<List<OrganizationMember>> GetMembershipsByUser(Guid userId)
+    public async Task<List<OrganizationMember>> GetMembershipsByUser(
+        Guid userId,
+        CancellationToken cancellationToken = default)
     {
         return await _dbContext.OrganizationMembers
             .AsNoTracking()
@@ -90,7 +92,7 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
                 .ThenInclude(o => o.Pii)
             .Include(m => m.Role)
             .Where(m => m.UserId == userId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<bool> Exists(Guid organizationId, Guid userId)
@@ -159,7 +161,10 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
         return false;
     }
 
-    public async Task<List<Guid>> GetOrganizationIdsWhereUserHasPermission(Guid userId, string permissionMasterCode)
+    public async Task<List<Guid>> GetOrganizationIdsWhereUserHasPermission(
+        Guid userId,
+        string permissionMasterCode,
+        CancellationToken cancellationToken = default)
     {
         // Permission-based: find orgs where the user's role has the specified permission
         var orgIds = await _dbContext.OrganizationMembers
@@ -170,13 +175,13 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
                     && rp.Permission.MasterCode == permissionMasterCode
                     && rp.Permission.IsActive))
             .Select(m => m.OrganizationId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         if (orgIds.Count > 0)
             return orgIds;
 
         // Transitional fallback: when RolePermission table has no data yet
-        var anyPermissionsSeeded = await _dbContext.Set<RolePermission>().AnyAsync();
+        var anyPermissionsSeeded = await _dbContext.Set<RolePermission>().AnyAsync(cancellationToken);
         if (!anyPermissionsSeeded)
         {
             var adminRoles = new[]
@@ -188,7 +193,7 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
                 .AsNoTracking()
                 .Where(m => m.UserId == userId && adminRoles.Contains(m.RoleId))
                 .Select(m => m.OrganizationId)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
         }
 
         return orgIds;

@@ -104,7 +104,10 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
         return false;
     }
 
-    public async Task<List<Guid>> GetGroupIdsWhereUserHasPermission(Guid userId, string permissionMasterCode)
+    public async Task<List<Guid>> GetGroupIdsWhereUserHasPermission(
+        Guid userId,
+        string permissionMasterCode,
+        CancellationToken cancellationToken = default)
     {
         var groupIds = await _dbContext.GroupMembers
             .AsNoTracking()
@@ -114,12 +117,12 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
                     && rp.Permission.MasterCode == permissionMasterCode
                     && rp.Permission.IsActive))
             .Select(m => m.GroupId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         if (groupIds.Count > 0)
             return groupIds;
 
-        var anyPermissionsSeeded = await _dbContext.Set<RolePermission>().AnyAsync();
+        var anyPermissionsSeeded = await _dbContext.Set<RolePermission>().AnyAsync(cancellationToken);
         if (!anyPermissionsSeeded)
         {
             var adminRoles = new[]
@@ -131,13 +134,15 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
                 .AsNoTracking()
                 .Where(m => m.UserId == userId && adminRoles.Contains(m.RoleId))
                 .Select(m => m.GroupId)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
         }
 
         return groupIds;
     }
 
-    public async Task<List<GroupMember>> GetMembershipsByUser(Guid userId)
+    public async Task<List<GroupMember>> GetMembershipsByUser(
+        Guid userId,
+        CancellationToken cancellationToken = default)
     {
         return await _dbContext.GroupMembers
             .AsNoTracking()
@@ -145,6 +150,6 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
                 .ThenInclude(g => g.ApprovalStatus)
             .Include(m => m.Role)
             .Where(m => m.UserId == userId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 }

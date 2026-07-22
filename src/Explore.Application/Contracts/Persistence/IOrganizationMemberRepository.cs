@@ -31,10 +31,15 @@ public interface IOrganizationMemberRepository : IGenericRepository<Organization
     /// Returns the IDs of all organizations where the user's role has the specified permission.
     /// Falls back to legacy admin role check when no permissions are seeded yet.
     /// </summary>
-    Task<List<Guid>> GetOrganizationIdsWhereUserHasPermission(Guid userId, string permissionMasterCode);
+    Task<List<Guid>> GetOrganizationIdsWhereUserHasPermission(
+        Guid userId,
+        string permissionMasterCode,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all organization memberships for a user, including organization details and role.
     /// </summary>
-    Task<List<OrganizationMember>> GetMembershipsByUser(Guid userId);
+    Task<List<OrganizationMember>> GetMembershipsByUser(
+        Guid userId,
+        CancellationToken cancellationToken = default);
 }
