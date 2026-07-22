@@ -1,0 +1,57 @@
+/* ABOUTME: Scoped dashboard layout for the actor-scoped Studio landing route. */
+/* ABOUTME: Uses quiet bordered surfaces, design tokens, and logical RTL-safe spacing. */
+
+.studio-page {
+    container-type: inline-size;
+    display: grid;
+    gap: var(--isl-space-8);
+    padding-block: var(--isl-space-8);
+}
+
+.studio-page__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--isl-space-4);
+}
+
+.studio-page__heading,
+.studio-dashboard__heading {
+    display: grid;
+    gap: var(--isl-space-2);
+}
+
+.studio-page__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2);
+}
+
+.studio-page__state {
+    display: grid;
+    justify-items: center;
+    gap: var(--isl-space-4);
+    padding-block: var(--isl-space-16);
+    text-align: center;
+}
+
+.studio-dashboard {
+    display: grid;
+    gap: var(--isl-space-6);
+}
+
+.studio-dashboard__stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+    gap: var(--isl-space-4);
+}
+
+.studio-dashboard__stat {
+    display: grid;
+    gap: var(--isl-space-2);
+    padding: var(--isl-space-6);
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+    background: var(--isl-color-surface);
+}

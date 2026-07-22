@@ -8,6 +8,14 @@ namespace Explore.Blazor.Client.Helpers;
 
 public static class EventUrlHelper
 {
+    public static string? GetSafeExternalUrl(string? value)
+    {
+        return Uri.TryCreate(value, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+                ? uri.AbsoluteUri
+                : null;
+    }
+
     public static string? BuildPublicPath(string? slug, string? publicCode)
     {
         if (string.IsNullOrWhiteSpace(publicCode))

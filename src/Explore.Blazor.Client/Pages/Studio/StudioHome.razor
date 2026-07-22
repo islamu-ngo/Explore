@@ -1,0 +1,79 @@
+@* ABOUTME: Actor-scoped Studio dashboard with server-authorized event summary and actions. *@
+@* ABOUTME: Uses shell context for actor identity and HAL links for event affordances. *@
+@page "/studio"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inherits StudioEventPageBase
+
+<PageTitle>Studio</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="studio-page">
+    <header class="studio-page__header">
+        <div class="studio-page__heading">
+            <MudText Typo="Typo.h4" HtmlTag="h1">Studio</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary" data-testid="studio-active-actor">
+                @ActiveActorName
+            </MudText>
+        </div>
+        <div class="studio-page__actions">
+            <AppButton Href="/studio/events"
+                       Variant="Variant.Outlined"
+                       StartIcon="@Icons.Material.Outlined.Event"
+                       data-testid="studio-view-events">
+                View events
+            </AppButton>
+            @if (CanCreate)
+            {
+                <AppButton Href="/events/create"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           data-testid="studio-create-event">
+                    Create event
+                </AppButton>
+            }
+        </div>
+    </header>
+
+    @if (IsLoading)
+    {
+        <section class="studio-page__state" role="status" data-testid="studio-home-loading">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body1">Loading Studio dashboard…</MudText>
+        </section>
+    }
+    else if (ErrorMessage is not null)
+    {
+        <section class="studio-page__state" role="alert">
+            <MudText Typo="Typo.body1">@ErrorMessage</MudText>
+            <AppButton Variant="Variant.Outlined" OnClick="@(_ => ReloadAsync())">Retry</AppButton>
+        </section>
+    }
+    else
+    {
+        <section class="studio-dashboard" aria-labelledby="studio-summary-title" data-testid="studio-dashboard">
+            <div class="studio-dashboard__heading">
+                <MudText Id="studio-summary-title" Typo="Typo.h5" HtmlTag="h2">Event overview</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Current management inventory for @ActiveActorName.
+                </MudText>
+            </div>
+            <div class="studio-dashboard__stats">
+                <article class="studio-dashboard__stat">
+                    <MudIcon Icon="@Icons.Material.Outlined.EventNote" Color="Color.Primary" aria-hidden="true" />
+                    <MudText Typo="Typo.h4" HtmlTag="p" data-testid="studio-total-count">@Result.TotalCount</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Total events</MudText>
+                </article>
+                <article class="studio-dashboard__stat">
+                    <MudIcon Icon="@Icons.Material.Outlined.Upcoming" Color="Color.Info" aria-hidden="true" />
+                    <MudText Typo="Typo.h4" HtmlTag="p" data-testid="studio-upcoming-count">@UpcomingCount</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Upcoming</MudText>
+                </article>
+                <article class="studio-dashboard__stat">
+                    <MudIcon Icon="@Icons.Material.Outlined.EditCalendar" Color="Color.Secondary" aria-hidden="true" />
+                    <MudText Typo="Typo.h4" HtmlTag="p" data-testid="studio-editable-count">@EditableCount</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Editable</MudText>
+                </article>
+            </div>
+        </section>
+    }
+</MudContainer>

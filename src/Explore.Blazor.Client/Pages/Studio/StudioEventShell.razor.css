@@ -1,0 +1,21 @@
+/* ABOUTME: Scoped layout for the Studio event section handoff shell. */
+/* ABOUTME: Keeps event headings, states, and editor actions responsive and RTL-safe. */
+
+.studio-event-shell {
+    display: grid;
+    gap: var(--isl-space-section);
+    padding-block: var(--isl-space-page);
+}
+
+.studio-event-shell__header,
+.studio-event-shell__section,
+.studio-event-shell__state {
+    display: grid;
+    gap: var(--isl-space-3);
+}
+
+.studio-event-shell__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-3);
+}

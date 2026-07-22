@@ -1,0 +1,77 @@
+/* ABOUTME: Scoped layout for the actor-scoped Studio managed-event list. */
+/* ABOUTME: Keeps rows responsive, tokenized, keyboard-safe, and RTL-neutral. */
+
+.studio-page {
+    container-type: inline-size;
+    display: grid;
+    gap: var(--isl-space-8);
+    padding-block: var(--isl-space-8);
+}
+
+.studio-page__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--isl-space-4);
+}
+
+.studio-page__heading {
+    display: grid;
+    gap: var(--isl-space-2);
+}
+
+.studio-page__state {
+    display: grid;
+    justify-items: center;
+    gap: var(--isl-space-4);
+    padding-block: var(--isl-space-16);
+    text-align: center;
+}
+
+.studio-event-list {
+    display: grid;
+    gap: var(--isl-space-3);
+}
+
+.studio-event-list__item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--isl-space-4);
+    padding: var(--isl-space-4);
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+    background: var(--isl-color-surface);
+}
+
+.studio-event-list__content {
+    display: grid;
+    flex: 1 1 16rem;
+    gap: var(--isl-space-2);
+    min-inline-size: 0;
+}
+
+.studio-event-list__link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.studio-event-list__link:hover {
+    text-decoration: underline;
+}
+
+.studio-event-list__metadata {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2) var(--isl-space-4);
+    color: var(--isl-color-text-secondary);
+    font-size: var(--isl-typography-body2-size);
+}
+
+.studio-event-list__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-1);
+}

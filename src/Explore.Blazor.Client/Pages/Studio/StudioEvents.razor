@@ -1,0 +1,117 @@
+@* ABOUTME: Actor-scoped managed-event list for the authenticated Studio workspace. *@
+@* ABOUTME: Renders edit and delete actions only from server-provided HAL relations. *@
+@page "/studio/events"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inherits StudioEventPageBase
+
+<PageTitle>Studio Events</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="studio-page">
+    <header class="studio-page__header">
+        <div class="studio-page__heading">
+            <MudText Typo="Typo.h4" HtmlTag="h1">Events</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary" data-testid="studio-active-actor">
+                Managed events for @ActiveActorName
+            </MudText>
+        </div>
+        @if (CanCreate && !IsLoading && Result.Items.Count > 0)
+        {
+            <AppButton Href="/events/create"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       data-testid="studio-create-event">
+                Create event
+            </AppButton>
+        }
+    </header>
+
+    @if (IsLoading)
+    {
+        <section class="studio-page__state" role="status" data-testid="studio-events-loading">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body1">Loading managed events…</MudText>
+        </section>
+    }
+    else if (ErrorMessage is not null)
+    {
+        <section class="studio-page__state" role="alert">
+            <MudText Typo="Typo.body1">@ErrorMessage</MudText>
+            <AppButton Variant="Variant.Outlined" OnClick="@(_ => ReloadAsync())">Retry</AppButton>
+        </section>
+    }
+    else if (Result.Items.Count == 0)
+    {
+        <section class="studio-page__state" aria-labelledby="studio-events-empty-title" data-testid="studio-events-empty">
+            <MudIcon Icon="@Icons.Material.Outlined.EventBusy" Size="Size.Large" Color="Color.Secondary" aria-hidden="true" />
+            <MudText Id="studio-events-empty-title" Typo="Typo.h5" HtmlTag="h2">No managed events yet</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">
+                Events available to @ActiveActorName will appear here.
+            </MudText>
+            @if (CanCreate)
+            {
+                <AppButton Href="/events/create"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           data-testid="studio-create-event">
+                    Create event
+                </AppButton>
+            }
+        </section>
+    }
+    else
+    {
+        <section aria-labelledby="studio-event-list-title">
+            <MudText Id="studio-event-list-title" HtmlTag="h2" Class="sr-only">Managed events</MudText>
+            <div class="studio-event-list" data-testid="studio-event-list">
+                @foreach (var item in Result.Items)
+                {
+                    <article class="studio-event-list__item">
+                        <div class="studio-event-list__content">
+                            <MudText Typo="Typo.h6" HtmlTag="h3">
+                                <a class="studio-event-list__link" href="@($"/studio/events/{item.Id}")">@item.Title</a>
+                            </MudText>
+                            <div class="studio-event-list__metadata">
+                                @if (!string.IsNullOrWhiteSpace(item.EventStatusFullName))
+                                {
+                                    <span>@item.EventStatusFullName</span>
+                                }
+                                @if (item.FirstSessionDate.HasValue)
+                                {
+                                    <span>@item.FirstSessionDate.Value.ToString("MMM d, yyyy")</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(item.ActorDisplayName))
+                                {
+                                    <span>@item.ActorDisplayName</span>
+                                }
+                            </div>
+                        </div>
+                        @if (CanEdit(item) || CanDelete(item))
+                        {
+                            <div class="studio-event-list__actions" role="group" aria-label="Actions for @item.Title">
+                                @if (CanEdit(item))
+                                {
+                                    <AppButton Href="@EditRoute(item)"
+                                               Variant="Variant.Text"
+                                               StartIcon="@Icons.Material.Outlined.Edit"
+                                               data-testid="@($"studio-edit-event-{item.Id}")">
+                                        Edit
+                                    </AppButton>
+                                }
+                                @if (CanDelete(item))
+                                {
+                                    <AppButton Variant="Variant.Text"
+                                               Color="Color.Error"
+                                               StartIcon="@Icons.Material.Outlined.Delete"
+                                               OnClick="@(_ => OpenDeleteDialogAsync(item))"
+                                               data-testid="@($"studio-delete-event-{item.Id}")">
+                                        Delete
+                                    </AppButton>
+                                }
+                            </div>
+                        }
+                    </article>
+                }
+            </div>
+        </section>
+    }
+</MudContainer>
