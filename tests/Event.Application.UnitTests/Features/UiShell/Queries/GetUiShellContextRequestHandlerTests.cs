@@ -33,8 +33,8 @@ public sealed class GetUiShellContextRequestHandlerTests
         _tenantContext.TenantId.Returns(_tenantId);
         _adminContext.IsInstanceAdminAsync(_userId, Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.GetAdminTenantIdsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
-        _adminContext.GetAdminOrganizationIdsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
-        _adminContext.GetAdminGroupIdsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminOrganizationIdsAsync(_userId, _tenantId, Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminGroupIdsAsync(_userId, _tenantId, Arg.Any<CancellationToken>()).Returns([]);
         _actorContextService.ListAuthorizedActorContextsAsync(_tenantId, _userId, Arg.Any<CancellationToken>())
             .Returns([]);
         _settingsResolver.ResolveBatchAsync(
@@ -77,7 +77,7 @@ public sealed class GetUiShellContextRequestHandlerTests
     {
         Guid organizationId = Guid.CreateVersion7();
         Guid actorId = Guid.CreateVersion7();
-        _adminContext.GetAdminOrganizationIdsAsync(_userId, Arg.Any<CancellationToken>()).Returns([organizationId]);
+        _adminContext.GetAdminOrganizationIdsAsync(_userId, _tenantId, Arg.Any<CancellationToken>()).Returns([organizationId]);
         ConfigureActors(Actor(actorId, organizationId, nameof(ActorTypeEnum.Organization), "Community"));
 
         var result = await CreateHandler().Handle(new GetUiShellContextRequest(), CancellationToken.None);
@@ -99,6 +99,20 @@ public sealed class GetUiShellContextRequestHandlerTests
     }
 
     [Test]
+    public async Task Handle_OrganizationAdminWithoutPublisher_RetainsSettingsScopeWithoutStudio()
+    {
+        Guid organizationId = Guid.CreateVersion7();
+        _adminContext.GetAdminOrganizationIdsAsync(_userId, _tenantId, Arg.Any<CancellationToken>())
+            .Returns([organizationId]);
+
+        var result = await CreateHandler().Handle(new GetUiShellContextRequest(), CancellationToken.None);
+
+        await Assert.That(result.Workspaces.Studio).IsFalse();
+        await Assert.That(result.SettingsScopes.Single(scope => scope.Scope == "Organization").ScopeId)
+            .IsEqualTo(organizationId);
+    }
+
+    [Test]
     public async Task Handle_MissingSettings_FailsClosedForStudioAndUsesNavigationDefaults()
     {
         ConfigureSettings();
@@ -109,6 +123,38 @@ public sealed class GetUiShellContextRequestHandlerTests
         await Assert.That(result.NavigationDefaults.Events).IsEqualTo("Docked");
         await Assert.That(result.NavigationDefaults.AllowUserOverride).IsTrue();
         await Assert.That(result.NavigationDefaults.OrganizerDefaultWorkspace).IsEqualTo("Events");
+    }
+
+    [Test]
+    public async Task Handle_SingleTenantWithLockedShellGovernance_ProjectsRetainedNavigationPolicy()
+    {
+        _deploymentModeProvider.GetCurrentModeAsync(Arg.Any<CancellationToken>())
+            .Returns(DeploymentMode.SingleTenant);
+        ConfigureSettings(
+            Setting(GovernanceSettingKeys.UiShell.DefaultNavModeEvents, "Collapsed", SettingSource.SystemLocked),
+            Setting(GovernanceSettingKeys.UiShell.DefaultNavModeStudio, "Docked", SettingSource.SystemLocked),
+            Setting(GovernanceSettingKeys.UiShell.DefaultNavModeAi, "Collapsed", SettingSource.SystemLocked),
+            Setting(GovernanceSettingKeys.UiShell.AllowUserNavOverride, false, SettingSource.SystemLocked),
+            Setting(GovernanceSettingKeys.UiShell.OrganizerDefaultWorkspace, "Studio", SettingSource.SystemLocked));
+
+        var result = await CreateHandler().Handle(new GetUiShellContextRequest(), CancellationToken.None);
+
+        await Assert.That(result.DeploymentMode).IsEqualTo(nameof(DeploymentMode.SingleTenant));
+        await Assert.That(result.NavigationDefaults.Events).IsEqualTo("Collapsed");
+        await Assert.That(result.NavigationDefaults.Studio).IsEqualTo("Docked");
+        await Assert.That(result.NavigationDefaults.Ai).IsEqualTo("Collapsed");
+        await Assert.That(result.NavigationDefaults.AllowUserOverride).IsFalse();
+        await Assert.That(result.NavigationDefaults.OrganizerDefaultWorkspace).IsEqualTo("Studio");
+        await _settingsResolver.Received(1).ResolveBatchAsync(
+            Arg.Is<IEnumerable<string>>(keys =>
+                keys.Contains(GovernanceSettingKeys.UiShell.DefaultNavModeEvents)
+                && keys.Contains(GovernanceSettingKeys.UiShell.DefaultNavModeStudio)
+                && keys.Contains(GovernanceSettingKeys.UiShell.DefaultNavModeAi)
+                && keys.Contains(GovernanceSettingKeys.UiShell.AllowUserNavOverride)
+                && keys.Contains(GovernanceSettingKeys.UiShell.OrganizerDefaultWorkspace)
+                && !keys.Contains("ui_shell.default_nav_mode.settings")),
+            Arg.Is<SettingContext>(context => context.TenantId == _tenantId),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -129,8 +175,8 @@ public sealed class GetUiShellContextRequestHandlerTests
         Guid groupId = Guid.CreateVersion7();
         _adminContext.IsInstanceAdminAsync(_userId, Arg.Any<CancellationToken>()).Returns(true);
         _adminContext.GetAdminTenantIdsAsync(_userId, Arg.Any<CancellationToken>()).Returns([_tenantId]);
-        _adminContext.GetAdminOrganizationIdsAsync(_userId, Arg.Any<CancellationToken>()).Returns([organizationId]);
-        _adminContext.GetAdminGroupIdsAsync(_userId, Arg.Any<CancellationToken>()).Returns([groupId]);
+        _adminContext.GetAdminOrganizationIdsAsync(_userId, _tenantId, Arg.Any<CancellationToken>()).Returns([organizationId]);
+        _adminContext.GetAdminGroupIdsAsync(_userId, _tenantId, Arg.Any<CancellationToken>()).Returns([groupId]);
         ConfigureActors(
             Actor(Guid.CreateVersion7(), organizationId, nameof(ActorTypeEnum.Organization), "Organization"),
             Actor(Guid.CreateVersion7(), groupId, nameof(ActorTypeEnum.Group), "Group"));
@@ -145,7 +191,7 @@ public sealed class GetUiShellContextRequestHandlerTests
     public async Task Handle_GroupOrganizer_IncludesGroupManagedActorAndScope()
     {
         Guid groupId = Guid.CreateVersion7();
-        _adminContext.GetAdminGroupIdsAsync(_userId, Arg.Any<CancellationToken>()).Returns([groupId]);
+        _adminContext.GetAdminGroupIdsAsync(_userId, _tenantId, Arg.Any<CancellationToken>()).Returns([groupId]);
         ConfigureActors(Actor(Guid.CreateVersion7(), groupId, nameof(ActorTypeEnum.Group), "Volunteers"));
 
         var result = await CreateHandler().Handle(new GetUiShellContextRequest(), CancellationToken.None);
@@ -196,17 +242,20 @@ public sealed class GetUiShellContextRequestHandlerTests
         Guid scopeId,
         string actorType,
         string displayName) => new()
-    {
-        ActorId = actorId,
-        ScopeId = scopeId,
-        ActorType = actorType,
-        ActorDisplayName = displayName
-    };
+        {
+            ActorId = actorId,
+            ScopeId = scopeId,
+            ActorType = actorType,
+            ActorDisplayName = displayName
+        };
 
-    private static ResolvedSetting Setting(string key, object value) => new()
-    {
-        Key = key,
-        Value = SettingValueSerializer.Serialize(value),
-        Source = SettingSource.SystemDefault
-    };
+    private static ResolvedSetting Setting(
+        string key,
+        object value,
+        SettingSource source = SettingSource.SystemDefault) => new()
+        {
+            Key = key,
+            Value = SettingValueSerializer.Serialize(value),
+            Source = source
+        };
 }

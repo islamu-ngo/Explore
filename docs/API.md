@@ -990,7 +990,10 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
 11. Instance MCP governance:
    - `GET /api/instance/settings/mcp` — instance MCP runtime enablement and tenant override lock state.
    - `PUT /api/instance/settings/mcp` — update `mcp.enabled`, `mcp.enable_legacy_sse`, `governance.lock_tenant_mcp`, and `governance.lock_tenant_mcp_legacy_sse`.
-   - Endpoint path and stateless mode remain startup-only and are not exposed as runtime-editable fields.
+    - Endpoint path and stateless mode remain startup-only and are not exposed as runtime-editable fields.
+12. Authenticated UI shell context:
+    - `GET /api/ui-shell/context` returns the current tenant's server-authoritative workspace availability, organization/group publisher actors, explicitly authorized settings scopes, deployment mode, organization-centric pinned actor, and resolved navigation defaults.
+    - The response is a plain DTO, requires authentication, sends `Cache-Control: private, no-store`, and is never shared with the anonymous public-experience shell. Instance administration alone does not grant Studio or Tenant settings access.
 
 ---
 

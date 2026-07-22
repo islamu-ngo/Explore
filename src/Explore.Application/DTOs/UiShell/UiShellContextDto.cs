@@ -42,7 +42,6 @@ public sealed class UiShellNavigationDefaultsDto
     public string Events { get; set; } = "Docked";
     public string Studio { get; set; } = "Docked";
     public string Ai { get; set; } = "Docked";
-    public string Settings { get; set; } = "Docked";
     public bool AllowUserOverride { get; set; } = true;
     public string OrganizerDefaultWorkspace { get; set; } = "Events";
 }

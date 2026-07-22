@@ -74,6 +74,11 @@ public class GetPublicExperienceShellQueryHandlerTests
                 Arg.Any<SettingContext>(),
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<string?>(null));
+        _settingsResolver.ResolveAsync<string>(
+                GovernanceSettingKeys.UiShell.RailPublicVisibility,
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns("AuthenticatedOnly");
 
         _handler = new GetPublicExperienceShellQueryHandler(
             _settingsHandler,
@@ -98,8 +103,28 @@ public class GetPublicExperienceShellQueryHandlerTests
         await Assert.That(result.EventCatalog.Label).IsEqualTo("Events");
         await Assert.That(result.EventCatalog.Url).IsEqualTo("/events");
         await Assert.That(result.PrimaryOrganization.State).IsEqualTo(PublicExperiencePrimaryOrganizationState.NotConfigured);
+        await Assert.That(result.RailPublicVisibility).IsEqualTo("AuthenticatedOnly");
         await Assert.That(result.Footer.Settings.Template).IsEqualTo("minimal");
         await _organizationRepository.DidNotReceive().GetOrganizationWithDetails(Arg.Any<Guid>());
+    }
+
+    [Test]
+    public async Task Handle_WhenRailVisibilityIsAlways_ReturnsResolvedPublicRailPolicy()
+    {
+        var tenantId = Guid.NewGuid();
+        _tenantContext.TenantId.Returns(tenantId);
+        _settingsHandler.Handle(Arg.Any<GetPublicExperienceSettingsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateSettings(tenantId));
+        _settingsResolver.ResolveAsync<string>(
+                GovernanceSettingKeys.UiShell.RailPublicVisibility,
+                Arg.Is<SettingContext>(context => context.TenantId == tenantId),
+                Arg.Any<CancellationToken>())
+            .Returns("Always");
+
+        PublicExperienceShellDto result = await _handler.Handle(new GetPublicExperienceShellQuery(), CancellationToken.None);
+
+        await Assert.That(result.RailPublicVisibility).IsEqualTo("Always");
+        await Assert.That(result.Revision).Contains(":Always:");
     }
 
     [Test]

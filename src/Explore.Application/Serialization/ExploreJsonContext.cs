@@ -53,6 +53,7 @@ using Explore.Application.DTOs.TagTypeTags;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.DTOs.TenantSettingsDocuments;
 using Explore.Application.DTOs.TenantUserRoleGrant;
+using Explore.Application.DTOs.UiShell;
 using Explore.Application.DTOs.User;
 using Explore.Application.DTOs.UserAuthenticationToken;
 using Explore.Application.DTOs.UserExternalLogin;
@@ -78,6 +79,11 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(AiAssistantModelDiscoveryRequestDto))]
 [JsonSerializable(typeof(AiAssistantFeatureFlagsDto))]
 [JsonSerializable(typeof(AiAssistantLimitsDto))]
+[JsonSerializable(typeof(UiShellContextDto))]
+[JsonSerializable(typeof(WorkspaceAvailabilityDto))]
+[JsonSerializable(typeof(ManagedActorDto))]
+[JsonSerializable(typeof(SettingsScopeDto))]
+[JsonSerializable(typeof(UiShellNavigationDefaultsDto))]
 [JsonSerializable(typeof(CreateWebhookConsumerRequestDto))]
 [JsonSerializable(typeof(CreateWebhookEndpointRequestDto))]
 [JsonSerializable(typeof(RotateWebhookEndpointSecretRequestDto))]

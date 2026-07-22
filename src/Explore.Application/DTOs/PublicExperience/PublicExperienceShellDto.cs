@@ -12,6 +12,7 @@ public class PublicExperienceShellDto
     public int SchemaVersion { get; set; } = 1;
     public string Revision { get; set; } = string.Empty;
     public PublicExperienceMode Mode { get; set; } = PublicExperienceMode.DiscoveryCentric;
+    public string RailPublicVisibility { get; set; } = "AuthenticatedOnly";
     public PublicExperienceHomeDto Home { get; set; } = new();
     public PublicExperienceNavigationDto Navigation { get; set; } = new();
     public PublicExperienceEventCatalogDto EventCatalog { get; set; } = new();

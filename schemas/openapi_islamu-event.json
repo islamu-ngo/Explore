@@ -54763,6 +54763,75 @@
         "x-endpoint-class": "Public"
       }
     },
+    "/api/ui-shell/context": {
+      "get": {
+        "tags": [
+          "UiShell"
+        ],
+        "summary": "Get UI shell context",
+        "description": "Returns the authenticated caller's workspace availability, managed actors, settings scopes, deployment mode, and navigation defaults.",
+        "operationId": "GetUiShellContext",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/UiShellContextDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/UiShellContextDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/UiShellContextDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/admin/ui-themes": {
       "get": {
         "tags": [
@@ -94929,6 +94998,25 @@
           }
         }
       },
+      "ManagedActorDto": {
+        "type": "object",
+        "properties": {
+          "actorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scopeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actorType": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        }
+      },
       "ManagedEventInstanceStatusDto": {
         "required": [
           "managedInstanceId",
@@ -99807,6 +99895,9 @@
           "mode": {
             "$ref": "#/components/schemas/PublicExperienceMode"
           },
+          "railPublicVisibility": {
+            "type": "string"
+          },
           "home": {
             "$ref": "#/components/schemas/PublicExperienceHomeDto"
           },
@@ -101167,6 +101258,24 @@
           "TenantLocked"
         ],
         "type": "string"
+      },
+      "SettingsScopeDto": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        }
       },
       "SettingUpdateResultDto": {
         "required": [
@@ -103714,6 +103823,63 @@
               "string"
             ],
             "format": "uuid"
+          }
+        }
+      },
+      "UiShellContextDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deploymentMode": {
+            "type": "string"
+          },
+          "workspaces": {
+            "$ref": "#/components/schemas/WorkspaceAvailabilityDto"
+          },
+          "managedActors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagedActorDto"
+            }
+          },
+          "settingsScopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettingsScopeDto"
+            }
+          },
+          "pinnedActorId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "navigationDefaults": {
+            "$ref": "#/components/schemas/UiShellNavigationDefaultsDto"
+          }
+        }
+      },
+      "UiShellNavigationDefaultsDto": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "string"
+          },
+          "studio": {
+            "type": "string"
+          },
+          "ai": {
+            "type": "string"
+          },
+          "allowUserOverride": {
+            "type": "boolean"
+          },
+          "organizerDefaultWorkspace": {
+            "type": "string"
           }
         }
       },
@@ -109985,6 +110151,23 @@
           }
         }
       },
+      "WorkspaceAvailabilityDto": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "boolean"
+          },
+          "studio": {
+            "type": "boolean"
+          },
+          "ai": {
+            "type": "boolean"
+          },
+          "settings": {
+            "type": "boolean"
+          }
+        }
+      },
       "WritablePathHealth": {
         "required": [
           "exists",
@@ -110306,6 +110489,9 @@
     },
     {
       "name": "Translation"
+    },
+    {
+      "name": "UiShell"
     },
     {
       "name": "UiThemeAdmin"

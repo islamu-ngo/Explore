@@ -307,6 +307,12 @@ public static class RouteNames
 
     #endregion
 
+    #region UI Shell Routes
+
+    public const string GetUiShellContext = "GetUiShellContext";
+
+    #endregion
+
     #region Support Access Routes
 
     public const string GetCurrentSupportAccessSession = "GetCurrentSupportAccessSession";

@@ -33,7 +33,6 @@ public sealed class GetUiShellContextRequestHandler(
         GovernanceSettingKeys.UiShell.DefaultNavModeEvents,
         GovernanceSettingKeys.UiShell.DefaultNavModeStudio,
         GovernanceSettingKeys.UiShell.DefaultNavModeAi,
-        GovernanceSettingKeys.UiShell.DefaultNavModeSettings,
         GovernanceSettingKeys.UiShell.AllowUserNavOverride,
         GovernanceSettingKeys.UiShell.OrganizerDefaultWorkspace,
         GovernanceSettingKeys.PublicExperience.Mode,
@@ -50,8 +49,10 @@ public sealed class GetUiShellContextRequestHandler(
 
         Task<bool> instanceAdminTask = adminContext.IsInstanceAdminAsync(userId, cancellationToken);
         Task<IReadOnlyList<Guid>> tenantAdminTask = adminContext.GetAdminTenantIdsAsync(userId, cancellationToken);
-        Task<IReadOnlyList<Guid>> organizationAdminTask = adminContext.GetAdminOrganizationIdsAsync(userId, cancellationToken);
-        Task<IReadOnlyList<Guid>> groupAdminTask = adminContext.GetAdminGroupIdsAsync(userId, cancellationToken);
+        Task<IReadOnlyList<Guid>> organizationAdminTask =
+            adminContext.GetAdminOrganizationIdsAsync(userId, tenantId, cancellationToken);
+        Task<IReadOnlyList<Guid>> groupAdminTask =
+            adminContext.GetAdminGroupIdsAsync(userId, tenantId, cancellationToken);
         Task<IReadOnlyList<AiAssistantActorContextDto>> actorsTask =
             actorContextService.ListAuthorizedActorContextsAsync(tenantId, userId, cancellationToken);
         Task<IReadOnlyList<ResolvedSetting>> settingsTask =
@@ -62,8 +63,8 @@ public sealed class GetUiShellContextRequestHandler(
 
         bool isInstanceAdmin = await instanceAdminTask;
         IReadOnlyList<Guid> tenantAdminIds = await tenantAdminTask;
-        IReadOnlySet<Guid> organizationAdminIds = (await organizationAdminTask).ToHashSet();
-        IReadOnlySet<Guid> groupAdminIds = (await groupAdminTask).ToHashSet();
+        IReadOnlyList<Guid> organizationAdminIds = await organizationAdminTask;
+        IReadOnlyList<Guid> groupAdminIds = await groupAdminTask;
         IReadOnlyList<AiAssistantActorContextDto> actorContexts = await actorsTask;
         Dictionary<string, ResolvedSetting> settings = (await settingsTask)
             .ToDictionary(setting => setting.Key, StringComparer.Ordinal);
@@ -114,7 +115,6 @@ public sealed class GetUiShellContextRequestHandler(
                 Events = ReadString(settings, GovernanceSettingKeys.UiShell.DefaultNavModeEvents, "Docked"),
                 Studio = ReadString(settings, GovernanceSettingKeys.UiShell.DefaultNavModeStudio, "Docked"),
                 Ai = ReadString(settings, GovernanceSettingKeys.UiShell.DefaultNavModeAi, "Docked"),
-                Settings = ReadString(settings, GovernanceSettingKeys.UiShell.DefaultNavModeSettings, "Docked"),
                 AllowUserOverride = ReadBool(settings, GovernanceSettingKeys.UiShell.AllowUserNavOverride, true),
                 OrganizerDefaultWorkspace = ReadString(
                     settings,
@@ -129,8 +129,8 @@ public sealed class GetUiShellContextRequestHandler(
         Guid tenantId,
         bool isInstanceAdmin,
         IReadOnlyList<Guid> tenantAdminIds,
-        IReadOnlySet<Guid> organizationAdminIds,
-        IReadOnlySet<Guid> groupAdminIds,
+        IReadOnlyList<Guid> organizationAdminIds,
+        IReadOnlyList<Guid> groupAdminIds,
         IReadOnlyList<ManagedActorDto> managedActors)
     {
         var scopes = new List<SettingsScopeDto>
@@ -138,24 +138,31 @@ public sealed class GetUiShellContextRequestHandler(
             new() { Scope = "Personal", ScopeId = userId, DisplayName = "Personal" }
         };
 
-        scopes.AddRange(managedActors
-            .Where(actor => actor.ActorType == nameof(ActorTypeEnum.Organization)
-                && organizationAdminIds.Contains(actor.ScopeId))
-            .Select(actor => new SettingsScopeDto
+        foreach (Guid organizationId in organizationAdminIds.Distinct())
+        {
+            ManagedActorDto? actor = managedActors.FirstOrDefault(candidate =>
+                candidate.ActorType == nameof(ActorTypeEnum.Organization)
+                && candidate.ScopeId == organizationId);
+            scopes.Add(new SettingsScopeDto
             {
                 Scope = "Organization",
-                ScopeId = actor.ScopeId,
-                DisplayName = actor.DisplayName
-            }));
-        scopes.AddRange(managedActors
-            .Where(actor => actor.ActorType == nameof(ActorTypeEnum.Group)
-                && groupAdminIds.Contains(actor.ScopeId))
-            .Select(actor => new SettingsScopeDto
+                ScopeId = organizationId,
+                DisplayName = actor?.DisplayName ?? "Organization"
+            });
+        }
+
+        foreach (Guid groupId in groupAdminIds.Distinct())
+        {
+            ManagedActorDto? actor = managedActors.FirstOrDefault(candidate =>
+                candidate.ActorType == nameof(ActorTypeEnum.Group)
+                && candidate.ScopeId == groupId);
+            scopes.Add(new SettingsScopeDto
             {
                 Scope = "Group",
-                ScopeId = actor.ScopeId,
-                DisplayName = actor.DisplayName
-            }));
+                ScopeId = groupId,
+                DisplayName = actor?.DisplayName ?? "Group"
+            });
+        }
 
         if (tenantAdminIds.Contains(tenantId))
         {

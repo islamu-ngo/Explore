@@ -47,6 +47,14 @@ public class GetPublicExperienceShellQueryHandler(
             GovernanceSettingKeys.PublicExperience.Ctas, settingContext, cancellationToken);
         var eventSectionPresets = await hierarchicalSettingsResolver.ResolveAsync<string>(
             GovernanceSettingKeys.PublicExperience.EventSectionPresets, settingContext, cancellationToken);
+        var railPublicVisibility = await hierarchicalSettingsResolver.ResolveAsync<string>(
+            GovernanceSettingKeys.UiShell.RailPublicVisibility, settingContext, cancellationToken);
+        var resolvedRailPublicVisibility = string.Equals(
+            railPublicVisibility?.Trim(),
+            "Always",
+            StringComparison.OrdinalIgnoreCase)
+            ? "Always"
+            : "AuthenticatedOnly";
 
         var parsedMode = ParseMode(mode);
         var primaryOrganization = await ResolvePrimaryOrganizationAsync(primaryOrganizationId, tenantId, cancellationToken);
@@ -59,8 +67,18 @@ public class GetPublicExperienceShellQueryHandler(
         return new PublicExperienceShellDto
         {
             SchemaVersion = 1,
-            Revision = BuildRevision(settings, parsedMode, eventCatalogLabel, primaryOrganization, homeBlockDtos, ctaDtos, eventSections, shellNavigationLinks),
+            Revision = BuildRevision(
+                settings,
+                parsedMode,
+                eventCatalogLabel,
+                resolvedRailPublicVisibility,
+                primaryOrganization,
+                homeBlockDtos,
+                ctaDtos,
+                eventSections,
+                shellNavigationLinks),
             Mode = parsedMode,
+            RailPublicVisibility = resolvedRailPublicVisibility,
             Home = new PublicExperienceHomeDto
             {
                 PreferredHomePage = settings.PreferredHomePage,
@@ -454,6 +472,7 @@ public class GetPublicExperienceShellQueryHandler(
         PublicExperienceSettingsDto settings,
         PublicExperienceMode mode,
         string? eventCatalogLabel,
+        string railPublicVisibility,
         PublicExperiencePrimaryOrganizationDto primaryOrganization,
         IReadOnlyList<PublicExperienceHomeBlockDto> homeBlocks,
         IReadOnlyList<PublicExperienceCtaDto> ctas,
@@ -475,6 +494,7 @@ public class GetPublicExperienceShellQueryHandler(
             settings.TenantId.ToString("N"),
             mode,
             string.IsNullOrWhiteSpace(eventCatalogLabel) ? "Events" : eventCatalogLabel.Trim(),
+            railPublicVisibility,
             primaryOrganizationToken,
             string.Join(',', homeBlocks.Select(block => $"{block.Key}={block.Kind}:{block.Title}")),
             string.Join(',', ctas.Select(cta => $"{cta.Key}={cta.Placement}:{cta.Url}")),
