@@ -3,13 +3,13 @@
 
 # Dynamic Event Management UI (Workspace Shell) — Task Checklist
 
-Last Updated: 2026-07-21 Europe/Brussels (re-baselined and approved)
+Last Updated: 2026-07-22 Europe/Brussels
 
 ## Status Summary
 - **Overall status:** Approved / Implementation started
-- **Completed:** 8/27 implementation tasks (Phase 0 implementation, Phase 1 Tasks 1.1–1.3, and Phase 2 Tasks 2.1–2.3 done; phase verification tracked separately)
-- **Current priority:** Phase 2 implementation review and deferred Release/architecture verification; Task 3.1 is next
-- **Next recommended slice:** Begin the server-authoritative UI shell context application query while the separately owned ATProto workstream restores the repository-wide build gate
+- **Completed:** 27/30 implementation tasks (Phases 0–8 and Task 9.1 complete; phase verification tracked separately)
+- **Current priority:** Task 9.2 View all, section registry, search, and conditional scope selector
+- **Next recommended slice:** Characterize all nine section components together, then implement one metadata registry and the View all/search composition
 
 ## Implementation Maintenance Rules
 - Read the full workstream once at initial implementation start; on resume, read context/tasks first and only relevant plan sections.
@@ -75,124 +75,170 @@ Last Updated: 2026-07-21 Europe/Brussels (re-baselined and approved)
   - **Effort:** M | **Dependencies:** 2.2
 
 ### Phase 2 Verification — RUN ONCE AFTER ALL PHASE TASKS
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+  - **Validation:** passed on 2026-07-22 with 0 errors. One concurrent-output retry failed with missing Release DLL/PDB copy artifacts; the immediate clean retry passed without source changes.
 - [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
 
-## Phase 3: Server-Authoritative UI Shell Context ⏳ NOT STARTED
-- [ ] **3.1 Application query + DTO + handler (group-publisher resolved; managed actors reuse `IAiAssistantActorContextService`)**
+## Phase 3: Server-Authoritative UI Shell Context 🟡 VERIFICATION BLOCKED
+- [x] **3.1 Application query + DTO + handler (group-publisher resolved; managed actors reuse `IAiAssistantActorContextService`)**
   - **Files:** new `src/Explore.Application/Features/UiShell/Requests/Queries/GetUiShellContextRequest.cs`, `Handlers/Queries/GetUiShellContextRequestHandler.cs`, `DTOs/UiShell/UiShellContextDto.cs` (+ `ManagedActorDto`, `SettingsScopeDto`, `WorkspaceAvailabilityDto`); unit tests in `Event.Application.UnitTests`
   - **Acceptance:** report §6 principal scenarios covered (instance-admin-only ⇒ no Studio/no tenant scope; multi-role union; org-centric pinned actor); composes existing authority sources without cross-feature reach-ins; `IAiAssistantActorContextService` is the single source of managed actors; group-publisher finding recorded in context; no HybridCache introduced; failing-first test asserts `StudioWorkspaceAvailability = false` for instance-admin-only principal
+  - **Validation:** UI-shell handler tests pass 10/10, including the eight report scenarios, fail-closed missing-settings behavior, and explicit org-admin settings without Studio; actor-context tests pass 4/4 including end-to-end CancellationToken forwarding; focused CQRS/Clean Architecture/naming checks pass 5/5; `Explore.Persistence` and `Explore.Infrastructure` production builds pass with 0 warnings/errors; Release build passes; `git diff --check` clean. Oracle found and verified fixes for settings-scope/managed-actor coupling and dropped repository cancellation. The tenant-filtered `AdminContext` lane now passes 18/18, including cross-tenant exclusion.
   - **Effort:** L | **Dependencies:** 0.2
-- [ ] **3.2 API controller + `RouteNames.GetUiShellContext` + OpenAPI/NSwag regen (exact method name verified after regen)**
+- [x] **3.2 API controller + `RouteNames.GetUiShellContext` + OpenAPI/NSwag regen (exact method name verified after regen)**
   - **Files:** new `src/Explore.API/Controllers/UiShellController.cs`; modify `src/Explore.API/Hateoas/RouteNames.cs`, `docs/API.md`, `docs/API_CHANGELOG.md`; regenerate `schemas/openapi_islamu-event.json` + `Clients/EventApiClient.g.cs`
   - **Acceptance:** contract/classification architecture tests pass; generated method name verified after regen with no banned names; changelog entry added; generated-artifact diff serialized and isolated; dirty-file hunk preservation controls explicit (unrelated dirty files not included); never hand-edit generated files
+  - **Validation:** documented single-threaded API build completed with 0 errors; NSwag generation completed successfully; OpenAPI operationId is `GetUiShellContext`; generated client method is `GetUiShellContextAsync`; generated diff is isolated to 186 OpenAPI lines and 254 client lines; API/classification/client architecture lane passed 10 with 1 governed existing skip; Oracle passed the endpoint and generated contract with high confidence.
   - **Effort:** M | **Dependencies:** 3.1
-- [ ] **3.3 Client `IUiShellContextService` + rail/nav gating + revocation fallback**
+- [x] **3.3 Client `IUiShellContextService` + rail/nav gating + revocation fallback**
   - **Files:** new `Contracts/Services/Shell/IUiShellContextService.cs`, `Services/Shell/UiShellContextService.cs`; modify `WorkspaceRegistry`, `AppWorkspaceRail`, `NavMenu.razor.cs`, `UiShellState`; bUnit tests
   - **Acceptance:** anonymous never calls the authenticated endpoint; Studio item appears only per server data; revoked stored workspace falls back to Events; NavMenu menu gating consumes shell context instead of the four ad-hoc authority loads
+  - **Validation:** service tests pass 5/5, shell-context rail tests 4/4, revocation tests 3/3, and NavMenu admin/context tests 18/18. The service uses the generated `GetUiShellContextAsync` contract, rechecks authentication before cached reads, caches for five minutes, and invalidates on `CurrentUserState.OnChanged`. Managed actors populate membership lists while matching `SettingsScopes` independently gate settings actions. The full client suite passes 1891 tests with 3 unrelated failures already recorded under Phase 1. Oracle passed the generated contract, cache/auth boundary, Studio gating, revocation behavior, scope separation, DI placement, and focused coverage with high confidence and no required fixes.
   - **Effort:** M | **Dependencies:** 3.2
 
 ### Phase 3 Verification — RUN ONCE AFTER ALL PHASE TASKS
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
+  - **Blocked by 2 unrelated failures (2026-07-22):** `UpdateEventLocationPolicyCommandHandlerTests.ValidPolicyWriteCommitsAggregateAndAuditBeforeEvictingProjectionTags` and `BusinessMetricsEmailDispatchTests.RecordEmailDispatchOperationalSignalsUsesOnlyBoundedSafeTags`. The suite passes 2928/2930; the focused UI-shell handler lane passes 10/10.
 
-## Phase 4: Studio Workspace ⏳ NOT STARTED
-- [ ] **4.1 Studio routes + workspace registration + actor-level navigation**
-  - **Files:** modify `Routes.razor`, `WorkspaceRegistry`; new `Components/Shell/Workspaces/StudioWorkspaceNavigation.razor(.cs/.css)`, `StudioActorSwitcher.razor(.cs/.css)`
-  - **Acceptance:** `/studio`, `/studio/events`, `/studio/events/:eventId(+sections)` guarded routes; switcher lists only shell-context actors; pinned mode for `public_experience.primary_organization_id`; no dead nav sections
+## Phase 4: Studio Workspace 🟡 VERIFICATION BLOCKED
+- [x] **4.1 Studio routes + workspace registration + actor-level navigation**
+  - **Files:** modify `Routes.razor`, `WorkspaceRegistry`, `UiShellState`; new `Components/Shell/Workspaces/StudioWorkspaceNavigation.razor(.css)`, `StudioActorSwitcher.razor(.cs/.css)`, `Pages/Studio/StudioHome.razor(.css)`, `StudioEvents.razor(.css)`; focused bUnit/TUnit tests
+  - **Acceptance:** authenticated `/studio` and `/studio/events` routes; deep-linked Events item exposes active state; switcher lists only shell-context actors; authorized pinned and single-actor modes are read-only; only Overview/Events render, with event-detail routes deferred to 4.3
+  - **Validation:** route/state/switcher/navigation/page lanes pass 34/34; Release build passes with 0 errors; `git diff --check` clean; Oracle PASS with no required fixes
   - **Effort:** L | **Dependencies:** —
-- [ ] **4.2 Studio dashboard + events list (actor-scoped via `GetManagedEventsByActorAsync`)**
-  - **Files:** new `Pages/Studio/StudioDashboard.razor(.cs/.css)`, `Pages/Studio/StudioEvents.razor(.cs/.css)`, `IStudioEventsService`(+impl); bUnit tests
-  - **Acceptance:** HAL-gated row affordances (fabricated `_links` variants tested); eligible-only empty-state Create; `GetManagedEventsByActorAsync` used for org/group actors; `GetMyEventsAsync` used for personal/unscoped fallback; create uses existing `/events/create` publisher picker
+- [x] **4.2 Studio dashboard + events list (actor-scoped via `GetManagedEventsByActorAsync`)**
+  - **Files:** modify `IEventService`/`EventService`, `HalResourceExtensions`, `Pages/Studio/StudioHome.razor(.css)`, `StudioEvents.razor(.css)`; add `StudioEventPageBase.cs`; focused service/page tests
+  - **Acceptance:** HAL-gated row affordances (fabricated `_links` variants tested); empty Create requires eligibility plus collection HAL; strict managed endpoint uses actor ID; personal fallback uses my-events; create uses existing `/events/create` picker
+  - **Validation:** failing-first 10 red/2 baseline green; final Studio 12/12, EventService 69/69, switcher 3/3, navigation host 9/9; client build 0 warnings/errors; diff/authority/RTL sweeps clean; GPT Oracle PASS
   - **Effort:** L | **Dependencies:** 4.1
-- [ ] **4.3 Event-level navigation shell (HAL-driven, replaces actor nav content)**
+- [x] **4.3 Event-level navigation shell (HAL-driven, replaces actor nav content)**
   - **Files:** new `Pages/Studio/StudioEventShell.razor(.cs/.css)`, `Components/Shell/Workspaces/StudioEventNavigation.razor(.cs/.css)`; bUnit tests
   - **Acceptance:** section visibility flips with `_links` (table-driven test); back-link returns to actor level; `rg "IsInRole" src/Explore.Blazor.Client/Pages/Studio` empty; links target existing editors (`/events/:id/edit`, session pages); group events use existing `/events/create` picker (no new group-specific route)
+  - **Validation:** failing-first compile proof captured; final navigation 8/8, shared state 1/1, workspace host 10/10, routes 17/17, and Studio regression 12/12 pass; client Release build 0 warnings/errors; diff/authority/RTL sweeps clean; GPT-5.5 Oracle PASS
   - **Effort:** L | **Dependencies:** 4.1, 4.2
-- [ ] **4.4 Workspace-aware top bar (search + primary action + acting-actor hint)**
+- [x] **4.4 Workspace-aware top bar (search + primary action + acting-actor hint)**
   - **Files:** modify `Layout/NavMenu.razor(.cs)`; bUnit tests
   - **Acceptance:** per-workspace search/action matrix tests pass (Events/Studio/AI/Settings behaviors per plan §6 Phase 4)
+  - **Validation:** valid red matrix discovered 4 tests with Events baseline green and 3 expected failures; final workspace matrix 5/5 and existing admin/context regression 18/18 pass; client Release build 0 warnings/errors; scoped diff/diagnostics clean; GPT-5.5 Oracle found and verified anonymous-workspace and bidi fixes, then returned PASS
   - **Effort:** M | **Dependencies:** 4.1
 
 ### Phase 4 Verification — RUN ONCE AFTER ALL PHASE TASKS
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+  - **Validation:** passed with 0 errors and 1,035 pre-existing repository warnings; the directly changed client project remains 0 warnings/errors.
 - [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
+  - **Blocked by the same 3 unrelated failures already recorded under Phase 1:** `GeneratedClient_DoesNotEmitUntypedHalEmbeddedItemCollections`, `ReportEventDialogTests.Render_CommunicationChoicesAreIndependentUncheckedAndDescribed`, and `ReportEventDialogTests.SubmitAsync_WhenValidationErrorRepeats_RendersOneAssertiveAlertPath`. Current result: 1,932 total, 1,928 passed, 3 failed, 1 governed skip; all Task 4.1–4.4 focused lanes pass.
 
-## Phase 5: AI Dual Experience ⏳ NOT STARTED
-- [ ] **5.1 Extract shared conversation components from `AiAssistantRail`**
+## Phase 5: AI Dual Experience 🟡 VERIFICATION BLOCKED
+- [x] **5.1 Extract shared conversation components from `AiAssistantRail`**
   - **Files:** modify `Components/Shell/AiAssistantRail.razor(.css)`; new/verified shared components under `Components/Shell/AiAssistant/`
   - **Acceptance:** existing full-panel `AiAssistantRail` bUnit suite green unchanged; extracted components rail-agnostic
+  - **Validation:** `AiAssistantRailTests` 21/21, timeline 1/1, composer 2/2, proposed-action 3/3, reference-picker 2/2, action-result 7/7, Blazor architecture 17/17; canonical Release build 0 errors; CSS ownership/ID/authority/diff sweeps clean; GPT-5.5 Oracle final PASS after resolving native boolean binding, host-unique IDs, and CSS-isolation ownership/deep-selector findings
   - **Effort:** L | **Dependencies:** —
-- [ ] **5.2 `/ai` workspace pages + `AiWorkspaceNavigation` + open-in-workspace (authenticated-only)**
-  - **Files:** new `Pages/Ai/AiWorkspace.razor(.cs/.css)`, `Pages/Ai/AiConversationPage.razor(.cs/.css)`, `Components/Shell/Workspaces/AiWorkspaceNavigation.razor(.cs/.css)`; modify `Routes.razor`, `WorkspaceRegistry`, `AiAssistantRail` header, `NavMenu` (sparkle unchanged)
+- [x] **5.2 `/ai` workspace pages + `AiWorkspaceNavigation` + open-in-workspace (authenticated-only)**
+  - **Files:** new `Pages/Ai/AiWorkspace.razor(.css)` and `Components/Shell/Workspaces/AiWorkspaceNavigation.razor(.css)`; modify `Routes.razor`, `WorkspaceRegistry`, `AiAssistantRail`, shared AI state, and `MainLayout`
   - **Acceptance:** dock↔workspace share one `AiAssistantConversationState` (identical history, no drift); HAL-gated confirm/reject in both surfaces; `/ai` routes reject anonymous users (guard test); anonymous AI access remains dock-only; product label "AI Assistant" (model id only in info popover)
+  - **Validation:** authenticated routes/classifier 18/18, AI rail 27/27, workspace navigation host 11/11, app workspace rail 8/8, MainLayout 34/34, shared timeline 1/1, composer 2/2, and Blazor architecture 17/17 pass; canonical Release build has 0 errors; late-policy and reentrant HAL-load tests fail before their fixes and pass after; GPT-5.5 Oracle final PASS
   - **Effort:** L | **Dependencies:** 5.1
 
 ### Phase 5 Verification — RUN ONCE AFTER ALL PHASE TASKS
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
+  - **Blocked by the same 3 unrelated failures already recorded under Phase 1:** generated EventLocation HAL collection typing and two `ReportEventDialogTests`. Current result: 1,947 total, 1,943 passed, 3 failed, 1 governed skip; all Task 5.1–5.2 focused lanes pass.
 
-## Phase 6: Settings Workspace Hub ⏳ NOT STARTED
-- [ ] **6.1 Scope-aware `SettingsWorkspaceNavigation` (scopes from shell context)**
-  - **Files:** modify `Components/Shell/Workspaces/SettingsWorkspaceNavigation.razor(.cs/.css)`; bUnit tests
-  - **Acceptance:** Personal always; org/group/tenant/instance per authority with names; instance-admin-only ⇒ Personal + Instance only
+## Phase 6: Hybrid Settings Architecture 🟡 VERIFICATION BLOCKED
+- [x] **6.1 Contextual Personal Settings state and provider removal**
+  - **Files:** modify `UiShellState`, `WorkspaceRegistry`, `WorkspaceNavigationHost`, `AppWorkspaceRail`, and focused tests; delete `SettingsWorkspaceNavigation.razor(.cs/.css)`
+  - **Acceptance:** in-session Explore/Studio/AI → Personal retains source workspace/navigation; direct Personal load/refresh activates dedicated Settings; leaving clears origin; one `aria-current`; no Settings provider remains; no return URL input/persistence
+  - **Validation:** state 10/10, revocation 5/5, app rail 9/9, navigation host 11/11; failing-first absent-property proof; scoped source/CSS/diff checks clean; direct verification disclosure recorded because further agents are prohibited
   - **Effort:** M | **Dependencies:** —
-- [ ] **6.2 Canonical `/settings/**` routes + link migration + old-route/`@page` removal**
-  - **Files:** modify `Routes.razor` (add `/settings/tenant`, `/settings/instance`, `/settings/organization/:organizationId`, `/settings/group/:groupId`, `/settings/tenant/navigation`; delete old `/admin/*/settings` rows); remove old `@page "/admin/tenant/navigation"` directive from `Pages/Admin/Tenant/Navigation.razor` (was never in `Routes.razor`); update every internal link producer; update guard tests
-  - **Acceptance:** `rg` sweep for old paths returns zero stale refs; guards enforce identical access on new paths; `@page` directive removed
-  - **Effort:** M | **Dependencies:** 6.1
-- [ ] **6.3 Single-tenant "Site administration" composition**
-  - **Files:** modify `SettingsWorkspaceNavigation`; bUnit table-driven test (deployment mode × authority)
-  - **Acceptance:** single-tenant + dual authority ⇒ grouped "Site administration"; multi-tenant ⇒ separate Tenant/Instance scopes
-  - **Effort:** S | **Dependencies:** 6.1
+- [x] **6.2 Canonical hub/personal/admin routes and page composition**
+  - **Files:** modify `Routes.razor`, Personal Settings page/layout/CSS, existing guarded admin settings pages/layouts, and tests; add shared `SettingsScopeSelector`; remove old admin settings rows and `/admin/tenant/navigation` directive
+  - **Acceptance:** `/settings`, `/settings/personal`, `/settings/personal/:section`, `/settings/organization/:id`, `/settings/group/:id`, `/settings/tenant`, `/settings/instance` work with existing guards; selector is server-scope-driven; Personal uses compact path sections; admin layouts retain their own sidebars; stale-route sweep is zero
+  - **Validation:** failing-first client run had 5 expected Task 6.2 failures plus the 3 known unrelated failures; final client run passes 1,957/1,961 with only those 3 unrelated failures and 1 governed skip; architecture passes 281/286 with the same 4 unrelated blockers and 1 governed skip; Release build 0 errors; diff/stale-route sweeps clean; direct verification disclosure recorded because further agents are prohibited
+  - **Effort:** L | **Dependencies:** 6.1
+- [x] **6.3 One-gear/profile entry points and authorized scope presentation**
+  - **Files:** modify `AppWorkspaceRail`, `NavMenu`, hub/selector, CSS, and authority/deployment matrix tests
+  - **Acceptance:** one bottom gear; primary always `/settings/personal`; gear menu + profile dropdown retain hub and authorized scope access; contextual-open differs from active; instance-only never renders Tenant; single-tenant dual authority presents Site administration without merging guards/APIs
+  - **Validation:** failing-first client run had 5 expected Task 6.3 failures plus the 3 known unrelated failures; final client run passes 1,960/1,964 with only those 3 unrelated failures and 1 governed skip; authority/CSS/diff sweeps clean; direct verification disclosure recorded because further agents are prohibited
+  - **Effort:** M | **Dependencies:** 6.1, 6.2
 
 ### Phase 6 Verification — RUN ONCE AFTER ALL PHASE TASKS
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
+  - **Blocked by the same 3 unrelated failures recorded under Phase 1:** generated EventLocation HAL collection typing and two `ReportEventDialogTests`. Current result: 1,964 total, 1,960 passed, 3 failed, 1 governed skip; all Task 6.1–6.3 behavior passes.
 
-## Phase 7: Durable Layout Preferences + Tenant Shell Governance ⏳ NOT STARTED
-- [ ] **7.1 Shell-context wiring + public-experience governance resolution**
+## Phase 7: Durable Layout Preferences + Tenant Shell Governance 🟡 IN PROGRESS
+- [x] **7.1 Shell-context wiring + public-experience governance resolution**
   - **Files:** modify `GetUiShellContextRequestHandler`, public-experience shell handler (org-centric rail visibility); modify `docs/CONFIGURATION.md`; handler tests
-  - **Acceptance:** registered D8 keys wired into handler (`navigationDefaults`, `allowUserOverride`, `organizerDefaultWorkspace`, `railPublicVisibility`); lock + single-tenant bypass proven for one representative key; `docs/CONFIGURATION.md` documents every new key
+  - **Acceptance:** retained D8 keys wired into handler (`navigationDefaults`, `allowUserOverride`, `organizerDefaultWorkspace`, `railPublicVisibility`); unused `ui_shell.default_nav_mode.settings` definition/docs removed; lock + single-tenant bypass proven for one representative key; `docs/CONFIGURATION.md` documents every retained key
+  - **Validation:** failing-first Application compile failed on absent `RailPublicVisibility`; focused handler tests pass 11/11; focused governance registry tests pass 9/9; Release build passes with 0 errors; OpenAPI/generated client parity and stale-key/diff sweeps are clean; full suites retain only unrelated recorded blockers
   - **Effort:** M | **Dependencies:** 0.2, 3.1
-- [ ] **7.2 `ServerBackedDockLayoutPersistence` + last workspace/actor persistence (tenant-discriminated anonymous storage)**
+- [x] **7.2 Server-backed dock persistence + last workspace/actor/settings scope (tenant-discriminated anonymous storage)**
   - **Files:** new `Services/Interop/ServerBackedDockLayoutPersistence.cs`, `Services/Shell/ShellPreferencesService.cs`; modify DI, `MainLayout.razor.cs` hydrate path, `UiShellState`/`StudioActorSwitcher`; unit tests
-  - **Acceptance:** authenticated cross-device restore via `api/settings/user/{category}` batch (debounced, never per pointer event); anonymous storage uses tenant discriminator (`dock_layout:v1:{tenantSlug}:`) with no old-key compatibility read; promote-on-login; revoked actor/workspace pruned; `UserAction`/`Reset`-only autosave preserved; `allowUserOverride=false` skips nav-mode persistence
+  - **Acceptance:** authenticated cross-device restore via `api/settings/user/{category}` batch (debounced, never per pointer event); anonymous storage uses tenant discriminator (`dock_layout:v1:{tenantSlug}:`) with no old-key compatibility read; promote-on-login; revoked actor/workspace/settings scope pruned; `ui.settings.last_scope.v1` affects only the dedicated hub/selector and never the gear Personal target; Personal origin is never persisted; `UserAction`/`Reset`-only autosave preserved; `allowUserOverride=false` skips nav-mode persistence
+  - **Validation:** failing-first coverage established absent persistence/preference contracts; focused Task 7.2 client tests pass 4/4, extended affected client fixtures pass 6/6, and focused client architecture/governance tests pass 17/17; Release build passes with 0 errors; `git diff --check` and production stale-key sweeps are clean; full client and Architecture suites retain only the 3 and 4 unrelated recorded failures respectively
   - **Effort:** L | **Dependencies:** 7.1
-- [ ] **7.3 Tenant admin "Shell" settings section**
+- [x] **7.3 Tenant admin "Shell" settings section**
   - **Files:** modify tenant settings page components (`Pages/Admin/Tenant/**`); bUnit tests
   - **Acceptance:** D8 controls rendered with `EffectiveSettingDto.CanEdit`/`Reason` (no client role checks); locked ⇒ read-only with reason
+  - **Validation:** failing-first client compile failed on the absent `ITenantShellSettingsService`; focused component tests pass 2/2, affected tenant-settings tests pass 2/2, focused Blazor architecture/governance tests pass 17/17, and Release build passes with 0 errors; source sweep finds no role/claim authority checks
   - **Effort:** M | **Dependencies:** 7.1
 
 ### Phase 7 Verification — RUN ONCE AFTER ALL PHASE TASKS
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+  - **Blocked by environment and unrelated baselines:** 1,899 total, 1,384 passed, 514 failed, 1 skipped; at least 500 failures are `DockerUnavailableException` because Testcontainers cannot reach `/var/run/docker.sock`, with the remaining visible failures in previously unrelated EventLocation privacy, email health, and ATProto routes. Task 7.3 focused client/architecture lanes are green.
 
-## Phase 8: Responsive, RTL, Accessibility Hardening + Scenario Matrix ⏳ NOT STARTED
-- [ ] **8.1 Mobile bottom navigation + generic workspace canvas floors**
+## Phase 8: Responsive, RTL, Accessibility Hardening + Scenario Matrix 🟡 IN PROGRESS
+- [x] **8.1 Mobile bottom navigation + generic workspace canvas floors**
   - **Files:** modify `AppWorkspaceRail.razor(.css)`, `MainLayout.razor.css`; extend `DockLayoutStateTests`; bUnit bottom-nav tests
   - **Acceptance:** `Xs` ⇒ bottom nav (availability-filtered), no start track; generic floor hint (Events 375 / AI 520 / Settings 560 / Studio 720) applied via projection only (never persisted); `DockLayoutState` contains zero workspace-specific branching
+  - **Validation:** existing Xs rail characterization passes 9/9; failing-first compile proved absent floor overload/mapping; final affected `DockLayoutStateTests`/`MainLayoutTests`/`AppWorkspaceRailTests` lane passes 33/33; per-scope floors are caller-supplied, snapshot-equivalent, and classified `ViewportPolicy`
   - **Effort:** L | **Dependencies:** —
-- [ ] **8.2 Focus/landmark/RTL polish**
+- [x] **8.2 Focus/landmark/RTL polish**
   - **Files:** modify `WorkspaceNavigationHost`, nav providers, `UiShellState` (title/focus on switch), `:dir(rtl)` overrides where needed; a11y architecture tests
   - **Acceptance:** distinct `aria-label` per nav; focus moves to `h1`/main on workspace switch; architecture a11y + logical-CSS tests green
+  - **Validation:** failing-first host test received the duplicate `Sidebar navigation` label; final workspace host passes 11/11, MainLayout focus/landmark behavior passes 39/39, and `AccessibilityConventionTests` passes 8/8. Events now exposes `Events workspace navigation`; no RTL override or broader shell change was needed because the architecture scan confirms logical CSS.
   - **Effort:** M | **Dependencies:** 8.1
-- [ ] **8.3 Scenario-matrix suite + docs sync**
+- [x] **8.3 Scenario-matrix suite + docs sync**
   - **Files:** new table-driven bUnit suite in `Explore.Blazor.Client.Tests` (Profile × Auth × Capabilities × Workspace × Viewport ⇒ rail items, nav content, settings scopes, default route, revocation fallback); modify `docs/DOCK_LAYOUT.md` QA matrix, `docs/ACCESSIBILITY.md`
   - **Acceptance:** matrix rows match plan/report §6 for implemented scenarios; docs reflect shipped behavior
+  - **Validation:** the nine-row bUnit matrix passes 1/1 and covers Discovery/OrganizationCentric profiles, anonymous/authenticated users, seeker/organizer/tenant-admin/instance-admin/multi-role capabilities, mobile/desktop semantic rail rows, provider content, authorized Settings links, durable defaults, and revocation fallback. Its failing-first run exposed alphabetical AI-first rail ordering; `AppWorkspaceRail` now preserves canonical `WorkspaceRegistry` order. `DOCK_LAYOUT`, `ACCESSIBILITY`, and `BLAZOR` now describe the shipped behavior.
   - **Effort:** L | **Dependencies:** 8.1, 8.2
 
 ### Phase 8 Verification — RUN ONCE AFTER ALL PHASE TASKS
+- [x] `dotnet build --configuration Release --verbosity quiet`
+  - **Validation:** passed on 2026-07-22 with 0 errors and 536 pre-existing warnings.
+- [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
+  - **Blocked by the same 3 unrelated failures recorded under Phase 1:** generated EventLocation HAL collection typing and two `ReportEventDialogTests`. Current result: 1,983 total, 1,979 passed, 3 failed, 1 governed skip; the Task 8.3 matrix passes.
+
+## Phase 9: Personal Settings Entry Parity And Information Architecture ⏳ NOT STARTED
+- [x] **9.1 Explicit Personal Settings navigation contract and entry-point parity**
+  - **Files:** `UiShellState.cs`, `AppWorkspaceRail.razor(.cs)`, `NavMenu.razor(.cs)`, `ThemeQuickSwitcher.razor`, `EventRegistration.razor`, focused shell/entry tests
+  - **Acceptance:** profile, rail, theme, and connected-app entries share one capture-before-navigation contract; live Events/Studio/AI origins persist; direct/new-tab loads remain dedicated; no return URL or durable origin
+  - **Validation:** failing profile-vs-rail interaction reproduced the defect; final state 18/18, navigation 7/7, and registration 5/5 focused tests pass; changed-file diagnostics/diff checks are clean
+  - **Effort:** M | **Dependencies:** 6.1
+- [ ] **9.2 View all, section registry, search, and conditional scope selector**
+  - **Files:** `Settings.razor`, `SettingsLayout.razor(.css)`, `SettingsScopeSelector.razor(.css)`, section components as needed, focused Settings tests
+  - **Acceptance:** `/settings/personal` defaults to View all; all nine sections share one metadata registry; focused routes render one section; search filters/announces results; Personal-only selector is absent; invalid slugs fall back to View all without aliases; composed render has no duplicate IDs/h1
+  - **Effort:** L | **Dependencies:** 9.1
+- [ ] **9.3 Sticky responsive vertical navigation and documentation sync**
+  - **Files:** Settings scoped CSS/tests plus `docs/BLAZOR.md`, `docs/ACCESSIBILITY.md`, `docs/DOCK_LAYOUT.md`
+  - **Acceptance:** desktop sticky vertical nav sits below navbar; narrow layout stacks without overflow; focus/DOM order, logical CSS, reduced motion, distinct nav labels, and docs are correct
+  - **Effort:** M | **Dependencies:** 9.2
+
+### Phase 9 Verification — RUN ONCE AFTER ALL PHASE TASKS
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
 
-## Phase 9: Final Visual/Browser QA Gate ⏳ NOT STARTED
-- [ ] **9.1 Visual and browser walkthrough of the scenario matrix**
-  - **Files:** all shell components, `MainLayout`, `AppWorkspaceRail`, workspace navigation providers, Studio/AI/Settings pages
-  - **Acceptance:** rail renders correctly on desktop and mobile for anonymous, authenticated seeker, organizer, tenant-admin, and instance-admin principals; workspace switches animate smoothly; bottom nav is reachable and functional; no layout breakage at 320px, 768px, 1280px, 1920px; focus order is logical; no console errors on workspace navigation; deterministic per-phase tests remain primary, this gate is independent final verification
-  - **Effort:** M | **Dependencies:** 1.3, 8.3
+## Phase 10: Final Visual/Browser QA Gate ⏳ NOT STARTED
+- [ ] **10.1 Final visual/browser scenario-matrix walkthrough**
+  - **Files:** all shell/Settings surfaces and `docs/DOCK_LAYOUT.md` QA evidence
+  - **Acceptance:** remaining authenticated personas plus revised Settings Personal-only/admin-scope states are evidenced at 320/375/768/1280/1920; console, focus, RTL, sticky/stacked, and overflow findings are recorded honestly
+  - **Effort:** M | **Dependencies:** 9.3
 
-### Phase 9 Verification
+### Phase 10 Verification
 - [ ] Manual browser walkthrough documented in `docs/DOCK_LAYOUT.md` QA matrix
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`

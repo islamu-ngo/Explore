@@ -3,7 +3,7 @@
 
 # Dynamic Event Management UI (Workspace Shell) — Implementation Plan
 
-Last Updated: 2026-07-21 Europe/Brussels (re-baselined and approved)
+Last Updated: 2026-07-22 Europe/Brussels (Settings information architecture re-baselined)
 
 ## 0. Planning Metadata
 
@@ -99,11 +99,11 @@ This plan converts the shell into a **workspace-based application**:
 Desktop shell composition (logical directions):
 
 - **Inline start:** permanent `AppWorkspaceRail` (56–64px, shell chrome, not closable) → `shell.workspace-nav` dock panel (contextual navigation, 240–280px, collapsible/persisted) → main canvas → **inline end:** `shell.ai-assistant` dock (unchanged behavior).
-- **Route decides workspace:** `/events|/home|/organization/...` → Explore; `/studio/**` → Studio; `/ai/**` → AI; `/settings/**` → Settings. Hide-chrome routes (`/setup`, `/onboarding/*`, `/startup`) render no rail (already `SetupLayout`).
+- **Route normally decides workspace:** `/events|/home|/organization/...` → Explore; `/studio/**` → Studio; `/ai/**` → AI; `/settings` and administrative `/settings/**` routes → Settings. Personal Settings is the one session-scoped utility exception: navigation from Explore/Studio/AI to `/settings/personal/**` preserves the originating workspace and its contextual navigation; a direct load or refresh has no trusted origin and resolves to dedicated Settings presentation. Hide-chrome routes (`/setup`, `/onboarding/*`, `/startup`) render no rail (already `SetupLayout`).
 - **Visibility rule:** `Visible(workspace) = FeatureAvailable AND ExperienceProfileAllows AND AuthRequirementSatisfied AND ServerCapabilityAllows`, resolved from `GET /api/ui-shell/context` (authenticated) or the existing anonymous public-experience shell.
 - **Studio:** actor-level navigation (actor switcher listing only server-provided managed actors; pinned when `public_experience.primary_organization_id` is set), event-level navigation replacing (not stacking) the secondary nav, sections gated by the event resource's HAL `_links` (`edit`, `publish-readiness`, session/registration/team relations).
 - **AI:** `/ai` + `/ai/chats/{id}` full workspace sharing `AiAssistantConversationState` + `IAiAssistantClientService` with the dock; dock header gains "Open in AI workspace"; product label stays "AI Assistant" (never the model id).
-- **Settings:** one hub with scope navigation (Personal + each authorized Organization/Group + Tenant + Instance from server data), canonical `/settings/**` routes, single-tenant "Site administration" composition.
+- **Settings:** one gear whose primary action always opens contextual Personal Settings; a dedicated `/settings` hub and canonical administrative routes expose only server-authorized scopes. Personal sections use compact in-page navigation, existing administrative layouts retain their own internal sidebars, and no shell-level Settings sidebar exists.
 - **Preferences:** tenant governs defaults/availability (`ui_shell.*` governance keys, tenant/instance scopes, lockable); the user owns personal layout (`ui_shell_preferences.layout.v1` etc. through the existing user-settings API); viewport projection never writes durable state (existing `LastChangeReason` contract).
 - **Mobile:** rail projects to bottom navigation; workspace nav becomes temporary drawer; AI dock becomes full-screen temporary chrome (existing dock projection).
 
@@ -117,8 +117,9 @@ Desktop shell composition (logical directions):
 6. Dock invariants: descriptor-owned width/persistence, viewport changes never autosave, logical `Start/End` sides only, no central panel enum, no page-level shell compensation hacks (`docs/DOCK_LAYOUT.md`, `DockLayoutArchitectureTests`).
 7. Accessibility invariants: skip link, `<main>`/`<header>`/`<nav aria-label>` landmarks, ARIA live regions, `<h1>` per routable page, logical CSS properties (architecture tests).
 8. Governance settings must be registered in `SettingRegistry` with explicit allowed scopes; user-overridable shell defaults must respect instance locks; `experience`/`allow_user_override` style keys are tenant/instance-only, layout state is user-only (report §11 + existing cascade).
-9. New C# files: file-scoped namespaces + two-line ABOUTME header. Every `.razor` gets a BEM `.razor.css`.
-10. Development mode: **no compatibility shims** — removed routes, bridge services, and renamed panel ids are deleted, not aliased. Obsolete tests are deleted, not skipped (docs/TESTING.md disabled-test governance).
+9. Personal Settings origin is trusted only when captured from `NavigationManager.LocationChanged` in the current scoped `UiShellState`; no caller-provided `returnUrl`, route parameter, query parameter, or browser-persisted origin may drive return navigation.
+10. New C# files: file-scoped namespaces + two-line ABOUTME header. Every `.razor` gets a BEM `.razor.css`.
+11. Development mode: **no compatibility shims** — removed routes, bridge services, and renamed panel ids are deleted, not aliased. Obsolete tests are deleted, not skipped (docs/TESTING.md disabled-test governance).
 
 ## 5. Architecture And Design Decisions
 
@@ -128,10 +129,10 @@ Desktop shell composition (logical directions):
 - **Consequences:** `MainLayout` gains a shell grid track owning `AppWorkspaceRail` before `DockLayoutHost`; `DockLayoutArchitectureTests` "no shell compensation hacks" guard must recognize the rail as sanctioned shell chrome (test update in Phase 1).
 - **Files:** `MainLayout.razor(.cs/.css)`, new `Components/Shell/AppWorkspaceRail.razor(.cs/.css)`.
 
-### D2 — Compile-time workspace registry + route-derived active workspace
+### D2 — Compile-time workspace registry + route-derived active workspace, with one contextual utility exception
 - **Why:** report §5/§15; route is the only truthful activity source; registry gives a stable extension point without runtime plugins.
 - **Alternatives:** booleans in a scoped service (rejected — loses deep links/refresh truth); per-page layout attributes (rejected — Blazouter routes are table-driven, not attribute-driven).
-- **Consequences:** Phase 1 creates `Services/Shell/` with `WorkspaceDescriptor` (`Key`, `LabelKey`, `Icon`, `BaseRoute`, `RequiresAuthentication`), `IWorkspaceRegistry`/`WorkspaceRegistry`, `WorkspaceRouteClassifier` (longest-prefix match over registered base routes), and `UiShellState` (active workspace + last-route-per-workspace session map). Phase 2 adds the optional navigation provider, Phase 3 adds server-authoritative availability, and Phase 7 adds effective navigation-mode policy/preferences.
+- **Consequences:** Phase 1 creates `Services/Shell/` with `WorkspaceDescriptor` (`Key`, `LabelKey`, `Icon`, `BaseRoute`, `RequiresAuthentication`), `IWorkspaceRegistry`/`WorkspaceRegistry`, `WorkspaceRouteClassifier` (longest-prefix match over registered base routes), and `UiShellState` (active workspace + last-route-per-workspace session map). Phase 6 extends `UiShellState` with `IsPersonalSettingsOpen` and a session-only Personal Settings origin: an in-session transition from Explore/Studio/AI to `/settings/personal/**` preserves the origin as `ActiveWorkspace`, while initialization/refresh on that route has no origin and uses Settings. Navigating elsewhere clears the utility state. Phase 7 adds effective navigation-mode policy/preferences; it does not persist a Personal return route.
 - **Files:** new `src/Explore.Blazor.Client/Services/Shell/*.cs`; `Routes.razor` untouched for classification (prefix-based).
 
 ### D3 — Rename `shell.left-nav` → `shell.workspace-nav`; content becomes provider-driven
@@ -158,21 +159,33 @@ Desktop shell composition (logical directions):
 ### D7 — Durable layout preferences reuse `UserPreference` via the existing user-settings API
 - **Why:** `(tenant_id, user_id, setting_key)` storage, batch GET/PUT endpoints, and the `AiAssistantPreferences` category pattern already exist; `DockLayoutSnapshot` is schema-versioned and restore is defensive (clamping, unknown-id dropping).
 - **Alternatives:** new `/api/me/ui-preferences` endpoint pair (rejected — duplicates `api/settings/user/{category}`); new table (rejected — `UserPreference` is exactly this).
-- **Consequences:** new preference keys `ui_shell_preferences.layout.v1` (JSON snapshot envelope), `ui_shell_preferences.last_workspace`, `ui_shell_preferences.last_actor` registered in `GovernanceSettingKeys` + `SettingRegistry` (User scope only); client `ServerBackedDockLayoutPersistence` decorating the localStorage implementation (anonymous = tenant-discriminated localStorage key `dock_layout:v1:{tenantSlug}:` with no old-key compatibility read; authenticated = server, promote local on first login); existing autosave rules unchanged (UserAction/Reset only, 500ms debounce).
+- **Consequences:** new preference keys `ui_shell_preferences.layout.v1` (JSON snapshot envelope), `ui_shell_preferences.last_workspace`, `ui_shell_preferences.last_actor` registered in `GovernanceSettingKeys` + `SettingRegistry` (User scope only); client `ServerBackedDockLayoutPersistence` decorating the localStorage implementation (anonymous = tenant-discriminated localStorage key `dock_layout:v1:{tenantSlug}:` with no old-key compatibility read; authenticated = server, promote local on first login); existing autosave rules unchanged (UserAction/Reset only, 500ms debounce). Phase 7 also owns optional durable `ui.settings.last_scope.v1` persistence for the dedicated hub/scope selector; it stores only a normalized authorized scope key, never the Personal return route, and falls back to Personal when the scope is absent or revoked.
 
 ### D8 — Tenant shell defaults are governance settings under `ui_shell.*`
 - **Why:** the 5-tier cascade, locks, and single-tenant bypass already exist; report §11 requires explicit allowed scopes per key.
-- **Keys (tenant/instance scope, instance-lockable):** `ui_shell.rail_public_visibility` (`AuthenticatedOnly|Always`), `ui_shell.default_nav_mode.events|studio|ai|settings` (`Docked|Collapsed`), `ui_shell.allow_user_nav_override` (bool), `ui_shell.organizer_default_workspace` (`Events|Studio`).
-- **Consequences:** `GovernanceSettingKeys` + `SettingRegistry` additions must be registered before the shell-context handler finalizes (Phase 0 registration); `GetUiShellContextRequest` resolves them into `navigationDefaults`; anonymous rail visibility resolved into the public-experience shell response for the org-centric public case; tenant admin settings page gains a small "Shell" section; `docs/CONFIGURATION.md` documents keys.
+- **Keys (tenant/instance scope, instance-lockable):** `ui_shell.rail_public_visibility` (`AuthenticatedOnly|Always`), `ui_shell.default_nav_mode.events|studio|ai` (`Docked|Collapsed`), `ui_shell.allow_user_nav_override` (bool), `ui_shell.organizer_default_workspace` (`Events|Studio`).
+- **Consequences:** `GovernanceSettingKeys` + `SettingRegistry` additions must be registered before the shell-context handler finalizes (Phase 0 registration); `GetUiShellContextRequest` resolves them into `navigationDefaults`; anonymous rail visibility resolved into the public-experience shell response for the org-centric public case; tenant admin settings page gains a small "Shell" section; `docs/CONFIGURATION.md` documents keys. Phase 0 already registered `ui_shell.default_nav_mode.settings` under the older dedicated-sidebar design; Task 7.1 removes that unused definition/documentation rather than creating a Settings provider solely to consume it.
 
-### D9 — Settings hub unifies routes under `/settings/**` reusing existing page components
-- **Why:** deep-linkable scope routes (report §10) with minimum churn: Blazouter table lets us mount existing components (`TenantAdminSettings`, `InstanceAdminSettings`, `OrganizationAdminSettings`, `GroupAdminSettings`) on new canonical paths and delete old rows — no component rewrite in this workstream.
-- **Routes:** `/settings` (personal, existing), `/settings/organization/:organizationId`, `/settings/group/:groupId`, `/settings/tenant`, `/settings/instance`, plus `/settings/tenant/navigation` (move of `/admin/tenant/navigation`). Old `/admin/*/settings` central route rows are deleted; old `@page "/admin/tenant/navigation"` directive is removed and all internal link producers updated (bounded `rg` sweep). `/admin/tenant/navigation` was never in `Routes.razor`. No aliases, dev mode. Route guards are preserved as-is.
-- **Single-tenant presentation:** `SettingsWorkspaceNavigation` renders "Site administration" grouping tenant+instance entries when deployment mode is single-tenant and the user holds both authorities (data from shell context); underlying routes/API boundaries unchanged.
+### D9 — Hybrid Settings: contextual Personal utility plus dedicated administrative hub
+- **Why:** Personal preferences are frequently opened mid-task and should not erase Explore/Studio/AI context, while administrative configuration needs a stable, deep-linkable destination with explicit scope. One shell-level scope sidebar would duplicate the substantial navigation already owned by the existing admin layouts.
+- **Interaction model:** the rail contains one bottom-pinned gear. Its primary action always opens `/settings/personal`, never the last administrative scope. When more than Personal is authorized, a gear menu and the profile dropdown expose the dedicated hub and authorized administrative scopes. The gear receives a distinct utility-open visual/data state during contextual Personal Settings, but only the originating workspace keeps `aria-current="page"`.
+- **Personal presentation:** in-session navigation from Explore/Studio/AI preserves that workspace and its `shell.workspace-nav`; `SettingsLayout` supplies a compact top-level section bar and a safe return action backed by session-only `UiShellState`. A direct load/refresh of a Personal route renders as dedicated Settings because no origin is inferred. No `returnUrl` is accepted. The empty `SettingsWorkspaceNavigation` registration/component/CSS is removed.
+- **Dedicated presentation:** `/settings` is a scope hub with a shared `SettingsScopeSelector`. Organization, Group, Tenant, and Instance pages mount the existing guarded settings components and retain their existing internal sidebars. The scope selector changes scope; it does not duplicate each layout's section navigation.
+- **Routes:** `/settings`, `/settings/personal`, `/settings/personal/:section`, `/settings/organization/:id`, `/settings/group/:id`, `/settings/tenant`, and `/settings/instance`. Existing `?section=` Personal links migrate to path sections. `/admin/tenant/navigation` producers migrate to the Tenant settings page's navigation section rather than creating a second canonical route. Old `/admin/*/settings` central rows and the old navigation `@page` directive are deleted; all producers are updated by a bounded sweep. No aliases; guards remain unchanged.
+- **Authority and single-tenant presentation:** `SettingsScopeDto` from `IUiShellContextService` is the only scope-menu source. Personal is always present for authenticated users; organization/group/tenant/instance entries appear only when returned by the server. Instance authority never implies Tenant authority. In single-tenant mode, callers holding both authorities see one "Site administration" presentation entry that composes links to the still-separate guarded Tenant and Instance routes/API boundaries.
+- **Persistence boundary:** Phase 6 stores only the Personal origin in scoped memory. Durable `ui.settings.last_scope.v1` is owned by Task 7.2 and may influence the dedicated hub/scope selector only after revalidation; it never changes the gear's Personal primary action.
 
 ### D10 — AI dual experience shares one conversation stack
 - **Why:** report §2/anti-pattern #9; `AiAssistantConversationState` + `IAiAssistantClientService` are scoped services already consumed by the rail — pages can consume the same instances in the same circuit/runtime scope.
 - **Consequences:** new pages `Pages/Ai/AiWorkspace.razor` (+ `AiConversationPage`) reuse rail sub-components (message list, composer, proposed-action cards are extracted into shared components under `Components/Shell/AiAssistant/` where not already reusable); dock header gets "Open in AI workspace" navigating to `/ai/chats/{id}`; `AiWorkspaceNavigation` lists conversations (existing `GetAiConversations`).
+
+### D11 — Personal Settings uses one explicit entry contract and a searchable vertical information architecture
+- **Why:** Browser evidence shows the rail gear preserves the Events origin while the profile-dropdown Personal Settings anchor can lose it. The current page relies on `LocationChanged` timing, always renders the scope selector, exposes a wrapping horizontal section bar, and mounts only one section at a time.
+- **Entry contract:** `UiShellState` gains one explicit Personal Settings navigation method that captures a live Events/Studio/AI origin before navigating. Every first-party Personal Settings entry point (rail gear, profile dropdown, appearance quick switcher, registration connected-app links, and future links) routes through that contract instead of relying on anchor interception timing. New-tab/direct loads remain dedicated Settings because session origin is intentionally not durable.
+- **Information architecture:** `/settings/personal` becomes **View all** and renders every Personal Settings section in canonical order. `/settings/personal/:section` remains the focused deep-link form. The vertical navigation starts with View all, then Personal info, Security, Privacy, Notifications, Connected apps, Appearance, AI Assistant, API keys, and Webhooks. No compatibility aliases are added for renamed section slugs.
+- **Search:** Search is local, case-insensitive, and metadata-driven over section labels and declared keywords. It filters the View all section cards without mutating the URL or searching hidden DOM text. Empty results render visible status text and are announced politely.
+- **Layout:** Desktop uses a two-column CSS grid with sticky vertical navigation below the navbar and a scrollable content column. Narrow layouts stack the navigation above content and disable stickiness; semantic links, focus order, logical CSS, reduced motion, and target sizes remain intact.
+- **Scope selector:** hide `SettingsScopeSelector` entirely when Personal is the only available scope. When administrative scopes exist, retain the server-authoritative selector above the Personal Settings layout; it remains scope navigation, not section navigation.
 
 ## 6. Implementation Phases
 
@@ -235,7 +248,7 @@ Desktop shell composition (logical directions):
 - **Depends on:** Phase 1
 - **Relevant files:** existing `ShellDockPanels.cs`, `MainLayout.razor(.cs)`, `AppSideNav.razor(.cs/.css)`, `NavMenu.razor.cs`, `Services/SidebarState.cs`, `Extensions/ServiceCollectionExtensions.cs`, `Pages/Admin/Tenant/Components/TenantAdminSettingsLayout.razor`, `Pages/Admin/Instance/Components/InstanceAdminSettingsLayout.razor`, `docs/DOCK_LAYOUT.md`; new `Contracts/Services/Shell/IWorkspaceNavigationProvider.cs`, `Components/Shell/WorkspaceNavigationHost.razor(.cs/.css)`, `Components/Shell/Workspaces/EventsWorkspaceNavigation.razor(.cs/.css)`, `Components/Shell/Workspaces/SettingsWorkspaceNavigation.razor(.cs/.css)` (minimal placeholder linking existing settings entries).
 - **Related skills/rules:** `blazor-ui-conventions`, `.claude/rules/blazor-client.md`, `docs/DOCK_LAYOUT.md`.
-- **Acceptance criteria:** panel id `shell.workspace-nav` replaces `shell.left-nav` everywhere (code, tests, docs) with no alias; Events workspace shows the current discovery nav (content parity with `AppSideNav`, incl. org-centric branch and tenant quick links); Settings workspace shows settings entries; workspaces without nav render no start panel; `SidebarState` type no longer exists; `rg "shell.left-nav|SidebarState"` returns only migration-note hits in dev docs.
+- **Acceptance criteria:** panel id `shell.workspace-nav` replaces `shell.left-nav` everywhere (code, tests, docs) with no alias; Events workspace shows the current discovery nav (content parity with `AppSideNav`, incl. org-centric branch and tenant quick links); the temporary Settings placeholder proves provider swapping and is explicitly removed by Task 6.1 after the hybrid architecture is locked; workspaces without nav render no start panel; `SidebarState` type no longer exists; `rg "shell.left-nav|SidebarState"` returns only migration-note hits in dev docs.
 
 #### Task 2.1: Navigation provider contract + host
 - **Type:** create | **Layer:** Blazor | **Effort:** M
@@ -279,7 +292,7 @@ Desktop shell composition (logical directions):
 #### Task 3.2: API controller + route name + OpenAPI/NSwag regeneration (exact method name verified after regen)
 - **Type:** create/modify | **Layer:** API | **Effort:** M
 - **Files:** new `UiShellController.cs`; modify `RouteNames.cs`, `docs/API.md`, `docs/API_CHANGELOG.md`; regenerate `schemas/openapi_islamu-event.json` + `EventApiClient.g.cs` via the documented msbuild target (`dotnet msbuild src/Explore.Blazor.Client/Explore.Blazor.Client.csproj /t:GenerateApiClient ...`).
-- **Description:** `[Route("api/ui-shell")]`, `GET context`, `Name = RouteNames.GetUiShellContext`, `[Authorize]`, `[EndpointClassification(EndpointClass.Authenticated)]`, `[PrivateNoStore]`, `[ProducesResponseType]` for 200/401, `authenticated` rate-limit family (default), no output cache. OperationId `UiShell_GetContext` per naming pattern. **NSwag:** exact generated method name is verified after documented regeneration rather than assumed; if the name differs, update the plan/context immediately. Generated OpenAPI/client files are one serialized lane (coordinate with webhook workstream to avoid collision).
+- **Description:** `[Route("api/ui-shell")]`, `GET context`, `Name = RouteNames.GetUiShellContext`, `[Authorize]`, `[EndpointClassification(EndpointClass.Authenticated)]`, `[PrivateNoStore]`, `[ProducesResponseType]` for 200/401, `authenticated` rate-limit family (default), no output cache. OperationId `GetUiShellContext` follows the generated-client naming architecture rule and emits `GetUiShellContextAsync`. **NSwag:** exact generated method name is verified after documented regeneration rather than assumed; if the name differs, update the plan/context immediately. Generated OpenAPI/client files are one serialized lane (coordinate with webhook workstream to avoid collision).
 - **Acceptance:** [ ] controller passes contract architecture tests; [ ] generated client exposes the verified method name with no banned names; [ ] API changelog entry added; [ ] dirty-file hunk preservation controls are explicit (unrelated dirty files must not be committed with the regen).
 - **Dependencies:** 3.1
 
@@ -304,29 +317,34 @@ Desktop shell composition (logical directions):
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` (justified repeat: all new Studio components are bUnit-covered here)
 - **Rollback / failure handling:** Studio routes are additive rows in `Routes.razor`; removing them restores the previous experience; no API change in this phase.
+- **Phase verification result (2026-07-22):** Canonical Release build passed with 0 errors. The full Blazor client suite reproduced the three previously recorded unrelated failures (1 generated EventLocation HAL typing contract and 2 report-dialog rendering tests): 1,932 total, 1,928 passed, 3 failed, 1 governed skip. Phase 4 implementation is complete; verification remains blocked without broadening scope.
 
 #### Task 4.1: Studio routes + workspace registration + actor-level navigation
 - **Type:** create/modify | **Layer:** Blazor | **Effort:** L
 - **Description:** Register Studio in `WorkspaceRegistry` (available per shell context), add route rows, build `StudioWorkspaceNavigation` (Overview, Events; other report §8 sections rendered only when their target exists — no dead links) with `StudioActorSwitcher` header (logo, name, switcher when >1 actor; last actor kept in `UiShellState`, durable persistence arrives in Phase 7).
-- **Acceptance:** [ ] deep link `/studio/events` renders Studio nav + active state; [ ] single-actor and pinned-actor modes render identity header without switcher.
+- **Acceptance:** [x] deep link `/studio/events` renders Studio nav + active state; [x] single-actor and pinned-actor modes render identity header without switcher.
+- **Validation:** Focused route/state/switcher/navigation/page lanes pass 34/34; `/studio/events` exposes `aria-current="page"`; Release build passes with zero errors; `git diff --check` is clean; Oracle passed actor authorization/reconciliation, pinned locking, authenticated guards, server-context authority, active navigation, accessibility, and test coverage with no required fixes.
 - **Dependencies:** —
 
 #### Task 4.2: Studio dashboard + events list (actor-scoped via `GetManagedEventsByActorAsync`)
 - **Type:** create | **Layer:** Blazor | **Effort:** L
 - **Description:** `StudioEvents` consumes the actor-scoped event list: organization/group actors use `GetManagedEventsByActorAsync(actorId)` (generated client method); personal/unscoped fallback uses `GetMyEventsAsync` (existing HAL collection). Dashboard shows actor identity + counts + quick actions gated by returned links. Row actions (edit/publish/…) rendered only from item `_links`. **Create action:** uses the existing `/events/create` publisher picker (no new group-specific create route).
-- **Acceptance:** [ ] list renders with HAL-gated row affordances (bUnit with fabricated `_links` variants); [ ] empty state offers Create only when eligible; [ ] `GetManagedEventsByActorAsync` called for org/group actors; [ ] `GetMyEventsAsync` called for personal fallback.
+- **Acceptance:** [x] list renders with HAL-gated row affordances (bUnit with fabricated `_links` variants); [x] empty state offers Create only when eligible and the collection exposes `create`; [x] `GetManagedEventsByActorAsync` called for org/group actors; [x] `GetMyEventsAsync` called for personal fallback.
+- **Validation:** Baseline Studio pages passed 2/2 before the failing-first suite produced 10 expected failures. Green lanes pass 12/12 Studio pages, 69/69 event service, 3/3 actor switcher, and 9/9 navigation host. The client Release build passes with zero warnings/errors; diff, local-authority, and logical-CSS sweeps are clean. GPT Oracle confirmed actor routing, stale/disposal fences, HAL gates, focus restoration, accessibility, and scope boundaries with no required fixes.
 - **Dependencies:** 4.1
 
 #### Task 4.3: Event-level navigation shell (HAL-driven)
 - **Type:** create | **Layer:** Blazor | **Effort:** L
 - **Description:** `StudioEventShell` loads event detail once (existing detail service), cascades the resource; `StudioEventNavigation` replaces actor nav content: back link, title, status chip, and section links mapped `edit→Details`, `publish-readiness→Publication`, session relations→Schedule/Sessions, registration relations→Registration, team relation→Team, delete→Danger zone. Sections without implemented pages link to the existing editor surfaces (`/events/:id/edit` etc.). **Group events:** creation/editing flows through the existing `/events/create` publisher picker; no new group-specific route or editor.
-- **Acceptance:** [ ] section visibility flips with `_links` presence (table-driven bUnit test); [ ] no role/claim inspection anywhere in Studio components (`rg "IsInRole" src/Explore.Blazor.Client/Pages/Studio` empty); [ ] group event links target existing `/events/create` picker.
+- **Acceptance:** [x] section visibility flips with `_links` presence (table-driven bUnit test); [x] no role/claim inspection anywhere in Studio components (`rg "IsInRole" src/Explore.Blazor.Client/Pages/Studio` empty); [x] group event links target existing `/events/create` picker.
+- **Validation:** Failing-first compilation stopped on the absent Task 4.3 types. Green lanes pass 8/8 event navigation, 1/1 shared event state, 10/10 workspace host, 17/17 routes, and 12/12 Studio regressions. The client Release build passes with 0 warnings/errors; scoped diff, authority, raw-GUID-link, and logical-CSS sweeps are clean. GPT-5.5 Oracle returned PASS with no required fixes.
 - **Dependencies:** 4.1, 4.2
 
 #### Task 4.4: Top-bar workspace awareness (search + primary action)
 - **Type:** modify | **Layer:** Blazor | **Effort:** M
 - **Description:** `NavMenu` consumes `UiShellState`: Studio active → search targets managed events (client-side filter on the Studio list route: navigate `/studio/events?q=`), primary action "Create" with visible acting-actor hint; Events active → current behavior; AI/Settings → hide global search (AI workspace nav owns conversation search later).
-- **Acceptance:** [ ] per-workspace search/action matrix covered by bUnit tests.
+- **Acceptance:** [x] per-workspace search/action matrix covered by bUnit tests.
+- **Validation:** The corrected failing-first matrix discovered four tests: Events stayed green while Studio routing and Settings suppression failed as expected. The final matrix passes 5/5, including anonymous Settings suppression and `bdi dir="auto"` actor isolation; the existing NavMenu admin/context lane passes 18/18. Client Release build passes with 0 warnings/errors, diagnostics/diff checks are clean, and GPT-5.5 Oracle follow-up returned PASS.
 - **Dependencies:** 4.1
 
 ### Phase 5: AI Dual Experience
@@ -343,48 +361,58 @@ Desktop shell composition (logical directions):
 #### Task 5.1: Extract shared conversation components
 - **Type:** modify | **Layer:** Blazor | **Effort:** L
 - **Description:** Factor message list, composer, reference picker usage, and action cards out of `AiAssistantRail` into reusable components under `Components/Shell/AiAssistant/` (several already exist: `AiProposedActionCard`, `AiReferencePicker`, `AiActionResultCard` — verify and reuse; extract only what the rail still inlines). Rail behavior must remain pixel/behavior-equivalent (existing full-panel bUnit suite is the guard).
-- **Acceptance:** [ ] `AiAssistantRail` bUnit suite green unchanged; [ ] extracted components have no rail-specific assumptions.
+- **Acceptance:** [x] `AiAssistantRail` bUnit suite green unchanged; [x] extracted components have no rail-specific assumptions.
+- **Validation (2026-07-22):** Extracted reusable timeline/composer surfaces and moved every existing AI subcomponent's styles to its owning CSS-isolated file. Rail regression 21/21 and shared component lanes 15/15 pass; Blazor architecture 17/17 and canonical Release build pass with 0 errors. Static sweeps confirm no shell/service/dock dependency in the extracted components and no child-component CSS remains rail-owned. GPT-5.5 Oracle returned PASS after three review/fix cycles.
 - **Dependencies:** —
 
 #### Task 5.2: AI workspace pages + navigation + open-in-workspace (authenticated-only)
 - **Type:** create/modify | **Layer:** Blazor | **Effort:** L
 - **Description:** Pages compose shared components against the same scoped `AiAssistantConversationState`; `AiWorkspaceNavigation` = New conversation, Recent (list from state/service), conversation search; dock header button navigates to `/ai/chats/{selectedId}` (and workspace "return to page" uses `UiShellState` last-route map). Register AI workspace + routes. **`/ai` routes are authenticated-only** (`AuthenticatedRouteGuard`); anonymous AI access remains dock-only via the existing `ai_assistant.allow_anonymous_access` policy.
-- **Acceptance:** [ ] dock→workspace→dock round trip preserves selected conversation and draft input state where the state object holds it; [ ] `/ai` routes reject anonymous users (guard test); [ ] anonymous AI access remains dock-only.
+- **Acceptance:** [x] dock→workspace→dock round trip preserves selected conversation and draft input state where the state object holds it; [x] `/ai` routes reject anonymous users (guard test); [x] anonymous AI access remains dock-only.
+- **Validation (2026-07-22):** Added one guarded workspace page for both routes, one searchable navigation provider, server-gated registry visibility, and mutually exclusive dock/workspace hosting of the existing rail controller. Focused routes/classifier 18/18, rail 27/27, navigation host 11/11, app rail 8/8, MainLayout 34/34, shared components 3/3, and Blazor architecture 17/17 pass; Release build has 0 errors. Failing-first tests prove late policy and reentrant HAL collection loading no longer lose or duplicate new-conversation requests. GPT-5.5 Oracle final review returned PASS.
 - **Dependencies:** 5.1
 
-### Phase 6: Settings Workspace Hub
-- **Goal:** Scope-aware Settings navigation + canonical `/settings/**` routes; single-tenant "Site administration" composition; old `/admin/*/settings` rows removed.
+### Phase 6: Hybrid Settings Architecture
+- **Goal:** Contextual Personal Settings over the originating workspace, plus a dedicated authorized Settings hub and administrative routes, with one gear and no duplicate shell sidebar.
 - **Depends on:** Phase 3 (scopes from shell context)
-- **Relevant files:** existing `Routes.razor`, `Pages/User/Settings.razor` + `Components/SettingsLayout.razor`, `Pages/Admin/{Tenant,Instance,Organization,Group}` settings pages + their layouts, `Pages/Admin/Tenant/Navigation.razor`; modify `Components/Shell/Workspaces/SettingsWorkspaceNavigation.razor` (built minimal in Phase 2).
-- **Related skills/rules:** `blazor-ui-conventions`; route guards unchanged.
-- **Acceptance criteria:** Settings nav lists exactly the shell-context scopes with a scope selector at top; new canonical routes mount existing components (`/settings/tenant`, `/settings/instance`, `/settings/organization/:organizationId`, `/settings/group/:groupId`, `/settings/tenant/navigation`) with their existing guards; old `/admin/tenant/settings`, `/admin/instance/settings`, `/admin/organization/:id/settings`, `/admin/group/:id/settings`, `/admin/tenant/navigation` rows deleted and all internal links updated (bounded `rg` sweep, zero stale references); single-tenant + dual-authority renders "Site administration" group while multi-tenant renders separate Tenant/Instance scopes; operational surfaces (moderation queues, webhook admin) are NOT moved into Settings.
+- **Relevant files:** existing `Services/Shell/UiShellState.cs`, `WorkspaceRegistry.cs`, `Components/Shell/AppWorkspaceRail.razor(.cs/.css)`, `Layout/NavMenu.razor(.cs)`, `Routes.razor`, `Pages/User/Settings.razor`, `Pages/User/Components/SettingsLayout.razor(.css)`, `Pages/Admin/{Tenant,Instance,Organization,Group}` settings pages/layouts, and `Pages/Admin/Tenant/Navigation.razor`; new shared `Pages/User/Components/SettingsScopeSelector.razor(.css)`; delete `Components/Shell/Workspaces/SettingsWorkspaceNavigation.razor(.cs/.css)`.
+- **Related skills/rules:** `blazor-ui-conventions`, `blazor-css-isolation`, `design-system`; `.claude/rules/blazor-client.md`; route guards unchanged.
+- **Acceptance criteria:** contextual Personal navigation retains the source workspace/navigation only for the current session; direct Personal deep links use dedicated Settings; exactly one rail item owns `aria-current`; scope UI comes only from shell context; canonical routes and old-link migration are complete; existing admin sidebars remain the section-navigation owners; single-tenant grouping changes presentation only; operational surfaces (moderation queues, attendee/check-in operations, failed delivery queues, approvals) are NOT moved into Settings.
 - **Phase-end verification (run once):**
   - `dotnet build --configuration Release --verbosity quiet`
-  - `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` (justified repeat: settings nav + route table behavior)
-- **Rollback / failure handling:** route rows are reversible; guards unchanged means no authorization surface change; if a missed deep link surfaces, re-adding a route row is a one-line fix (no alias layer is built).
+  - `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` (justified repeat: contextual Personal state, authorized scope entry points, and route-table behavior)
+- **Rollback / failure handling:** keep route guards and existing admin components unchanged; if contextual utility state misbehaves, fall back to dedicated `/settings/personal` presentation without introducing a return URL or route alias. Missed old links are fixed at their producers, not by restoring aliases.
 
-#### Task 6.1: Scope-aware `SettingsWorkspaceNavigation`
-- **Type:** modify | **Layer:** Blazor | **Effort:** M
-- **Acceptance:** [ ] scopes render from shell context (Personal always; others per authority) with org/group names; [ ] instance-admin-only user sees Personal + Instance, never Tenant (test).
+#### Task 6.1: Contextual Personal Settings state and provider removal
+- **Type:** modify/delete | **Layer:** Blazor | **Effort:** M
+- **Files:** modify `UiShellState.cs`, `WorkspaceRegistry.cs`, `WorkspaceNavigationHost.razor.cs`, `AppWorkspaceRail.razor(.cs/.css)`, and focused shell tests; delete `SettingsWorkspaceNavigation.razor(.cs/.css)` and its registrations/references.
+- **Description:** Capture a Personal Settings origin only when a live Explore/Studio/AI session navigates to `/settings/personal/**`. Preserve that origin as the active workspace and keep its provider mounted; expose `IsPersonalSettingsOpen` for the gear's distinct utility state. Constructor/deep-link/refresh entry has no origin and resolves to dedicated Settings. Clear origin on any non-Personal route and never serialize it or accept a return URL.
+- **Acceptance:** [x] Explore/Studio/AI → Personal preserves the source workspace, last route, and navigation; [x] direct `/settings/personal` and `/settings/personal/appearance` loads activate Settings; [x] leaving Personal clears utility state; [x] only one `aria-current="page"` renders; [x] no Settings workspace navigation provider remains.
+- **Validation (2026-07-22):** Failing-first tests stopped on the absent utility-state properties. Final lanes pass `UiShellStateTests` 10/10, revocation 5/5, app rail 9/9, and navigation host 11/11; scoped diff/source/CSS/diagnostic checks are clean. Independent agent review was unavailable after the user prohibited further agent use due the monthly limit; direct fresh-state verification is recorded in `.omo/start-work/artifacts/task-6.1/done-claim.md`.
 - **Dependencies:** —
 
-#### Task 6.2: Canonical routes + link migration + old-route/`@page` removal
-- **Type:** modify/delete | **Layer:** Blazor | **Effort:** M
-- **Description:** Add new rows in `Routes.razor`; remove old `/admin/*/settings` central route rows. Remove old `@page` directives from `Pages/Admin/Tenant/Navigation.razor` (`/admin/tenant/navigation` was never in `Routes.razor`). `rg -n "/admin/tenant/settings|/admin/instance/settings|/admin/organization/.*/settings|/admin/group/.*/settings|/admin/tenant/navigation" src/` sweep and update every producer (NavMenu profile dropdown, admin layouts, onboarding links, tests, `@page` directives).
-- **Acceptance:** [ ] sweep returns zero stale references; [ ] guards still enforce per-scope access (existing guard tests updated for new paths); [ ] `/admin/tenant/navigation` `@page` directive removed.
+#### Task 6.2: Canonical hub/personal/admin routes and page composition
+- **Type:** create/modify/delete | **Layer:** Blazor | **Effort:** L
+- **Files:** modify `Routes.razor`, `Pages/User/Settings.razor`, `SettingsLayout.razor(.css)`, existing admin settings pages/layouts, and route/component tests; add `SettingsScopeSelector.razor(.css)`; remove `@page "/admin/tenant/navigation"` from `Pages/Admin/Tenant/Navigation.razor`.
+- **Description:** Add `/settings`, `/settings/personal`, `/settings/personal/:section`, `/settings/organization/:id`, `/settings/group/:id`, `/settings/tenant`, and `/settings/instance`. The hub and selector consume only server-authorized scopes. Convert Personal's large sidebar/query-state navigation to compact path-based in-page sections. Mount existing guarded admin components without replacing their internal sidebars. Migrate Tenant navigation into the existing Tenant settings section. Remove old route rows/directives and update every producer by bounded source/test sweeps; do not add aliases.
+- **Acceptance:** [x] every canonical route mounts the intended component with the existing guard; [x] Personal path sections support deep link/refresh and invalid sections fall back safely; [x] the shared selector renders Personal plus exactly authorized named scopes; [x] admin layouts retain one internal section sidebar; [x] old route/directive/link sweep returns zero stale runtime references.
+- **Validation (2026-07-22):** Full client run passes 1,957/1,961 with only three known unrelated failures and one governed skip; architecture retains the four known unrelated blockers; Release build and stale-route/diff sweeps are clean. Direct verification is recorded in `.omo/start-work/artifacts/task-6.2/done-claim.md`.
 - **Dependencies:** 6.1
 
-#### Task 6.3: Single-tenant "Site administration" composition
-- **Type:** modify | **Layer:** Blazor | **Effort:** S
-- **Acceptance:** [ ] deployment-mode + authority matrix (single/multi × tenant/instance/both) renders the correct grouping (table-driven bUnit test).
-- **Dependencies:** 6.1
+#### Task 6.3: One-gear/profile entry points and authorized scope presentation
+- **Type:** modify | **Layer:** Blazor | **Effort:** M
+- **Files:** modify `AppWorkspaceRail.razor(.cs/.css)`, `NavMenu.razor(.cs/.css)`, the hub/scope selector, and focused bUnit tests.
+- **Description:** Keep one bottom-pinned gear. Its primary link is always `/settings/personal`; when additional scopes exist, expose a keyboard-accessible menu to `/settings` and authorized scope routes. Keep direct Personal and authorized administrative links in the profile dropdown for rail-hidden layouts. In single-tenant mode, collapse authorized Tenant+Instance choices into "Site administration" presentation while preserving separate links/guards internally; multi-tenant mode lists them separately.
+- **Acceptance:** [x] one gear only and primary action is always Personal; [x] contextual-open and workspace-active states are visually/semantically distinct; [x] profile access remains when the app rail is absent; [x] instance-only never renders Tenant; [x] deployment-mode × authority table covers Personal, org/group names, Tenant, Instance, and combined Site administration.
+- **Validation (2026-07-22):** Valid red run produced five Task 6.3 failures plus the three known unrelated failures. Final client run passes 1,960/1,964 with only the unrelated baseline; architecture remains at its four unrelated blockers; Release build, authority/CSS scans, AFT diagnostics, and diff check are clean. Direct verification is recorded in `.omo/start-work/artifacts/task-6.3/done-claim.md`.
+- **Dependencies:** 6.1, 6.2
 
 ### Phase 7: Durable Layout Preferences + Tenant Shell Governance
 - **Goal:** Authenticated users get cross-device shell layout persistence; tenants get shell defaults with locks; anonymous behavior unchanged (localStorage).
 - **Depends on:** Phases 2–4 (panels/workspaces exist), Phase 3 (context carries defaults)
 - **Relevant files:** existing `GovernanceSettingKeys.cs`, `src/Explore.Domain/Settings/SettingRegistry.cs` (+ its definitions files), `SettingsController` (no change expected), `Services/Interop/LocalStorageDockLayoutPersistence.cs`, `MainLayout.razor.cs` autosave path, `Pages/Admin/Tenant` settings sections, `docs/CONFIGURATION.md`; new `Services/Interop/ServerBackedDockLayoutPersistence.cs`, client `ShellPreferencesService`.
 - **Related skills/rules:** `dotnet-efcore-guidelines` not needed (no migration — `UserPreference` reused; if `SettingRegistry` requires seeded definitions verify seeding path in Task 7.1), `.claude/rules/application-layer.md` for definition placement.
-- **Acceptance criteria:** authenticated resize/collapse persists across devices via `api/settings/user/{category}` batch writes (one PUT per debounce window, never per pointer event); restore clamps via descriptors and drops unknown ids/revoked actors/workspaces; viewport-driven projection never writes; anonymous users keep tenant-scoped localStorage and promote it on first authenticated hydrate when the server value is absent; tenant defaults (`ui_shell.*`, D8) resolve through the cascade with instance locks honored; user override disabled ⇒ tenant-forced mode wins and the client does not persist overridden values; `docs/CONFIGURATION.md` documents every new key.
+- **Acceptance criteria:** authenticated resize/collapse persists across devices via `api/settings/user/{category}` batch writes (one PUT per debounce window, never per pointer event); restore clamps via descriptors and drops unknown ids/revoked actors/workspaces/settings scopes; viewport-driven projection never writes; anonymous users keep tenant-scoped localStorage and promote it on first authenticated hydrate when the server value is absent; tenant defaults (`ui_shell.*`, D8) resolve through the cascade with instance locks honored; user override disabled ⇒ tenant-forced mode wins and the client does not persist overridden values; Personal return origin is never persisted; `docs/CONFIGURATION.md` documents every retained/new key.
 - **Phase-end verification (run once):**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` (covers settings round-trip, shell-context contract incl. Phase 3 endpoint, and registry-driven governance keys end-to-end)
@@ -392,14 +420,14 @@ Desktop shell composition (logical directions):
 
 #### Task 7.1: Shell-context wiring + public-experience governance resolution
 - **Type:** create/modify | **Layer:** Domain + Application | **Effort:** M
-- **Description:** Wire registered D8 keys (from Phase 0.2) into `GetUiShellContextRequestHandler` (`navigationDefaults`, `allowUserOverride`, `organizerDefaultWorkspace`, `railPublicVisibility`); org-centric anonymous rail visibility resolved into the public-experience shell handler. Update `docs/CONFIGURATION.md` to document every new key.
-- **Acceptance:** [ ] handler tests prove lock and single-tenant bypass semantics for one representative key; [ ] `docs/CONFIGURATION.md` documents every new key.
+- **Description:** Wire registered D8 keys (from Phase 0.2) into `GetUiShellContextRequestHandler` (`navigationDefaults`, `allowUserOverride`, `organizerDefaultWorkspace`, `railPublicVisibility`); org-centric anonymous rail visibility resolved into the public-experience shell handler. Remove the already-registered `ui_shell.default_nav_mode.settings` definition/documentation because hybrid Settings has no shell navigation provider. Update `docs/CONFIGURATION.md` to document every retained key.
+- **Acceptance:** [ ] handler tests prove lock and single-tenant bypass semantics for one representative key; [ ] no Settings navigation-default key remains; [ ] `docs/CONFIGURATION.md` documents every retained key.
 - **Dependencies:** 0.2, 3.1
 
-#### Task 7.2: Server-backed dock persistence + last workspace/actor (tenant-discriminated anonymous storage)
+#### Task 7.2: Server-backed dock persistence + last workspace/actor/settings scope (tenant-discriminated anonymous storage)
 - **Type:** create/modify | **Layer:** Blazor | **Effort:** L
-- **Description:** `ServerBackedDockLayoutPersistence` implements `IDockLayoutPersistence`: authenticated → read/write the versioned snapshot JSON under `ui_shell_preferences.layout.v1` via `UserSettingsService` (batch PUT), anonymous → delegate to `LocalStorageDockLayoutPersistence` with a tenant discriminator (`dock_layout:v1:{tenantSlug}:`). No old-key compatibility read — stale anonymous snapshots from pre-discriminator keys are ignored. Promote local→server on first authenticated hydrate when server value absent. Persist `last_workspace`/`last_actor` on navigation/actor change (debounced). Honor `allowUserOverride=false` by skipping nav-mode persistence.
-- **Acceptance:** [ ] unit tests cover authenticated/anonymous/promotion/revoked-actor pruning; [ ] autosave still fires only for `UserAction`/`Reset` reasons; [ ] anonymous storage key includes tenant slug; [ ] no old-key compatibility read path exists.
+- **Description:** `ServerBackedDockLayoutPersistence` implements `IDockLayoutPersistence`: authenticated → read/write the versioned snapshot JSON under `ui_shell_preferences.layout.v1` via `UserSettingsService` (batch PUT), anonymous → delegate to `LocalStorageDockLayoutPersistence` with a tenant discriminator (`dock_layout:v1:{tenantSlug}:`). No old-key compatibility read — stale anonymous snapshots from pre-discriminator keys are ignored. Promote local→server on first authenticated hydrate when server value absent. Persist `last_workspace`/`last_actor` on navigation/actor change (debounced). Add `ui.settings.last_scope.v1` only in this preference slice for the dedicated Settings hub/selector; normalize and re-authorize it before use, never store a Personal return URL, and never let it change the gear's `/settings/personal` primary action. Honor `allowUserOverride=false` by skipping nav-mode persistence.
+- **Acceptance:** [x] unit tests cover authenticated/anonymous/promotion/revoked-actor and revoked-settings-scope pruning; [x] autosave still fires only for `UserAction`/`Reset` reasons; [x] anonymous storage key includes tenant slug; [x] no old-key compatibility read path exists; [x] last Settings scope affects only the dedicated hub/selector and safely falls back to Personal.
 - **Dependencies:** 7.1
 
 #### Task 7.3: Tenant admin "Shell" settings section
@@ -427,15 +455,54 @@ Desktop shell composition (logical directions):
 #### Task 8.3: Scenario-matrix suite + docs sync — **Effort:** L
 - **Acceptance:** [ ] matrix rows match report §6 table where implemented; [ ] DOCK_LAYOUT/ACCESSIBILITY/BLAZOR docs updated in the same tasks that changed behavior (fold-in rule).
 
-### Phase 9: Final Visual/Browser QA Gate ⏳ NOT STARTED
-- **Goal:** Independent visual and browser QA verifying the integrated shell across workspaces, viewports, and auth states.
-- **Depends on:** Phases 1–8
+### Phase 9: Personal Settings Entry Parity And Information Architecture ⏳ NOT STARTED
+- **Goal:** Make every first-party Personal Settings entry preserve live workspace context consistently and replace the horizontal single-section page with the requested sticky, searchable vertical Settings experience.
+- **Depends on:** Phase 6 and Task 7.2
+- **Relevant files:** existing `Services/Shell/UiShellState.cs`, `Components/Shell/AppWorkspaceRail.razor(.cs)`, `Layout/NavMenu.razor(.cs)`, `Layout/ThemeQuickSwitcher.razor`, `Pages/Events/Components/EventRegistration.razor`, `Pages/User/Settings.razor`, `Pages/User/Components/SettingsLayout.razor(.css)`, `SettingsScopeSelector.razor(.css)`, Personal Settings section components, and focused client tests.
+- **Related skills/rules:** `blazor-ui-conventions`, `blazor-css-isolation`, `design-system`, `accessibility`; `.claude/rules/blazor-client.md`, `.claude/rules/tests.md`.
+- **Acceptance criteria:** profile, rail, appearance, and connected-app entries preserve a live Events/Studio/AI origin through one explicit contract; direct/new-tab loads remain dedicated Settings; Personal-only users see no scope selector; `/settings/personal` defaults to View all; focused section routes remain deep-linkable; search filters View all by declared metadata; desktop navigation is sticky below the navbar; narrow layouts stack without overflow; keyboard, announcements, logical CSS, and one-`h1` rules hold.
+- **Phase-end verification (run once):**
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
+- **Rollback / failure handling:** entry parity can fall back to dedicated Settings without accepting/persisting a return URL; the layout can fall back to stacked non-sticky navigation without restoring horizontal tabs. Fix unsafe section composition at the owning section component rather than hiding it from View all.
+
+#### Task 9.1: Explicit Personal Settings navigation contract and entry-point parity
+- **Type:** modify | **Layer:** Blazor | **Effort:** M
+- **Files:** modify `UiShellState.cs`, `AppWorkspaceRail.razor(.cs)`, `NavMenu.razor(.cs)`, `ThemeQuickSwitcher.razor`, `EventRegistration.razor`, and focused `UiShellState`/entry-point tests.
+- **Description:** Add one intent-revealing navigation method that captures the current contextual workspace and route before navigating to a normalized Personal Settings route. Replace first-party Personal Settings navigation producers with this method while keeping real link semantics where possible. Do not persist the origin or accept `returnUrl`.
+- **Acceptance:** [x] clicking profile Personal Settings from Events retains Events navigation and return route; [x] rail/profile/theme/connected-app paths share the contract; [x] direct construction on a Personal route remains dedicated Settings; [x] leaving Personal clears the origin; [x] no compatibility route or durable origin is introduced.
+- **Validation (2026-07-22):** Added `UiShellState.NavigateToPersonalSettings` with canonical route normalization, modifier-click preservation, capture-before-navigation, and `forceLoad: false`. Rendered profile/rail/theme/registration interactions pass. Focused lanes: `UiShellStateTests` 18/18, `NavMenuWorkspaceTests` 7/7, and `EventRegistrationTests` 5/5; changed-file diagnostics and diff whitespace are clean.
+- **Dependencies:** 6.1
+
+#### Task 9.2: View all, section registry, search, and conditional scope selector
+- **Type:** modify | **Layer:** Blazor | **Effort:** L
+- **Files:** modify `Settings.razor`, `SettingsLayout.razor(.css)`, `SettingsScopeSelector.razor(.css)`, section components as required for safe multi-mount composition, and focused Settings tests.
+- **Description:** Make `/settings/personal` the View all state. Define one canonical section metadata registry (key, label, keywords, renderer) used by navigation, focused routes, and search. Render all matching sections in View all and one section on deep links. Hide the scope selector when its only destination is Personal; retain it when server-authorized administrative scopes exist.
+- **Acceptance:** [ ] View all is first/default and renders all nine sections in canonical order; [ ] focused routes render one section; [ ] search is case-insensitive and metadata-driven with visible/announced empty state; [ ] no duplicate IDs or duplicate page headings appear when all sections mount; [ ] Personal-only scope selector emits no navigation landmark; [ ] invalid section slugs fall back to View all without aliases.
+- **Dependencies:** 9.1
+
+#### Task 9.3: Sticky responsive vertical navigation and documentation sync
+- **Type:** modify | **Layer:** Blazor + Docs | **Effort:** M
+- **Files:** modify `SettingsLayout.razor.css`, `SettingsScopeSelector.razor.css`, focused accessibility/layout tests, `docs/BLAZOR.md`, `docs/ACCESSIBILITY.md`, and `docs/DOCK_LAYOUT.md` where the QA matrix describes Settings.
+- **Description:** Implement the token-driven two-column Settings grid, sticky sidebar offset below the navbar, scrollable content flow, narrow stacked projection, logical CSS, visible focus, reduced-motion behavior, and dynamic search announcements. Update canonical docs in the same slice.
+- **Acceptance:** [ ] desktop sidebar remains visible while content scrolls; [ ] 320/375px layout stacks with no horizontal overflow; [ ] DOM/focus order matches visual order; [ ] one Settings scope nav and one Personal section nav have distinct labels when both render; [ ] docs and scenario matrix describe View all/search/responsive behavior.
+- **Dependencies:** 9.2
+
+### Phase 10: Final Visual/Browser QA Gate ⏳ NOT STARTED
+- **Goal:** Independent visual and browser QA verifying the integrated shell and revised Settings experience across workspaces, viewports, and auth states.
+- **Depends on:** Phases 1–9
 - **Relevant files:** all shell components, `MainLayout`, `AppWorkspaceRail`, workspace navigation providers, Studio/AI/Settings pages.
-- **Acceptance criteria:** rail renders correctly on desktop and mobile for anonymous, authenticated seeker, organizer, tenant-admin, and instance-admin principals; workspace switches animate smoothly; bottom nav is reachable and functional; no layout breakage at 320px, 768px, 1280px, 1920px; focus order is logical; no console errors on workspace navigation. This is a final independent gate even though deterministic per-phase tests remain primary.
+- **Acceptance criteria:** rail renders correctly on desktop and mobile for anonymous, authenticated seeker, organizer, tenant-admin, and instance-admin principals; Settings entry parity, View all, search, sticky/stacked navigation, and conditional scope selector work; bottom nav is reachable; no layout breakage at 320px, 375px, 768px, 1280px, 1920px; focus order is logical; no console errors on workspace navigation. Existing anonymous evidence may be reused only where behavior is unchanged.
 - **Phase-end verification:**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
   - Manual browser walkthrough of the scenario matrix (documented in `docs/DOCK_LAYOUT.md` QA matrix).
+
+#### Task 10.1: Final visual/browser scenario-matrix walkthrough
+- **Type:** verify | **Layer:** Blazor + Docs | **Effort:** M
+- **Description:** Complete the remaining authenticated persona matrix and re-run Settings-specific rows after Phase 9. Preserve the existing anonymous 320/375/768/1280/1920 evidence as partial baseline, but do not treat it as proof of the revised Settings page.
+- **Acceptance:** [ ] anonymous and authenticated persona evidence is recorded; [ ] Settings-specific screenshots cover Personal-only and administrative-scope states; [ ] console, focus, RTL, sticky/stacked behavior, and horizontal-overflow findings are recorded honestly.
+- **Dependencies:** 9.3
 
 ## 7. Testing Strategy
 
@@ -493,7 +560,12 @@ No new operational surface. The shell-context endpoint participates in standard 
 | Rail track breaks dock grid math at constrained widths (shell + workspace docks + rail) | Medium | High | Rail is a fixed shell track outside `DockLayoutHost`; extend responsive matrix; per-workspace floors in Phase 8 | `DockHostTests` failures; visual QA matrix | 1.3, 8.1 |
 | `NavMenu` refactor regressions (it owns search, eligibility, admin menu, AI toggle) | Medium | Medium | Incremental edits per phase (2.3, 3.3, 4.4) each with bUnit coverage; never one big rewrite | NavMenu test failures | 2.3/3.3/4.4 |
 | Shell-context handler quietly duplicates authority logic and drifts from `GetAdminAuthority` | Medium | High | Compose existing handlers/repos; parity unit tests comparing both outputs for the same principal | Application unit tests | 3.1 |
-| Settings route removal misses internal links | Medium | Medium | Bounded `rg` sweep is an acceptance criterion; NotFound page catches stragglers in dev | 404s in dev; failing guard tests | 6.2 |
+| Settings route removal misses internal links | Medium | Medium | Bounded source/test sweep is an acceptance criterion; producers migrate directly with no aliases | 404s in dev; failing guard tests | 6.2 |
+| Personal Settings loses or forges workspace origin | Medium | High | Origin exists only in scoped `UiShellState`; Phase 9 routes every first-party entry through one explicit capture-before-navigation contract; origin clears on exit and is never accepted from URL/browser persistence | profile-vs-rail parity failure; duplicate `aria-current`; wrong workspace nav | 6.1, 9.1 |
+| Scope selector or gear leaks unauthorized administration links | Low | High | Render exclusively from `SettingsScopeDto`; revalidate durable last scope; instance authority never implies tenant authority | authority-matrix bUnit failures | 6.2, 6.3, 7.2 |
+| Personal/admin navigation duplicates into two sidebars | Medium | Medium | Delete shell Settings provider; Personal uses compact in-page sections; existing admin layouts remain sole section-navigation owners | navigation-host/component structure tests | 6.1, 6.2 |
+| View all mounts sections that assume they are the only page content | Medium | High | Audit IDs/headings/lifecycle before enabling multi-mount; fix ownership in the section component and cover the composed render | duplicate IDs, duplicate h1, repeated API calls, bUnit failures | 9.2 |
+| Sticky Settings navigation obscures focus or overflows on narrow screens | Medium | Medium | Tokenized navbar offset, logical CSS grid, stacked narrow projection, focus-order and overflow assertions | focus-obscured checks; 320/375px QA | 9.3, 10.1 |
 | NSwag regen churn colliding with parallel workstreams (webhooks intent pins `EventApiClient.g.cs`) | Medium | Medium | Regen is a serialized/isolated generated-artifact diff; coordinate with active webhook workstream before Phase 3 lands | git conflicts on `.g.cs` | 3.2 |
 | Studio scope creep (building features instead of shells) | High | Medium | Phase 4 acceptance explicitly limits to shells + links to existing editors; deferred list is authoritative | Task ledger growth | 4.x |
 | `Blazouter` router limitations for workspace metadata | Low | Medium | Prefix classification needs no router changes; extension only if evidence appears | classifier tests | 1.2 |
@@ -504,8 +576,9 @@ No new operational surface. The shell-context endpoint participates in standard 
 - Route-driven workspaces: deep links and refresh land in the correct workspace with correct nav (scenario matrix green).
 - Capability truth: no `IsInRole`/claim inspection in any new shell/Studio/Settings component; Studio visibility flips with server data alone.
 - One conversation system: dock and `/ai` provably share history/state.
+- Hybrid Settings: every first-party Personal entry uses one explicit context-preserving contract; direct/new-tab loads remain dedicated; Personal-only users see no scope selector; `/settings/personal` defaults to searchable View all with sticky responsive vertical navigation; hub/admin links remain server-authoritative without duplicate sidebars.
 - Preferences: cross-device layout restore for authenticated users; tenant defaults + locks effective; projection never persists.
-- All ten phase gates green: each = one Release build + the phase's single test project run. Phase 9 adds a final visual/browser QA gate.
+- All eleven phase gates green: each = one Release build + the phase's single test project run. Phase 10 adds the final visual/browser QA gate.
 
 ## 15. Implementation Agent Contract — KEEP DEV DOCS CURRENT
 
