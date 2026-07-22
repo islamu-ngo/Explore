@@ -29,6 +29,10 @@
     flex: 0 0 auto;
 }
 
+.app-workspace-rail__action {
+    position: relative;
+}
+
 /* Pin the last item (Settings) to the block-end of the rail */
 .app-workspace-rail__item:last-child {
     margin-block-start: auto;
@@ -43,6 +47,7 @@
     min-block-size: var(--isl-target-min, 1.5rem);
     min-inline-size: var(--isl-target-min, 1.5rem);
     padding: var(--isl-space-2) var(--isl-space-1);
+    border-inline-start: var(--isl-focus-ring-width) solid transparent;
     color: var(--mud-palette-text-secondary);
     text-decoration: none;
     transition: background 150ms ease, color 150ms ease;
@@ -63,6 +68,11 @@
     background: var(--isl-state-active);
 }
 
+.app-workspace-rail__link--utility-open {
+    color: var(--mud-palette-primary);
+    border-inline-start-color: var(--mud-palette-primary);
+}
+
 ::deep .app-workspace-rail__icon {
     font-size: 1.5rem;
 }
@@ -75,6 +85,59 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     max-inline-size: 100%;
+}
+
+.app-workspace-rail__settings-menu summary {
+    display: grid;
+    place-items: center;
+    min-block-size: var(--isl-target-min);
+    min-inline-size: var(--isl-target-min);
+    color: var(--mud-palette-text-secondary);
+    cursor: pointer;
+    list-style: none;
+}
+
+.app-workspace-rail__settings-menu summary::-webkit-details-marker {
+    display: none;
+}
+
+.app-workspace-rail__settings-menu summary:focus-visible {
+    outline: var(--isl-focus-ring-width) solid var(--mud-palette-primary);
+    outline-offset: var(--isl-focus-ring-offset);
+}
+
+.app-workspace-rail__settings-menu-content {
+    position: fixed;
+    inset-block-end: var(--isl-space-3);
+    inset-inline-start: calc(var(--isl-workspace-rail-width, 4rem) + var(--isl-space-2));
+    z-index: calc(var(--isl-dock-z-shell, 1200) + 1);
+    display: grid;
+    gap: var(--isl-space-1);
+    min-inline-size: 12rem;
+    padding: var(--isl-space-2);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-card);
+    background: var(--mud-palette-surface);
+    box-shadow: var(--isl-shadow-md);
+}
+
+.app-workspace-rail__settings-menu-content a {
+    min-block-size: var(--isl-target-min);
+    padding: var(--isl-space-2);
+    border-radius: var(--isl-radius-button);
+    color: var(--mud-palette-text-primary);
+    text-decoration: none;
+}
+
+.app-workspace-rail__settings-menu-content a:hover {
+    background: var(--isl-state-hover);
+}
+
+.app-workspace-rail__settings-menu-label {
+    padding: var(--isl-space-2) var(--isl-space-2) 0;
+    color: var(--mud-palette-text-secondary);
+    font-size: var(--isl-typography-caption-size);
+    font-weight: 600;
 }
 
 /* Mobile: project the same links to a bottom navigation bar (Xs breakpoint) */
@@ -102,5 +165,11 @@
 
     .app-workspace-rail__link {
         padding: var(--isl-space-1);
+    }
+
+    .app-workspace-rail__settings-menu-content {
+        inset-block-end: calc(var(--isl-workspace-rail-width, 4rem) + var(--isl-space-2));
+        inset-inline-start: auto;
+        inset-inline-end: var(--isl-space-2);
     }
 }

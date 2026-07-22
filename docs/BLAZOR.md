@@ -298,6 +298,12 @@ Source-grounded examples:
 
 Keep component lifecycle async and cancellation-aware for long-running loads. UI authorization is for affordance and navigation clarity only; API authorization remains authoritative.
 
+### Workspace shell contract
+
+`WorkspaceRegistry` is the compile-time source of canonical rail order: Events, Studio, AI, then Settings. `AppWorkspaceRail` filters that ordered list using authentication and server-returned `WorkspaceAvailabilityDto`; it does not alphabetize destinations or infer capabilities from claims. The same semantic navigation is CSS-projected to the Xs bottom rail, while `WorkspaceNavigationHost` swaps contextual providers without re-registering the shell dock.
+
+`UiShellState` owns route-derived active workspace, session-only Personal Settings origin, last routes, and revocation fallback. `ShellPreferencesService` restores only server-authorized workspace, actor, and Settings-scope values; authenticated dock state uses server-backed user settings, anonymous state uses tenant-discriminated local storage, and viewport/content-floor projection never persists.
+
 ## Styling, Accessibility, Localization, And Analytics
 
 Do not duplicate the specialized docs in this guide.

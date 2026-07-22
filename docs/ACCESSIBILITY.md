@@ -21,6 +21,8 @@ Every page rendered through `MainLayout` automatically gets these accessibility 
 | Main landmark | `<main id="main-content" tabindex="-1">` | WCAG 1.3.1 — Landmark regions |
 | Header landmark | `<header class="main-layout__header">` | Native landmark (preferred over `role="banner"`) |
 | Sidebar navigation | `<nav aria-label="Sidebar navigation">` | Named navigation region |
+| Application workspace rail | `<nav aria-label="Application workspaces">` | One semantic nav projected to a desktop rail or Xs bottom navigation |
+| Events workspace navigation | `<nav aria-label="Events workspace navigation">` | Distinguishes contextual Events links from shell/header navigation |
 | ARIA live region (polite) | `<div id="aria-live-polite" aria-live="polite">` | Non-interrupting announcements |
 | ARIA live region (assertive) | `<div id="aria-live-assertive" aria-live="assertive">` | Critical alerts |
 | Focus-on-navigate | `AccessibilityFocusService.FocusOnNavigateAsync()` | Screen reader page change announcement |
@@ -30,6 +32,8 @@ Every page rendered through `MainLayout` automatically gets these accessibility 
 **Page authors MUST ensure:**
 - Every page has an `<h1>` element (focus target after navigation).
 - Heading hierarchy is sequential (`h1` → `h2` → `h3`, no skipping).
+
+Workspace changes use the same route-navigation focus path as page changes: `MainLayout` calls `FocusOnNavigateAsync()`, which targets the page heading or main landmark. Navigation providers must use distinct labels; do not reuse `Sidebar navigation` for nested workspace navigation.
 
 ### PR-2: Service Contracts
 
@@ -336,6 +340,8 @@ Convention tests in `Event.Architecture.Tests/` enforce accessibility rules at b
 | `MainLayout_MustContainAriaLiveRegions` | Polite and assertive `aria-live` regions present |
 | `ScopedCss_MustNotUsePhysicalDirectionProperties` | **ADVISORY** — flags `margin-left/right`, `padding-left/right`, `border-left/right` in `.razor.css` (Phase 5 RTL fix) |
 | `ScopedCss_MustNotUsePhysicalPositionProperties` | **ADVISORY** — flags `left:`/`right:` positioning in `.razor.css` |
+
+`WorkspaceShellScenarioMatrixTests` complements these static checks with rendered rows for anonymous, seeker, organizer, tenant-admin, instance-admin, and multi-role shells. Mobile and desktop use the same semantic application-workspace navigation; browser placement, focus order, RTL mirroring, and console checks are verified by the manual matrix in `DOCK_LAYOUT.md`.
 
 ### AuthorizationParityTests (4 tests)
 

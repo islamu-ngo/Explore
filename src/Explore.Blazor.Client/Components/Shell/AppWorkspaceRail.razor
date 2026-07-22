@@ -7,16 +7,38 @@
         @foreach (var workspace in _visibleWorkspaces)
         {
             var isActive = IsActive(workspace);
-            <li class="app-workspace-rail__item">
-                <a href="@GetRoute(workspace)"
-                   class="app-workspace-rail__link@(isActive ? " app-workspace-rail__link--active" : "")"
-                   aria-current="@(isActive ? "page" : null)"
-                   title="@GetLabel(workspace)"
-                   aria-label="@GetLabel(workspace)">
-                    <MudIcon Icon="@workspace.Icon" Class="app-workspace-rail__icon" />
-                    <span class="app-workspace-rail__label">@GetLabel(workspace)</span>
-                </a>
-            </li>
+             var isUtilityOpen = IsUtilityOpen(workspace);
+             <li class="app-workspace-rail__item">
+                 <div class="app-workspace-rail__action">
+                      <a href="@GetRoute(workspace)"
+                         class="@GetLinkClass(isActive, isUtilityOpen)"
+                         @onclick="@(args => OnWorkspaceClicked(workspace, args))"
+                         aria-current="@(isActive ? "page" : null)"
+                        data-utility-open="@(isUtilityOpen ? "true" : null)"
+                        title="@GetLabel(workspace)"
+                        aria-label="@GetLabel(workspace)">
+                         <MudIcon Icon="@workspace.Icon" Class="app-workspace-rail__icon" />
+                         <span class="app-workspace-rail__label">@GetLabel(workspace)</span>
+                     </a>
+                     @if (workspace.Key == WorkspaceKey.Settings && _settingsLinks.Count > 0)
+                     {
+                         <details class="app-workspace-rail__settings-menu">
+                             <summary aria-label="Open Settings menu" title="More Settings">⋮</summary>
+                             <div class="app-workspace-rail__settings-menu-content">
+                                 <a href="/settings">All settings</a>
+                                 @if (_showSiteAdministration)
+                                 {
+                                     <span class="app-workspace-rail__settings-menu-label">Site administration</span>
+                                 }
+                                 @foreach (var link in _settingsLinks)
+                                 {
+                                     <a href="@link.Href">@link.Label</a>
+                                 }
+                             </div>
+                         </details>
+                     }
+                 </div>
+             </li>
         }
     </ul>
 </nav>
