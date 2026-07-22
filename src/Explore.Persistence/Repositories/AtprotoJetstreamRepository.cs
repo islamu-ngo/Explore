@@ -14,6 +14,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
 {
     private const string EventCollection = "community.lexicon.calendar.event";
     private const string RsvpCollection = "community.lexicon.calendar.rsvp";
+    private const string TidAlphabet = "234567abcdefghijklmnopqrstuvwxyz";
     private readonly ExploreDbContext _dbContext;
 
     public AtprotoJetstreamRepository(ExploreDbContext dbContext)
@@ -175,8 +176,15 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
         }
 
         var strategy = _dbContext.Database.CreateExecutionStrategy();
+        bool firstAttempt = true;
         return await strategy.ExecuteAsync(async () =>
         {
+            if (!firstAttempt)
+            {
+                _dbContext.ChangeTracker.Clear();
+            }
+            firstAttempt = false;
+
             await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
             await AcquireConsumerLockAsync(request.Claim.Service, cancellationToken);
             AtprotoJetstreamConsumerState? state = await _dbContext.AtprotoJetstreamConsumerStates
@@ -222,12 +230,26 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                 .Select(value => value.Uri!)
                 .Distinct(StringComparer.Ordinal)
                 .ToArray();
-            Guid[] dependentRecordIds = missingEventUris.Length == 0
+            var dependentCandidates = missingEventUris.Length == 0
                 ? []
                 : await _dbContext.AtprotoRecords
-                    .Where(value => value.SubjectUri != null && missingEventUris.Contains(value.SubjectUri))
-                    .Select(value => value.Id)
+                    .Where(value =>
+                        value.Collection == RsvpCollection
+                        && value.SubjectUri != null
+                        && missingEventUris.Contains(value.SubjectUri)
+                        && value.SourceVersion < request.SnapshotVersion)
+                    .Select(value => new
+                    {
+                        value.Id,
+                        value.Did,
+                        value.Collection,
+                        value.RecordKey
+                    })
                     .ToArrayAsync(cancellationToken);
+            Guid[] dependentRecordIds = dependentCandidates
+                .Where(value => !accepted.Contains((value.Did, value.Collection, value.RecordKey)))
+                .Select(value => value.Id)
+                .ToArray();
             Guid[] canonicalIds = canonicalRecords.Select(value => value.Id).ToArray();
             Dictionary<Guid, AtprotoEventProjection> projections = await _dbContext.AtprotoEventProjections
                 .Where(value => canonicalIds.Contains(value.AtprotoRecordId))
@@ -376,7 +398,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             foreach (AtprotoPdsSnapshotIdentity identity in snapshot.PresentIdentities)
             {
                 if (!IsExactCollection(identity.Collection)
-                    || !IsValidRecordKey(identity.RecordKey)
+                    || !IsValidProtocolRecordKey(identity.RecordKey)
                     || !present.Add((identity.Collection, identity.RecordKey)))
                 {
                     return false;
@@ -390,7 +412,7 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                 var identity = (record.Collection, record.RecordKey);
                 if (!string.Equals(record.Did, snapshot.Did, StringComparison.Ordinal)
                     || !IsExactCollection(record.Collection)
-                    || !IsValidRecordKey(record.RecordKey)
+                    || !IsValidTid(record.RecordKey)
                     || !accepted.Add(identity)
                     || !present.Contains(identity)
                     || record.TombstonedAt is not null
@@ -412,10 +434,16 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
     private static bool IsExactCollection(string collection) =>
         collection is EventCollection or RsvpCollection;
 
-    private static bool IsValidRecordKey(string recordKey) =>
-        recordKey is { Length: > 0 and <= 255 }
+    private static bool IsValidProtocolRecordKey(string recordKey) =>
+        recordKey is { Length: > 0 and <= 512 }
+        && recordKey is not "." and not ".."
         && recordKey.All(character =>
             char.IsAsciiLetterOrDigit(character) || character is '.' or '-' or '_' or ':' or '~');
+
+    private static bool IsValidTid(string recordKey) =>
+        recordKey is { Length: 13 }
+        && TidAlphabet.IndexOf(recordKey[0], StringComparison.Ordinal) is >= 0 and <= 15
+        && recordKey.All(TidAlphabet.Contains);
 
     private static void ApplySnapshotRecord(AtprotoRecord canonical, AtprotoRecord supplied)
     {

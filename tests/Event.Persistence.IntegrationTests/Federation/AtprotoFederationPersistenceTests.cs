@@ -2,6 +2,7 @@
 // ABOUTME: Covers stale-worker rollback, idempotent replay, UUID allocation, and tenant presentation isolation.
 
 using System.Data.Common;
+using System.Text.Json;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
@@ -57,8 +58,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         string indexDefinition = (string)(await indexCommand.ExecuteScalarAsync()
             ?? throw new InvalidOperationException("PDS source-attempt index was not created."));
 
-        await Assert.That(await context.Database.GetAppliedMigrationsAsync())
-            .Contains("20260719221539_init");
+        await Assert.That(await context.Database.GetPendingMigrationsAsync()).IsEmpty();
         await Assert.That(modelIndexProperties).IsEquivalentTo([
             nameof(PdsSyncOutbox.TenantId),
             nameof(PdsSyncOutbox.SourceEntityType),
@@ -380,8 +380,8 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             now));
         const string didA = "did:plc:snapshot-a";
         const string didB = "did:plc:snapshot-b";
-        AtprotoRecord eventA = SnapshotRecord(didA, "event-a", now);
-        AtprotoRecord eventB = SnapshotRecord(didB, "event-b", now);
+        AtprotoRecord eventA = SnapshotRecord(didA, "3msnapshota22", now);
+        AtprotoRecord eventB = SnapshotRecord(didB, "3msnapshotb22", now);
         var request = new AtprotoPdsSnapshotApplyRequest(
             claim,
             [didA, didB],
@@ -427,18 +427,43 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             now,
             TimeSpan.FromMinutes(5)) ?? throw new InvalidOperationException("Claim was not acquired.");
         const string did = "did:plc:snapshot-owner";
+        const string dependentDid = "did:plc:rsvp-owner";
         AtprotoRecord missingEvent = SnapshotRecord(did, "missing-event", now, sourceVersion: 100);
         AtprotoRecord rejectedEvent = SnapshotRecord(did, "rejected-event", now, sourceVersion: 100);
         AtprotoRecord equalVersionEvent = SnapshotRecord(did, "equal-version-event", now, sourceVersion: 200);
-        AtprotoRecord newerEvent = SnapshotRecord(did, "newer-event", now, sourceVersion: 300);
+        AtprotoRecord newerEvent = SnapshotRecord(did, "3mnewereven22", now, sourceVersion: 300);
         AtprotoRecord dependentRsvp = SnapshotRecord(
-            did,
+            dependentDid,
             "dependent-rsvp",
             now,
             sourceVersion: 100,
             collection: "community.lexicon.calendar.rsvp");
         dependentRsvp.SubjectUri = missingEvent.Uri;
         dependentRsvp.SubjectCid = missingEvent.Cid;
+        AtprotoRecord equalDependentRsvp = SnapshotRecord(
+            dependentDid,
+            "equal-dependent-rsvp",
+            now,
+            sourceVersion: 200,
+            collection: "community.lexicon.calendar.rsvp");
+        equalDependentRsvp.SubjectUri = missingEvent.Uri;
+        equalDependentRsvp.SubjectCid = missingEvent.Cid;
+        AtprotoRecord newerDependentRsvp = SnapshotRecord(
+            dependentDid,
+            "newer-dependent-rsvp",
+            now,
+            sourceVersion: 300,
+            collection: "community.lexicon.calendar.rsvp");
+        newerDependentRsvp.SubjectUri = missingEvent.Uri;
+        newerDependentRsvp.SubjectCid = missingEvent.Cid;
+        AtprotoRecord movedDependentRsvp = SnapshotRecord(
+            did,
+            "3mmovedrsvp22",
+            now,
+            sourceVersion: 100,
+            collection: "community.lexicon.calendar.rsvp");
+        movedDependentRsvp.SubjectUri = missingEvent.Uri;
+        movedDependentRsvp.SubjectCid = missingEvent.Cid;
         AtprotoRecord localOnly = SnapshotRecord(did, "local-only", now, sourceVersion: 0);
         localOnly.Direction = AtprotoRecordDirection.Outbound;
         localOnly.Provenance = AtprotoRecordProvenance.LocalLifecycle;
@@ -451,6 +476,9 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             equalVersionEvent,
             newerEvent,
             dependentRsvp,
+            equalDependentRsvp,
+            newerDependentRsvp,
+            movedDependentRsvp,
             localOnly,
             missingEcho);
         context.AtprotoEventProjections.AddRange(
@@ -464,7 +492,10 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
                      rejectedEvent,
                      equalVersionEvent,
                      newerEvent,
-                     dependentRsvp
+                     dependentRsvp,
+                     equalDependentRsvp,
+                     newerDependentRsvp,
+                     movedDependentRsvp
                  })
         {
             context.AtprotoRecordTenantPresentations.Add(new()
@@ -479,17 +510,25 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         await context.SaveChangesAsync();
         AtprotoRecord staleNewerSnapshot = SnapshotRecord(did, newerEvent.RecordKey, now, sourceVersion: 200);
         staleNewerSnapshot.RecordJson = "{\"name\":\"Stale snapshot\"}";
+        AtprotoRecord movedDependentSnapshot = SnapshotRecord(
+            did,
+            movedDependentRsvp.RecordKey,
+            now,
+            sourceVersion: 200,
+            collection: "community.lexicon.calendar.rsvp");
+        movedDependentSnapshot.SubjectUri = newerEvent.Uri;
+        movedDependentSnapshot.SubjectCid = newerEvent.Cid;
         var snapshot = new AtprotoPdsSnapshot(
             did,
             [
                 new("community.lexicon.calendar.event", rejectedEvent.RecordKey),
                 new("community.lexicon.calendar.event", equalVersionEvent.RecordKey),
                 new("community.lexicon.calendar.event", newerEvent.RecordKey),
-                new("community.lexicon.calendar.rsvp", dependentRsvp.RecordKey)
+                new("community.lexicon.calendar.rsvp", movedDependentSnapshot.RecordKey)
             ],
             [
                 new(staleNewerSnapshot, Projection(staleNewerSnapshot.Id, 200, "Stale snapshot")),
-                new(dependentRsvp, null)
+                new(movedDependentSnapshot, null)
             ]);
 
         bool applied = await repository.TryReconcileAsync(
@@ -511,29 +550,52 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             .SingleAsync(value => value.RecordKey == equalVersionEvent.RecordKey);
         AtprotoRecord persistedNewer = await context.AtprotoRecords.AsNoTracking()
             .SingleAsync(value => value.RecordKey == newerEvent.RecordKey);
+        AtprotoRecord persistedDependent = await context.AtprotoRecords.AsNoTracking()
+            .SingleAsync(value => value.RecordKey == dependentRsvp.RecordKey);
+        AtprotoRecord persistedEqualDependent = await context.AtprotoRecords.AsNoTracking()
+            .SingleAsync(value => value.RecordKey == equalDependentRsvp.RecordKey);
+        AtprotoRecord persistedNewerDependent = await context.AtprotoRecords.AsNoTracking()
+            .SingleAsync(value => value.RecordKey == newerDependentRsvp.RecordKey);
+        AtprotoRecord persistedMovedDependent = await context.AtprotoRecords.AsNoTracking()
+            .SingleAsync(value => value.RecordKey == movedDependentRsvp.RecordKey);
         AtprotoRecord persistedLocal = await context.AtprotoRecords.AsNoTracking()
             .SingleAsync(value => value.RecordKey == localOnly.RecordKey);
         AtprotoRecord persistedEcho = await context.AtprotoRecords.AsNoTracking()
             .SingleAsync(value => value.RecordKey == missingEcho.RecordKey);
-        Dictionary<Guid, bool> visibility = await context.AtprotoRecordTenantPresentations
+        Dictionary<Guid, AtprotoRecordTenantPresentation> presentations = await context
+            .AtprotoRecordTenantPresentations
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .ToDictionaryAsync(value => value.AtprotoRecordId, value => value.IsVisible);
+            .ToDictionaryAsync(value => value.AtprotoRecordId);
         await Assert.That(applied).IsTrue();
         await Assert.That(persistedMissing.TombstonedAt).IsNotNull();
         await Assert.That(persistedMissing.SourceVersion).IsEqualTo(200);
         await Assert.That(persistedMissing.SourceCursor).IsNull();
-        await Assert.That(visibility[missingEvent.Id]).IsFalse();
-        await Assert.That(visibility[dependentRsvp.Id]).IsFalse();
+        await Assert.That(presentations[missingEvent.Id].IsVisible).IsFalse();
+        await Assert.That(presentations[dependentRsvp.Id].IsVisible).IsFalse();
+        await Assert.That(persistedDependent.SourceVersion).IsEqualTo(100);
+        await Assert.That(presentations[dependentRsvp.Id].SourceVersion).IsEqualTo(200);
+        await Assert.That(presentations[equalDependentRsvp.Id].IsVisible).IsTrue();
+        await Assert.That(persistedEqualDependent.SourceVersion).IsEqualTo(200);
+        await Assert.That(presentations[equalDependentRsvp.Id].SourceVersion).IsEqualTo(200);
+        await Assert.That(presentations[newerDependentRsvp.Id].IsVisible).IsTrue();
+        await Assert.That(persistedNewerDependent.SourceVersion).IsEqualTo(300);
+        await Assert.That(presentations[newerDependentRsvp.Id].SourceVersion).IsEqualTo(300);
+        await Assert.That(presentations[movedDependentRsvp.Id].IsVisible).IsTrue();
+        await Assert.That(persistedMovedDependent.SourceVersion).IsEqualTo(200);
+        await Assert.That(persistedMovedDependent.SubjectUri).IsEqualTo(newerEvent.Uri);
+        await Assert.That(presentations[movedDependentRsvp.Id].SourceVersion).IsEqualTo(200);
         await Assert.That(persistedRejected.TombstonedAt).IsNull();
         await Assert.That(persistedRejected.SourceVersion).IsEqualTo(100);
-        await Assert.That(visibility[rejectedEvent.Id]).IsFalse();
+        await Assert.That(presentations[rejectedEvent.Id].IsVisible).IsFalse();
         await Assert.That(persistedEqualVersion.SourceVersion).IsEqualTo(200);
         await Assert.That(persistedEqualVersion.SourceCursor).IsEqualTo(200);
-        await Assert.That(visibility[equalVersionEvent.Id]).IsTrue();
+        await Assert.That(presentations[equalVersionEvent.Id].IsVisible).IsTrue();
         await Assert.That(persistedNewer.SourceVersion).IsEqualTo(300);
-        await Assert.That(persistedNewer.RecordJson).IsEqualTo(newerEvent.RecordJson);
-        await Assert.That(visibility[newerEvent.Id]).IsTrue();
+        using JsonDocument persistedNewerJson = JsonDocument.Parse(persistedNewer.RecordJson!);
+        using JsonDocument expectedNewerJson = JsonDocument.Parse(newerEvent.RecordJson!);
+        await Assert.That(JsonElement.DeepEquals(persistedNewerJson.RootElement, expectedNewerJson.RootElement)).IsTrue();
+        await Assert.That(presentations[newerEvent.Id].IsVisible).IsTrue();
         await Assert.That(persistedLocal.Direction).IsEqualTo(AtprotoRecordDirection.Outbound);
         await Assert.That(persistedLocal.Provenance).IsEqualTo(AtprotoRecordProvenance.LocalLifecycle);
         await Assert.That(persistedLocal.TombstonedAt).IsNull();
@@ -559,7 +621,11 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             TimeSpan.FromSeconds(1)) ?? throw new InvalidOperationException("Claim was not acquired.");
         const string didA = "did:plc:incomplete-a";
         const string didB = "did:plc:incomplete-b";
-        AtprotoPdsSnapshot snapshot = Snapshot(didA, SnapshotRecord(didA, "event-a", now), "Event A", now);
+        AtprotoPdsSnapshot snapshot = Snapshot(
+            didA,
+            SnapshotRecord(didA, "3mincomplete2", now),
+            "Event A",
+            now);
 
         bool incomplete = await repository.TryReconcileAsync(
             new(claim, [didA, didB], [snapshot], [], 100, now),
@@ -609,7 +675,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         const string did = "did:plc:expiry-during-save";
         AtprotoPdsSnapshot snapshot = Snapshot(
             did,
-            SnapshotRecord(did, "event-a", now),
+            SnapshotRecord(did, "3mfenceevent2", now),
             "Event A",
             now);
 
@@ -732,6 +798,8 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
         PdsSyncOutbox completed = CreateOutbox(scope, now, sourceEntityId: eventId);
         completed.Status = PdsSyncStatus.Completed;
         completed.ProcessedAt = now.AddSeconds(1);
+        completed.SettledUri = $"at://{completed.Did}/{completed.Collection}/{completed.RecordKey}";
+        completed.SettledCid = "bafy-completed";
         PdsSyncOutbox deadLettered = CreateOutbox(
             scope,
             now.AddSeconds(2),
