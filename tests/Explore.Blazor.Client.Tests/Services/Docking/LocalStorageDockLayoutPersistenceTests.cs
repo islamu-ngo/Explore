@@ -74,7 +74,10 @@ public sealed class LocalStorageDockLayoutPersistenceTests
     {
         var jsRuntime = Substitute.For<Microsoft.JSInterop.IJSRuntime>();
         var logger = Substitute.For<ILogger<LocalStorageDockLayoutPersistence>>();
-        await using var persistence = new LocalStorageDockLayoutPersistence(jsRuntime, logger);
+        await using var persistence = new LocalStorageDockLayoutPersistence(
+            jsRuntime,
+            Substitute.For<IPublicExperienceService>(),
+            logger);
 
         var loaded = await persistence.LoadAsync("events");
         var saved = await persistence.SaveAsync(CreateSnapshot("events"));
@@ -83,6 +86,15 @@ public sealed class LocalStorageDockLayoutPersistenceTests
         await Assert.That(loaded).IsNull();
         await Assert.That(saved).IsFalse();
         await Assert.That(deleted).IsFalse();
+    }
+
+    [Test]
+    public async Task BuildStorageKey_IncludesTenantDiscriminatorAndHasNoLegacyFallback()
+    {
+        var key = LocalStorageDockLayoutPersistence.BuildStorageKey("community", "shell");
+
+        await Assert.That(key).IsEqualTo("community:shell");
+        await Assert.That(key).IsNotEqualTo("shell");
     }
 
     private static DockLayoutSnapshot CreateSnapshot(string layoutKey)

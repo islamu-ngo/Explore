@@ -9,9 +9,10 @@ internal readonly record struct ActivationGroupKey(DockScope Scope, DockSide? Si
 
 public sealed class DockLayoutState : IDockPanelRegistry
 {
-    private const int MinimumMobileContentWidth = 375;
+    private const int DefaultMinimumContentWidth = 375;
 
     private readonly Dictionary<DockPanelId, DockPanelEntry> _entries = [];
+    private readonly Dictionary<DockScope, int> _minimumContentWidths = [];
     private int _viewportWidth;
     private bool _isMobileViewport;
 
@@ -93,7 +94,11 @@ public sealed class DockLayoutState : IDockPanelRegistry
             .Sum(candidate => candidate.State.Width);
         var availableContentWidth = _viewportWidth - dockedEndWidth - entry.State.Width;
 
-        return availableContentWidth < MinimumMobileContentWidth;
+        var minimumContentWidth = _minimumContentWidths.GetValueOrDefault(
+            entry.Descriptor.Scope,
+            DefaultMinimumContentWidth);
+
+        return availableContentWidth < minimumContentWidth;
     }
 
     public void Refresh()
@@ -138,8 +143,28 @@ public sealed class DockLayoutState : IDockPanelRegistry
 
     public void UpdateViewport(int viewportWidth, bool isMobile)
     {
+        UpdateViewportCore(viewportWidth, isMobile, projectionChanged: false);
+    }
+
+    public void UpdateViewport(
+        int viewportWidth,
+        bool isMobile,
+        DockScope scope,
+        int minimumContentWidth)
+    {
+        var normalizedMinimum = Math.Max(0, minimumContentWidth);
+        var projectionChanged = !_minimumContentWidths.TryGetValue(scope, out var currentMinimum)
+            || currentMinimum != normalizedMinimum;
+        _minimumContentWidths[scope] = normalizedMinimum;
+        UpdateViewportCore(viewportWidth, isMobile, projectionChanged);
+    }
+
+    private void UpdateViewportCore(int viewportWidth, bool isMobile, bool projectionChanged)
+    {
         var normalizedWidth = Math.Max(0, viewportWidth);
-        var viewportChanged = _viewportWidth != normalizedWidth || _isMobileViewport != isMobile;
+        var viewportChanged = projectionChanged
+            || _viewportWidth != normalizedWidth
+            || _isMobileViewport != isMobile;
 
         _viewportWidth = normalizedWidth;
         _isMobileViewport = isMobile;
@@ -175,9 +200,12 @@ public sealed class DockLayoutState : IDockPanelRegistry
         Open(id);
     }
 
-    public void SetMode(DockPanelId id, DockMode mode)
+    public void SetMode(
+        DockPanelId id,
+        DockMode mode,
+        DockLayoutChangeReason reason = DockLayoutChangeReason.UserAction)
     {
-        UpdateState(id, state => state with { Mode = mode });
+        UpdateState(id, state => state with { Mode = mode }, reason);
     }
 
     public void Resize(DockPanelId id, int width)
@@ -386,7 +414,10 @@ public sealed class DockLayoutState : IDockPanelRegistry
             : throw new KeyNotFoundException($"Dock panel '{id}' is not registered.");
     }
 
-    private void UpdateState(DockPanelId id, Func<DockPanelState, DockPanelState> update)
+    private void UpdateState(
+        DockPanelId id,
+        Func<DockPanelState, DockPanelState> update,
+        DockLayoutChangeReason reason = DockLayoutChangeReason.UserAction)
     {
         var entry = RequireEntry(id);
         var nextState = update(entry.State);
@@ -397,7 +428,7 @@ public sealed class DockLayoutState : IDockPanelRegistry
         }
 
         SetEntryState(id, nextState);
-        NotifyChanged(DockLayoutChangeReason.UserAction);
+        NotifyChanged(reason);
     }
 
     private void SetEntryState(DockPanelId id, DockPanelState state)

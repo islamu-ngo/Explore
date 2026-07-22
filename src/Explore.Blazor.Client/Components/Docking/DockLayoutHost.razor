@@ -29,6 +29,7 @@
 @code {
     [Parameter] public DockScope Scope { get; set; }
     [Parameter] public string? Class { get; set; }
+    [Parameter] public int MinimumContentWidth { get; set; } = 375;
     [Parameter] public string DataTestId { get; set; } = "dock-layout-host";
     [Parameter] public string ContentDataTestId { get; set; } = "dock-layout-host-content";
     [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = default!;
@@ -40,6 +41,7 @@
     private const int MobileDockOverlayBreakpointPx = 760;
     private bool _isMobile;
     private bool _viewportSubscribed;
+    private int _viewportWidth;
 
     Guid IBrowserViewportObserver.Id { get; } = Guid.NewGuid();
 
@@ -68,6 +70,14 @@
     protected override void OnInitialized()
     {
         DockLayoutState.Changed += OnDockLayoutChanged;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_viewportWidth > 0)
+        {
+            DockLayoutState.UpdateViewport(_viewportWidth, _isMobile, Scope, MinimumContentWidth);
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -127,7 +137,8 @@
     Task IBrowserViewportObserver.NotifyBrowserViewportChangeAsync(BrowserViewportEventArgs args)
     {
         var isMobile = args.BrowserWindowSize.Width <= MobileDockOverlayBreakpointPx;
-        DockLayoutState.UpdateViewport(args.BrowserWindowSize.Width, isMobile);
+        _viewportWidth = args.BrowserWindowSize.Width;
+        DockLayoutState.UpdateViewport(_viewportWidth, isMobile, Scope, MinimumContentWidth);
 
         if (_isMobile == isMobile)
         {

@@ -221,6 +221,47 @@ public sealed class DockLayoutStateTests
     }
 
     [Test]
+    public async Task UpdateViewport_ContentFloorProjectsStartPanelWithoutMutatingSnapshot()
+    {
+        var state = new DockLayoutState();
+        state.Register(CreateDescriptor(ShellNavId, DockScope.Shell, DockSide.Start, defaultWidth: 280), _ => { });
+        state.Register(CreateDescriptor(ShellAiId, DockScope.Shell, DockSide.End, defaultWidth: 360), _ => { });
+        state.Open(ShellNavId);
+        state.Open(ShellAiId);
+        var before = state.CreateSnapshot("shell", DockScope.Shell);
+
+        state.UpdateViewport(1100, isMobile: false, DockScope.Shell, minimumContentWidth: 520);
+
+        var nav = state.GetPanel(ShellNavId)!;
+        var after = state.CreateSnapshot("shell", DockScope.Shell);
+        await Assert.That(state.ShouldRenderDockedPanelAsOverlay(nav)).IsTrue();
+        await Assert.That(after.Panels).IsEquivalentTo(before.Panels);
+        await Assert.That(state.LastChangeReason).IsEqualTo(DockLayoutChangeReason.ViewportPolicy);
+    }
+
+    [Test]
+    public async Task UpdateViewport_ContentFloorsRemainIndependentPerScope()
+    {
+        var state = new DockLayoutState();
+        var workspaceStartId = new DockPanelId("workspace.events.filters");
+        var workspaceEndId = new DockPanelId("workspace.events.preview");
+        state.Register(CreateDescriptor(ShellNavId, DockScope.Shell, DockSide.Start, defaultWidth: 280), _ => { });
+        state.Register(CreateDescriptor(ShellAiId, DockScope.Shell, DockSide.End, defaultWidth: 360), _ => { });
+        state.Register(CreateDescriptor(workspaceStartId, DockScope.Workspace, DockSide.Start, defaultWidth: 280), _ => { });
+        state.Register(CreateDescriptor(workspaceEndId, DockScope.Workspace, DockSide.End, defaultWidth: 360), _ => { });
+        state.Open(ShellNavId);
+        state.Open(ShellAiId);
+        state.Open(workspaceStartId);
+        state.Open(workspaceEndId);
+
+        state.UpdateViewport(1100, isMobile: false, DockScope.Shell, minimumContentWidth: 520);
+        state.UpdateViewport(1100, isMobile: false, DockScope.Workspace, minimumContentWidth: 375);
+
+        await Assert.That(state.ShouldRenderDockedPanelAsOverlay(state.GetPanel(ShellNavId)!)).IsTrue();
+        await Assert.That(state.ShouldRenderDockedPanelAsOverlay(state.GetPanel(workspaceStartId)!)).IsFalse();
+    }
+
+    [Test]
     public async Task ResponsivePolicy_DesktopGeometryEvidence_AllowsLeftAndSingleRightAtDocumentedWidths()
     {
         var state = new DockLayoutState();

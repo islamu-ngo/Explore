@@ -3,6 +3,7 @@
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Docking;
 using Microsoft.JSInterop;
 
@@ -19,14 +20,17 @@ public sealed class LocalStorageDockLayoutPersistence : IDockLayoutPersistence, 
     };
 
     private readonly IJSRuntime _jsRuntime;
+    private readonly IPublicExperienceService _publicExperienceService;
     private readonly ILogger<LocalStorageDockLayoutPersistence> _logger;
     private IJSObjectReference? _jsModule;
 
     public LocalStorageDockLayoutPersistence(
         IJSRuntime jsRuntime,
+        IPublicExperienceService publicExperienceService,
         ILogger<LocalStorageDockLayoutPersistence> logger)
     {
         _jsRuntime = jsRuntime;
+        _publicExperienceService = publicExperienceService;
         _logger = logger;
     }
 
@@ -42,7 +46,8 @@ public sealed class LocalStorageDockLayoutPersistence : IDockLayoutPersistence, 
         try
         {
             var module = await GetJsModuleAsync(cancellationToken);
-            var json = await module.InvokeAsync<string?>("get", cancellationToken, layoutKey);
+            var storageKey = await ResolveStorageKeyAsync(layoutKey);
+            var json = await module.InvokeAsync<string?>("get", cancellationToken, storageKey);
 
             return Deserialize(layoutKey, json, _logger);
         }
@@ -66,7 +71,8 @@ public sealed class LocalStorageDockLayoutPersistence : IDockLayoutPersistence, 
         try
         {
             var module = await GetJsModuleAsync(cancellationToken);
-            await module.InvokeVoidAsync("set", cancellationToken, snapshot.LayoutKey, Serialize(snapshot));
+            var storageKey = await ResolveStorageKeyAsync(snapshot.LayoutKey);
+            await module.InvokeVoidAsync("set", cancellationToken, storageKey, Serialize(snapshot));
             return true;
         }
         catch (Exception ex) when (ex is JSException or InvalidOperationException or TaskCanceledException)
@@ -88,7 +94,8 @@ public sealed class LocalStorageDockLayoutPersistence : IDockLayoutPersistence, 
         try
         {
             var module = await GetJsModuleAsync(cancellationToken);
-            await module.InvokeVoidAsync("remove", cancellationToken, layoutKey);
+            var storageKey = await ResolveStorageKeyAsync(layoutKey);
+            await module.InvokeVoidAsync("remove", cancellationToken, storageKey);
             return true;
         }
         catch (Exception ex) when (ex is JSException or InvalidOperationException or TaskCanceledException)
@@ -105,6 +112,13 @@ public sealed class LocalStorageDockLayoutPersistence : IDockLayoutPersistence, 
 
         var envelope = new DockLayoutStorageEnvelope(CurrentSchemaVersion, snapshot.LayoutKey, snapshot);
         return JsonSerializer.Serialize(envelope, JsonOptions);
+    }
+
+    internal static string BuildStorageKey(string tenantDiscriminator, string layoutKey)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantDiscriminator);
+        ArgumentException.ThrowIfNullOrWhiteSpace(layoutKey);
+        return $"{tenantDiscriminator.Trim().ToLowerInvariant()}:{layoutKey}";
     }
 
     internal static DockLayoutSnapshot? Deserialize(
@@ -164,6 +178,20 @@ public sealed class LocalStorageDockLayoutPersistence : IDockLayoutPersistence, 
             cancellationToken,
             JsModulePath);
     }
+
+    private async Task<string> ResolveStorageKeyAsync(string layoutKey)
+    {
+        var settings = await _publicExperienceService.GetCachedSettingsAsync();
+        var discriminator = FirstNonBlank(
+            settings?.Subdomain,
+            settings?.CustomDomain,
+            settings?.TenantId is { } tenantId && tenantId != Guid.Empty ? tenantId.ToString("N") : null,
+            "default");
+        return BuildStorageKey(discriminator, layoutKey);
+    }
+
+    private static string FirstNonBlank(params string?[] values) =>
+        values.First(value => !string.IsNullOrWhiteSpace(value))!;
 
     private sealed record DockLayoutStorageEnvelope(
         int SchemaVersion,

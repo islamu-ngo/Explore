@@ -6,7 +6,7 @@
 > **Audience:** Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Frontend
-> **Last Verified:** 2026-07-21
+> **Last Verified:** 2026-07-22
 > **Source Anchors:** `Explore.Blazor.Client/Services/Docking/`, `Explore.Blazor.Client/Components/Docking/`, `Explore.Blazor.Client/Layout/MainLayout.razor`, `Explore.Blazor.Client/Layout/MainLayout.razor.cs`, `Explore.Blazor.Client/Layout/MainLayout.razor.css`, `Explore.Blazor.Client/Components/Shell/ShellDockPanels.cs`, `Explore.Blazor.Client/Components/Shell/AiAssistantRail.razor`, `Explore.Blazor.Client/Components/Shell/WorkspaceNavigationHost.razor.cs`, `Explore.Blazor.Client/Components/Shell/Workspaces/EventsWorkspaceNavigation.razor.cs`, `Explore.Blazor.Client/Pages/Events/EventList.razor`, `Explore.Blazor.Client/Pages/Events/EventList.razor.cs`, `Explore.Blazor.Client/Pages/Events/EventList.razor.css`, `Explore.Blazor.Client/Pages/Events/EventListDockingController.cs`, `Explore.Blazor.Client/Pages/Events/EventDockPanels.cs`, `Explore.Blazor.Client/Services/Interop/LocalStorageDockLayoutPersistence.cs`, `Explore.Blazor.Client/wwwroot/js/dock-layout-persistence.js`, `Explore.Blazor.Client.Tests/Services/Docking/`, `Explore.Blazor.Client.Tests/Components/Docking/`, `Explore.Blazor.Client.Tests/Layout/DockRegistrationTests.cs`, `Event.Architecture.Tests/DockLayoutArchitectureTests.cs`
 
 ## Purpose
@@ -74,7 +74,7 @@ The runtime is split into four layers.
 
 4. Persistence and adapter layer
 
-- `LocalStorageDockLayoutPersistence` stores snapshot state in browser `localStorage`.
+- `ServerBackedDockLayoutPersistence` stores authenticated snapshots through the existing user-settings API and delegates anonymous snapshots to tenant-discriminated browser `localStorage`.
 - `MainLayout` controls workspace navigation directly through `DockLayoutState` and adapts only AI policy state through `AiAssistantState`.
 - `EventListDockingController` adapts workspace dock state to page-local booleans and autosave.
 
@@ -326,9 +326,9 @@ That means:
 
 ### Content Floor
 
-`DockLayoutState` uses `MinimumMobileContentWidth = 375`.
+`DockLayoutHost.MinimumContentWidth` supplies a generic per-scope content floor to `DockLayoutState`. MainLayout maps the active workspace to Events `375`, AI `520`, Settings `560`, or Studio `720`; the dock engine does not know workspace names.
 
-This is the minimum remaining content width the projection policy tries to protect.
+The floor is projection policy only. Floor and viewport changes use `ViewportPolicy`, never enter snapshots, and cannot trigger the `UserAction`/`Reset` persistence lane.
 
 ### Start-side Projection Policy
 
@@ -337,7 +337,7 @@ The start side is usually the navigation dock.
 Rules:
 
 1. On hard mobile, open docked panels render through overlay chrome instead of reserving inline grid width.
-2. On constrained desktop, a start docked panel is projected to overlay chrome when opening it inline would leave less than `375px` content width after accounting for docked end panels in the same `DockScope`.
+2. On constrained desktop, a start docked panel is projected to overlay chrome when opening it inline would leave less than the caller-supplied content floor after accounting for docked end panels in the same `DockScope`.
 3. Projection does not close the start panel. It changes only the rendering path.
 
 This produces the important middle behavior you asked about:
@@ -569,13 +569,12 @@ The important distinction is:
 
 ## Persistence Model
 
-Persistence is local browser storage only.
+Persistence follows authentication state without introducing another storage model:
 
-Implementation:
-
-- C# service: `LocalStorageDockLayoutPersistence`
-- JS module: `wwwroot/js/dock-layout-persistence.js`
-- storage key prefix: `dock_layout:v1:`
+- authenticated users use `ServerBackedDockLayoutPersistence` over the existing `api/settings/user/{category}` settings API;
+- anonymous users delegate to `LocalStorageDockLayoutPersistence` and `/js/dock-layout-persistence.js` under `dock_layout:v1:{tenantSlug}:`;
+- an anonymous snapshot is promoted once when the user authenticates and no server snapshot exists;
+- stale pre-tenant-discriminator keys are not read.
 
 Snapshots are schema-versioned envelopes:
 
@@ -727,6 +726,22 @@ Visual ownership is split like this:
 - dock hosts own placement, sizing, backdrop, modal behavior, and motion
 - panel content owns titles, toolbar buttons, internal layout, and local popup behavior
 
+### Workspace shell scenario matrix
+
+`WorkspaceShellScenarioMatrixTests` covers the implemented product rows with real bUnit components and shell services:
+
+| Capability/profile | Auth | Rail | Events navigation | Settings scopes | Default/revocation |
+|---|---|---|---|---|---|
+| Discovery visitor | Anonymous | Events only | Discovery shortcuts | Public preferences remain page-owned | Events |
+| Organization-centric visitor | Anonymous | Events-only public shell | Branded Programs catalog | Public preferences remain page-owned | Organization catalog/Events shell |
+| Event seeker | Authenticated | Events, optional AI, Settings | Discovery shortcuts | Personal | Last valid workspace or Events |
+| Organizer | Authenticated | Events, Studio, optional AI, Settings | Studio is actor-contextual | Personal + authorized organization/group | Studio when configured and available |
+| Tenant administrator without organizer capability | Authenticated | Events, optional AI, Settings; no Studio | No Studio provider | Personal + Tenant | Revoked Studio falls back to Events |
+| Instance administrator only | Authenticated | Events, optional AI, Settings; no Studio | No Studio provider | Personal + Instance | Settings or last valid workspace |
+| Multi-role user | Authenticated | Union in canonical Events → Studio → AI → Settings order | Contextual provider | Union of explicitly authorized scopes | Last valid workspace |
+
+Mobile and desktop rows intentionally render one semantic `<nav aria-label="Application workspaces">` DOM. The Xs CSS projection changes placement, not links or accessibility semantics. `Settings` remains last and becomes the bottom-pinned gear on desktop.
+
 ### Responsive visual QA matrix
 
 Use this matrix for focused manual browser verification after changing dock layout or responsive behavior.
@@ -735,16 +750,14 @@ The matrix covers these widths and modes:
 
 | Scenario | Viewport | Direction | Motion | Purpose |
 |---|---:|---|---|---|
-| `mobile-390-ltr` | 390 x 844 | LTR | Default | Small mobile overlay projection and active-modal behavior. |
-| `mobile-390-rtl` | 390 x 844 | RTL | Default | Logical start/end placement and RTL animation direction. |
-| `mobile-390-reduced-motion` | 390 x 844 | LTR | Reduced | Reduced-motion override contract for mobile overlays. |
-| `compact-600-ltr` | 600 x 900 | LTR | Default | Boundary around the overlay CSS mobile breakpoint. |
+| `mobile-320-ltr` | 320 x 844 | LTR | Default | Minimum supported width, bottom rail, and active-modal behavior. |
+| `mobile-375-rtl` | 375 x 844 | RTL | Default | Logical start/end placement and RTL animation direction. |
+| `mobile-375-reduced-motion` | 375 x 844 | LTR | Reduced | Reduced-motion override contract for mobile overlays. |
 | `tablet-768-ltr` | 768 x 900 | LTR | Default | Tablet-sized content pressure without hard fullscreen snap. |
-| `constrained-970-ltr` | 970 x 900 | LTR | Default | Constrained desktop projection and shell/workspace coexistence. |
 | `desktop-1280-ltr` | 1280 x 900 | LTR | Default | Normal desktop inline dock tracks and split stack behavior. |
-| `wide-1760-ltr` | 1760 x 1000 | LTR | Default | Wide desktop shell + workspace parallel dock layout. |
+| `wide-1920-ltr` | 1920 x 1080 | LTR | Default | Wide desktop shell + workspace parallel dock layout. |
 
-Each scenario opens the shell AI rail, event customization dock, and event preview dock together. Verify shell and workspace dock hosts plus the two workspace panel hosts. Enable the operating system or browser reduced-motion preference for the reduced-motion scenario.
+Run each width for the applicable anonymous, seeker, organizer, tenant-admin, and instance-admin rows above. Verify canonical rail order, bottom-nav reachability at Xs, active provider content, Settings scope links, shell/workspace dock hosts, logical focus order, and zero console errors. Enable the operating system or browser reduced-motion preference for the reduced-motion scenario.
 
 ## What "Everything Related" Means In Current Code
 
@@ -761,7 +774,7 @@ Today, the full dock system includes:
 - start/bottom same-side tab stacking
 - cross-scope horizontal stacking through nested hosts
 - keyboard and pointer resizing
-- schema-versioned local persistence
+- schema-versioned authenticated server persistence plus tenant-discriminated anonymous local persistence
 - per-scope autosave and reset
 - focus, scroll-lock, Escape, backdrop click, and ARIA semantics
 - inspector-local popups inside the event preview panel body
@@ -790,6 +803,6 @@ Key test areas:
 - `LocalStorageDockLayoutPersistenceTests`: schema versioning, corrupt data handling, non-browser safety
 - `DockRegistrationTests`: DI registration
 - `DockLayoutArchitectureTests`: no central panel enum and no new page-level shell compensation hacks
-- manual responsive matrix above for 390, 600, 768, 970, 1280, and 1760 px dock scenarios, including RTL and reduced-motion variants
+- `WorkspaceShellScenarioMatrixTests` for profile/auth/capability/viewport semantics and manual responsive proof at 320, 375, 768, 1280, and 1920 px, including RTL and reduced-motion variants
 
 Those tests are the best proof of intended behavior when changing widths, breakpoints, stacking logic, or modal behavior.
