@@ -129,7 +129,6 @@ public class GovernanceSettingKeysTests
             GovernanceSettingKeys.UiShell.DefaultNavModeEvents,
             GovernanceSettingKeys.UiShell.DefaultNavModeStudio,
             GovernanceSettingKeys.UiShell.DefaultNavModeAi,
-            GovernanceSettingKeys.UiShell.DefaultNavModeSettings,
             GovernanceSettingKeys.UiShell.AllowUserNavOverride,
             GovernanceSettingKeys.UiShell.OrganizerDefaultWorkspace
         ];
@@ -137,7 +136,8 @@ public class GovernanceSettingKeysTests
         [
             GovernanceSettingKeys.UiShellPreferences.Layout,
             GovernanceSettingKeys.UiShellPreferences.LastWorkspace,
-            GovernanceSettingKeys.UiShellPreferences.LastActor
+            GovernanceSettingKeys.UiShellPreferences.LastActor,
+            GovernanceSettingKeys.UiShellPreferences.LastSettingsScope
         ];
 
         foreach (var key in governanceKeys)
@@ -157,5 +157,7 @@ public class GovernanceSettingKeysTests
             await Assert.That(definition.MaxScope).IsEqualTo(SettingScope.User);
             await Assert.That(definition.IsLockable).IsFalse();
         }
+
+        await Assert.That(SettingRegistry.Contains("ui_shell.default_nav_mode.settings")).IsFalse();
     }
 }

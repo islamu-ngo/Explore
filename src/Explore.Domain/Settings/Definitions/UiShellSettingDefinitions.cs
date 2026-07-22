@@ -26,10 +26,6 @@ public static class UiShellSettingDefinitions
         GovernanceSettingKeys.UiShell.DefaultNavModeAi,
         "Default secondary-navigation mode for the AI workspace");
 
-    public static readonly SettingDefinition DefaultNavModeSettings = NavigationMode(
-        GovernanceSettingKeys.UiShell.DefaultNavModeSettings,
-        "Default secondary-navigation mode for the Settings workspace");
-
     public static readonly SettingDefinition AllowUserNavOverride = Governance(
         GovernanceSettingKeys.UiShell.AllowUserNavOverride,
         SettingValueType.Boolean,
@@ -61,18 +57,24 @@ public static class UiShellSettingDefinitions
         "\"\"",
         "Last managed actor selected by the current user");
 
+    public static readonly SettingDefinition LastSettingsScope = Preference(
+        GovernanceSettingKeys.UiShellPreferences.LastSettingsScope,
+        SettingValueType.String,
+        "\"\"",
+        "Last authorized administrative Settings scope selected by the current user");
+
     public static IReadOnlyList<SettingDefinition> All =>
     [
         RailPublicVisibility,
         DefaultNavModeEvents,
         DefaultNavModeStudio,
         DefaultNavModeAi,
-        DefaultNavModeSettings,
         AllowUserNavOverride,
         OrganizerDefaultWorkspace,
         Layout,
         LastWorkspace,
-        LastActor
+        LastActor,
+        LastSettingsScope
     ];
 
     private static SettingDefinition NavigationMode(string key, string description) =>

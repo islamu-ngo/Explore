@@ -303,7 +303,7 @@ public class SettingRegistryTests
     }
 
     [Test]
-    public async Task Registry_AtprotoFederationRegistersExactlyCapabilityProfileAndSelfConsent()
+    public async Task Registry_AtprotoFederationRegistersExactlyCapabilityProfileRecoveryAndSelfConsent()
     {
         var definitions = SettingRegistry.GetByCategory("AtprotoFederation");
 
@@ -311,6 +311,8 @@ public class SettingRegistryTests
         {
             GovernanceSettingKeys.Federation.AtprotoEventsEnabled,
             GovernanceSettingKeys.Federation.AtprotoEventValidationProfile,
+            GovernanceSettingKeys.Federation.AtprotoEventsBackfillEnabled,
+            GovernanceSettingKeys.Federation.AtprotoEventsBackfillMode,
             GovernanceSettingKeys.Federation.AtprotoPublishMyEvents,
         });
 

@@ -329,7 +329,6 @@ public static class GovernanceSettingKeys
         public const string DefaultNavModeEvents = "ui_shell.default_nav_mode.events";
         public const string DefaultNavModeStudio = "ui_shell.default_nav_mode.studio";
         public const string DefaultNavModeAi = "ui_shell.default_nav_mode.ai";
-        public const string DefaultNavModeSettings = "ui_shell.default_nav_mode.settings";
         public const string AllowUserNavOverride = "ui_shell.allow_user_nav_override";
         public const string OrganizerDefaultWorkspace = "ui_shell.organizer_default_workspace";
     }
@@ -339,6 +338,7 @@ public static class GovernanceSettingKeys
         public const string Layout = "ui_shell_preferences.layout.v1";
         public const string LastWorkspace = "ui_shell_preferences.last_workspace";
         public const string LastActor = "ui_shell_preferences.last_actor";
+        public const string LastSettingsScope = "ui.settings.last_scope.v1";
     }
 
     public static class TenantDelegation
