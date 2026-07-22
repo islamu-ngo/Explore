@@ -31,15 +31,16 @@ public sealed class AiAssistantActorContextService(
 
         var tenantUser = await tenantUserRepository.GetByTenantAndUserAsync(tenantId, userId, cancellationToken);
         var userActor = tenantUser?.ActorId is Guid tenantUserActorId
-            ? await actorRepository.GetActorWithDetails(tenantUserActorId)
-            : await actorRepository.GetActorByUserIdAndTenantId(userId, tenantId);
+            ? await actorRepository.GetActorWithDetails(tenantUserActorId, cancellationToken)
+            : await actorRepository.GetActorByUserIdAndTenantId(userId, tenantId, cancellationToken);
 
         AddActorContext(contexts, seenActorIds, userActor, nameof(ActorTypeEnum.User));
 
         var allowedOrganizationIds = (await organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
             userId,
-            PermissionCodes.EventCreate)).ToHashSet();
-        var organizationMemberships = await organizationMemberRepository.GetMembershipsByUser(userId);
+            PermissionCodes.EventCreate,
+            cancellationToken)).ToHashSet();
+        var organizationMemberships = await organizationMemberRepository.GetMembershipsByUser(userId, cancellationToken);
         foreach (var membership in organizationMemberships
                      .Where(membership => membership.TenantId == tenantId
                          && membership.Organization.ActorId is Guid
@@ -57,8 +58,9 @@ public sealed class AiAssistantActorContextService(
 
         var allowedGroupIds = (await groupMemberRepository.GetGroupIdsWhereUserHasPermission(
             userId,
-            PermissionCodes.EventCreate)).ToHashSet();
-        var groupMemberships = await groupMemberRepository.GetMembershipsByUser(userId);
+            PermissionCodes.EventCreate,
+            cancellationToken)).ToHashSet();
+        var groupMemberships = await groupMemberRepository.GetMembershipsByUser(userId, cancellationToken);
         foreach (var membership in groupMemberships
                      .Where(membership => membership.TenantId == tenantId
                          && membership.Group.ActorId is Guid

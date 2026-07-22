@@ -31,18 +31,24 @@ public sealed class AiAssistantActorContextServiceTests
         var allowedGroupActorId = Guid.CreateVersion7();
         var blockedGroupId = Guid.CreateVersion7();
         var blockedGroupActorId = Guid.CreateVersion7();
-        _actorRepository.GetActorByUserIdAndTenantId(userId, tenantId)
+        _actorRepository.GetActorByUserIdAndTenantId(userId, tenantId, Arg.Any<CancellationToken>())
             .Returns(CreateUserActor(userActorId, tenantId, userId));
-        _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(userId, PermissionCodes.EventCreate)
+        _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
+                userId,
+                PermissionCodes.EventCreate,
+                Arg.Any<CancellationToken>())
             .Returns([allowedOrganizationId]);
-        _organizationMemberRepository.GetMembershipsByUser(userId).Returns(
+        _organizationMemberRepository.GetMembershipsByUser(userId, Arg.Any<CancellationToken>()).Returns(
         [
             CreateOrganizationMembership(tenantId, allowedOrganizationId, allowedOrganizationActorId, "Allowed Org"),
             CreateOrganizationMembership(tenantId, blockedOrganizationId, blockedOrganizationActorId, "Blocked Org")
         ]);
-        _groupMemberRepository.GetGroupIdsWhereUserHasPermission(userId, PermissionCodes.EventCreate)
+        _groupMemberRepository.GetGroupIdsWhereUserHasPermission(
+                userId,
+                PermissionCodes.EventCreate,
+                Arg.Any<CancellationToken>())
             .Returns([allowedGroupId]);
-        _groupMemberRepository.GetMembershipsByUser(userId).Returns(
+        _groupMemberRepository.GetMembershipsByUser(userId, Arg.Any<CancellationToken>()).Returns(
         [
             CreateGroupMembership(tenantId, allowedGroupId, allowedGroupActorId, "Allowed Group"),
             CreateGroupMembership(tenantId, blockedGroupId, blockedGroupActorId, "Blocked Group")
@@ -66,7 +72,7 @@ public sealed class AiAssistantActorContextServiceTests
         var tenantId = Guid.CreateVersion7();
         var userId = Guid.CreateVersion7();
         var actorId = Guid.CreateVersion7();
-        _actorRepository.GetActorByUserIdAndTenantId(userId, tenantId)
+        _actorRepository.GetActorByUserIdAndTenantId(userId, tenantId, Arg.Any<CancellationToken>())
             .Returns(CreateUserActor(actorId, tenantId, userId));
         ConfigureEmptyMemberships(userId);
 
@@ -82,7 +88,7 @@ public sealed class AiAssistantActorContextServiceTests
         var tenantId = Guid.CreateVersion7();
         var userId = Guid.CreateVersion7();
         var actorId = Guid.CreateVersion7();
-        _actorRepository.GetActorByUserIdAndTenantId(userId, tenantId)
+        _actorRepository.GetActorByUserIdAndTenantId(userId, tenantId, Arg.Any<CancellationToken>())
             .Returns(CreateUserActor(actorId, tenantId, userId));
         ConfigureEmptyMemberships(userId);
 
@@ -96,6 +102,27 @@ public sealed class AiAssistantActorContextServiceTests
         await Assert.That(result.FailureCode).IsEqualTo("actor_context_not_authorized");
     }
 
+    [Test]
+    public async Task ListAuthorizedActorContextsAsync_ForwardsCancellationTokenToEveryRepository()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var userId = Guid.CreateVersion7();
+        using var cancellation = new CancellationTokenSource();
+        CancellationToken token = cancellation.Token;
+        ConfigureEmptyMemberships(userId);
+
+        await CreateService().ListAuthorizedActorContextsAsync(tenantId, userId, token);
+
+        await _tenantUserRepository.Received(1).GetByTenantAndUserAsync(tenantId, userId, token);
+        await _actorRepository.Received(1).GetActorByUserIdAndTenantId(userId, tenantId, token);
+        await _organizationMemberRepository.Received(1)
+            .GetOrganizationIdsWhereUserHasPermission(userId, PermissionCodes.EventCreate, token);
+        await _organizationMemberRepository.Received(1).GetMembershipsByUser(userId, token);
+        await _groupMemberRepository.Received(1)
+            .GetGroupIdsWhereUserHasPermission(userId, PermissionCodes.EventCreate, token);
+        await _groupMemberRepository.Received(1).GetMembershipsByUser(userId, token);
+    }
+
     private AiAssistantActorContextService CreateService()
         => new(
             _actorRepository,
@@ -105,12 +132,18 @@ public sealed class AiAssistantActorContextServiceTests
 
     private void ConfigureEmptyMemberships(Guid userId)
     {
-        _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(userId, PermissionCodes.EventCreate)
+        _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
+                userId,
+                PermissionCodes.EventCreate,
+                Arg.Any<CancellationToken>())
             .Returns([]);
-        _organizationMemberRepository.GetMembershipsByUser(userId).Returns([]);
-        _groupMemberRepository.GetGroupIdsWhereUserHasPermission(userId, PermissionCodes.EventCreate)
+        _organizationMemberRepository.GetMembershipsByUser(userId, Arg.Any<CancellationToken>()).Returns([]);
+        _groupMemberRepository.GetGroupIdsWhereUserHasPermission(
+                userId,
+                PermissionCodes.EventCreate,
+                Arg.Any<CancellationToken>())
             .Returns([]);
-        _groupMemberRepository.GetMembershipsByUser(userId).Returns([]);
+        _groupMemberRepository.GetMembershipsByUser(userId, Arg.Any<CancellationToken>()).Returns([]);
     }
 
     private static Actor CreateUserActor(Guid actorId, Guid tenantId, Guid userId)
