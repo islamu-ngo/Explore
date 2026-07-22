@@ -213,6 +213,17 @@ var exploreBlazor = WithProfileSecretMode(
     .WithEnvironment("Bff__AdminHosts__0", ConfiguredValue(builder.Configuration, "CONTROL_PLANE_PUBLIC_ORIGIN", "http://admin.localhost:7002"))
     .WithEnvironment("Storage__Local__RootPath", localStorageRootPath);
 
+if (localPlatformResources is not null)
+{
+    localPlatformResources = localPlatformResources with
+    {
+        KeycloakInit = ConfigureLocalKeycloakCallbacks(
+            localPlatformResources.KeycloakInit,
+            exploreBlazor,
+            builder.Configuration)
+    };
+}
+
 exploreBlazor = exploreBlazor
     .WithReference(migrations)
     .WaitForCompletion(migrations);
@@ -338,9 +349,6 @@ static LocalPlatformResources AddLocalPlatform(
         .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_ID", configuration["KEYCLOAK_BLAZOR_CLIENT_ID"] ?? "islamu-event-blazor")
         .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_SECRET", keycloakBlazorClientSecret)
         .WithEnvironment("KEYCLOAK_API_CLIENT_ID", configuration["KEYCLOAK_API_CLIENT_ID"] ?? "islamu-event-api")
-        .WithEnvironment("KEYCLOAK_BLAZOR_REDIRECT_URIS", configuration["KEYCLOAK_BLAZOR_REDIRECT_URIS"] ?? string.Empty)
-        .WithEnvironment("KEYCLOAK_BLAZOR_WEB_ORIGINS", configuration["KEYCLOAK_BLAZOR_WEB_ORIGINS"] ?? string.Empty)
-        .WithEnvironment("KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS", configuration["KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS"] ?? string.Empty)
         .WithEnvironment("KEYCLOAK_SMTP_HOST", "mailpit")
         .WithEnvironment("KEYCLOAK_SMTP_PORT", "1025")
         .WithEnvironment("KEYCLOAK_SMTP_FROM", configuration["KEYCLOAK_SMTP_FROM"] ?? "noreply@openislamu.org")
@@ -834,6 +842,40 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformBlazor(
         .WithEnvironment("Keycloak__RequireHttpsMetadata", "false")
         .WaitFor(resources.Keycloak)
         .WaitForCompletion(resources.KeycloakInit);
+}
+
+static IResourceBuilder<ContainerResource> ConfigureLocalKeycloakCallbacks(
+    IResourceBuilder<ContainerResource> keycloakInit,
+    IResourceBuilder<ProjectResource> exploreBlazor,
+    IConfiguration configuration)
+{
+    var httpPort = exploreBlazor
+        .GetEndpoint("http", KnownNetworkIdentifiers.LocalhostNetwork)
+        .Property(EndpointProperty.Port);
+    var httpsPort = exploreBlazor
+        .GetEndpoint("https", KnownNetworkIdentifiers.LocalhostNetwork)
+        .Property(EndpointProperty.Port);
+
+    var redirectUris = configuration["KEYCLOAK_BLAZOR_REDIRECT_URIS"];
+    keycloakInit = string.IsNullOrWhiteSpace(redirectUris)
+        ? keycloakInit.WithEnvironment(
+            "KEYCLOAK_BLAZOR_REDIRECT_URIS",
+            ReferenceExpression.Create($"[\"http://localhost:{httpPort}/signin-oidc\",\"http://admin.localhost:{httpPort}/signin-oidc\",\"https://localhost:{httpsPort}/signin-oidc\",\"https://admin.localhost:{httpsPort}/signin-oidc\"]"))
+        : keycloakInit.WithEnvironment("KEYCLOAK_BLAZOR_REDIRECT_URIS", redirectUris);
+
+    var webOrigins = configuration["KEYCLOAK_BLAZOR_WEB_ORIGINS"];
+    keycloakInit = string.IsNullOrWhiteSpace(webOrigins)
+        ? keycloakInit.WithEnvironment(
+            "KEYCLOAK_BLAZOR_WEB_ORIGINS",
+            ReferenceExpression.Create($"[\"http://localhost:{httpPort}\",\"http://admin.localhost:{httpPort}\",\"https://localhost:{httpsPort}\",\"https://admin.localhost:{httpsPort}\"]"))
+        : keycloakInit.WithEnvironment("KEYCLOAK_BLAZOR_WEB_ORIGINS", webOrigins);
+
+    var logoutRedirectUris = configuration["KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS"];
+    return string.IsNullOrWhiteSpace(logoutRedirectUris)
+        ? keycloakInit.WithEnvironment(
+            "KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS",
+            ReferenceExpression.Create($"http://localhost:{httpPort}/signout-callback-oidc##http://admin.localhost:{httpPort}/signout-callback-oidc##https://localhost:{httpsPort}/signout-callback-oidc##https://admin.localhost:{httpsPort}/signout-callback-oidc"))
+        : keycloakInit.WithEnvironment("KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS", logoutRedirectUris);
 }
 
 static ReferenceExpression EndpointUrl(

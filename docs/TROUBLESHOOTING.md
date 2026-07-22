@@ -95,6 +95,14 @@ Check:
 - forwarded headers middleware is active in Blazor server pipeline.
 - API forwarded-header trust is configured for the reverse proxy; see [CONFIGURATION.md](CONFIGURATION.md) and [SELF_HOSTING.md](SELF_HOSTING.md).
 
+### OIDC `invalid_redirect_uri` in local Aspire
+
+Checks:
+
+1. Run `aspire describe explore-blazor --format Table` and compare its browser-facing origin with the `redirect_uri` shown by Keycloak. Isolated Aspire runs intentionally use generated ports.
+2. Confirm `keycloak-init` completed after the current AppHost launch. Local initialization reconciles exact login, origin, and logout values from the allocated Blazor HTTP/HTTPS ports; no Keycloak volume reset is required.
+3. If a nonblank `KEYCLOAK_BLAZOR_REDIRECT_URIS`, `KEYCLOAK_BLAZOR_WEB_ORIGINS`, or `KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS` override is configured, it intentionally wins. Update all three exact allow-lists together; do not introduce wildcards or the `+` origin shortcut.
+
 ### AT Protocol provider is unavailable or OAuth fails closed
 
 Symptoms:

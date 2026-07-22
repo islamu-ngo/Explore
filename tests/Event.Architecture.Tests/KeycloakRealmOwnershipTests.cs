@@ -151,6 +151,24 @@ public sealed class KeycloakRealmOwnershipTests
     }
 
     [Test]
+    public async Task AspireKeycloakInitMustUseAllocatedBffPortsForExactCallbacks()
+    {
+        var appHost = await File.ReadAllTextAsync(
+            Path.Combine(RepoRoot, "src/Explore.AppHost/AppHost.cs"));
+
+        await Assert.That(appHost).Contains(
+            ".GetEndpoint(\"http\", KnownNetworkIdentifiers.LocalhostNetwork)");
+        await Assert.That(appHost).Contains(
+            ".GetEndpoint(\"https\", KnownNetworkIdentifiers.LocalhostNetwork)");
+        await Assert.That(appHost).Contains("http://localhost:{httpPort}/signin-oidc");
+        await Assert.That(appHost).Contains("https://localhost:{httpsPort}/signin-oidc");
+        await Assert.That(appHost).Contains("http://localhost:{httpPort}/signout-callback-oidc");
+        await Assert.That(appHost).Contains("https://localhost:{httpsPort}/signout-callback-oidc");
+        await Assert.That(appHost).DoesNotContain(
+            ".WithEnvironment(\"KEYCLOAK_BLAZOR_REDIRECT_URIS\", configuration[\"KEYCLOAK_BLAZOR_REDIRECT_URIS\"] ?? string.Empty)");
+    }
+
+    [Test]
     public async Task ReservedIdentifierCollectorReportsBoundedDiagnosticAndCleansTemporaryFixture()
     {
         var violations = await CollectViolationsFromTemporaryFixtureAsync(

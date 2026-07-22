@@ -138,9 +138,9 @@ The API and browser BFF use the same deployment client identity. `KEYCLOAK_BLAZO
 | `KEYCLOAK_BLAZOR_CLIENT_ID` | Browser/BFF OIDC client ID shared with the API onboarding producer. Defaults to `islamu-event-blazor`. |
 | `KEYCLOAK_BLAZOR_CLIENT_SECRET` | Required Blazor confidential client secret. `keycloak-init` writes this into the `islamu-event-blazor` Keycloak client after realm import. |
 | `KEYCLOAK_API_CLIENT_SECRET` | Optional legacy/future API resource-server client secret. Current bearer-token validation does not require it, and the checked-in realm export does not include a static API client secret. Set it only if a deployment intentionally makes the API client confidential. |
-| `KEYCLOAK_BLAZOR_REDIRECT_URIS` | Optional JSON array of exact BFF login callbacks. Blank uses exact Compose/Aspire localhost callbacks. |
-| `KEYCLOAK_BLAZOR_WEB_ORIGINS` | Optional JSON array of exact BFF origins. Blank uses exact Compose/Aspire localhost origins. |
-| `KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS` | Optional Keycloak `##`-separated list of exact BFF logout callbacks. Blank uses exact Compose/Aspire localhost callbacks. |
+| `KEYCLOAK_BLAZOR_REDIRECT_URIS` | Optional JSON array of exact BFF login callbacks. Blank uses exact Compose defaults or Aspire's allocated local Blazor ports. |
+| `KEYCLOAK_BLAZOR_WEB_ORIGINS` | Optional JSON array of exact BFF origins. Blank uses exact Compose defaults or Aspire's allocated local Blazor ports. |
+| `KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS` | Optional Keycloak `##`-separated list of exact BFF logout callbacks. Blank uses exact Compose defaults or Aspire's allocated local Blazor ports. |
 
 ### Cerbos
 
