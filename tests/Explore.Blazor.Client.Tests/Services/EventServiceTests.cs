@@ -256,6 +256,94 @@ public class EventServiceTests
         await _apiClient.Received(1).GetMyEventsAsync(1, 100, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task GetManagedEventsByActorAsync_UsesManagedEndpointWithActorIdAndCancellationToken()
+    {
+        var actorId = Guid.NewGuid();
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var halResponse = CreateHalCollectionResponse([]);
+
+        _apiClient.GetManagedEventsByActorAsync(
+                actorId,
+                2,
+                25,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                cancellationTokenSource.Token)
+            .Returns(halResponse);
+
+        var result = await _service.GetManagedEventsByActorAsync(
+            actorId,
+            2,
+            25,
+            cancellationTokenSource.Token);
+
+        await Assert.That(result.Items).IsEmpty();
+        await _apiClient.Received(1).GetManagedEventsByActorAsync(
+            actorId,
+            2,
+            25,
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            cancellationTokenSource.Token);
+        await _apiClient.DidNotReceiveWithAnyArgs().GetEventsAsync(default);
+    }
+
+    [Test]
+    public async Task GetManagedEventsByActorAsync_PreservesCollectionLinks()
+    {
+        var actorId = Guid.NewGuid();
+        var halResponse = CreateHalCollectionResponse([]);
+        halResponse._links = new Dictionary<string, HalLink>
+        {
+            ["create"] = new() { Href = "/api/event/create", Method = "POST" }
+        };
+
+        _apiClient.GetManagedEventsByActorAsync(
+                actorId,
+                1,
+                100,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(halResponse);
+
+        var result = await _service.GetManagedEventsByActorAsync(actorId);
+
+        await Assert.That(result.HasHalLink("create")).IsTrue();
+        await Assert.That(result.Links!["create"].Href).IsEqualTo("/api/event/create");
+    }
+
+    [Test]
+    public async Task GetMyEventsPagedAsync_PreservesCollectionLinksAndCancellationToken()
+    {
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var halResponse = CreateHalCollectionResponse([]);
+        halResponse._links = new Dictionary<string, HalLink>
+        {
+            ["create"] = new() { Href = "/api/event/create", Method = "POST" }
+        };
+
+        _apiClient.GetMyEventsAsync(
+                2,
+                25,
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                cancellationTokenSource.Token)
+            .Returns(halResponse);
+
+        var result = await _service.GetMyEventsPagedAsync(2, 25, cancellationTokenSource.Token);
+
+        await Assert.That(result.HasHalLink("create")).IsTrue();
+        await Assert.That(result.Links!["create"].Href).IsEqualTo("/api/event/create");
+        await _apiClient.Received(1).GetMyEventsAsync(
+            2,
+            25,
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            cancellationTokenSource.Token);
+    }
+
     #endregion
 
     #region GetEventByIdAsync Tests

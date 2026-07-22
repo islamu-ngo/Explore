@@ -28,12 +28,12 @@
                            OnClick="@(() => OnNavigateNext.InvokeAsync())"
                            aria-label="Next event" />
 
-            @if (CanOpenEventPage || CanUsePublicEventActions)
+            @if (CanOpenEventPage || CanUsePublicEventActions || ExternalEventUrl is not null)
             {
-                <div class="d-flex gap-2 mx-auto">
+                <div class="event-details-sidebar__header-actions d-flex gap-2 mx-auto">
                     @if (CanOpenEventPage)
                     {
-                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.OpenInNew"
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Outlined.Article"
                                    OnClick="@(() => OnOpenEventPage.InvokeAsync())">
                             Event Page
                         </MudButton>
@@ -44,6 +44,20 @@
                                    StartIcon="@Icons.Material.Outlined.ContentCopy"
                                    OnClick="@(() => OnCopyEventLink.InvokeAsync())">
                             Copy Link
+                        </MudButton>
+                    }
+                    @if (ExternalEventUrl is { } externalEventUrl)
+                    {
+                        <MudButton Elevation="0"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Default"
+                                   Href="@externalEventUrl"
+                                   Target="_blank"
+                                   EndIcon="@Icons.Material.Outlined.OpenInNew"
+                                   Class="event-details-sidebar__external-link"
+                                   aria-label="@ExternalEventLinkLabel"
+                                   rel="noopener noreferrer">
+                            Open
                         </MudButton>
                     }
                 </div>

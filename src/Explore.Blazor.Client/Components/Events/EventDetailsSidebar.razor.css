@@ -10,6 +10,12 @@
     border-block-end: 1px solid var(--isl-color-border-subtle);
 }
 
+.event-details-sidebar__header-actions {
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
 .drawer-reg-overlay {
     position: absolute;
     inset: 0;

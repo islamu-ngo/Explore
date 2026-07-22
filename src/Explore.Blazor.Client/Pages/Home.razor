@@ -416,6 +416,7 @@ else
             return evt.EventUrl;
         }
 
-        return evt.Id.HasValue ? $"/events/{evt.Id}" : "/events";
+        return EventUrlHelper.BuildPublicPath(evt.Slug, evt.PublicCode)
+            ?? (evt.Id.HasValue ? $"/events/{evt.Id}" : "/events");
     }
 }

@@ -5,6 +5,7 @@
 @using Explore.Blazor.Client.Contracts.Interop
 @using Explore.Blazor.Client.Contracts.Services
 @using Explore.Blazor.Client.Pages.Events
+@using Explore.Blazor.Client.Services.Shell
 @inject IEventRegistrationService RegistrationService
 @inject IUserService UserService
 @inject IContactShareConsentService ConsentService
@@ -12,6 +13,7 @@
 @inject NavigationManager Navigation
 @inject IBrowserActionInterop BrowserActionInterop
 @inject ILogger<EventRegistration> Logger
+@inject UiShellState UiShellState
 <MudDialog Class="registration-dialog">
     <DialogContent>
         @if (isLoading)
@@ -150,7 +152,7 @@
                                 </MudText>
                                 <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-1">
                                     You can manage this at any time from
-                                    <MudLink Href="/settings?section=connected-apps" Underline="Underline.Always">
+                                    <MudLink Href="/settings/personal/connected-apps" OnClick="NavigateToConnectedApps" Underline="Underline.Always">
                                         Connected Apps
                                     </MudLink>.
                                 </MudText>
@@ -165,7 +167,7 @@
                                          Label="@BuildConsentLabel()" />
                             <MudText Typo="Typo.caption" Class="mud-text-secondary d-block registration__consent-hint">
                                 Optional. You can withdraw this consent anytime from
-                                <MudLink Href="/settings?section=connected-apps" Underline="Underline.Always" Typo="Typo.caption">
+                                <MudLink Href="/settings/personal/connected-apps" OnClick="NavigateToConnectedApps" Underline="Underline.Always" Typo="Typo.caption">
                                     Connected Apps
                                 </MudLink>.
                             </MudText>
@@ -264,6 +266,12 @@
 
     [Parameter]
     public string Title { get; set; } = "Register for Event";
+
+    [Parameter]
+    public string? Slug { get; set; }
+
+    [Parameter]
+    public string? PublicCode { get; set; }
 
     [Parameter]
     public int? RegistrationPolicyId { get; set; }
@@ -365,6 +373,9 @@
 
         return $"Share my email address with {orgName} so they can contact me about future events and related updates.";
     }
+
+    private void NavigateToConnectedApps(Microsoft.AspNetCore.Components.Web.MouseEventArgs args) =>
+        UiShellState.NavigateToPersonalSettings("/settings/personal/connected-apps", args);
 
     private async Task LoadExistingRegistrationStatusAsync(Guid userId)
     {
@@ -497,7 +508,8 @@
             return;
         }
 
-        var url = CanonicalUrlHelper.Build(Navigation, $"/events/{EventId}");
+        var path = EventUrlHelper.BuildPublicPath(Slug, PublicCode) ?? $"/events/{EventId}";
+        var url = CanonicalUrlHelper.Build(Navigation, path);
 
         if (await BrowserActionInterop.ShareAsync(Title, url))
         {

@@ -708,7 +708,8 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     {
         if (_eventCardClickOpensDetailPage)
         {
-            Navigation.NavigateTo($"/events/{evt.Id}");
+            var path = EventUrlHelper.BuildPublicPath(evt.Slug, evt.PublicCode) ?? $"/events/{evt.Id}";
+            Navigation.NavigateTo(path);
             return;
         }
 
@@ -1036,7 +1037,8 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     private void NavigateToSelectedEventPage()
     {
-        var path = EventUrlHelper.BuildPublicPath(_selectedEvent?.Slug, _selectedEvent?.PublicCode);
+        var path = EventUrlHelper.BuildPublicPath(_selectedEvent?.Slug, _selectedEvent?.PublicCode)
+            ?? (_selectedEvent?.Id is { } id ? $"/events/{id}" : null);
         if (path is not null)
         {
             Navigation.NavigateTo(path);
@@ -1057,7 +1059,8 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     private async Task CopyEventLinkAsync()
     {
-        var path = EventUrlHelper.BuildPublicPath(_selectedEvent?.Slug, _selectedEvent?.PublicCode);
+        var path = EventUrlHelper.BuildPublicPath(_selectedEvent?.Slug, _selectedEvent?.PublicCode)
+            ?? (_selectedEvent?.Id is { } id ? $"/events/{id}" : null);
         if (path is null) return;
 
         var url = CanonicalUrlHelper.Build(Navigation, path);
@@ -1084,7 +1087,8 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     private async Task ShareEventAsync(EventListDto eventToShare)
     {
-        var path = EventUrlHelper.BuildPublicPath(eventToShare.Slug, eventToShare.PublicCode);
+        var path = EventUrlHelper.BuildPublicPath(eventToShare.Slug, eventToShare.PublicCode)
+            ?? (eventToShare.Id is { } id ? $"/events/{id}" : null);
         if (path is null)
         {
             Snackbar.Add("Sharing is unavailable for this event.", Severity.Warning);
@@ -1205,6 +1209,8 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             ["EventId"] = evt.Id!.Value,
             ["EventSessionId"] = primarySession.Id,
             ["Title"] = $"Register for {evt.Title}",
+            ["Slug"] = evt.Slug,
+            ["PublicCode"] = evt.PublicCode,
             ["RecipientActorId"] = evt.ActorId,
             ["PublisherOrganizationName"] = evt.ActorDisplayName
         };
@@ -1522,9 +1528,10 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         if (authState.User.Identity?.IsAuthenticated != true)
         {
             await AccessibilityFocusService.SaveFocusAsync();
+            var returnPath = EventUrlHelper.BuildPublicPath(_selectedEvent.Slug, _selectedEvent.PublicCode) ?? $"/events/{_selectedEvent.Id.Value}";
             await LoginPromptDialog.ShowAsync(
                 DialogService,
-                $"/events/{_selectedEvent.Id.Value}",
+                returnPath,
                 "Sign in to register for this event. After you sign in, we will bring you back here to finish registration.");
             await AccessibilityFocusService.RestoreFocusAsync();
             return;

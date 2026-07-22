@@ -85,6 +85,13 @@ public partial class EventDetailsSidebar : ComponentBase
 
     private bool CanUsePublicEventActions => !IsSelectedEventModerated && !IsSelectedEventPast;
 
+    private string? ExternalEventUrl =>
+        EventUrlHelper.GetSafeExternalUrl(SelectedEvent?.EventUrl)
+        ?? EventUrlHelper.GetSafeExternalUrl(EventDetail?.EventUrl);
+
+    private string ExternalEventLinkLabel =>
+        $"Open {SelectedEvent?.Title} on its external platform in a new tab";
+
     private bool CanRegisterSelectedEvent =>
         CanUsePublicEventActions && EventDetail?.HasHalLink("register") == true;
 

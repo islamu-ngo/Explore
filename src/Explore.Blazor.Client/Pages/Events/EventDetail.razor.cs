@@ -846,6 +846,8 @@ public partial class EventDetail : ComponentBase, IDisposable
         {
             { "EventId", _eventDetails.Id },
             { "Title", $"Register for {_eventDetails.Title}" },
+            { "Slug", _eventDetails.Slug },
+            { "PublicCode", _eventDetails.PublicCode },
             { "RegistrationPolicyId", _eventDetails.RegistrationPolicyId },
             { "Days", _eventDays },
             { "Sessions", _eventSessions },

@@ -1,5 +1,5 @@
 // ABOUTME: Component tests for shared event-sidebar affordances and its event-image lightbox integration.
-// ABOUTME: Verifies HAL-gated registration, accessible image triggers, and outside-image dismissal behavior.
+// ABOUTME: Verifies HAL-gated actions, external-platform links, accessible image triggers, and lightbox dismissal.
 
 using System.Text.Json;
 using Explore.Blazor.Client.Components.Events;
@@ -68,6 +68,38 @@ public sealed class EventDetailsSidebarTests : IDisposable
 
         await Assert.That(cut.Markup).Contains("aria-label=\"View full-size image for Registration Affordance Event\"");
         await Assert.That(cut.Markup).Contains("aria-haspopup=\"dialog\"");
+    }
+
+    [Test]
+    public async Task Render_WhenExternalEventUrlExists_ShowsNewTabOpenActionAtEndOfHeaderActions()
+    {
+        var eventId = Guid.NewGuid();
+        var eventItem = CreateEventListItem(eventId);
+        eventItem.EventUrl = "https://events.example.test/registration-event";
+
+        var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
+            .Add(component => component.SelectedEvent, eventItem)
+            .Add(component => component.EventDetail, CreateEventDetail(eventId, includeRegisterLink: false)));
+
+        var link = cut.Find("a.event-details-sidebar__external-link");
+        await Assert.That(link.TextContent).Contains("Open");
+        await Assert.That(link.GetAttribute("href")).IsEqualTo(eventItem.EventUrl);
+        await Assert.That(link.GetAttribute("target")).IsEqualTo("_blank");
+        await Assert.That(link.GetAttribute("rel")).IsEqualTo("noopener noreferrer");
+        await Assert.That(link.GetAttribute("aria-label"))
+            .IsEqualTo("Open Registration Affordance Event on its external platform in a new tab");
+    }
+
+    [Test]
+    public async Task Render_WhenExternalEventUrlIsMissing_HidesExternalOpenAction()
+    {
+        var eventId = Guid.NewGuid();
+
+        var cut = _ctx.RenderMudComponent<EventDetailsSidebar>(parameters => parameters
+            .Add(component => component.SelectedEvent, CreateEventListItem(eventId))
+            .Add(component => component.EventDetail, CreateEventDetail(eventId, includeRegisterLink: false)));
+
+        await Assert.That(cut.FindAll("a.event-details-sidebar__external-link")).IsEmpty();
     }
 
     [Test]

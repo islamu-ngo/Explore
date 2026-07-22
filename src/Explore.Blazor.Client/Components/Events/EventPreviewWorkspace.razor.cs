@@ -76,9 +76,10 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
         Class
     }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
-    private string SelectedEventPageUrl => _selectedEvent?.Id is Guid eventId && eventId != Guid.Empty
-        ? $"/events/{eventId}"
-        : "/events";
+    private string SelectedEventPageUrl => EventUrlHelper.BuildPublicPath(_selectedEvent?.Slug, _selectedEvent?.PublicCode)
+        ?? (_selectedEvent?.Id is Guid eventId && eventId != Guid.Empty
+            ? $"/events/{eventId}"
+            : "/events");
 
     private string SelectedDescription => _selectedEventDetail?.Description
         ?? _selectedEvent?.Description
@@ -159,7 +160,8 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
 
         if (_eventCardClickOpensDetailPage && !IsModeratedEvent(evt))
         {
-            Navigation.NavigateTo($"/events/{eventId}");
+            var path = EventUrlHelper.BuildPublicPath(evt.Slug, evt.PublicCode) ?? $"/events/{eventId}";
+            Navigation.NavigateTo(path);
             return;
         }
 
@@ -254,7 +256,8 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
             return;
         }
 
-        var url = CanonicalUrlHelper.Build(Navigation, $"/events/{eventId}");
+        var path = EventUrlHelper.BuildPublicPath(eventToShare.Slug, eventToShare.PublicCode) ?? $"/events/{eventId}";
+        var url = CanonicalUrlHelper.Build(Navigation, path);
 
         if (await BrowserActionInterop.ShareAsync(eventToShare.Title ?? "Event", url))
         {
@@ -426,7 +429,8 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
             return;
         }
 
-        var url = CanonicalUrlHelper.Build(Navigation, $"/events/{eventId}");
+        var path = EventUrlHelper.BuildPublicPath(_selectedEvent?.Slug, _selectedEvent?.PublicCode) ?? $"/events/{eventId}";
+        var url = CanonicalUrlHelper.Build(Navigation, path);
         await CopyEventLinkToClipboardAsync(url);
     }
 
@@ -483,9 +487,10 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
         if (authState.User.Identity?.IsAuthenticated != true)
         {
             await AccessibilityFocusService.SaveFocusAsync();
+            var returnPath = EventUrlHelper.BuildPublicPath(_selectedEvent?.Slug, _selectedEvent?.PublicCode) ?? $"/events/{eventId}";
             await LoginPromptDialog.ShowAsync(
                 DialogService,
-                $"/events/{eventId}",
+                returnPath,
                 "Sign in to register for this event. After you sign in, we will bring you back here to finish registration.");
             await AccessibilityFocusService.RestoreFocusAsync();
             return;

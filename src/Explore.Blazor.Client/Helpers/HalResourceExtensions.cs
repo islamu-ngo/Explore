@@ -399,7 +399,8 @@ public static class HalResourceExtensions
             Items = collection.GetItems().ToList(),
             PageNumber = collection.PageNumber ?? 1,
             PageSize = collection.PageSize ?? 20,
-            TotalCount = collection.TotalCount ?? 0
+            TotalCount = collection.TotalCount ?? 0,
+            Links = ToClientLinks(collection._links)
         };
     }
 

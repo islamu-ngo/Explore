@@ -3,6 +3,7 @@
 
 using System.Reflection;
 using Explore.Blazor.Client.Pages.Events.Components;
+using Explore.Blazor.Client.Services.Shell;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
@@ -20,6 +21,9 @@ public sealed class EventRegistrationTests : IDisposable
         _ctx.Services.AddSingleton(_userService);
         _ctx.Services.AddSingleton(_consentService);
         _ctx.Services.AddSingleton(Substitute.For<ISnackbar>());
+        _ctx.Services.AddScoped<IWorkspaceRegistry, WorkspaceRegistry>();
+        _ctx.Services.AddScoped<WorkspaceRouteClassifier>();
+        _ctx.Services.AddScoped<UiShellState>();
     }
 
     public void Dispose()
@@ -121,6 +125,44 @@ public sealed class EventRegistrationTests : IDisposable
             && dto.ConsentTextAcknowledged != null
             && dto.ConsentTextAcknowledged.Contains("Community Organizer", StringComparison.Ordinal)
             && dto.ConsentUiVersion == "v1"));
+    }
+
+    [Test]
+    public async Task ConnectedAppsClickPreservesLiveEventsOrigin()
+    {
+        const string originRoute = "/events/community-iftar";
+        var userId = Guid.NewGuid();
+        _userService.GetCurrentUserAsync().Returns(new UserDto
+        {
+            Id = userId,
+            FirstName = "Amina",
+            LastName = "Rahman",
+            Email = "amina@example.test"
+        });
+        _registrationService.GetRegistrationsByUserAsync(userId)
+            .Returns(Task.FromResult<ICollection<EventRegistrationListDto>>([]));
+        _consentService.CheckConsentForOrganizerAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo(originRoute);
+        var shellState = _ctx.Services.GetRequiredService<UiShellState>();
+        _ctx.Render<MudPopoverProvider>();
+        var dialogProvider = _ctx.Render<MudDialogProvider>();
+        var dialogService = _ctx.Services.GetRequiredService<IDialogService>();
+        var parameters = new DialogParameters<EventRegistration>
+        {
+            { component => component.EventId, Guid.NewGuid() },
+            { component => component.RegistrationPolicyId, 1 },
+            { component => component.RecipientActorId, Guid.NewGuid() }
+        };
+        _ = await dialogService.ShowAsync<EventRegistration>("Register", parameters);
+
+        dialogProvider.WaitForElement("a[href='/settings/personal/connected-apps']").Click();
+
+        await Assert.That(new Uri(navigation.Uri).AbsolutePath)
+            .IsEqualTo("/settings/personal/connected-apps");
+        await Assert.That(shellState.ActiveWorkspace).IsEqualTo(WorkspaceKey.Events);
+        await Assert.That(shellState.PersonalSettingsReturnRoute).IsEqualTo(originRoute);
     }
 
     [Test]

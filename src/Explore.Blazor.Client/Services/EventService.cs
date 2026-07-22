@@ -11,7 +11,7 @@ namespace Explore.Blazor.Client.Services;
 public interface IEventService
 {
     Task<ICollection<EventListDto>> GetAllEventsAsync();
-    Task<ICollection<EventListDto>> GetMyEventsAsync();
+    Task<ICollection<EventListDto>> GetMyEventsAsync(CancellationToken cancellationToken = default);
     Task<PaginatedResult<EventListDto>> GetEventsPagedAsync(int pageNumber, int pageSize);
     Task<PaginatedResult<EventListDto>> GetEventsPagedAsync(
         int pageNumber,
@@ -56,7 +56,15 @@ public interface IEventService
         Guid? groupId = null,
         string? view = null,
         CancellationToken cancellationToken = default);
-    Task<PaginatedResult<EventListDto>> GetMyEventsPagedAsync(int pageNumber, int pageSize);
+    Task<PaginatedResult<EventListDto>> GetManagedEventsByActorAsync(
+        Guid actorId,
+        int pageNumber = 1,
+        int pageSize = 100,
+        CancellationToken cancellationToken = default);
+    Task<PaginatedResult<EventListDto>> GetMyEventsPagedAsync(
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default);
     Task<PaginatedResult<EventSessionListDto>> GetSessionsPagedAsync(int pageNumber, int pageSize);
     Task<EventDto?> GetEventByIdAsync(Guid eventId);
     Task<EventDto?> GetEventBySlugCodeAsync(string slugCode);
@@ -126,11 +134,11 @@ public partial class EventService : IEventService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<ICollection<EventListDto>> GetMyEventsAsync()
+    public async Task<ICollection<EventListDto>> GetMyEventsAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var result = await _apiClient.GetMyEventsAsync(1, 100);
+            var result = await _apiClient.GetMyEventsAsync(1, 100, cancellationToken: cancellationToken);
             return result?.GetItems() ?? new List<EventListDto>();
         }
         catch (Exception ex)
@@ -287,11 +295,39 @@ public partial class EventService : IEventService
         }
     }
 
-    public async Task<PaginatedResult<EventListDto>> GetMyEventsPagedAsync(int pageNumber, int pageSize)
+    public async Task<PaginatedResult<EventListDto>> GetManagedEventsByActorAsync(
+        Guid actorId,
+        int pageNumber = 1,
+        int pageSize = 100,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var result = await _apiClient.GetMyEventsAsync(pageNumber, pageSize);
+            var result = await _apiClient.GetManagedEventsByActorAsync(
+                actorId,
+                pageNumber,
+                pageSize,
+                cancellationToken: cancellationToken);
+            return result.ToPaginatedResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching managed events for actor {ActorId}", actorId);
+            return PaginatedResult<EventListDto>.Empty(pageNumber, pageSize);
+        }
+    }
+
+    public async Task<PaginatedResult<EventListDto>> GetMyEventsPagedAsync(
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var result = await _apiClient.GetMyEventsAsync(
+                pageNumber,
+                pageSize,
+                cancellationToken: cancellationToken);
             return result.ToPaginatedResult();
         }
         catch (Exception ex)
