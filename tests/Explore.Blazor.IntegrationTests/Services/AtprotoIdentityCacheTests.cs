@@ -60,4 +60,33 @@ public sealed class AtprotoIdentityCacheTests
         (await cache.GetHandleDidAsync("replacement.example")).Should().Be("did:plc:replacement");
         (await cache.GetDidDocumentAsync("did:plc:replacement"))!.Id.Should().Be("did:plc:replacement");
     }
+
+    [Test]
+    public async Task ExpiredHandleAndDidDocumentMappingsCanBeReplacedWithoutSleeping()
+    {
+        var timeProvider = new ManualTimeProvider(DateTimeOffset.Parse("2026-07-22T00:00:00Z"));
+        using var cache = new AtprotoIdentityCache(timeProvider);
+        const string handle = "alice.example";
+        const string firstDid = "did:plc:first";
+        const string secondDid = "did:plc:second";
+
+        await cache.SetHandleDidAsync(handle, firstDid);
+        await cache.SetDidDocumentAsync(firstDid, new DidDocument { Id = firstDid });
+
+        timeProvider.Advance(AtprotoIdentityCache.HandleTtl + TimeSpan.FromTicks(1));
+        (await cache.GetHandleDidAsync(handle)).Should().BeNull();
+        await cache.SetHandleDidAsync(handle, secondDid);
+        (await cache.GetHandleDidAsync(handle)).Should().Be(secondDid);
+
+        timeProvider.Advance(
+            AtprotoIdentityCache.DidDocumentTtl - AtprotoIdentityCache.HandleTtl);
+        (await cache.GetDidDocumentAsync(firstDid)).Should().BeNull();
+    }
+
+    private sealed class ManualTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
+
+        public void Advance(TimeSpan duration) => utcNow += duration;
+    }
 }

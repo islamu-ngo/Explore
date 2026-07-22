@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CarpaNet;
+using CarpaNet.OAuth;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain.Federation;
@@ -15,7 +16,8 @@ namespace Explore.Infrastructure.Services.Federation;
 public sealed class AtprotoPdsDeliveryGateway(
     IUserAuthenticationTokenRepository tokenRepository,
     AtprotoSessionEnvelopeProtector protector,
-    AtprotoCoreClientFactory coreClientFactory) : IAtprotoPdsDeliveryGateway
+    AtprotoCoreClientFactory coreClientFactory,
+    IAtprotoSessionRefreshLock refreshLock) : IAtprotoPdsDeliveryGateway
 {
     public async Task<AtprotoPdsDeliveryResult> DeliverAsync(
         AtprotoPdsDeliveryRequest command,
@@ -25,6 +27,12 @@ public sealed class AtprotoPdsDeliveryGateway(
 
         try
         {
+            await using IAsyncDisposable refreshLease = await refreshLock.AcquireAsync(
+                command.TenantId,
+                command.UserId,
+                RepositoryBackedAtprotoSession.Provider,
+                command.Did,
+                cancellationToken).ConfigureAwait(false);
             var session = await tokenRepository.GetAtprotoSessionForReadAsync(
                 command.TenantId,
                 command.UserId,
@@ -71,6 +79,10 @@ public sealed class AtprotoPdsDeliveryGateway(
         catch (RateLimitException)
         {
             return AtprotoPdsDeliveryResult.Failed("provider_rate_limited", retryable: true);
+        }
+        catch (TokenRefreshException)
+        {
+            return AtprotoPdsDeliveryResult.Failed("session_unavailable", retryable: false);
         }
         catch (AuthenticationException)
         {

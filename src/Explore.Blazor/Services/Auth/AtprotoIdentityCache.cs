@@ -3,6 +3,7 @@
 
 using CarpaNet.Identity;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Internal;
 
 namespace Explore.Blazor.Services.Auth;
 
@@ -12,8 +13,15 @@ public sealed class AtprotoIdentityCache : IIdentityCache, IDisposable
     public static readonly TimeSpan HandleTtl = TimeSpan.FromMinutes(2);
     public static readonly TimeSpan DidDocumentTtl = TimeSpan.FromMinutes(5);
 
-    private readonly MemoryCache _handles = CreateCache();
-    private readonly MemoryCache _didDocuments = CreateCache();
+    private readonly MemoryCache _handles;
+    private readonly MemoryCache _didDocuments;
+
+    public AtprotoIdentityCache(TimeProvider? timeProvider = null)
+    {
+        var clock = new TimeProviderClock(timeProvider ?? TimeProvider.System);
+        _handles = CreateCache(clock);
+        _didDocuments = CreateCache(clock);
+    }
 
     public Task<DidDocument?> GetDidDocumentAsync(
         string did,
@@ -99,8 +107,9 @@ public sealed class AtprotoIdentityCache : IIdentityCache, IDisposable
         _handles.Dispose();
     }
 
-    private static MemoryCache CreateCache() => new(new MemoryCacheOptions
+    private static MemoryCache CreateCache(ISystemClock clock) => new(new MemoryCacheOptions
     {
+        Clock = clock,
         SizeLimit = MaximumEntriesPerKind
     });
 
@@ -111,4 +120,9 @@ public sealed class AtprotoIdentityCache : IIdentityCache, IDisposable
     };
 
     private static string NormalizeKey(string key) => key.ToLowerInvariant().Trim();
+
+    private sealed class TimeProviderClock(TimeProvider timeProvider) : ISystemClock
+    {
+        public DateTimeOffset UtcNow => timeProvider.GetUtcNow();
+    }
 }

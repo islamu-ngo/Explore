@@ -49,6 +49,27 @@ public sealed class ApiBackedOAuthSessionStoreTests
     }
 
     [Test]
+    [Arguments("did:plc:attacker", "https://pds.example/")]
+    [Arguments("did:plc:alice", "https://attacker-pds.example/")]
+    public async Task StoreRejectsTokenSubjectOrPdsAudienceSubstitutionBeforeCallingApi(
+        string tokenSubject,
+        string tokenAudience)
+    {
+        using var dpopKey = await DPoPKeyPair.GenerateAsync();
+        var flow = BoundFlow();
+        var handler = new BridgeHandler("did:plc:alice");
+        var store = CreateStore(flow, handler);
+        var session = CreateSession(dpopKey);
+        session.TokenSet.Sub = tokenSubject;
+        session.TokenSet.Audience = tokenAudience;
+
+        await Assert.That(async () => await store.StoreAsync("did:plc:alice", session))
+            .Throws<InvalidOperationException>();
+        await Assert.That(handler.CallCount).IsEqualTo(0);
+        await Assert.That(flow.SessionResult).IsNull();
+    }
+
+    [Test]
     public async Task StoreRejectsSessionBeforeStateConsumptionWithoutCallingApi()
     {
         using var dpopKey = await DPoPKeyPair.GenerateAsync();

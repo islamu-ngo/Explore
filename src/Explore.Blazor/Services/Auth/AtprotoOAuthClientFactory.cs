@@ -151,7 +151,15 @@ public sealed class AtprotoOAuthSessionLease(
         CancellationToken cancellationToken)
     {
         var document = await identityResolver.ResolveAsync(handle, cancellationToken).ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(document.Id)
+        var pdsServices = document.Service?
+            .Where(service => string.Equals(service.Id, "#atproto_pds", StringComparison.Ordinal))
+            .ToArray() ?? [];
+        if (pdsServices.Length != 1
+            || !string.Equals(
+                pdsServices[0].Type,
+                "AtprotoPersonalDataServer",
+                StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(document.Id)
             || string.IsNullOrWhiteSpace(document.PdsEndpoint)
             || !Uri.TryCreate(document.PdsEndpoint, UriKind.Absolute, out var pdsUri))
         {

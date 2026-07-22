@@ -20,6 +20,7 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Secrets;
 using Explore.Infrastructure.Services.Federation;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -168,6 +169,135 @@ public sealed class AtprotoOAuthSecurityGatewayTests
     }
 
     [Test]
+    public async Task DeliveryRestoresBoundSessionAndWritesRecord()
+    {
+        var fixture = CreateFixture(Did);
+        fixture.Transport.DeliverRecord = true;
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        await PersistCurrentSessionAsync(fixture, tenantId, userId);
+
+        AtprotoPdsDeliveryResult result = await CreateDeliveryGateway(
+                fixture,
+                new BlockingRefreshLock(released: true))
+            .DeliverAsync(CreateDeliveryRequest(tenantId, userId), CancellationToken.None);
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.Uri).IsEqualTo($"at://{Did}/app.bsky.feed.post/3kdeliverytest");
+        await Assert.That(result.Cid).IsEqualTo("bafydeliverycid");
+        await Assert.That(fixture.Transport.PdsRequests).IsEqualTo(2);
+        await Assert.That(fixture.Transport.TokenRequests).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task DeliveryExpiredSessionAndChallengeSerializeRefreshAndRereadDurableRotation()
+    {
+        var fixture = CreateFixture(Did);
+        fixture.Transport.DeliverRecord = true;
+        fixture.Transport.ChallengeFirstPdsRequest = true;
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        OAuthSessionData expired = CreateSession();
+        expired.TokenSet.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+        await fixture.Gateway.PersistAsync(new AtprotoVerifiedOAuthSession(
+            Did,
+            "gateway-user.example",
+            new Uri(Pds),
+            OAuthKeyId,
+            JsonSerializer.SerializeToUtf8Bytes(expired)), tenantId, userId, CancellationToken.None);
+        var refreshLock = new BlockingRefreshLock(released: false);
+        fixture.Transport.RefreshLeaseHeld = () => refreshLock.IsHeld;
+        AtprotoPdsDeliveryGateway gateway = CreateDeliveryGateway(fixture, refreshLock);
+
+        Task<AtprotoPdsDeliveryResult> delivery = gateway.DeliverAsync(
+            CreateDeliveryRequest(tenantId, userId),
+            CancellationToken.None);
+        await refreshLock.Entered.WaitAsync(TimeSpan.FromSeconds(2));
+
+        await Assert.That(fixture.Transport.PdsRequests).IsEqualTo(0);
+        refreshLock.Release();
+        AtprotoPdsDeliveryResult result = await delivery.WaitAsync(TimeSpan.FromSeconds(5));
+        OAuthSessionData? restored = await new RepositoryBackedOAuthSessionStore(
+                fixture.TokenRepository,
+                fixture.Protector,
+                new AtprotoOAuthSessionStoreContext(
+                    tenantId,
+                    userId,
+                    Did,
+                    new Uri(Pds),
+                    OAuthKeyId))
+            .GetAsync(Did, CancellationToken.None);
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(fixture.Transport.PdsRequests).IsEqualTo(3);
+        await Assert.That(fixture.Transport.TokenRequests).IsEqualTo(1);
+        await Assert.That(fixture.Transport.TokenRequestOutsideRefreshLease).IsFalse();
+        await Assert.That(restored!.TokenSet.AccessToken).IsEqualTo("rotated-access-canary");
+        await Assert.That(restored.TokenSet.RefreshToken).IsEqualTo("rotated-refresh-canary");
+        await Assert.That(refreshLock.IsHeld).IsFalse();
+    }
+
+    [Test]
+    public async Task DeliveryRefreshPersistenceFailureReturnsNoSuccessOrPdsWrite()
+    {
+        var fixture = CreateFixture(Did);
+        fixture.Transport.DeliverRecord = true;
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        OAuthSessionData expired = CreateSession();
+        expired.TokenSet.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+        await fixture.Gateway.PersistAsync(new AtprotoVerifiedOAuthSession(
+            Did,
+            "gateway-user.example",
+            new Uri(Pds),
+            OAuthKeyId,
+            JsonSerializer.SerializeToUtf8Bytes(expired)), tenantId, userId, CancellationToken.None);
+        fixture.TokenRepository.UpdateAtprotoSessionAsync(
+                Arg.Any<UserAuthenticationToken>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => throw new InvalidOperationException("bounded persistence failure"));
+
+        AtprotoPdsDeliveryResult result = await CreateDeliveryGateway(
+                fixture,
+                new BlockingRefreshLock(released: true))
+            .DeliverAsync(CreateDeliveryRequest(tenantId, userId), CancellationToken.None);
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("session_unavailable");
+        await Assert.That(fixture.Transport.TokenRequests).IsEqualTo(1);
+        await Assert.That(fixture.Transport.PdsRequests).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task DeliveryCancellationWhileWaitingReleasesScopeForNextAttempt()
+    {
+        var fixture = CreateFixture(Did);
+        fixture.Transport.DeliverRecord = true;
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        await PersistCurrentSessionAsync(fixture, tenantId, userId);
+        var refreshLock = new BlockingRefreshLock(released: false);
+        AtprotoPdsDeliveryGateway gateway = CreateDeliveryGateway(fixture, refreshLock);
+        using var cancellation = new CancellationTokenSource();
+
+        Task<AtprotoPdsDeliveryResult> cancelled = gateway.DeliverAsync(
+            CreateDeliveryRequest(tenantId, userId),
+            cancellation.Token);
+        await refreshLock.Entered.WaitAsync(TimeSpan.FromSeconds(2));
+        cancellation.Cancel();
+
+        await Assert.That(async () => await cancelled).Throws<OperationCanceledException>();
+        await Assert.That(refreshLock.IsHeld).IsFalse();
+        await Assert.That(fixture.Transport.PdsRequests).IsEqualTo(0);
+        refreshLock.Release();
+        AtprotoPdsDeliveryResult retried = await gateway.DeliverAsync(
+            CreateDeliveryRequest(tenantId, userId),
+            CancellationToken.None);
+        await Assert.That(retried.Succeeded).IsTrue();
+        await Assert.That(refreshLock.IsHeld).IsFalse();
+    }
+
+    [Test]
     public async Task MissingScopedRefreshSessionRequiresReauthenticationWithoutProviderCall()
     {
         var fixture = CreateFixture(Did);
@@ -264,6 +394,30 @@ public sealed class AtprotoOAuthSecurityGatewayTests
             tenantId,
             userId,
             CancellationToken.None);
+
+    private static AtprotoPdsDeliveryRequest CreateDeliveryRequest(Guid tenantId, Guid userId) => new(
+        tenantId,
+        userId,
+        Did,
+        new Uri(Pds),
+        "app.bsky.feed.post",
+        "3kdeliverytest",
+        Explore.Domain.Federation.PdsSyncOperation.Create,
+        "{\"$type\":\"app.bsky.feed.post\",\"text\":\"bounded delivery\"}",
+        null);
+
+    private static AtprotoPdsDeliveryGateway CreateDeliveryGateway(
+        GatewayFixture fixture,
+        IAtprotoSessionRefreshLock refreshLock)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(fixture.TokenRepository);
+        services.AddSingleton(fixture.Protector);
+        services.AddSingleton(fixture.CoreFactory);
+        services.AddSingleton(refreshLock);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        return ActivatorUtilities.CreateInstance<AtprotoPdsDeliveryGateway>(provider);
+    }
 
     private static GatewayFixture CreateFixture(string pdsResponseDid)
     {
@@ -447,6 +601,10 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         public int RevocationRequests { get; private set; }
         public int PdsRequests { get; private set; }
         public bool FailRevocation { get; set; }
+        public bool DeliverRecord { get; set; }
+        public bool ChallengeFirstPdsRequest { get; set; }
+        public Func<bool>? RefreshLeaseHeld { get; set; }
+        public bool TokenRequestOutsideRefreshLease { get; private set; }
         public string? LastPdsPath { get; private set; }
         public string? LastAuthorizationScheme { get; private set; }
         public bool SawDpopProof { get; private set; }
@@ -457,6 +615,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
                 if (request.RequestUri?.AbsolutePath == "/oauth/token")
                 {
                     TokenRequests++;
+                    TokenRequestOutsideRefreshLease = RefreshLeaseHeld is not null && !RefreshLeaseHeld();
                     var response = JsonResponse(JsonSerializer.Serialize(new
                     {
                         access_token = "rotated-access-canary",
@@ -492,6 +651,37 @@ public sealed class AtprotoOAuthSecurityGatewayTests
                 LastPdsPath = request.RequestUri?.AbsolutePath;
                 LastAuthorizationScheme = request.Headers.Authorization?.Scheme;
                 SawDpopProof = request.Headers.Contains("DPoP");
+                if (DeliverRecord)
+                {
+                    if (ChallengeFirstPdsRequest && PdsRequests == 1)
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                        {
+                            Content = new StringContent(
+                                "{\"error\":\"ExpiredToken\"}",
+                                Encoding.UTF8,
+                                "application/json")
+                        };
+                    }
+
+                    if (request.Method == HttpMethod.Get)
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.NotFound)
+                        {
+                            Content = new StringContent(
+                                "{\"error\":\"RecordNotFound\"}",
+                                Encoding.UTF8,
+                                "application/json")
+                        };
+                    }
+
+                    return JsonResponse(JsonSerializer.Serialize(new
+                    {
+                        uri = $"at://{Did}/app.bsky.feed.post/3kdeliverytest",
+                        cid = "bafydeliverycid"
+                    }));
+                }
+
                 return JsonResponse(JsonSerializer.Serialize(new
                 {
                     did = pdsResponseDid,
@@ -537,5 +727,46 @@ public sealed class AtprotoOAuthSecurityGatewayTests
     private sealed class NoopAsyncDisposable : IAsyncDisposable
     {
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class BlockingRefreshLock : IAtprotoSessionRefreshLock
+    {
+        private readonly TaskCompletionSource _entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public BlockingRefreshLock(bool released)
+        {
+            if (released)
+            {
+                _release.SetResult();
+            }
+        }
+
+        public Task Entered => _entered.Task;
+        public bool IsHeld { get; private set; }
+
+        public async Task<IAsyncDisposable> AcquireAsync(
+            Guid tenantId,
+            Guid userId,
+            string provider,
+            string subjectDid,
+            CancellationToken cancellationToken = default)
+        {
+            _entered.TrySetResult();
+            await _release.Task.WaitAsync(cancellationToken);
+            IsHeld = true;
+            return new ActionAsyncDisposable(() => IsHeld = false);
+        }
+
+        public void Release() => _release.TrySetResult();
+
+        private sealed class ActionAsyncDisposable(Action dispose) : IAsyncDisposable
+        {
+            public ValueTask DisposeAsync()
+            {
+                dispose();
+                return ValueTask.CompletedTask;
+            }
+        }
     }
 }

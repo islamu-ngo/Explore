@@ -334,6 +334,41 @@ public sealed class AtprotoAuthenticationFlowTests
         atprotoServer.PushedAuthorizationRequestCount.Should().Be(2);
     }
 
+    [Test]
+    public async Task HostnameOnlyDidWebIdentityReachesItsPdsAuthorizationServerAndPar()
+    {
+        using var atprotoServer = new HermeticAtprotoServer(IdentityDocumentScenario.DidWeb);
+        using var apiServer = new HermeticBffApiServer();
+        await using var factory = CreateHappyPathFactory(false, atprotoServer, apiServer);
+
+        using var response = await StartChallengeAsync(factory);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        atprotoServer.DidDocumentRequestCount.Should().Be(1);
+        atprotoServer.PushedAuthorizationRequestCount.Should().Be(1);
+        apiServer.BridgeCalls.Should().Be(0);
+    }
+
+    [Test]
+    [Arguments(IdentityDocumentScenario.ConflictingHandle)]
+    [Arguments(IdentityDocumentScenario.MissingPds)]
+    [Arguments(IdentityDocumentScenario.DuplicatePds)]
+    [Arguments(IdentityDocumentScenario.NonHttpsPds)]
+    [Arguments(IdentityDocumentScenario.InvalidPds)]
+    public async Task ConflictingHandleOrInvalidPdsServiceFailsBeforeParAndBridge(
+        IdentityDocumentScenario scenario)
+    {
+        using var atprotoServer = new HermeticAtprotoServer(scenario);
+        using var apiServer = new HermeticBffApiServer();
+        await using var factory = CreateHappyPathFactory(false, atprotoServer, apiServer);
+
+        using var response = await StartChallengeAsync(factory);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.OK);
+        atprotoServer.PushedAuthorizationRequestCount.Should().Be(0);
+        apiServer.BridgeCalls.Should().Be(0);
+    }
+
     private static WebApplicationFactory<Program> CreateFactory(
         bool withSigningKey = false,
         bool bypassAntiforgery = false,
@@ -458,6 +493,22 @@ public sealed class AtprotoAuthenticationFlowTests
         var token = values!.Select(ReadXsrfToken).FirstOrDefault(value => value is not null);
         token.Should().NotBeNullOrWhiteSpace();
         return token!;
+    }
+
+    private static async Task<HttpResponseMessage> StartChallengeAsync(
+        WebApplicationFactory<Program> factory)
+    {
+        using var client = CreateClient(factory);
+        var antiforgeryToken = await IssueAntiforgeryTokenAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/auth/atproto/challenge")
+        {
+            Content = new StringContent(
+                "{\"handle\":\"alice.example\"}",
+                Encoding.UTF8,
+                "application/json")
+        };
+        request.Headers.Add("X-CSRF-TOKEN", antiforgeryToken);
+        return await client.SendAsync(request);
     }
 
     private static string? ReadXsrfToken(string setCookie)
@@ -644,13 +695,17 @@ public sealed class AtprotoAuthenticationFlowTests
         {
             server.DnsRequestCount++;
             return Task.FromResult<IReadOnlyList<string>>(
-                name == "_atproto.alice.example" ? ["did=did:plc:alice"] : []);
+                name == "_atproto.alice.example" ? [$"did={server.ResolvedDid}"] : []);
         }
     }
 
-    private sealed class HermeticAtprotoServer : HttpMessageHandler
+    private sealed class HermeticAtprotoServer(
+        IdentityDocumentScenario scenario = IdentityDocumentScenario.Valid) : HttpMessageHandler
     {
         public string? State { get; private set; }
+        public string ResolvedDid { get; } = scenario == IdentityDocumentScenario.DidWeb
+            ? "did:web:alice.example"
+            : "did:plc:alice";
         public int DnsRequestCount { get; set; }
         public int DidDocumentRequestCount { get; private set; }
         public int PushedAuthorizationRequestCount { get; private set; }
@@ -661,13 +716,15 @@ public sealed class AtprotoAuthenticationFlowTests
         {
             var uri = request.RequestUri!;
             if (request.Method == HttpMethod.Get
-                && uri.Host == "plc.directory"
-                && uri.AbsolutePath == "/did:plc:alice")
+                && ((scenario == IdentityDocumentScenario.DidWeb
+                        && uri.Host == "alice.example"
+                        && uri.AbsolutePath == "/.well-known/did.json")
+                    || (scenario != IdentityDocumentScenario.DidWeb
+                        && uri.Host == "plc.directory"
+                        && uri.AbsolutePath == "/did:plc:alice")))
             {
                 DidDocumentRequestCount++;
-                return Json("""
-                    {"id":"did:plc:alice","alsoKnownAs":["at://alice.example"],"service":[{"id":"#atproto_pds","type":"AtprotoPersonalDataServer","serviceEndpoint":"https://pds.example"}]}
-                    """);
+                return Json(CreateDidDocument(scenario));
             }
 
             if (request.Method == HttpMethod.Get
@@ -723,9 +780,45 @@ public sealed class AtprotoAuthenticationFlowTests
             return response;
         }
 
+        private static string CreateDidDocument(IdentityDocumentScenario scenario) => scenario switch
+        {
+            IdentityDocumentScenario.DidWeb => """
+                {"id":"did:web:alice.example","alsoKnownAs":["at://alice.example"],"service":[{"id":"#atproto_pds","type":"AtprotoPersonalDataServer","serviceEndpoint":"https://pds.example"}]}
+                """,
+            IdentityDocumentScenario.ConflictingHandle => """
+                {"id":"did:plc:alice","alsoKnownAs":["at://mallory.example"],"service":[{"id":"#atproto_pds","type":"AtprotoPersonalDataServer","serviceEndpoint":"https://pds.example"}]}
+                """,
+            IdentityDocumentScenario.MissingPds => """
+                {"id":"did:plc:alice","alsoKnownAs":["at://alice.example"],"service":[]}
+                """,
+            IdentityDocumentScenario.DuplicatePds => """
+                {"id":"did:plc:alice","alsoKnownAs":["at://alice.example"],"service":[{"id":"#atproto_pds","type":"AtprotoPersonalDataServer","serviceEndpoint":"https://pds.example"},{"id":"#atproto_pds","type":"AtprotoPersonalDataServer","serviceEndpoint":"https://other-pds.example"}]}
+                """,
+            IdentityDocumentScenario.NonHttpsPds => """
+                {"id":"did:plc:alice","alsoKnownAs":["at://alice.example"],"service":[{"id":"#atproto_pds","type":"AtprotoPersonalDataServer","serviceEndpoint":"http://pds.example"}]}
+                """,
+            IdentityDocumentScenario.InvalidPds => """
+                {"id":"did:plc:alice","alsoKnownAs":["at://alice.example"],"service":[{"id":"#atproto_pds","type":"AtprotoPersonalDataServer","serviceEndpoint":"not-a-uri"}]}
+                """,
+            _ => """
+                {"id":"did:plc:alice","alsoKnownAs":["at://alice.example"],"service":[{"id":"#atproto_pds","type":"AtprotoPersonalDataServer","serviceEndpoint":"https://pds.example"}]}
+                """
+        };
+
         private const string AuthorizationServerMetadata = """
             {"issuer":"https://issuer.example","authorization_endpoint":"https://issuer.example/oauth/authorize","token_endpoint":"https://issuer.example/oauth/token","pushed_authorization_request_endpoint":"https://issuer.example/oauth/par","revocation_endpoint":"https://issuer.example/oauth/revoke","require_pushed_authorization_requests":true,"token_endpoint_auth_methods_supported":["private_key_jwt"],"token_endpoint_auth_signing_alg_values_supported":["ES256"],"dpop_signing_alg_values_supported":["ES256"],"grant_types_supported":["authorization_code","refresh_token"],"response_types_supported":["code"],"code_challenge_methods_supported":["S256"],"authorization_response_iss_parameter_supported":true,"client_id_metadata_document_supported":true,"scopes_supported":["atproto"],"require_request_uri_registration":true}
             """;
+    }
+
+    public enum IdentityDocumentScenario
+    {
+        Valid,
+        DidWeb,
+        ConflictingHandle,
+        MissingPds,
+        DuplicatePds,
+        NonHttpsPds,
+        InvalidPds
     }
 
     private sealed class HermeticBffApiServer : HttpMessageHandler

@@ -31,6 +31,39 @@ public sealed class PostgresAtprotoSessionRefreshLockTests(PostgreSqlContainerFi
         await using var secondLease = await competing.WaitAsync(TimeSpan.FromSeconds(5));
     }
 
+    [Test]
+    public async Task CancelledWaitClosesItsConnectionAndScopeCanBeReacquired()
+    {
+        await using var firstContext = fixture.CreateDbContext();
+        await using var cancelledContext = fixture.CreateDbContext();
+        await using var retryContext = fixture.CreateDbContext();
+        var tenantId = Guid.CreateVersion7();
+        var userId = Guid.CreateVersion7();
+        var firstLock = new PostgresAtprotoSessionRefreshLock(firstContext);
+        var cancelledLock = new PostgresAtprotoSessionRefreshLock(cancelledContext);
+        var retryLock = new PostgresAtprotoSessionRefreshLock(retryContext);
+        IAsyncDisposable firstLease = await firstLock.AcquireAsync(
+            tenantId, userId, "atproto", "did:plc:refresh-cancel", CancellationToken.None);
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
+
+        await Assert.That(async () => await cancelledLock.AcquireAsync(
+                tenantId,
+                userId,
+                "atproto",
+                "did:plc:refresh-cancel",
+                cancellation.Token))
+            .Throws<OperationCanceledException>();
+
+        await firstLease.DisposeAsync();
+        await using IAsyncDisposable retryLease = await retryLock.AcquireAsync(
+                tenantId,
+                userId,
+                "atproto",
+                "did:plc:refresh-cancel",
+                CancellationToken.None)
+            .WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
 }
 
 public sealed class PostgresAtprotoSessionRefreshLockKeyTests
