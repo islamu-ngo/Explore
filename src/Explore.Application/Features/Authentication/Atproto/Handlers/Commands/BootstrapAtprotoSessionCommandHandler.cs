@@ -57,7 +57,7 @@ public sealed class BootstrapAtprotoSessionCommandHandler(
 
         var user = await userRepository.GetById(login.UserId).ConfigureAwait(false);
         var actor = await actorRepository
-            .GetActorByUserIdAndTenantId(login.UserId, tenantId).ConfigureAwait(false);
+            .GetActorByUserIdAndTenantId(login.UserId, tenantId, cancellationToken).ConfigureAwait(false);
         if (user is null || actor is null || actor.UserId != user.Id)
         {
             return AtprotoSessionBootstrapResult.Failed("linked_identity_incomplete");

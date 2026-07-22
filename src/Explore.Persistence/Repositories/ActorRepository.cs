@@ -21,7 +21,7 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             .FirstOrDefaultAsync(a => a.Id == id);
     }
 
-    public async Task<Actor?> GetActorWithDetails(Guid id)
+    public async Task<Actor?> GetActorWithDetails(Guid id, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Actors
             .AsNoTracking()
@@ -35,7 +35,7 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
                 .ThenInclude(u => u!.Pii)
             .Include(a => a.Organization)
                 .ThenInclude(o => o!.Pii)
-            .FirstOrDefaultAsync(a => a.Id == id);
+            .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
     }
 
     public async Task<Actor?> GetActorByDid(string did)
@@ -82,13 +82,16 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             .FirstOrDefaultAsync(a => a.UserId == userId);
     }
 
-    public async Task<Actor?> GetActorByUserIdAndTenantId(Guid userId, Guid tenantId)
+    public async Task<Actor?> GetActorByUserIdAndTenantId(
+        Guid userId,
+        Guid tenantId,
+        CancellationToken cancellationToken = default)
     {
         return await _dbContext.Actors
             .AsNoTracking()
             .Include(a => a.Pii)
             .Include(a => a.ActorType)
-            .FirstOrDefaultAsync(a => a.UserId == userId && a.TenantId == tenantId);
+            .FirstOrDefaultAsync(a => a.UserId == userId && a.TenantId == tenantId, cancellationToken);
     }
 
     public async Task<Actor?> GetActorByOrganizationId(Guid organizationId)

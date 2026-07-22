@@ -32,7 +32,7 @@ public class GetActorDetailsRequestHandler : IRequestHandler<GetActorDetailsRequ
 
     public async Task<ActorDto> Handle(GetActorDetailsRequest request, CancellationToken cancellationToken)
     {
-        var actor = await _actorRepository.GetActorWithDetails(request.Id);
+        var actor = await _actorRepository.GetActorWithDetails(request.Id, cancellationToken);
         var dto = _mapper.Map<ActorDto>(actor);
 
         // Resolve presigned URL for profile picture

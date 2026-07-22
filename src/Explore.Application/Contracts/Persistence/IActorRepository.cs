@@ -4,7 +4,7 @@ namespace Explore.Application.Contracts.Persistence;
 
 public interface IActorRepository : IGenericRepository<Actor, Guid>
 {
-    Task<Actor?> GetActorWithDetails(Guid id);
+    Task<Actor?> GetActorWithDetails(Guid id, CancellationToken cancellationToken = default);
     Task<Actor?> GetActorByDid(string did);
     Task<Actor?> GetActorByHandle(string handle);
     Task<List<Actor>> GetActorsByTenant(Guid tenantId);
@@ -24,7 +24,10 @@ public interface IActorRepository : IGenericRepository<Actor, Guid>
     /// <summary>
     /// Gets the tenant-scoped Actor associated with a specific User.
     /// </summary>
-    Task<Actor?> GetActorByUserIdAndTenantId(Guid userId, Guid tenantId);
+    Task<Actor?> GetActorByUserIdAndTenantId(
+        Guid userId,
+        Guid tenantId,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the Actor associated with a specific Organization.

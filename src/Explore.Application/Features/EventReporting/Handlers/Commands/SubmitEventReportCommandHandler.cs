@@ -102,7 +102,7 @@ public sealed class SubmitEventReportCommandHandler(
         }
 
         var reporterActor = reporterUserId.HasValue
-            ? await actorRepository.GetActorByUserIdAndTenantId(reporterUserId.Value, tenantId)
+            ? await actorRepository.GetActorByUserIdAndTenantId(reporterUserId.Value, tenantId, cancellationToken)
             : null;
 
         if (reporterUserId.HasValue && reporterActor is null)
