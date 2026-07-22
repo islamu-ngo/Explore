@@ -17,8 +17,7 @@ public sealed class AtprotoFederationBaselineGuardTests(PostgreSqlContainerFixtu
         await fixture.ResetAsync();
         await using var context = fixture.CreateDbContext();
 
-        await Assert.That(await context.Database.GetAppliedMigrationsAsync())
-            .Contains("20260719221539_init");
+        await Assert.That(await context.Database.GetPendingMigrationsAsync()).IsEmpty();
         await Assert.That(await ReadCountAsync(
             "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' " +
             "AND table_name IN ('atproto_records', 'pds_sync_outbox', 'atproto_jetstream_consumer_states', " +

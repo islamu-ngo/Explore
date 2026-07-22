@@ -1,5 +1,9 @@
-// ABOUTME: Verifies obsolete decentralization persistence is retired by a forward migration.
-// ABOUTME: Guards the current EF snapshot, setting-row cleanup, and schema narrative from regression.
+// ABOUTME: Verifies obsolete decentralization persistence is absent from the current canonical schema.
+// ABOUTME: Guards the EF snapshot, setting registry and seed rows, and schema narrative from regression.
+
+using Explore.Domain.Constants;
+using Explore.Domain.Settings;
+using Explore.Domain.Settings.Definitions;
 
 namespace Event.Architecture.Tests;
 
@@ -9,13 +13,21 @@ public sealed class LegacyDecentralizationRetirementContractTests
     private const string LegacyLocalValueColumn = "tenant_delegation_decentralization_enabled_local_value";
     private const string LegacyOverrideModeColumn = "tenant_delegation_decentralization_enabled_override_mode";
 
-    private static readonly string[] SettingTables =
+    private static readonly string[] CurrentAtprotoSettingKeys =
     [
-        "system_settings",
-        "tenant_setting_overrides",
-        "organization_setting_overrides",
-        "group_setting_overrides",
-        "user_preferences"
+        GovernanceSettingKeys.Federation.AtprotoEventsEnabled,
+        GovernanceSettingKeys.Federation.AtprotoEventValidationProfile,
+        GovernanceSettingKeys.Federation.AtprotoEventsBackfillEnabled,
+        GovernanceSettingKeys.Federation.AtprotoEventsBackfillMode,
+        GovernanceSettingKeys.Federation.AtprotoPublishMyEvents
+    ];
+
+    private static readonly string[] CurrentAtprotoSystemSettingSymbols =
+    [
+        "GovernanceSettingKeys.Federation.AtprotoEventsEnabled",
+        "GovernanceSettingKeys.Federation.AtprotoEventValidationProfile",
+        "GovernanceSettingKeys.Federation.AtprotoEventsBackfillEnabled",
+        "GovernanceSettingKeys.Federation.AtprotoEventsBackfillMode"
     ];
 
     [Test]
@@ -23,34 +35,37 @@ public sealed class LegacyDecentralizationRetirementContractTests
     {
         var repositoryRoot = ResolveRepositoryRoot();
         var migrationsDirectory = Path.Combine(repositoryRoot, "src", "Explore.Persistence", "Migrations");
-        var migrationPath = Directory
-            .EnumerateFiles(migrationsDirectory, "*_RetireLegacyDecentralizationSetting.cs")
-            .Single();
-        var migration = await File.ReadAllTextAsync(migrationPath);
         var snapshot = await File.ReadAllTextAsync(
             Path.Combine(migrationsDirectory, "ExploreDbContextModelSnapshot.cs"));
+        var settingSeeder = await File.ReadAllTextAsync(
+            Path.Combine(repositoryRoot, "src", "Explore.Persistence", "Seed", "LookupTableSeeder.cs"));
         var schema = await File.ReadAllTextAsync(
             Path.Combine(repositoryRoot, "schemas", "islamu-event.md"));
 
-        await Assert.That(migration).Contains(LegacyLocalValueColumn);
-        await Assert.That(migration).Contains(LegacyOverrideModeColumn);
-        await Assert.That(migration).Contains("DropColumn");
-        await Assert.That(migration).Contains("AddColumn<bool>");
-        await Assert.That(migration).Contains("AddColumn<int>");
-        await Assert.That(migration).Contains("defaultValue: false");
-        await Assert.That(migration).Contains("defaultValue: 0");
-        await Assert.That(migration).Contains(LegacyKey);
+        var actualAtprotoSettingKeys = AtprotoFederationSettingDefinitions.All
+            .Select(definition => definition.Key)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        var expectedAtprotoSettingKeys = CurrentAtprotoSettingKeys
+            .Order(StringComparer.Ordinal)
+            .ToArray();
 
-        foreach (var table in SettingTables)
+        await Assert.That(SettingRegistry.Contains(LegacyKey)).IsFalse();
+        await Assert.That(actualAtprotoSettingKeys.SequenceEqual(expectedAtprotoSettingKeys)).IsTrue();
+
+        foreach (var symbol in CurrentAtprotoSystemSettingSymbols)
         {
-            await Assert.That(migration).Contains($"DELETE FROM {table}");
+            await Assert.That(settingSeeder).Contains($"SettingKey = {symbol}");
         }
 
         await Assert.That(snapshot).DoesNotContain("DecentralizationEnabled", StringComparison.Ordinal);
         await Assert.That(snapshot).DoesNotContain(LegacyLocalValueColumn, StringComparison.Ordinal);
         await Assert.That(snapshot).DoesNotContain(LegacyOverrideModeColumn, StringComparison.Ordinal);
+        await Assert.That(settingSeeder).DoesNotContain(LegacyKey, StringComparison.OrdinalIgnoreCase);
+        await Assert.That(schema).DoesNotContain(LegacyKey, StringComparison.OrdinalIgnoreCase);
         await Assert.That(schema).DoesNotContain(LegacyLocalValueColumn, StringComparison.Ordinal);
         await Assert.That(schema).DoesNotContain(LegacyOverrideModeColumn, StringComparison.Ordinal);
+        await Assert.That(schema).Contains(GovernanceSettingKeys.Federation.AtprotoEventsEnabled);
     }
 
     private static string ResolveRepositoryRoot()

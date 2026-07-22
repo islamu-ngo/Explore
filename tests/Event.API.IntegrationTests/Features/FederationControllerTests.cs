@@ -99,10 +99,10 @@ public class FederationControllerTests
     #region AtprotoRecord Controller
 
     [Test]
-    public async Task AtprotoRecord_GetAll_WhenAnonymous_ShouldReturnOk()
+    public async Task AtprotoRecord_GetAll_WhenRawSurfaceIsAbsent_ShouldReturnNotFound()
     {
         var response = await _fixture.Client.GetAsync("/api/atprotorecord");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     [Test]
@@ -113,7 +113,7 @@ public class FederationControllerTests
     }
 
     [Test]
-    public async Task AtprotoRecord_Post_WhenMutationRouteIsAbsent_ShouldReturnMethodNotAllowed()
+    public async Task AtprotoRecord_Post_WhenRawSurfaceIsAbsent_ShouldReturnNotFound()
     {
         var response = await _fixture.Client.PostAsJsonAsync("/api/atprotorecord", new
         {
@@ -121,14 +121,14 @@ public class FederationControllerTests
             Collection = "app.bsky.feed.post",
             RecordKey = "test-key"
         });
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     [Test]
-    public async Task AtprotoRecord_Delete_WhenMutationRouteIsAbsent_ShouldReturnMethodNotAllowed()
+    public async Task AtprotoRecord_Delete_WhenRawSurfaceIsAbsent_ShouldReturnNotFound()
     {
         var response = await _fixture.Client.DeleteAsync($"/api/atprotorecord/{Guid.NewGuid()}");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     #endregion
