@@ -1,0 +1,44 @@
+@* ABOUTME: Displays or switches the active managed actor for the Studio workspace. *@
+@* ABOUTME: Uses only authenticated shell-context actors and session-scoped UiShellState. *@
+
+@if (_isLoading)
+{
+    <div class="studio-actor-switcher__status" role="status">Loading Studio actor…</div>
+}
+else if (_actors.Count == 0)
+{
+    <div class="studio-actor-switcher__identity" data-testid="studio-actor-identity">
+        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+        <span>Personal Studio</span>
+    </div>
+}
+else if (!CanSwitchActor)
+{
+    <div class="studio-actor-switcher__identity" data-testid="studio-actor-identity">
+        <MudIcon Icon="@ActiveActorIcon" Size="Size.Small" />
+        <span class="studio-actor-switcher__identity-copy">
+            <span class="studio-actor-switcher__label">Acting as</span>
+            <strong>@ActiveActorName</strong>
+        </span>
+        @if (HasAuthorizedPinnedActor)
+        {
+            <span class="studio-actor-switcher__pin">Pinned</span>
+        }
+    </div>
+}
+else
+{
+    <div class="studio-actor-switcher" data-testid="studio-actor-switcher-container">
+        <label class="studio-actor-switcher__label" for="studio-actor-switcher">Acting as</label>
+        <select id="studio-actor-switcher"
+                class="studio-actor-switcher__select"
+                data-testid="studio-actor-switcher"
+                value="@ShellState.ActiveActorId"
+                @onchange="OnActorChanged">
+            @foreach (var actor in _actors)
+            {
+                <option value="@actor.ActorId">@FormatActorOption(actor)</option>
+            }
+        </select>
+    </div>
+}

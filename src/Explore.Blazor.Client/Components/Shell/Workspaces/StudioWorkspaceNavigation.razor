@@ -1,0 +1,68 @@
+@* ABOUTME: Actor-level navigation provider for the Studio workspace. *@
+@* ABOUTME: Exposes only the live overview and managed-events destinations. *@
+@using Explore.Blazor.Client.Contracts.Services.Shell
+@implements IWorkspaceNavigationProvider
+@implements IDisposable
+@inject NavigationManager Navigation
+
+@if (_eventId is Guid eventId)
+{
+    <StudioEventNavigation EventId="eventId" />
+}
+else
+{
+    <nav class="studio-workspace-navigation" aria-label="@AriaLabel" data-testid="studio-workspace-navigation">
+        <StudioActorSwitcher />
+        <MudNavMenu Dense="false" Class="studio-workspace-navigation__menu px-2">
+            <div class="studio-workspace-navigation__header">
+                <MudText Typo="Typo.h6" Class="studio-workspace-navigation__title">Studio</MudText>
+            </div>
+            <MudNavLink Href="/studio"
+                        Icon="@Icons.Material.Filled.Dashboard"
+                        Match="NavLinkMatch.All">
+                Overview
+            </MudNavLink>
+            <MudNavLink Href="/studio/events"
+                        Icon="@Icons.Material.Filled.Event"
+                        Match="NavLinkMatch.Prefix">
+                Events
+            </MudNavLink>
+        </MudNavMenu>
+    </nav>
+}
+
+@code {
+    private Guid? _eventId;
+
+    public string AriaLabel => "Studio navigation";
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        UpdateEventContext();
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        UpdateEventContext();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateEventContext()
+    {
+        var path = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0];
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        _eventId = segments.Length >= 3
+            && segments[0].Equals("studio", StringComparison.OrdinalIgnoreCase)
+            && segments[1].Equals("events", StringComparison.OrdinalIgnoreCase)
+            && Guid.TryParse(segments[2], out var eventId)
+                ? eventId
+                : null;
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+        GC.SuppressFinalize(this);
+    }
+}

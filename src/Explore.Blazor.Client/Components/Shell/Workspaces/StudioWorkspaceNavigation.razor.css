@@ -1,0 +1,20 @@
+/* ABOUTME: Scoped layout for actor-level Studio workspace navigation. */
+/* ABOUTME: Reuses the shell token scale and compact navigation hierarchy. */
+
+.studio-workspace-navigation {
+    display: block;
+}
+
+.studio-workspace-navigation__header {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-2);
+    padding-inline-end: var(--isl-space-2);
+}
+
+.studio-workspace-navigation__title {
+    padding-inline: var(--isl-space-4);
+    padding-block: var(--isl-space-3) var(--isl-space-1);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}

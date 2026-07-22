@@ -1,0 +1,105 @@
+@* ABOUTME: Event-level Studio navigation derived exclusively from event HAL relations. *@
+@* ABOUTME: Replaces actor navigation while preserving an explicit return to the managed-event list. *@
+@using Explore.Blazor.Client.Pages.Studio
+@implements IDisposable
+@inject StudioEventContextState EventContext
+
+<nav class="studio-event-navigation" aria-label="Event management navigation" data-testid="studio-event-navigation">
+    <MudNavMenu Dense="false" Class="studio-event-navigation__menu px-2">
+        <MudNavLink Href="/studio/events"
+                    Icon="@Icons.Material.Filled.ArrowBack"
+                    Match="NavLinkMatch.All">
+            All events
+        </MudNavLink>
+
+        @if (EventContext.IsLoading && Resource is null)
+        {
+            <div class="studio-event-navigation__state" role="status">Loading event…</div>
+        }
+        else if (Resource is not null)
+        {
+            <div class="studio-event-navigation__header">
+                <MudText Typo="Typo.h6" Class="studio-event-navigation__title">@Resource.Title</MudText>
+                @if (!string.IsNullOrWhiteSpace(Resource.EventStatusFullName))
+                {
+                    <span class="studio-event-navigation__status">@Resource.EventStatusFullName</span>
+                }
+            </div>
+
+            @if (Resource.HasHalLink("edit"))
+            {
+                <MudNavLink Href="@StudioRoute" Icon="@Icons.Material.Outlined.Edit" Match="NavLinkMatch.All" data-event-section="details">
+                    Details
+                </MudNavLink>
+            }
+            @if (HasScheduleRelation(Resource))
+            {
+                <MudNavLink Href="@($"{StudioRoute}/schedule")" Icon="@Icons.Material.Outlined.CalendarMonth" Match="NavLinkMatch.All" data-event-section="schedule">
+                    Schedule
+                </MudNavLink>
+            }
+            @if (HasRegistrationRelation(Resource))
+            {
+                <MudNavLink Href="@($"{StudioRoute}/registration")" Icon="@Icons.Material.Outlined.HowToReg" Match="NavLinkMatch.All" data-event-section="registration">
+                    Registration
+                </MudNavLink>
+            }
+            @if (Resource.HasHalLink("publish-readiness"))
+            {
+                <MudNavLink Href="@($"{StudioRoute}/publication")" Icon="@Icons.Material.Outlined.Publish" Match="NavLinkMatch.All" data-event-section="publication">
+                    Publication
+                </MudNavLink>
+            }
+            @if (Resource.HasHalLink("team"))
+            {
+                <MudNavLink Href="@PublicEventRoute" Icon="@Icons.Material.Outlined.Groups" Match="NavLinkMatch.All" data-event-section="team">
+                    Team
+                </MudNavLink>
+            }
+            @if (Resource.HasHalLink("delete"))
+            {
+                <MudNavLink Href="@PublicEventRoute" Icon="@Icons.Material.Outlined.Warning" Match="NavLinkMatch.All" data-event-section="danger">
+                    Danger zone
+                </MudNavLink>
+            }
+        }
+        else if (EventContext.ErrorMessage is not null)
+        {
+            <div class="studio-event-navigation__state" role="alert">@EventContext.ErrorMessage</div>
+        }
+    </MudNavMenu>
+</nav>
+
+@code {
+    [Parameter] public Guid EventId { get; set; }
+
+    private EventDto? Resource => EventContext.EventId == EventId ? EventContext.Event : null;
+    private string StudioRoute => $"/studio/events/{EventId}";
+    private string PublicEventRoute => EventUrlHelper.BuildPublicPath(Resource?.Slug, Resource?.PublicCode)
+        ?? $"/events/{EventId}/edit";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        EventContext.Changed -= OnContextChanged;
+        EventContext.Changed += OnContextChanged;
+        await EventContext.LoadAsync(EventId);
+    }
+
+    private static bool HasScheduleRelation(EventDto resource) =>
+        resource.HasHalLink("sessions")
+        || resource.HasHalLink("program")
+        || resource.HasHalLink("session-groups")
+        || resource.HasHalLink("add-session")
+        || resource.HasHalLink("create-session-draft");
+
+    private static bool HasRegistrationRelation(EventDto resource) =>
+        resource.HasHalLink("registration") || resource.HasHalLink("registrations");
+
+    private void OnContextChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        EventContext.Changed -= OnContextChanged;
+        GC.SuppressFinalize(this);
+    }
+}
