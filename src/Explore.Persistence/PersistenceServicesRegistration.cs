@@ -286,6 +286,10 @@ public static class PersistenceServicesRegistration
                     .UseSnakeCaseNamingConvention());
             services.AddScoped<IPrivacyErasureAuthority, EfCorePrivacyErasureAuthorityRepository>();
         }
+        else
+        {
+            services.AddScoped<IPrivacyErasureAuthority, CoLocatedPrivacyErasureAuthorityRepository>();
+        }
 
         // Storage Repository
         services.AddScoped<IStorageObjectRepository, StorageObjectRepository>();

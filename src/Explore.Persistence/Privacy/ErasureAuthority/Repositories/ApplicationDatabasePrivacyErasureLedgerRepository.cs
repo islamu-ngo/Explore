@@ -17,6 +17,7 @@ public sealed class ApplicationDatabasePrivacyErasureLedgerRepository(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(intent);
+        PrivacyErasureCounter counter = await GetCounterForUpdateAsync(cancellationToken);
         PrivacyErasureIntent? existing = await FindAsync(intent.IntentId, cancellationToken);
         if (existing is not null)
         {
@@ -24,7 +25,6 @@ public sealed class ApplicationDatabasePrivacyErasureLedgerRepository(
             return existing;
         }
 
-        PrivacyErasureCounter counter = await GetCounterForUpdateAsync(cancellationToken);
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         PrivacyErasureIntent fact = PrivacyErasureIntent.Record(
             intent.IntentId,
@@ -45,6 +45,7 @@ public sealed class ApplicationDatabasePrivacyErasureLedgerRepository(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(intent);
+        PrivacyErasureCounter counter = await GetCounterForUpdateAsync(cancellationToken);
         PrivacyErasureIntent? existing = await FindAsync(intent.IntentId, cancellationToken);
         if (existing is not null)
         {
@@ -57,7 +58,6 @@ public sealed class ApplicationDatabasePrivacyErasureLedgerRepository(
             return existing;
         }
 
-        PrivacyErasureCounter counter = await GetCounterForUpdateAsync(cancellationToken);
         counter.AdvanceTo(intent.AuthoritySequence);
         dbContext.PrivacyErasureIntents.Add(intent);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -96,6 +96,9 @@ public sealed class ApplicationDatabasePrivacyErasureLedgerRepository(
         PrivacyErasureCounter? counter;
         if (dbContext.Database.IsRelational())
         {
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "INSERT INTO privacy_erasure_authority.authority_counter (singleton, last_sequence) VALUES (TRUE, 0) ON CONFLICT (singleton) DO NOTHING",
+                cancellationToken);
             counter = await dbContext.PrivacyErasureCounters
                 .FromSqlRaw(
                     "SELECT singleton, last_sequence FROM privacy_erasure_authority.authority_counter WHERE singleton FOR UPDATE")

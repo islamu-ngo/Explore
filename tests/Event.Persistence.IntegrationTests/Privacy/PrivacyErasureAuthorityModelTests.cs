@@ -97,7 +97,7 @@ public sealed class PrivacyErasureAuthorityModelTests
     }
 
     [Test]
-    public async Task DefaultPersistenceComposition_DoesNotRegisterRetainedAuthority()
+    public async Task CoLocatedPersistenceComposition_RegistersFactoryBackedAuthorityAndLocalMirror()
     {
         var services = new ServiceCollection();
         services.ConfigurePersistenceServices(
@@ -113,7 +113,8 @@ public sealed class PrivacyErasureAuthorityModelTests
         await Assert.That(services.Any(item =>
             item.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
         await Assert.That(services.Any(item =>
-            item.ServiceType == typeof(IPrivacyErasureAuthority))).IsFalse();
+            item.ServiceType == typeof(IPrivacyErasureAuthority)
+            && item.ImplementationType == typeof(CoLocatedPrivacyErasureAuthorityRepository))).IsTrue();
         await Assert.That(services.Any(item =>
             item.ServiceType == typeof(IPrivacyErasureLedgerRepository))).IsTrue();
     }
@@ -135,22 +136,23 @@ public sealed class PrivacyErasureAuthorityModelTests
         await Assert.That(services.Any(item =>
             item.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
         await Assert.That(services.Any(item =>
-            item.ServiceType == typeof(IPrivacyErasureAuthority))).IsFalse();
+            item.ServiceType == typeof(IPrivacyErasureAuthority)
+            && item.ImplementationType == typeof(CoLocatedPrivacyErasureAuthorityRepository))).IsTrue();
         await Assert.That(services.Any(item =>
             item.ServiceType.FullName?.Contains(
                 "IPrivacyErasureReplayService",
-                StringComparison.Ordinal) == true)).IsFalse();
+                StringComparison.Ordinal) == true)).IsTrue();
     }
 
     [Test]
-    public async Task RetainedPersistenceComposition_RegistersOnlyGeneralizedAuthoritySurface()
+    public async Task ExternalPersistenceComposition_RegistersOnlyGeneralizedAuthoritySurface()
     {
         var services = new ServiceCollection();
         services.ConfigurePersistenceServices(
             new ConfigurationBuilder().AddInMemoryCollection(
                 new Dictionary<string, string?>
                 {
-                    ["PrivacyErasure:Durability:Mode"] = "RetainedAuthority",
+                    ["PrivacyErasure:Authority:Topology"] = "ExternalDatabase",
                     ["ConnectionStrings:PrivacyErasureAuthority"] =
                         "Host=localhost;Database=privacy_erasure;Username=runtime;Password=unused"
                 }).Build(),
@@ -227,7 +229,6 @@ public sealed class PrivacyErasureAuthorityModelTests
     {
         private static readonly string[] ForbiddenPrefixes =
         [
-            "PrivacyErasure:Authority",
             "ConnectionStrings:PrivacyErasureAuthority",
             "ConnectionStrings:LocationPrivacyAuthority",
             "LocationPrivacy:ErasureAuthority",
