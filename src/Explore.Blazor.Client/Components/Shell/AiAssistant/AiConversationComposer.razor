@@ -1,0 +1,322 @@
+@* ABOUTME: Reusable AI conversation composer for prompts, references, actor context, and image attachments. *@
+@* ABOUTME: Owns browser elements and menus while leaving conversation state and commands with its host. *@
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
+
+<div class="ai-rail__composer" role="form" aria-label="Send an AI assistant message">
+    @if (IsReferenceAutocompleteVisible)
+    {
+        <div id="@ReferenceResultsId"
+             class="ai-rail__reference-autocomplete"
+             role="listbox"
+             aria-label="AI reference suggestions"
+             data-testid="ai-rail-reference-autocomplete">
+            @if (IsReferenceSearchRunning)
+            {
+                <div class="ai-rail__reference-status" role="status">
+                    <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary" />
+                </div>
+            }
+            else if (ReferenceResults.Count == 0 && HasSearchedReferences)
+            {
+                <div class="ai-rail__reference-empty" role="status">No matching references</div>
+            }
+            else
+            {
+                @for (var index = 0; index < ReferenceResults.Count; index++)
+                {
+                    var reference = ReferenceResults[index];
+                    <button id="@GetReferenceOptionId(index)"
+                            type="button"
+                            class="@GetReferenceOptionClass(index)"
+                            role="option"
+                            aria-selected="@(index == ActiveReferenceIndex)"
+                            data-testid="ai-rail-reference-result"
+                            @onmousedown:preventDefault="true"
+                            @onclick="() => OnReferenceSelected.InvokeAsync(reference)">
+                        <MudIcon Icon="@GetReferenceIcon(reference)" Size="Size.Small" Class="ai-rail__reference-option-icon" />
+                        <span class="ai-rail__reference-option-text">@reference.DisplayName</span>
+                        <span class="ai-rail__reference-option-kind">@GetReferenceKindLabel(reference)</span>
+                    </button>
+                }
+            }
+        </div>
+    }
+    <div class="ai-rail__composer-card">
+        <div class="ai-rail__composer-context">
+            <label class="ai-rail__actor-label" for="@ActorSelectorId">Acting as</label>
+            <select id="@ActorSelectorId"
+                    class="ai-rail__actor-selector"
+                    value="@(SelectedActorId?.ToString() ?? string.Empty)"
+                    @onchange="HandleActorSelectionChangedAsync"
+                    data-testid="ai-rail-actor-selector"
+                    aria-label="AI assistant actor context"
+                    disabled="@(ActorOptions.Count == 0)">
+                @if (ActorOptions.Count == 0)
+                {
+                    <option value="">No actor contexts available</option>
+                }
+                else
+                {
+                    @foreach (var actor in ActorOptions)
+                    {
+                        <option value="@actor.ActorId"
+                                data-actor-type="@actor.ActorType"
+                                data-actor-display-name="@actor.ActorDisplayName">
+                            @actor.ActorType · @actor.ActorDisplayName
+                        </option>
+                    }
+                }
+            </select>
+        </div>
+        @if (SelectedImages.Count > 0)
+        {
+            <div class="ai-rail__image-chip-list" role="list" aria-label="Selected image attachments">
+                @foreach (var image in SelectedImages)
+                {
+                    <div class="ai-rail__image-chip" role="listitem" data-testid="ai-rail-image-chip">
+                        <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Small" />
+                        <span class="ai-rail__image-chip-text">@image.FileName</span>
+                        <span class="ai-rail__image-chip-size">@FormatFileSize(image.SizeBytes)</span>
+                        <button type="button"
+                                class="ai-rail__image-chip-remove"
+                                aria-label="@($"Remove image {image.FileName}")"
+                                @onclick="() => OnImageRemoved.InvokeAsync(image.Id)">
+                            <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+        <MudFileUpload T="IReadOnlyList<IBrowserFile>"
+                       @ref="_imageFileUpload"
+                       FilesChanged="OnFilesSelected"
+                       Accept="image/*"
+                       MaximumFileCount="MaximumFileCount">
+            <CustomContent Context="fileUpload"></CustomContent>
+            <SelectedTemplate Context="files"></SelectedTemplate>
+        </MudFileUpload>
+        <div class="ai-rail__prompt-shell">
+            @if (HasPromptReferenceHighlights)
+            {
+                <div class="ai-rail__prompt-highlights"
+                     aria-hidden="true"
+                     data-testid="ai-rail-prompt-highlights">@PromptReferenceHighlights</div>
+            }
+            <textarea id="@PromptId"
+                      class="@PromptTextAreaClass"
+                      @ref="_promptTextArea"
+                      rows="1"
+                      value="@PromptText"
+                      @oninput="HandlePromptInputAsync"
+                      @onchange="HandlePromptChangeAsync"
+                      placeholder="How can I help you today?"
+                      data-testid="ai-rail-prompt"
+                      data-reference-autocomplete-open="@ReferenceAutocompleteOpenData"
+                      data-reference-autocomplete-selectable="@ReferenceAutocompleteSelectableData"
+                      data-reference-mention-tokens="@ReferenceMentionTokensData"
+                      aria-controls="@ReferenceResultsId"
+                      aria-expanded="@ReferenceAutocompleteOpenData"
+                      aria-autocomplete="list"
+                      aria-activedescendant="@ActiveReferenceOptionId"></textarea>
+        </div>
+        <div class="ai-rail__composer-toolbar">
+            <MudMenu @bind-Open="_referencesMenuOpen" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                <ActivatorContent>
+                    <button type="button"
+                            class="ai-rail__toolbar-btn @(IsReferenceAutocompleteVisible ? "ai-rail__toolbar-btn--active" : "")"
+                            title="Add references"
+                            aria-label="Add references"
+                            @onclick="ToggleReferencesMenu">
+                        <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+                    </button>
+                </ActivatorContent>
+                <ChildContent>
+                    <MudMenuItem OnClick="OpenReferenceSearchAsync">Search references</MudMenuItem>
+                    <MudMenuItem OnClick="OpenFilePickerAsync">Add files of photos</MudMenuItem>
+                </ChildContent>
+            </MudMenu>
+            <MudMenu @bind-Open="_capabilitiesMenuOpen" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                <ActivatorContent>
+                    <button type="button"
+                            class="ai-rail__capability-picker-btn"
+                            title="AI capabilities"
+                            aria-label="AI capabilities"
+                            @onclick="ToggleCapabilitiesMenu">
+                        <MudIcon Icon="@GetCapabilityIcon(SelectedCapability)" Size="Size.Small" />
+                        <span>@SelectedCapability</span>
+                        <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" Class="ai-rail__capability-arrow" />
+                    </button>
+                </ActivatorContent>
+                <ChildContent>
+                    <MudMenuItem OnClick='() => SelectCapabilityAsync("Build")'>Build</MudMenuItem>
+                    <MudMenuItem OnClick='() => SelectCapabilityAsync("Ask")'>Ask</MudMenuItem>
+                </ChildContent>
+            </MudMenu>
+            <div class="ai-rail__toolbar-spacer"></div>
+            <button type="button"
+                    class="ai-rail__send-btn"
+                    disabled="@IsSendDisabled"
+                    @onclick="OnSend"
+                    data-testid="ai-rail-send"
+                    aria-label="Send message"
+                    title="Send message">
+                <MudIcon Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" />
+            </button>
+        </div>
+    </div>
+    <span class="ai-rail__disclaimer">AI can make mistakes, please double-check responses.</span>
+</div>
+
+@code {
+    private const string ActorContextSummaryPrefix = "Actor context:";
+    private readonly string _defaultIdPrefix = $"ai-conversation-{Guid.CreateVersion7():N}";
+    private MudFileUpload<IReadOnlyList<IBrowserFile>>? _imageFileUpload;
+    private ElementReference _promptTextArea;
+    private bool _referencesMenuOpen;
+    private bool _capabilitiesMenuOpen;
+
+    [Parameter] public IReadOnlyList<ActorOption> ActorOptions { get; set; } = [];
+    [Parameter] public string? IdPrefix { get; set; }
+    [Parameter] public Guid? SelectedActorId { get; set; }
+    [Parameter] public EventCallback<Guid?> SelectedActorIdChanged { get; set; }
+    [Parameter] public IReadOnlyList<ImageAttachment> SelectedImages { get; set; } = [];
+    [Parameter] public IReadOnlyList<HalResourceOfAiReferenceSearchResultDto> ReferenceResults { get; set; } = [];
+    [Parameter] public string PromptText { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> OnPromptInput { get; set; }
+    [Parameter] public EventCallback<string> OnPromptChange { get; set; }
+    [Parameter] public bool IsReferenceAutocompleteVisible { get; set; }
+    [Parameter] public bool IsReferenceSearchRunning { get; set; }
+    [Parameter] public bool HasSearchedReferences { get; set; }
+    [Parameter] public int ActiveReferenceIndex { get; set; }
+    [Parameter] public bool HasPromptReferenceHighlights { get; set; }
+    [Parameter] public RenderFragment? PromptReferenceHighlights { get; set; }
+    [Parameter] public string PromptTextAreaClass { get; set; } = "ai-rail__textarea";
+    [Parameter] public string ReferenceAutocompleteOpenData { get; set; } = "false";
+    [Parameter] public string ReferenceAutocompleteSelectableData { get; set; } = "false";
+    [Parameter] public string ReferenceMentionTokensData { get; set; } = "[]";
+    [Parameter] public string SelectedCapability { get; set; } = "Build";
+    [Parameter] public EventCallback<string> SelectedCapabilityChanged { get; set; }
+    [Parameter] public bool IsSendDisabled { get; set; }
+    [Parameter] public int MaximumFileCount { get; set; } = 4;
+    [Parameter] public EventCallback<IReadOnlyList<IBrowserFile>> OnFilesSelected { get; set; }
+    [Parameter] public EventCallback<Guid> OnImageRemoved { get; set; }
+    [Parameter] public EventCallback<HalResourceOfAiReferenceSearchResultDto> OnReferenceSelected { get; set; }
+    [Parameter] public EventCallback OnReferenceSearchOpened { get; set; }
+    [Parameter] public EventCallback OnSend { get; set; }
+
+    private string EffectiveIdPrefix => string.IsNullOrWhiteSpace(IdPrefix) ? _defaultIdPrefix : IdPrefix;
+    private string ReferenceResultsId => $"{EffectiveIdPrefix}-reference-results";
+    private string ActorSelectorId => $"{EffectiveIdPrefix}-actor-selector";
+    private string PromptId => $"{EffectiveIdPrefix}-prompt";
+    private string? ActiveReferenceOptionId =>
+        IsReferenceAutocompleteVisible && ReferenceResults.Count > 0
+            ? GetReferenceOptionId(ActiveReferenceIndex)
+            : null;
+
+    public async Task AttachPromptKeyboardHandlerAsync(IJSObjectReference module, object callbackReference) =>
+        await module.InvokeVoidAsync("attachPromptKeyboardHandler", _promptTextArea, callbackReference);
+
+    public async Task DetachPromptKeyboardHandlerAsync(IJSObjectReference module) =>
+        await module.InvokeVoidAsync("detachPromptKeyboardHandler", _promptTextArea);
+
+    public async Task FocusPromptAsync(IJSObjectReference module) =>
+        await module.InvokeVoidAsync("focusPrompt", _promptTextArea);
+
+    public async Task OpenFilePickerAsync()
+    {
+        if (_imageFileUpload is not null)
+        {
+            await _imageFileUpload.OpenFilePickerAsync();
+        }
+        _referencesMenuOpen = false;
+    }
+
+    private Task HandlePromptInputAsync(ChangeEventArgs args) =>
+        OnPromptInput.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+
+    private Task HandlePromptChangeAsync(ChangeEventArgs args) =>
+        OnPromptChange.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+
+    private Task HandleActorSelectionChangedAsync(ChangeEventArgs args)
+    {
+        var actorId = Guid.TryParse(args.Value?.ToString(), out var parsed)
+            && ActorOptions.Any(actor => actor.ActorId == parsed)
+                ? parsed
+                : (Guid?)null;
+        return SelectedActorIdChanged.InvokeAsync(actorId);
+    }
+
+    private void ToggleReferencesMenu() => _referencesMenuOpen = !_referencesMenuOpen;
+    private void ToggleCapabilitiesMenu() => _capabilitiesMenuOpen = !_capabilitiesMenuOpen;
+
+    private async Task OpenReferenceSearchAsync()
+    {
+        _referencesMenuOpen = false;
+        await OnReferenceSearchOpened.InvokeAsync();
+    }
+
+    private async Task SelectCapabilityAsync(string capability)
+    {
+        _capabilitiesMenuOpen = false;
+        await SelectedCapabilityChanged.InvokeAsync(capability);
+    }
+
+    private string GetReferenceOptionClass(int index) => string.Join(' ', new[]
+    {
+        "ai-rail__reference-option",
+        index == ActiveReferenceIndex ? "ai-rail__reference-option--active" : null
+    }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private string GetReferenceOptionId(int index) => $"{EffectiveIdPrefix}-reference-option-{index}";
+
+    private static string GetReferenceIcon(HalResourceOfAiReferenceSearchResultDto reference) => GetReferenceDisplayKind(reference) switch
+    {
+        "Event" => Icons.Material.Filled.Event,
+        "Organization" => Icons.Material.Filled.Business,
+        "Actor" or "User" => Icons.Material.Filled.Person,
+        "Group" => Icons.Material.Filled.Groups,
+        "EventSession" => Icons.Material.Filled.Schedule,
+        _ => Icons.Material.Filled.Tag
+    };
+
+    private static string GetReferenceKindLabel(HalResourceOfAiReferenceSearchResultDto reference) => GetReferenceDisplayKind(reference) switch
+    {
+        "Event" => "Event",
+        "Organization" => "Org",
+        "Actor" or "User" => "User",
+        "Group" => "Group",
+        "EventSession" => "Session",
+        _ => "Ref"
+    };
+
+    private static string GetReferenceDisplayKind(HalResourceOfAiReferenceSearchResultDto reference)
+    {
+        var summary = reference.Summary?.Trim();
+        if (summary is not null && summary.StartsWith(ActorContextSummaryPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var actorKind = summary[ActorContextSummaryPrefix.Length..].Trim();
+            if (!string.IsNullOrWhiteSpace(actorKind))
+            {
+                return actorKind;
+            }
+        }
+        return reference.Kind?.Trim() ?? string.Empty;
+    }
+
+    private static string GetCapabilityIcon(string capability) =>
+        string.Equals(capability, "Build", StringComparison.OrdinalIgnoreCase)
+            ? Icons.Material.Filled.AutoFixHigh
+            : Icons.Material.Filled.HelpOutline;
+
+    private static string FormatFileSize(long bytes)
+    {
+        const decimal oneMegabyte = 1024m * 1024m;
+        return bytes >= oneMegabyte
+            ? $"{bytes / oneMegabyte:0.#} MB"
+            : $"{Math.Max(1, bytes / 1024)} KB";
+    }
+
+    public sealed record ActorOption(Guid ActorId, string ActorType, string ActorDisplayName);
+    public sealed record ImageAttachment(Guid Id, string FileName, string MediaType, long SizeBytes, string Data);
+}

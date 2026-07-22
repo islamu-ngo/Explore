@@ -14,6 +14,7 @@ public sealed class AiAssistantState
     public bool IsOpen { get; private set; }
     public bool IsAvailable { get; private set; }
     public bool IsButtonVisible { get; private set; }
+    public bool CanOpenWorkspace => _isAuthenticated && IsAvailable;
     public event Action? OnChange;
 
     /// <summary>

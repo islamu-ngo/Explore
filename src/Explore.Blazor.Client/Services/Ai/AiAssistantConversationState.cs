@@ -2,6 +2,7 @@
 // ABOUTME: Exposes proposed-action affordances exclusively from API-provided HAL links.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Services.Shell;
 
 namespace Explore.Blazor.Client.Services.Ai;
 
@@ -20,6 +21,8 @@ public sealed class AiAssistantConversationState
     public bool IsLoading { get; private set; }
 
     public string? ErrorMessage { get; private set; }
+
+    public WorkspaceKey ReturnWorkspace { get; private set; } = WorkspaceKey.Events;
 
     public event Action? OnChange;
 
@@ -70,6 +73,14 @@ public sealed class AiAssistantConversationState
     {
         SelectedReferences = references;
         NotifyChanged();
+    }
+
+    public void SetReturnWorkspace(WorkspaceKey workspace)
+    {
+        if (workspace != WorkspaceKey.Ai)
+        {
+            ReturnWorkspace = workspace;
+        }
     }
 
     public static bool CanConfirm(ProposedActions2 proposedAction) => HasLink(proposedAction._links, "confirm-action");

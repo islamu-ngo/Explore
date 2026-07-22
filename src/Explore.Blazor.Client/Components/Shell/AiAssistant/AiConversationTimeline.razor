@@ -1,0 +1,135 @@
+@* ABOUTME: Reusable ordered timeline for AI conversation messages and proposed actions. *@
+@* ABOUTME: Keeps conversation rendering independent from dock, page, and service orchestration. *@
+
+@if (Conversation is not null)
+{
+    var timelineItems = GetTimelineItems();
+    @if (timelineItems.Count > 0)
+    {
+        <div class="ai-rail__timeline" role="log" aria-live="polite" aria-label="AI conversation messages and actions">
+            @foreach (var item in timelineItems)
+            {
+                @if (item.Message is not null)
+                {
+                    <article @key="item.Key" class="@GetMessageClass(item.Message.Role)" data-testid="ai-rail-message">
+                        <span class="ai-rail__message-role">@item.Message.Role</span>
+                        @if (!string.IsNullOrWhiteSpace(item.Message.Content))
+                        {
+                            <p>@item.Message.Content</p>
+                        }
+                        @if (GetMessageImageCount(item.Message) > 0)
+                        {
+                            <span class="ai-rail__message-attachments" data-testid="ai-rail-message-images">
+                                <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Small" />
+                                @FormatImageAttachmentCount(GetMessageImageCount(item.Message))
+                            </span>
+                        }
+                    </article>
+                }
+                else if (item.Action is not null)
+                {
+                    <AiProposedActionCard @key="item.Key"
+                                          Action="item.Action"
+                                          IsBusy="@IsBusy(item.Action.Id)"
+                                          ActionsEnabled="ActionsEnabled"
+                                          OnConfirm="OnConfirm"
+                                          OnReject="OnReject" />
+                }
+            }
+        </div>
+    }
+    else
+    {
+        <div class="ai-rail__empty-hint">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">No messages yet.</MudText>
+        </div>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public HalResourceOfAiConversationDto? Conversation { get; set; }
+
+    [Parameter]
+    public Func<Guid?, bool>? IsActionBusy { get; set; }
+
+    [Parameter]
+    public bool ActionsEnabled { get; set; } = true;
+
+    [Parameter]
+    public EventCallback<ProposedActions2> OnConfirm { get; set; }
+
+    [Parameter]
+    public EventCallback<ProposedActions2> OnReject { get; set; }
+
+    private bool IsBusy(Guid? actionId) => IsActionBusy?.Invoke(actionId) ?? false;
+
+    private IReadOnlyList<TimelineItem> GetTimelineItems()
+    {
+        var messageSequenceById = (Conversation?.Messages ?? [])
+            .Where(message => message.Id is Guid)
+            .ToDictionary(message => message.Id!.Value, message => message.Sequence ?? long.MaxValue);
+
+        var items = new List<TimelineItem>();
+        foreach (var message in Conversation?.Messages ?? [])
+        {
+            items.Add(TimelineItem.ForMessage(message));
+        }
+
+        foreach (var action in Conversation?.ProposedActions ?? [])
+        {
+            items.Add(TimelineItem.ForAction(action, GetActionSequenceAnchor(action, messageSequenceById)));
+        }
+
+        return items
+            .OrderBy(item => item.SequenceAnchor)
+            .ThenBy(item => item.CreatedAt ?? DateTimeOffset.MaxValue)
+            .ThenBy(item => item.SortKind)
+            .ThenBy(item => item.Key, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static decimal GetActionSequenceAnchor(
+        ProposedActions2 action,
+        IReadOnlyDictionary<Guid, long> messageSequenceById) =>
+        action.MessageId is Guid messageId && messageSequenceById.TryGetValue(messageId, out var sequence)
+            ? sequence + 0.1m
+            : decimal.MaxValue;
+
+    private static string GetMessageClass(string? role) => string.Join(' ', new[]
+    {
+        "ai-rail__message",
+        string.Equals(role, "User", StringComparison.OrdinalIgnoreCase) ? "ai-rail__message--user" : null,
+        string.Equals(role, "Assistant", StringComparison.OrdinalIgnoreCase) ? "ai-rail__message--assistant" : null
+    }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private static int GetMessageImageCount(Messages2 message) => message.Images?.Count ?? 0;
+
+    private static string FormatImageAttachmentCount(int count) =>
+        count == 1 ? "1 image attached" : $"{count} images attached";
+
+    private sealed record TimelineItem(
+        string Key,
+        Messages2? Message,
+        ProposedActions2? Action,
+        decimal SequenceAnchor,
+        DateTimeOffset? CreatedAt,
+        int SortKind)
+    {
+        public static TimelineItem ForMessage(Messages2 message) => new(
+            $"message:{message.Id?.ToString() ?? message.Sequence?.ToString() ?? message.CreatedAt?.ToUnixTimeMilliseconds().ToString() ?? message.Content ?? string.Empty}",
+            message,
+            null,
+            message.Sequence ?? long.MaxValue,
+            message.CreatedAt,
+            0);
+
+        public static TimelineItem ForAction(ProposedActions2 action, decimal sequenceAnchor) => new(
+            $"action:{action.Id?.ToString() ?? action.CreatedAt?.ToUnixTimeMilliseconds().ToString() ?? action.PayloadJson ?? string.Empty}",
+            null,
+            action,
+            sequenceAnchor,
+            action.CreatedAt ?? action.ConfirmedAt ?? action.RejectedAt,
+            1);
+    }
+}

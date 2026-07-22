@@ -4,6 +4,7 @@
 using Explore.Blazor.Client.Components.Shell;
 using Explore.Blazor.Client.Contracts.Services.Ai;
 using Explore.Blazor.Client.Services.Ai;
+using Explore.Blazor.Client.Services.Shell;
 using Explore.Blazor.Client.Tests;
 using Microsoft.AspNetCore.Components.Forms;
 using MudBlazor;
@@ -23,6 +24,9 @@ public sealed class AiAssistantRailTests : IDisposable
         _ctx.Services.AddSingleton(_clientService);
         _ctx.Services.AddSingleton(_shellState);
         _ctx.Services.AddSingleton(_conversationState);
+        _ctx.Services.AddSingleton<IWorkspaceRegistry, WorkspaceRegistry>();
+        _ctx.Services.AddSingleton<WorkspaceRouteClassifier>();
+        _ctx.Services.AddSingleton<UiShellState>();
     }
 
     public void Dispose()
@@ -37,6 +41,177 @@ public sealed class AiAssistantRailTests : IDisposable
 
         await Assert.That(cut.FindAll("[data-testid='shell-ai-rail']")).IsEmpty();
         await _clientService.DidNotReceive().GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task DockHeader_AuthenticatedUser_OpensSelectedConversationInAiWorkspace()
+    {
+        var conversationId = Guid.CreateVersion7();
+        _conversationState.SelectConversation(CreateConversation(conversationId, "Event planning"));
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/events?q=planning");
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>(parameters => parameters
+            .Add(component => component.HostedInDock, true));
+        await cut.Find("[data-testid='ai-rail-open-workspace']").ClickAsync(new MouseEventArgs());
+
+        await Assert.That(navigation.Uri).EndsWith($"/ai/chats/{conversationId:D}");
+        await Assert.That(_conversationState.ReturnWorkspace).IsEqualTo(WorkspaceKey.Events);
+    }
+
+    [Test]
+    public async Task DockHeader_AnonymousUser_DoesNotOfferAiWorkspaceRoute()
+    {
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(
+                CreateConversationCollection([], canCreate: false)));
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: true, isAuthenticated: false);
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>(parameters => parameters
+            .Add(component => component.HostedInDock, true));
+
+        await Assert.That(cut.FindAll("[data-testid='ai-rail-open-workspace']")).IsEmpty();
+    }
+
+    [Test]
+    public async Task WorkspaceHost_RequestedConversation_SelectsRouteConversation()
+    {
+        var conversationId = Guid.CreateVersion7();
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(
+                CreateConversationCollection(
+                [
+                    new() { Id = conversationId, Title = "Requested chat", Status = "Active" }
+                ])));
+        _clientService.GetConversationAsync(conversationId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(conversationId, "Requested chat")));
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"/ai/chats/{conversationId:D}");
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>(parameters => parameters
+            .Add(component => component.HostedInWorkspace, true)
+            .Add(component => component.ConversationId, conversationId));
+
+        cut.WaitForAssertion(() =>
+        {
+            if (_conversationState.SelectedConversation?.Id != conversationId)
+                throw new InvalidOperationException("Expected workspace host to select its route conversation.");
+        });
+        await Assert.That(cut.Find("[data-testid='shell-ai-rail']").ClassList).Contains("ai-rail--workspace");
+        await _clientService.Received(1).GetConversationAsync(conversationId, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task WorkspaceHost_NewConversationRequest_CreatesOnceAndReplacesRoute()
+    {
+        var conversationId = Guid.CreateVersion7();
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])),
+                Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection(
+                [
+                    new() { Id = conversationId, Title = "AI Assistant", Status = "Active" }
+                ])));
+        _clientService.CreateConversationAsync(Arg.Any<CreateAiConversationRequestDto>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new AiAssistantCommandResult(true, conversationId, "Created", null, [])));
+        _clientService.GetConversationAsync(conversationId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(conversationId, "AI Assistant")));
+        _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/ai?new=true");
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>(parameters => parameters
+            .Add(component => component.HostedInWorkspace, true)
+            .Add(component => component.StartNewConversation, true));
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!navigation.Uri.EndsWith($"/ai/chats/{conversationId:D}", StringComparison.Ordinal))
+                throw new InvalidOperationException("Expected new conversation request to replace the workspace route.");
+        });
+        await Assert.That(navigation.Uri).EndsWith($"/ai/chats/{conversationId:D}");
+        await _clientService.Received(1).CreateConversationAsync(
+            Arg.Any<CreateAiConversationRequestDto>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task WorkspaceHost_WhenPolicyArrivesAfterRender_InitializesNewConversationRequest()
+    {
+        var conversationId = Guid.CreateVersion7();
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])),
+                Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection(
+                [
+                    new() { Id = conversationId, Title = "AI Assistant", Status = "Active" }
+                ])));
+        _clientService.CreateConversationAsync(Arg.Any<CreateAiConversationRequestDto>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new AiAssistantCommandResult(true, conversationId, "Created", null, [])));
+        _clientService.GetConversationAsync(conversationId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(conversationId, "AI Assistant")));
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/ai?new=true");
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>(parameters => parameters
+            .Add(component => component.HostedInWorkspace, true)
+            .Add(component => component.StartNewConversation, true));
+
+        await cut.InvokeAsync(() =>
+            _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true));
+
+        cut.WaitForAssertion(() =>
+        {
+            if (_conversationState.SelectedConversation?.Id != conversationId)
+                throw new InvalidOperationException("Expected late AI policy to initialize the workspace request.");
+        });
+        await _clientService.Received(1).CreateConversationAsync(
+            Arg.Any<CreateAiConversationRequestDto>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task WorkspaceHost_ReentrantPolicyChange_WaitsForCreateAffordanceBeforeProcessingNewRequest()
+    {
+        var conversationId = Guid.CreateVersion7();
+        var initialCollection = new TaskCompletionSource<HalCollectionResourceOfAiConversationSummaryDto?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(
+                initialCollection.Task,
+                Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection(
+                [
+                    new() { Id = conversationId, Title = "AI Assistant", Status = "Active" }
+                ])));
+        _clientService.CreateConversationAsync(Arg.Any<CreateAiConversationRequestDto>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new AiAssistantCommandResult(true, conversationId, "Created", null, [])));
+        _clientService.GetConversationAsync(conversationId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(conversationId, "AI Assistant")));
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/ai?new=true");
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>(parameters => parameters
+            .Add(component => component.HostedInWorkspace, true)
+            .Add(component => component.StartNewConversation, true));
+
+        await cut.InvokeAsync(() =>
+            _shellState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true));
+        cut.WaitForAssertion(() =>
+            _clientService.Received(1).GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()));
+
+        await cut.InvokeAsync(_shellState.Open);
+        initialCollection.SetResult(CreateConversationCollection([]));
+
+        cut.WaitForAssertion(() =>
+        {
+            if (_conversationState.SelectedConversation?.Id != conversationId)
+                throw new InvalidOperationException("Expected reentrant state changes to wait for the HAL create affordance.");
+        });
+        await _clientService.Received(1).CreateConversationAsync(
+            Arg.Any<CreateAiConversationRequestDto>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]

@@ -1,0 +1,72 @@
+/* ABOUTME: Scoped visual treatment for reusable AI conversation messages. */
+/* ABOUTME: Preserves the existing rail timeline geometry in dock and workspace hosts. */
+
+.ai-rail__timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-inline-size: 0;
+}
+
+.ai-rail__message {
+    border-radius: 16px;
+    padding: 10px 14px;
+    background: color-mix(in srgb, var(--mud-palette-background-gray) 50%, var(--mud-palette-surface));
+    max-width: 92%;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+    animation: ai-conversation-message-in 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes ai-conversation-message-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ai-rail__message p {
+    margin: 3px 0 0;
+    white-space: pre-wrap;
+    font-size: 0.85rem;
+    line-height: 1.55;
+}
+
+.ai-rail__message-attachments {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-block-start: 6px;
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.ai-rail__message-role {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--mud-palette-text-secondary);
+}
+
+.ai-rail__message--user {
+    background: color-mix(in srgb, var(--mud-palette-primary) 14%, var(--mud-palette-surface));
+    align-self: flex-end;
+    border-end-end-radius: 4px;
+}
+
+.ai-rail__message--assistant {
+    background: color-mix(in srgb, var(--mud-palette-secondary) 10%, var(--mud-palette-surface));
+    align-self: flex-start;
+    border-end-start-radius: 4px;
+}
+
+.ai-rail__empty-hint {
+    padding: 16px 12px;
+    font-size: 0.82rem;
+    text-align: center;
+    line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ai-rail__message { animation-duration: 1ms; }
+}
