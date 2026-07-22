@@ -728,8 +728,13 @@ intents:
       - docs/CONFIGURATION.md
       - docs/SECRETS.md
       - docs/SELF_HOSTING.md
+      - docs/DEPLOYMENT_MODES.md
+      - docs/DEPLOYMENT_TIERS.md
       - docs/BACKUP_RESTORE_UPGRADE.md
       - docs/TROUBLESHOOTING.md
+      - dev/active/optional-retained-erasure-authority/optional-retained-erasure-authority-plan.md
+      - dev/active/optional-retained-erasure-authority/optional-retained-erasure-authority-context.md
+      - dev/active/optional-retained-erasure-authority/optional-retained-erasure-authority-tasks.md
       - .omo/plans/platform-wide-privacy-erasure-authority.md
       - .omo/evidence/platform-wide-privacy-erasure-authority/rebaseline/migration-history-eligibility.md
       - .omo/evidence/platform-wide-privacy-erasure-authority/rebaseline/migration-owned-sql-inventory.md
@@ -749,6 +754,7 @@ intents:
       - .claude/rules/api-controllers.md
       - .claude/rules/tests.md
     paths_in_scope:
+      - ".claude/contract/intents.yaml"
       - ".env"
       - ".env.example"
       - "docker-compose.yml"
@@ -770,6 +776,8 @@ intents:
       - "src/Explore.API/**"
       - "src/Event.MigrationService/**"
       - "src/Explore.AppHost/**"
+      - "src/Explore.Blazor/**"
+      - "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"
       - "tests/**"
       - "schemas/openapi_islamu-event.json"
       - "schemas/islamu-event.md"
@@ -786,9 +794,13 @@ intents:
       - "docs/CONFIGURATION.md"
       - "docs/SECRETS.md"
       - "docs/SELF_HOSTING.md"
+      - "docs/DEPLOYMENT_MODES.md"
+      - "docs/DEPLOYMENT_TIERS.md"
       - "docs/BACKUP_RESTORE_UPGRADE.md"
       - "docs/TROUBLESHOOTING.md"
       - "docs/PRIVACY_ERASURE.md"
+      - "dev/active/optional-retained-erasure-authority/**"
+      - ".omo/evidence/optional-retained-erasure-authority/**"
       - ".omo/evidence/platform-wide-privacy-erasure-authority/**"
     minimum_tests:
       - Event.Domain.UnitTests
@@ -812,30 +824,36 @@ intents:
       - docs/CONFIGURATION.md
       - docs/SECRETS.md
       - docs/SELF_HOSTING.md
+      - docs/DEPLOYMENT_MODES.md
+      - docs/DEPLOYMENT_TIERS.md
       - docs/BACKUP_RESTORE_UPGRADE.md
       - docs/TROUBLESHOOTING.md
       - docs/PRIVACY_ERASURE.md
       - schemas/islamu-event.md
     unique_acceptance:
       - "Runtime, Domain, Application, Persistence, API, MigrationService, and AppHost authority surfaces use generalized PrivacyErasure* names; legacy LocationPrivacy* authority names remain only in migration-history evidence"
-      - "PrivacyErasure:Durability:Mode accepts only ApplicationDatabase or RetainedAuthority; environment wiring uses PrivacyErasure__Durability__Mode and the retained secret uses ConnectionStrings__PrivacyErasureAuthority"
-      - "ApplicationDatabase is the default and never reads, retains, resolves, migrates, replays, or exposes the optional authority connection or services"
+      - "Exactly one authority-first workflow appends or reuses an immutable fact before application mutation; only the IPrivacyErasureAuthority storage adapter varies by topology"
+      - "PrivacyErasure:Authority:Topology accepts only CoLocated or ExternalDatabase; the default is CoLocated, topology is never inferred from a connection string, and CoLocated never opens the external connection"
+      - "A present legacy PrivacyErasure:Durability:Mode key is rejected with actionable replacement-key and pre-v1 reset-only guidance; no compatibility shim or silent translation is allowed"
+      - "The application-side mirror/checkpoint remains active in both topologies and is atomically confirmed with local dispositions, provider work, cache authority, and receipt state"
       - "User is the only executable subject kind; facts and work are typed and versioned, with no table, column, free-form JSON, or reflection-driven instruction surface"
-      - "The first transaction fences the User and atomically records local erasure state, policy coverage, specialized provider work, cache invalidation, and a fixed-time-verifiable hash of the once-revealed 24-hour receipt"
+      - "The authority fact and User fence exist before PII enumeration; one serializable application transaction records local erasure state, policy coverage, specialized provider work, cache invalidation, and a fixed-time-verifiable hash of the once-revealed short-lived receipt"
       - "All current durable User-PII copies have one machine-checked disposition, exact subject and tenant predicates, and canary proof that unrelated users and tenants remain unchanged"
       - "Provider cleanup runs only after commit through specialized idempotent fenced outboxes with bounded retry, dead-letter or unknown settlement, and ownership checks"
-      - "RetainedAuthority startup migrates its separate minimized authority and replays retained User facts under the current policy before API traffic or ordinary workers after an older application restore"
-      - "Exactly one generated init plus snapshot exists for ExploreDbContext, DataProtectionKeyContext, and PrivacyErasureAuthorityDbContext in the root, DataProtection, and PrivacyErasureAuthority migration lanes"
-      - "Authority identifiers are treated as linkable personal data, retained only through the maximum resurrection-capable backup horizon plus 30 days, and protected by function-only least privilege and redacted observability"
-      - "Every minimum test project executes a nonzero test count; the Release build, MigrationService/AppHost builds, all three pending-model checks, fresh migration apply, authority-free local-lite, HTTP/SQL/provider, and old-backup restore rehearsals are evidenced"
+      - "Startup replay runs before API traffic and ordinary workers in both topologies; ExternalDatabase restore replay is protective only when its authority database has an independent restore lifecycle"
+      - "Application migrations solely own co-located authority tables and the application mirror; dedicated authority migrations solely own external tables, functions, roles, and grants and are run by MigrationService credentials"
+      - "API runtime and MigrationService receive separate runtime and migrator authority credentials mapped to ConnectionStrings__PrivacyErasureAuthority only in the owning process; Blazor receives neither secret"
+      - "Authority identifiers are treated as linkable personal data, retained only through the maximum resurrection-capable backup horizon plus the approved safety margin, and protected by function-only least privilege, legal-hold pseudonymization, expiry cleanup, and redacted observability"
+      - "This workstream owns receipt/status, provider settlement, startup replay, retention, and restore behavior; Event Location contributes only its typed disposition and correction adapter"
+      - "Every minimum test project executes a nonzero test count; the Release build, MigrationService/AppHost builds, all three pending-model checks, fresh migration apply, one-database CoLocated, two-database ExternalDatabase, HTTP/SQL/provider, and old-backup restore rehearsals are evidenced"
     pr_checklist:
       - "PIN, RED, and GREEN evidence covers completeness, malformed facts/receipts/config/catalogs, cross-tenant isolation, concurrent retries, provider ambiguity, stale restore, cancellation/resume, and PII canaries"
       - "Clean Architecture remains inward-only; repositories return entities, handlers map DTOs, validators are manually instantiated, and only one dedicated Persistence adapter may cross tenant filters with a named reason and exact predicates"
-      - "PrivacyErasure* naming, PrivacyErasure__Durability__Mode, ConnectionStrings__PrivacyErasureAuthority, OpenAPI, schemas, Compose, AppHost, MigrationService, and operator docs agree"
-      - "The three init migrations are generated with dotnet ef in serialized context order, carry every classified current PostgreSQL invariant, omit legacy-only adoption/backfills, and leave no pending model changes"
+      - "PrivacyErasure* naming, PrivacyErasure:Authority:Topology, CoLocated and ExternalDatabase semantics, ConnectionStrings__PrivacyErasureAuthority, OpenAPI, schemas, Compose, AppHost, MigrationService, active planning, and operator docs agree"
+      - "Application and dedicated authority migrations have non-overlapping topology ownership, carry every classified current PostgreSQL invariant, follow the approved reset-only policy, and leave no pending model changes"
       - "No provider call occurs in a handler, database transaction, migration, or startup replay transaction; specialized outboxes prove idempotency, fencing, retries, unknown outcomes, and ownership limits"
       - "Logs, metrics, traces, health, ProblemDetails, receipts, ledgers, evidence, and support artifacts contain no PII, identifiers, credentials, provider payloads/responses, URLs, or free-text errors"
-      - "The application-database and retained-authority restore paths prove no PII resurrection before traffic, bounded authority retention, legal-hold pseudonymization, and unrelated-user preservation"
+      - "CoLocated proves rollback replay without claiming whole-database restore safety; ExternalDatabase proves old-application-backup replay from an untouched independently restored authority, bounded retention, legal-hold pseudonymization, and unrelated-user preservation"
       - "Opening and closing hashes attribute dirty work; no unrelated file, test, database, container, volume, backup, process, port, or temporary artifact is changed or left behind"
     forbidden_without_approval:
       - "Adding arbitrary JSON, table, column, SQL, reflection-driven, prompt-derived, or other executable erasure instructions"

@@ -1,433 +1,233 @@
-<!-- ABOUTME: Implementation plan for making retained location-erasure authority an explicit optional capability. -->
-<!-- ABOUTME: Preserves a one-database default while defining EF-managed retained mode, migrations, startup gates, and operator transitions. -->
+<!-- ABOUTME: Canonical implementation plan for platform-wide User erasure and its privacy-erasure authority. -->
+<!-- ABOUTME: Owns policy, topology, persistence, replay, provider settlement, self-hosting, and restore guarantees. -->
 
-# Optional Retained Erasure Authority Implementation Plan
+# Platform Privacy Erasure Authority — Implementation Plan
 
-**Status:** Proposed; architecture direction approved; implementation in progress; completion tracked per OREA task evidence
+Last Updated: 2026-07-22 Europe/Brussels
 
-**Last Updated:** 2026-07-20 Europe/Brussels
+## 0. Plan Metadata
 
-**Primary intents:** `add-ef-migration`, `update-repository-query`, plus a cross-cutting configuration/deployment fallback contract
+| Field | Value |
+|---|---|
+| Task ID | `optional-retained-erasure-authority` |
+| Canonical intent | `platform-privacy-erasure` |
+| Status | Active — Phase 1 accepted (`OREA-100`, `OREA-110`, `OREA-120`); Phase 2 persistence adapters and migration ownership in progress |
+| Owner | Unassigned |
+| Change type | Cross-layer privacy policy, erasure orchestration, infrastructure, API, persistence, hosting, tests, and operator documentation |
+| Execution boundary | Phase-ordered implementation; current next dependency is the real CoLocated authority adapter in `OREA-200` |
 
-**Owning workstream:** `dev/active/optional-retained-erasure-authority/`
+### Scope
 
-## 1. Outcome
+In scope:
 
-ISLAMU Event must remain self-hostable for small and large operators from the same codebase.
+- Maintain a machine-checked inventory of every durable local and external User-PII copy and one compiled disposition for each copy.
+- Fence the User before erasure enumeration and prevent PII recreation while erasure is pending or complete.
+- Apply all local dispositions, application mirror/checkpoint updates, provider work, cache invalidation intents, and receipt state atomically per authority fact.
+- Expose truthful asynchronous deletion through `202 Accepted` and a short-lived, once-revealed receipt whose hash is stored for fixed-time verification.
+- Settle external copies through specialized, idempotent, fenced provider outboxes after the local transaction commits.
+- Remove `ApplicationDatabase` and `RetainedAuthority` as production behavior modes.
+- Retain one authority-first erasure workflow and the application-database mirror/checkpoint.
+- Support two explicit storage topologies: `CoLocated` and `ExternalDatabase`.
+- Make a one-database installation simple while describing its weaker restore guarantee accurately.
+- Make a two-database installation restore-safe when the authority database has an independent restore lifecycle.
+- Wire API runtime and migration credentials separately for least privilege.
+- Cover both topologies, including two independent PostgreSQL Testcontainers and a real pre-erasure application backup restore.
+- Retain linkable authority data only through the maximum resurrection-capable backup horizon plus the approved safety margin; pseudonymize legal-hold evidence and destroy expired credentials/receipts.
+- Document `.env`, `.env.example`, Docker Compose, Aspire, secrets, migration, backup, restore, upgrade, and health behavior.
 
-The default deployment requires one application PostgreSQL database, the API, the Blazor BFF/application, and the migration service. Location erasure remains functional and transactional in that topology. The default does **not** claim that erased physical-location PII cannot reappear when an operator restores an application backup taken before the erasure.
+Out of scope:
 
-Operators that need protection against that restore scenario can explicitly enable a second, independently retained PostgreSQL database. That database becomes the retained erasure authority: it stores only immutable PII-free erasure facts and is replayed over a restored application database before traffic or hosted workers start.
+- A distributed transaction across the authority and application databases.
+- Storing live PII, raw identifiers, selectors, or deletion payloads in the authority ledger.
+- Claiming restore safety for a co-located authority or for two databases restored together.
+- User-configurable SQL, arbitrary table targeting, or plugin-style erasure instructions.
+- Destructive rewriting of existing migration history or deployed authority facts.
+- Executable Organization or Tenant erasure before typed policies and handlers exist.
+- Deleting upstream identities the platform does not own; revoke or unlink them instead.
 
-The optional database must follow repository conventions:
+### Inputs and overlaps
 
-- a dedicated EF Core `LocationPrivacyAuthorityDbContext` in `Explore.Persistence`;
-- dedicated EF repositories and entity configurations;
-- migrations generated with `dotnet ef migrations add` and applied by `Event.MigrationService`;
-- a named .NET connection string supplied through environment variables, user secrets, or the configured secret provider;
-- no runtime schema bootstrap from an embedded SQL file;
-- local Aspire provisioning only in `local-full`.
+- Canonical intent: `.claude/contract/intents.yaml` → `platform-privacy-erasure`.
+- Superseded broader plan and inherited evidence: `.omo/plans/platform-wide-privacy-erasure-authority.md`.
+- Historical workstream being re-baselined: this `dev/active/optional-retained-erasure-authority/` directory.
+- Related active planning: `dev/active/event-location-privacy/` owns only the EventLocation disclosure/remediation adapter consumed by this workstream.
 
-## 2. Issue And Root Cause
+This plan is the sole implementation authority for platform User erasure, authority storage, startup replay, provider settlement, receipt/status, retention, and restore behavior. The `.omo` plan remains historical evidence only after its verified facts and unfinished requirements are represented here.
 
-### 2.1 Baseline issue at plan approval
+The current intent now describes one authority-first workflow with `CoLocated` as the default topology, `ExternalDatabase` as the explicit alternative, separate runtime/migrator credentials, and no Blazor authority secret. The governance correction is complete; product implementation remains gated by the unchecked `OREA-100` inventory reconciliation and every `OREA-110` runtime/product task.
 
-At plan approval, the retained-only implementation treated the retained database as mandatory for every installation:
+## 1. Current-State Evidence
 
-- `InfrastructureServicesRegistration.ConfigureInfrastructureServices` always registers `PostgreSqlLocationPrivacyErasureAuthority`.
-- `Explore.API/Program.cs` always executes `LocationPrivacyStartupGate` outside tests and OpenAPI generation.
-- `PostgreSqlLocationPrivacyErasureAuthority` throws when `LocationPrivacy:ErasureAuthority:ConnectionString` is missing.
-- `docs/OPERATIONS.md` describes that connection string and replay gate as required.
-
-At that baseline, `src/Explore.AppHost/AppHost.cs` did not provision or inject an authority database in any profile, and `Event.MigrationService` knew only `ExploreDbContext` and `DataProtectionKeyContext`. These statements explain the approved correction; after implementation work begins, current status must come from the owning OREA task evidence rather than this historical baseline.
-
-### 2.2 Why the decision happened
-
-The Event Location Privacy workstream optimized first for the strongest disaster-recovery property: an older application backup must not be able to make erased Home PII live again. That property genuinely requires a ledger outside the application restore set. A table in the application database—or a second database on the same restored cluster/volume—cannot provide it.
-
-The mistake was not the existence of retained authority. The mistake was promoting the strongest deployment topology into a universal application invariant instead of an explicit operator-selected capability. That led directly to unconditional dependency injection, unconditional startup replay, and a non-EF schema path.
-
-### 2.3 Convention mismatch at plan approval
-
-At plan approval, the authority implementation also bypassed normal persistence ownership:
-
-- `src/Explore.Infrastructure/Privacy/ErasureAuthority/PostgreSqlLocationPrivacyErasureAuthority.cs` owned a raw `NpgsqlDataSource`.
-- `LocationPrivacyErasureAuthoritySchema.sql` was an embedded runtime provisioning resource.
-- the authority had no DbContext, design-time factory, EF migration history, or migration-service step.
-
-That baseline justified the approved correction: keep the security semantics while bringing storage and schema lifecycle back under `Explore.Persistence` and EF Core. This subsection does not claim downstream completion; current implementation status comes only from the owning OREA task evidence.
-
-## 3. Source Ownership And Supersession
-
-This focused plan owns the deployment-mode correction for retained erasure authority. It does not replace the broader Event Location Privacy disclosure, authorization, API, calendar, AI, federation, or discovery work.
-
-The broader Event Location Privacy planning sources now defer deployment-mode, persistence, migration, startup, and provisioning ownership to this plan:
-
-- `dev/active/event-location-privacy/event-location-privacy-plan.md`;
-- `dev/active/event-location-privacy/event-location-privacy-context.md`;
-- `dev/active/event-location-privacy/event-location-privacy-tasks.md`;
-- `.omo/plans/event-location-privacy.md`.
-
-OREA-000 completed that planning re-baseline. Canonical operator docs, including `docs/OPERATIONS.md` and `docs/BACKUP_RESTORE_UPGRADE.md`, remain intentionally unchanged until OREA-320 updates them against implemented behavior. Work on the authority topology must not continue concurrently in both workstreams.
-
-## 4. Deployment Modes And Defaults
-
-| Concern | `ApplicationDatabase` | `RetainedAuthority` |
+| Evidence | Current behavior | Consequence |
 |---|---|---|
-| Default | Yes | No; explicit opt-in |
-| PostgreSQL databases | One application database | Application database plus independent authority database |
-| Normal erasure | Atomic local ledger, PII erasure, audit, checkpoint, and outbox transaction | Authority append first; application mirror, PII erasure, audit, checkpoint, and outbox transaction second |
-| Live-request safety | Full transactional erasure | Full transactional erasure plus replayable retained intent |
-| Protection from pre-erasure app backup restore | Not guaranteed | Protected within the documented restore boundary when the authority has an independent retention/restore set and replay succeeds |
-| Startup replay | Not required; no authority service is resolved | Mandatory before host start |
-| Missing authority configuration | Irrelevant; application starts | Configuration error; startup fails closed |
-| Authority outage | Irrelevant | Startup and new erasures fail closed; never fall back |
-| Health posture | Healthy selected mode; `restoreReplayProtection=false` | Healthy only after authority validation/replay; `restoreReplayProtection=true` |
+| `src/Explore.Application/Configuration/PrivacyErasureDurabilityOptions.cs` | Defines `ApplicationDatabase` and `RetainedAuthority`; defaults to `ApplicationDatabase` | Topology and durability behavior are conflated |
+| `src/Explore.Application/ApplicationServicesRegistration.cs` | Selects between two workflow implementations | The production path can bypass authority-first replay semantics |
+| `src/Explore.Infrastructure/InfrastructureServicesRegistration.cs` | Registers replay only in retained mode | Startup recovery is mode-dependent |
+| `src/Explore.Persistence/PersistenceServicesRegistration.cs` | Always registers the local mirror, but registers the authority context only in retained mode | The application mirror already exists and should remain |
+| `src/Explore.API/BackgroundServices/PrivacyErasureStartupGate.cs` | Returns immediately in application-database mode | Co-located deployments do not verify pending facts before readiness |
+| `src/Explore.Application/Services/RetainedAuthorityPrivacyErasureWorkflow.cs` | Appends authority intent, then replays it into the application database | This is the workflow shape to retain for both topologies |
+| `src/Explore.Application/Services/PrivacyErasureApplier.cs` | Applies erasure, mirrors the fact locally, advances checkpoint, and emits outbox work in the application transaction | The requested application-side mirror is already part of the applier |
+| `src/Explore.Application/Features/Users/Handlers/Commands/DeleteUserCommandHandler.cs` | User deletion is the current request boundary | Replace location-specific deletion behavior with one policy-versioned platform orchestrator and truthful asynchronous status |
+| `src/Explore.Persistence/Repositories/UserLocationPrivacyErasureRepository.cs` and focused contract/integration tests | A named owner-bounded cross-tenant Location/Home disposition seam exists and has prior PostgreSQL evidence | Preserve its exact subject predicates and tenant-substitution protections as one adapter inside the complete policy, not as a second orchestrator |
+| `src/Explore.Domain/PrivacyErasureSaga.cs`, `PrivacyErasurePolicyCoverage.cs`, `PrivacyErasureIntent.cs`, and `PrivacyErasureReplayCheckpoint.cs` | Generalized platform state is present in current source | Treat presence as partial implementation; acceptance requires fence, receipt, policy coverage, concurrency, expiry, and restore tests |
+| `tests/Event.Architecture.Tests/Privacy/UserPiiInventory.cs` and `UserPiiInventoryArchitectureTests.cs` | A machine-checkable disposition inventory and selectors exist | Reconcile them with the current EF model and provider registries before any erasure family is accepted |
+| Existing email, notification, web-push, webhook, storage, ATProto, Listmonk, Keycloak, and outbox implementations | Provider-specific lifecycle and retry patterns already exist | Reuse specialized clients/outboxes; do not introduce a generic provider plugin or inline network calls |
+| `src/Explore.Persistence/Privacy/ErasureAuthority/Repositories/ApplicationDatabasePrivacyErasureLedgerRepository.cs` | Implements the application ledger against `ExploreDbContext` | It can remain the mirror and support a co-located authority adapter |
+| `src/Explore.Persistence/Privacy/ErasureAuthority/PrivacyErasureAuthorityDbContext.cs` | Maps only the authority counter and intent ledger | External authority storage is already narrowly scoped |
+| `tests/Event.Persistence.IntegrationTests/Privacy/PrivacyErasureAuthorityDatabaseContractTests.cs` and related composition/ownership/model tests | Dedicated authority schema, function-only runtime access, and topology composition have focused evidence | Reuse these proofs, but rerun them against the consolidated topology and migration contract before acceptance |
+| Application and authority migrations | Both create `privacy_erasure_authority` tables; the dedicated migration also creates security-definer functions and ACLs | Running both migrations in one database would collide; co-located storage must be owned by the application migration |
+| `src/Event.MigrationService/Program.cs` and `Worker.cs` | Migrate the application and data-protection contexts only | External authority migrations have no host-owned execution path yet |
+| `.env`, `.env.example`, `docker-compose.yml` | Mention the old mode but do not fully map authority configuration into services | Self-hosted behavior is incomplete and easy to misconfigure |
+| `src/Explore.Secrets/Bootstrap/BootstrapSecretLoader.cs` | Builds only the main PostgreSQL connection from `POSTGRESQL_*` | Duplicating the loader for authority storage would add unnecessary configuration machinery |
+| `tests/Event.Persistence.IntegrationTests/Privacy/GlobalLocationPrivacyErasureTests.cs` | Already provisions separate application and authority PostgreSQL containers for retained tests | Two-container infrastructure should be extended rather than recreated |
 
-`ApplicationDatabase` does not mean erasure is disabled. It means the erasure ledger is stored in the same restore domain as the erased data. UI behavior and public API semantics do not change between modes.
+### Baseline status
 
-## 5. Configuration Contract
+The planning session ran the canonical Release build on 2026-07-22: 26 projects built with 0 errors and 41 warnings. The warnings include pre-existing `NU1903` advisories for `System.Security.Cryptography.Xml` 10.0.7. The worktree contains unrelated user changes, so implementation must still record its own starting SHA/status and rerun the baseline before editing runtime files; it must not attribute unrelated failures or warnings to this workstream without scoped evidence.
 
-### 5.1 Canonical keys
+## 2. Proposed End State
+
+### 2.1 Complete platform User-erasure contract
+
+The authority records one immutable, policy-versioned User intent. A compiled policy orchestrator then applies every classified disposition; the inventory proves completeness but never becomes executable SQL or runtime instructions.
+
+The platform contract is:
+
+1. Authenticate and authorize the deletion request.
+2. Append or reuse one typed authority fact and establish the User fence before enumerating PII.
+3. In one serializable application transaction, apply all local hard-delete/anonymize/retain dispositions, write the application mirror/checkpoint, materialize specialized provider work, invalidate cache authority, and persist receipt/status state.
+4. Commit before any provider call. Specialized workers settle external work with lease fencing, idempotency, bounded retry/backoff, explicit `Unknown`, dead-letter visibility, and reconciliation.
+5. Return `202 Accepted`, `Location`, and `Retry-After` with a once-revealed receipt. Persist only a fixed-time-verifiable hash; the status endpoint is `private, no-store` and remains usable after login removal until expiry.
+6. Prevent PII-producing writes, workers, and cache rematerializers from recreating subject data while the fence is active.
+7. On startup or restore, replay every authority fact not covered by the current policy version before traffic and ordinary workers.
+8. Retain or pseudonymize evidence only under an explicit retention/legal-hold rule and purge linkable identifiers after the resurrection-capable backup horizon plus the approved margin.
+
+Each durable PII family must be classified as exactly one of: hard delete, anonymize, bounded retain, or external action. `User` is the only executable subject kind. Organization and Tenant remain extension seams until separately approved typed policies and handlers exist.
+
+### 2.2 One workflow, two storage topologies
 
 ```text
-LocationPrivacy:ErasureDurability:Mode
-ConnectionStrings:LocationPrivacyAuthority
+authorized erasure request
+        |
+        v
+append immutable authority fact and commit it
+        |
+        v
+replay/apply into application transaction
+        |
+        +--> remove or anonymize bounded PII
+        +--> append/idempotently confirm application-side mirror
+        +--> advance replay checkpoint
+        +--> enqueue outbox follow-up work
 ```
 
-Environment-variable forms:
+The workflow is invariant. Only the `IPrivacyErasureAuthority` storage adapter changes:
+
+| Topology | Authority adapter | Application mirror | Restore guarantee |
+|---|---|---|---|
+| `CoLocated` | Short-lived, separately committed adapter over the application database authority ledger | Same application ledger, idempotently confirmed by the applier | No protection from restoring the whole application database to a pre-erasure backup |
+| `ExternalDatabase` | Dedicated `PrivacyErasureAuthorityDbContext` and append/read functions | Application database ledger | Replay-safe only when the authority database is not restored with the application database |
+
+`CoLocated` is a supported simplicity topology, not a different erasure behavior. Its authority append must commit before the application mutation begins so an application-transaction rollback remains replayable. It must use a separate context/transaction boundary from the applier.
+
+### 2.3 Configuration contract
+
+Replace `PrivacyErasure:Durability:Mode` with:
 
 ```text
-LocationPrivacy__ErasureDurability__Mode=ApplicationDatabase
-ConnectionStrings__LocationPrivacyAuthority=<secret PostgreSQL connection string>
+PrivacyErasure:Authority:Topology = CoLocated | ExternalDatabase
 ```
 
 Rules:
 
-1. `LocationPrivacy:ErasureDurability:Mode` defaults to `ApplicationDatabase` when absent.
-2. The only accepted values are `ApplicationDatabase` and `RetainedAuthority`, matched case-insensitively but normalized in diagnostics.
-3. A connection string never activates retained mode by itself.
-4. `RetainedAuthority` requires `ConnectionStrings:LocationPrivacyAuthority` in the API and migration-service process.
-5. `ApplicationDatabase` neither validates nor opens the authority connection.
-6. Mode selection is startup/deployment configuration through `IOptions`, not a hot-reload setting. A mode change requires a controlled restart.
-7. The connection string is deployment-managed. It is never stored in governance tables, returned by an API, sent to Blazor, logged, traced, included in health data, or exposed in Aspire diagnostics as plain configuration.
-8. The old `LocationPrivacy:ErasureAuthority:ConnectionString` key is removed from runtime authority. Retained mode with only the old key must fail with bounded migration guidance; it must not silently activate or silently fall back.
+- Default to `CoLocated` for direct developer and single-database self-hosting scenarios.
+- Keep `.env` and `.env.example` explicit with `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=CoLocated` so operators see the choice.
+- Do not infer `ExternalDatabase` from connection-string presence.
+- Ignore stray external authority values in `CoLocated` and never open the external connection.
+- Require an authority connection in `ExternalDatabase`; fail startup/migration with a bounded, actionable error when absent.
+- Reject the legacy `PrivacyErasure:Durability:Mode` key with an upgrade message. Do not silently translate `ApplicationDatabase`, because silent translation can hide an intended restore guarantee.
 
-The same canonical connection-string name is used by both processes. Operators may give `Event.MigrationService` a migration-owner credential and the API an execute/read-only runtime credential by supplying different secret values to each process.
+Compose-facing variables:
 
-## 6. Target Architecture
-
-### 6.1 Local application ledger in both modes
-
-The application database always contains a PII-free erasure ledger and monotonic counter. This is not extra infrastructure; it is part of `ExploreDbContext`.
-
-The local ledger solves three problems:
-
-- default mode retains an auditable, idempotent sequence without requiring another database;
-- the existing correction-outbox contract keeps a positive intent sequence in both modes;
-- transitions between modes can synchronize exact facts instead of declaring all historical erasures unprotected.
-
-In retained mode, the application ledger is a mirror of the external authority for every applied intent. In default mode, it is the only ledger and therefore shares the application's backup/restore fate.
-
-### 6.2 Application-database flow
-
-1. Validate the deletion/erasure request and discover the owner-bounded Home set.
-2. Create one UUIDv7 PII-free erasure intent.
-3. Inside one `ExploreDbContext` serializable transaction:
-   - append the intent to the local erasure ledger and allocate the next sequence;
-   - erase Home PII and tombstone dependent room/label state;
-   - update EventLocation policy/audit state;
-   - erase user/actor PII and authentication tokens;
-   - append the local checkpoint;
-   - append PII-free correction outbox rows.
-4. Commit once.
-5. Invalidate affected cache tags after commit.
-
-If any database operation fails, both the ledger append and erasure roll back. There is no startup replay from an independent source after a backup restore, and documentation must say so plainly.
-
-### 6.3 Retained-authority flow
-
-1. Validate the request and construct the same PII-free intent.
-2. Append it to `LocationPrivacyAuthorityDbContext` in an independent transaction.
-3. Inside one `ExploreDbContext` serializable transaction:
-   - mirror the exact authority fact into the local ledger;
-   - apply the erasure mutations;
-   - append the checkpoint;
-   - append correction outbox rows.
-4. Commit and invalidate caches.
-
-There is intentionally no distributed transaction. If step 2 succeeds and step 3 fails, the retained fact remains pending and startup/runtime replay applies it later. Retained-mode failures never invoke the application-database workflow as a fallback.
-
-### 6.4 Shared application logic, explicit workflows
-
-Refactor the current `GlobalLocationPrivacyErasureService` so storage-mode coordination and application mutations are separate:
-
-- a shared application erasure applier owns entity mutation, audits, checkpoints, and outbox creation but does not open a transaction itself;
-- `ApplicationDatabaseLocationPrivacyErasureWorkflow` owns the single application transaction;
-- `RetainedAuthorityLocationPrivacyErasureWorkflow` owns authority-first append and replay;
-- `IGlobalLocationPrivacyErasureService` remains the handler-facing boundary;
-- composition selects one workflow at startup without constructing the retained workflow in default mode.
-
-Do not add a fake/no-op authority implementation. Default mode is a real workflow with a real local ledger, not an authority client that pretends to succeed.
-
-### 6.5 Layer ownership
-
-| Layer | Ownership |
-|---|---|
-| Domain | Mode-neutral PII-free erasure fact/counter invariants; no connection or deployment knowledge |
-| Application | Erasure workflow contracts, shared applier, transaction ordering, replay rules, and outbox payloads |
-| Persistence | Both ledger repositories, `LocationPrivacyAuthorityDbContext`, entity configurations, factories, and migrations |
-| Infrastructure | No authority schema ownership; retain only adapters that genuinely belong to external/runtime infrastructure |
-| API | Options validation, workflow selection, conditional startup gate, and bounded health result |
-| Migration service | Conditional authority migration and mode-transition synchronization |
-| AppHost | Profile-owned resource graph and secret/reference injection |
-| Blazor | No authority configuration, connection, mode selection, or local authorization logic |
-
-## 7. EF Core Persistence Design
-
-### 7.1 New context and repositories
-
-Add a focused persistence area under `src/Explore.Persistence/Privacy/ErasureAuthority/`:
-
-- `LocationPrivacyAuthorityDbContext.cs` — applies only authority configurations;
-- `LocationPrivacyAuthorityDbContextFactory.cs` — design-time factory using `ConnectionStrings:LocationPrivacyAuthority`;
-- `Configurations/LocationPrivacyErasureAuthorityIntentConfiguration.cs`;
-- `Configurations/LocationPrivacyErasureAuthorityCounterConfiguration.cs`;
-- `Repositories/EfCoreLocationPrivacyErasureAuthorityRepository.cs`;
-- `Repositories/ApplicationDatabaseLocationPrivacyErasureLedgerRepository.cs`.
-
-The repositories return domain entities and expose append/read operations only. No DTO or `IQueryable` crosses the boundary.
-
-`ExploreDbContext` also maps the ledger entity/counter so default mode can append within the existing unit of work. `LocationPrivacyAuthorityDbContext` maps the same data contract in its own database. The external context must not scan and accidentally include the full application model.
-
-Both contexts retain the existing `location_privacy_authority` schema and table names. In default mode that schema lives inside the single application database; in retained mode the same schema contract also exists in the independent authority database. Reusing the physical contract makes raw-schema adoption and exact ledger synchronization testable without inventing a second representation.
-
-### 7.2 Schema invariants
-
-Preserve the current useful authority properties:
-
-- UUIDv7 RFC-variant intent IDs;
-- non-empty opaque owner/location IDs;
-- normalized distinct ordered location IDs;
-- closed erasure-reason values;
-- positive monotonic sequences with transactional allocation;
-- idempotent duplicate append only when the normalized payload matches;
-- mismatched duplicate rejection;
-- server-owned UTC recording time;
-- bounded ordered reads;
-- no update/delete repository surface;
-- database-enforced mutation rejection for retained facts;
-- no address, label, room name, coordinates, postcode, free text, credentials, or other PII.
-
-Fixed provider SQL that EF cannot model—such as the mutation-rejection trigger, security-definer functions, fixed `search_path`, and role grants—must live inside the generated EF migration lifecycle and be explicitly reviewed. It must not remain an embedded resource executed by application or test startup.
-
-### 7.3 Migration ownership
-
-Generate two migrations from the repository root; do not hand-create migration classes or snapshots:
-
-```bash
-dotnet ef migrations add AddApplicationDatabaseLocationPrivacyErasureLedger \
-  --context ExploreDbContext \
-  --project src/Explore.Persistence/Explore.Persistence.csproj \
-  --startup-project src/Explore.API/Explore.API.csproj
-
-dotnet ef migrations add InitialLocationPrivacyAuthority \
-  --context LocationPrivacyAuthorityDbContext \
-  --project src/Explore.Persistence/Explore.Persistence.csproj \
-  --startup-project src/Explore.API/Explore.API.csproj \
-  --output-dir Migrations/LocationPrivacyAuthority
+```dotenv
+PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=CoLocated
+PRIVACY_ERASURE_AUTHORITY_RUNTIME_CONNECTION_STRING=
+PRIVACY_ERASURE_AUTHORITY_MIGRATOR_CONNECTION_STRING=
 ```
 
-The authority migration must support both a new empty database and non-destructive adoption of the current raw `location_privacy_authority` schema. Existing facts, counter position, functions, and permissions cannot be dropped or renumbered.
+The two secret values map into the same internal .NET key in different processes:
 
-Both `Down()` paths must abort when erasure facts exist. Development rollback may remove an unused empty ledger, but no rollback may silently destroy retained or local erasure evidence.
+| Process | Public/self-host variable | Internal key | Privilege |
+|---|---|---|---|
+| `Explore.API` | `PRIVACY_ERASURE_AUTHORITY_RUNTIME_CONNECTION_STRING` | `ConnectionStrings__PrivacyErasureAuthority` | Execute append/read functions only |
+| `Event.MigrationService` | `PRIVACY_ERASURE_AUTHORITY_MIGRATOR_CONNECTION_STRING` | `ConnectionStrings__PrivacyErasureAuthority` | Schema migration and grant management |
 
-The current worktree contains an in-progress replacement of the main migration chain and snapshot. Implementation must not generate either migration until that shared chain is reconciled and owned by one migration task.
+This keeps the existing named connection contract, prevents the API from receiving DDL credentials, and avoids duplicating the main PostgreSQL secret-loader convention. Direct non-Compose deployments may set the internal .NET keys per process. Secret examples remain blank and must never include production credentials.
 
-## 8. Migration Service And Mode Transitions
+### 2.4 Migration ownership
 
-### 8.1 Startup migration behavior
+- The application migration remains the sole owner of `privacy_erasure_authority` tables in `CoLocated` topology and of the application-side mirror in all topologies.
+- The dedicated authority migration remains the sole owner of authority tables/functions/roles in the external database.
+- `Event.MigrationService` conditionally migrates the external authority context before API readiness when topology is `ExternalDatabase`.
+- The API runtime credential never applies migrations.
+- No implementation may apply both the application migration and dedicated authority migration to the same physical database.
+- This pre-v1 development workstream uses a documented reset-only upgrade policy. No compatibility shim or silent mode translation is required; reset eligibility, backup prerequisites, generated migration ownership, and the prohibition on agent-driven database/container/volume/backup deletion remain explicit.
 
-`Event.MigrationService` always migrates the application and Data Protection contexts. It registers and migrates `LocationPrivacyAuthorityDbContext` only when `RetainedAuthority` is selected.
+### 2.5 Readiness and operations
 
-In default mode:
+The startup gate always invokes replay. In `CoLocated`, replay reads the local authority adapter. In `ExternalDatabase`, it reads the external authority. Readiness remains false until replay reaches the authority counter or an existing bounded policy explicitly permits degraded startup.
 
-- no authority DbContext is registered;
-- no authority connection string is read or validated;
-- the worker completes normally with only the application database.
+Health/diagnostic output exposes only:
 
-In retained mode:
+- `topology`: `CoLocated` or `ExternalDatabase`;
+- `restoreReplayProtection`: `false` for `CoLocated`; `true` for externally configured storage, with documentation clarifying the independent-restore-domain requirement;
+- replay status/counter lag and last successful replay time where existing health conventions support them.
 
-- the authority database is migrated before API startup;
-- schema/adoption failure stops the migration service with exit code 1;
-- the API waits for migration completion and then runs retained replay before host start.
+It must not expose hosts, database names, users, connection strings, identifiers, selectors, or erased values.
 
-The API may keep its existing application-database migration fallback for direct execution, but it must never use the runtime authority credential to apply authority migrations. Retained deployments run `Event.MigrationService` or an explicit `dotnet ef database update --context LocationPrivacyAuthorityDbContext` with a migration credential first.
+## 3. Architecture and Design Decisions
 
-### 8.2 Upgrade from default to retained
-
-Mode activation is a controlled synchronization, not merely adding a connection string:
-
-1. Back up the application database.
-2. Provision an independent PostgreSQL database and independent backup/retention policy.
-3. Run `Event.MigrationService` with mode `RetainedAuthority` and the authority migration credential.
-4. Compare the application ledger, application checkpoint chain, and retained ledger by sequence, intent ID, and normalized payload.
-5. For erasures produced by corrected default mode, append any application-ledger suffix to the retained database in the same order.
-6. For a pre-correction retained deployment whose external facts and verified checkpoints predate the new local mirror, import only the authority prefix already proven applied by the checkpoint chain into the local ledger; do not replay that prefix or duplicate its outbox rows.
-7. Leave any authority suffix beyond the verified application checkpoint for normal API replay.
-8. Reject any divergence, fork, or gap; never overwrite or renumber.
-9. Start the API; retained replay applies every authority fact beyond the verified application prefix before traffic.
-
-Because corrected default mode writes the local ledger and checkpoint atomically with erasure, its historical erasures can be promoted rather than treated as future-only protection. Existing retained installations are also migrated without re-emitting already-applied corrections: the external authority plus verified checkpoint chain establishes the safe local-mirror prefix.
-
-### 8.3 Downgrade from retained to default
-
-1. Keep retained mode enabled until the authority watermark, local mirror, and application checkpoint match.
-2. Back up both databases.
-3. Change mode to `ApplicationDatabase` and restart.
-4. Retain the authority database and its backups; do not delete it automatically.
-5. Document that future restores no longer receive independent replay protection.
-
-There is no automatic fallback or auto-downgrade during an outage.
-
-## 9. API Startup And Health
-
-`LocationPrivacyStartupGate` becomes mode-aware before resolving `ILocationErasureReplayService`:
-
-- `ApplicationDatabase`: return without resolving any authority service or opening any authority connection;
-- `RetainedAuthority`: verify the current checkpoint against the external authority, replay every later sequence, revalidate cache/correction state, and fail before host start on any error.
-
-Add a bounded readiness check named `location-privacy-erasure-durability`:
-
-- default mode: `Healthy`, with only normalized mode and `restoreReplayProtection=false`;
-- retained mode after successful validation: `Healthy`, with normalized mode and `restoreReplayProtection=true`;
-- retained mode failure: `Unhealthy`, and startup remains blocked where the failure occurs before host start.
-
-Health output must never include connection strings, hosts, database names, role names, watermarks, opaque IDs, raw provider exceptions, or retained counts.
-
-## 10. Aspire And Self-Hosting Topology
-
-### 10.1 Aspire profiles
-
-| Profile | Authority resource | Effective mode |
+| ID | Decision | Rationale |
 |---|---|---|
-| `local-full` | Separate PostgreSQL server/container, separate named volume, authority database | `RetainedAuthority` |
-| `local-default` | None | `ApplicationDatabase` |
-| `local-core` | None | `ApplicationDatabase` |
-| `local-lite` | None | `ApplicationDatabase` |
+| D1 | Remove the behavior-mode enum and both mode names from production configuration | There is only one correct authority-first workflow; storage placement is the variable |
+| D2 | Use explicit `CoLocated` / `ExternalDatabase` topology values | They describe deployment shape without overstating durability |
+| D3 | Keep the application ledger/mirror in both topologies | It provides local audit/checkpoint/idempotency data and is already integrated with the applier |
+| D4 | Use a separately committed co-located authority adapter | Preserves authority-first recovery after application transaction rollback without a distributed transaction |
+| D5 | Do not run the dedicated authority migration in the application database | Existing table ownership overlaps and would collide |
+| D6 | Separate runtime and migrator secrets at the host boundary | Enforces least privilege while reusing one internal named connection per process |
+| D7 | Fail on a configured legacy mode key | Prevents silent safety downgrades during upgrade |
+| D8 | Treat independent restore lifecycle as an operational prerequisite, not something a connection string can prove | Two databases on one restored cluster/volume may still share one failure domain |
+| D9 | Extend existing TUnit/Testcontainers fixtures | Avoids duplicate infrastructure and keeps PostgreSQL behavior realistic |
+| D10 | Use a machine-checked inventory for completeness, never runtime interpretation | New PII copies fail governance without creating an arbitrary deletion engine |
+| D11 | Fence before enumeration and check the fence at shared PII-producing boundaries | Prevents races and post-erasure resurrection without scattered controller checks |
+| D12 | Keep local disposition, mirror/checkpoint, provider work, cache authority, and receipt state in one serializable application transaction | Makes local completion truthful and crash-recoverable |
+| D13 | Use specialized provider work and adapters | Preserves ownership, SSRF resistance, typed targets, and provider-specific unknown-outcome handling |
+| D14 | Return asynchronous `202` with a short-lived once-revealed receipt | Login may be removed before external settlement; storing only a hash limits credential exposure |
+| D15 | Delete only platform-managed upstream identities; revoke or unlink externally managed identities | Avoids destructive authority beyond platform ownership |
+| D16 | Retain linkable authority identifiers only for the resurrection-capable backup horizon plus the approved margin | Restore protection has a finite operational boundary and must not become indefinite tracking |
 
-`local-full` must use a separate PostgreSQL server resource and volume, not a second database inside the application `postgres` resource. Otherwise resetting/restoring the application server could also reset the authority and defeat the feature being exercised.
+Rejected alternatives:
 
-AppHost injects `ConnectionStrings:LocationPrivacyAuthority` only into `Event.MigrationService` and `Explore.API`, sets the retained mode for those two projects, and adds the required wait edges. It never sends the connection to `Explore.Blazor`.
+- Retain `ApplicationDatabase` as a fast path: rejected because it bypasses authority-first replay and duplicates behavior.
+- Auto-enable external authority when a connection exists: rejected because a missing or misspelled secret could silently downgrade protection.
+- Run both EF migration sets in one database: rejected because both own the same schema objects.
+- Add a distributed transaction: rejected because it couples independent restore domains and adds failure modes without solving restored-backup resurrection.
+- Add a second discrete `POSTGRESQL_*` secret loader: rejected unless implementation evidence proves the per-process named connection mapping insufficient.
+- Add a generic provider plugin or arbitrary erasure instruction interpreter: rejected because compiled specialized handlers are safer and already match repository patterns.
+- Perform provider cleanup inline with the request transaction: rejected because remote uncertainty must not roll back completed local erasure.
+- Return synchronous deletion success before provider status is knowable: rejected because it would misrepresent completion.
 
-All other Aspire profiles explicitly select `ApplicationDatabase`, create no authority resource, create no authority volume, and add no authority reference/wait edge.
+## 4. Implementation Phases and Tasks
 
-### 10.2 Non-Aspire deployments
+The checkbox ledger is canonical in `optional-retained-erasure-authority-tasks.md`. Each phase ends with exactly one root Release build and at most one relevant test project.
 
-Outside Aspire, default Compose/direct deployments need no authority variables. A retained deployment supplies the explicit mode and named connection string through per-process environment/secrets and runs the migration service before the API.
+### Phase 1 — Governance, inventory, and contract semantics
 
-The implementation must add a container path for `Event.MigrationService` to the repository Compose topology so the self-hosting contract matches the stated required components. The optional authority database itself may be operator-managed; only `local-full` is required to auto-provision it in this workstream.
+Goal: establish one authoritative privacy-erasure contract before further runtime edits.
 
-## 11. Documentation Contract
-
-Update implementation-facing and operator-facing sources in the same change:
-
-- `docs/CONFIGURATION.md` — canonical mode, default, valid values, and named connection string;
-- `docs/SECRETS.md` — deployment-managed secret ownership and per-process credential separation;
-- `docs/OPERATIONS.md` — conditional startup gate, health behavior, and Aspire matrix;
-- `docs/SELF_HOSTING.md` — one-database default and retained opt-in;
-- `docs/BACKUP_RESTORE_UPGRADE.md` — separate procedures for both modes, promotion/downgrade, and honest default limitation;
-- `docs/TROUBLESHOOTING.md` — invalid mode, missing secret, failed migration, replay divergence, and downgrade guidance;
-- `docs/DEPLOYMENT_TIERS.md` — retained authority as an optional higher-assurance capability, not a different codebase;
-- `docs/RELEASE_CHECKLIST.md` — mode/config/migration/backup impact;
-- `schemas/islamu-event.md` — application-local ledger and separate authority schema ownership;
-- the broader Event Location Privacy plan/context/tasks and `.omo` plan — replace mandatory-topology claims.
-
-Documentation must never call `ApplicationDatabase` “disabled” or imply that ordinary erasure is unavailable. It must state exactly which restore guarantee is absent.
-
-## 12. Constraints And Non-Goals
-
-### Required constraints
-
-- One application database is the default and must start with no authority connection string.
-- Retained mode is explicit and fail closed.
-- No fallback from retained mode to default mode.
-- No activation based only on secret presence.
-- No runtime/hot switching.
-- No distributed transaction across databases.
-- No authority secret in Blazor, API responses, health, logs, traces, screenshots, or support bundles.
-- No PII in either local or retained erasure ledger.
-- No raw runtime schema bootstrap.
-- No hand-created EF migration/snapshot files.
-- Repositories return entities, not DTOs.
-- Provider-specific SQL is fixed, parameterized where applicable, migration-owned, and reviewed.
-- Retained protection requires an independent restore set; a second database on the same restored volume is not sufficient.
-
-### Non-goals
-
-- Redesigning EventLocation disclosure policy, HAL, calendar, AI, federation, or discovery.
-- Making every existing Compose dependency optional in this workstream.
-- Adding a database/provider abstraction for non-PostgreSQL authorities.
-- Exposing a UI switch for erasure durability.
-- Automatically deleting or pruning retained authority facts.
-- Promising deletion from historical backups in default mode.
-
-## 13. Delivery Phases
-
-### Phase 1 — Pin Behavior And Introduce Explicit Workflows
-
-1. Add characterization tests for current erasure mutation, checkpoint, correction outbox, ambiguous append retry, and fail-closed retained behavior.
-2. Add failing tests proving missing configuration starts in `ApplicationDatabase`, a stray connection string does not activate retained mode, and retained mode without a connection fails validation.
-3. Add the mode/options contract and startup-only selection.
-4. Extract the shared application erasure applier and the two explicit workflows.
-5. Re-baseline the broader Event Location Privacy planning statements in the same slice.
-
-Phase gate:
-
-```bash
-dotnet build --configuration Release --verbosity quiet
-dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
-```
-
-### Phase 2 — Move Authority Storage Into EF Core
-
-1. Add the local ledger/counter to `ExploreDbContext` and application repository.
-2. Add `LocationPrivacyAuthorityDbContext`, explicit configurations, design-time factory, and retained repository.
-3. Generate the two EF migrations with the commands in Section 7.3.
-4. Adopt existing raw-schema data without loss and move non-model PostgreSQL invariants into migration-owned SQL.
-5. Remove the embedded schema resource and direct Infrastructure `NpgsqlDataSource` client only after EF integration tests are green.
-6. Prove atomic local append+erasure, retained idempotency/concurrency, append-only enforcement, PII-free shape, guarded rollback, and context-specific model parity.
-
-Phase gate:
-
-```bash
-dotnet build --configuration Release --verbosity quiet
-dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
-```
-
-### Phase 3 — Make Migration, Startup, And Health Conditional
-
-1. Register/migrate the authority context only in retained mode.
-2. Add ledger synchronization and divergence checks for mode promotion.
-3. Make API workflow registration and startup replay conditional without resolving retained services in default mode.
-4. Add bounded durability health reporting.
-5. Add the migration-service container path and make Compose API startup wait for successful migrations.
-6. Prove default startup with one database, retained fail-closed startup, migration failure propagation, promotion-prefix handling, cancellation, and secret redaction.
-
-Phase gate:
-
-```bash
-dotnet build --configuration Release --verbosity quiet
-dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
-```
-
-### Phase 4 — Wire `local-full` And Close Operator Contracts
-
-1. Add the separate authority PostgreSQL server/database/volume only in `FullLocal`.
-2. Inject the mode and connection only into migration service and API; update PgAdmin inventory without copying credentials.
-3. Prove `local-default`, `local-core`, and `local-lite` have no authority resource/reference and remain `ApplicationDatabase`.
-4. Update every document in Section 11, including promotion/downgrade and the default backup disclaimer.
-5. Add architecture guards preventing unconditional authority registration, Blazor secret flow, embedded schema SQL, and non-full Aspire provisioning.
+- **OREA-100:** Amend `platform-privacy-erasure` in `.claude/contract/intents.yaml` to own the complete User-erasure policy, provider work, receipt/status, authority topologies, retention, restore, and affected paths. Reconcile the machine-checked User-PII inventory against the current EF model and provider registries; every durable copy must have exactly one non-executable disposition and policy version.
+- **OREA-110:** Replace durability-mode options with `CoLocated` / `ExternalDatabase` topology options, reject legacy mode keys, and prove exactly one authority-first workflow is selected. Generalized authority facts remain typed and bounded to `User`; arbitrary JSON, table/column selectors, and executable Organization/Tenant kinds are rejected.
+- **OREA-120 — completed 2026-07-22:** Marked `.omo/plans/platform-wide-privacy-erasure-authority.md` historical and removed platform-erasure implementation ownership from the Event Location workstream, retaining only the typed EventLocation disposition/correction integration boundary.
 
 Phase gate:
 
@@ -436,37 +236,348 @@ dotnet build --configuration Release --verbosity quiet
 dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
 ```
 
-## 14. Acceptance Criteria
+### Phase 2 — Persistence adapters and migration ownership
 
-- With no erasure-durability configuration and no authority secret, API/migration/Blazor use only the application database and start normally.
-- Default-mode account erasure atomically writes the local ledger/checkpoint, removes PII, writes audits, and queues PII-free corrections.
-- A configured authority connection without explicit retained mode is never opened.
-- Retained mode cannot start with a missing/unreachable/unmigrated/divergent authority.
-- Retained append success followed by application failure remains replayable and never falls back.
-- Restoring an older application database in retained mode replays missing facts before traffic/workers.
-- `local-full` contains a separate authority Postgres resource/volume; the other three named profiles contain none.
-- Blazor has no authority connection or durability-selection code.
-- The authority has a dedicated DbContext, factory, configurations, repositories, snapshot, and migration history.
-- The embedded runtime schema resource and raw Infrastructure authority client are removed.
-- Migration `Down()` cannot destroy nonempty erasure evidence.
-- Upgrade/downgrade workflows detect divergence and never renumber or overwrite facts.
-- Health and logs expose only bounded mode/capability data.
-- Operator docs distinguish transactional erasure from backup-resurrection protection without overstating either mode.
+Goal: make both topology adapters satisfy the same authority contract without schema collision.
 
-## 15. Risks And Mitigations
+- **OREA-200:** Keep `ApplicationDatabasePrivacyErasureLedgerRepository` as the application mirror/checkpoint store. Implement the co-located authority adapter with a short-lived `ExploreDbContext` and separate commit boundary; retain the dedicated authority context/repository and function-only runtime ACL for `ExternalDatabase`.
+- **OREA-210:** Make application migrations the sole owner of co-located authority tables and the dedicated authority migration the sole owner of external tables/functions/roles. Prevent both migration sets from targeting one physical database and implement the documented pre-v1 reset-only policy; breaking compatibility is permitted, silent data loss and agent-driven deletion of databases, containers, volumes, or backups are not.
+- **OREA-220:** Extend existing PostgreSQL 18 Testcontainers fixtures for one-container and two-independent-container topologies, monotonic append, rollback/replay idempotency, ACL enforcement, and a real pre-erasure application backup restore.
+
+Required integration scenarios:
+
+- One container: authority append survives a forced application mutation rollback; replay later applies it once; mirror/checkpoint remain idempotent.
+- One container: external connection values are not read in `CoLocated`.
+- Two containers: runtime role cannot select/insert/update authority tables directly and can execute only approved functions.
+- Two containers: concurrent appends allocate monotonic sequence values without duplicates.
+- Migration composition: applying the co-located path never executes the dedicated authority migration against the application database.
+- Two containers: create a real pre-erasure application backup, complete erasure, restore only the application database, replay from the untouched authority container, and prove re-erasure plus idempotency.
+- Update `schemas/islamu-event.md`, `docs/SECURITY-MODEL.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, and `docs/TESTING.md` with the persistence/restore behavior proven in this phase.
+
+Phase gate:
+
+```bash
+dotnet build --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
+```
+
+### Phase 3 — User fence, saga, and complete local dispositions
+
+Goal: make local User erasure complete, atomic, policy-versioned, and resistant to recreation.
+
+- **OREA-300:** Implement or complete the User fence, saga, policy-version coverage, receipt hash/expiry, concurrency, and idempotent request state. The first authority append/reuse and fence establishment occur before PII enumeration.
+- **OREA-310:** Apply inventory dispositions for identity/authentication, tenancy/membership/preferences, owned Home/location data, registration/contact sharing, notifications/email/web-push, AI/webhook/report/audit/configuration/idempotency, storage/federation, and shared authored content. Preserve only explicitly justified bounded outcomes and anonymize shared content instead of deleting unrelated users' data.
+- **OREA-320:** In one serializable application transaction, apply all local dispositions, confirm the mirror/checkpoint, materialize specialized provider work and EventLocation correction intents, invalidate cache authority, and persist receipt/status. The Event Location adapter supplies exact subject/tenant predicates, Home/room tombstoning, affected `EventLocation` corrections, and stable idempotency; this workstream owns the orchestration and cross-family acceptance tests.
+
+Phase gate:
+
+```bash
+dotnet build --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
+```
+
+### Phase 4 — Provider settlement and anti-resurrection enforcement
+
+Goal: complete external cleanup without weakening local atomicity or allowing PII recreation.
+
+- **OREA-400:** Add or complete specialized provider-work outboxes with typed targets, stable idempotency keys, lease fencing, bounded retry/backoff, explicit `Unknown`, dead-letter visibility, and reconciliation. No arbitrary payload or provider call is allowed in the request/application transaction.
+- **OREA-410:** Implement specialized ownership-aware adapters for platform-managed identity deletion and external identity revoke/unlink, ATProto, Listmonk, object storage, web push, webhook/export projections, and every provider family present in the inventory. Wrong tenant/subject and untrusted endpoint inputs fail before I/O.
+- **OREA-420:** Enforce the User fence at shared PII-producing write, worker, cache-rematerialization, and remote-dispatch boundaries. Cache invalidation failure must not serve stale subject PII; convergence work degrades readiness and alerts operators.
+
+Phase gate:
+
+```bash
+dotnet build --configuration Release --verbosity quiet
+dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet
+```
+
+### Phase 5 — Receipt/status API, replay, and readiness
+
+Goal: expose truthful deletion progress and prevent traffic before policy replay converges.
+
+- **OREA-500:** Replace the location-specific deletion boundary with the platform orchestrator. `DELETE` returns `202 Accepted`, `Location`, `Retry-After`, and the receipt once; the `private, no-store` status route uses a dedicated receipt authorization scheme after login removal and exposes only bounded phase/outcome codes.
+- **OREA-510:** Run replay in both topologies before API/BFF/MCP/ordinary workers and readiness. A fresh scope reloads persisted subject/tenant ownership for every replay or reconciliation attempt; caller-supplied identifiers are never authority. External unavailability, sequence gaps, corruption, or lag fail closed.
+- **OREA-520:** Publish bounded readiness and metrics for topology, restore capability, replay lag, provider backlog, dead letters, and last success without identifiers, connection details, endpoints, payloads, or free-text errors; update `docs/OPERATIONS.md` and `docs/SECURITY-MODEL.md` with shipped behavior.
+
+```bash
+dotnet build --configuration Release --verbosity quiet
+dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
+```
+
+### Phase 6 — Self-hosting, secrets, retention, and disaster recovery
+
+Goal: make one- and two-database deployments operable with explicit guarantees and recovery procedures.
+
+- **OREA-600:** Teach `Event.MigrationService` to migrate the external authority only for `ExternalDatabase`; order Compose/Aspire migration before API readiness; wire explicit topology plus separate runtime/migrator secrets; pass neither authority secret to Blazor; preserve standard .NET configuration for non-Compose operators.
+- **OREA-610:** Implement bounded authority/receipt/provider credential retention, dry-run cleanup, legal-hold pseudonymization, backup-horizon configuration, and secret rotation without identifier leakage.
+- **OREA-620:** Document and test backup ordering, RPO/RTO, authority loss/corruption recovery, credential rotation, `CoLocated` to `ExternalDatabase` cutover, unsafe downgrade acknowledgement, forward repair, and old-backup restore. Do not claim `ExternalDatabase` restore safety unless its restore domain is independent.
+
+```bash
+dotnet build --configuration Release --verbosity quiet
+dotnet test --project tests/Explore.Secrets.Tests/Explore.Secrets.Tests.csproj --configuration Release --verbosity quiet
+```
+
+### Phase 7 — Contract, documentation, and completeness convergence
+
+Goal: leave one authoritative, testable enterprise contract with no obsolete ownership or terminology.
+
+- **OREA-700:** Converge the PII inventory, schemas, OpenAPI/generated contracts, API changelog, configuration, privacy, security, self-hosting, deployment, backup/restore, secrets, outbox, operations, troubleshooting, and testing documentation. UUIDs remain linkable personal data; minimized does not mean anonymous.
+- **OREA-710:** Remove obsolete location-specific authority names, legacy behavior-mode configuration, duplicate workstream ownership, and unclassified User-PII copies. Prove every current local/external copy maps to one implemented disposition and every producer maps to the shared fence.
+- **OREA-720:** Record final evidence for normal deletion, concurrency, rollback, duplicate/ambiguous append, provider unknown/reconciliation, tenant substitution, receipt expiry, policy upgrade, both topologies, old-backup replay, unrelated-user preservation, and zero PII resurrection.
+
+```bash
+dotnet build --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet
+```
+
+The amended intent may mandate additional project checks for release closeout. Distribute them across the owning phases when the intent is updated; do not add a test-only phase or duplicate project runs without a concrete coverage reason.
+
+## 5. Data and Control Flow
+
+### Erasure request
+
+1. Authorization and current privacy-erasure scope checks complete.
+2. The workflow creates or reuses one typed, payload-free, policy-versioned User intent and stable receipt state.
+3. The selected authority adapter appends idempotently and commits; the application establishes the User fence before enumerating PII.
+4. The applier opens one serializable application transaction and applies every inventory-owned local disposition.
+5. The transaction confirms the mirror/checkpoint, persists provider work and EventLocation corrections, invalidates cache authority, and advances receipt status.
+6. The transaction commits; the API returns `202` with the once-revealed receipt, and later replay of the same fact is a no-op.
+7. Specialized fenced workers settle provider work after commit. Terminal, retryable, and unknown outcomes update bounded receipt status without restoring local PII.
+8. Shared write/worker boundaries reject or suppress any attempt to recreate PII for the fenced/deleted User.
+
+### Startup
+
+1. Hosting validates topology and required secrets.
+2. The migration service applies the application migrations and, only for `ExternalDatabase`, dedicated authority migrations with the migrator credential.
+3. API replay reads authority facts through the runtime adapter.
+4. Readiness opens only after replay catches up or an already-approved bounded policy says otherwise.
+
+### Restore
+
+- `CoLocated`: restoring the application database also restores/removes the authority facts and mirror together. No replay source exists for erasures after that backup.
+- `ExternalDatabase`: restoring only the application database moves its checkpoint/mirror backward while authority facts remain forward. Startup replay reapplies the missing erasures.
+
+## 6. Testing and Acceptance Strategy
+
+### Unit and composition acceptance
+
+- `User` is the only executable subject kind; arbitrary metadata and future subject kinds fail closed.
+- Every current EF/provider PII copy and producer has exactly one machine-checked policy mapping.
+- Only `CoLocated` and `ExternalDatabase` parse.
+- Default is `CoLocated` and is explicit in sample self-host configuration.
+- A legacy mode key produces an actionable upgrade failure.
+- A stray authority connection never changes topology.
+- `ExternalDatabase` without its process-appropriate connection fails before serving traffic.
+- Exactly one workflow is registered in both topologies.
+- Fence, receipt, policy version, concurrency, expiry, and idempotent retry semantics are deterministic.
+
+### PostgreSQL/Testcontainers acceptance
+
+- Tests use PostgreSQL `18-alpine`, matching the existing fixture convention.
+- The one-database suite uses one PostgreSQL container and no external authority connection.
+- The two-database suite uses two independent PostgreSQL containers, not merely two schemas.
+- Backup/restore proof uses an actual database backup/restore or an equivalently faithful PostgreSQL restore operation; deleting rows to imitate restore is insufficient.
+- Fixtures expose lifecycle and connection details without leaking passwords into test output.
+- Parallel tests use isolated databases/fixtures and deterministic cleanup.
+
+### Security acceptance
+
+- Authority rows contain no live PII or reversible selector material.
+- Receipts are revealed once, stored only as fixed-time-verifiable hashes, expire on schedule, and never enter logs/metrics/traces.
+- External runtime credentials cannot perform DDL or direct table DML/select.
+- Migrator credentials are not injected into API or Blazor services.
+- Exceptions and health payloads redact connection details.
+- No provider call or external authority call runs inside the serializable application transaction.
+- Tenant/subject ownership is reloaded from persistence for every delivery/reconciliation; wrong-tenant substitution fails before mutation or I/O.
+- The fence prevents PII recreation across handlers, workers, cache rematerializers, and remote dispatch.
+
+### Acceptance matrix
+
+| Scenario | CoLocated | ExternalDatabase |
+|---|---:|---:|
+| Normal erasure | Required | Required |
+| Forced application transaction rollback then replay | Required | Required |
+| Startup catch-up | Required | Required |
+| Duplicate replay/idempotency | Required | Required |
+| Concurrent monotonic append | Required | Required |
+| External runtime ACL | N/A | Required |
+| Restore pre-erasure application backup | Documented limitation | Required proof |
+| Missing authority connection | Not read | Fail closed |
+| Authority unavailable | N/A | Readiness blocked |
+| Complete local User-PII disposition | Required | Required |
+| Provider timeout/ambiguous outcome | Fenced `Unknown` and reconciliation | Fenced `Unknown` and reconciliation |
+| Receipt replay/expiry/wrong credential | Fail indistinguishably | Fail indistinguishably |
+| Post-erasure PII recreation attempt | Denied/suppressed | Denied/suppressed |
+| Tenant/subject substitution | Fail closed | Fail closed |
+
+## 7. Documentation, Configuration, and Operational Updates
+
+Implementation must update these sources together:
+
+| Artifact | Required content |
+|---|---|
+| `.env` | Local topology selection and safe/blank authority secret placeholders; preserve unrelated user values |
+| `.env.example` | Copyable defaults, allowed values, when each secret is required, no real credentials |
+| `docker-compose.yml` | Per-process mapping and migration-before-readiness dependency |
+| `src/Explore.AppHost/AppHost.cs` | One-resource and distinct-authority-resource examples/conditional wiring |
+| `docs/CONFIGURATION.md` | Canonical keys, precedence, validation, topology semantics |
+| `docs/SECRETS.md` | Runtime vs migrator ownership, provider paths/names, rotation and redaction |
+| `docs/SELF_HOSTING.md` | One-database quick start and two-database secure deployment |
+| `docs/DEPLOYMENT_MODES.md` and `docs/DEPLOYMENT_TIERS.md` | Service wiring, migration ordering, readiness behavior by supported deployment shape |
+| `docs/BACKUP_RESTORE_UPGRADE.md` | Independent restore boundary, restore runbook, topology upgrade/downgrade constraints |
+| `docs/OPERATIONS.md` | Health fields, replay monitoring, failure response |
+| `docs/TESTING.md` | One- and two-container commands/scenarios |
+| `docs/SECURITY-MODEL.md` and `docs/OPERATIONS.md` | One workflow, mirror semantics, guarantees, non-guarantees, startup, and recovery |
+| `schemas/islamu-event.md` and `docs/DOMAIN.md` | Application mirror vs external authority ownership and domain vocabulary |
+| Machine User-PII inventory and architecture selectors | Complete local/external copy classification, producer/fence mapping, disposition owner, retention, provider action, and policy version |
+| OpenAPI/API changelog/generated client | `202`, receipt authorization, status/expiry/error/cache contract; generated artifacts are never hand-edited |
+| `docs/OUTBOX_PATTERN.md` | Specialized provider-work fencing, idempotency, retry, `Unknown`, dead-letter, and reconciliation semantics |
+
+Operator documentation must use “co-located” for storage placement and reserve “restore-safe” for deployments whose authority backup/restore lifecycle is actually independent.
+
+## 8. Security and Privacy Constraints
+
+- Authority facts remain payload-free and bounded by compiled application handlers.
+- The external authority is append/read-only through reviewed database functions for runtime.
+- No connection string or secret appears in source, examples, logs, exception messages, health, or test snapshots.
+- Failure is closed: selected external topology without a reachable authority does not accept erasure-dependent traffic or advertise readiness.
+- Existing authorization, idempotency, serializable transaction, and transactional outbox invariants remain intact.
+- The application mirror is not a substitute for an independently retained authority.
+
+## 9. Failure Handling and Observability
+
+| Failure | Expected behavior | Operator signal |
+|---|---|---|
+| Invalid topology or legacy mode key | Startup/configuration fails | Bounded configuration error with replacement key |
+| Missing external connection | Startup/migration fails before traffic | Missing key name only, no value |
+| External authority unavailable | No fact append; readiness/replay fails closed | Health status and structured failure category |
+| Authority append succeeds, application apply fails | Fact remains pending and replayable | Replay lag increments; retry is idempotent |
+| Application database restored behind | External replay reapplies missing facts | Checkpoint lag then convergence |
+| Both databases restored behind together | Guarantee unavailable | Runbook explicitly identifies unsupported restore operation |
+| Provider timeout or ambiguous acknowledgement | Local erasure remains committed; provider work becomes `Unknown` until reconciliation | Bounded backlog/dead-letter category, never provider payload |
+| Receipt is invalid, replayed, or expired | Deny indistinguishably without subject disclosure | Bounded authentication failure category |
+| Fenced User attempts a PII-producing write | Reject or suppress before persistence/provider I/O | Bounded fence-denial counter |
+| Cache invalidation fails | Exact subject PII cannot be served from stale cache; convergence work retries and readiness degrades | Retry backlog plus operator alert |
+
+Metrics/logging should reuse existing observability conventions and include topology and numeric lag only. Do not label metrics with identifiers, selectors, connection data, or error messages that can explode cardinality.
+
+## 10. Migration and Rollout
+
+1. Treat the current product as pre-v1 development software: the supported upgrade policy for the removed behavior modes is reset-only, with no compatibility shim or silent translation.
+2. Document reset eligibility, backup/export prerequisites, exact generated migration ownership, and how operators preserve any data they are not permitted to discard. Implementation agents never delete databases, containers, volumes, or backups.
+3. Reject legacy mode keys with actionable replacement guidance; start the target model explicitly as `CoLocated` or `ExternalDatabase`.
+4. For an external deployment, provision authority database/roles, run migration service with migrator credentials, then start API with runtime credentials.
+5. To move from co-located to external after the target model is live, establish the external authority and copy/append existing payload-free facts monotonically before switching topology; test the cutover and rollback boundary.
+6. Do not support external-to-co-located downgrade as safety-neutral. It removes restore protection and requires explicit operator acknowledgement.
+7. Binary rollback after an authority fact exists must preserve newer authority facts and use forward repair; it must never resurrect erased PII.
+
+## 11. Risks and Mitigations
 
 | Risk | Mitigation |
 |---|---|
-| Main migration chain is currently being rewritten in the shared worktree | Do not generate migrations until that lane is reconciled; use a task-owned worktree and one migration owner |
-| Existing raw authority database has facts but no EF history | Test a non-destructive adoption path and schema signature before removing the embedded bootstrap |
-| Local and retained ledgers diverge during mode transition | Compare exact ordered facts; stop on first mismatch; never overwrite, delete, or renumber |
-| Same-cluster “separate DB” creates a false guarantee | Require independent restore domain in docs and use a separate server/volume in `local-full` |
-| DI accidentally constructs retained services in default mode | Conditional composition tests assert no context/client resolution and no connection attempt |
-| Retained outage silently weakens privacy | No fallback; startup/new erasure fail closed until operator repair |
-| Runtime role can mutate authority tables | Migration-owned permissions plus update/delete trigger; integration tests use the runtime credential |
-| Mode name is misunderstood as erasure on/off | Use `ApplicationDatabase`/`RetainedAuthority`; never use `Disabled` |
-| Promotion checkpoints hide unapplied facts | Local ledger append, application mutation, checkpoint, and outbox share one transaction; transition validates the prefix |
+| Operators assume two DB names on one restored cluster are independent | State restore-domain requirement in env comments, health docs, and restore runbook |
+| Co-located append joins the application transaction and rolls back | Dedicated short-lived context plus rollback/replay integration test |
+| Both migration sets target one database | Topology-aware migration registration and composition test |
+| Missing secret silently downgrades to co-located | Explicit topology; never infer from connection presence; fail closed |
+| Runtime receives migrator privilege | Separate host variables mapped per process; ACL integration test |
+| Legacy configuration changes behavior unnoticed | Reject old key with direct upgrade guidance |
+| Backup/restore test is too synthetic | Use PostgreSQL backup/restore against two containers |
+| Existing active plans contradict the new target | Governance synchronization is Phase 1 and a release gate |
+| Large dirty worktree obscures causality | Record baseline status/SHA; limit edits to intent-authorized paths; inspect scoped diffs |
+| A durable User-PII copy or producer is missed | Machine-check inventory and producer registry against EF/provider surfaces; fail architecture tests on unclassified additions |
+| Provider ambiguity is treated as success or blindly retried | Persist `Unknown`, use stable idempotency/fencing, and require reconciliation evidence |
+| Receipt or telemetry becomes a new disclosure channel | Store only receipt hash, use `no-store`, closed outcome codes, bounded labels, and no identifiers/free text |
+| Tenant/subject substitution corrupts another user's data | Reload persisted ownership in a fresh scope for every delivery/reconciliation and test hostile substitutions |
+| Pre-v1 reset guidance causes silent data loss | Require explicit eligibility/backup documentation and forbid implementation agents from deleting operator data |
 
-## 16. Definition Of Done
+## 12. Definition of Done
 
-The work is complete when the default topology is verifiably one-database and healthy, retained mode is explicitly opt-in and independently replayable, both schemas are EF-managed, all four phase gates pass, planning/operator sources agree, and no runtime path can silently trade retained guarantees for availability.
+- [ ] Canonical intent and all active planning sources describe one workflow and two topologies.
+- [ ] This plan is the sole active owner of platform User erasure, receipt/status, provider settlement, replay, retention, and restore behavior; Event Location owns only its typed adapter and corrections.
+- [ ] Every durable local/external User-PII copy and producer is machine-classified with one implemented disposition/fence owner.
+- [ ] User fence, saga, policy version, receipt hash/expiry, concurrency, and idempotency are implemented without PII-bearing status state.
+- [ ] All local dispositions, mirror/checkpoint, provider work, cache authority, EventLocation corrections, and receipt state commit atomically per fact.
+- [ ] Provider work is specialized, fenced, idempotent, retry/unknown/dead-letter aware, and executed only after local commit.
+- [ ] `202` and receipt-authorized `private, no-store` status accurately represent local and provider settlement.
+- [ ] No production configuration or dependency registration uses `ApplicationDatabase` / `RetainedAuthority` as behavior modes.
+- [ ] Application-side authority mirror/checkpoint remains active in both topologies.
+- [ ] Co-located authority append commits independently before application mutation.
+- [ ] External authority migration is owned by `Event.MigrationService` and API uses runtime-only credentials.
+- [ ] Startup replay runs in both topologies and fails closed for external authority failures.
+- [ ] `.env`, `.env.example`, Compose, Aspire, and direct .NET keys are documented and tested.
+- [ ] One-container and two-independent-container Testcontainers suites pass.
+- [ ] A restored pre-erasure application backup is re-erased from an untouched external authority database.
+- [ ] Documentation clearly states that co-located storage cannot survive whole-database restore.
+- [ ] The documented pre-v1 reset-only policy has no compatibility shim, silent translation, or agent-driven operator-data deletion.
+- [ ] Retention/legal-hold cleanup, credential rotation, authority recovery, topology cutover, RPO/RTO, and unsafe downgrade behavior are documented and tested.
+- [ ] Required builds/tests and canonical privacy model checks pass with evidence recorded in `tasks.md`.
+- [ ] Scoped diff has no secrets, destructive migrations, PII-bearing authority fields, or unrelated edits.
+
+## 13. Implementation-Agent Contract
+
+Before editing:
+
+1. Read `AGENTS.md`, `docs/QUICK_REFERENCE.md`, the amended `platform-privacy-erasure` intent, and every matching `.claude/rules/*.md` file.
+2. Load and follow `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `dotnet-efcore-guidelines`, `outbox-pattern`, and `auth-patterns` where their paths/concerns apply.
+3. Use the code-review graph before text/file scanning, then inspect source directly only where graph evidence is insufficient.
+4. Record baseline SHA, worktree status, and build result in `optional-retained-erasure-authority-tasks.md`.
+5. Preserve unrelated user changes and stop if an in-scope file has conflicting uncommitted edits.
+
+While implementing:
+
+- Work in phase order and keep `tasks.md` current after each material task.
+- Treat the application ledger as the mirror in both topologies.
+- Keep authority append outside the application mutation transaction.
+- Keep application mutations, mirror, checkpoint, and outbox atomic.
+- Never change historical migrations destructively.
+- Update docs/config in the same task as the behavior they describe.
+- Add failure-path and idempotency tests with each behavior change.
+
+Before handoff:
+
+- Run each phase gate and the remaining canonical intent checks once.
+- Record exact commands, results, and any pre-existing failures in `tasks.md`.
+- Review the scoped diff for secrets, PII, privilege leakage, migration collisions, and terminology drift.
+- Update all three workstream artifacts so another agent can resume without chat history.
+
+## 14. Progress Reporting Contract
+
+`optional-retained-erasure-authority-tasks.md` is the hot execution ledger.
+
+- Mark a checkbox only when its implementation and colocated tests/docs are complete.
+- At every phase gate, record date, commit/SHA if available, commands, pass/fail, and unresolved evidence.
+- If design evidence invalidates a decision, update this plan first, add a decision note to the context file, and then continue.
+- Put durable, non-obvious findings in `dev/_journal/journal.md` using the canonical finding workflow.
+- Never record credentials, raw PII, or private connection details in planning artifacts.
+
+## 15. Maintenance Contract
+
+These three files must remain synchronized:
+
+- `optional-retained-erasure-authority-plan.md`: stable architecture, decisions, phases, acceptance criteria.
+- `optional-retained-erasure-authority-context.md`: quick resume, evidence, current decisions, risks, and handoff.
+- `optional-retained-erasure-authority-tasks.md`: live checkboxes and verification evidence.
+
+Update the plan when scope, architecture, phases, or acceptance criteria change. Update context when evidence, decisions, constraints, or handoff state changes. Update tasks after every completed task, blocker, or verification run. A changed runtime/config/doc path that is not reflected in the ledger is incomplete work.
+
+## 16. Planning Quality Gates
+
+- [x] Reused the existing stable workstream directory instead of creating a duplicate.
+- [x] Verified current options, DI, replay gate, migration ownership, environment wiring, and Testcontainers surfaces.
+- [x] Distinguished storage topology from restore guarantee.
+- [x] Assigned docs and tests to behavior phases rather than separate documentation/test phases.
+- [x] Defined exactly one root Release build and at most one project test at each phase gate.
+- [x] Included migration, rollback, secrets, readiness, observability, and independent-restore constraints.
+- [ ] Implementation evidence and commands populated in `tasks.md`.
+
+## 17. Potential Additional Risks Discovered During Implementation
+
+Implementation must explicitly investigate and record:
+
+- whether the current co-located repository can be safely reused through a factory-created context or needs a dedicated adapter class;
+- whether current health infrastructure can express replay capability without creating a new endpoint;
+- whether Compose currently has a migration-service lifecycle suitable for authority ordering or needs the smallest new service definition;
+- whether external authority cutover requires sequence reseeding or fact-copy tooling;
+- whether deployed environments already rely on the old mode key and need a documented transition window.
+
+These are bounded implementation questions, not permission to add new abstraction layers or expand the privacy-erasure domain.

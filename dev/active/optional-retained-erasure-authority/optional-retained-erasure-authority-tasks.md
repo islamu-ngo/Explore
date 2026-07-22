@@ -1,202 +1,357 @@
-<!-- ABOUTME: Executable task ledger for the optional retained erasure-authority correction. -->
-<!-- ABOUTME: Sequences failing-first proofs, EF persistence, conditional startup, Aspire wiring, and operator documentation. -->
+<!-- ABOUTME: Live execution ledger for platform User erasure and its privacy-erasure authority. -->
+<!-- ABOUTME: Tracks policy, topology, provider settlement, restore, phase gates, blockers, and evidence. -->
 
-# Optional Retained Erasure Authority Tasks
+# Platform Privacy Erasure Authority — Tasks
 
-**Status:** OREA-000 through OREA-130 retained as historical evidence; all remaining work transferred to the platform-wide clean-baseline plan
+Last Updated: 2026-07-22 Europe/Brussels
 
-**Last Updated:** 2026-07-20 Europe/Brussels
+## Status
 
-**Current focus:** Paused — superseded by `.omo/plans/platform-wide-privacy-erasure-authority.md`
+- Overall: implementation in progress; Phase 1 governance, inventory, and topology contract accepted with attributed baseline failures.
+- Completed: 3 of 21 consolidated tasks (`OREA-100`, `OREA-110`, `OREA-120`).
+- Current phase: Phase 2 — Persistence adapters and migration ownership.
+- Current blocker: none; governance now authorizes the topology and inventory implementation work.
+- Ownership blocker: resolved by `OREA-120`; the historical `.omo` plan is no longer active.
+- Runtime verification: Phase 1 Release build and all focused selectors passed; full Architecture reproduced only three documented unrelated failures.
+- Planning verification: governance, inventory, topology, scoped diff, and independent Phase 1 evidence passed.
 
-**Plan:** `optional-retained-erasure-authority-plan.md`
+## Maintenance Rules
 
-**Context:** `optional-retained-erasure-authority-context.md`
+- This file is the hot execution ledger; update it after every completed task, blocker, or verification run.
+- Check a task only when code, colocated tests, documentation/configuration, and required evidence for that task are complete.
+- Record exact commands and outcomes under the relevant phase gate.
+- Keep the plan stable unless architecture/scope changes; keep context current with evidence and handoff state.
+- Preserve unrelated user changes and stop on conflicting in-scope edits.
+- Never record secrets, connection-string values, or PII.
 
-## Execution Rules
+## Baseline Checklist
 
-- Follow PIN → RED → GREEN for every existing behavior changed by this workstream.
-- Do not generate migrations until the shared main-context migration chain is reconciled and exclusively owned.
-- Generate migrations with `dotnet ef migrations add`; do not hand-create migration or snapshot files.
-- Do not remove the raw authority implementation until equivalent EF-backed integration evidence is green.
-- Do not use a fake/no-op authority to make default mode pass.
-- Do not permit silent retained-to-default fallback.
-- Keep one top-level implementation task in progress at a time when tasks share `ExploreDbContext`, migrations, `Program.cs`, `Worker.cs`, or `AppHost.cs`.
-- Record exact commands, counts, failure observations, and artifact paths beneath each task before checking it complete.
+- [x] Record starting branch and SHA.
+- [x] Record scoped and full `git status --short`; identify pre-existing in-scope changes.
+- [x] Run the canonical root Release build before runtime edits.
+- [x] Read the current `platform-privacy-erasure` intent and matching rules/skills.
+- [x] Use the code-review graph to refresh impact radius and tests for the exact symbols being changed.
 
-## Phase 1 — Pin Behavior And Introduce Explicit Workflows
+Baseline evidence:
 
-- [x] **OREA-000 — Re-baseline authority topology sources**
-  - Paths: `dev/active/event-location-privacy/*`, `.omo/plans/event-location-privacy.md`, and the three documents in this workstream.
-  - Deliverable: replace mandatory-topology claims with the two-mode contract and link the focused plan without altering unrelated privacy work.
-  - Acceptance: one-database default, explicit retained mode, no fallback, local-full-only provisioning, and EF ownership are consistent across all planning sources.
-  - Verify: targeted `rg` finds no remaining statement that every deployment requires an authority connection/database.
-  - Evidence: `.omo/evidence/optional-retained-erasure-authority/OREA-000/verification.md` confirms seven-source topology consistency; zero executable ELP-505/515/525 checkboxes; explicit transfer references; no brittle runtime hash/dirty-count claim; scoped diff/reference/contradiction checks; and zero-resource cleanup.
+```text
+Planning session, 2026-07-22:
+- dotnet build --configuration Release --verbosity quiet
+- PASS: 26 projects, 0 errors, 41 warnings.
+- Existing warnings include NU1903 advisories for System.Security.Cryptography.Xml 10.0.7.
 
-- [x] **OREA-010 — PIN current erasure semantics before refactoring**
-  - Paths: existing Global Location Privacy erasure tests and `GlobalLocationPrivacyErasureService` behavior.
-  - Deliverable: characterization tests for Home/user/actor erasure, policy audit, checkpoint, outbox, cache invalidation, ambiguous append retry, and retained failure ordering.
-  - Acceptance: tests pass against unchanged behavior and assert observable state rather than mock call order alone.
-  - Verify: focused Application tests recorded before production edits.
-  - Evidence: `.omo/evidence/optional-retained-erasure-authority/core/verification.md#pin` records the historical PIN artifact limitation plus fresh current characterization; independent verification confirmed the behavior at 0.96 confidence without fabricating retroactive evidence.
+Implementation agent must still record starting branch/SHA/status and rerun the build immediately before runtime edits.
 
-- [x] **OREA-020 — RED the deployment-mode contract**
-  - Paths: new/updated Application/API options and composition tests.
-  - Deliverable: failing tests for absent config => `ApplicationDatabase`, stray connection => no activation, invalid mode => validation failure, retained without connection => failure, and default => no retained dependency resolution.
-  - Acceptance: every failure is caused by missing two-mode behavior, not a compile error or pinned constant.
-  - Verify: exact failing test names/output recorded.
-  - Evidence: `.omo/evidence/optional-retained-erasure-authority/core/verification.md#red` records defect-sensitive RED evidence, including numeric mode strings; independent verification confirmed the repaired 8/8 contract at 0.99 confidence.
-
-- [x] **OREA-030 — Add mode/options and startup-only workflow selection**
-  - Paths: new Application mode/options contract, `ApplicationServicesRegistration.cs`, `InfrastructureServicesRegistration.cs`, and API composition as required.
-  - Deliverable: `ApplicationDatabase` default, `RetainedAuthority` opt-in, canonical `ConnectionStrings:LocationPrivacyAuthority`, strict validation, and conditional construction.
-  - Acceptance: connection presence never activates retained mode; default composition does not build an authority context/client; old nested key does not act as authority.
-  - Verify: OREA-020 tests green.
-  - Evidence: `.omo/evidence/optional-retained-erasure-authority/core/verification.md#green` records name-only parsing, conditional DI, and startup-gate results; independent verification confirmed the task at 0.99 confidence.
-
-- [x] **OREA-040 — Extract shared erasure applier and two real workflows**
-  - Paths: `GlobalLocationPrivacyErasureService.cs`, new workflow/applier classes and contracts, `DeleteUserCommandHandler.cs`, outbox/checkpoint tests.
-  - Deliverable: shared mutation logic, application-database transaction workflow, retained authority-first workflow, unchanged handler boundary.
-  - Acceptance: default path is a real local-ledger workflow; retained append failure never invokes it; no nested transaction; no fake authority.
-  - Verify: PIN and RED suites green with mode-specific cases.
-  - Evidence: `.omo/evidence/optional-retained-erasure-authority/core/verification.md#runtime-db-qa` records default atomicity and retained authority-first rollback/replay proof.
-
-### Phase 1 Gate
-
-```bash
-dotnet build --configuration Release --verbosity quiet
-dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
+Implementation baseline, 2026-07-22:
+- Branch/SHA: `develop` at `ee847015a97bef389ef8208003ca185895548c74`.
+- Full status: dirty shared worktree; broad intent paths overlap unrelated changes that must be preserved.
+- Scoped status: only this workstream's three planning artifacts were modified; matching privacy-erasure runtime source and tests were clean.
+- `dotnet build --configuration Release --verbosity quiet`
+- PASS: 26 projects, 0 errors, 41 pre-existing warnings in 5.08 seconds.
+- Code-review graph: topology-option change classified high risk; direct configuration symbol found and dependent composition/tests identified for failing-first coverage.
 ```
 
-## Phase 2 — Move Authority Storage Into EF Core
+## Phase 1 — Governance, Inventory, and Contract Semantics
 
-- [x] **OREA-100 — Add mode-neutral ledger entities and configurations**
-  - Paths: `src/Explore.Domain/LocationPrivacyErasureAuthorityIntent.cs`, new counter/state entity, `ExploreDbContext.DbSets.cs`, new authority configuration folder.
-  - Deliverable: PII-free ledger/counter mapped into the application database and reusable by the dedicated authority context.
-  - Acceptance: UUIDv7, opaque-ID, reason, timestamp, uniqueness, sequence, and no-PII constraints are modelled; authority context applies only its own configurations.
-  - Verify: relational model tests prove exact tables/columns/indexes/checks.
-  - Evidence: `.omo/evidence/optional-retained-erasure-authority/core/verification.md#green` records the 7/7 exact relational-model and composition results.
+### OREA-100 — Governance and complete User-PII inventory
 
-- [x] **OREA-110 — Implement application-database ledger repository**
-  - Paths: new Application persistence contract and `ApplicationDatabaseLocationPrivacyErasureLedgerRepository`.
-  - Deliverable: entity-returning append/read repository that participates in the existing `ExploreDbContext` transaction.
-  - Acceptance: normalized duplicate is idempotent, mismatched duplicate rejects, sequence allocation rolls back with failed erasure, and no update/delete surface exists.
-  - Verify: real PostgreSQL atomicity/concurrency tests.
-  - Evidence: `.omo/evidence/optional-retained-erasure-authority/core/verification.md#runtime-db-qa` records PostgreSQL rollback, duplicate/mismatch, and concurrent contiguous allocation results.
+- [x] Amend `.claude/contract/intents.yaml` so `platform-privacy-erasure` owns complete User erasure, provider settlement, receipt/status, one authority-first workflow, both topologies, retention, and restore.
+- [ ] Add every required config/hosting/active-plan path to intent scope before editing it.
+- [ ] Preserve all privacy, migration, transaction, logging, and destructive-operation prohibitions.
+- [x] Reconcile the machine User-PII inventory with the current EF model and provider registries; require one disposition, producer/fence owner, retention rule, provider action, and policy version per copy.
+- [x] Reject arbitrary executable instructions in the inventory.
 
-- [x] **OREA-120 — Add dedicated authority DbContext, factory, and retained repository**
-  - Paths: new files under `src/Explore.Persistence/Privacy/ErasureAuthority/`.
-  - Deliverable: `LocationPrivacyAuthorityDbContext`, design-time factory, retained EF repository, conditional DI extension.
-  - Acceptance: named connection string only; no full application model; bounded ordered reads; runtime repository exposes append/read only.
-  - Verify: context can be created independently and migrations target only authority objects.
-  - Evidence: `.omo/evidence/optional-retained-erasure-authority/core/verification.md#runtime-db-qa` records the two-entity context, bounded repository, function-only runtime role, and denied table access.
+### OREA-110 — Typed authority and topology contract
 
-- [x] **OREA-130 — Generate main application ledger migration**
-  - Blocking dependency: shared `ExploreDbContext` migration/snapshot lane is reconciled.
-  - Command: `dotnet ef migrations add AddApplicationDatabaseLocationPrivacyErasureLedger --context ExploreDbContext --project src/Explore.Persistence/Explore.Persistence.csproj --startup-project src/Explore.API/Explore.API.csproj`.
-  - Deliverable: generated migration/designer/snapshot for local ledger and counter.
-  - Acceptance: additive Up; guarded Down aborts if evidence exists; no unrelated model drift; schema doc updated in the same phase.
-  - Verify: main-context pending-model check and real PostgreSQL apply/rollback tests.
-  - Evidence: `.omo/evidence/optional-retained-erasure-authority/OREA-130/verification.md` and `adversarial-verify.md` confirm generated ledger/corrective migrations, clean model state, guarded rollback, exact 11/7/13 privacy catalog, atomic malformed-data rejection, and real PostgreSQL apply/repeat/rollback behavior.
+- [x] Replace `PrivacyErasureDurabilityMode` with an authority topology model.
+- [x] Set `CoLocated` as the default and validate only `CoLocated` / `ExternalDatabase`.
+- [x] Detect and reject `PrivacyErasure:Durability:Mode` with actionable upgrade guidance.
+- [x] Require `ConnectionStrings:PrivacyErasureAuthority` only in `ExternalDatabase`.
+- [x] Prove a stray authority connection does not activate external topology or get read in `CoLocated`.
+- [x] Register one workflow for both topologies; defer only the authority adapter choice to persistence composition.
+- [x] Keep `User` as the only executable subject kind and reject arbitrary metadata/selectors.
+- [x] Update option/composition tests in the same change.
 
-- **Transferred OREA-140 — Generate dedicated authority migration and adopt the raw schema**
-  - Command: `dotnet ef migrations add InitialLocationPrivacyAuthority --context LocationPrivacyAuthorityDbContext --project src/Explore.Persistence/Explore.Persistence.csproj --startup-project src/Explore.API/Explore.API.csproj --output-dir Migrations/LocationPrivacyAuthority`.
-  - Deliverable: authority migration/designer/snapshot plus migration-owned provider SQL for trigger/functions/permissions that EF cannot model.
-  - Acceptance: fresh DB and current raw-schema-with-data upgrade both succeed; facts/counter remain unchanged; Down refuses nonempty evidence.
-  - Verify: authority pending-model check, fresh apply, legacy adoption, repeat apply, and guarded rollback on PostgreSQL.
-  - Transfer: platform tasks 4 and 6 inventory the still-current PostgreSQL invariants and generate a fresh authority init. Legacy raw-schema adoption is cancelled by the user-authorized disposable reset.
-  - Evidence: `.omo/evidence/optional-retained-erasure-authority/OREA-140/static-review-v2.md`, `repair-v2.md`, and the platform rebaseline inventory remain provenance only.
+### OREA-120 — Canonical workstream ownership
 
-- **Transferred OREA-150 — Remove runtime schema bootstrap and raw authority client**
-  - Paths: `src/Explore.Infrastructure/Privacy/ErasureAuthority/*`, `Explore.Infrastructure.csproj`, registration, moved tests.
-  - Deliverable: delete embedded SQL loader/resource and direct `NpgsqlDataSource` authority adapter after EF replacements pass.
-  - Acceptance: no runtime/test path executes schema DDL; no authority storage implementation remains in Infrastructure; security invariants remain covered.
-  - Verify: source scan plus moved Persistence integration suite.
-  - Transfer: platform task 7 absorbs the partial dirty-worktree deletion and removes raw bootstrap, staged migration, and adoption surfaces only after the three clean EF baselines are green.
+- [x] Mark `.omo/plans/platform-wide-privacy-erasure-authority.md` historical after all still-valid requirements/evidence are represented here.
+- [x] Remove platform-erasure implementation ownership from Event Location plan/context/tasks.
+- [x] Retain only the typed EventLocation disposition/correction adapter boundary in the Event Location workstream.
+- [x] Confirm this workstream is the sole active owner of receipt/status, provider settlement, replay, retention, and restore behavior.
 
-### Phase 2 Gate
+### Phase 1 gate
 
-```bash
-dotnet build --configuration Release --verbosity quiet
-dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+- [x] Record results and update plan/context if evidence changed a decision.
+
+Evidence:
+
+```text
+OREA-100 inventory:
+- RED: 8 tests, 6 passed, 2 failed for missing explicit FenceOwner and executable-instruction rejection.
+- Repair RED: 9 tests, 8 passed, 1 failed for curl-to-shell bypass.
+- GREEN: 9/9 focused tests; 147 hard-delete, 85 anonymize, 4 bounded-retain, 16 external-action, unclassified=0.
+- Exact omission probe fails with `missing: OrganizationPii.Email`.
+- Independent adversarial verdict: confirmed (0.99) after curl/wget hostile probes and benign-control coverage.
+
+OREA-110 topology:
+- PIN: legacy configuration characterization 8/8.
+- RED: new topology tests failed on missing PrivacyErasureAuthorityTopology.
+- GREEN: 22/22 focused topology/composition tests and 3/3 bounded request-contract tests.
+- Release build: 26 projects, 0 errors, 41 pre-existing package warnings.
+- Independent adversarial verdict: confirmed (0.97).
+- Explicit next dependency: OREA-200 supplies the real CoLocated IPrivacyErasureAuthority adapter; no fake, no-op, or fallback was introduced.
+
+Phase 1 integrated gate:
+- Release build: 26 projects, 0 errors, 41 documented warnings.
+- Focused selectors: governance 6/6, inventory 9/9, topology/composition 22/22, request contract 3/3.
+- Full Architecture: 296 total, 292 passed, 3 documented unrelated failures, 1 skipped.
+- All 11 changed C# files have clean LSP diagnostics; manual YAML, inventory, hostile-instruction, and CoLocated secret-isolation observables passed.
+- Independent DoneClaim verdict: confirmed; evidence `.omo/evidence/optional-retained-erasure-authority/phase-1-gate/verification.md`.
 ```
 
-## Phase 3 — Make Migration, Startup, And Health Conditional
+## Phase 2 — Persistence Adapters and Migration Ownership
 
-- **Transferred OREA-200 — Make Event.MigrationService mode-aware**
-  - Paths: `src/Event.MigrationService/Program.cs`, `Worker.cs`, new synchronization service/tests.
-  - Deliverable: default migrates only app/Data Protection; retained also migrates authority and performs ordered ledger synchronization.
-  - Acceptance: default never resolves authority config/context; retained failure exits 1; divergence/gap stops; application-only suffix promotes; a pre-correction checkpointed authority prefix backfills the new local mirror without duplicate outbox; authority facts beyond the verified checkpoint remain for API replay.
-  - Verify: worker/composition tests use exact configuration variants.
-  - Transfer: platform tasks 5, 7, and 17 own strict mode validation, default two-context migration, retained authority migration, and conditional replay.
+### OREA-200 — Co-located and external adapters
 
-- **Transferred OREA-210 — Make API startup replay conditional**
-  - Paths: `Explore.API/Program.cs`, `LocationPrivacyStartupGate.cs`, API integration tests.
-  - Deliverable: mode branch occurs before replay-service resolution; retained gate remains between host build and host start.
-  - Acceptance: default host starts with no authority service/secret; retained outage/mismatch/cancellation prevents hosted-worker invocation; no fallback.
-  - Verify: expanded `LocationPrivacyStartupGateTests`.
-  - Transfer: platform tasks 5, 7, and 17.
+- [ ] Keep the application ledger repository as the mirror/checkpoint store.
+- [ ] Implement a co-located authority adapter using a short-lived `ExploreDbContext` and separate commit boundary.
+- [ ] Prove the authority append survives a forced application mutation rollback.
+- [ ] Prove replay applies the pending fact exactly once and idempotently confirms the mirror/checkpoint.
+- [ ] Prove no external authority connection is opened in `CoLocated`.
 
-- **Transferred OREA-220 — Add bounded durability health reporting**
-  - Paths: new API health check, `Program.cs`, shared safe health writer tests/docs.
-  - Deliverable: `location-privacy-erasure-durability` health entry.
-  - Acceptance: default healthy/false, retained healthy/true only after validation, retained failures unhealthy; no endpoint, DB name, watermark, IDs, exception text, or secret.
-  - Verify: API health integration tests inspect serialized response.
-  - Transfer: platform tasks 17 and 18.
+### OREA-210 — Schema ownership and pre-v1 reset policy
 
-- **Transferred OREA-230 — Add migration-service container path for self-hosting**
-  - Paths: new `src/Event.MigrationService/Dockerfile`, `docker-compose.yml`, `.env.example`, self-hosting tests/docs.
-  - Deliverable: Compose migration service runs before API, receives application config always and authority config only when explicitly retained.
-  - Acceptance: default Compose values require no authority secret; failed migration prevents API dependency satisfaction; API retains direct-run app migration fallback but never migrates authority with runtime credentials.
-  - Verify: deterministic Compose configuration/architecture tests; no live container launch in this phase gate.
-  - Transfer: platform tasks 7, 17, and 19.
+- [ ] Retain the dedicated authority context/repository and function-only runtime access.
+- [ ] Make only `IPrivacyErasureAuthority` topology-dependent in persistence DI.
+- [ ] Ensure application migrations alone own co-located tables/application mirror.
+- [ ] Ensure dedicated authority migrations run only against the external database.
+- [ ] Add a composition test preventing both migration sets from targeting one physical database.
+- [ ] Correct characterized stale `location_privacy_authority` test/schema names to `privacy_erasure_authority`.
+- [ ] Implement and document reset-only handling for the removed pre-v1 mode contract; add no compatibility shim or silent translation.
+- [ ] Require explicit reset eligibility and backup/export prerequisites; implementation agents never delete databases, containers, volumes, or backups.
 
-### Phase 3 Gate
+### OREA-220 — PostgreSQL topology and restore proof
 
-```bash
-dotnet build --configuration Release --verbosity quiet
-dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
+- [ ] Refactor/extend the existing fixture to make one-container and two-independent-container setups explicit.
+- [ ] Cover monotonic concurrent appends in both applicable paths.
+- [ ] Cover external runtime ACLs and approved append/read functions.
+- [ ] Seed PII and capture a real pre-erasure application-database backup.
+- [ ] Commit the authority fact, complete erasure, then restore only the application database while leaving authority untouched.
+- [ ] Restart/reinvoke replay and prove restored PII is erased again and repeated replay is idempotent.
+- [ ] Cover co-located rollback/replay while asserting `restoreReplayProtection=false`; do not claim full-backup protection.
+- [ ] Do not simulate restore by merely deleting rows.
+- [ ] Keep fixtures isolated, deterministic, and free of secret-bearing output.
+- [ ] Update `schemas/islamu-event.md`, `docs/SECURITY-MODEL.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, and `docs/TESTING.md` with the implemented persistence/restore behavior.
+
+### Phase 2 gate
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- [ ] Record results and update plan/context if evidence changed a decision.
+
+Evidence:
+
+```text
+Pending.
 ```
 
-## Phase 4 — Wire `local-full` And Close Operator Contracts
+## Phase 3 — User Fence, Saga, and Complete Local Dispositions
 
-- **Transferred OREA-300 — Provision authority only in Aspire `local-full`**
-  - Paths: `src/Explore.AppHost/AppHost.cs`, PgAdmin config as needed, launch-profile architecture tests.
-  - Deliverable: separate Postgres server/database/volume in `FullLocal`; connection/mode injected only into migration service/API; correct wait edges.
-  - Acceptance: no second DB inside app Postgres; no authority resource/reference in default/core/lite; no authority config in Blazor.
-  - Verify: `AspireLocalInfrastructureArchitectureTests` parse/guard all four profiles.
-  - Transfer: platform tasks 7 and 17; task 7 additionally owns the real authority-free `local-lite` proof.
+### OREA-300 — Fence, saga, policy version, and receipt state
 
-- **Transferred OREA-310 — Add DI and secret-flow architecture guards**
-  - Paths: `tests/Event.Architecture.Tests/`.
-  - Deliverable: guards for explicit mode selection, no unconditional retained registration, no embedded schema SQL, context/migration ownership, and no Blazor secret flow.
-  - Acceptance: tests fail against the old structure and pass only after the target boundaries exist.
-  - Verify: focused Architecture tests.
-  - Transfer: platform tasks 5, 7, 17, and 20.
+- [ ] Append/reuse one typed authority fact and establish the User fence before PII enumeration.
+- [ ] Complete saga concurrency, policy-version coverage, stable idempotency, receipt hash, once-only reveal, and expiry behavior.
+- [ ] Reject mismatched duplicate requests without exposing subject state.
 
-- **Transferred OREA-320 — Rewrite configuration, operations, self-hosting, and backup contracts**
-  - Paths: all documents listed in plan Section 11 plus `schemas/islamu-event.md`.
-  - Deliverable: one-database default, retained opt-in, exact keys, profile matrix, health semantics, promotion/downgrade, independent backup requirement, default restore limitation, and troubleshooting.
-  - Acceptance: no document calls authority mandatory for every deployment; no document calls default erasure disabled; release checklist captures both migrations/config/backup impact.
-  - Verify: documentation quality tests and contradiction search are part of the Architecture project gate.
-  - Transfer: platform task 19.
+### OREA-310 — Complete local disposition families
 
-- **Transferred OREA-330 — Final cross-mode contract audit**
-  - Paths: complete change set.
-  - Deliverable: trace each acceptance criterion from mode config through DI, persistence, migration, startup, health, Aspire, Compose, and docs.
-  - Acceptance: every criterion has a test/evidence owner; no silent fallback, secret leak, migration drift, or competing plan statement remains.
-  - Verify: final source searches plus Phase 4 gate.
-  - Transfer: platform task 20 and F1-F4.
+- [ ] Apply the inventory to identity/authentication, tenancy/membership/preferences, and owned Home/location data.
+- [ ] Apply it to registration/contact sharing, notifications/email/web-push, AI/webhook/report/audit/configuration/idempotency, storage, and federation copies.
+- [ ] Preserve justified bounded outcomes only; anonymize shared content without deleting unrelated users' data.
+- [ ] Delete only platform-managed upstream identities; materialize revoke/unlink work for externally managed identities.
 
-### Phase 4 Gate
+### OREA-320 — Atomic application settlement and EventLocation adapter
 
-```bash
-dotnet build --configuration Release --verbosity quiet
-dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+- [ ] Keep every local disposition, mirror/checkpoint, provider work, cache authority, EventLocation correction intent, and receipt status in one serializable application transaction.
+- [ ] Consume the Event Location typed adapter for exact subject/tenant predicates, owned Home/room tombstones, affected `EventLocation` corrections, and stable idempotency.
+- [ ] Keep provider/external authority calls outside the application transaction.
+- [ ] Prove rollback, crash, duplicate replay, tenant substitution, unrelated-user preservation, and two-tenant/former-membership behavior.
+
+### Phase 3 gate
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
+- [ ] Record results and update plan/context if evidence changed a decision.
+
+Evidence:
+
+```text
+Pending.
 ```
 
-## Historical Completion Evidence Transfer
+## Phase 4 — Provider Settlement and Anti-Resurrection Enforcement
 
-- Default mode, atomic local erasure, stray-secret handling, retained fail-closed behavior, replay, rollback guards, profile topology, Blazor secret isolation, observability, and operator contracts transfer to platform tasks 5, 7, 8, and 17-20.
-- Fresh legacy-authority adoption is no longer a target. The platform plan instead owns three generated clean init migrations and current-invariant catalog proof.
-- OREA-000 through OREA-130 evidence remains historical input and does not authorize keeping or replaying the discarded migration IDs.
+### OREA-400 — Specialized provider-work outboxes
+
+- [ ] Persist typed provider targets and stable idempotency keys atomically with local erasure.
+- [ ] Implement lease fencing, bounded retry/backoff, explicit `Unknown`, dead-letter visibility, and reconciliation.
+- [ ] Prove ambiguous acknowledgement is never treated as success or blindly retried.
+
+### OREA-410 — Ownership-aware provider adapters
+
+- [ ] Implement specialized adapters for platform-managed identity deletion and external identity revoke/unlink.
+- [ ] Cover ATProto, Listmonk, object storage, web push, webhook/export projections, and every inventory-listed provider family.
+- [ ] Fail wrong-tenant, wrong-subject, and untrusted endpoint inputs before I/O.
+- [ ] Reuse existing clients and secret resolvers; add no generic provider plugin.
+
+### OREA-420 — Fence propagation and cache safety
+
+- [ ] Enforce the fence at shared PII-producing handler, worker, cache-rematerialization, and remote-dispatch boundaries.
+- [ ] Open a fresh scope and reload persisted tenant/subject ownership for every delivery/reconciliation.
+- [ ] Ensure invalidation failure cannot serve stale subject PII; persist convergence work, degrade readiness, and alert.
+
+### Phase 4 gate
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet`
+- [ ] Record results and update plan/context if evidence changed a decision.
+
+Evidence:
+
+```text
+Pending.
+```
+
+## Phase 5 — Receipt/Status API, Replay, and Readiness
+
+### OREA-500 — Truthful asynchronous API
+
+- [ ] Replace the location-specific deletion boundary with the platform policy orchestrator.
+- [ ] Return `202 Accepted`, `Location`, `Retry-After`, and the receipt exactly once after local commit.
+- [ ] Add a `private, no-store` status route using dedicated receipt authorization after login removal.
+- [ ] Return only bounded local/provider outcome codes; invalid, wrong, replayed, and expired receipts fail indistinguishably.
+
+### OREA-510 — Universal startup replay
+
+- [ ] Remove the old application-database early return and replay before API/BFF/MCP/ordinary workers in both topologies.
+- [ ] Fail closed for external authority unavailability, corruption, sequence gaps, or lag.
+- [ ] Reapply every fact not covered by the current policy version before readiness.
+
+### OREA-520 — Bounded diagnostics
+
+- [ ] Expose topology, restore capability, replay lag, provider backlog, dead letters, and last success through existing health/metrics conventions.
+- [ ] Exclude identifiers, endpoints, connection details, payloads, credentials, and free-text errors.
+- [ ] Update API tests plus privacy/replay/health sections of `docs/SECURITY-MODEL.md` and `docs/OPERATIONS.md`.
+
+### Phase 5 gate
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- [ ] Record results and update plan/context if evidence changed a decision.
+
+Evidence:
+
+```text
+Pending.
+```
+
+## Phase 6 — Self-Hosting, Secrets, Retention, and Disaster Recovery
+
+### OREA-600 — Migration service and orchestration
+
+- [ ] Configure `PrivacyErasureAuthorityDbContext` in `Event.MigrationService` only for `ExternalDatabase`.
+- [ ] Apply external authority migrations with migrator credentials before API readiness.
+- [ ] Ensure API runtime never migrates the external authority database.
+- [ ] Wire Compose migration ordering and health dependencies.
+- [ ] Wire Aspire/AppHost for application-database reuse or an explicit distinct authority database resource.
+
+### OREA-610 — Environment, secrets, and bounded retention
+
+- [ ] Add `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=CoLocated` to `.env` without overwriting unrelated user values.
+- [ ] Add blank runtime/migrator authority secret placeholders to `.env`.
+- [ ] Add documented, copyable equivalents to `.env.example` with no real secrets.
+- [ ] Map runtime secret only into API and migrator secret only into migration service.
+- [ ] Pass no authority connection secret to Blazor.
+- [ ] Document direct .NET keys for non-Compose/self-host secret providers.
+- [ ] Add validation/redaction tests for missing/misrouted authority secrets.
+- [ ] Implement backup-horizon configuration, receipt/provider credential expiry, dry-run cleanup, and legal-hold pseudonymization.
+- [ ] Update `docs/CONFIGURATION.md`, `docs/SECRETS.md`, `docs/SELF_HOSTING.md`, `docs/DEPLOYMENT_MODES.md`, and `docs/DEPLOYMENT_TIERS.md` alongside the hosting/env behavior.
+- [ ] State clearly that two databases restored together do not provide replay protection.
+
+### OREA-620 — Enterprise disaster recovery
+
+- [ ] Define and test backup ordering, RPO/RTO, authority loss/corruption recovery, and the exact readiness-resume point.
+- [ ] Define and test runtime/migrator credential rotation.
+- [ ] Define and test `CoLocated` to `ExternalDatabase` cutover and explicit acknowledgement for unsafe downgrade.
+- [ ] Record the pre-v1 reset-only policy, reset eligibility, backup/export prerequisites, forward repair, and old-backup rehearsal.
+
+### Phase 6 gate
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Explore.Secrets.Tests/Explore.Secrets.Tests.csproj --configuration Release --verbosity quiet`
+- [ ] Record results and update plan/context if evidence changed a decision.
+
+Evidence:
+
+```text
+Pending.
+```
+
+## Phase 7 — Contract, Documentation, and Completeness Convergence
+
+### OREA-700 — Contract and operator documentation
+
+- [ ] Converge PII inventory, schemas, OpenAPI/generated contracts, API changelog, configuration, privacy, security, outbox, testing, operations, troubleshooting, self-hosting, deployment, secrets, and backup/restore docs.
+- [ ] Document that UUIDs and minimized authority facts remain linkable personal data.
+- [ ] Ensure every documented key, startup sequence, receipt state, retention action, and restore guarantee matches shipped behavior.
+
+### OREA-710 — Ownership and completeness enforcement
+
+- [ ] Remove obsolete location-specific authority names and legacy behavior-mode configuration.
+- [ ] Confirm every current local/external User-PII copy has one implemented disposition and every producer uses the shared fence.
+- [ ] Confirm Event Location owns only its typed adapter/correction behavior and this workstream owns platform orchestration.
+- [ ] Review the scoped diff for secrets, PII-bearing authority fields, destructive migration behavior, privilege leakage, and unrelated edits.
+
+### OREA-720 — Final behavior evidence
+
+- [ ] Record normal deletion, concurrency, rollback, duplicate/ambiguous append, provider unknown/reconciliation, tenant substitution, receipt expiry, and policy upgrade evidence.
+- [ ] Record both topology paths, old-backup replay, unrelated-user preservation, zero PII recreation, and zero unclassified copies.
+- [ ] Add only durable non-obvious findings to `dev/_journal/journal.md` through the canonical finding workflow.
+
+### Phase 7 gate
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
+- [ ] Record results and update plan/context if evidence changed a decision.
+
+Evidence:
+
+```text
+Pending.
+```
+
+## Deferred / Explicitly Out of Scope
+
+- [ ] Distributed transactions between authority and application databases.
+- [ ] Arbitrary operator-authored erasure SQL or selector payloads.
+- [ ] Automatic proof that two configured databases have independent backup lifecycles.
+- [ ] External-to-co-located downgrade automation.
+- [ ] New secret-loader abstraction unless implementation evidence proves process-specific named connections insufficient.
+- [ ] New Testcontainers framework when the existing persistence fixture can be extended.
+
+## Blockers and Decision Changes
+
+| Date | Item | Status / resolution |
+|---|---|---|
+| 2026-07-22 | Canonical intent mandated the old `ApplicationDatabase` default | Resolved; intent now requires one authority-first workflow with `CoLocated` / `ExternalDatabase`, while `OREA-100` inventory reconciliation and every `OREA-110` runtime/product task remain incomplete |
+| 2026-07-22 | Existing broader `.omo` plan defaulted to the old mode model and owned unfinished platform erasure | Resolved by `OREA-120`; valid scope/evidence is represented here and the `.omo` plan is historical |
+| 2026-07-22 | Event Location planning owned global erasure/topology work | Resolved by `OREA-120`; only the typed EventLocation adapter boundary remains there |
+
+## Maintenance Contract
+
+- Plan owns stable design/scope/acceptance criteria.
+- Context owns quick resume, current evidence, decisions, risks, and handoff.
+- This file owns live progress and exact verification evidence.
+- Synchronize all three at each phase boundary and before any pause or handoff.
