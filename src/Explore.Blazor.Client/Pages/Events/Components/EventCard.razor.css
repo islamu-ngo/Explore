@@ -79,6 +79,58 @@
     display: block;
 }
 
+::deep .event-card__image-actions {
+    position: absolute;
+    inset-block-start: var(--isl-space-2);
+    inset-inline-end: var(--isl-space-2);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--isl-space-2);
+}
+
+::deep .event-card__external-link {
+    position: absolute;
+    inset-block-start: var(--isl-space-2);
+    inset-inline-end: var(--isl-space-2);
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--isl-space-1);
+    min-block-size: 2.25rem;
+    padding: var(--isl-space-1) var(--isl-space-3);
+    border-radius: var(--isl-radius-button);
+    background: var(--isl-color-surface, var(--mud-palette-surface));
+    color: var(--isl-color-text, var(--mud-palette-text-primary));
+    box-shadow: var(--isl-shadow-sm);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    line-height: 1;
+    text-decoration: none;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-0.25rem);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+::deep .event-card__image-actions .event-card__external-link {
+    position: static;
+}
+
+::deep .event-card:hover .event-card__external-link,
+::deep .event-card:focus-within .event-card__external-link,
+::deep .event-card__external-link:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+::deep .event-card__external-link:focus-visible {
+    outline: var(--isl-focus-ring-width) solid var(--isl-color-primary);
+    outline-offset: var(--isl-focus-ring-offset);
+}
+
 ::deep .event-card__image-foreground > img {
     width: 100% !important;
     height: 100% !important;
@@ -175,10 +227,7 @@
 }
 
 ::deep .event-card__action-menu--overlay {
-    position: absolute;
-    top: 8px;
-    inset-inline-end: 8px;
-    z-index: 10;
+    position: static;
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -522,4 +571,30 @@
         min-width: calc(50% + 1px);
         padding-inline: 12px;
     }
+}
+
+@media (hover: none), (pointer: coarse), (max-width: 48rem) {
+    ::deep .event-card__external-link {
+        background: transparent;
+        color: white;
+        box-shadow: none;
+        padding: var(--isl-space-2);
+        opacity: 1;
+        pointer-events: auto;
+        transform: none;
+        text-shadow: 0 1px 3px oklch(0 0 0 / 0.85);
+        animation: eventCardExternalLinkFadeIn 0.2s ease-out both;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::deep .event-card__external-link {
+        transition: none;
+        animation: none;
+    }
+}
+
+@keyframes eventCardExternalLinkFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }

@@ -1,3 +1,6 @@
+// ABOUTME: Tests local image fallbacks for events and organizations.
+// ABOUTME: Verifies event artwork is deterministic, title-free gradient mesh SVG while organization fallbacks retain labels.
+
 using Explore.Blazor.Client.Helpers;
 
 namespace Explore.Blazor.Client.Tests.Helpers;
@@ -18,9 +21,12 @@ public class ImageHelperTests
     public async Task GetEventImageUrl_ReturnsLocalSvgFallback_WhenImageMissing()
     {
         var result = ImageHelper.GetEventImageUrl(null, "Annual Summit", "4a90e2");
+        var svg = DecodeSvg(result);
 
         await Assert.That(result).StartsWith("data:image/svg+xml;utf8,");
-        await Assert.That(result).Contains(Uri.EscapeDataString("Annual Summit"));
+        await Assert.That(svg).Contains("linearGradient");
+        await Assert.That(svg).Contains("radialGradient");
+        await Assert.That(svg).DoesNotContain("Annual Summit");
         await Assert.That(result).DoesNotContain("placehold.co");
     }
 
@@ -35,10 +41,23 @@ public class ImageHelperTests
     }
 
     [Test]
-    public async Task GetEventImageUrl_UsesDefaultColor_WhenColorIsInvalid()
+    public async Task GetEventImageUrl_IsDeterministicForTheSameTitle()
     {
-        var result = ImageHelper.GetEventImageUrl(null, "Annual Summit", "not-a-color");
+        var first = ImageHelper.GetEventImageUrl(null, "Annual Summit", "not-a-color");
+        var second = ImageHelper.GetEventImageUrl(null, "Annual Summit", "4a90e2");
 
-        await Assert.That(result).Contains(Uri.EscapeDataString($"fill=\"#{EventColorHelper.DefaultColor}\""));
+        await Assert.That(first).IsEqualTo(second);
     }
+
+    [Test]
+    public async Task GetEventImageUrl_UsesDifferentGradientForDifferentTitle()
+    {
+        var first = ImageHelper.GetEventImageUrl(null, "Annual Summit");
+        var second = ImageHelper.GetEventImageUrl(null, "Community Workshop");
+
+        await Assert.That(first).IsNotEqualTo(second);
+    }
+
+    private static string DecodeSvg(string dataUri) =>
+        Uri.UnescapeDataString(dataUri["data:image/svg+xml;utf8,".Length..]);
 }

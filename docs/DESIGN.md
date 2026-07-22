@@ -159,9 +159,17 @@ Layout rules:
 ### EventCard
 - Structure: the production event card is the only card used by home discovery and `/events`; card-body navigation is a real link or keyboard-equivalent target, while nested share/edit/delete controls remain independent.
 - Variants: `DetailedList`, `SingleRow`, and `CompactGrid`.
-- States: image, image-fallback, hover, focus-visible, loading placeholder, and server-provided management affordances.
+- States: image, generated mesh image-fallback, hover, focus-visible, loading placeholder, external-platform action, and server-provided management affordances.
 - Accessibility: Enter and Space activate card-body navigation without activating nested controls; focus remains visible; images have meaningful alternative text; metadata is not color-only.
 - Authorization: edit/delete and other management actions render only when the matching HAL relation is present. Layout mode never changes authority.
+- Schedule: card metadata uses `ddd, MMM dd, h:mm tt` with the month uppercased; the year is omitted for dates in the current year and included for every other year.
+- Fallback artwork: missing or failed event images use a local SVG whose title-stable hash selects a duo-tone linear gradient and radial mesh positions. The artwork contains no duplicate title text; the surrounding image element retains the event title as its accessible alternative.
+- External platform: a non-empty, absolute HTTP(S) `EventUrl` adds an independent “Open” link at the image's block-start/inline-end corner. It opens a new tab with opener isolation. Pointer-capable desktop layouts reveal the theme-aware surface button on card hover or focus-within; narrow or coarse-pointer layouts keep a background-free, high-contrast text action visible without hover.
+
+### EventDetailsSidebar
+- Structure: the event preview keeps the internal “Event Page” action as the primary navigation path and places an external “Open” action at the inline end of the header action group only when the selected event has a safe `EventUrl`.
+- States: internal-only, internal plus external platform, image, generated mesh image-fallback, loading, and HAL-provided management or registration affordances.
+- Accessibility: the external action explicitly announces that it opens in a new tab, uses native link semantics, and preserves the ISLAMU Event browser tab.
 
 ### EventHorizontalRail
 - Structure: a titled section followed by a native horizontal overflow region containing production `EventCard` instances.

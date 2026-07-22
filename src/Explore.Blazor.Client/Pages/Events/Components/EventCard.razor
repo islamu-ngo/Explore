@@ -15,33 +15,51 @@
                  tabindex="@CardTabIndex"
                  aria-label="@CardAriaLabel">
             <div class="event-card__image-wrapper">
-                @if (HasCardActions)
+                @if (ExternalEventUrl is not null || HasCardActions)
                 {
-                    <div class="event-card__action-menu event-card__action-menu--overlay"
-                         @onclick:stopPropagation="true"
-                         @onkeydown:stopPropagation="true">
-                        @if (CanShare)
+                    <div class="event-card__image-actions">
+                        @if (ExternalEventUrl is { } compactExternalEventUrl)
                         {
-                            <MudIconButton Icon="@Icons.Material.Filled.Share"
-                                           Color="Color.Primary"
-                                           Size="Size.Small"
-                                           OnClick="ShareEventAsync"
-                                           aria-label="@ShareButtonLabel" />
+                            <a class="event-card__external-link"
+                               href="@compactExternalEventUrl"
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               aria-label="@ExternalEventLinkLabel"
+                               @onclick:stopPropagation="true"
+                               @onkeydown:stopPropagation="true">
+                                <span>Open</span>
+                                <MudIcon Icon="@Icons.Material.Outlined.OpenInNew" Size="Size.Small" aria-hidden="true" />
+                            </a>
                         }
-                        @if (HasManagementMenu)
+                        @if (HasCardActions)
                         {
-                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
-                                     AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
-                                     Class="event-card__menu-button">
-                                @if (CanEdit)
+                            <div class="event-card__action-menu event-card__action-menu--overlay"
+                                 @onclick:stopPropagation="true"
+                                 @onkeydown:stopPropagation="true">
+                                @if (CanShare)
                                 {
-                                    <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => HandleEdit())">Edit</MudMenuItem>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Share"
+                                                   Color="Color.Primary"
+                                                   Size="Size.Small"
+                                                   OnClick="ShareEventAsync"
+                                                   aria-label="@ShareButtonLabel" />
                                 }
-                                @if (CanDelete)
+                                @if (HasManagementMenu)
                                 {
-                                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => HandleDelete())">Delete</MudMenuItem>
+                                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                                             Class="event-card__menu-button">
+                                        @if (CanEdit)
+                                        {
+                                            <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => HandleEdit())">Edit</MudMenuItem>
+                                        }
+                                        @if (CanDelete)
+                                        {
+                                            <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => HandleDelete())">Delete</MudMenuItem>
+                                        }
+                                    </MudMenu>
                                 }
-                            </MudMenu>
+                            </div>
                         }
                     </div>
                 }
@@ -106,7 +124,7 @@
                     @if (IsFieldVisible("event_list.card.show_date"))
                     {
                         <div class="event-card__overlay-meta">
-                            <MudText Typo="Typo.caption">@(Event.FirstSessionDate?.ToString("MMM dd") ?? "TBD")</MudText>
+                            <MudText Typo="Typo.caption">@FormattedEventDate</MudText>
                         </div>
                     }
                     @if (CompactExtraFieldCount > 0)
@@ -183,6 +201,19 @@
                  aria-label="@CardAriaLabel">
             <div class="event-card__horizontal">
                 <div class="event-card__horizontal-image">
+                    @if (ExternalEventUrl is { } detailedExternalEventUrl)
+                    {
+                        <a class="event-card__external-link"
+                           href="@detailedExternalEventUrl"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           aria-label="@ExternalEventLinkLabel"
+                           @onclick:stopPropagation="true"
+                           @onkeydown:stopPropagation="true">
+                            <span>Open</span>
+                            <MudIcon Icon="@Icons.Material.Outlined.OpenInNew" Size="Size.Small" aria-hidden="true" />
+                        </a>
+                    }
                     @if (HasActualImage)
                     {
                         <div class="event-card__image-blur" style="background-image: url('@DisplayImageSource');"></div>
@@ -306,7 +337,7 @@
                         {
                             <span class="event-card__dl-meta-item">
                                 <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Size="Size.Small" />
-                                @(Event.FirstSessionDate?.ToString("MMM dd, yyyy") ?? "TBD")
+                                @FormattedEventDate
                             </span>
                         }
                         @if (IsFieldVisible("event_list.card.show_location"))
@@ -351,6 +382,19 @@
                  aria-label="@CardAriaLabel">
             <div class="event-card__full-row">
                 <div class="event-card__full-row-image">
+                    @if (ExternalEventUrl is { } rowExternalEventUrl)
+                    {
+                        <a class="event-card__external-link"
+                           href="@rowExternalEventUrl"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           aria-label="@ExternalEventLinkLabel"
+                           @onclick:stopPropagation="true"
+                           @onkeydown:stopPropagation="true">
+                            <span>Open</span>
+                            <MudIcon Icon="@Icons.Material.Outlined.OpenInNew" Size="Size.Small" aria-hidden="true" />
+                        </a>
+                    }
                     @if (HasActualImage)
                     {
                         <div class="event-card__image-blur" style="background-image: url('@DisplayImageSource');"></div>
@@ -494,7 +538,7 @@
                         {
                             <span class="event-card__sr-meta-item">
                                 <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Size="Size.Small" />
-                                @(Event.FirstSessionDate?.ToString("MMM dd, yyyy") ?? "TBD")
+                                @FormattedEventDate
                                 @if (Event.SessionCount > 1)
                                 {
                                     <span class="mud-secondary-text">(@Event.SessionCount sessions)</span>

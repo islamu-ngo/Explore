@@ -1,6 +1,7 @@
 // ABOUTME: Event card component supporting three layout modes (CompactGrid, DetailedList, SingleRow).
 // ABOUTME: Extracted from EventList inline rendering for reusability and settings-driven customization.
 
+using System.Globalization;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models;
@@ -120,6 +121,9 @@ public partial class EventCard : ComponentBase
     }
 
     private string TruncatedDescription => StringHelper.TruncateDescription(Event.Description);
+    private string FormattedEventDate => FormatEventDate(Event.FirstSessionDate);
+    private string? ExternalEventUrl => EventUrlHelper.GetSafeExternalUrl(Event.EventUrl);
+    private string ExternalEventLinkLabel => $"Open {Event.Title} on its external platform in a new tab";
 
     private bool HasManagementMenu => CanEdit || CanDelete;
     private bool HasCardActions => HasManagementMenu || CanShare;
@@ -165,6 +169,17 @@ public partial class EventCard : ComponentBase
         "failed" => FailureGuidance(Event.AtprotoDeliveryFailureCode),
         _ => null
     };
+
+    private static string FormatEventDate(DateTimeOffset? value)
+    {
+        if (value is null)
+            return "TBD";
+
+        var date = value.Value;
+        var month = date.ToString("MMM", CultureInfo.InvariantCulture).ToUpperInvariant();
+        var year = date.Year == DateTimeOffset.Now.Year ? string.Empty : $", {date.Year}";
+        return $"{date.ToString("ddd", CultureInfo.InvariantCulture)}, {month} {date.Day}{year}, {date.ToString("h:mm tt", CultureInfo.InvariantCulture)}";
+    }
 
     // ── Icon Mapping Helpers ──
 

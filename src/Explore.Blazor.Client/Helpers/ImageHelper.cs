@@ -12,15 +12,14 @@ public static class ImageHelper
 {
     private const string DefaultTextColor = "ffffff";
     private const string DefaultOrganizationColor = "2196F3";
-    private const int MaxTitleLength = 30;
     private const int MaxOrganizationNameLength = 15;
 
     /// <summary>
-    /// Returns the event's featured image URL or a local SVG fallback with the event title and color.
+    /// Returns the event's featured image URL or a title-derived local gradient fallback.
     /// </summary>
     /// <param name="featuredImageUri">The actual image URI, if available.</param>
-    /// <param name="title">The event title for fallback text.</param>
-    /// <param name="colorHex">Hex color code (without #). Defaults to gray.</param>
+    /// <param name="title">The event title used to derive a stable gradient.</param>
+    /// <param name="colorHex">Retained for caller compatibility; gradient colors are derived from the title.</param>
     /// <param name="width">Fallback width. Defaults to 600.</param>
     /// <param name="height">Fallback height. Defaults to 400.</param>
     public static string GetEventImageUrl(
@@ -33,12 +32,8 @@ public static class ImageHelper
         if (!string.IsNullOrEmpty(featuredImageUri))
             return featuredImageUri;
 
-        var color = NormalizeHexColor(colorHex, EventColorHelper.DefaultColor);
-        var truncatedTitle = title.Length > MaxTitleLength
-            ? title[..MaxTitleLength] + "..."
-            : title;
-
-        return CreateSvgDataUri(width, height, color, truncatedTitle, DefaultTextColor);
+        _ = colorHex;
+        return CreateEventGradientSvgDataUri(width, height, title);
     }
 
     /// <summary>
@@ -70,12 +65,33 @@ public static class ImageHelper
         return $"data:image/svg+xml;utf8,{Uri.EscapeDataString(svg)}";
     }
 
-    private static string NormalizeHexColor(string? colorHex, string fallback)
+    private static string CreateEventGradientSvgDataUri(int width, int height, string title)
     {
-        var color = string.IsNullOrWhiteSpace(colorHex) ? fallback : colorHex.Trim().TrimStart('#');
-        return IsValidHexColor(color) ? color : fallback;
+        var safeWidth = Math.Max(1, width);
+        var safeHeight = Math.Max(1, height);
+        var hash = GetStableTitleHash(title);
+        var firstHue = hash % 360;
+        var secondHue = (firstHue + 48 + ((hash >> 8) % 120)) % 360;
+        var meshHue = (secondHue + 72 + ((hash >> 16) % 90)) % 360;
+        var meshX = 20 + ((hash >> 5) % 61);
+        var meshY = 15 + ((hash >> 13) % 71);
+
+        var svg = $"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{safeWidth}\" height=\"{safeHeight}\" viewBox=\"0 0 {safeWidth} {safeHeight}\" aria-hidden=\"true\" focusable=\"false\"><defs><linearGradient id=\"base\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\"><stop offset=\"0%\" stop-color=\"hsl({firstHue}, 78%, 42%)\"/><stop offset=\"100%\" stop-color=\"hsl({secondHue}, 72%, 34%)\"/></linearGradient><radialGradient id=\"mesh-a\" cx=\"{meshX}%\" cy=\"{meshY}%\" r=\"72%\"><stop offset=\"0%\" stop-color=\"hsl({meshHue}, 88%, 66%)\" stop-opacity=\"0.72\"/><stop offset=\"100%\" stop-color=\"hsl({meshHue}, 88%, 44%)\" stop-opacity=\"0\"/></radialGradient><radialGradient id=\"mesh-b\" cx=\"92%\" cy=\"88%\" r=\"68%\"><stop offset=\"0%\" stop-color=\"hsl({secondHue}, 90%, 58%)\" stop-opacity=\"0.58\"/><stop offset=\"100%\" stop-color=\"hsl({secondHue}, 80%, 38%)\" stop-opacity=\"0\"/></radialGradient></defs><rect width=\"100%\" height=\"100%\" fill=\"url(#base)\"/><rect width=\"100%\" height=\"100%\" fill=\"url(#mesh-a)\"/><rect width=\"100%\" height=\"100%\" fill=\"url(#mesh-b)\"/></svg>";
+        return $"data:image/svg+xml;utf8,{Uri.EscapeDataString(svg)}";
     }
 
-    private static bool IsValidHexColor(string color) =>
-        (color.Length == 3 || color.Length == 6) && color.All(Uri.IsHexDigit);
+    private static uint GetStableTitleHash(string title)
+    {
+        const uint offsetBasis = 2166136261;
+        const uint prime = 16777619;
+        var hash = offsetBasis;
+
+        foreach (var character in string.IsNullOrWhiteSpace(title) ? "event" : title.Trim())
+        {
+            hash ^= character;
+            hash = unchecked(hash * prime);
+        }
+
+        return hash;
+    }
 }

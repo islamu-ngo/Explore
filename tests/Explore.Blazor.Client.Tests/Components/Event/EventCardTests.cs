@@ -1,6 +1,7 @@
 // ABOUTME: bUnit tests for EventCard component verifying layout rendering and field visibility.
-// ABOUTME: Tests settings-driven field show/hide across all three layout modes.
+// ABOUTME: Tests settings-driven fields, schedule formatting, and external-platform links across every layout.
 
+using System.Globalization;
 using EventCardComponent = Explore.Blazor.Client.Pages.Events.Components.EventCard;
 
 namespace Explore.Blazor.Client.Tests.Components.Event;
@@ -8,8 +9,9 @@ namespace Explore.Blazor.Client.Tests.Components.Event;
 public class EventCardTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
-    private static readonly DateTimeOffset TestDate = new(2026, 6, 15, 10, 0, 0, TimeSpan.Zero);
-    private static readonly string ExpectedDetailedDate = TestDate.ToString("MMM dd, yyyy");
+    private static readonly DateTimeOffset TestDate = new(DateTimeOffset.Now.Year, 7, 25, 17, 0, 0, TimeSpan.Zero);
+    private static readonly string ExpectedDetailedDate =
+        $"{TestDate.ToString("ddd", CultureInfo.InvariantCulture)}, {TestDate.ToString("MMM", CultureInfo.InvariantCulture).ToUpperInvariant()} {TestDate:dd}, {TestDate.ToString("h:mm tt", CultureInfo.InvariantCulture)}";
 
     public EventCardTests()
     {
@@ -119,6 +121,36 @@ public class EventCardTests : IDisposable
     }
 
     [Test]
+    [Arguments(LayoutMode.CompactGrid)]
+    [Arguments(LayoutMode.DetailedList)]
+    [Arguments(LayoutMode.SingleRow)]
+    public async Task EventCard_FormatsCurrentYearScheduleWithoutYear(LayoutMode layout)
+    {
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p
+            .Add(x => x.Event, CreateTestEvent())
+            .Add(x => x.Layout, layout));
+
+        await Assert.That(cut.Markup).Contains(ExpectedDetailedDate);
+        await Assert.That(cut.Markup).DoesNotContain($"{TestDate:dd}, {TestDate:yyyy}");
+    }
+
+    [Test]
+    public async Task EventCard_FormatsOtherYearScheduleWithYear()
+    {
+        var eventDto = CreateTestEvent();
+        var pastDate = new DateTimeOffset(DateTimeOffset.Now.Year - 1, 7, 25, 17, 0, 0, TimeSpan.Zero);
+        eventDto.FirstSessionDate = pastDate;
+        var expected =
+            $"{pastDate.ToString("ddd", CultureInfo.InvariantCulture)}, {pastDate.ToString("MMM", CultureInfo.InvariantCulture).ToUpperInvariant()} {pastDate:dd}, {pastDate:yyyy}, {pastDate.ToString("h:mm tt", CultureInfo.InvariantCulture)}";
+
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p
+            .Add(x => x.Event, eventDto)
+            .Add(x => x.Layout, LayoutMode.DetailedList));
+
+        await Assert.That(cut.Markup).Contains(expected);
+    }
+
+    [Test]
     public async Task EventCard_HidesOrganizerField_WhenVisibilityDisabled()
     {
         var visibility = new Dictionary<string, bool>
@@ -214,6 +246,41 @@ public class EventCardTests : IDisposable
         await Assert.That(shareCount).IsEqualTo(1);
         await Assert.That(selectCount).IsEqualTo(0);
         await Assert.That(sharedEvent).IsSameReferenceAs(eventDto);
+    }
+
+    [Test]
+    [Arguments(LayoutMode.CompactGrid)]
+    [Arguments(LayoutMode.DetailedList)]
+    [Arguments(LayoutMode.SingleRow)]
+    public async Task EventCard_WithExternalEventUrl_RendersIsolatedNewTabLink(LayoutMode layout)
+    {
+        var eventDto = CreateTestEvent();
+        eventDto.EventUrl = "https://events.example.test/conference";
+
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p
+            .Add(x => x.Event, eventDto)
+            .Add(x => x.Layout, layout));
+
+        var link = cut.Find("a.event-card__external-link");
+        await Assert.That(link.TextContent).Contains("Open");
+        await Assert.That(link.GetAttribute("href")).IsEqualTo(eventDto.EventUrl);
+        await Assert.That(link.GetAttribute("target")).IsEqualTo("_blank");
+        await Assert.That(link.GetAttribute("rel")).IsEqualTo("noopener noreferrer");
+        await Assert.That(link.GetAttribute("aria-label"))
+            .IsEqualTo("Open Test Blazor Conference on its external platform in a new tab");
+    }
+
+    [Test]
+    public async Task EventCard_WithoutSafeExternalEventUrl_HidesExternalLink()
+    {
+        var eventDto = CreateTestEvent();
+        eventDto.EventUrl = "javascript:alert('unsafe')";
+
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p
+            .Add(x => x.Event, eventDto)
+            .Add(x => x.Layout, LayoutMode.DetailedList));
+
+        await Assert.That(cut.FindAll("a.event-card__external-link")).IsEmpty();
     }
 
     [Test]
