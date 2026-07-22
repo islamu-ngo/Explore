@@ -566,3 +566,8 @@ Explore.Blazor.Client/packages.lock.json
 # Thats a massive security vulnerability to share all work items as there may be security ones and more !
 event/
 .playwright-mcp/
+# Added by code-review-graph
+.code-review-graph/
+
+*.json.bak
+opencode.jsonc

@@ -1,10 +1,20 @@
 {
   "permissions": {
-    "allow": ["Edit", "Write", "MultiEdit", "NotebookEdit", "Bash(git *)", "Bash(dotnet *)"],
+    "allow": [
+      "Edit",
+      "Write",
+      "MultiEdit",
+      "NotebookEdit",
+      "Bash(git *)",
+      "Bash(dotnet *)"
+    ],
     "defaultMode": "acceptEdits"
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sequential-thinking", "context7"],
+  "enabledMcpjsonServers": [
+    "sequential-thinking",
+    "context7"
+  ],
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -36,6 +46,16 @@
             "command": "dotnet .claude/hooks/ContextTracker.cs"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat >/dev/null || true; command -v code-review-graph >/dev/null 2>&1 || exit 0; git rev-parse --git-dir >/dev/null 2>&1 && code-review-graph update --skip-flows --repo \"$(git rev-parse --show-toplevel 2>/dev/null)\" || true",
+            "timeout": 30
+          }
+        ]
       }
     ],
     "Stop": [
@@ -48,6 +68,18 @@
           {
             "type": "command",
             "command": "dotnet .claude/hooks/BuildCheck.cs"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat >/dev/null || true; command -v code-review-graph >/dev/null 2>&1 || exit 0; git rev-parse --git-dir >/dev/null 2>&1 && code-review-graph status --repo \"$(git rev-parse --show-toplevel 2>/dev/null)\" || echo 'Not a git repo, skipping'",
+            "timeout": 10
           }
         ]
       }
