@@ -37,7 +37,8 @@ public sealed class EventsWorkspaceNavigationTests : IDisposable
         await Assert.That(cut.Markup).Contains("Random");
         await Assert.That(cut.Markup).Contains("About Us");
         await Assert.That(cut.Markup).Contains("Contact");
-        await Assert.That(cut.Find("[data-testid='events-workspace-navigation']").GetAttribute("aria-label")).IsEqualTo("Sidebar navigation");
+        await Assert.That(cut.Find("[data-testid='events-workspace-navigation']").GetAttribute("aria-label"))
+            .IsEqualTo("Events workspace navigation");
     }
 
     [Test]

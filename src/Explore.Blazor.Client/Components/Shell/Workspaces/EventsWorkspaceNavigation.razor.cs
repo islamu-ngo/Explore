@@ -13,7 +13,7 @@ public partial class EventsWorkspaceNavigation : ComponentBase, IDisposable, IWo
     [Inject] protected IPublicExperienceService PublicExperienceService { get; set; } = null!;
     [Inject] protected TenantNavLinksState TenantNavLinksState { get; set; } = null!;
 
-    [Parameter] public string AriaLabel { get; set; } = "Sidebar navigation";
+    [Parameter] public string AriaLabel { get; set; } = "Events workspace navigation";
     [Parameter] public string DataTestId { get; set; } = "events-workspace-navigation";
 
     [Parameter]

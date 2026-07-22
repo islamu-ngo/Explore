@@ -4,6 +4,7 @@
 using Explore.Blazor.Client.Components.Shell;
 using Explore.Blazor.Client.Components.Shell.Workspaces;
 using Explore.Blazor.Client.Contracts.Services.Ai;
+using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Contracts.Services.SupportAccess;
 using Explore.Blazor.Client.Layout;
 using Explore.Blazor.Client.Services.Ai;
@@ -31,6 +32,7 @@ public sealed class WorkspaceNavigationPanelTests : IDisposable
         _ctx.Services.AddScoped<IWorkspaceRegistry>(_ => new TestNoProviderRegistry());
         _ctx.Services.AddScoped<WorkspaceRouteClassifier>();
         _ctx.Services.AddScoped<UiShellState>();
+        _ctx.Services.AddSingleton(Substitute.For<IShellPreferencesService>());
 
         var aiClientService = Substitute.For<IAiAssistantClientService>();
         aiClientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
@@ -75,6 +77,9 @@ public sealed class WorkspaceNavigationPanelTests : IDisposable
         _ctx.Services.AddSingleton(Substitute.For<IAnalyticsInterop>());
         _ctx.Services.AddSingleton(Substitute.For<ICookieConsentInterop>());
         _ctx.Services.AddSingleton(new CookieConsentStateService());
+        _ctx.Services.GetRequiredService<IUiShellContextService>()
+            .GetCachedContextAsync(Arg.Any<CancellationToken>())
+            .Returns((UiShellContextDto?)null);
     }
 
     public void Dispose() => _ctx.Dispose();
@@ -248,8 +253,8 @@ public sealed class WorkspaceNavigationPanelTests : IDisposable
     {
         public IReadOnlyList<WorkspaceDescriptor> Workspaces { get; } =
         [
-            new(WorkspaceKey.Events, "workspace.events", Icons.Material.Filled.Explore, "/", false, typeof(EventsWorkspaceNavigation)),
-            new(new WorkspaceKey("no-nav"), "workspace.no-nav", Icons.Material.Filled.BugReport, "/no-nav", false, null)
+            new(WorkspaceKey.Events, "workspace.events", Icons.Material.Filled.Explore, "/", false, null, typeof(EventsWorkspaceNavigation)),
+            new(new WorkspaceKey("no-nav"), "workspace.no-nav", Icons.Material.Filled.BugReport, "/no-nav", false, null, null)
         ];
     }
 }
