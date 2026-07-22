@@ -254,6 +254,10 @@ public static class ConfigurationExtensions
 
         // Deployment
         TrySet(mappedConfig, config, "Deployment:Mode", deploymentMode);
+        TrySet(mappedConfig, config, "PrivacyErasure:Authority:Topology",
+            ReadFirst(config, "PRIVACY_ERASURE_AUTHORITY_TOPOLOGY"));
+        TrySet(mappedConfig, config, "ConnectionStrings:PrivacyErasureAuthority",
+            ReadFirst(config, "PRIVACY_ERASURE_AUTHORITY_CONNECTION_STRING"));
         TrySet(mappedConfig, config, "ManagedControlPlane:Enabled", managedControlPlaneEnabled);
         TrySet(mappedConfig, config, "ManagedControlPlane:ControlPlaneUrl", managedControlPlaneUrl);
         TrySet(mappedConfig, config, "ManagedControlPlane:ManagedInstanceId", managedInstanceId);

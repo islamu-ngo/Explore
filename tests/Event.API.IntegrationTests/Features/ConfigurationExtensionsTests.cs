@@ -97,6 +97,38 @@ public sealed class ConfigurationExtensionsTests
     }
 
     [Test]
+    public async Task AddInfisicalCompatibility_MapsPrivacyErasureAuthorityKeys()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["PRIVACY_ERASURE_AUTHORITY_TOPOLOGY"] = "ExternalDatabase",
+            ["PRIVACY_ERASURE_AUTHORITY_CONNECTION_STRING"] = "Host=authority;Database=privacy;Username=runtime"
+        });
+
+        await Assert.That(configuration["PrivacyErasure:Authority:Topology"])
+            .IsEqualTo("ExternalDatabase");
+        await Assert.That(configuration["ConnectionStrings:PrivacyErasureAuthority"])
+            .IsEqualTo("Host=authority;Database=privacy;Username=runtime");
+    }
+
+    [Test]
+    public async Task AddInfisicalCompatibility_DoesNotOverrideCanonicalPrivacyErasureAuthorityKeys()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["PRIVACY_ERASURE_AUTHORITY_TOPOLOGY"] = "ExternalDatabase",
+            ["PRIVACY_ERASURE_AUTHORITY_CONNECTION_STRING"] = "Host=alias",
+            ["PrivacyErasure:Authority:Topology"] = "CoLocated",
+            ["ConnectionStrings:PrivacyErasureAuthority"] = "Host=canonical"
+        });
+
+        await Assert.That(configuration["PrivacyErasure:Authority:Topology"])
+            .IsEqualTo("CoLocated");
+        await Assert.That(configuration["ConnectionStrings:PrivacyErasureAuthority"])
+            .IsEqualTo("Host=canonical");
+    }
+
+    [Test]
     [Arguments(null, true)]
     [Arguments("", true)]
     [Arguments("local", true)]

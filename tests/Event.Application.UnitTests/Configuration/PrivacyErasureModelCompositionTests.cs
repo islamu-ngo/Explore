@@ -1,5 +1,5 @@
-// ABOUTME: Verifies canonical platform privacy-erasure configuration and default-mode secret isolation.
-// ABOUTME: Proves retained authority is explicit, fail-closed, and absent from default composition.
+// ABOUTME: Verifies topology-neutral privacy-erasure workflow registration and secret isolation.
+// ABOUTME: Proves only persistence selects the authority adapter and CoLocated never reads an external connection.
 
 using Explore.Application;
 using Explore.Application.Configuration;
@@ -7,16 +7,15 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 
 namespace Event.Application.UnitTests.Configuration;
 
 public sealed class PrivacyErasureModelCompositionTests
 {
     [Test]
-    public async Task PrivacyErasureDefaultComposition_PoisonAuthorityProviderIsNeverReadOrResolved()
+    public async Task CoLocatedComposition_PoisonExternalConnectionProviderIsNeverRead()
     {
-        var provider = new PoisonAuthorityConfigurationProvider();
+        var provider = new PoisonExternalConnectionConfigurationProvider();
         using var configuration = new ConfigurationRoot([provider]);
         var services = new ServiceCollection();
 
@@ -24,177 +23,119 @@ public sealed class PrivacyErasureModelCompositionTests
         PrivacyErasureDurabilityOptions options =
             PrivacyErasureDurabilityOptions.FromConfiguration(configuration);
 
-        await Assert.That(options.Mode)
-            .IsEqualTo(PrivacyErasureDurabilityMode.ApplicationDatabase);
-        await Assert.That(provider.AuthorityReadCount).IsEqualTo(0);
-        await Assert.That(services.Any(IsRetainedAuthorityDescriptor)).IsFalse();
-        await Assert.That(services.Last(descriptor =>
-                descriptor.ServiceType == typeof(IPrivacyErasureService))
-            .ImplementationType)
-            .IsEqualTo(typeof(ApplicationDatabasePrivacyErasureWorkflow));
+        await Assert.That(options.Topology)
+            .IsEqualTo(PrivacyErasureAuthorityTopology.CoLocated);
+        await Assert.That(provider.ExternalConnectionReadCount).IsEqualTo(0);
     }
 
     [Test]
-    [Arguments(null)]
-    [Arguments("ApplicationDatabase")]
-    public async Task ApplicationDatabaseMode_NeverRetainsStrayAuthorityConnection(string? mode)
+    [Arguments("CoLocated")]
+    [Arguments("ExternalDatabase")]
+    public async Task BothTopologies_RegisterExactlyOneAuthorityFirstWorkflow(string topology)
     {
         var values = new Dictionary<string, string?>
         {
-            ["PrivacyErasure:Durability:Mode"] = mode,
-            ["ConnectionStrings:PrivacyErasureAuthority"] =
-                "Host=unused;Database=unused;Username=unused"
+            ["PrivacyErasure:Authority:Topology"] = topology
         };
-
-        PrivacyErasureDurabilityOptions options = Resolve(values);
-
-        await Assert.That(options.Mode)
-            .IsEqualTo(PrivacyErasureDurabilityMode.ApplicationDatabase);
-        await Assert.That(typeof(PrivacyErasureDurabilityOptions).GetProperties()
-            .Select(property => property.Name))
-            .IsEquivalentTo(["Mode"]);
-    }
-
-    [Test]
-    [Arguments("")]
-    [Arguments(" ")]
-    [Arguments("Automatic")]
-    [Arguments("0")]
-    [Arguments("1")]
-    public async Task InvalidMode_FailsClosed(string mode)
-    {
-        await Assert.ThrowsAsync<OptionsValidationException>(() =>
-            Task.FromResult(Resolve(new Dictionary<string, string?>
-            {
-                ["PrivacyErasure:Durability:Mode"] = mode
-            })));
-    }
-
-    [Test]
-    [Arguments(null)]
-    [Arguments("")]
-    [Arguments(" ")]
-    [Arguments("Host=only")]
-    [Arguments("not-a-connection-string")]
-    public async Task RetainedMode_InvalidConnection_FailsClosed(string? connectionString)
-    {
-        await Assert.ThrowsAsync<OptionsValidationException>(() =>
-            Task.FromResult(Resolve(new Dictionary<string, string?>
-            {
-                ["PrivacyErasure:Durability:Mode"] = "RetainedAuthority",
-                ["ConnectionStrings:PrivacyErasureAuthority"] = connectionString
-            })));
-    }
-
-    [Test]
-    public async Task RetainedMode_ValidNpgsqlShape_SelectsRetainedWorkflow()
-    {
-        IConfiguration configuration = Build(new Dictionary<string, string?>
+        if (topology == "ExternalDatabase")
         {
-            ["PrivacyErasure:Durability:Mode"] = "retainedauthority",
-            ["ConnectionStrings:PrivacyErasureAuthority"] =
-                "Host=localhost;Database=privacy_erasure;Username=runtime;Password=unused"
-        });
+            values["ConnectionStrings:PrivacyErasureAuthority"] =
+                "Host=unused;Database=unused;Username=unused";
+        }
+
         var services = new ServiceCollection();
+        services.ConfigureApplicationServices(Build(values));
 
-        services.ConfigureApplicationServices(configuration);
-
-        await Assert.That(services.Last(descriptor =>
-                descriptor.ServiceType == typeof(IPrivacyErasureService))
-            .ImplementationType)
+        ServiceDescriptor[] workflows = services
+            .Where(descriptor => descriptor.ServiceType == typeof(IPrivacyErasureService))
+            .ToArray();
+        await Assert.That(workflows.Length).IsEqualTo(1);
+        await Assert.That(workflows[0].ImplementationType)
             .IsEqualTo(typeof(RetainedAuthorityPrivacyErasureWorkflow));
     }
 
     [Test]
-    public async Task LegacyAndNestedAuthorityKeys_DoNotActivateRetainedMode()
+    public async Task CoLocatedComposition_DoesNotRegisterFallbackAuthorityAdapter()
     {
-        PrivacyErasureDurabilityOptions options = Resolve(new Dictionary<string, string?>
+        var services = new ServiceCollection();
+        services.ConfigureApplicationServices(Build(new Dictionary<string, string?>
         {
-            ["ConnectionStrings:LocationPrivacyAuthority"] =
-                "Host=unused;Database=unused;Username=unused",
-            ["LocationPrivacy:ErasureDurability:Mode"] = "RetainedAuthority",
-            ["PrivacyErasure:Authority:Mode"] = "RetainedAuthority",
-            ["PrivacyErasure:Authority:ConnectionString"] =
-                "Host=unused;Database=unused;Username=unused"
-        });
+            ["PrivacyErasure:Authority:Topology"] = "CoLocated"
+        }));
 
-        await Assert.That(options.Mode)
-            .IsEqualTo(PrivacyErasureDurabilityMode.ApplicationDatabase);
+        await Assert.That(services.Any(descriptor =>
+            descriptor.ServiceType.FullName ==
+            "Explore.Application.Contracts.PrivacyErasure.IPrivacyErasureAuthority")).IsFalse();
     }
 
-    private static bool IsRetainedAuthorityDescriptor(ServiceDescriptor descriptor)
+    [Test]
+    public async Task ConfigurationDataSurface_ReportsOnlyTopologyAndWorkflowType()
     {
-        string[] names =
-        [
-            descriptor.ServiceType.FullName ?? string.Empty,
-            descriptor.ImplementationType?.FullName ?? string.Empty
-        ];
-        return names.Any(name =>
-            name.Contains("PrivacyErasureAuthorityDbContext", StringComparison.Ordinal)
-            || name.Contains("IPrivacyErasureAuthority", StringComparison.Ordinal)
-            || name.Contains("IPrivacyErasureReplayService", StringComparison.Ordinal));
-    }
+        var provider = new PoisonExternalConnectionConfigurationProvider();
+        using var configuration = new ConfigurationRoot([provider]);
+        var services = new ServiceCollection();
+        services.ConfigureApplicationServices(configuration);
 
-    private static PrivacyErasureDurabilityOptions Resolve(
-        IDictionary<string, string?> values) =>
-        PrivacyErasureDurabilityOptions.FromConfiguration(Build(values));
+        PrivacyErasureDurabilityOptions options =
+            PrivacyErasureDurabilityOptions.FromConfiguration(configuration);
+        ServiceDescriptor workflow = services.Single(descriptor =>
+            descriptor.ServiceType == typeof(IPrivacyErasureService));
+        await Assert.That(provider.ExternalConnectionReadCount).IsEqualTo(0);
+        Microsoft.Extensions.Options.OptionsValidationException? legacyFailure =
+            await Assert.ThrowsAsync<Microsoft.Extensions.Options.OptionsValidationException>(() =>
+            Task.FromResult(PrivacyErasureDurabilityOptions.FromConfiguration(
+                Build(new Dictionary<string, string?>
+                {
+                    ["PrivacyErasure:Durability:Mode"] = "secret-canary"
+                }))));
+        await Assert.That(legacyFailure!.Failures.Single()).DoesNotContain("secret-canary");
+
+        Console.WriteLine(
+            $"topology={options.Topology};workflow={workflow.ImplementationType!.Name}");
+    }
 
     private static IConfiguration Build(IDictionary<string, string?> values) =>
         new ConfigurationBuilder().AddInMemoryCollection(values).Build();
 
-    private sealed class PoisonAuthorityConfigurationProvider : ConfigurationProvider
+    private sealed class PoisonExternalConnectionConfigurationProvider : ConfigurationProvider
     {
-        private static readonly string[] ForbiddenPrefixes =
-        [
-            "PrivacyErasure:Authority",
-            "ConnectionStrings:PrivacyErasureAuthority",
-            "ConnectionStrings:LocationPrivacyAuthority",
-            "LocationPrivacy:ErasureAuthority",
-            "LocationPrivacy:ErasureDurability"
-        ];
+        private const string ExternalConnectionKey =
+            "ConnectionStrings:PrivacyErasureAuthority";
 
-        private int _authorityReadCount;
+        private int _externalConnectionReadCount;
 
-        public int AuthorityReadCount => Volatile.Read(ref _authorityReadCount);
+        public int ExternalConnectionReadCount => Volatile.Read(ref _externalConnectionReadCount);
 
         public override bool TryGet(string key, out string? value)
         {
-            ThrowIfAuthorityKey(key);
-            value = null;
-            return false;
+            ThrowIfExternalConnectionKey(key);
+            value = key.Equals(
+                "PrivacyErasure:Authority:Topology",
+                StringComparison.OrdinalIgnoreCase)
+                ? "CoLocated"
+                : null;
+            return value is not null;
         }
 
         public override IEnumerable<string> GetChildKeys(
             IEnumerable<string> earlierKeys,
             string? parentPath)
         {
-            if (parentPath is not null)
-            {
-                ThrowIfAuthorityKey(parentPath);
-            }
-
-            foreach (string key in earlierKeys)
-            {
-                ThrowIfAuthorityKey(
-                    string.IsNullOrEmpty(parentPath)
-                        ? key
-                        : $"{parentPath}:{key}");
-            }
-
+            ThrowIfExternalConnectionKey(parentPath);
             return earlierKeys;
         }
 
-        private void ThrowIfAuthorityKey(string key)
+        private void ThrowIfExternalConnectionKey(string? key)
         {
-            if (!ForbiddenPrefixes.Any(prefix =>
-                    key.Equals(prefix, StringComparison.OrdinalIgnoreCase)
-                    || key.StartsWith($"{prefix}:", StringComparison.OrdinalIgnoreCase)))
+            if (key is null
+                || (!key.Equals(ExternalConnectionKey, StringComparison.OrdinalIgnoreCase)
+                    && !key.StartsWith($"{ExternalConnectionKey}:", StringComparison.OrdinalIgnoreCase)))
             {
                 return;
             }
 
-            Interlocked.Increment(ref _authorityReadCount);
-            throw new InvalidOperationException("Default composition read an authority configuration key.");
+            Interlocked.Increment(ref _externalConnectionReadCount);
+            throw new InvalidOperationException("CoLocated composition read the external authority connection.");
         }
     }
 }

@@ -1,4 +1,4 @@
-// ABOUTME: Blocks API startup until retained platform privacy-erasure intents are replayed.
+// ABOUTME: Blocks API startup until external platform privacy-erasure intents are replayed.
 // ABOUTME: Preserves caller cancellation and exposes only sanitized fail-closed errors.
 
 using Explore.Application.Configuration;
@@ -19,7 +19,7 @@ public static class PrivacyErasureStartupGate
         PrivacyErasureDurabilityOptions options = scope.ServiceProvider
             .GetRequiredService<IOptions<PrivacyErasureDurabilityOptions>>()
             .Value;
-        if (options.Mode == PrivacyErasureDurabilityMode.ApplicationDatabase)
+        if (options.Topology == PrivacyErasureAuthorityTopology.CoLocated)
         {
             return;
         }
@@ -37,7 +37,7 @@ public static class PrivacyErasureStartupGate
         catch (Exception exception)
         {
             throw new InvalidOperationException(
-                $"Retained privacy-erasure replay failed ({exception.GetType().Name}); API startup is blocked.");
+                $"External privacy-erasure replay failed ({exception.GetType().Name}); API startup is blocked.");
         }
     }
 }

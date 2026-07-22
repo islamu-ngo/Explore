@@ -46,7 +46,7 @@ public static class ApplicationServicesRegistration
         services.AddOptions<PrivacyErasureDurabilityOptions>()
             .Configure(options =>
             {
-                options.Mode = erasureDurability.Mode;
+                options.Topology = erasureDurability.Topology;
             });
 
         services.AddAutoMapper(cfg =>
@@ -130,14 +130,7 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IEventLocationDisclosureService, EventLocationDisclosureService>();
         services.AddScoped<IFanoutAttendeeLocationAuthorizationService, FanoutAttendeeLocationAuthorizationService>();
         services.AddScoped<PrivacyErasureApplier>();
-        if (erasureDurability.Mode == PrivacyErasureDurabilityMode.RetainedAuthority)
-        {
-            services.AddScoped<IPrivacyErasureService, RetainedAuthorityPrivacyErasureWorkflow>();
-        }
-        else
-        {
-            services.AddScoped<IPrivacyErasureService, ApplicationDatabasePrivacyErasureWorkflow>();
-        }
+        services.AddScoped<IPrivacyErasureService, RetainedAuthorityPrivacyErasureWorkflow>();
         services.AddSingleton<EventLocationDisclosureEvaluator>();
         services.AddScoped<PublicEventLocationDisclosureEvaluator>();
         services.AddScoped<AtprotoEventPublicationSnapshotFactory>();

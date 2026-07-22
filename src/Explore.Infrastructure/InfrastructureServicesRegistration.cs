@@ -76,12 +76,7 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IAtprotoPdsDeliveryGateway, AtprotoPdsDeliveryGateway>();
         services.AddSingleton<IAtprotoPdsSnapshotGateway, AtprotoPdsSnapshotGateway>();
 
-        PrivacyErasureDurabilityOptions erasureDurability =
-            PrivacyErasureDurabilityOptions.FromConfiguration(configuration);
-        if (erasureDurability.Mode == PrivacyErasureDurabilityMode.RetainedAuthority)
-        {
-            services.AddScoped<IPrivacyErasureReplayService, PrivacyErasureReplayService>();
-        }
+        services.AddScoped<IPrivacyErasureReplayService, PrivacyErasureReplayService>();
 
         services.AddOptions<ManagedControlPlaneOptions>()
             .Bind(configuration.GetSection(ManagedControlPlaneOptions.SectionName))

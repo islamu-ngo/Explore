@@ -262,10 +262,10 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IPrivacyErasureReplayCheckpointRepository, PrivacyErasureReplayCheckpointRepository>();
         services.AddScoped<IUserLocationPrivacyErasureRepository, UserLocationPrivacyErasureRepository>();
         services.AddScoped<IPrivacyErasureLedgerRepository, ApplicationDatabasePrivacyErasureLedgerRepository>();
-        if (erasureDurability.Mode == PrivacyErasureDurabilityMode.RetainedAuthority)
+        if (erasureDurability.Topology == PrivacyErasureAuthorityTopology.ExternalDatabase)
         {
             string connectionString =
-                PrivacyErasureDurabilityOptions.GetRetainedAuthorityConnectionString(configuration);
+                PrivacyErasureDurabilityOptions.GetExternalDatabaseConnectionString(configuration);
             try
             {
                 var builder = new NpgsqlConnectionStringBuilder(connectionString);
@@ -273,12 +273,12 @@ public static class PersistenceServicesRegistration
                     || string.IsNullOrWhiteSpace(builder.Database)
                     || string.IsNullOrWhiteSpace(builder.Username))
                 {
-                    throw InvalidRetainedAuthorityConnection();
+                    throw InvalidExternalAuthorityConnection();
                 }
             }
             catch (ArgumentException)
             {
-                throw InvalidRetainedAuthorityConnection();
+                throw InvalidExternalAuthorityConnection();
             }
 
             services.AddDbContext<PrivacyErasureAuthorityDbContext>(options =>
@@ -395,9 +395,9 @@ public static class PersistenceServicesRegistration
         return bool.TryParse(value, out var enabled) && enabled;
     }
 
-    private static OptionsValidationException InvalidRetainedAuthorityConnection() =>
+    private static OptionsValidationException InvalidExternalAuthorityConnection() =>
         new(
             nameof(PrivacyErasureDurabilityOptions),
             typeof(PrivacyErasureDurabilityOptions),
-            [$"ConnectionStrings:{PrivacyErasureDurabilityOptions.ConnectionStringName} must be a valid Npgsql Host/Database/Username connection string in RetainedAuthority mode."]);
+            [$"ConnectionStrings:{PrivacyErasureDurabilityOptions.ConnectionStringName} must be a valid Npgsql Host/Database/Username connection string when {PrivacyErasureDurabilityOptions.SectionName}:Topology is ExternalDatabase."]);
 }

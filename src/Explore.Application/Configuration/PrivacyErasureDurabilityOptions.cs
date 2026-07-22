@@ -1,5 +1,5 @@
-// ABOUTME: Defines the startup-only storage mode for the platform privacy-erasure ledger.
-// ABOUTME: Defaults locally without reading authority secrets and validates explicit retained connections.
+// ABOUTME: Defines the startup-only topology for the platform privacy-erasure authority.
+// ABOUTME: Defaults to CoLocated and reads an external authority connection only when explicitly selected.
 
 using System.Data.Common;
 using Microsoft.Extensions.Configuration;
@@ -7,70 +7,73 @@ using Microsoft.Extensions.Options;
 
 namespace Explore.Application.Configuration;
 
-public enum PrivacyErasureDurabilityMode
+public enum PrivacyErasureAuthorityTopology
 {
-    ApplicationDatabase,
-    RetainedAuthority
+    CoLocated,
+    ExternalDatabase
 }
 
 public sealed class PrivacyErasureDurabilityOptions
 {
-    public const string SectionName = "PrivacyErasure:Durability";
+    public const string SectionName = "PrivacyErasure:Authority";
+    public const string LegacyModeKey = "PrivacyErasure:Durability:Mode";
     public const string ConnectionStringName = "PrivacyErasureAuthority";
 
-    public PrivacyErasureDurabilityMode Mode { get; set; } =
-        PrivacyErasureDurabilityMode.ApplicationDatabase;
+    public PrivacyErasureAuthorityTopology Topology { get; set; } =
+        PrivacyErasureAuthorityTopology.CoLocated;
 
     public static PrivacyErasureDurabilityOptions FromConfiguration(
         IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        string? configuredMode = configuration[$"{SectionName}:Mode"];
-        PrivacyErasureDurabilityMode mode;
-        if (configuredMode is null
+        if (HasLegacyModeKey(configuration))
+        {
+            throw InvalidConfiguration(
+                $"{LegacyModeKey} is no longer supported. Remove it, reset this pre-v1 development deployment, and configure {SectionName}:Topology as CoLocated or ExternalDatabase.");
+        }
+
+        string? configuredTopology = configuration[$"{SectionName}:Topology"];
+        PrivacyErasureAuthorityTopology topology;
+        if (configuredTopology is null
             || string.Equals(
-                configuredMode,
-                nameof(PrivacyErasureDurabilityMode.ApplicationDatabase),
+                configuredTopology,
+                nameof(PrivacyErasureAuthorityTopology.CoLocated),
                 StringComparison.OrdinalIgnoreCase))
         {
-            mode = PrivacyErasureDurabilityMode.ApplicationDatabase;
+            topology = PrivacyErasureAuthorityTopology.CoLocated;
         }
         else if (string.Equals(
-            configuredMode,
-            nameof(PrivacyErasureDurabilityMode.RetainedAuthority),
+            configuredTopology,
+            nameof(PrivacyErasureAuthorityTopology.ExternalDatabase),
             StringComparison.OrdinalIgnoreCase))
         {
-            mode = PrivacyErasureDurabilityMode.RetainedAuthority;
+            topology = PrivacyErasureAuthorityTopology.ExternalDatabase;
         }
         else
         {
-            throw new OptionsValidationException(
-                nameof(PrivacyErasureDurabilityOptions),
-                typeof(PrivacyErasureDurabilityOptions),
-                [$"{SectionName}:Mode must be ApplicationDatabase or RetainedAuthority."]);
+            throw InvalidConfiguration(
+                $"{SectionName}:Topology must be CoLocated or ExternalDatabase.");
         }
 
-        if (mode == PrivacyErasureDurabilityMode.RetainedAuthority)
+        if (topology == PrivacyErasureAuthorityTopology.ExternalDatabase)
         {
-            _ = GetRetainedAuthorityConnectionString(configuration);
+            _ = GetExternalDatabaseConnectionString(configuration);
         }
 
         return new PrivacyErasureDurabilityOptions
         {
-            Mode = mode
+            Topology = topology
         };
     }
 
-    public static string GetRetainedAuthorityConnectionString(IConfiguration configuration)
+    public static string GetExternalDatabaseConnectionString(IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         string? connectionString = configuration.GetConnectionString(ConnectionStringName);
         if (string.IsNullOrWhiteSpace(connectionString) || !HasRequiredNpgsqlShape(connectionString))
         {
-            throw new OptionsValidationException(
-                nameof(PrivacyErasureDurabilityOptions),
-                typeof(PrivacyErasureDurabilityOptions),
-                [$"ConnectionStrings:{ConnectionStringName} must be a valid Npgsql Host/Database/Username connection string in RetainedAuthority mode."]);
+            throw InvalidConfiguration(
+                $"ConnectionStrings:{ConnectionStringName} must be a valid Npgsql Host/Database/Username connection string when {SectionName}:Topology is ExternalDatabase.");
         }
 
         return connectionString;
@@ -98,4 +101,16 @@ public sealed class PrivacyErasureDurabilityOptions
     private static bool HasNonBlankValue(DbConnectionStringBuilder builder, string key) =>
         builder.TryGetValue(key, out object? value)
         && !string.IsNullOrWhiteSpace(Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture));
+
+    private static bool HasLegacyModeKey(IConfiguration configuration) =>
+        configuration[LegacyModeKey] is not null
+        || configuration.GetSection("PrivacyErasure:Durability")
+            .GetChildren()
+            .Any(section => section.Key.Equals("Mode", StringComparison.OrdinalIgnoreCase));
+
+    private static OptionsValidationException InvalidConfiguration(string failure) =>
+        new(
+            nameof(PrivacyErasureDurabilityOptions),
+            typeof(PrivacyErasureDurabilityOptions),
+            [failure]);
 }

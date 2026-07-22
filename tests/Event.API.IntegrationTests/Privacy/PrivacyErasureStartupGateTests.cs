@@ -1,4 +1,4 @@
-// ABOUTME: Proves retained replay failure blocks API startup before hosted workers run.
+// ABOUTME: Proves external authority replay failure blocks API startup before hosted workers run.
 // ABOUTME: Verifies the startup gate preserves caller cancellation and sanitizes failures.
 
 using Event.Api.IntegrationTests.Fixtures;
@@ -18,7 +18,7 @@ namespace Event.Api.IntegrationTests.Privacy;
 public sealed class PrivacyErasureStartupGateTests
 {
     [Test]
-    public async Task ApplicationDatabaseMode_DoesNotResolveReplayService()
+    public async Task CoLocatedTopology_DoesNotResolveReplayService()
     {
         await using ServiceProvider services = new ServiceCollection()
             .AddSingleton<IOptions<PrivacyErasureDurabilityOptions>>(Options.Create(new PrivacyErasureDurabilityOptions()))
@@ -46,7 +46,7 @@ public sealed class PrivacyErasureStartupGateTests
         await using ServiceProvider services = new ServiceCollection()
             .AddSingleton<IOptions<PrivacyErasureDurabilityOptions>>(Options.Create(new PrivacyErasureDurabilityOptions
             {
-                Mode = PrivacyErasureDurabilityMode.RetainedAuthority
+                Topology = PrivacyErasureAuthorityTopology.ExternalDatabase
             }))
             .AddScoped<IPrivacyErasureReplayService, ReplayCancellation>()
             .BuildServiceProvider();
@@ -64,7 +64,7 @@ public sealed class PrivacyErasureStartupGateTests
         public ReplayFailureFactory()
         {
             AdditionalConfiguration["Testing:EnablePrivacyErasureStartupGate"] = "true";
-            AdditionalConfiguration["PrivacyErasure:Durability:Mode"] = "RetainedAuthority";
+            AdditionalConfiguration["PrivacyErasure:Authority:Topology"] = "ExternalDatabase";
             AdditionalConfiguration["ConnectionStrings:PrivacyErasureAuthority"] =
                 "Host=unused;Database=unused;Username=unused";
         }
@@ -78,7 +78,7 @@ public sealed class PrivacyErasureStartupGateTests
             {
                 services.PostConfigure<PrivacyErasureDurabilityOptions>(options =>
                 {
-                    options.Mode = PrivacyErasureDurabilityMode.RetainedAuthority;
+                    options.Topology = PrivacyErasureAuthorityTopology.ExternalDatabase;
                 });
                 services.RemoveAll<IPrivacyErasureReplayService>();
                 services.AddScoped<IPrivacyErasureReplayService, ReplayFailure>();
