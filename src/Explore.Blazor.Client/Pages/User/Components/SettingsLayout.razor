@@ -1,10 +1,13 @@
-@* ABOUTME: Sidebar layout for user-owned account settings and self-service integrations. *@
-@* ABOUTME: Exposes personal webhook management through the fixed current-user ownership scope. *@
+@* ABOUTME: Compact path-based layout for user-owned Personal Settings sections. *@
+@* ABOUTME: Exposes account, integration, API-key, and webhook settings without query-state navigation. *@
 
 @using Explore.Blazor.Client.Contracts.Services.Webhooks
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Components.Webhooks
+@using Explore.Blazor.Client.Pages.Admin.Components
 @using MudBlazor
 @using Microsoft.AspNetCore.Components
-@inject NavigationManager Navigation
+@inject IAccessibilityAnnouncerService Announcer
 
 <div class="settings-layout">
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
@@ -14,166 +17,164 @@
             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Manage your account settings and preferences</MudText>
         </div>
 
-        <!-- Main Layout: Sidebar + Content -->
-        <MudGrid Spacing="4">
-            <!-- Sidebar Navigation -->
-            <MudItem xs="12" md="3" Class="@(_showMobileMenu ? "d-block" : "d-none d-md-block")">
-                <MudPaper Elevation="0" Class="settings-sidebar pa-0" Style="background-color: transparent;">
-                    <MudList T="string" Dense="true" DisablePadding="true">
-                        <MudListItem Icon="@Icons.Material.Filled.Person" 
-                                     Text="Personal Info" 
-                                     Class="@GetNavItemClass("personal")"
-                                     OnClick="@(() => SelectSection("personal"))" />
-                        <MudListItem Icon="@Icons.Material.Filled.Security" 
-                                     Text="Security" 
-                                     Class="@GetNavItemClass("security")"
-                                     OnClick="@(() => SelectSection("security"))" />
-                        <MudListItem Icon="@Icons.Material.Filled.PrivacyTip" 
-                                     Text="Privacy" 
-                                     Class="@GetNavItemClass("privacy")"
-                                     OnClick="@(() => SelectSection("privacy"))" />
-                        <MudListItem Icon="@Icons.Material.Filled.Notifications" 
-                                     Text="Notifications" 
-                                     Class="@GetNavItemClass("notifications")"
-                                     OnClick="@(() => SelectSection("notifications"))" />
-                        <MudListItem Icon="@Icons.Material.Filled.Link" 
-                                     Text="Connected Apps" 
-                                     Class="@GetNavItemClass("connected-apps")"
-                                     OnClick="@(() => SelectSection("connected-apps"))" />
-                         <MudListItem Icon="@Icons.Material.Filled.Palette" 
-                                      Text="Appearance" 
-                                      Class="@GetNavItemClass("appearance")"
-                                      OnClick="@(() => SelectSection("appearance"))" />
-                         <MudListItem Icon="@Icons.Material.Filled.AutoAwesome"
-                                      Text="AI Assistant"
-                                      Class="@GetNavItemClass("ai-assistant")"
-                                      OnClick="@(() => SelectSection("ai-assistant"))" />
-                         <MudListItem Icon="@Icons.Material.Filled.Key" 
-                                      Text="API Keys" 
-                                     Class="@GetNavItemClass("api-keys")"
-                                     OnClick="@(() => SelectSection("api-keys"))" />
-                        <MudListItem Icon="@Icons.Material.Filled.Webhook"
-                                     Text="Webhooks"
-                                     Class="@GetNavItemClass("webhooks")"
-                                     OnClick="@(() => SelectSection("webhooks"))" />
-                    </MudList>
-                </MudPaper>
-            </MudItem>
+        <nav class="settings-sections" aria-label="Personal settings sections">
+            <a href="/settings/personal"
+               class="@GetNavItemClass(null)"
+               aria-current="@(CurrentSection is null ? "page" : null)">
+                View all
+            </a>
+            @foreach (var item in Sections)
+            {
+                <a href="@GetSectionHref(item.Key)"
+                   class="@GetNavItemClass(item.Key)"
+                   aria-current="@(item == CurrentSection ? "page" : null)">
+                     @item.Label
+                </a>
+            }
+        </nav>
 
-            <!-- Content Area -->
-            <MudItem xs="12" md="9" Class="@(!_showMobileMenu ? "d-block" : "d-none d-md-block")">
-                <MudPaper Elevation="0" Class="settings-content pa-6" Style="background-color: transparent;">
-                    <div class="d-md-none mb-4">
-                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToMenu">
-                            Settings Menu
-                        </MudButton>
-                    </div>
-                    @if (CurrentSection == "personal")
+        <MudPaper Elevation="0" Class="settings-content pa-6" Style="background-color: transparent;">
+            @if (CurrentSection is null)
+            {
+                <AppTextField T="string"
+                              Value="@_searchTerm"
+                              ValueChanged="OnSearchChangedAsync"
+                              Label="Search settings"
+                              Placeholder="Search personal settings"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              DebounceInterval="250"
+                              Clearable="true"
+                              FullWidth="true" />
+
+                @if (FilteredSections.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-6">
+                        No settings sections match your search.
+                    </MudText>
+                }
+                else
+                {
+                    @foreach (var item in FilteredSections)
                     {
-                        <SettingsPersonalInfo />
+                        @RenderSection(item)
                     }
-                    else if (CurrentSection == "security")
-                    {
-                        <SettingsSecurity />
-                    }
-                    else if (CurrentSection == "privacy")
-                    {
-                        <SettingsPrivacy />
-                    }
-                    else if (CurrentSection == "notifications")
-                    {
-                        <SettingsNotifications />
-                    }
-                    else if (CurrentSection == "connected-apps")
-                    {
-                        <SettingsConnectedApps />
-                    }
-                     else if (CurrentSection == "appearance")
-                     {
-                         <SettingsAppearance />
-                     }
-                     else if (CurrentSection == "ai-assistant")
-                     {
-                         <SettingsAiAssistant />
-                     }
-                     else if (CurrentSection == "api-keys")
-                    {
-                        <Explore.Blazor.Client.Pages.Admin.Components.ApiKeysSection OwnerType="1" Title="API Keys" Description="Create and manage personal API keys for programmatic access to your account." />
-                    }
-                    else if (CurrentSection == "webhooks")
-                    {
-                        <Explore.Blazor.Client.Components.Webhooks.WebhookManagementPanel Owner="@WebhookOwnerSelection.User" />
-                    }
-                </MudPaper>
-            </MudItem>
-        </MudGrid>
+                }
+            }
+            else
+            {
+                @RenderSection(CurrentSection)
+            }
+        </MudPaper>
     </MudContainer>
 </div>
 
 @code {
-    private static readonly string[] AllowedSections =
+    private static readonly SettingsSectionDefinition[] Sections =
+    [
+        new("personal-info", "Personal info", ["profile", "name", "email", "username", "picture"], typeof(SettingsPersonalInfo)),
+        new("security", "Security", ["authentication", "sign-in", "providers", "password", "account deletion", "at protocol"], typeof(SettingsSecurity)),
+        new("privacy", "Privacy", ["visibility", "data", "analytics", "consent", "marketing"], typeof(SettingsPrivacy)),
+        new("notifications", "Notifications", ["email", "push", "mute", "preferences", "alerts"], typeof(SettingsNotifications)),
+        new("connected-apps", "Connected apps", ["third-party", "contact sharing", "organizations", "consent", "access"], typeof(SettingsConnectedApps)),
+        new("appearance", "Appearance", ["theme", "color", "dark mode", "light mode", "direction", "rtl"], typeof(SettingsAppearance)),
+        new("ai-assistant", "AI Assistant", ["assistant", "navbar", "artificial intelligence"], typeof(SettingsAiAssistant)),
+        new(
+            "api-keys",
+            "API keys",
+            ["credentials", "tokens", "programmatic", "access keys"],
+            typeof(ApiKeysSection),
+            new Dictionary<string, object>
+            {
+                [nameof(ApiKeysSection.OwnerType)] = 1,
+                [nameof(ApiKeysSection.Title)] = "API Keys",
+                [nameof(ApiKeysSection.Description)] = "Create and manage personal API keys for programmatic access to your account."
+            }),
+        new(
+            "webhooks",
+            "Webhooks",
+            ["outgoing", "endpoint", "consumer", "delivery", "integration"],
+            typeof(WebhookManagementPanel),
+            new Dictionary<string, object>
+            {
+                [nameof(WebhookManagementPanel.Owner)] = WebhookOwnerSelection.User
+            })
+    ];
+
+    [Parameter]
+    public string? Section { get; set; }
+
+    private string _searchTerm = string.Empty;
+
+    private SettingsSectionDefinition? CurrentSection => Sections.FirstOrDefault(item =>
+        string.Equals(item.Key, Section, StringComparison.OrdinalIgnoreCase));
+
+    private IReadOnlyList<SettingsSectionDefinition> FilteredSections
     {
-        "personal", "security", "privacy", "notifications",
-        "connected-apps", "appearance", "ai-assistant", "api-keys", "webhooks"
+        get
+        {
+            var term = _searchTerm.Trim();
+            if (term.Length == 0)
+            {
+                return Sections;
+            }
+
+            return Sections
+                .Where(item => item.Label.Contains(term, StringComparison.OrdinalIgnoreCase)
+                    || item.Keywords.Any(keyword => keyword.Contains(term, StringComparison.OrdinalIgnoreCase)))
+                .ToArray();
+        }
+    }
+
+    private static string GetSectionHref(string section) => $"/settings/personal/{section}";
+
+    private string GetNavItemClass(string? section) => string.Equals(section, CurrentSection?.Key, StringComparison.Ordinal)
+        ? "settings-sections__link settings-sections__link--active"
+        : "settings-sections__link";
+
+    private async Task OnSearchChangedAsync(string value)
+    {
+        _searchTerm = value ?? string.Empty;
+        var count = FilteredSections.Count;
+        var message = count switch
+        {
+            0 => "No settings sections match your search.",
+            1 => "1 settings section found.",
+            _ => $"{count} settings sections found."
+        };
+
+        await Announcer.AnnouncePoliteAsync(message);
+    }
+
+    private RenderFragment RenderSection(SettingsSectionDefinition item) => builder =>
+    {
+        var headingId = $"settings-section-{item.Key}-heading";
+        var sequence = 0;
+        builder.OpenElement(sequence++, "section");
+        builder.AddAttribute(sequence++, "id", $"settings-section-{item.Key}");
+        builder.AddAttribute(sequence++, "class", "settings-content__section");
+        builder.AddAttribute(sequence++, "data-settings-section", item.Key);
+        builder.AddAttribute(sequence++, "aria-labelledby", headingId);
+        builder.OpenElement(sequence++, "h2");
+        builder.AddAttribute(sequence++, "id", headingId);
+        builder.AddAttribute(sequence++, "class", "isl-typo-h5");
+        builder.AddContent(sequence++, item.Label);
+        builder.CloseElement();
+        builder.OpenComponent<DynamicComponent>(sequence++);
+        builder.AddAttribute(sequence++, nameof(DynamicComponent.Type), item.ComponentType);
+        if (item.Parameters is not null)
+        {
+            builder.AddAttribute(sequence++, nameof(DynamicComponent.Parameters), item.Parameters);
+        }
+        builder.CloseComponent();
+        builder.CloseElement();
     };
 
-    private string CurrentSection { get; set; } = "personal";
-    private bool _showMobileMenu = true;
-
-    protected override void OnInitialized()
-    {
-        // Respect ?section= query parameter for deep links (e.g., from EventRegistration)
-        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
-        var section = ParseSectionFromQuery(uri.Query);
-        if (section is not null && Array.IndexOf(AllowedSections, section) >= 0)
-        {
-            CurrentSection = section;
-            _showMobileMenu = false;
-        }
-    }
-
-    private static string? ParseSectionFromQuery(string query)
-    {
-        if (string.IsNullOrEmpty(query))
-        {
-            return null;
-        }
-
-        var trimmed = query.StartsWith('?') ? query[1..] : query;
-        foreach (var pair in trimmed.Split('&', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var eq = pair.IndexOf('=');
-            if (eq <= 0)
-            {
-                continue;
-            }
-
-            var key = Uri.UnescapeDataString(pair[..eq]);
-            if (!string.Equals(key, "section", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var value = Uri.UnescapeDataString(pair[(eq + 1)..]);
-            return string.IsNullOrWhiteSpace(value) ? null : value;
-        }
-
-        return null;
-    }
-
-    private void SelectSection(string section)
-    {
-        CurrentSection = section;
-        _showMobileMenu = false;
-    }
-
-    private void BackToMenu()
-    {
-        _showMobileMenu = true;
-    }
-
-    private string GetNavItemClass(string section)
-    {
-        return CurrentSection == section ? "settings-nav-active" : "";
-    }
+    private sealed record SettingsSectionDefinition(
+        string Key,
+        string Label,
+        string[] Keywords,
+        Type ComponentType,
+        IDictionary<string, object>? Parameters = null);
 }

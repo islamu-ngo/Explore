@@ -1,5 +1,5 @@
-/* ABOUTME: Scoped CSS for InstanceAdminSettingsLayout matching the SettingsLayout design. */
-/* ABOUTME: Google Account Settings-inspired sidebar navigation with responsive breakpoints. */
+/* ABOUTME: Scoped styling for compact path-based Personal Settings navigation. */
+/* ABOUTME: Uses logical properties and design tokens for responsive LTR and RTL layouts. */
 
 .settings-layout {
     background: var(--mud-palette-background);
@@ -11,53 +11,29 @@
     padding-bottom: 1.5rem;
 }
 
-/* Sidebar Navigation */
-.settings-sidebar {
-    position: sticky;
-    top: 1rem;
-    max-height: calc(100vh - 2rem);
-    overflow-y: auto;
-    background-color: transparent;
+.settings-sections {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2);
+    margin-block-end: var(--isl-space-6);
 }
 
-.settings-sidebar ::deep .mud-list {
-    padding: 0;
-}
-
-.settings-sidebar ::deep .mud-list-item {
-    padding: 0.5rem 0.75rem;
-    margin-bottom: 0.25rem;
-    border-radius: 0.375rem;
-    transition: all 0.2s ease;
-    cursor: pointer;
+.settings-sections__link {
+    min-height: var(--isl-target-min);
+    padding: var(--isl-space-2) var(--isl-space-3);
+    border-radius: var(--isl-radius-button);
     color: var(--mud-palette-text-secondary);
+    text-decoration: none;
 }
 
-.settings-sidebar ::deep .mud-list-item:hover {
-    background-color: var(--mud-palette-action-default-hover);
+.settings-sections__link:hover,
+.settings-sections__link--active {
+    background: var(--mud-palette-action-default-hover);
     color: var(--mud-palette-text-primary);
 }
 
-.settings-sidebar ::deep .mud-list-item.settings-nav-active {
-    background-color: var(--mud-palette-action-default-hover);
-    color: var(--mud-palette-text-primary);
-    font-weight: 500;
-}
-
-.settings-sidebar ::deep .mud-list-item-icon {
-    margin-right: 1rem;
-}
-
-/* Section Separator (Developer label) */
-.settings-nav-separator {
-    padding: 0.75rem 1rem 0.25rem;
-    border-top: 1px solid var(--mud-palette-lines-default);
-    margin-top: 0.25rem;
-}
-
-.settings-nav-separator__label {
+.settings-sections__link--active {
     font-weight: 600;
-    letter-spacing: 0.08em;
 }
 
 /* Content Area */
@@ -98,13 +74,6 @@
 .settings-content ::deep .settings-form-section .mud-text-subtitle2 {
     color: var(--mud-palette-text-primary);
     margin-bottom: 1rem;
-}
-
-/* Responsive Design - Custom mobile spacing */
-@media (max-width: 59.997em) {
-    .settings-content {
-        min-height: auto;
-    }
 }
 
 /* Divider Styles */
@@ -151,5 +120,4 @@
 .settings-content ::deep .mud-grid > .mud-item {
     padding: 0.75rem;
 }
-
 

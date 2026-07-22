@@ -1,1 +1,7 @@
-/* Custom styles removed to favor MudBlazor components and utilities */
+/* ABOUTME: Scoped spacing for the canonical Settings scope hub. */
+/* ABOUTME: Keeps hub composition token-driven without styling administrative layouts. */
+
+.settings-hub {
+    display: grid;
+    gap: var(--isl-space-2);
+}

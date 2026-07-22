@@ -1,0 +1,107 @@
+@* ABOUTME: Shared selector for Personal and server-authorized administrative Settings scopes. *@
+@* ABOUTME: Fails closed when shell context is unavailable and never infers scopes from browser claims. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Shell
+@inject IUiShellContextService ShellContextService
+@inject IShellPreferencesService ShellPreferencesService
+@inject NavigationManager Navigation
+
+@if (_scopeLinks.Count > 0)
+{
+    <nav class="settings-scope-selector" aria-label="Settings scopes">
+        <a href="/settings/personal"
+           class="@GetLinkClass("/settings/personal")"
+           aria-current="@(IsCurrent("/settings/personal") ? "page" : null)">
+            Personal
+        </a>
+        @foreach (var item in _scopeLinks.Where(item => !item.IsSiteScope))
+        {
+            <a href="@item.Href"
+               class="@GetLinkClass(item.Href)"
+               aria-current="@(IsCurrent(item.Href) ? "page" : null)">
+                @item.Label
+            </a>
+        }
+        @if (_showSiteAdministration)
+        {
+            <span class="settings-scope-selector__group-label">Site administration</span>
+        }
+        @foreach (var item in _scopeLinks.Where(item => item.IsSiteScope))
+        {
+            <a href="@item.Href"
+               class="@GetLinkClass(item.Href)"
+               aria-current="@(IsCurrent(item.Href) ? "page" : null)">
+                @item.Label
+            </a>
+        }
+    </nav>
+}
+
+@code {
+    private IReadOnlyList<ScopeLink> _scopeLinks = [];
+    private bool _showSiteAdministration;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var context = await ShellContextService.GetCachedContextAsync();
+        var scopes = context?.SettingsScopes ?? [];
+        var isSingleTenant = string.IsNullOrWhiteSpace(context?.DeploymentMode)
+            || string.Equals(context.DeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase);
+        _showSiteAdministration = isSingleTenant
+            && scopes.Any(scope => IsScope(scope, "Tenant"))
+            && scopes.Any(scope => IsScope(scope, "Instance"));
+        var preferences = context is null
+            ? null
+            : await ShellPreferencesService.LoadAsync(context);
+        _scopeLinks = scopes
+            .Select(scope => CreateLink(scope, _showSiteAdministration))
+            .Where(link => link is not null)
+            .Select(link => link!)
+            .OrderBy(link => link.Href == preferences?.LastSettingsScopeHref ? 0 : 1)
+            .ToList();
+    }
+
+    private static ScopeLink? CreateLink(SettingsScopeDto scope, bool siteAdministration)
+    {
+        var kind = scope.Scope?.Trim();
+        var href = kind?.ToUpperInvariant() switch
+        {
+            "ORGANIZATION" when scope.ScopeId.HasValue => $"/settings/organization/{scope.ScopeId}",
+            "GROUP" when scope.ScopeId.HasValue => $"/settings/group/{scope.ScopeId}",
+            "TENANT" => "/settings/tenant",
+            "INSTANCE" => "/settings/instance",
+            _ => null
+        };
+
+        var label = kind?.ToUpperInvariant() switch
+        {
+            "TENANT" => siteAdministration ? "Tenant settings" : "Tenant administration",
+            "INSTANCE" => siteAdministration ? "Instance settings" : "Instance administration",
+            _ => scope.DisplayName ?? kind!
+        };
+
+        return href is null ? null : new ScopeLink(
+            href,
+            label,
+            kind is not null && (kind.Equals("Tenant", StringComparison.OrdinalIgnoreCase)
+                || kind.Equals("Instance", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private bool IsCurrent(string href)
+    {
+        var path = $"/{Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].TrimEnd('/')}";
+        return path.Equals(href, StringComparison.OrdinalIgnoreCase)
+            || (href == "/settings/personal"
+                && path.StartsWith("/settings/personal/", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private string GetLinkClass(string href) => IsCurrent(href)
+        ? "settings-scope-selector__link settings-scope-selector__link--active"
+        : "settings-scope-selector__link";
+
+    private static bool IsScope(SettingsScopeDto scope, string kind) =>
+        string.Equals(scope.Scope, kind, StringComparison.OrdinalIgnoreCase);
+
+    private sealed record ScopeLink(string Href, string Label, bool IsSiteScope);
+}

@@ -1,0 +1,37 @@
+/* ABOUTME: Scoped styling for the shared Settings scope selector. */
+/* ABOUTME: Presents authorized scopes as responsive token-driven navigation links. */
+
+.settings-scope-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2);
+    padding: var(--isl-space-3);
+    margin-block: var(--isl-space-4);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-card);
+}
+
+.settings-scope-selector__link {
+    min-height: var(--isl-target-min);
+    padding: var(--isl-space-2) var(--isl-space-3);
+    border-radius: var(--isl-radius-button);
+    color: var(--mud-palette-text-secondary);
+    text-decoration: none;
+}
+
+.settings-scope-selector__link:hover,
+.settings-scope-selector__link--active {
+    background: var(--mud-palette-action-default-hover);
+    color: var(--mud-palette-text-primary);
+}
+
+.settings-scope-selector__link--active {
+    font-weight: 600;
+}
+
+.settings-scope-selector__group-label {
+    align-self: center;
+    color: var(--mud-palette-text-secondary);
+    font-size: var(--isl-typography-caption-size);
+    font-weight: 600;
+}

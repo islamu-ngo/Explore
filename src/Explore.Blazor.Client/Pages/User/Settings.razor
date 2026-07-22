@@ -1,10 +1,36 @@
-@page "/settings"
+@* ABOUTME: Canonical Settings hub and Personal Settings route composition. *@
+@* ABOUTME: Uses Blazouter path state while administrative scopes remain server-authoritative. *@
+
 @using MudBlazor
 @using Explore.Blazor.Client.Pages.User.Components
+@using Blazouter.Services
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @rendermode InteractiveServer
+@inject NavigationManager Navigation
+@inject RouterStateService RouterState
 
-<PageTitle>Settings</PageTitle>
+<PageTitle>@(IsPersonalRoute ? "Personal Settings" : "Settings")</PageTitle>
 
-<SettingsLayout />
+@if (IsPersonalRoute)
+{
+    <SettingsScopeSelector />
+    <SettingsLayout Section="@PersonalSection" />
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="settings-hub py-8">
+        <MudText Typo="Typo.h4" HtmlTag="h1">Settings</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2 mb-6">
+            Choose the account or administrative scope you want to manage.
+        </MudText>
+        <SettingsScopeSelector />
+    </MudContainer>
+}
+
+@code {
+    private bool IsPersonalRoute => Navigation.ToBaseRelativePath(Navigation.Uri)
+        .StartsWith("settings/personal", StringComparison.OrdinalIgnoreCase);
+
+    private string? PersonalSection => RouterState.GetParam("section");
+}
