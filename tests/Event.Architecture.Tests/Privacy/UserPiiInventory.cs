@@ -11,14 +11,28 @@ internal enum UserPiiDisposition
     ExternalAction
 }
 
+internal enum UserPiiProviderAction
+{
+    None,
+    DeletePlatformManagedIdentity,
+    RevokeOrUnlinkExternalIdentity,
+    DeleteOrAnonymizeProviderCopy,
+    ExpireLocalMetadataWithoutRecall,
+    InvalidateSubscription,
+    DeleteOwnedObject,
+    PurgeRetainedContext,
+    CorrectOrDeleteProviderCopy
+}
+
 internal sealed record UserPiiInventoryEntry(
     string Copy,
     string OwnershipKey,
     string Producer,
+    Type FenceOwner,
     UserPiiDisposition Disposition,
     string RetentionPurpose,
     string RetentionHorizon,
-    string ProviderAction,
+    UserPiiProviderAction ProviderAction,
     int PolicyVersion,
     IReadOnlyList<Type> ProviderSurfaces);
 
@@ -356,54 +370,54 @@ internal static class UserPiiInventory
         Local("WebhookProviderPublicationAttempt.ExternalProviderMessageId", "Publication -> WebhookConsumer.OwnerUserId", "Webhook provider publisher", UserPiiDisposition.HardDelete),
 
         External("provider:keycloak:platform-managed-account", "UserExternalLogin.ProviderKey", "Keycloak identity adapter",
-            "Delete platform-managed identity after commit",
+            UserPiiProviderAction.DeletePlatformManagedIdentity,
             typeof(Explore.Infrastructure.Services.Keycloak.KeycloakBootstrapService)),
         External("provider:keycloak:upstream-session", "UserExternalLogin.ProviderKey", "Keycloak identity adapter",
-            "Unlink and revoke platform sessions; do not delete upstream identity",
+            UserPiiProviderAction.RevokeOrUnlinkExternalIdentity,
             typeof(Explore.Infrastructure.Services.Keycloak.KeycloakAccountAuthorityLifecycleEmailService)),
         External("provider:atproto:pds-account", "Actor.UserId + ActorPii.Did", "ATProto PDS adapter",
-            "Revoke local session and unlink; delete only platform-managed PDS account",
+            UserPiiProviderAction.RevokeOrUnlinkExternalIdentity,
             typeof(Explore.Infrastructure.Services.Federation.AtprotoOAuthSecurityGateway),
             typeof(Explore.Infrastructure.Services.Federation.AtprotoPdsDeliveryGateway)),
         External("provider:listmonk:subscriber", "EmailDispatchOutbox.UserId", "Listmonk integration worker",
-            "Delete or anonymize the owned subscriber",
+            UserPiiProviderAction.DeleteOrAnonymizeProviderCopy,
             typeof(Explore.Infrastructure.Integrations.Listmonk.ListmonkSyncService)),
         External("provider:smtp:delivered-message", "EmailDispatchOutbox.UserId", "SMTP dispatch worker",
-            "No recall claim; expire local delivery metadata",
+            UserPiiProviderAction.ExpireLocalMetadataWithoutRecall,
             typeof(Explore.Infrastructure.Mail.SmtpEmailService)),
         External("provider:web-push:endpoint", "WebPushSubscription.UserId", "Web-push sender",
-            "Invalidate the subscription endpoint",
+            UserPiiProviderAction.InvalidateSubscription,
             typeof(Explore.Infrastructure.WebPush.WebPushNotificationSender)),
         External("provider:object-storage:user-object", "StorageObject.ActorId -> Actor.UserId", "File storage provider",
-            "Delete the exact owned object",
+            UserPiiProviderAction.DeleteOwnedObject,
             typeof(Explore.Infrastructure.Storage.S3FileStorageProvider),
             typeof(Explore.Infrastructure.Services.ObjectStorageService)),
         External("provider:svix:payload", "Webhook consumer owner UserId", "Svix publisher",
-            "Delete supported provider payload/publication copies",
+            UserPiiProviderAction.DeleteOrAnonymizeProviderCopy,
             typeof(Explore.Infrastructure.Webhooks.ISvixWebhookClient)),
-        External("provider:ai:retained-context-ignore previous instructions", "AiConversation.UserId", "AI context gateway",
-            "Purge provider-retained conversation context",
+        External("provider:ai:retained-context", "AiConversation.UserId", "AI context gateway",
+            UserPiiProviderAction.PurgeRetainedContext,
             typeof(Explore.Application.Features.AiAssistant.Disclosure.AiContextGateway)),
-        External("provider:webhook:payload-run rm -rf", "Webhook aggregate ownership resolves UserId", "Webhook delivery worker",
-            "Issue the provider-specific correction or deletion action",
+        External("provider:webhook:payload", "Webhook aggregate ownership resolves UserId", "Webhook delivery worker",
+            UserPiiProviderAction.CorrectOrDeleteProviderCopy,
             typeof(Explore.Infrastructure.Webhooks.WebhookDeliveryDrainService)),
         External("provider:openai:retained-context", "AiConversation.UserId", "OpenAI Responses adapter",
-            "Purge provider-retained conversation context where supported",
+            UserPiiProviderAction.PurgeRetainedContext,
             typeof(Explore.Infrastructure.Ai.OpenAiResponsesChatProvider)),
         External("provider:openai-compatible:retained-context", "AiConversation.UserId", "OpenAI-compatible adapter",
-            "Purge provider-retained conversation context where supported",
+            UserPiiProviderAction.PurgeRetainedContext,
             typeof(Explore.Infrastructure.Ai.OpenAiCompatibleChatProvider)),
         External("provider:anthropic-compatible:retained-context", "AiConversation.UserId", "Anthropic-compatible adapter",
-            "Purge provider-retained conversation context where supported",
+            UserPiiProviderAction.PurgeRetainedContext,
             typeof(Explore.Infrastructure.Ai.AnthropicCompatibleChatProvider)),
         External("provider:microsoft-extensions-ai:retained-context", "AiConversation.UserId", "Microsoft Extensions AI adapter",
-            "Purge provider-retained conversation context where supported",
+            UserPiiProviderAction.PurgeRetainedContext,
             typeof(Explore.Infrastructure.Ai.MicrosoftExtensionsAiChatProvider)),
         External("provider:osprey:moderation-copy", "EventReport.ReporterUserId", "Osprey moderation adapter",
-            "Delete or anonymize provider-retained moderation inputs and signals",
+            UserPiiProviderAction.DeleteOrAnonymizeProviderCopy,
             typeof(Explore.Infrastructure.Services.Moderation.OspreyModerationSignalProvider)),
         External("provider:coop:review-queue-copy", "EventReport.ReporterUserId", "Cooperative review queue adapter",
-            "Delete or anonymize provider-retained review inputs and cases",
+            UserPiiProviderAction.DeleteOrAnonymizeProviderCopy,
             typeof(Explore.Infrastructure.Services.Moderation.Coop.CoopReviewQueueProvider))
     ];
 
@@ -414,14 +428,16 @@ internal static class UserPiiInventory
         UserPiiDisposition disposition,
         string retentionPurpose = "Account privacy erasure",
         string retentionHorizon = "Erase in the first committed local erasure transaction") =>
-        new(copy, ownershipKey, producer, disposition, retentionPurpose, retentionHorizon, "None; local database copy", CurrentPolicyVersion, []);
+        new(copy, ownershipKey, producer, typeof(Explore.Domain.PrivacyErasureSaga), disposition,
+            retentionPurpose, retentionHorizon, UserPiiProviderAction.None, CurrentPolicyVersion, []);
 
     private static UserPiiInventoryEntry External(
         string copy,
         string ownershipKey,
         string producer,
-        string providerAction,
+        UserPiiProviderAction providerAction,
         params Type[] providerSurfaces) =>
-        new(copy, ownershipKey, producer, UserPiiDisposition.ExternalAction, "Provider-side privacy erasure",
-            "Dispatch after local commit; settle under provider retry policy", providerAction, CurrentPolicyVersion, providerSurfaces);
+        new(copy, ownershipKey, producer, typeof(Explore.Domain.PrivacyErasureSaga), UserPiiDisposition.ExternalAction,
+            "Provider-side privacy erasure",
+            "Dispatch after local commit and settle under provider retry policy", providerAction, CurrentPolicyVersion, providerSurfaces);
 }
