@@ -3,18 +3,28 @@
 
 # AT Protocol Integration — Task Checklist
 
-Last Updated: 2026-07-21 Europe/Brussels
+Last Updated: 2026-07-22 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** 28/32 implementation tasks complete. Phase 13.1 governed inbound-recovery settings and both administrator surfaces are implemented with focused green evidence; phase verification remains separate.
-- **Completed:** 28/32 implementation tasks; phase verification tracked separately.
-- **Current priority:** Implement Phase 13.2 dynamic Jetstream filter updates while preserving unrelated concurrent work.
-- **Next recommended slice:** Start 13.2 from the governed settings contract proven in `.omo/evidence/atproto-auth/task-16/settings.md`.
+- **Overall status:** All 32/32 implementation tasks are complete and independently verified. The durable execution plan is 20/25 top-level gates complete; canonical full-project verification and F1-F4 remain.
+- **Completed:** 32/32 implementation tasks; broad phase/final verification remains tracked separately.
+- **Current priority:** Execute Todo 21 on one attributable snapshot: Release build, all nine project commands, locked/generated contract and migration checks, and deterministic integration smoke.
+- **Next recommended slice:** Freeze the ATProto-relevant source snapshot after concurrent dynamic-event UI writes settle, run Todo 21, then complete F1-F4 without absorbing unrelated failures or changes.
 - **OAuth scope:** Phases 1-6.
-- **Federation scope:** Executable Phases 7-12; ADR-015 is Task 9.1.
+- **Federation scope:** Phases 7-14 complete; ADR-015 is Task 9.1 and remains the recovery/publication ownership boundary.
 
-## Canonical Verification Snapshot — 2026-07-19
+## Progress Reconciliation — 2026-07-22
+
+- Todos 16-20 are confirmed in `.omo/start-work/ledger.jsonl`; five top-level gates remain: Todo 21 and F1-F4.
+- Phase 13.1 settings passed Application 17/17, Infrastructure 13/13, API 8/8, Architecture 9/9, PostgreSQL 1/1, and both bUnit administration surfaces 25/25 combined.
+- Phase 13.2 held one Jetstream session while updating filters in place; its subscriber/readiness/runtime-store matrix passed 30/30, including coalescing, failure reconnect, cursor preservation, and cancellation cleanup.
+- Phase 13.3 passed the real PostgreSQL PDS snapshot reconciliation matrix 4/4 twice after correcting one test-only JSONB comparison to semantic JSON equality.
+- Phase 13.4 passed the real PostgreSQL encrypted refresh matrix 6/6 plus refresh-lock repeat 2/2; focused security/store/writer/architecture gates are green and no credential material was emitted.
+- Phase 14.1 passed the expanded provider-neutral discovery matrix: auth flow 17/17, encrypted API-backed session binding 6/6, deterministic cache expiry/remap 2/2 twice, OAuth transport 23/23, and the 10,000-entry cache capacity/cross-lease probes.
+- Docker/Testcontainers cleanup is complete. The concurrent dynamic-event-management UI workstream was explicitly excluded from ATProto attribution and edits.
+
+## Historical Broad Verification Snapshot — 2026-07-19
 
 The Release build and all nine per-project commands from `docs/TESTING.md` were attempted individually. ATProto-focused Application, Infrastructure, API, BFF, persistence, architecture, and component suites remain green.
 
@@ -488,7 +498,7 @@ Focused independent evidence is green: Application handlers 62/62, planners/proc
 - [ ] dotnet build --configuration Release --verbosity quiet
 - [x] dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
 
-## Phase 13: Inbound Event Recovery and Backfill Configuration
+## Phase 13: Inbound Event Recovery and Backfill Configuration — IMPLEMENTATION COMPLETE; CANONICAL VERIFICATION PENDING
 
 - [x] **13.1 Add Tenant Settings and Rules for Backfilling**
   - **Status:** Implemented and focused-verified. The two settings use the existing registry, five-tier resolver, generic settings commands/API/HAL policies, stable locked seed rows, and both current administrator UI surfaces. The adjacent validation-profile controls now submit plain setting codes through the same serialization boundary. Evidence: `.omo/evidence/atproto-auth/task-16/settings.md`.
@@ -499,29 +509,31 @@ Focused independent evidence is green: Application handlers 62/62, planners/proc
   - **Effort:** L
   - **Dependencies:** Phase 12.
 
-- [ ] **13.2 Implement Jetstream Dynamic Filter Updates**
-  - **Status:** Not started.
+- [x] **13.2 Implement Jetstream Dynamic Filter Updates**
+  - **Status:** Complete and independently confirmed. One owned CarpaNet session receives and sends normalized, coalesced DID-filter changes without reconnecting; failure reconnects from the unchanged durable cursor with the latest desired filter. Evidence: `.omo/evidence/atproto-auth/task-17/`.
   - **Files:** src/Explore.Infrastructure/Services/Federation/AtprotoJetstreamSubscriber.cs.
   - **Acceptance:**
-    - [ ] Allowed DIDs/collections updates dynamically push `client.SendOptionsUpdateAsync` to Jetstream without WebSocket reconnect.
+    - [x] Allowed-DID changes dynamically push the exact nested `SendOptionsUpdateAsync` payload on the existing WebSocket; collections remain the exact event/RSVP pair.
+    - [x] Equivalent changes send nothing, bursts coalesce, invalid/oversized filters fail, and update failure preserves the durable cursor before bounded reconnect.
   - **Effort:** M
   - **Dependencies:** 13.1.
 
-- [ ] **13.3 Implement Inbound Event Backfill Engine**
-  - **Status:** Not started.
-  - **Files:** SyncFederatedEventsCommand.cs/Handler.cs/Validator.cs (new); AtprotoPdsBackfillGateway.cs (new).
+- [x] **13.3 Implement Inbound Event Backfill Engine**
+  - **Status:** Complete and independently confirmed against real PostgreSQL. Recovery uses bounded verified PDS snapshots and the canonical inbound read model; it never synthesizes editable local events or registrations. Evidence: `.omo/evidence/atproto-auth/task-18/pds-recovery.md`.
+  - **Files:** ReconcileAtprotoPdsSnapshotsCommand.cs/Handler.cs/Validator.cs (new); AtprotoPdsSnapshotGateway.cs and AtprotoRepositorySnapshotVerifier.cs (new); AtprotoJetstreamRepository.cs (existing).
   - **Acceptance:**
-    - [ ] Downtime backfill calculates delta from saved `Cursor` and pages `com.atproto.repo.listRecords`.
-    - [ ] Full backfill retrieves repository CAR file via `com.atproto.sync.getRepo`, parses blocks with `Repository.Load`/`CarReader`, maps to local Events.
-    - [ ] Validation profile rules apply; deduplication matches by DID/Collection/RKey.
+    - [x] Downtime recovery resumes the durable Unix-microsecond Jetstream cursor without PDS snapshot I/O.
+    - [x] Full recovery bounds and verifies `com.atproto.sync.getRepo` CAR/commit/MST/record data before atomic reconciliation.
+    - [x] DID/collection/rkey deduplication, quarantine, idempotent replay, and complete-snapshot-only tombstoning preserve canonical records and tenant presentations.
   - **Effort:** XL
   - **Dependencies:** 13.2.
 
-- [ ] **13.4 Automate Ingest Token Refresh Hook**
-  - **Status:** Not started.
-  - **Files:** AtprotoOAuthSecurityGateway.cs.
+- [x] **13.4 Automate Ingest Token Refresh Hook**
+  - **Status:** Complete and independently confirmed against real PostgreSQL. All known refresh triggers share the existing exact-scope advisory lock and repository-backed encrypted CarpaNet session store; no second token store or event-payload reconstruction exists. Evidence: `.omo/evidence/atproto-auth/task-19/`.
+  - **Files:** AtprotoPdsDeliveryGateway.cs; AtprotoOAuthSecurityGateway.cs; RepositoryBackedOAuthSessionStore.cs; focused Infrastructure and PostgreSQL tests.
   - **Acceptance:**
-    - [ ] Wire `TokenRefreshed` in `ATProtoClient` to save re-encrypted tokens dynamically to `UserAuthenticationToken`.
+    - [x] The complete rotated `OAuthSessionData`, including DPoP material, is re-encrypted and saved before refreshed state is usable.
+    - [x] Persistence failure prevents success/PDS writes; concurrent refreshes serialize, reread durable state, and retain EF concurrency as the stale-writer fence.
   - **Effort:** L
   - **Dependencies:** 13.3.
 
@@ -530,14 +542,15 @@ Focused independent evidence is green: Application handlers 62/62, planners/proc
 - [ ] dotnet build --configuration Release --verbosity quiet
 - [ ] dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet
 
-## Phase 14: Decoupled PDS Identity and Extensibility
+## Phase 14: Decoupled PDS Identity and Extensibility — IMPLEMENTATION COMPLETE; CANONICAL VERIFICATION PENDING
 
-- [ ] **14.1 Verify Universal PDS OAuth Compatibility**
-  - **Status:** Not started.
-  - **Files:** AtprotoAuthenticationHandler.cs.
+- [x] **14.1 Verify Universal PDS OAuth Compatibility**
+  - **Status:** Complete and independently confirmed. The provider-neutral flow now covers distinct PDS/authorization-server origins, `did:plc`, hostname-only `did:web`, deterministic cache expiry/remapping, strict PDS-service cardinality/type/HTTPS checks, and callback token binding. Evidence: `.omo/evidence/atproto-auth/task-20/`.
+  - **Files:** AtprotoIdentityCache.cs; AtprotoOAuthClientFactory.cs; AtprotoAuthenticationHandler.cs; focused BFF integration and architecture tests.
   - **Acceptance:**
-    - [ ] Challenges discover and use endpoints from non-Bluesky PDS hosts via resolved handles and cache.
-    - [ ] Registration abstractions and DB schema structures maintain clean decoupling to support future local PDS custodial registration.
+    - [x] Challenges discover and use compliant non-Bluesky PDS and authorization-server endpoints via verified handle/DID resolution and a bounded cache.
+    - [x] Invalid, conflicting, duplicate, non-HTTPS, stale, or substituted identity/token inputs fail before PAR/private bridge authority.
+    - [x] Registration remains a decoupled future extension point; linked-account-only behavior, schema, and provider-neutral abstractions remain unchanged.
   - **Effort:** M
   - **Dependencies:** Phase 13.
 

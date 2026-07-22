@@ -3,21 +3,21 @@
 
 # AT Protocol Integration — Implementation Plan
 
-Last Updated: 2026-07-19 Europe/Brussels
+Last Updated: 2026-07-22 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Original request:** Write an implementation plan under dev/active for the ATProto implementation, follow dev/report/atproto-report.md strictly, use CarpaNet documentation from /home/amir/dev/Github/CarpaNet/docs/docs and Context7, ignore backward compatibility because the product is still in development, and preserve repository conventions, Clean Architecture, security, and maintainability. The 2026-07-18 clarification makes ATProto Events one governed capability for both fetch and publication, requires local-DB-first publication, requires every non-native public event field in the single event record description, and adds an administrator-selectable community-lexicon validation profile.
 - **Task directory:** dev/active/atproto-auth/
-- **Planning status:** All 27 planned implementation tasks are complete. Todo 15 documentation reconciliation is in final cross-document QA; focused ATProto gates are green, broad gates remain blocked or indeterminate, and no release-readiness claim is made.
-- **Completed implementation tasks:** 27/27. The final tenant-gated discovery/API slice is independently confirmed in `.omo/evidence/atproto-auth/task-13/README.md`.
-- **Current priority:** Finish Todo 15 documentation evidence, then run Todo 16's canonical matrix after the unrelated shared-tree blockers recorded in context/tasks are repaired.
+- **Planning status:** All 32 planned implementation tasks across fourteen phases are complete and evidence-backed. The execution plan is 20/25 top-level gates complete; the canonical full-project verification (Todo 21) and final F1-F4 review wave remain open, so no release-readiness claim is made.
+- **Completed implementation tasks:** 32/32. The added recovery, refresh-durability, and universal-discovery slices are independently confirmed under `.omo/evidence/atproto-auth/task-16/` through `task-20/`.
+- **Current priority:** Run Todo 21's canonical Release build, all nine project test commands, contract/migration checks, and deterministic integration smoke on one attributable snapshot, then complete F1-F4.
 - **Primary source:** dev/report/atproto-report.md, revision 3 dated 2026-07-18.
 - **Matched intents:** bff-auth-bug, add-write-endpoint, add-get-endpoint, add-cqrs-handler, add-ef-migration, update-repository-query, openapi-contract-change, add-hal-link, blazor-component-affordance, and external-infrastructure-bootstrap.
 - **Relevant skills:** implementation-plan, agentic-research, clean-architecture-rules, auth-patterns, blazor-bff-patterns, cqrs-mediatr-guidelines, dotnet-efcore-guidelines, outbox-pattern, error-tracking, blazor-ui-conventions, and lsp.
 - **Relevant rules:** AGENTS.md; docs/QUICK_REFERENCE.md; docs/GOVERNANCE.md; .claude/rules/application-layer.md; api-controllers.md; api-hateoas.md; blazor-server.md; blazor-client.md; domain-layer.md; efcore-persistence.md; efcore-migrations.md; and tests.md.
 - **Primary layers:** Domain, Application, Persistence, Infrastructure, API, Blazor BFF, generated Blazor client contracts, configuration/secrets, and documentation.
-- **Complexity:** XL. The work crosses two authentication trust boundaries, multi-tenant BFF routing, OAuth state and DPoP credential persistence, asymmetric key rotation, EF Core schema, transactional outbox delivery, community-lexicon projection, Jetstream ingestion, public HAL/OpenAPI, and nine test projects across twelve dependency-ordered phases.
+- **Complexity:** XL. The work crosses two authentication trust boundaries, multi-tenant BFF routing, OAuth state and DPoP credential persistence, asymmetric key rotation, EF Core schema, transactional outbox delivery, community-lexicon projection, Jetstream ingestion and snapshot recovery, public HAL/OpenAPI, and nine test projects across fourteen dependency-ordered phases.
 - **Compatibility posture:** Breaking cleanup is authorized for this development-stage feature. Do not add aliases, dual reads/writes, deprecated endpoints, compatibility DTOs, migration shims, or compatibility-only tests.
 
 ## 1. Executive Summary
@@ -1178,8 +1178,9 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 
 ### Phase 13: Inbound Event Recovery and Backfill Configuration
 
-- **Goal:** Implement automatic downtime recovery (catching up on Jetstream missed events), dynamic subscription updates via `SendOptionsUpdateAsync`, and tenant-governed event backfilling (both `DowntimeOnly` and `Full` modes) using CarpaNet.
+- **Goal:** Implement governed downtime recovery, in-place Jetstream filter updates, bounded current PDS snapshot reconciliation, and atomic encrypted OAuth refresh persistence.
 - **Depends on:** Phase 12.
+- **Progress:** Implementation complete and independently verified in Todos 16-19. The Phase 13 broad build/project gate remains part of Todo 21.
 - **Related skills/rules:** clean-architecture-rules, cqrs-mediatr-guidelines, dotnet-efcore-guidelines.
 - **Acceptance criteria:**
   - Tenant admin can toggle backfill enabled and select between downtime-only and full modes.
@@ -1193,6 +1194,7 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 
 #### Task 13.1: Add Tenant Settings and Rules for Backfilling
 
+- **Status:** Complete; independently verified in `.omo/evidence/atproto-auth/task-16/`.
 - **Type:** create / modify
 - **Layer:** Domain / Application / API / Blazor Client
 - **Files:**
@@ -1201,58 +1203,61 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
   - src/Explore.Application/Settings/Groups/AtprotoFederationSettingGroup.cs (existing)
 - **Description:** Introduce `federation.atproto_events_backfill_enabled` (Boolean) and `federation.atproto_events_backfill_mode` (Enum: platform-defined platform-neutral codes for `DowntimeOnly` and `Full`) into the setting registry. Ensure they are lockable at the instance tier and cascade through the tenant settings stack. Seed them as disabled/downtime-only by default and instance-locked.
 - **Acceptance Criteria:**
-  - [ ] Both settings can be read, overridden, locked, and unlocked via standard settings API and UI.
-  - [ ] Standard five-tier settings resolution cascade applies.
+  - [x] Both settings can be read, overridden, locked, and unlocked via standard settings API and UI.
+  - [x] Standard five-tier settings resolution cascade applies.
 - **Dependencies:** Phase 12.
 - **Effort:** L
 - **Required Skills/Rules:** cqrs-mediatr-guidelines, domain-layer.md.
 
 #### Task 13.2: Implement Jetstream Dynamic Filter Updates
 
+- **Status:** Complete; independently verified in `.omo/evidence/atproto-auth/task-17/`.
 - **Type:** modify
 - **Layer:** Infrastructure
 - **Files:**
   - src/Explore.Infrastructure/Services/Federation/AtprotoJetstreamSubscriber.cs (existing)
 - **Description:** Implement dynamic subscription option updates in the leased Jetstream worker. When allowed DIDs or collections are updated in the configuration or tenant parameters, invoke `client.SendOptionsUpdateAsync` with the updated list of `WantedDids` or `WantedCollections` rather than severing and restarting the WebSocket connection.
 - **Acceptance Criteria:**
-  - [ ] Dynamic updates occur without restarting the background service task.
-  - [ ] Option updates correctly throttle and avoid flooding the Jetstream server.
+  - [x] Dynamic updates occur on the owned connection without restarting the background service task.
+  - [x] Capacity-one coalescing, normalized comparisons, and the existing poll interval prevent update floods; failure reconnects from the unchanged durable cursor with the latest desired filter.
 - **Dependencies:** 13.1.
 - **Effort:** M
 - **Required Skills/Rules:** error-tracking.
 
 #### Task 13.3: Implement Inbound Event Backfill Engine
 
+- **Status:** Complete; independently verified against real PostgreSQL in `.omo/evidence/atproto-auth/task-18/pds-recovery.md`.
 - **Type:** create
-- **Layer:** Application / Infrastructure / API
+- **Layer:** Application / Infrastructure / Persistence
 - **Files:**
-  - src/Explore.Application/Features/Federation/Atproto/Requests/Commands/SyncFederatedEventsCommand.cs (new)
-  - src/Explore.Application/Features/Federation/Atproto/Handlers/Commands/SyncFederatedEventsCommandHandler.cs (new)
-  - src/Explore.Application/Features/Federation/Atproto/Validators/SyncFederatedEventsCommandValidator.cs (new)
-  - src/Explore.Infrastructure/Services/Federation/AtprotoPdsBackfillGateway.cs (new)
-- **Description:** Build the event backfilling engine using CarpaNet repo/sync APIs.
-  - **DowntimeOnly:** Read the saved cursor from `AtprotoJetstreamConsumerState` to calculate the start timestamp, and page through `com.atproto.repo.listRecords` to retrieve events within the downtime gap.
-  - **Full (for ISLAMU's Instance):** Download the full repository CAR file via `com.atproto.sync.getRepo`, parse it with CarpaNet's `Repository.Load(carBytes)` and `CarReader`, and extract all community lexicon calendar events and RSVPs.
-  - Map extracted records into local Event and Registration tables, manually validating each record using `CreateEventValidator` against the active profile (`platform` or `community_lexicon`), and deduplicate against existing local/federated events to prevent duplication.
+  - src/Explore.Application/Features/Federation/Atproto/Requests/Commands/ReconcileAtprotoPdsSnapshotsCommand.cs (new)
+  - src/Explore.Application/Features/Federation/Atproto/Handlers/Commands/ReconcileAtprotoPdsSnapshotsCommandHandler.cs (new)
+  - src/Explore.Application/Features/Federation/Atproto/Validators/ReconcileAtprotoPdsSnapshotsCommandValidator.cs (new)
+  - src/Explore.Infrastructure/Services/Federation/AtprotoPdsSnapshotGateway.cs (new)
+  - src/Explore.Persistence/Repositories/AtprotoJetstreamRepository.cs (existing)
+- **Description:** Preserve ADR-015 by reconciling bounded current PDS snapshots through the global canonical DID/collection/rkey ingestion and tenant-presentation pipeline; never create editable local `Event` or `EventRegistration` aggregates. `DowntimeOnly` resumes the durable Jetstream cursor without PDS I/O. Governed `Full` recovery fetches a bounded `com.atproto.sync.getRepo` CAR for a bounded known-DID set, verifies DID/PDS/repository binding, commit signatures, canonical CBOR/CAR/MST structure, exact event/RSVP collections, and record limits, then atomically reconciles accepted keys. Only a complete successful snapshot may tombstone older absent canonical records; cancellation, invalid data, partial failure, and stale fences preserve prior state.
 - **Acceptance Criteria:**
-  - [ ] Downtime backfill catches up on missed events since the last cursor timestamp without indexing history outside the downtime.
-  - [ ] Full backfill fetches the complete repository CAR file, successfully extracts and stores all event records, and creates local Event entities.
-  - [ ] Ingested events are validated against the tenant's validation profile.
-  - [ ] Deduplication matches by DID, collection, and record key to prevent duplicate index rows.
+  - [x] Downtime recovery resumes from the saved Unix-microsecond cursor and performs no PDS snapshot I/O.
+  - [x] Full recovery is bounded by known DIDs, response/CAR/block/MST/record limits, exact collections, cancellation, and a single leased consumer.
+  - [x] Recovered records reuse canonical inbound records and tenant presentations; no editable local event/registration aggregate is synthesized.
+  - [x] DID/collection/rkey deduplication, idempotent replay, atomic settlement, and complete-snapshot tombstoning pass real PostgreSQL coverage.
 - **Dependencies:** 13.2.
 - **Effort:** XL
 - **Required Skills/Rules:** clean-architecture-rules, dotnet-efcore-guidelines, cqrs-mediatr-guidelines.
 
 #### Task 13.4: Automate Ingest Token Refresh Hook
 
+- **Status:** Complete; independently verified against real PostgreSQL in `.omo/evidence/atproto-auth/task-19/`.
 - **Type:** modify
 - **Layer:** Infrastructure / Application
 - **Files:**
+  - src/Explore.Infrastructure/Services/Federation/AtprotoPdsDeliveryGateway.cs (existing)
   - src/Explore.Infrastructure/Services/Federation/AtprotoOAuthSecurityGateway.cs (existing)
-- **Description:** Bind the token refreshed event handler in `ATProtoClient` to the encrypted `UserAuthenticationToken` persistence layer. Ensure that whenever CarpaNet performs an automatic token refresh during backfill or session validation, the rotated tokens are immediately re-encrypted and persisted.
+  - src/Explore.Infrastructure/Services/Federation/RepositoryBackedOAuthSessionStore.cs (existing)
+- **Description:** Use the existing repository-backed CarpaNet `IOAuthSessionStore` as the sole refresh-durability hook. Every refresh trigger acquires the exact tenant/user/provider/DID PostgreSQL advisory lock, restores the authoritative encrypted envelope, performs the PDS operation and any DPoP refresh, then atomically re-encrypts and stores the complete `OAuthSessionData` before success. The EF concurrency token remains the stale-writer fence; `TokenRefreshed` is not a second persistence path.
 - **Acceptance Criteria:**
-  - [ ] `TokenRefreshed` event is fired and caught.
-  - [ ] Rotated credentials are encrypted and stored in `UserAuthenticationToken` immediately.
+  - [x] Rotated access/refresh tokens and private DPoP material are stored as one authenticated encrypted envelope before refreshed state is considered usable.
+  - [x] Persistence failure is fatal without a PDS write or stale success; concurrent refreshes serialize and reread authoritative durable state.
 - **Dependencies:** 13.3.
 - **Effort:** L
 - **Required Skills/Rules:** auth-patterns.
@@ -1261,6 +1266,7 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 
 - **Goal:** Ensure PDS independence (Bluesky, Eurosky, self-hosted) and maintain clean abstractions to support future Keycloak + local PDS integration without breaking changes.
 - **Depends on:** Phase 13.
+- **Progress:** Implementation complete and independently verified in Todo 20. The Phase 14 broad build/project gate remains part of Todo 21.
 - **Related skills/rules:** clean-architecture-rules, auth-patterns.
 - **Acceptance criteria:**
   - Authentication works with accounts in Eurosky, self-hosted, or Bluesky PDS endpoints.
@@ -1272,14 +1278,18 @@ The implementation deliberately reuses the existing AtprotoAuthenticationHandler
 
 #### Task 14.1: Verify Universal PDS OAuth Compatibility
 
+- **Status:** Complete; independently verified in `.omo/evidence/atproto-auth/task-20/`.
 - **Type:** modify / verify
 - **Layer:** Blazor / Infrastructure
 - **Files:**
+  - src/Explore.Blazor/Services/Auth/AtprotoIdentityCache.cs (existing)
+  - src/Explore.Blazor/Services/Auth/AtprotoOAuthClientFactory.cs (existing)
   - src/Explore.Blazor/Authentication/AtprotoAuthenticationHandler.cs (existing)
-- **Description:** Verify and document that the BFF's OAuth client metadata and key publication are fully compatible with any compliant PDS. Use `IdentityResolver.CreateWithCache()` to dynamically resolve handles to DIDs and fetch their respective PDS endpoints, rather than hardcoding to Bluesky hosts. Maintain decoupled interfaces so future PDS registration/auth providers can hook into the identity lifecycle.
+- **Description:** Resolve normalized handles through the hardened bounded identity cache, verify bidirectional handle/DID binding, require exactly one correctly typed HTTPS `#atproto_pds` service, then follow protected-resource and authorization-server metadata to a possibly distinct compliant issuer. Bind callback subject, PDS, issuer, client key, and tenant flow state. Keep future custodial registration at an interface boundary only; add no account creation, provider branch, synthetic email, or Bluesky fallback.
 - **Acceptance Criteria:**
-  - [ ] Authentication challenge successfully discovers and uses authorization endpoints from non-Bluesky PDS hosts.
-  - [ ] DID document handles resolve efficiently using cached resolution.
+  - [x] Authentication challenges discover distinct compliant PDS and authorization-server endpoints for `did:plc` and hostname-only `did:web` identities without provider-specific branches.
+  - [x] Handle/DID documents use short bounded cache entries with deterministic expiry/remapping; conflicts and absent, malformed, duplicate, or non-HTTPS PDS services fail before PAR.
+  - [x] Callback token subject/PDS-audience substitutions fail before the private bridge, and linked-account-only onboarding remains unchanged.
 - **Dependencies:** Phase 13.
 - **Effort:** M
 - **Required Skills/Rules:** auth-patterns.
@@ -1345,7 +1355,7 @@ Intent-mandated projects are distributed across the fourteen phases. No phase ad
 | Concern | Classification | Plan |
 |---|---|---|
 | Multi-tenancy | Applicable | Tenant-bound state/assertion/storage/JWT/handoff; canonical callback with one-time cross-host transfer. |
-| Federation | Applicable | OAuth is implemented first; governed event/RSVP publish/fetch follows in Phases 7-12 with DB-first ordering. |
+| Federation | Applicable | OAuth is implemented first; governed event/RSVP publish/fetch and recovery follow in Phases 7-14 with DB-first ordering. |
 | Localization | Applicable | Stable BFF error codes are mapped through existing UI localization patterns; provider error text is not displayed raw. |
 | Accessibility | Applicable | Preserve semantic label, keyboard submission, focus, error announcement, and one-page-heading rules in LoginRedirect. |
 | Authorization/HAL | Applicable | Existing resource authorization remains unchanged because sub is the platform user Guid; rendered actions stay HAL-gated. |

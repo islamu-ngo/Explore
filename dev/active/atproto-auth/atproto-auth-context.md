@@ -3,9 +3,9 @@
 
 # AT Protocol Integration — Context
 
-Last Updated: 2026-07-19 Europe/Brussels
+Last Updated: 2026-07-22 Europe/Brussels
 
-## SESSION PROGRESS (2026-07-19 Europe/Brussels)
+## SESSION PROGRESS (2026-07-22 Europe/Brussels)
 
 ### COMPLETED
 
@@ -20,7 +20,7 @@ Last Updated: 2026-07-19 Europe/Brussels
 - Verified the full event graph spans sessions, days, agenda, locations/rooms, lookups, aspects, categories/tags, speakers/languages, and event/session custom-property EAV values.
 - Re-queried Context7 /drasticactions/carpanet for RestoreSessionAsync, repository record operations, and Jetstream WantedCollections/cursor/commit behavior.
 - Replaced the former F0 blocker with executable governance, projection, outbox, Jetstream, API/HAL, and UI phases. ADR-015 is now Task 9.1.
-- Execution was approved by the user's persistent implementation goal; all 27/27 planned product tasks are now implemented.
+- Execution was approved by the user's persistent implementation goal; all 32/32 planned product tasks are now implemented and independently verified.
 - Captured a fresh protected dirty-tree fingerprint at HEAD `aefa7797054c58a1233267835417aea46830b050` and confirmed the exact Release baseline: 25 projects, 0 errors, 0 warnings.
 - Reconciled architecture corrections: no direct `AtprotoRecord` mutations, a server-private bridge, the existing `IsLockable` engine, typed RSVP projection, public-location disclosure, independent source-field manifests, global canonical inbound ownership, capability-bound community readiness, and last-moment delivery gate rechecks.
 - Completed and independently verified Task 1.1: stable CarpaNet 1.0.2 packages are centrally pinned with NuGet-generated lock files, BFF/Infrastructure ownership is enforced, and the exact eight-file authoritative local lexicon closure compiles without network resolution. Evidence is in `.omo/evidence/atproto-auth/task-2/README.md`.
@@ -34,27 +34,27 @@ Last Updated: 2026-07-19 Europe/Brussels
 - Fixed the reported compilation diagnostics by removing obsolete raw `AtprotoRecordDto` serializer roots, removing the obsolete `PermissionAction` attribute constructor, and matching the `ISecureRequest.ResourceAttributes` nullability contract.
 - Reconciled federation, API, configuration, self-hosting, troubleshooting, project, architecture, outbox, and operations documentation with the implemented governance, DB-first delivery, exhaustive one-description projection, Jetstream ingestion, safe HAL, client status, and recovery contracts.
 - Regenerated `docs/API_CONTRACT_INVENTORY.md` from the current canonical OpenAPI schema; the obsolete raw `/api/atprotorecord` surface is absent and the typed federated-event source redirect is recorded.
+- Completed governed recovery settings and administrator surfaces through the existing five-tier setting resolver, API/HAL authority, and locked seed definitions. Evidence: `.omo/evidence/atproto-auth/task-16/`.
+- Completed in-place Jetstream DID-filter updates on one globally leased socket with normalized/coalesced updates, exact event/RSVP collections, durable-cursor reconnect, and bounded telemetry. Evidence: `.omo/evidence/atproto-auth/task-17/`.
+- Completed bounded, signed PDS snapshot recovery through the canonical inbound record/presentation pipeline. Real PostgreSQL reconciliation passed 4/4 twice; recovery never creates editable local event or registration aggregates. Evidence: `.omo/evidence/atproto-auth/task-18/pds-recovery.md`.
+- Completed atomic encrypted OAuth refresh persistence through the shared exact-scope PostgreSQL advisory lock and repository-backed CarpaNet session store. Real PostgreSQL refresh/store coverage passed 6/6 and the lock pair repeated 2/2. Evidence: `.omo/evidence/atproto-auth/task-19/`.
+- Completed universal PDS and authorization-server discovery. Provider-neutral tests cover distinct PDS/issuer origins, `did:plc`, hostname-only `did:web`, strict single-service validation, deterministic cache remapping, and token substitution rejection. Evidence: `.omo/evidence/atproto-auth/task-20/`.
 
 ### IN PROGRESS
 
-- Todo 15 cross-document QA and evidence consolidation. No ATProto product-code task remains.
+- Todo 21 canonical full-project verification and evidence consolidation. No ATProto implementation task remains.
 
 ### NEXT
 
-1. Finish Todo 15 evidence and contradiction/link/secret scans.
-2. Run Todo 16's open Release/Application/Architecture/Persistence/API broad gates after their unrelated owners repair the shared-tree failures.
-3. Keep ATProto focused verification green and do not absorb unrelated notification/email/location work into this workstream.
+1. Freeze one attributable ATProto-relevant source snapshot after concurrent dynamic-event UI writes settle.
+2. Run Todo 21's Release build, all nine per-project commands, locked/generated contract and migration checks, and deterministic fake-service/Testcontainers smoke.
+3. Complete F1-F4 plan, quality, integration, and scope audits against that exact snapshot.
 
 ### BLOCKERS
 
-- **Shared-tree Release/persistence compile limitation:** unrelated notification work currently leaves required `Event.Tenant` and `Event.VisibilityType` members unset at `NotificationFanoutOccurrenceRepositoryTests.cs:789`; the ATProto production projects themselves build successfully.
-- **Fresh Release compile limitation:** the Todo 15 source-freshness build additionally found one missing `TryClaimOccurrenceAsync` cancellation argument and two ambiguous `HybridCache.RemoveAsync` test calls; the remaining fourteen `CS0006` errors are downstream fallout from the five direct test-source errors.
-- **Shared-tree Application limitation:** the canonical Application suite has 2,734 passes, two unrelated notification/email-metrics failures, and two skips.
-- **Shared-tree architecture limitation:** every ATProto-owned violation is fixed; only unrelated `EmailDispatchProcessorControlLinkPolicy` and pre-existing `CustomPropertyExposureScope` violations remain (255 passed, 2 failed, 1 skipped).
-- **Broad API evidence limitation:** the full API command was terminated at the tool/process boundary without a test verdict; all focused ATProto API suites are green.
-- **Shared-tree migration limitation:** the concurrent migration chain adds `smtp_available_tokens` twice and PostgreSQL stops with `42701` before ATProto test bodies.
-- **Visual evidence limitation:** the workstream explicitly forbids starting a browser/live app for phase verification. Semantic/accessibility bUnit coverage is green, but no live screenshot-based `/visual-qa` pass is claimed.
-- **Documentation source limitation:** Context7 was invoked as required but its monthly quota is exhausted; pinned CarpaNet 1.0.2 documentation/source under `/home/amir/dev/Github/CarpaNet` remains the recorded fallback authority.
+- No known ATProto implementation blocker remains. Docker/Testcontainers is available and supplied the required real PostgreSQL evidence for Todos 18 and 19.
+- The shared worktree is still receiving unrelated dynamic-event-management UI changes. Todo 21 must run on a frozen attributable snapshot and report any foreign failure without editing or absorbing that workstream.
+- The 2026-07-19 broad matrix below is historical, not a current failure list. Its former shared-tree failures must be re-evaluated by Todo 21 rather than assumed fixed or still failing.
 
 ### ACCEPTED PRODUCT CONSTRAINT
 
@@ -64,23 +64,33 @@ Last Updated: 2026-07-19 Europe/Brussels
 
 1. Read this context and atproto-auth-tasks.md.
 2. Read only the current phase, constraints, or changed decisions from atproto-auth-plan.md.
-3. Start from the first unchecked high-priority task unless the user overrides it.
+3. Start from Todo 21, the first unchecked top-level ATProto execution-plan gate, unless the user overrides it.
 4. Keep tasks current during implementation. Update context/plan only at their defined triggers.
-5. Before Phase 9/10 federation runtime work, complete ADR-015 Task 9.1; do not weaken the DB-first, one-capability, exhaustive-description, consent, or two-collection invariants.
+5. Preserve ADR-015's DB-first, one-capability, exhaustive-description, consent, canonical-ingress, and exact two-collection invariants through final verification.
 
 ## Current Status Snapshot
 
 | Field | Value |
 |---|---|
-| Overall status | 27/32 implementation tasks complete; Phases 13 & 14 added for backfill & identity recovery; Todo 15 QA; broad verification is not all green |
-| Completed implementation tasks | 27/32 completed tasks |
-| Current priority | Finish Todo 15 documentation evidence while preserving unrelated concurrent changes |
-| Next executable slice | Implementation of Phase 13 (Backfill & Recovery) and Phase 14 (PDS Decoupling & Extensibility) |
+| Overall status | 32/32 implementation tasks complete; 20/25 execution-plan gates complete; canonical verification and F1-F4 remain |
+| Completed implementation tasks | 32/32 completed tasks |
+| Current priority | Todo 21 canonical build, nine-project test matrix, generated contracts/migrations, and deterministic integration smoke |
+| Next executable slice | Run Todo 21 on one attributable snapshot, then F1-F4 |
 | OAuth implementation | Complete in Phases 1-6; live-provider release evidence remains outside automated gates |
-| Federation implementation | Phases 7-12 complete; Phase 13 (backfill) and Phase 14 (identity) pending implementation |
+| Federation implementation | Phases 7-14 complete; recovery, atomic refresh durability, and provider-neutral discovery are independently verified |
 | Baseline build | Fresh green baseline at HEAD aefa7797 on 2026-07-18; 25 projects, 0 errors, 0 warnings |
 
-## Final Canonical Verification Matrix
+## Current Focused Verification Addendum — 2026-07-22
+
+- Recovery settings: Application 17/17, Infrastructure 13/13, API 8/8, Architecture 9/9, PostgreSQL seed 1/1, and bUnit administration surfaces 25/25 combined.
+- Dynamic Jetstream filtering: subscriber/readiness/runtime-store 30/30, repeated across six runs for the affected subscriber matrix.
+- Bounded PDS snapshot reconciliation: real PostgreSQL 4/4 twice; focused handler/gateway/runtime/subscriber and architecture suites are green.
+- Atomic encrypted OAuth refresh: real PostgreSQL 6/6 with lock pair repeated 2/2; security gateway 12/12, encrypted store 6/6, writer 12/12, and architecture boundaries are green.
+- Universal discovery: auth flow 17/17, session binding 6/6, cache 2/2 twice, transport 23/23, linked-account handler 5/5, architecture 29/29, and bounded 10,000-entry cache/cross-lease probes.
+
+These results close implementation Tasks 13.1-14.1. They do not replace Todo 21's canonical build and all-nine-project matrix.
+
+## Historical Canonical Verification Matrix — 2026-07-19
 
 This is the last complete per-project matrix recorded by the ATProto workstream. It is not an all-green or release-readiness claim. A fresh Todo 15 Release build on the current shared tree also exited 1 with five direct unrelated test-source compile errors: one missing `TryClaimOccurrenceAsync` cancellation argument, two ambiguous `HybridCache.RemoveAsync` calls, and the two required-member fixture errors below; fourteen downstream `CS0006` errors were compilation fallout.
 
@@ -325,6 +335,8 @@ Per-phase gates:
 | 10 | Release build | Explore.Infrastructure.Tests |
 | 11 | Release build | Event.API.IntegrationTests |
 | 12 | Release build | Explore.Blazor.Client.Tests |
+| 13 | Release build | Explore.Infrastructure.Tests |
+| 14 | Release build | Explore.Blazor.IntegrationTests |
 
 Run each gate once after all phase tasks. Do not repeat a green command unless its inputs changed.
 
@@ -346,7 +358,7 @@ Run each gate once after all phase tasks. Do not repeat a green command unless i
 
 ## Executable Federation Requirements
 
-These are binding requirements assigned to Phases 7-12:
+These are binding requirements assigned to Phases 7-14:
 
 - One effective `federation.atproto_events_enabled` capability for both fetch and outbound availability, with an instance lock and five-tier resolution.
 - `platform` versus `community_lexicon` validation profile using existing `IsLockable` state/commands; instance admin owns defaults and unlocked tenant admin may override. Community applies only while capability is enabled.
@@ -361,6 +373,15 @@ These are binding requirements assigned to Phases 7-12:
 - ADR-015 for payload, tenant/user ownership, direction/provenance, aggregate-version idempotency, leases, cursor/checkpoint policy, entity correlation, and settlement.
 
 ## Handoff Notes
+
+### Phases 13-14 completion handoff — 2026-07-22 Europe/Brussels
+
+- **Current state:** All 32 implementation tasks are complete and independently verified. `.omo/plans/atproto-auth.md` has Todos 1-20 checked; Todo 21 and F1-F4 remain open.
+- **Implemented architecture:** Recovery settings reuse the five-tier governance engine; Jetstream updates one globally leased socket in place; Full recovery validates bounded signed PDS repository snapshots into canonical inbound records/presentations; OAuth rotations persist one complete encrypted CarpaNet session under the existing PostgreSQL lock; OAuth discovery follows verified handle/DID/PDS/protected-resource/issuer metadata without provider branches.
+- **Verification:** Real PostgreSQL recovery passed 4/4 twice and refresh persistence passed 6/6 with the lock pair repeated 2/2. Provider-neutral discovery, cache, transport, session binding, and architecture matrices are green. Exact evidence lives under `.omo/evidence/atproto-auth/task-16/` through `task-20/`.
+- **Next action:** Execute Todo 21's canonical build, all nine test projects, generated-contract/migration checks, and deterministic integration smoke, then complete F1-F4 on the same source snapshot.
+- **Blockers:** No ATProto implementation blocker. Preserve and exclude the concurrent dynamic-event-management UI workstream when attributing changes or failures.
+- **Cleanup:** No ATProto-owned process, test container, PostgreSQL/Ryuk resource, port, browser, PTY, temporary report, or credential remains; Docker itself was left available as user-provided infrastructure.
 
 ### Phase 9 implementation handoff — 2026-07-19 Europe/Brussels
 
