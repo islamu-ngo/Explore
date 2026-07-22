@@ -229,7 +229,7 @@
 </MudContainer>
 
 @code {
-    private const string TenantSettingsRoute = "/admin/tenant/settings";
+    private const string TenantSettingsRoute = "/settings/tenant";
 
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private TenantPolicySettingsDto _model = new();

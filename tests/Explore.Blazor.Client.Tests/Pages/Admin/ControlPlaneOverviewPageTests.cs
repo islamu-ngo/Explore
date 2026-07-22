@@ -121,7 +121,7 @@ public sealed class ControlPlaneOverviewPageTests : IDisposable
 
         await Assert.That(cut.Find("h1").TextContent).IsEqualTo("Domains");
         await Assert.That(cut.Find("a[aria-label='Edit domain governance']").GetAttribute("href"))
-            .IsEqualTo("/admin/instance/settings?section=domain");
+            .IsEqualTo("/settings/instance?section=domain");
         await Assert.That(cut.Markup).Contains("DNS verification is operator-managed.");
         await Assert.That(cut.FindAll("button[aria-label^='Verify ']")).IsEmpty();
         await Assert.That(cut.FindAll("button[aria-label^='Test ']")).IsEmpty();

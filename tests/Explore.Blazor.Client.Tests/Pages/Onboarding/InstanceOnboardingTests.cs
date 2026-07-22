@@ -144,8 +144,8 @@ public class InstanceOnboardingTests : IDisposable
         cut.WaitForAssertion(() =>
         {
             RequireContains(cut.Markup, "Manage authentication");
-            Require(FindLink(cut, "/admin/instance/settings?section=auth-providers") is not null,
-                "Completed setup must retain the HAL-authorized Keycloak management route.");
+            Require(FindLink(cut, "/settings/instance?section=auth-providers") is not null,
+                    "Completed setup must retain the HAL-authorized Keycloak management route.");
         });
 
         await Task.CompletedTask;
@@ -198,7 +198,7 @@ public class InstanceOnboardingTests : IDisposable
         {
             RequireContains(cut.Markup, "Instance setup is complete");
             Require(FindLink(cut, "/events") is not null, "Expected events handoff.");
-            Require(FindLink(cut, "/admin/instance/settings") is not null, "Expected settings handoff.");
+            Require(FindLink(cut, "/settings/instance") is not null, "Expected settings handoff.");
         });
 
         await _instanceOnboardingService.Received(1)

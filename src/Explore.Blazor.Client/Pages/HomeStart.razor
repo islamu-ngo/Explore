@@ -171,7 +171,7 @@
                     {
                         if (instanceStatus.IsCurrentUserInstanceAdmin == true)
                         {
-                            Navigation.NavigateTo("/admin/instance/settings");
+            Navigation.NavigateTo("/settings/instance");
                             return;
                         }
 
@@ -197,7 +197,7 @@
                 Navigation.NavigateTo("/setup");
                 return;
             case StartupRouteDecision.InstanceAdmin:
-                Navigation.NavigateTo("/admin/instance/settings");
+            Navigation.NavigateTo("/settings/instance");
                 return;
             case StartupRouteDecision.PublicLanding:
                 _state = RootState.ShowLanding;

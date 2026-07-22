@@ -70,16 +70,16 @@ public class AuthRedirectPagesTests : IDisposable
     {
         // Arrange
         var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
-        nav.NavigateTo("/login?returnUrl=%2Fadmin%2Ftenant%2Fsettings");
+        nav.NavigateTo("/login?returnUrl=%2Fsettings%2Ftenant");
 
         // Act
         var cut = _ctx.Render<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
 
         // Assert
-        await WaitForNavigationAsync(nav, uri => IsChallengeNavigation(uri, "keycloak", "/admin/tenant/settings"));
+        await WaitForNavigationAsync(nav, uri => IsChallengeNavigation(uri, "keycloak", "/settings/tenant"));
 
-        await AssertChallengeNavigationAsync(nav.Uri, "keycloak", "/admin/tenant/settings");
+        await AssertChallengeNavigationAsync(nav.Uri, "keycloak", "/settings/tenant");
     }
 
     [Test]

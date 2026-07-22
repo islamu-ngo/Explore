@@ -1,6 +1,7 @@
 // ABOUTME: bUnit tests for tenant settings availability across deployment modes.
 // ABOUTME: Verifies tenant administrators are never redirected into instance-only administration.
 
+using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Pages.Events;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
@@ -25,13 +26,15 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         _publicExperienceAdminService = _ctx.AddMockService<ITenantPublicExperienceAdminService>();
         _tenantStorageSettingsAdminService = _ctx.AddMockService<ITenantStorageSettingsAdminService>();
         _ctx.AddMockService<ITenantBrandingSettingsAdminService>();
+        _ctx.AddMockService<IUiShellContextService>();
+        _ctx.AddMockService<IShellPreferencesService>();
         _publicExperienceAdminService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new TenantPublicExperienceAdminModel());
         _tenantStorageSettingsAdminService.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new HalResourceOfTenantStorageSettingsDto());
 
         _nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
-        _nav.NavigateTo("/admin/tenant/settings");
+        _nav.NavigateTo("/settings/tenant");
     }
 
     public void Dispose() => _ctx.Dispose();
@@ -49,7 +52,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         _ctx.Render<DynamicComponent>(p =>
             p.Add(x => x.Type, componentType));
 
-        await Assert.That(_nav.Uri).EndsWith("/admin/tenant/settings");
+        await Assert.That(_nav.Uri).EndsWith("/settings/tenant");
     }
 
     [Test]
@@ -65,7 +68,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         _ctx.Render<DynamicComponent>(p =>
             p.Add(x => x.Type, componentType));
 
-        await Assert.That(_nav.Uri).EndsWith("/admin/tenant/settings");
+        await Assert.That(_nav.Uri).EndsWith("/settings/tenant");
     }
 
 }

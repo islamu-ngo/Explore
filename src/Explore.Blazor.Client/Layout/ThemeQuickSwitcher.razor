@@ -3,9 +3,10 @@
 
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Services.Shell
 @using MudBlazor
 @inject IAppearanceThemeService AppearanceThemeService
-@inject NavigationManager Nav
+@inject UiShellState UiShellState
 
 <MudMenu @bind-Open="_isOpen"
          AnchorOrigin="Origin.BottomCenter"
@@ -65,13 +66,17 @@
             </MudMenuItem>
         }
         <MudDivider />
-        <MudMenuItem OnClick="NavigateToAppearanceSettings" Class="theme-quick-switcher__item">
+        <MudMenuItem Href="/settings/personal/appearance?custom=true"
+                     OnClick="NavigateToAppearanceSettings"
+                     Class="theme-quick-switcher__item">
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                 <MudIcon Icon="@Icons.Material.Outlined.Palette" Size="Size.Small" />
                 <MudText Typo="Typo.body2">Custom Theme</MudText>
             </MudStack>
         </MudMenuItem>
-        <MudMenuItem OnClick="NavigateToSettings" Class="theme-quick-switcher__item">
+        <MudMenuItem Href="/settings/personal/appearance"
+                     OnClick="NavigateToSettings"
+                     Class="theme-quick-switcher__item">
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                 <MudIcon Icon="@Icons.Material.Outlined.Settings" Size="Size.Small" />
                 <MudText Typo="Typo.body2">Full settings</MudText>
@@ -151,16 +156,16 @@
         await AppearanceThemeService.SetThemeModeAsync(mode);
     }
 
-    private void NavigateToAppearanceSettings()
+    private void NavigateToAppearanceSettings(MouseEventArgs args)
     {
         _isOpen = false;
-        Nav.NavigateTo("/settings?section=appearance&custom=true");
+        UiShellState.NavigateToPersonalSettings("/settings/personal/appearance?custom=true", args);
     }
 
-    private void NavigateToSettings()
+    private void NavigateToSettings(MouseEventArgs args)
     {
         _isOpen = false;
-        Nav.NavigateTo("/settings?section=appearance");
+        UiShellState.NavigateToPersonalSettings("/settings/personal/appearance", args);
     }
 
     private string GetAriaLabel() => _currentMode switch

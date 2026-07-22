@@ -109,7 +109,7 @@
                         <MudButton Elevation="0"
                                    Color="Color.Secondary"
                                    Variant="Variant.Outlined"
-                                   Href="/admin/instance/settings"
+                        Href="/settings/instance"
                                    StartIcon="@Icons.Material.Filled.Settings">
                             @T("success.single_secondary", "Open instance settings")
                         </MudButton>
@@ -325,10 +325,10 @@
     private bool CanManageTenants => _isCompleted
         && _status?.HasHalLink("manage-tenants") == true;
     private string AuthenticationProviderHref => _isCompleted
-        ? "/admin/instance/settings?section=auth-providers"
+            ? "/settings/instance?section=auth-providers"
         : "/onboarding/auth-provider";
     private string AuthorizationProviderHref => _isCompleted
-        ? "/admin/instance/settings?section=auth-providers"
+            ? "/settings/instance?section=auth-providers"
         : "/onboarding/authz-provider";
     private string? CurrentError => _completionError ?? _setupSecretError ?? _loadError;
     private string CompleteButtonLabel => _submitState.IsSubmitting
