@@ -1,6 +1,7 @@
 // ABOUTME: Main layout code-behind handling theme initialization, user sync, and accessibility.
 // ABOUTME: Uses the new IAppearanceThemeService with AppearanceState for reactive theme management.
 
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Components.Shell;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Shell;
@@ -41,6 +42,9 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     private bool _workspaceNavClosedByHiddenChrome;
     private DockLayoutSnapshot? _lastPersistedShellDockLayoutSnapshot;
     private CancellationTokenSource? _shellDockLayoutAutosaveCts;
+    private CancellationTokenSource? _shellSelectionAutosaveCts;
+    private UiShellContextDto? _shellContext;
+    private bool _shellPreferencesHydrated;
 
     [Inject]
     protected IUserService UserService { get; set; } = null!;
@@ -87,6 +91,12 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     [Inject]
     protected UiShellState UiShellState { get; set; } = null!;
 
+    [Inject]
+    protected IUiShellContextService ShellContextService { get; set; } = null!;
+
+    [Inject]
+    protected IShellPreferencesService ShellPreferencesService { get; set; } = null!;
+
     [CascadingParameter(Name = "InitialTheme")]
     public bool? InitialTheme { get; set; }
 
@@ -103,6 +113,10 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
     private bool ActiveWorkspaceHasNavigation => WorkspaceRegistry.Workspaces.Any(workspace =>
         workspace.Key == UiShellState.ActiveWorkspace && workspace.NavigationProviderType is not null);
+
+    private bool IsAiWorkspace => UiShellState.ActiveWorkspace == WorkspaceKey.Ai;
+
+    private int ActiveWorkspaceContentFloor => ResolveWorkspaceContentFloor(UiShellState.ActiveWorkspace);
 
     public string DarkLightModeButtonIcon => _isDarkMode switch
     {
@@ -143,8 +157,6 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     {
         if (firstRender)
         {
-            await HydrateShellDockLayoutAsync();
-
             var isAuthenticated = false;
 
             try
@@ -160,6 +172,9 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
             {
                 Logger.LogWarning(ex, "Error syncing user");
             }
+
+            await HydrateShellPreferencesAsync();
+            await HydrateShellDockLayoutAsync();
 
             try
             {
@@ -260,7 +275,9 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
     private void OnShellStateChanged()
     {
+        ApplyGovernedWorkspaceNavigationMode(forceDefault: false);
         SyncWorkspaceNavigationPanel();
+        ScheduleShellSelectionAutosave();
         _ = InvokeAsync(StateHasChanged);
     }
 
@@ -377,21 +394,24 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     {
         var aiOpen = DockLayoutState.GetPanel(ShellDockPanels.AiAssistantId)?.State.IsOpen == true;
 
-        _syncingAiAssistantState = true;
-        try
+        if (!_syncingAiAssistantState)
         {
-            if (aiOpen && !AiAssistantState.IsOpen)
+            _syncingAiAssistantState = true;
+            try
             {
-                AiAssistantState.Open();
+                if (aiOpen && !AiAssistantState.IsOpen)
+                {
+                    AiAssistantState.Open();
+                }
+                else if (!aiOpen && AiAssistantState.IsOpen)
+                {
+                    AiAssistantState.Close();
+                }
             }
-            else if (!aiOpen && AiAssistantState.IsOpen)
+            finally
             {
-                AiAssistantState.Close();
+                _syncingAiAssistantState = false;
             }
-        }
-        finally
-        {
-            _syncingAiAssistantState = false;
         }
 
         if (ShouldAutosaveShellDockLayout())
@@ -419,6 +439,8 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
                 _closedByNoNavigation = false;
                 SyncWorkspaceNavigationPanel();
             }
+
+            ApplyGovernedWorkspaceNavigationMode(forceDefault: snapshot is null);
         }
         catch (Exception ex)
         {
@@ -527,6 +549,140 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         return !SnapshotPanelsEqual(_lastPersistedShellDockLayoutSnapshot, CreateShellDockLayoutSnapshot());
     }
 
+    private async Task HydrateShellPreferencesAsync()
+    {
+        try
+        {
+            _shellContext = await ShellContextService.GetCachedContextAsync();
+            if (_shellContext is null)
+            {
+                return;
+            }
+
+            var preferences = await ShellPreferencesService.LoadAsync(_shellContext);
+            UiShellState.ReconcileAvailability(workspace => IsWorkspaceAvailable(workspace, _shellContext));
+            UiShellState.ReconcileActiveActors(_shellContext.ManagedActors, _shellContext.PinnedActorId);
+            if (!_shellContext.PinnedActorId.HasValue && preferences.LastActorId.HasValue)
+            {
+                UiShellState.TrySetActiveActor(preferences.LastActorId.Value, _shellContext.ManagedActors);
+            }
+
+            var workspace = WorkspaceRegistry.Workspaces.FirstOrDefault(candidate =>
+                candidate.Key.Value.Equals(preferences.LastWorkspace, StringComparison.OrdinalIgnoreCase));
+            if (workspace is not null && IsWorkspaceAvailable(workspace.Key, _shellContext))
+            {
+                UiShellState.RestoreLastRoute(workspace.Key, workspace.BaseRoute);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to hydrate shell selection preferences.");
+        }
+        finally
+        {
+            _shellPreferencesHydrated = true;
+        }
+    }
+
+    private void ApplyGovernedWorkspaceNavigationMode(bool forceDefault)
+    {
+        var defaults = _shellContext?.NavigationDefaults;
+        if (defaults is null || (!forceDefault && defaults.AllowUserOverride != false))
+        {
+            return;
+        }
+
+        var configuredMode = UiShellState.ActiveWorkspace.Value switch
+        {
+            "events" => defaults.Events,
+            "studio" => defaults.Studio,
+            "ai" => defaults.Ai,
+            _ => null
+        };
+        if (configuredMode is null || DockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId) is null)
+        {
+            return;
+        }
+
+        var mode = configuredMode.Equals("Collapsed", StringComparison.OrdinalIgnoreCase)
+            ? DockMode.Collapsed
+            : DockMode.Docked;
+        DockLayoutState.SetMode(
+            ShellDockPanels.WorkspaceNavId,
+            mode,
+            DockLayoutChangeReason.Refresh);
+    }
+
+    private void ScheduleShellSelectionAutosave()
+    {
+        if (!_shellPreferencesHydrated)
+        {
+            return;
+        }
+
+        _shellSelectionAutosaveCts?.Cancel();
+        _shellSelectionAutosaveCts?.Dispose();
+        var autosaveCts = new CancellationTokenSource();
+        _shellSelectionAutosaveCts = autosaveCts;
+        var workspace = UiShellState.ActiveWorkspace.Value;
+        var actorId = UiShellState.ActiveActorId;
+        var currentRoute = GetCurrentRoute();
+        _ = PersistShellSelectionAfterDelayAsync(
+            autosaveCts,
+            workspace,
+            actorId,
+            currentRoute);
+    }
+
+    private async Task PersistShellSelectionAfterDelayAsync(
+        CancellationTokenSource autosaveCts,
+        string workspace,
+        Guid? actorId,
+        string currentRoute)
+    {
+        try
+        {
+            await Task.Delay(DockLayoutAutosaveDelay, autosaveCts.Token);
+            await ShellPreferencesService.SaveSelectionAsync(
+                workspace,
+                actorId,
+                currentRoute,
+                autosaveCts.Token);
+        }
+        catch (OperationCanceledException) when (autosaveCts.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to save shell selection preferences.");
+        }
+    }
+
+    private string GetCurrentRoute()
+    {
+        var relative = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        return string.IsNullOrWhiteSpace(relative) ? "/" : $"/{relative.TrimStart('/')}";
+    }
+
+    private static bool IsWorkspaceAvailable(WorkspaceKey workspace, UiShellContextDto context) =>
+        workspace.Value switch
+        {
+            "events" => true,
+            "studio" => context.Workspaces?.Studio == true,
+            "ai" => context.Workspaces?.Ai == true,
+            "settings" => true,
+            _ => false
+        };
+
+    internal static int ResolveWorkspaceContentFloor(WorkspaceKey workspace) => workspace.Value switch
+    {
+        "ai" => 520,
+        "settings" => 560,
+        "studio" => 720,
+        _ => 375
+    };
+
     private static bool SnapshotPanelsEqual(DockLayoutSnapshot? previous, DockLayoutSnapshot current)
     {
         return previous is not null && previous.Panels.SequenceEqual(current.Panels);
@@ -560,7 +716,17 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
     private void SyncAiAssistantDockState()
     {
-        SyncPanelState(ShellDockPanels.AiAssistantId, !_hideChrome && AiAssistantState.IsAvailable && AiAssistantState.IsOpen);
+        _syncingAiAssistantState = true;
+        try
+        {
+            SyncPanelState(
+                ShellDockPanels.AiAssistantId,
+                !_hideChrome && !IsAiWorkspace && AiAssistantState.IsAvailable && AiAssistantState.IsOpen);
+        }
+        finally
+        {
+            _syncingAiAssistantState = false;
+        }
     }
 
     private void SyncPanelState(DockPanelId id, bool shouldBeOpen)
@@ -613,6 +779,8 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     {
         _shellDockLayoutAutosaveCts?.Cancel();
         _shellDockLayoutAutosaveCts?.Dispose();
+        _shellSelectionAutosaveCts?.Cancel();
+        _shellSelectionAutosaveCts?.Dispose();
         NavigationManager.LocationChanged -= OnLocationChanged;
         MainContentAppearanceState.Changed -= OnMainContentAppearanceChanged;
         AiAssistantState.OnChange -= OnAiAssistantStateChanged;

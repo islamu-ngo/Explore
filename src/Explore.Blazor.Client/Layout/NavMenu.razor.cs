@@ -1,5 +1,5 @@
 // ABOUTME: Code-behind for the top navigation shell and profile dropdown state.
-// ABOUTME: Loads BFF/API-backed public experience and admin authority status for menu affordances.
+// ABOUTME: Loads BFF/API-backed public experience and shell context for menu affordances.
 
 using System.Security.Claims;
 using System.Text.Json;
@@ -8,7 +8,7 @@ using Explore.Blazor.Client.Components.Shell;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Events;
-using Explore.Blazor.Client.Contracts.Services.Organizations;
+using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Docking;
@@ -39,12 +39,6 @@ public partial class NavMenu : IDisposable
     protected IUserSettingsService UserSettingsService { get; set; } = null!;
 
     [Inject]
-    protected IInstanceOnboardingService InstanceOnboardingService { get; set; } = null!;
-
-    [Inject]
-    protected ITenantOnboardingService TenantOnboardingService { get; set; } = null!;
-
-    [Inject]
     protected ITenantNavigationService TenantNavigationService { get; set; } = null!;
 
     [Inject]
@@ -54,10 +48,7 @@ public partial class NavMenu : IDisposable
     protected IEventCreationEligibilityService EventCreationEligibilityService { get; set; } = null!;
 
     [Inject]
-    protected IOrganizationService OrganizationService { get; set; } = null!;
-
-    [Inject]
-    protected IGroupService GroupService { get; set; } = null!;
+    protected IUiShellContextService ShellContextService { get; set; } = null!;
 
     [Inject]
     protected IDialogService DialogService { get; set; } = null!;
@@ -95,12 +86,31 @@ public partial class NavMenu : IDisposable
     private bool _isCurrentUserTenantAdmin;
     private bool _showAddEventForAnonymous;
     private bool _languagePickerEnabled = true;
-    private ICollection<OrganizationListDto> _userOrganizations = new List<OrganizationListDto>();
-    private ICollection<GroupListDto> _userGroups = new List<GroupListDto>();
+    private IReadOnlyList<SettingsScopeDto> _organizationScopes = [];
+    private IReadOnlyList<SettingsScopeDto> _groupScopes = [];
+    private IReadOnlyList<ManagedActorDto> _organizationActors = [];
+    private IReadOnlyList<ManagedActorDto> _groupActors = [];
     private bool _orgSubmenuOpen;
     private bool _groupSubmenuOpen;
     private const string AiAssistantPreferencesCategory = "AiAssistantPreferences";
     private const string ShowAiAssistantNavbarButtonKey = "ai_assistant_preferences.show_navbar_button";
+
+    private bool IsStudioWorkspace => UiShellState.ActiveWorkspace == WorkspaceKey.Studio;
+    private bool ShowGlobalSearch => UiShellState.ActiveWorkspace == WorkspaceKey.Events
+        || UiShellState.ActiveWorkspace == WorkspaceKey.Studio;
+    private bool ShowEventPrimaryAction => _eventCreationEligibility.CanCreate && ShowGlobalSearch;
+    private bool ShowAnonymousEventAction => _showAddEventForAnonymous
+        && UiShellState.ActiveWorkspace == WorkspaceKey.Events;
+    private string SearchPlaceholder => IsStudioWorkspace
+        ? "Search managed events…  ⌘K"
+        : $"Search {_eventCatalogLabel}…  ⌘K";
+    private string PrimaryActionLabel => IsStudioWorkspace ? "Create" : "Add Event";
+    private string PrimaryActionRoute => IsStudioWorkspace
+        ? "/events/create"
+        : _eventCreationEligibility.CreateEventRoute;
+    private string? ActingActorName => IsStudioWorkspace
+        ? UiShellState.ActiveActor?.DisplayName
+        : null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -113,9 +123,7 @@ public partial class NavMenu : IDisposable
         await LoadCurrentUserAsync();
         await LoadNavigationLinksAsync();
         await LoadEventCreationEligibilityAsync();
-        await LoadDeploymentModeAsync();
-        await LoadUserOrganizationsAsync();
-        await LoadUserGroupsAsync();
+        await LoadShellContextAsync();
     }
 
     private void HandleSearchKeyPress(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
@@ -124,14 +132,16 @@ public partial class NavMenu : IDisposable
         {
             if (!string.IsNullOrWhiteSpace(SearchQuery))
             {
-                Nav.NavigateTo($"/events?q={Uri.EscapeDataString(SearchQuery)}");
+                Nav.NavigateTo($"{SearchRoute}?q={Uri.EscapeDataString(SearchQuery)}");
             }
             else
             {
-                Nav.NavigateTo("/events");
+                Nav.NavigateTo(SearchRoute);
             }
         }
     }
+
+    private string SearchRoute => IsStudioWorkspace ? "/studio/events" : "/events";
 
     private async Task LoadPublicExperienceAsync()
     {
@@ -240,7 +250,7 @@ public partial class NavMenu : IDisposable
     {
         if (!_dropdownOpen)
         {
-            await LoadDeploymentModeAsync();
+            await LoadShellContextAsync();
         }
 
         _dropdownOpen = !_dropdownOpen;
@@ -286,6 +296,12 @@ public partial class NavMenu : IDisposable
         _groupSubmenuOpen = false;
     }
 
+    private void NavigateToPersonalSettings(Microsoft.AspNetCore.Components.Web.MouseEventArgs args)
+    {
+        CloseDropdown();
+        UiShellState.NavigateToPersonalSettings("/settings/personal", args);
+    }
+
     private bool IsSidebarDockOpen => DockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId)?.State.IsOpen == true;
 
     private bool HasWorkspaceNavigation => DockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId) is not null
@@ -300,7 +316,12 @@ public partial class NavMenu : IDisposable
     private void OnCurrentUserChanged()
     {
         _userLoaded = false;
-        _ = InvokeAsync(LoadCurrentUserAsync);
+        _ = InvokeAsync(async () =>
+        {
+            await LoadCurrentUserAsync();
+            await LoadShellContextAsync();
+            await InvokeAsync(StateHasChanged);
+        });
     }
 
     private void ToggleOrgSubmenu()
@@ -326,24 +347,9 @@ public partial class NavMenu : IDisposable
             return false;
 
         return _isCurrentUserInstanceAdmin
-               || _isCurrentUserTenantAdmin;
-    }
-
-    private bool IsInstanceAdmin(ClaimsPrincipal user)
-    {
-        return user.Identity?.IsAuthenticated == true
-               && _isCurrentUserInstanceAdmin;
-    }
-
-    private bool IsTenantAdmin(ClaimsPrincipal user)
-    {
-        return user.Identity?.IsAuthenticated == true
-               && _isCurrentUserTenantAdmin;
-    }
-
-    private static IEnumerable<string> GetAdminOrganizationIds(ClaimsPrincipal user)
-    {
-        return [];
+               || _isCurrentUserTenantAdmin
+               || _organizationScopes.Count > 0
+               || _groupScopes.Count > 0;
     }
 
     private async Task LoadNavigationLinksAsync()
@@ -390,64 +396,66 @@ public partial class NavMenu : IDisposable
         }
     }
 
-    private async Task LoadDeploymentModeAsync()
+    private async Task LoadShellContextAsync()
     {
         try
         {
-            var status = await InstanceOnboardingService.GetStatusAsync();
-            _isSingleTenantMode = status == null
-                || string.IsNullOrWhiteSpace(status.SelectedDeploymentMode)
-                || string.Equals(status.SelectedDeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase);
-            _isCurrentUserInstanceAdmin = status?.IsAuthenticated == true && status.IsCurrentUserInstanceAdmin == true;
-
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            if (authState.User.Identity?.IsAuthenticated == true)
+            if (authState.User.Identity?.IsAuthenticated != true)
             {
-                var authority = await UserService.GetAdminAuthorityAsync();
-                if (authority is not null)
-                {
-                    _isCurrentUserInstanceAdmin = authority.IsInstanceAdmin == true || _isCurrentUserInstanceAdmin;
-                    _isCurrentUserTenantAdmin = authority.AdminTenantIds?.Any() == true;
-                }
-
-                var tenantStatus = await TenantOnboardingService.GetStatusAsync();
-                _isCurrentUserTenantAdmin = _isCurrentUserTenantAdmin
-                    || (tenantStatus?.IsAuthenticated == true && tenantStatus.IsCurrentUserTenantAdministrator == true);
+                _isSingleTenantMode = true;
+                _isCurrentUserInstanceAdmin = false;
+                _isCurrentUserTenantAdmin = false;
+                _organizationScopes = [];
+                _groupScopes = [];
+                _organizationActors = [];
+                _groupActors = [];
+                return;
             }
+
+            var context = await ShellContextService.GetCachedContextAsync();
+            if (context is null)
+            {
+                _isSingleTenantMode = true;
+                _isCurrentUserInstanceAdmin = false;
+                _isCurrentUserTenantAdmin = false;
+                _organizationScopes = [];
+                _groupScopes = [];
+                _organizationActors = [];
+                _groupActors = [];
+                return;
+            }
+
+            _isSingleTenantMode = string.IsNullOrWhiteSpace(context.DeploymentMode)
+                || string.Equals(context.DeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase);
+
+            var scopes = context.SettingsScopes ?? [];
+            _isCurrentUserInstanceAdmin = scopes.Any(s => string.Equals(s.Scope, "Instance", StringComparison.OrdinalIgnoreCase));
+            _isCurrentUserTenantAdmin = scopes.Any(s => string.Equals(s.Scope, "Tenant", StringComparison.OrdinalIgnoreCase));
+            _organizationScopes = scopes
+                .Where(s => string.Equals(s.Scope, "Organization", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            _groupScopes = scopes
+                .Where(s => string.Equals(s.Scope, "Group", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            var actors = context.ManagedActors ?? [];
+            _organizationActors = actors
+                .Where(actor => string.Equals(actor.ActorType, "Organization", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            _groupActors = actors
+                .Where(actor => string.Equals(actor.ActorType, "Group", StringComparison.OrdinalIgnoreCase))
+                .ToList();
         }
         catch
         {
             _isSingleTenantMode = true;
             _isCurrentUserInstanceAdmin = false;
             _isCurrentUserTenantAdmin = false;
-        }
-    }
-
-    private async Task LoadUserOrganizationsAsync()
-    {
-        try
-        {
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            if (authState.User.Identity?.IsAuthenticated != true) return;
-            _userOrganizations = await OrganizationService.GetMyOrganizationsAsync();
-        }
-        catch
-        {
-            _userOrganizations = new List<OrganizationListDto>();
-        }
-    }
-
-    private async Task LoadUserGroupsAsync()
-    {
-        try
-        {
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            if (authState.User.Identity?.IsAuthenticated != true) return;
-            _userGroups = await GroupService.GetMyGroupsAsync();
-        }
-        catch
-        {
-            _userGroups = new List<GroupListDto>();
+            _organizationScopes = [];
+            _groupScopes = [];
+            _organizationActors = [];
+            _groupActors = [];
         }
     }
 

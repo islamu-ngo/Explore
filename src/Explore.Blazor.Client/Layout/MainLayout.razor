@@ -44,7 +44,7 @@
             </div>
         }
 
-        <DockLayoutHost Scope="@DockScope.Shell">
+        <DockLayoutHost Scope="@DockScope.Shell" MinimumContentWidth="@ActiveWorkspaceContentFloor">
             <MudMainContent Class="main-layout__main" Style="padding-top: 0 !important;">
                 <main id="main-content" tabindex="-1" class="@MainContentClass" style="@MainContentStyle">
                     @Body

@@ -44,24 +44,26 @@
             <div class="navbar__brand-text">@_brandDisplayName</div>
         </a>
 
-        <!-- Global Search (Ctrl+K to focus) -->
-        <div class="navbar__search">
-            <MudTextField @ref="_searchField"
-                          T="string"
-                          Placeholder="@($"Search {_eventCatalogLabel}…  ⌘K")"
-                          Adornment="Adornment.Start"
-                          AdornmentIcon="@Icons.Material.Filled.Search"
-                          IconSize="Size.Medium"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Class="navbar__search-input"
-                          @bind-Value="SearchQuery"
-                          @onkeyup="@HandleSearchKeyPress" />
-        </div>
+        @if (ShowGlobalSearch)
+        {
+            <div class="navbar__search">
+                <MudTextField @ref="_searchField"
+                              T="string"
+                              Placeholder="@SearchPlaceholder"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Medium"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="navbar__search-input"
+                              @bind-Value="SearchQuery"
+                              @onkeyup="@HandleSearchKeyPress" />
+            </div>
 
-        <MudHotkey Key="JsKey.KeyK"
-                   KeyModifiers="@(new[] { JsKeyModifier.ControlLeft })"
-                   OnHotkeyPressed="FocusSearchAsync" />
+            <MudHotkey Key="JsKey.KeyK"
+                       KeyModifiers="@(new[] { JsKeyModifier.ControlLeft })"
+                       OnHotkeyPressed="FocusSearchAsync" />
+        }
 
         <!-- Center Navigation -->
         <div class="navbar__links">
@@ -96,15 +98,21 @@
                         <ThemeQuickSwitcher />
                     </div>
 
-                    @if (_eventCreationEligibility.CanCreate)
+                    @if (ShowEventPrimaryAction)
                     {
-                        <a href="@_eventCreationEligibility.CreateEventRoute" style="text-decoration: none;">
-                            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
-                                       Size="Size.Small"
-                                       Class="navbar__create-event-btn">
-                                Add Event
-                            </MudButton>
-                        </a>
+                        <div class="navbar__primary-action">
+                            @if (ActingActorName is not null)
+                            {
+                                <span class="navbar__acting-actor" data-testid="navbar-acting-actor">For <bdi dir="auto">@ActingActorName</bdi></span>
+                            }
+                            <a href="@PrimaryActionRoute" class="navbar__primary-action-link" data-testid="navbar-primary-action">
+                                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
+                                           Size="Size.Small"
+                                           Class="navbar__create-event-btn">
+                                    @PrimaryActionLabel
+                                </MudButton>
+                            </a>
+                        </div>
                     }
 
                     <!-- Notification Bell -->
@@ -201,18 +209,23 @@
                                 @if (_orgSubmenuOpen)
                                 {
                                     <div class="navbar__dropdown-submenu">
-                                        @if (_userOrganizations.Any())
+                                        @if (_organizationActors.Any())
                                         {
-                                            @foreach (var org in _userOrganizations)
+                                            @foreach (var org in _organizationActors)
                                             {
-                                                <div class="navbar__dropdown-submenu-item" @key="org.Id">
-                                                    <a href="@($"/organization/{org.Id}")" class="navbar__dropdown-submenu-name" @onclick="CloseDropdown">
-                                                        @org.FullName
+                                                var canManageSettings = org.ScopeId.HasValue
+                                                    && _organizationScopes.Any(scope => scope.ScopeId == org.ScopeId);
+                                                <div class="navbar__dropdown-submenu-item" @key="org.ScopeId">
+                                                    <a href="@($"/organization/{org.ScopeId}")" class="navbar__dropdown-submenu-name" @onclick="CloseDropdown">
+                                                        @(org.DisplayName ?? org.ScopeId.ToString())
                                                     </a>
-                                                    <a href="@($"/admin/organization/{org.Id}/settings")" class="navbar__dropdown-submenu-action" @onclick="CloseDropdown">
-                                                        <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" />
-                                                        Settings
-                                                    </a>
+                                                    @if (canManageSettings)
+                                                    {
+                                                        <a href="@($"/settings/organization/{org.ScopeId}")" class="navbar__dropdown-submenu-action" @onclick="CloseDropdown">
+                                                            <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" />
+                                                            Settings
+                                                        </a>
+                                                    }
                                                 </div>
                                             }
                                         }
@@ -241,18 +254,23 @@
                                 @if (_groupSubmenuOpen)
                                 {
                                     <div class="navbar__dropdown-submenu">
-                                        @if (_userGroups.Any())
+                                        @if (_groupActors.Any())
                                         {
-                                            @foreach (var group in _userGroups)
+                                            @foreach (var group in _groupActors)
                                             {
-                                                <div class="navbar__dropdown-submenu-item" @key="group.Id">
+                                                var canManageSettings = group.ScopeId.HasValue
+                                                    && _groupScopes.Any(scope => scope.ScopeId == group.ScopeId);
+                                                <div class="navbar__dropdown-submenu-item" @key="group.ScopeId">
                                                     <span class="navbar__dropdown-submenu-name navbar__dropdown-submenu-name--text">
-                                                        @group.FullName
+                                                        @(group.DisplayName ?? group.ScopeId.ToString())
                                                     </span>
-                                                    <a href="@($"/admin/group/{group.Id}/settings")" class="navbar__dropdown-submenu-action" @onclick="CloseDropdown">
-                                                        <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" />
-                                                        Settings
-                                                    </a>
+                                                    @if (canManageSettings)
+                                                    {
+                                                        <a href="@($"/settings/group/{group.ScopeId}")" class="navbar__dropdown-submenu-action" @onclick="CloseDropdown">
+                                                            <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" />
+                                                            Settings
+                                                        </a>
+                                                    }
                                                 </div>
                                             }
                                         }
@@ -262,37 +280,49 @@
                                                 <MudText Typo="Typo.caption" Color="Color.Secondary">No groups yet</MudText>
                                             </div>
                                         }
-                        <div class="navbar__dropdown-submenu-divider"></div>
+                                        <div class="navbar__dropdown-submenu-divider"></div>
                                     </div>
                                 }
 
-                                @if (HasAnyAdminAuthority(context.User))
-                                {
-                                    <div class="navbar__dropdown-divider"></div>
-                                    <div class="navbar__dropdown-section-label">Admin</div>
+                                 @if (HasAnyAdminAuthority(context.User))
+                                 {
+                                     <div class="navbar__dropdown-divider"></div>
+                                     <div class="navbar__dropdown-section-label">Administration</div>
 
-                                    @if (IsInstanceAdmin(context.User) && !_isSingleTenantMode)
-                                    {
+                                     @if (_isCurrentUserInstanceAdmin && !_isSingleTenantMode)
+                                     {
                                         <a href="@ControlPlaneRoutes.Overview" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                             <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Small" />
                                             Instance Console
                                         </a>
                                     }
 
-                                    @if (_isSingleTenantMode && _isCurrentUserInstanceAdmin)
-                                    {
-                                        <a href="/admin/instance/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                            <MudIcon Icon="@Icons.Material.Filled.Domain" Size="Size.Small" />
-                                            Administration
-                                        </a>
-                                    }
-                                    else if (_isCurrentUserTenantAdmin)
-                                    {
-                                        <a href="/admin/tenant/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                            <MudIcon Icon="@Icons.Material.Filled.Domain" Size="Size.Small" />
-                                            @(_isSingleTenantMode ? "Administration" : "Tenant Administration")
-                                        </a>
-                                    }
+                                     @if (_isSingleTenantMode && _isCurrentUserInstanceAdmin && _isCurrentUserTenantAdmin)
+                                     {
+                                         <div class="navbar__dropdown-section-label">Site administration</div>
+                                         <a href="/settings/tenant" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                             <MudIcon Icon="@Icons.Material.Filled.Domain" Size="Size.Small" />
+                                             Tenant settings
+                                         </a>
+                                         <a href="/settings/instance" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                             <MudIcon Icon="@Icons.Material.Filled.Domain" Size="Size.Small" />
+                                             Instance settings
+                                         </a>
+                                     }
+                                     else if (_isCurrentUserInstanceAdmin)
+                                     {
+                                         <a href="/settings/instance" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                             <MudIcon Icon="@Icons.Material.Filled.Domain" Size="Size.Small" />
+                                             @(_isSingleTenantMode ? "Site administration" : "Instance administration")
+                                         </a>
+                                     }
+                                     else if (_isCurrentUserTenantAdmin)
+                                     {
+                                         <a href="/settings/tenant" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                             <MudIcon Icon="@Icons.Material.Filled.Domain" Size="Size.Small" />
+                                             @(_isSingleTenantMode ? "Site administration" : "Tenant administration")
+                                         </a>
+                                     }
 
                                     @if (_isCurrentUserTenantAdmin)
                                     {
@@ -302,21 +332,33 @@
                                         </a>
                                     }
 
-                                    @foreach (var orgId in GetAdminOrganizationIds(context.User))
-                                    {
-                                        <a href="@($"/admin/organization/{orgId}/settings")" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                            <MudIcon Icon="@Icons.Material.Filled.CorporateFare" Size="Size.Small" />
-                                            Organization Settings
-                                        </a>
-                                    }
+                                     @foreach (var scope in _organizationScopes.Where(scope => scope.ScopeId.HasValue))
+                                     {
+                                         <a href="@($"/settings/organization/{scope.ScopeId}")" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                             <MudIcon Icon="@Icons.Material.Filled.CorporateFare" Size="Size.Small" />
+                                             @(scope.DisplayName ?? "Organization settings")
+                                         </a>
+                                     }
+
+                                     @foreach (var scope in _groupScopes.Where(scope => scope.ScopeId.HasValue))
+                                     {
+                                         <a href="@($"/settings/group/{scope.ScopeId}")" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                             <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" />
+                                             @(scope.DisplayName ?? "Group settings")
+                                         </a>
+                                     }
                                 }
 
                                 <div class="navbar__dropdown-divider"></div>
 
-                                <a href="/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                    <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" />
-                                    Settings
-                                </a>
+                                 <a href="/settings/personal" class="navbar__dropdown-item" @onclick="NavigateToPersonalSettings">
+                                     <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" />
+                                     Personal Settings
+                                 </a>
+                                 <a href="/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                     <MudIcon Icon="@Icons.Material.Filled.Tune" Size="Size.Small" />
+                                     All Settings
+                                 </a>
                                 <a href="/logout" data-enhance-nav="false" class="navbar__dropdown-item navbar__dropdown-item--danger" @onclick="CloseDropdown">
                                     <MudIcon Icon="@Icons.Material.Filled.Logout" Size="Size.Small" />
                                     Logout
@@ -331,7 +373,7 @@
                         <ThemeQuickSwitcher />
                     </div>
 
-                    @if (_showAddEventForAnonymous)
+                    @if (ShowAnonymousEventAction)
                     {
                         <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
                                    Size="Size.Small"

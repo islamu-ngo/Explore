@@ -185,6 +185,25 @@
     flex-shrink: 0;
 }
 
+.navbar__primary-action {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-2);
+}
+
+.navbar__primary-action-link {
+    text-decoration: none;
+}
+
+.navbar__acting-actor {
+    max-inline-size: 10rem;
+    overflow: hidden;
+    color: var(--mud-palette-text-secondary);
+    font-size: var(--isl-typography-caption-size);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Element: navbar__desktop-preference-actions */
 .navbar__desktop-preference-actions {
     display: flex;

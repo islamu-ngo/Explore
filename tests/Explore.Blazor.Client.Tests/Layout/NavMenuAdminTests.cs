@@ -1,6 +1,9 @@
 // ABOUTME: Component tests for NavMenu admin section visibility based on BFF-reported admin status.
 // ABOUTME: Verifies browser admin claims are not treated as navigation authority.
 
+using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services.Shell;
+using Explore.Blazor.Client.Services.Shell;
 using Explore.Blazor.Client.Tests.Common.Authentication;
 
 namespace Explore.Blazor.Client.Tests.Layout;
@@ -179,7 +182,7 @@ public class NavMenuAdminTests : IDisposable
 
         // Assert -- serialized/browser claims are not treated as admin authority
         await Assert.That(cut.Markup).DoesNotContain("Organization Settings");
-        await Assert.That(cut.Markup).DoesNotContain($"/admin/organization/{orgId}/settings");
+        await Assert.That(cut.Markup).DoesNotContain($"/settings/organization/{orgId}");
         await Assert.That(cut.Markup).DoesNotContain("Instance Administration");
         await Assert.That(cut.Markup).DoesNotContain("Instance Console");
         await Assert.That(cut.Markup).DoesNotContain("Instance Settings");
@@ -204,8 +207,8 @@ public class NavMenuAdminTests : IDisposable
         OpenDropdown(cut);
 
         // Assert -- serialized/browser org-admin claims do not create admin links
-        await Assert.That(cut.Markup).DoesNotContain($"/admin/organization/{orgId1}/settings");
-        await Assert.That(cut.Markup).DoesNotContain($"/admin/organization/{orgId2}/settings");
+        await Assert.That(cut.Markup).DoesNotContain($"/settings/organization/{orgId1}");
+        await Assert.That(cut.Markup).DoesNotContain($"/settings/organization/{orgId2}");
     }
 
     [Test]
@@ -228,7 +231,7 @@ public class NavMenuAdminTests : IDisposable
         await Assert.That(cut.Markup).DoesNotContain("Instance Administration");
         await Assert.That(cut.Markup).DoesNotContain("Instance Console");
         await Assert.That(cut.Markup).DoesNotContain("Tenant Administration");
-        await Assert.That(cut.Markup).DoesNotContain($"/admin/organization/{orgId}/settings");
+        await Assert.That(cut.Markup).DoesNotContain($"/settings/organization/{orgId}");
     }
 
     [Test]
@@ -246,8 +249,8 @@ public class NavMenuAdminTests : IDisposable
         OpenDropdown(cut);
 
         // Assert
-        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance/settings\"");
-        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/tenant/settings\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/instance\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/tenant\"");
     }
 
     [Test]
@@ -266,7 +269,8 @@ public class NavMenuAdminTests : IDisposable
         // Assert
         await Assert.That(cut.Markup).Contains("Instance Console");
         await Assert.That(cut.Markup).Contains("href=\"/admin/instance\"");
-        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance/settings\"");
+        await Assert.That(cut.Markup).Contains("href=\"/settings/instance\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/tenant\"");
     }
 
     [Test]
@@ -286,8 +290,8 @@ public class NavMenuAdminTests : IDisposable
 
         // Assert
         await Assert.That(cut.Markup).DoesNotContain("href=\"/admin\"");
-        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/tenant/settings\"");
-        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance/settings\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/tenant\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/instance\"");
     }
 
     [Test]
@@ -305,9 +309,9 @@ public class NavMenuAdminTests : IDisposable
 
         // Assert -- onboarding grants are visible even before the serialized auth claims rehydrate.
         await Assert.That(cut.Markup).Contains("Administration");
-        await Assert.That(cut.Markup).Contains("href=\"/admin/instance/settings\"");
+        await Assert.That(cut.Markup).Contains("href=\"/settings/instance\"");
         await Assert.That(cut.Markup).DoesNotContain("Instance Console");
-        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/tenant/settings\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/tenant\"");
         await Assert.That(cut.Markup).DoesNotContain("Custom Property Governance");
     }
 
@@ -322,8 +326,8 @@ public class NavMenuAdminTests : IDisposable
         var cut = RenderNavMenu();
         OpenDropdown(cut);
 
-        await Assert.That(cut.Markup).Contains("href=\"/admin/tenant/settings\"");
-        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance/settings\"");
+        await Assert.That(cut.Markup).Contains("href=\"/settings/tenant\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/instance\"");
         await Assert.That(cut.Markup).Contains("Custom Property Governance");
     }
 
@@ -334,31 +338,33 @@ public class NavMenuAdminTests : IDisposable
         _ctx.SetAuthenticatedUser(AuthenticationTestConstants.AdminUserId, "Setup Admin");
         SetupNavMenuServices(deploymentMode: "SingleTenant");
 
-        var instanceOnboardingService = _ctx.Services.GetRequiredService<IInstanceOnboardingService>();
-        instanceOnboardingService.GetStatusAsync().Returns(
-            new InstanceOnboardingStatusDto
-            {
-                IsCompleted = true,
-                IsAuthenticated = true,
-                IsCurrentUserInstanceAdmin = false,
-                SelectedDeploymentMode = "SingleTenant"
-            },
-            new InstanceOnboardingStatusDto
-            {
-                IsCompleted = true,
-                IsAuthenticated = true,
-                IsCurrentUserInstanceAdmin = true,
-                SelectedDeploymentMode = "SingleTenant"
-            });
+        var shellContextService = _ctx.Services.GetRequiredService<IUiShellContextService>();
+        shellContextService.GetCachedContextAsync(Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult<UiShellContextDto?>(new UiShellContextDto
+                {
+                    DeploymentMode = "SingleTenant",
+                    SettingsScopes = [],
+                    Workspaces = new WorkspaceAvailabilityDto { Events = true, Settings = true }
+                }),
+                Task.FromResult<UiShellContextDto?>(new UiShellContextDto
+                {
+                    DeploymentMode = "SingleTenant",
+                    SettingsScopes =
+                    [
+                        new SettingsScopeDto { Scope = "Instance", ScopeId = Guid.NewGuid(), DisplayName = "Instance" }
+                    ],
+                    Workspaces = new WorkspaceAvailabilityDto { Events = true, Settings = true }
+                }));
 
         // Act
         var cut = RenderNavMenu();
         OpenDropdown(cut);
 
-        // Assert -- the persisted layout rechecks BFF/API authority on menu open.
+        // Assert -- the persisted layout rechecks shell context on menu open.
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("href=\"/admin/instance/settings\"", StringComparison.Ordinal))
+            if (!cut.Markup.Contains("href=\"/settings/instance\"", StringComparison.Ordinal))
             {
                 throw new InvalidOperationException("Expected instance administration link to render after status refresh.");
             }
@@ -373,26 +379,81 @@ public class NavMenuAdminTests : IDisposable
         _ctx.SetAuthenticatedUser(AuthenticationTestConstants.AdminUserId, "Setup Admin");
         SetupNavMenuServices(deploymentMode: "SingleTenant");
 
-        var userService = _ctx.Services.GetRequiredService<IUserService>();
-        userService.GetAdminAuthorityAsync().Returns(new AdminAuthorityDto
-        {
-            IsInstanceAdmin = true,
-            AdminTenantIds = [AuthenticationTestConstants.DefaultTenantId],
-            AdminOrganizationIds = [],
-            HasAnyAuthority = true
-        });
-
-        var tenantOnboardingService = _ctx.Services.GetRequiredService<ITenantOnboardingService>();
-        tenantOnboardingService.GetStatusAsync().Returns((TenantOnboardingStatusDto?)null);
+        var shellContextService = _ctx.Services.GetRequiredService<IUiShellContextService>();
+        shellContextService.GetCachedContextAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<UiShellContextDto?>(new UiShellContextDto
+            {
+                DeploymentMode = "SingleTenant",
+                SettingsScopes =
+                [
+                    new SettingsScopeDto { Scope = "Instance", ScopeId = Guid.NewGuid(), DisplayName = "Instance" },
+                    new SettingsScopeDto { Scope = "Tenant", ScopeId = AuthenticationTestConstants.DefaultTenantId, DisplayName = "Tenant" }
+                ],
+                Workspaces = new WorkspaceAvailabilityDto { Events = true, Settings = true }
+            }));
 
         // Act
         var cut = RenderNavMenu();
         OpenDropdown(cut);
 
         // Assert
-        await Assert.That(cut.Markup).Contains("href=\"/admin/instance/settings\"");
-        await Assert.That(cut.Markup).Contains("Administration");
+        await Assert.That(cut.Markup).Contains("href=\"/settings/instance\"");
+        await Assert.That(cut.Markup).Contains("href=\"/settings/tenant\"");
+        await Assert.That(cut.Markup).Contains("Site administration");
+        await Assert.That(cut.Markup).DoesNotContain("Tenant administration");
+        await Assert.That(cut.Markup).DoesNotContain("Instance administration");
         await Assert.That(cut.Markup).DoesNotContain("Instance Console");
+    }
+
+    [Test]
+    public async Task NavMenu_ProfileAlwaysKeepsPersonalAndSettingsHubLinks()
+    {
+        _ctx.SetAuthenticatedUser(AuthenticationTestConstants.AdminUserId, "Member");
+        SetupNavMenuServices();
+
+        var cut = RenderNavMenu();
+        OpenDropdown(cut);
+
+        await Assert.That(cut.Markup).Contains("href=\"/settings/personal\"");
+        await Assert.That(cut.Markup).Contains("href=\"/settings\"");
+    }
+
+    [Test]
+    public async Task NavMenu_ManagedActors_RenderMembershipAndGateSettingsByScope()
+    {
+        var organizationId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        _ctx.SetAuthenticatedUser(AuthenticationTestConstants.AdminUserId, "Publisher");
+        SetupNavMenuServices();
+
+        var shellContextService = _ctx.Services.GetRequiredService<IUiShellContextService>();
+        shellContextService.GetCachedContextAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<UiShellContextDto?>(new UiShellContextDto
+            {
+                DeploymentMode = "MultiTenant",
+                ManagedActors =
+                [
+                    new ManagedActorDto { ActorType = "Organization", ScopeId = organizationId, DisplayName = "Managed Organization" },
+                    new ManagedActorDto { ActorType = "Group", ScopeId = groupId, DisplayName = "Managed Group" }
+                ],
+                SettingsScopes =
+                [
+                    new SettingsScopeDto { Scope = "Group", ScopeId = groupId, DisplayName = "Managed Group" }
+                ],
+                Workspaces = new WorkspaceAvailabilityDto { Events = true, Settings = true, Studio = true }
+            }));
+
+        var cut = RenderNavMenu();
+        OpenDropdown(cut);
+        cut.FindAll(".navbar__dropdown-item--expandable")[0].Click();
+
+        await Assert.That(cut.Markup).Contains("Managed Organization");
+        await Assert.That(cut.Markup).DoesNotContain($"/settings/organization/{organizationId}");
+
+        cut.FindAll(".navbar__dropdown-item--expandable")[1].Click();
+
+        await Assert.That(cut.Markup).Contains("Managed Group");
+        await Assert.That(cut.Markup).Contains($"/settings/group/{groupId}");
     }
 
     private IRenderedComponent<DynamicComponent> RenderNavMenu()

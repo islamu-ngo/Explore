@@ -4,6 +4,7 @@
 using Explore.Blazor.Client.Components.Shell;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Ai;
+using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Contracts.Services.SupportAccess;
 using Explore.Blazor.Client.Layout;
 using Explore.Blazor.Client.Services.Ai;
@@ -28,6 +29,7 @@ public class MainLayoutTests : IDisposable
     private readonly IPublicExperienceService _publicExperienceService;
     private readonly IAppearanceThemeService _appearanceThemeService;
     private readonly IDockLayoutPersistence _dockLayoutPersistence;
+    private readonly IShellPreferencesService _shellPreferencesService;
 
     public MainLayoutTests()
     {
@@ -61,6 +63,10 @@ public class MainLayoutTests : IDisposable
         _ctx.Services.AddSingleton(_dockLayoutPersistence);
 
         NavMenuTestServices.Register(_ctx);
+        _shellPreferencesService = Substitute.For<IShellPreferencesService>();
+        _shellPreferencesService.LoadAsync(Arg.Any<UiShellContextDto>(), Arg.Any<CancellationToken>())
+            .Returns(new ShellPreferenceState(WorkspaceKey.Events.Value, null, "/settings/personal"));
+        _ctx.Services.AddSingleton(_shellPreferencesService);
 
         // Override IUserService for SyncUserAsync assertions (last AddSingleton wins)
         _userService = Substitute.For<IUserService>();
@@ -228,6 +234,20 @@ public class MainLayoutTests : IDisposable
 
         cut.WaitForAssertion(() => focusService.Received(1).FocusOnNavigateAsync());
 
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task WorkspaceSwitch_FocusesHeadingOrMainThroughAccessibilityService()
+    {
+        var cut = RenderLayout();
+        var navigationManager = _ctx.Services.GetRequiredService<NavigationManager>();
+        var focusService = _ctx.Services.GetRequiredService<IAccessibilityFocusService>();
+        focusService.ClearReceivedCalls();
+
+        navigationManager.NavigateTo("/ai");
+
+        cut.WaitForAssertion(() => focusService.Received(1).FocusOnNavigateAsync());
         await Task.CompletedTask;
     }
 
@@ -615,6 +635,45 @@ public class MainLayoutTests : IDisposable
     }
 
     [Test]
+    public async Task NavigateThroughAiWorkspace_SuppressesThenRestoresOpenAiDock()
+    {
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "AI Workspace User");
+        PublicExperienceSettingsDto settings = new PublicExperienceSettingsBuilder().WithAiAssistant();
+        _publicExperienceService.GetCachedSettingsAsync().Returns(settings);
+        _publicExperienceService.GetSettingsAsync().Returns(settings);
+        var cut = RenderLayout();
+        var aiAssistantState = _ctx.Services.GetRequiredService<AiAssistantState>();
+        var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
+        var navigationManager = _ctx.Services.GetRequiredService<NavigationManager>();
+
+        await cut.InvokeAsync(() =>
+        {
+            aiAssistantState.SetPolicy(tenantEnabled: true, tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+            aiAssistantState.Open();
+        });
+
+        navigationManager.NavigateTo("/ai");
+
+        cut.WaitForAssertion(() =>
+        {
+            if (dockLayoutState.GetPanel(ShellDockPanels.AiAssistantId)?.State.IsOpen == true)
+                throw new InvalidOperationException("Expected AI workspace to suppress the duplicate shell AI dock.");
+            if (!aiAssistantState.IsOpen)
+                throw new InvalidOperationException("Expected AI workspace handoff to retain the dock open intent.");
+        });
+
+        navigationManager.NavigateTo("/events");
+
+        cut.WaitForAssertion(() =>
+        {
+            if (dockLayoutState.GetPanel(ShellDockPanels.AiAssistantId)?.State.IsOpen != true)
+                throw new InvalidOperationException("Expected leaving AI workspace to restore the retained AI dock.");
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
     public async Task HiddenChromeRoundTrip_PreservesUserClosedWorkspaceNavigation()
     {
         var cut = RenderLayout();
@@ -686,6 +745,16 @@ public class MainLayoutTests : IDisposable
 
         await Assert.That(dockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId)).IsNull();
         await Assert.That(dockLayoutState.GetPanel(ShellDockPanels.AiAssistantId)).IsNull();
+    }
+
+    [Test]
+    [Arguments("events", 375)]
+    [Arguments("ai", 520)]
+    [Arguments("settings", 560)]
+    [Arguments("studio", 720)]
+    public async Task ResolveWorkspaceContentFloor_ReturnsDocumentedGenericHint(string workspace, int expected)
+    {
+        await Assert.That(MainLayout.ResolveWorkspaceContentFloor(new WorkspaceKey(workspace))).IsEqualTo(expected);
     }
 
     #endregion

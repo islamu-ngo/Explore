@@ -4,6 +4,7 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
+using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Docking;
 using Explore.Blazor.Client.Services.Shell;
@@ -28,32 +29,25 @@ public static class NavMenuTestServices
     /// Use <see cref="PublicExperienceSettingsBuilder"/> to construct complex configurations.
     /// </param>
     /// <param name="deploymentMode">
-    /// Onboarding deployment mode. Defaults to "MultiTenant".
+    /// Shell context deployment mode. Defaults to "MultiTenant".
     /// Common values: "MultiTenant", "SingleTenant".
     /// </param>
-    /// <param name="onboardingCompleted">
-    /// Whether instance onboarding is complete. Defaults to true.
-    /// Set to false to test pre-onboarding states.
+    /// <param name="isCurrentUserInstanceAdmin">
+    /// When true, the shell context includes an Instance settings scope.
+    /// </param>
+    /// <param name="isCurrentUserTenantAdmin">
+    /// When true, the shell context includes a Tenant settings scope.
     /// </param>
     public static void Register(
         BlazorTestContext ctx,
         PublicExperienceSettingsDto? publicExperienceSettings = null,
         string deploymentMode = "MultiTenant",
-        bool onboardingCompleted = true,
         bool isCurrentUserInstanceAdmin = false,
-        bool isCurrentUserTenantAdmin = false)
+        bool isCurrentUserTenantAdmin = false,
+        EventCreationEligibility? eventCreationEligibility = null)
     {
         var userService = Substitute.For<IUserService>();
         userService.GetCurrentUserAsync().Returns((UserDto?)null);
-        userService.GetAdminAuthorityAsync().Returns(new AdminAuthorityDto
-        {
-            IsInstanceAdmin = isCurrentUserInstanceAdmin,
-            AdminTenantIds = isCurrentUserTenantAdmin
-                ? [AuthenticationTestConstants.DefaultTenantId]
-                : [],
-            AdminOrganizationIds = [],
-            HasAnyAuthority = isCurrentUserInstanceAdmin || isCurrentUserTenantAdmin
-        });
         ctx.Services.AddSingleton(userService);
 
         var userSettingsService = Substitute.For<IUserSettingsService>();
@@ -74,23 +68,12 @@ public static class NavMenuTestServices
             });
         ctx.Services.AddSingleton(publicExperienceService);
 
-        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusDto
-        {
-            IsCompleted = onboardingCompleted,
-            IsAuthenticated = isCurrentUserInstanceAdmin,
-            IsCurrentUserInstanceAdmin = isCurrentUserInstanceAdmin,
-            SelectedDeploymentMode = deploymentMode
-        });
-        ctx.Services.AddSingleton(instanceOnboardingService);
+        var shellContextService = Substitute.For<IUiShellContextService>();
+        shellContextService.GetCachedContextAsync(Arg.Any<CancellationToken>())
+            .Returns(BuildShellContext(deploymentMode, isCurrentUserInstanceAdmin, isCurrentUserTenantAdmin));
+        ctx.Services.AddSingleton(shellContextService);
 
         var tenantOnboardingService = Substitute.For<ITenantOnboardingService>();
-        tenantOnboardingService.GetStatusAsync().Returns(new TenantOnboardingStatusDto
-        {
-            IsCompleted = true,
-            IsAuthenticated = isCurrentUserTenantAdmin,
-            IsCurrentUserTenantAdministrator = isCurrentUserTenantAdmin
-        });
         ctx.Services.AddSingleton(tenantOnboardingService);
 
         var tenantNavigationService = Substitute.For<ITenantNavigationService>();
@@ -98,24 +81,46 @@ public static class NavMenuTestServices
         ctx.Services.AddSingleton(tenantNavigationService);
 
         var eligibilityService = Substitute.For<IEventCreationEligibilityService>();
-        eligibilityService.GetEligibilityAsync().Returns(EventCreationEligibility.NotEligible);
+        eligibilityService.GetEligibilityAsync().Returns(eventCreationEligibility ?? EventCreationEligibility.NotEligible);
         ctx.Services.AddSingleton(eligibilityService);
-
-        var organizationService = Substitute.For<IOrganizationService>();
-        organizationService.GetMyOrganizationsAsync().Returns(new List<OrganizationListDto>());
-        ctx.Services.AddSingleton(organizationService);
-
-        var groupService = Substitute.For<IGroupService>();
-        groupService.GetMyGroupsAsync().Returns(new List<GroupListDto>());
-        ctx.Services.AddSingleton(groupService);
 
         ctx.Services.AddScoped<DockLayoutState>();
         ctx.Services.AddScoped<IDockPanelRegistry>(provider => provider.GetRequiredService<DockLayoutState>());
         ctx.Services.TryAddScoped<IWorkspaceRegistry, WorkspaceRegistry>();
         ctx.Services.TryAddScoped<WorkspaceRouteClassifier>();
         ctx.Services.TryAddScoped<UiShellState>();
+        ctx.Services.TryAddScoped<IUiShellContextService, UiShellContextService>();
         ctx.Services.AddSingleton(MockServiceFactory.CreateNotificationService());
         ctx.Services.AddSingleton(MockServiceFactory.CreateTranslationService());
         ctx.Services.AddSingleton(Substitute.For<IHttpClientFactory>());
+    }
+
+    private static UiShellContextDto BuildShellContext(
+        string deploymentMode,
+        bool isCurrentUserInstanceAdmin,
+        bool isCurrentUserTenantAdmin)
+    {
+        var scopes = new List<SettingsScopeDto>();
+        if (isCurrentUserInstanceAdmin)
+        {
+            scopes.Add(new SettingsScopeDto { Scope = "Instance", ScopeId = Guid.NewGuid(), DisplayName = "Instance" });
+        }
+
+        if (isCurrentUserTenantAdmin)
+        {
+            scopes.Add(new SettingsScopeDto { Scope = "Tenant", ScopeId = AuthenticationTestConstants.DefaultTenantId, DisplayName = "Tenant" });
+        }
+
+        return new UiShellContextDto
+        {
+            DeploymentMode = deploymentMode,
+            SettingsScopes = scopes,
+            Workspaces = new WorkspaceAvailabilityDto
+            {
+                Events = true,
+                Settings = true,
+                Studio = false
+            }
+        };
     }
 }
