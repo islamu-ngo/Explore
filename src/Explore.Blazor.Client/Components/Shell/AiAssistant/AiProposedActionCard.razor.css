@@ -1,0 +1,40 @@
+/* ABOUTME: Scoped styles for reusable AI proposed-action cards. */
+/* ABOUTME: Keeps proposal status, controls, and motion independent from the rail host. */
+
+.ai-rail__action-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 40%, transparent);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--mud-palette-background-gray) 25%, var(--mud-palette-surface));
+    transition: border-color 150ms ease;
+    max-inline-size: 100%;
+    animation: ai-proposed-action-in 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes ai-proposed-action-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ai-rail__action-card:hover { border-color: color-mix(in srgb, var(--mud-palette-primary) 25%, transparent); }
+.ai-rail__action-card--completed { border-color: color-mix(in srgb, var(--mud-palette-success) 28%, transparent); background: color-mix(in srgb, var(--mud-palette-success) 4%, var(--mud-palette-surface)); }
+.ai-rail__action-card--rejected { border-color: color-mix(in srgb, var(--mud-palette-warning) 34%, transparent); background: color-mix(in srgb, var(--mud-palette-warning) 5%, var(--mud-palette-surface)); }
+.ai-rail__action-card--failed { border-color: color-mix(in srgb, var(--mud-palette-error) 34%, transparent); background: color-mix(in srgb, var(--mud-palette-error) 5%, var(--mud-palette-surface)); }
+.ai-rail__action-status-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ai-rail__action-status { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 999px; background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent); color: var(--mud-palette-primary); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.ai-rail__action-status--completed { background: color-mix(in srgb, var(--mud-palette-success) 12%, transparent); color: var(--mud-palette-success); }
+.ai-rail__action-status--rejected { background: color-mix(in srgb, var(--mud-palette-warning) 14%, transparent); color: var(--mud-palette-warning); }
+.ai-rail__action-status--failed { background: color-mix(in srgb, var(--mud-palette-error) 12%, transparent); color: var(--mud-palette-error); }
+.ai-rail__action-content { display: flex; flex-direction: column; gap: 8px; }
+.ai-rail__action-buttons { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.ai-rail__action-content ::deep .ai-rail__action-title { font-weight: 600; }
+.ai-rail__action-content ::deep .ai-rail__action-description { line-height: 1.45; }
+.ai-rail__action-card ::deep .ai-rail__action-mode-hint { text-align: end; }
+
+@media (prefers-reduced-motion: reduce) {
+    .ai-rail__action-card { animation-duration: 1ms; transition-duration: 1ms; }
+}

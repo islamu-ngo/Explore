@@ -1,0 +1,19 @@
+/* ABOUTME: Scoped styles for reusable AI reference search and selection. */
+/* ABOUTME: Keeps picker loading, empty, result, and selected-list states host-independent. */
+
+.ai-rail__reference-search { display: flex; flex-direction: column; gap: 8px; }
+.ai-rail__label { color: var(--mud-palette-text-secondary); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.ai-rail__input { width: 100%; border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 40%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--mud-palette-background-gray) 30%, var(--mud-palette-surface)); color: var(--mud-palette-text-primary); font: inherit; font-size: 0.82rem; padding: 8px 12px; transition: border-color 150ms ease; }
+.ai-rail__input:focus { border-color: var(--mud-palette-primary); outline: none; }
+.ai-rail__reference-list { display: flex; flex-direction: column; gap: 4px; }
+.ai-rail__reference-card { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 30%, transparent); border-radius: 10px; background: transparent; color: var(--mud-palette-text-primary); cursor: pointer; font: inherit; font-size: 0.82rem; text-align: start; transition: background 150ms ease, border-color 150ms ease; }
+.ai-rail__reference-card:hover,
+.ai-rail__reference-card:focus-visible { background: color-mix(in srgb, var(--mud-palette-primary) 8%, transparent); border-color: color-mix(in srgb, var(--mud-palette-primary) 30%, transparent); outline: none; }
+.ai-rail__reference-affordance { color: var(--mud-palette-text-secondary); font-size: 0.68rem; }
+.ai-rail__chip-list { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; min-inline-size: 0; max-inline-size: 100%; }
+::deep .ai-rail__empty { padding: 12px; border: 1px dashed color-mix(in srgb, var(--mud-palette-lines-default) 40%, transparent); border-radius: 12px; text-align: center; font-size: 0.82rem; }
+
+@media (prefers-reduced-motion: reduce) {
+    .ai-rail__input,
+    .ai-rail__reference-card { transition-duration: 1ms; }
+}

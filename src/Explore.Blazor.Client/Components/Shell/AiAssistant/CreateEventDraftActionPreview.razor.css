@@ -1,0 +1,14 @@
+/* ABOUTME: Scoped styles for the safe CreateEventDraft proposal preview. */
+/* ABOUTME: Keeps reviewable draft details visually consistent in every AI conversation host. */
+
+.ai-rail__action-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 9px 10px;
+    border: 1px solid color-mix(in srgb, var(--mud-palette-primary) 14%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--mud-palette-primary) 5%, transparent);
+}
+
+.ai-rail__action-preview ::deep .ai-rail__action-preview-title { font-weight: 700; }
