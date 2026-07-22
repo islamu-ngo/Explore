@@ -55,7 +55,7 @@ public sealed class GetOnboardingPreflightQueryHandler(
 
         if (setupSecretProvider.IsTimedOut)
         {
-            AddBlocking(result, "setup_secret", "Setup secret", OnboardingPreflightCheckStatus.Fail, "The generated setup secret window has expired.", "Set SETUP_SECRET and restart the app, or restart to generate a fresh development setup secret.");
+            AddBlocking(result, "setup_secret", "Setup secret", OnboardingPreflightCheckStatus.Fail, "The generated setup secret window has expired.", "Set SETUP_SECRET and restart the application.");
             return;
         }
 
@@ -65,7 +65,7 @@ public sealed class GetOnboardingPreflightQueryHandler(
             return;
         }
 
-        var source = setupSecretProvider.IsFromEnvironmentVariable ? "environment" : "generated startup log";
+        var source = setupSecretProvider.IsFromEnvironmentVariable ? "environment" : "internal generated fallback";
         AddBlocking(result, "setup_secret", "Setup secret", OnboardingPreflightCheckStatus.Pass, $"Setup secret is active from {source}.");
     }
 
