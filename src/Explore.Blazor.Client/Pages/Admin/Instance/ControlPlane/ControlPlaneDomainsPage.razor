@@ -13,7 +13,7 @@
         <ActionsContent>
             @if (HasLink(ControlPlaneLinkRelations.Edit))
             {
-                <ControlPlaneActionButton Href="/admin/instance/settings?section=domain"
+        <ControlPlaneActionButton Href="/settings/instance?section=domain"
                                           StartIcon="@Icons.Material.Filled.Edit"
                                           AriaLabel="Edit domain governance">
                     Edit domain governance
@@ -21,7 +21,7 @@
             }
             else if (HasLink(ControlPlaneLinkRelations.Settings))
             {
-                <ControlPlaneActionButton Href="/admin/instance/settings?section=domain"
+        <ControlPlaneActionButton Href="/settings/instance?section=domain"
                                           Variant="Variant.Outlined"
                                           StartIcon="@Icons.Material.Filled.Settings"
                                           AriaLabel="Review domain settings">

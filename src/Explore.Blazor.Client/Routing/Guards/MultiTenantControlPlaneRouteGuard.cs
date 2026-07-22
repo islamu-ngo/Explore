@@ -15,5 +15,5 @@ public sealed class MultiTenantControlPlaneRouteGuard(IInstanceOnboardingService
         return string.Equals(status?.DeploymentMode, "MultiTenant", StringComparison.OrdinalIgnoreCase);
     }
 
-    public Task<string?> GetRedirectPathAsync(RouteMatch match) => Task.FromResult<string?>("/admin/tenant/settings");
+    public Task<string?> GetRedirectPathAsync(RouteMatch match) => Task.FromResult<string?>("/settings/tenant");
 }

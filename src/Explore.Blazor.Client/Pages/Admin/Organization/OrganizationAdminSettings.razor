@@ -1,17 +1,18 @@
 @* ABOUTME: Page wrapper for organization settings with Blazouter route-parameter resolution. *@
 @* ABOUTME: Renders the typed organization administration layout for the matched organization UUID. *@
 
-@page "/admin/organization/{OrganizationId:guid}/settings"
 @using MudBlazor
 @using Blazouter.Services
 @using Microsoft.AspNetCore.Authorization
 @using Explore.Blazor.Client.Pages.Admin.Organization.Components
+@using Explore.Blazor.Client.Pages.User.Components
 @attribute [Authorize]
 @rendermode InteractiveServer
 @inject RouterStateService RouterState
 
 <PageTitle>Organization Settings</PageTitle>
 
+<SettingsScopeSelector />
 <OrganizationAdminSettingsLayout OrganizationId="OrganizationId" />
 
 @code {

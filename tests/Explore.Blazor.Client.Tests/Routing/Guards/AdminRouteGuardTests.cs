@@ -91,7 +91,7 @@ public class AdminRouteGuardTests
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
         var guard = CreateGuard(authStateProvider);
-        var routeMatch = new RouteMatch { MatchedPath = "/admin/tenant/settings" };
+        var routeMatch = new RouteMatch { MatchedPath = "/settings/tenant" };
 
         // Act
         var result = await guard.CanActivateAsync(routeMatch);
@@ -154,13 +154,13 @@ public class AdminRouteGuardTests
         // Arrange
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         var guard = CreateGuard(authStateProvider);
-        var routeMatch = new RouteMatch { MatchedPath = "/admin/tenant/settings" };
+        var routeMatch = new RouteMatch { MatchedPath = "/settings/tenant" };
 
         // Act
         var redirectPath = await guard.GetRedirectPathAsync(routeMatch);
 
         // Assert
-        await Assert.That(redirectPath).IsEqualTo("/login?returnUrl=%2Fadmin%2Ftenant%2Fsettings");
+        await Assert.That(redirectPath).IsEqualTo("/login?returnUrl=%2Fsettings%2Ftenant");
     }
 
     [Test]
@@ -251,7 +251,7 @@ public class AdminRouteGuardTests
         var guard = CreateGuard(authStateProvider, instanceOnboardingService, userService);
 
         // Act
-        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/instance/settings" });
+        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/settings/instance" });
 
         // Assert
         await Assert.That(result).IsTrue();
@@ -283,7 +283,7 @@ public class AdminRouteGuardTests
         var guard = CreateGuard(authStateProvider, instanceOnboardingService, userService);
 
         // Act
-        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/instance/settings" });
+        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/settings/instance" });
 
         // Assert
         await Assert.That(result).IsFalse();

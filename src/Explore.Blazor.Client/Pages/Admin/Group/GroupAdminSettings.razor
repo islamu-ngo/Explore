@@ -1,9 +1,9 @@
 @* ABOUTME: Page wrapper for group settings with Blazouter route-parameter resolution. *@
 @* ABOUTME: Renders the typed group administration layout for the matched group UUID. *@
 
-@page "/admin/group/{GroupId:guid}/settings"
 @using Blazouter.Services
 @using Explore.Blazor.Client.Pages.Admin.Group.Components
+@using Explore.Blazor.Client.Pages.User.Components
 @using Microsoft.AspNetCore.Authorization
 
 @attribute [Authorize]
@@ -12,6 +12,7 @@
 
 <PageTitle>Group Settings</PageTitle>
 
+<SettingsScopeSelector />
 <GroupAdminSettingsLayout GroupId="GroupId" />
 
 @code {

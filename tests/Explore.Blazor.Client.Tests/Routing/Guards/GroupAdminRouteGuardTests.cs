@@ -25,7 +25,7 @@ public class GroupAdminRouteGuardTests
         var guard = CreateGuard(authStateProvider);
 
         // Act
-        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = $"/admin/group/{TestGroupId}/settings" });
+        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = $"/settings/group/{TestGroupId}" });
 
         // Assert
         await Assert.That(result).IsFalse();
@@ -45,7 +45,7 @@ public class GroupAdminRouteGuardTests
         var guard = CreateGuard(authStateProvider, TestGroupId);
 
         // Act
-        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/group/not-a-guid/settings" });
+        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/settings/group/not-a-guid" });
 
         // Assert
         await Assert.That(result).IsFalse();
@@ -66,7 +66,7 @@ public class GroupAdminRouteGuardTests
         var guard = CreateGuard(authStateProvider, TestGroupId);
 
         // Act
-        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = $"/admin/group/{TestGroupId}/settings" });
+        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = $"/settings/group/{TestGroupId}" });
 
         // Assert
         await Assert.That(result).IsTrue();
@@ -88,7 +88,7 @@ public class GroupAdminRouteGuardTests
         var guard = CreateGuard(authStateProvider, otherGroupId);
 
         // Act
-        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = $"/admin/group/{TestGroupId}/settings" });
+        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = $"/settings/group/{TestGroupId}" });
 
         // Assert
         await Assert.That(result).IsFalse();
@@ -111,7 +111,7 @@ public class GroupAdminRouteGuardTests
         var guard = new GroupAdminRouteGuard(authStateProvider, userService);
 
         // Act
-        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = $"/admin/group/{TestGroupId}/settings" });
+        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = $"/settings/group/{TestGroupId}" });
 
         // Assert
         await Assert.That(result).IsFalse();

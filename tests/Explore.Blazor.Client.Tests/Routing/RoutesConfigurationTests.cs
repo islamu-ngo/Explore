@@ -58,6 +58,52 @@ public class RoutesConfigurationTests
     }
 
     [Test]
+    public async Task StudioRoutes_ShouldUseAuthenticatedShellPagesOnly()
+    {
+        var routesContent = await File.ReadAllTextAsync(FindRoutesFilePath());
+
+        await Assert.That(routesContent).Contains("@using Explore.Blazor.Client.Pages.Studio");
+        await Assert.That(routesContent).Contains("Path = \"/studio\", Component = typeof(StudioHome), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
+        await Assert.That(routesContent).Contains("Path = \"/studio/events\", Component = typeof(StudioEvents), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
+        await Assert.That(routesContent).Contains("Path = \"/studio/events/:eventId\", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
+        await Assert.That(routesContent).Contains("Path = \"/studio/events/:eventId/schedule\", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
+        await Assert.That(routesContent).Contains("Path = \"/studio/events/:eventId/registration\", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
+        await Assert.That(routesContent).Contains("Path = \"/studio/events/:eventId/publication\", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
+    }
+
+    [Test]
+    public async Task AiRoutes_ShouldUseAuthenticatedWorkspacePageOnly()
+    {
+        var routesContent = await File.ReadAllTextAsync(FindRoutesFilePath());
+
+        await Assert.That(routesContent).Contains("@using Explore.Blazor.Client.Pages.Ai");
+        await Assert.That(routesContent).Contains("Path = \"/ai\", Component = typeof(AiWorkspace), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
+        await Assert.That(routesContent).Contains("Path = \"/ai/chats/:conversationId\", Component = typeof(AiWorkspace), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
+    }
+
+    [Test]
+    public async Task SettingsRoutes_ShouldUseCanonicalPathsAndExistingGuardsOnly()
+    {
+        var routesContent = await File.ReadAllTextAsync(FindRoutesFilePath());
+        var tenantNavigationPage = await File.ReadAllTextAsync(
+            FindClientFilePath("Pages", "Admin", "Tenant", "Navigation.razor"));
+
+        await Assert.That(routesContent).Contains("Path = \"/settings\", Component = typeof(Explore.Blazor.Client.Pages.User.Settings), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
+        await Assert.That(routesContent).Contains("Path = \"/settings/personal\", Component = typeof(Explore.Blazor.Client.Pages.User.Settings), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
+        await Assert.That(routesContent).Contains("Path = \"/settings/personal/:section\", Component = typeof(Explore.Blazor.Client.Pages.User.Settings), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
+        await Assert.That(routesContent).Contains("Path = \"/settings/organization/:OrganizationId\", Component = typeof(OrganizationAdminSettings), Transition = RouteTransition.Fade, Guards = RequireOrgAdmin()");
+        await Assert.That(routesContent).Contains("Path = \"/settings/group/:GroupId\", Component = typeof(GroupAdminSettings), Transition = RouteTransition.Fade, Guards = RequireGroupAdmin()");
+        await Assert.That(routesContent).Contains("Path = \"/settings/tenant\", Component = typeof(TenantAdminSettings), Transition = RouteTransition.Fade, Guards = RequireTenantAdmin()");
+        await Assert.That(routesContent).Contains("Path = \"/settings/instance\", Component = typeof(InstanceAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAdmin()");
+
+        await Assert.That(routesContent).DoesNotContain(string.Concat("/admin/instance", "/settings"));
+        await Assert.That(routesContent).DoesNotContain(string.Concat("/admin/tenant", "/settings"));
+        await Assert.That(routesContent).DoesNotContain(string.Concat("/admin/organization/:OrganizationId", "/settings"));
+        await Assert.That(routesContent).DoesNotContain(string.Concat("/admin/group/:GroupId", "/settings"));
+        await Assert.That(tenantNavigationPage).DoesNotContain(string.Concat("@page \"/admin/tenant", "/navigation\""));
+    }
+
+    [Test]
     public async Task Routes_ShouldInclude_OrganizationCreate_Path_AndNoStaleSingularCreatePath()
     {
         var routesFilePath = FindRoutesFilePath();
@@ -161,7 +207,7 @@ public class RoutesConfigurationTests
         await Assert.That(routesContent).DoesNotContain("Component = typeof(ControlPlanePlanDetailPage)");
         await Assert.That(routesContent).Contains("Path = ControlPlaneRoutes.Domains, Component = typeof(ControlPlaneDomainsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
         await Assert.That(routesContent).Contains("Path = ControlPlaneRoutes.Operations, Component = typeof(ControlPlaneOperationsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin()");
-        await Assert.That(routesContent).Contains("Path = \"/admin/instance/settings\", Component = typeof(InstanceAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAdmin()");
+        await Assert.That(routesContent).Contains("Path = \"/settings/instance\", Component = typeof(InstanceAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAdmin()");
     }
 
     [Test]
@@ -170,13 +216,13 @@ public class RoutesConfigurationTests
         var routes = new List<RouteConfig>
         {
             new() { Path = "/", Component = typeof(Routes) },
-            new() { Path = "/admin/tenant/settings", Component = typeof(Routes) }
+            new() { Path = "/settings/tenant", Component = typeof(Routes) }
         };
 
         RouteConfigurationPathBase.Apply(routes, "https://event.test/t/acme/");
 
         await Assert.That(routes[0].Path).IsEqualTo("/t/acme");
-        await Assert.That(routes[1].Path).IsEqualTo("/t/acme/admin/tenant/settings");
+        await Assert.That(routes[1].Path).IsEqualTo("/t/acme/settings/tenant");
     }
 
     [Test]
@@ -184,12 +230,12 @@ public class RoutesConfigurationTests
     {
         var routes = new List<RouteConfig>
         {
-            new() { Path = "/admin/instance/settings", Component = typeof(Routes) }
+            new() { Path = "/settings/instance", Component = typeof(Routes) }
         };
 
         RouteConfigurationPathBase.Apply(routes, "https://event.test/");
 
-        await Assert.That(routes[0].Path).IsEqualTo("/admin/instance/settings");
+        await Assert.That(routes[0].Path).IsEqualTo("/settings/instance");
     }
 
     [Test]
@@ -215,8 +261,8 @@ public class RoutesConfigurationTests
         var groupPage = await File.ReadAllTextAsync(
             FindClientFilePath("Pages", "Admin", "Group", "GroupAdminSettings.razor"));
 
-        await Assert.That(routesContent).Contains("/admin/organization/:OrganizationId/settings");
-        await Assert.That(routesContent).Contains("/admin/group/:GroupId/settings");
+        await Assert.That(routesContent).Contains("/settings/organization/:OrganizationId");
+        await Assert.That(routesContent).Contains("/settings/group/:GroupId");
         await Assert.That(organizationPage).Contains("RouterState.GetParam(nameof(OrganizationId))");
         await Assert.That(groupPage).Contains("RouterState.GetParam(nameof(GroupId))");
     }

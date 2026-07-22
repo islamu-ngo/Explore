@@ -10,6 +10,8 @@
 @using Explore.Blazor.Client.Pages
 @using Explore.Blazor.Client.Pages.Auth
 @using Explore.Blazor.Client.Pages.Events
+@using Explore.Blazor.Client.Pages.Studio
+@using Explore.Blazor.Client.Pages.Ai
 @using Explore.Blazor.Client.Pages.Errors
 @using Explore.Blazor.Client.Pages.User
 @using Explore.Blazor.Client.Pages.Organizations
@@ -91,9 +93,24 @@
 
             // User authenticated routes
             new RouteConfig { Path = "/my/profile", Component = typeof(UserProfile), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
-            new RouteConfig { Path = "/my/reviews", Component = typeof(MyReviews), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
-            new RouteConfig { Path = "/my/reports", Component = typeof(MyReportsPage), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
-            new RouteConfig { Path = "/settings", Component = typeof(Explore.Blazor.Client.Pages.User.Settings), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+             new RouteConfig { Path = "/my/reviews", Component = typeof(MyReviews), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+             new RouteConfig { Path = "/my/reports", Component = typeof(MyReportsPage), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+             new RouteConfig { Path = "/settings", Component = typeof(Explore.Blazor.Client.Pages.User.Settings), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+             new RouteConfig { Path = "/settings/personal", Component = typeof(Explore.Blazor.Client.Pages.User.Settings), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+             new RouteConfig { Path = "/settings/personal/:section", Component = typeof(Explore.Blazor.Client.Pages.User.Settings), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+
+            // Studio workspace routes
+            new RouteConfig { Path = "/studio", Component = typeof(StudioHome), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/studio/events", Component = typeof(StudioEvents), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/studio/events/:eventId/schedule", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/studio/events/:eventId/registration", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/studio/events/:eventId/publication", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/studio/events/:eventId", Component = typeof(StudioEventShell), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+
+            // AI workspace routes
+            new RouteConfig { Path = "/ai", Component = typeof(AiWorkspace), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/ai/chats/:conversationId", Component = typeof(AiWorkspace), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+
             // Organization management routes
             new RouteConfig { Path = "/my/organizations", Component = typeof(MyOrganizations), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/users/:userId/organizations", Component = typeof(MyOrganizations), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
@@ -137,10 +154,10 @@
             new RouteConfig { Path = "/admin/instance/plans/:Key", Component = typeof(InstancePlanDetail), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin() },
             new RouteConfig { Path = ControlPlaneRoutes.Domains, Component = typeof(ControlPlaneDomainsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin() },
             new RouteConfig { Path = ControlPlaneRoutes.Operations, Component = typeof(ControlPlaneOperationsPage), Transition = RouteTransition.Fade, Guards = RequireMultiTenantAdmin() },
-            new RouteConfig { Path = "/admin/instance/settings", Component = typeof(InstanceAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
-            new RouteConfig { Path = "/admin/tenant/settings", Component = typeof(TenantAdminSettings), Transition = RouteTransition.Fade, Guards = RequireTenantAdmin() },
-            new RouteConfig { Path = "/admin/organization/:OrganizationId/settings", Component = typeof(OrganizationAdminSettings), Transition = RouteTransition.Fade, Guards = RequireOrgAdmin() },
-            new RouteConfig { Path = "/admin/group/:GroupId/settings", Component = typeof(GroupAdminSettings), Transition = RouteTransition.Fade, Guards = RequireGroupAdmin() },
+             new RouteConfig { Path = "/settings/instance", Component = typeof(InstanceAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAdmin() },
+             new RouteConfig { Path = "/settings/tenant", Component = typeof(TenantAdminSettings), Transition = RouteTransition.Fade, Guards = RequireTenantAdmin() },
+             new RouteConfig { Path = "/settings/organization/:OrganizationId", Component = typeof(OrganizationAdminSettings), Transition = RouteTransition.Fade, Guards = RequireOrgAdmin() },
+             new RouteConfig { Path = "/settings/group/:GroupId", Component = typeof(GroupAdminSettings), Transition = RouteTransition.Fade, Guards = RequireGroupAdmin() },
     };
 
         RouteConfigurationPathBase.Apply(_routes, NavigationManager.BaseUri);
