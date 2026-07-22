@@ -8,7 +8,7 @@ Last Updated: 2026-07-22 Europe/Brussels
 ## Status
 
 - Overall: implementation in progress; Phase 1 governance, inventory, and topology contract accepted with attributed baseline failures.
-- Completed: 3 of 21 consolidated tasks (`OREA-100`, `OREA-110`, `OREA-120`).
+- Completed: 4 of 21 consolidated tasks (`OREA-100`, `OREA-110`, `OREA-120`, `OREA-200`).
 - Current phase: Phase 2 — Persistence adapters and migration ownership.
 - Current blocker: none; governance now authorizes the topology and inventory implementation work.
 - Ownership blocker: resolved by `OREA-120`; the historical `.omo` plan is no longer active.
@@ -115,11 +115,11 @@ Phase 1 integrated gate:
 
 ### OREA-200 — Co-located and external adapters
 
-- [ ] Keep the application ledger repository as the mirror/checkpoint store.
-- [ ] Implement a co-located authority adapter using a short-lived `ExploreDbContext` and separate commit boundary.
-- [ ] Prove the authority append survives a forced application mutation rollback.
-- [ ] Prove replay applies the pending fact exactly once and idempotently confirms the mirror/checkpoint.
-- [ ] Prove no external authority connection is opened in `CoLocated`.
+- [x] Keep the application ledger repository as the mirror/checkpoint store.
+- [x] Implement a co-located authority adapter using a short-lived `ExploreDbContext` and separate commit boundary.
+- [x] Prove the authority append survives a forced application mutation rollback.
+- [x] Prove replay applies the pending fact exactly once and idempotently confirms the mirror/checkpoint.
+- [x] Prove no external authority connection is opened in `CoLocated`.
 
 ### OREA-210 — Schema ownership and pre-v1 reset policy
 

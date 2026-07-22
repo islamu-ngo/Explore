@@ -3,16 +3,16 @@
 
 # Platform Privacy Erasure Authority — Context
 
-Last Updated: 2026-07-22 Europe/Brussels
+Last Updated: 2026-07-23 Europe/Brussels
 
 ## Progress Snapshot
 
-- Status: Phase 1 accepted; `OREA-100`, `OREA-110`, and `OREA-120` are complete, and Phase 2 persistence adapters/migration ownership is next.
+- Status: Phase 1 accepted; `OREA-100`, `OREA-110`, `OREA-120`, and `OREA-200` are complete, and Phase 2 schema/migration ownership is next.
 - Active intent: `platform-privacy-erasure` now requires one authority-first workflow, `CoLocated` / `ExternalDatabase`, separate runtime/migrator credentials, and no Blazor authority secret.
 - Workstream: canonical owner of complete platform User erasure, authority topology, receipt/status, provider settlement, replay, retention, and restore behavior.
 - Supersedes: privacy-erasure implementation ownership in `.omo/plans/platform-wide-privacy-erasure-authority.md` and `dev/active/event-location-privacy/`.
-- Runtime changes: configuration now exposes only `CoLocated` / `ExternalDatabase`, rejects the legacy mode key, isolates the external connection, and registers one authority-first workflow; the real CoLocated authority adapter remains the first Phase 2 dependency.
-- Verification: Release build passed with 26 projects, 0 errors, and 41 documented warnings; focused governance 6/6, inventory 9/9, topology/composition 22/22, and request contract 3/3 passed. Full Architecture reproduced only its three documented unrelated failures (292/296 passed, 1 skipped).
+- Runtime changes: configuration exposes only `CoLocated` / `ExternalDatabase`, rejects the legacy mode key, isolates the external connection, and registers one authority-first workflow. `CoLocatedPrivacyErasureAuthorityRepository` now appends through a short-lived `ExploreDbContext` and independently committed transaction while the application ledger remains the replay mirror/checkpoint.
+- Verification: OREA-200 passed a real PostgreSQL rollback/replay proof (2/2), composition/poison-provider tests (8/8), replay workflow tests (4/4), architecture/naming tests (15/15), clean LSP diagnostics, and a Release build with 26 projects and 0 errors. Its independent verifier confirmed the result.
 
 ## Quick Resume
 
@@ -21,8 +21,8 @@ Start here:
 1. Read `optional-retained-erasure-authority-plan.md` Sections 1–5 and 13.
 2. Read the current `platform-privacy-erasure` intent in `.claude/contract/intents.yaml`.
 3. Treat the recorded baseline and Phase 1 gate as complete.
-4. Implement `OREA-200`: a real CoLocated `IPrivacyErasureAuthority` adapter with a short-lived `ExploreDbContext` and an independent commit boundary.
-5. Prove rollback survival, replay/idempotency, and zero external-connection access before proceeding to schema/migration ownership.
+4. Treat `OREA-200` and `.omo/evidence/optional-retained-erasure-authority/phase-2-colocated/verification.md` as complete.
+5. Implement `OREA-210`: make schema/migration ownership topology-safe, preserve the function-only external runtime boundary, and enforce the documented reset-only transition without deleting operator data.
 
 The target is not “two durability modes.” It is one authority-first workflow with two authority-storage topologies:
 

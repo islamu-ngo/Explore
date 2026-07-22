@@ -11,10 +11,10 @@ Last Updated: 2026-07-22 Europe/Brussels
 |---|---|
 | Task ID | `optional-retained-erasure-authority` |
 | Canonical intent | `platform-privacy-erasure` |
-| Status | Active — Phase 1 accepted (`OREA-100`, `OREA-110`, `OREA-120`); Phase 2 persistence adapters and migration ownership in progress |
+| Status | Active — Phase 1 and `OREA-200` accepted; Phase 2 schema/migration ownership in progress |
 | Owner | Unassigned |
 | Change type | Cross-layer privacy policy, erasure orchestration, infrastructure, API, persistence, hosting, tests, and operator documentation |
-| Execution boundary | Phase-ordered implementation; current next dependency is the real CoLocated authority adapter in `OREA-200` |
+| Execution boundary | Phase-ordered implementation; current next dependency is topology-safe schema ownership and reset policy in `OREA-210` |
 
 ### Scope
 
