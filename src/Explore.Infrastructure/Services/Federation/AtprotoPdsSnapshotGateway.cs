@@ -2,8 +2,8 @@
 // ABOUTME: Verifies DID/PDS binding and CAR integrity before reusing canonical record materialization.
 
 using System.Diagnostics.CodeAnalysis;
+using System.Formats.Cbor;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using CarpaNet;
 using CarpaNet.Cbor;
@@ -23,21 +23,26 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
     internal const int MaximumCarBytes = 64 * 1024 * 1024;
     internal const int MaximumBlocks = 50_000;
     internal const int MaximumTargetRecords = 10_000;
+    internal const int MaximumTargetRecordBytes = 1024 * 1024;
+    internal const int MaximumTargetRecordDepth = 64;
     internal static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
     private const int MaximumIdentityResponseBytes = 1024 * 1024;
-    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private readonly Func<AtprotoOutboundPolicy, HttpMessageHandler> _primaryHandlerFactory;
-    private readonly MemoryIdentityCache _identityCache = new();
+    private readonly TimeProvider _timeProvider;
 
     public AtprotoPdsSnapshotGateway()
-        : this(policy => AtprotoHardenedHttpClient.CreatePrimaryHandler(policy, TimeSpan.FromSeconds(5)))
+        : this(
+            policy => AtprotoHardenedHttpClient.CreatePrimaryHandler(policy, TimeSpan.FromSeconds(5)),
+            TimeProvider.System)
     {
     }
 
     internal AtprotoPdsSnapshotGateway(
-        Func<AtprotoOutboundPolicy, HttpMessageHandler> primaryHandlerFactory)
+        Func<AtprotoOutboundPolicy, HttpMessageHandler> primaryHandlerFactory,
+        TimeProvider? timeProvider = null)
     {
         _primaryHandlerFactory = primaryHandlerFactory;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<AtprotoPdsSnapshotFetchResult> FetchAsync(
@@ -51,10 +56,52 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
         }
 
         var policy = new AtprotoOutboundPolicy(allowsDevelopmentLoopback: false);
-        Uri pdsOrigin;
         try
         {
-            pdsOrigin = await ResolvePdsOriginAsync(did, policy, cancellationToken).ConfigureAwait(false);
+            ResolvedIdentity identity = await ResolveIdentityAsync(
+                did,
+                policy,
+                cancellationToken).ConfigureAwait(false);
+            byte[] car = await FetchRepositoryAsync(
+                identity.PdsOrigin,
+                did,
+                policy,
+                cancellationToken).ConfigureAwait(false);
+            AtprotoVerifiedRepositorySnapshot snapshot = ReadAndValidateSnapshot(
+                did,
+                car,
+                cancellationToken);
+
+            if (!AtprotoRepositorySnapshotVerifier.VerifySignature(snapshot, identity.SigningKey))
+            {
+                ResolvedIdentity refreshedIdentity = await ResolveIdentityAsync(
+                    did,
+                    policy,
+                    cancellationToken).ConfigureAwait(false);
+                if (refreshedIdentity.PdsOrigin != identity.PdsOrigin)
+                {
+                    car = await FetchRepositoryAsync(
+                        refreshedIdentity.PdsOrigin,
+                        did,
+                        policy,
+                        cancellationToken).ConfigureAwait(false);
+                    snapshot = ReadAndValidateSnapshot(did, car, cancellationToken);
+                }
+
+                if (!AtprotoRepositorySnapshotVerifier.VerifySignature(
+                        snapshot,
+                        refreshedIdentity.SigningKey))
+                {
+                    throw new SnapshotValidationException("repository_signature_invalid");
+                }
+            }
+
+            return MaterializeSnapshot(
+                did,
+                snapshotVersion,
+                observedAt,
+                snapshot,
+                cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -64,50 +111,7 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
         {
             return AtprotoPdsSnapshotFetchResult.Failed(exception.FailureCode);
         }
-        catch
-        {
-            return AtprotoPdsSnapshotFetchResult.Failed("identity_resolution_failed");
-        }
-
-        byte[] car;
-        try
-        {
-            using var client = CreateClient(policy, MaximumCarBytes);
-            using var request = new HttpRequestMessage(HttpMethod.Get, BuildGetRepoUri(pdsOrigin, did));
-            using HttpResponseMessage response = await client.SendAsync(
-                request,
-                HttpCompletionOption.ResponseHeadersRead,
-                cancellationToken).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode)
-            {
-                return AtprotoPdsSnapshotFetchResult.Failed("repository_fetch_failed");
-            }
-
-            car = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
-            if (car.Length == 0)
-            {
-                return AtprotoPdsSnapshotFetchResult.Failed("repository_invalid");
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (AtprotoOAuthSecurityException exception)
-            when (exception.FailureCode == "response_too_large")
-        {
-            return AtprotoPdsSnapshotFetchResult.Failed("repository_too_large");
-        }
-        catch
-        {
-            return AtprotoPdsSnapshotFetchResult.Failed("repository_fetch_failed");
-        }
-
-        try
-        {
-            return ParseSnapshot(did, snapshotVersion, observedAt, car);
-        }
-        catch (SnapshotValidationException exception)
+        catch (AtprotoRepositorySnapshotValidationException exception)
         {
             return AtprotoPdsSnapshotFetchResult.Failed(exception.FailureCode);
         }
@@ -115,25 +119,36 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
             or InvalidOperationException
             or ArgumentException
             or OverflowException
-            or DecoderFallbackException
-            or JsonException)
+            or JsonException
+            or CryptographicException)
         {
             return AtprotoPdsSnapshotFetchResult.Failed("repository_invalid");
         }
+        catch
+        {
+            return AtprotoPdsSnapshotFetchResult.Failed("identity_resolution_failed");
+        }
     }
 
-    private async Task<Uri> ResolvePdsOriginAsync(
+    private async Task<ResolvedIdentity> ResolveIdentityAsync(
         string did,
         AtprotoOutboundPolicy policy,
         CancellationToken cancellationToken)
     {
         using var client = CreateClient(policy, MaximumIdentityResponseBytes);
-        using var resolver = IdentityResolver.CreateWithCache(_identityCache, client);
-        DidDocument document = await resolver.ResolveDidAsync(did, cancellationToken).ConfigureAwait(false);
+        using var resolver = new IdentityResolver(client);
+        DidDocument document = await resolver.ResolveDidAsync(
+            did,
+            skipCache: true,
+            cancellationToken).ConfigureAwait(false);
         if (!string.Equals(document.Id, did, StringComparison.Ordinal))
         {
             throw new SnapshotValidationException("identity_binding_mismatch");
         }
+
+        AtprotoRepositorySigningKey signingKey = AtprotoRepositorySnapshotVerifier.ReadSigningKey(
+            document,
+            did);
 
         DidService[] services = document.Service
             .Where(service => string.Equals(service.Type, "AtprotoPersonalDataServer", StringComparison.Ordinal)
@@ -160,7 +175,55 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
             throw new SnapshotValidationException("pds_endpoint_invalid");
         }
 
-        return new Uri(endpoint.GetLeftPart(UriPartial.Authority) + "/", UriKind.Absolute);
+        return new(
+            new Uri(endpoint.GetLeftPart(UriPartial.Authority) + "/", UriKind.Absolute),
+            signingKey);
+    }
+
+    private async Task<byte[]> FetchRepositoryAsync(
+        Uri pdsOrigin,
+        string did,
+        AtprotoOutboundPolicy policy,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var client = CreateClient(policy, MaximumCarBytes);
+            using var request = new HttpRequestMessage(HttpMethod.Get, BuildGetRepoUri(pdsOrigin, did));
+            using HttpResponseMessage response = await client.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new SnapshotValidationException("repository_fetch_failed");
+            }
+
+            byte[] car = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+            if (car.Length == 0)
+            {
+                throw new SnapshotValidationException("repository_invalid");
+            }
+
+            return car;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (SnapshotValidationException)
+        {
+            throw;
+        }
+        catch (AtprotoOAuthSecurityException exception)
+            when (exception.FailureCode == "response_too_large")
+        {
+            throw new SnapshotValidationException("repository_too_large");
+        }
+        catch
+        {
+            throw new SnapshotValidationException("repository_fetch_failed");
+        }
     }
 
     [SuppressMessage(
@@ -178,88 +241,64 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
         pdsOrigin,
         $"xrpc/com.atproto.sync.getRepo?did={Uri.EscapeDataString(did)}");
 
-    private static AtprotoPdsSnapshotFetchResult ParseSnapshot(
+    private AtprotoVerifiedRepositorySnapshot ReadAndValidateSnapshot(
+        string did,
+        byte[] car,
+        CancellationToken cancellationToken)
+    {
+        ValidateCarFraming(car, cancellationToken);
+        ValidatedCar validatedCar = ValidateCarBlocks(car, cancellationToken);
+        return AtprotoRepositorySnapshotVerifier.ReadAndValidate(
+            validatedCar.RootCid,
+            validatedCar.Blocks,
+            did,
+            _timeProvider.GetUtcNow(),
+            cancellationToken);
+    }
+
+    private static AtprotoPdsSnapshotFetchResult MaterializeSnapshot(
         string did,
         long snapshotVersion,
         DateTime observedAt,
-        byte[] car)
+        AtprotoVerifiedRepositorySnapshot snapshot,
+        CancellationToken cancellationToken)
     {
-        ValidateCarFraming(car);
-        ValidateCarBlocks(car);
-        Repository repository = Repository.Load(car);
-        if (repository.Roots.Count != 1
-            || !repository.RootCid.IsAtProtoBlessedFormat
-            || repository.GetBlock(repository.RootCid) is null
-            || !string.Equals(repository.Did, did, StringComparison.Ordinal))
-        {
-            throw new SnapshotValidationException("repository_identity_mismatch");
-        }
-
-        if (repository.Version != 3
-            || !repository.Commit.Data.IsAtProtoBlessedFormat
-            || string.IsNullOrWhiteSpace(repository.Rev)
-            || repository.Rev.Length > 32
-            || repository.Commit.Sig.Length == 0)
-        {
-            throw new SnapshotValidationException("repository_structure_invalid");
-        }
-
         var present = new List<AtprotoPdsSnapshotIdentity>();
         var items = new List<AtprotoPdsSnapshotItem>();
-        var paths = new HashSet<string>(StringComparer.Ordinal);
-        var visitedNodes = new HashSet<string>(StringComparer.Ordinal);
-        var nodes = new Queue<ATCid>();
-        nodes.Enqueue(repository.Commit.Data);
-        while (nodes.TryDequeue(out ATCid nodeCid))
+        foreach (AtprotoVerifiedRepositoryRecord record in snapshot.Records)
         {
-            if (!visitedNodes.Add(nodeCid.Value) || visitedNodes.Count > MaximumBlocks)
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!AtprotoJetstreamConstants.Collections.Contains(
+                    record.Collection,
+                    StringComparer.Ordinal))
             {
-                throw new SnapshotValidationException("repository_structure_invalid");
+                continue;
             }
 
-            byte[] nodeData = repository.GetBlock(nodeCid)
-                ?? throw new SnapshotValidationException("repository_incomplete");
-            MstNode node = ReadMstNode(nodeData);
-            Enqueue(node.Left, nodes);
-            foreach (MstEntry entry in node.Entries)
+            if (present.Count >= MaximumTargetRecords)
             {
-                Enqueue(entry.Tree, nodes);
-                if (!entry.Value.IsAtProtoBlessedFormat)
-                {
-                    throw new SnapshotValidationException("repository_integrity_invalid");
-                }
+                throw new SnapshotValidationException("repository_target_limit_exceeded");
+            }
 
-                byte[] recordData = repository.GetBlock(entry.Value)
-                    ?? throw new SnapshotValidationException("repository_incomplete");
-                string path = StrictUtf8.GetString(entry.KeyBytes);
-                if (!paths.Add(path) || !TrySplitPath(path, out string collection, out string recordKey))
-                {
-                    throw new SnapshotValidationException("repository_structure_invalid");
-                }
+            present.Add(new(record.Collection, record.RecordKey));
+            if (record.Data.Length > MaximumTargetRecordBytes
+                || !AtprotoRepositorySnapshotVerifier.IsValidTid(record.RecordKey))
+            {
+                continue;
+            }
 
-                if (!AtprotoJetstreamConstants.Collections.Contains(collection, StringComparer.Ordinal))
-                {
-                    continue;
-                }
-
-                if (present.Count >= MaximumTargetRecords)
-                {
-                    throw new SnapshotValidationException("repository_target_limit_exceeded");
-                }
-
-                present.Add(new(collection, recordKey));
-                AtprotoPdsSnapshotItem? item = TryMaterialize(
-                    did,
-                    collection,
-                    recordKey,
-                    entry.Value,
-                    recordData,
-                    snapshotVersion,
-                    observedAt);
-                if (item is not null)
-                {
-                    items.Add(item);
-                }
+            AtprotoPdsSnapshotItem? item = TryMaterialize(
+                did,
+                record.Collection,
+                record.RecordKey,
+                record.Cid,
+                record.Data,
+                snapshotVersion,
+                observedAt,
+                cancellationToken);
+            if (item is not null)
+            {
+                items.Add(item);
             }
         }
 
@@ -274,7 +313,9 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
         return AtprotoPdsSnapshotFetchResult.Complete(new(did, orderedPresent, orderedItems));
     }
 
-    private static void ValidateCarFraming(ReadOnlySpan<byte> car)
+    private static void ValidateCarFraming(
+        ReadOnlySpan<byte> car,
+        CancellationToken cancellationToken)
     {
         if (car.Length is 0 or > MaximumCarBytes)
         {
@@ -286,6 +327,7 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
         offset += headerLength;
         while (offset < car.Length)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             int blockLength = ReadSectionLength(car, ref offset);
             offset += blockLength;
         }
@@ -325,10 +367,11 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
         throw new SnapshotValidationException("repository_framing_invalid");
     }
 
-    private static void ValidateCarBlocks(byte[] car)
+    private static ValidatedCar ValidateCarBlocks(byte[] car, CancellationToken cancellationToken)
     {
         using var reader = new CarReader(car);
-        if (reader.Header.Roots.Count != 1 || !reader.Header.Roots[0].IsAtProtoBlessedFormat)
+        if (reader.Header.Roots.Count is < 1 or > AtprotoRepositorySnapshotVerifier.MaximumCarRoots
+            || !reader.Header.Roots[0].IsAtProtoBlessedFormat)
         {
             throw new SnapshotValidationException("repository_structure_invalid");
         }
@@ -337,12 +380,13 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
         int count = 0;
         foreach (CarBlock block in reader.ReadBlocks())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (++count > MaximumBlocks)
             {
                 throw new SnapshotValidationException("repository_block_limit_exceeded");
             }
 
-            if (!VerifyBlock(block.Cid, block.Data))
+            if (!VerifyBlock(block.Cid, block.Data, cancellationToken))
             {
                 throw new SnapshotValidationException("repository_integrity_invalid");
             }
@@ -364,37 +408,27 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
         {
             throw new SnapshotValidationException("repository_incomplete");
         }
+
+        return new(reader.Header.Roots[0], blocks);
     }
 
-    private static bool VerifyBlock(ATCid cid, byte[] data) => cid.IsAtProtoBlessedFormat
-        && cid.Hash is { Length: ATCid.Sha256HashLength } hash
-        && CryptographicOperations.FixedTimeEquals(SHA256.HashData(data), hash);
-
-    private static MstNode ReadMstNode(byte[] data)
+    private static bool VerifyBlock(ATCid cid, byte[] data, CancellationToken cancellationToken)
     {
-        var reader = new DagCborReader(data);
-        MstNode node = MstNode.FromCbor(ref reader);
-        if (reader.BytesRemaining != 0)
+        if (!cid.IsAtProtoBlessedFormat
+            || cid.Hash is not { Length: ATCid.Sha256HashLength } hash)
         {
-            throw new SnapshotValidationException("repository_structure_invalid");
+            return false;
         }
 
-        return node;
-    }
-
-    private static void Enqueue(ATCid? cid, Queue<ATCid> nodes)
-    {
-        if (cid is not { } value)
+        using IncrementalHash hasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        for (int offset = 0; offset < data.Length; offset += 64 * 1024)
         {
-            return;
+            cancellationToken.ThrowIfCancellationRequested();
+            int length = Math.Min(64 * 1024, data.Length - offset);
+            hasher.AppendData(data, offset, length);
         }
 
-        if (!value.IsAtProtoBlessedFormat)
-        {
-            throw new SnapshotValidationException("repository_integrity_invalid");
-        }
-
-        nodes.Enqueue(value);
+        return CryptographicOperations.FixedTimeEquals(hasher.GetHashAndReset(), hash);
     }
 
     private static AtprotoPdsSnapshotItem? TryMaterialize(
@@ -404,11 +438,17 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
         ATCid cid,
         byte[] recordData,
         long snapshotVersion,
-        DateTime observedAt)
+        DateTime observedAt,
+        CancellationToken cancellationToken)
     {
         JsonElement record;
         try
         {
+            if (!IsCanonicalRecordWithinDepth(recordData, cancellationToken))
+            {
+                return null;
+            }
+
             var reader = new DagCborReader(recordData);
             record = new JsonElementCborConverter().ReadTyped(ref reader);
             if (reader.BytesRemaining != 0 || record.ValueKind != JsonValueKind.Object)
@@ -419,7 +459,9 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
         catch (Exception exception) when (exception is InvalidOperationException
             or InvalidDataException
             or ArgumentException
-            or JsonException)
+            or OverflowException
+            or JsonException
+            or CborContentException)
         {
             return null;
         }
@@ -452,22 +494,193 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
         return new(parsed.Record, parsed.EventProjection);
     }
 
-    private static bool TrySplitPath(string path, out string collection, out string recordKey)
+    private static bool IsCanonicalRecordWithinDepth(
+        byte[] data,
+        CancellationToken cancellationToken)
     {
-        int separator = path.IndexOf('/');
-        if (path.Length > 600
-            || separator is <= 0
-            || separator == path.Length - 1
-            || path.IndexOf('/', separator + 1) >= 0)
+        try
         {
-            collection = string.Empty;
-            recordKey = string.Empty;
+            var reader = new CborReader(data, CborConformanceMode.Canonical);
+            var containers = new List<RecordContainer>();
+            bool rootSeen = false;
+            int valuesRead = 0;
+            while (true)
+            {
+                if ((valuesRead++ & 0xff) == 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
+                CborReaderState state = reader.PeekState();
+                switch (state)
+                {
+                    case CborReaderState.UnsignedInteger:
+                        if (!TryConsumeRecordItem(state, containers, ref rootSeen)
+                            || reader.ReadUInt64() > long.MaxValue)
+                        {
+                            return false;
+                        }
+
+                        break;
+                    case CborReaderState.NegativeInteger:
+                        if (!TryConsumeRecordItem(state, containers, ref rootSeen)
+                            || reader.ReadCborNegativeIntegerRepresentation() > long.MaxValue)
+                        {
+                            return false;
+                        }
+
+                        break;
+                    case CborReaderState.ByteString:
+                        if (!TryConsumeRecordItem(state, containers, ref rootSeen))
+                        {
+                            return false;
+                        }
+
+                        reader.ReadByteString();
+                        break;
+                    case CborReaderState.TextString:
+                        if (!TryConsumeRecordItem(state, containers, ref rootSeen))
+                        {
+                            return false;
+                        }
+
+                        reader.ReadTextString();
+                        break;
+                    case CborReaderState.StartArray:
+                        if (!TryConsumeRecordItem(state, containers, ref rootSeen)
+                            || reader.ReadStartArray() is not { } arrayLength)
+                        {
+                            return false;
+                        }
+
+                        containers.Add(new(CborReaderState.EndArray, arrayLength, IsMap: false));
+                        if (containers.Count > MaximumTargetRecordDepth)
+                        {
+                            return false;
+                        }
+
+                        break;
+                    case CborReaderState.EndArray:
+                        if (containers.Count == 0
+                            || containers[^1].EndState != state
+                            || containers[^1].RemainingItems != 0)
+                        {
+                            return false;
+                        }
+
+                        reader.ReadEndArray();
+                        containers.RemoveAt(containers.Count - 1);
+                        break;
+                    case CborReaderState.StartMap:
+                        if (!TryConsumeRecordItem(state, containers, ref rootSeen)
+                            || reader.ReadStartMap() is not { } mapLength)
+                        {
+                            return false;
+                        }
+
+                        containers.Add(new(
+                            CborReaderState.EndMap,
+                            checked(mapLength * 2),
+                            IsMap: true));
+                        if (containers.Count > MaximumTargetRecordDepth)
+                        {
+                            return false;
+                        }
+
+                        break;
+                    case CborReaderState.EndMap:
+                        if (containers.Count == 0
+                            || containers[^1].EndState != state
+                            || containers[^1].RemainingItems != 0)
+                        {
+                            return false;
+                        }
+
+                        reader.ReadEndMap();
+                        containers.RemoveAt(containers.Count - 1);
+                        break;
+                    case CborReaderState.Tag:
+                        if (!TryConsumeRecordItem(state, containers, ref rootSeen)
+                            || reader.ReadTag() != (CborTag)42
+                            || reader.PeekState() != CborReaderState.ByteString)
+                        {
+                            return false;
+                        }
+
+                        byte[] cidLink = reader.ReadByteString();
+                        if (cidLink.Length != 37 || cidLink[0] != 0)
+                        {
+                            return false;
+                        }
+
+                        ATCid.FromBytes(cidLink.AsSpan(1).ToArray());
+                        break;
+                    case CborReaderState.SimpleValue:
+                    case CborReaderState.HalfPrecisionFloat:
+                    case CborReaderState.SinglePrecisionFloat:
+                    case CborReaderState.DoublePrecisionFloat:
+                        return false;
+                    case CborReaderState.Null:
+                        if (!TryConsumeRecordItem(state, containers, ref rootSeen))
+                        {
+                            return false;
+                        }
+
+                        reader.ReadNull();
+                        break;
+                    case CborReaderState.Boolean:
+                        if (!TryConsumeRecordItem(state, containers, ref rootSeen))
+                        {
+                            return false;
+                        }
+
+                        reader.ReadBoolean();
+                        break;
+                    case CborReaderState.Finished:
+                        return rootSeen && containers.Count == 0 && reader.BytesRemaining == 0;
+                    default:
+                        return false;
+                }
+            }
+        }
+        catch (Exception exception) when (exception is CborContentException
+            or InvalidOperationException
+            or InvalidDataException
+            or ArgumentException
+            or OverflowException)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryConsumeRecordItem(
+        CborReaderState state,
+        List<RecordContainer> containers,
+        ref bool rootSeen)
+    {
+        if (containers.Count == 0)
+        {
+            if (rootSeen)
+            {
+                return false;
+            }
+
+            rootSeen = true;
+            return true;
+        }
+
+        int index = containers.Count - 1;
+        RecordContainer container = containers[index];
+        if (container.RemainingItems <= 0
+            || (container.IsMap
+                && container.RemainingItems % 2 == 0
+                && state != CborReaderState.TextString))
+        {
             return false;
         }
 
-        collection = path[..separator];
-        recordKey = path[(separator + 1)..];
-        return collection.Length <= 320 && recordKey.Length <= 255;
+        containers[index] = container with { RemainingItems = container.RemainingItems - 1 };
+        return true;
     }
 
     private static bool IsSupportedDid(string did)
@@ -503,4 +716,13 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
     {
         public string FailureCode { get; } = failureCode;
     }
+
+    private sealed record ResolvedIdentity(Uri PdsOrigin, AtprotoRepositorySigningKey SigningKey);
+
+    private sealed record ValidatedCar(ATCid RootCid, IReadOnlyDictionary<string, byte[]> Blocks);
+
+    private sealed record RecordContainer(
+        CborReaderState EndState,
+        int RemainingItems,
+        bool IsMap);
 }

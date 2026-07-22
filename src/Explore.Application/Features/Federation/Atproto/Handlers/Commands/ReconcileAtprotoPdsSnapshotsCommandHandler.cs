@@ -60,6 +60,11 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandler(
             return new(AtprotoPdsRecoveryOutcome.ScopeRejected, fingerprint);
         }
 
+        if (normalizedDids.Any(did => !IsSupportedPdsDid(did)))
+        {
+            return new(AtprotoPdsRecoveryOutcome.ScopeRejected, fingerprint);
+        }
+
         IReadOnlyList<Guid> enabledPresentationTenantIds = await presentationResolver
             .ResolveEnabledTenantIdsAsync(cancellationToken);
         Guid[] presentationTenantIds = policy.EffectiveTenantIds
@@ -142,6 +147,10 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandler(
     private static bool IsSupportedCollection(string collection) =>
         collection is AtprotoEventPublicationPlanner.EventCollection
             or AtprotoEventPublicationPlanner.RsvpCollection;
+
+    private static bool IsSupportedPdsDid(string did) =>
+        did.StartsWith("did:plc:", StringComparison.Ordinal)
+        || did.StartsWith("did:web:", StringComparison.Ordinal);
 
     private static long ToUnixMicroseconds(DateTime value) =>
         checked((value - DateTime.UnixEpoch).Ticks / 10);

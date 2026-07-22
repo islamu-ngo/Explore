@@ -50,6 +50,21 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_DowntimeOnlyPolicy_PreservesGenericJetstreamDidScope()
+    {
+        var fixture = new Fixture();
+        fixture.SetBackfill(enabled: true, mode: "downtime_only", locked: true);
+
+        AtprotoPdsRecoveryResult result = await fixture.Handler.Handle(
+            Command(["did:example:jetstream-owner"]),
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.DowntimeOnly);
+        await fixture.Gateway.DidNotReceiveWithAnyArgs().FetchAsync(default!, default, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileAsync(default!, default);
+    }
+
+    [Test]
     public async Task Handle_FullPolicyWithGlobalDidScope_FailsClosed()
     {
         var fixture = new Fixture();
@@ -57,6 +72,27 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
         AtprotoPdsRecoveryResult result = await fixture.Handler.Handle(Command([]), CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.ScopeRejected);
+        await fixture.Gateway.DidNotReceiveWithAnyArgs().FetchAsync(default!, default, default);
+        await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileAsync(default!, default);
+    }
+
+    [Test]
+    public async Task Handle_FullPolicyWithMixedPdsAndUnsupportedDidScope_FailsClosedBeforePresentationIo()
+    {
+        var fixture = new Fixture();
+        const string unsupportedDid = "did:key:unsupported-owner";
+
+        AtprotoPdsRecoveryResult first = await fixture.Handler.Handle(
+            Command([unsupportedDid, Did]),
+            CancellationToken.None);
+        AtprotoPdsRecoveryResult reordered = await fixture.Handler.Handle(
+            Command([Did, unsupportedDid]),
+            CancellationToken.None);
+
+        await Assert.That(first.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.ScopeRejected);
+        await Assert.That(reordered.Outcome).IsEqualTo(AtprotoPdsRecoveryOutcome.ScopeRejected);
+        await Assert.That(reordered.Fingerprint).IsEqualTo(first.Fingerprint);
+        await fixture.AssertNoPresentationIoAsync(expectedPolicyResolutions: 2);
         await fixture.Gateway.DidNotReceiveWithAnyArgs().FetchAsync(default!, default, default);
         await fixture.Repository.DidNotReceiveWithAnyArgs().TryReconcileAsync(default!, default);
     }
@@ -394,16 +430,16 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
     private static AtprotoRecord Record(
         string did,
         string collection = AtprotoEventPublicationPlanner.EventCollection) => new()
-    {
-        Id = Guid.CreateVersion7(),
-        Did = did,
-        Collection = collection,
-        RecordKey = "event-1",
-        Direction = AtprotoRecordDirection.Reconciled,
-        Provenance = AtprotoRecordProvenance.Jetstream,
-        SourceVersion = 1,
-        UpdatedAt = SnapshotStartedAt
-    };
+        {
+            Id = Guid.CreateVersion7(),
+            Did = did,
+            Collection = collection,
+            RecordKey = "event-1",
+            Direction = AtprotoRecordDirection.Reconciled,
+            Provenance = AtprotoRecordProvenance.Jetstream,
+            SourceVersion = 1,
+            UpdatedAt = SnapshotStartedAt
+        };
 
     private static AtprotoEventProjection Projection(AtprotoRecord record) => new()
     {
@@ -463,6 +499,21 @@ public sealed class ReconcileAtprotoPdsSnapshotsCommandHandlerTests
             await _system.DidNotReceiveWithAnyArgs().GetByKey(default!, default);
             await _tenant.DidNotReceiveWithAnyArgs().GetByKeyAcrossTenants(default!, default);
             await _tenants.DidNotReceiveWithAnyArgs().GetActiveAsNoTrackingAsync(default);
+        }
+
+        public async Task AssertNoPresentationIoAsync(int expectedPolicyResolutions)
+        {
+            await _system.DidNotReceive().GetByKey(
+                GovernanceSettingKeys.Federation.AtprotoEventsEnabled,
+                Arg.Any<CancellationToken>());
+            await _tenant.DidNotReceive().GetByKeyAcrossTenants(
+                GovernanceSettingKeys.Federation.AtprotoEventsEnabled,
+                Arg.Any<CancellationToken>());
+            await _system.Received(expectedPolicyResolutions).GetByKey(
+                GovernanceSettingKeys.Deployment.Mode,
+                Arg.Any<CancellationToken>());
+            await _tenants.Received(expectedPolicyResolutions)
+                .GetActiveAsNoTrackingAsync(Arg.Any<CancellationToken>());
         }
 
         public void SetTenants(params Guid[] tenantIds) =>
