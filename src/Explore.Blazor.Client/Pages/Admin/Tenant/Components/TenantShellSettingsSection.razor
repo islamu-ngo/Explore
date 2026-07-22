@@ -1,0 +1,202 @@
+@* ABOUTME: Renders tenant workspace-shell defaults from server-effective governance settings. *@
+@* ABOUTME: Uses server CanEdit and Reason values for every mutation affordance. *@
+
+@using System.Text.Json
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Shell
+@using Explore.Blazor.Client.Services.Shell
+@using MudBlazor
+@inject ITenantShellSettingsService SettingsService
+@inject ISnackbar Snackbar
+@inject ILogger<TenantShellSettingsSection> Logger
+
+<section class="tenant-shell-settings" aria-labelledby="tenant-shell-settings-title">
+    <header class="tenant-shell-settings__header">
+        <MudText id="tenant-shell-settings-title" Typo="Typo.h5" HtmlTag="h2">Workspace shell</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Set tenant defaults for workspace navigation and public rail visibility.
+        </MudText>
+    </header>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="Loading workspace shell settings" />
+    }
+    else if (_settings is null)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" role="alert">@_message</MudAlert>
+        <AppButton Variant="Variant.Outlined" OnClick="LoadAsync">Retry workspace shell settings</AppButton>
+    }
+    else
+    {
+        <div class="tenant-shell-settings__fields">
+            @foreach (var field in Fields)
+            {
+                var setting = FindSetting(field.Key);
+                var key = field.Key;
+                <div class="tenant-shell-settings__field">
+                    @if (field.IsBoolean)
+                    {
+                        <MudSwitch T="bool"
+                                   Value="@ReadBool(setting?.Value)"
+                                   ValueChanged="@(value => SaveAsync(key, value ? "true" : "false"))"
+                                   Color="Color.Primary"
+                                   Disabled="@(_isSaving || setting?.CanEdit != true)">
+                            @field.Label
+                        </MudSwitch>
+                    }
+                    else
+                    {
+                        <MudSelect T="string"
+                                   Label="@field.Label"
+                                   Value="@ReadString(setting?.Value)"
+                                   ValueChanged="@(value => SaveAsync(key, value))"
+                                   Variant="Variant.Outlined"
+                                   Disabled="@(_isSaving || setting?.CanEdit != true)">
+                            @foreach (var option in field.Options)
+                            {
+                                <MudSelectItem T="string" Value="@option">@option</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Source: @SourceLabel(setting?.Source). Lock: @(setting?.IsLocked == true ? "Locked" : "Unlocked").
+                    </MudText>
+                    @if (setting?.CanEdit != true)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Warning" role="status">
+                            @(setting?.Reason ?? "This setting is not editable for the current tenant.")
+                        </MudText>
+                    }
+                </div>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    public const string Category = TenantShellSettingsService.Category;
+    public const string RailPublicVisibilityKey = "ui_shell.rail_public_visibility";
+    public const string DefaultNavModeEventsKey = "ui_shell.default_nav_mode.events";
+    public const string DefaultNavModeStudioKey = "ui_shell.default_nav_mode.studio";
+    public const string DefaultNavModeAiKey = "ui_shell.default_nav_mode.ai";
+    public const string AllowUserNavOverrideKey = "ui_shell.allow_user_nav_override";
+    public const string OrganizerDefaultWorkspaceKey = "ui_shell.organizer_default_workspace";
+
+    public static IReadOnlyList<string> SettingKeys { get; } =
+    [
+        RailPublicVisibilityKey,
+        DefaultNavModeEventsKey,
+        DefaultNavModeStudioKey,
+        DefaultNavModeAiKey,
+        AllowUserNavOverrideKey,
+        OrganizerDefaultWorkspaceKey
+    ];
+
+    private static IReadOnlyList<ShellSettingField> Fields { get; } =
+    [
+        new(RailPublicVisibilityKey, "Public workspace rail", ["AuthenticatedOnly", "Always"]),
+        new(DefaultNavModeEventsKey, "Events navigation mode", ["Docked", "Collapsed"]),
+        new(DefaultNavModeStudioKey, "Studio navigation mode", ["Docked", "Collapsed"]),
+        new(DefaultNavModeAiKey, "AI navigation mode", ["Docked", "Collapsed"]),
+        new(AllowUserNavOverrideKey, "Allow personal navigation overrides", [], true),
+        new(OrganizerDefaultWorkspaceKey, "Organizer default workspace", ["Events", "Studio"])
+    ];
+
+    private SettingGroupResponseDto? _settings;
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string _message = "Workspace shell settings are temporarily unavailable.";
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _settings = await SettingsService.GetAsync();
+            _message = string.Empty;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Failed to load tenant workspace shell settings.");
+            _settings = null;
+            _message = "Workspace shell settings are temporarily unavailable.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveAsync(string key, string? value)
+    {
+        var setting = FindSetting(key);
+        if (_isSaving || setting?.CanEdit != true || string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var response = await SettingsService.UpdateAsync(key, value);
+            if (response.Success == true)
+            {
+                await LoadAsync();
+                Snackbar.Add("Workspace shell setting saved.", Severity.Success);
+                return;
+            }
+
+            Snackbar.Add(response.Message ?? "Failed to save workspace shell setting.", Severity.Error);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Failed to update tenant workspace shell setting {SettingKey}.", key);
+            Snackbar.Add("Failed to save workspace shell setting.", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private EffectiveSettingDto? FindSetting(string key) =>
+        _settings?.Settings.FirstOrDefault(setting => string.Equals(setting.Key, key, StringComparison.Ordinal));
+
+    private static bool ReadBool(string? value) => bool.TryParse(value, out var result) && result;
+
+    private static string ReadString(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<string>(value) ?? value;
+        }
+        catch (JsonException)
+        {
+            return value;
+        }
+    }
+
+    private static string SourceLabel(SettingSource? source) => source switch
+    {
+        SettingSource.SystemDefault => "System default",
+        SettingSource.TenantOverride => "Tenant override",
+        SettingSource.SystemLocked => "System locked",
+        SettingSource.TenantLocked => "Tenant locked",
+        _ => "Inherited"
+    };
+
+    private sealed record ShellSettingField(
+        string Key,
+        string Label,
+        IReadOnlyList<string> Options,
+        bool IsBoolean = false);
+}

@@ -1,13 +1,14 @@
 @* ABOUTME: Page wrapper for the Tenant Admin Settings sidebar layout. *@
 @* ABOUTME: Keeps tenant administration available to real tenant administrators in every deployment mode. *@
 
-@page "/admin/tenant/settings"
 @using MudBlazor
 @using Microsoft.AspNetCore.Authorization
 @using Explore.Blazor.Client.Pages.Admin.Tenant.Components
+@using Explore.Blazor.Client.Pages.User.Components
 @attribute [Authorize]
 @rendermode InteractiveServer
 
 <PageTitle>Tenant Settings</PageTitle>
 
+<SettingsScopeSelector />
 <TenantAdminSettingsLayout />

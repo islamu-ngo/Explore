@@ -41,7 +41,7 @@
                     <MudButton Elevation="0" Variant="Variant.Text"
                                Color="Color.Primary"
                                StartIcon="@Icons.Material.Filled.Dns"
-                               Href="/admin/instance/settings">
+                               Href="/settings/instance">
                         Manage Platform
                     </MudButton>
                 </MudStack>
@@ -82,6 +82,10 @@
                                          Text="Render Policy"
                                          Class="@GetNavItemClass("render-policy")"
                                          OnClick="@(() => SelectSection("render-policy"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.ViewSidebar"
+                                         Text="Workspace Shell"
+                                         Class="@GetNavItemClass("shell")"
+                                         OnClick="@(() => SelectSection("shell"))" />
                             <MudListItem Icon="@Icons.Material.Filled.Language"
                                          Text="Domain"
                                          Class="@GetNavItemClass("domain")"
@@ -186,6 +190,10 @@
                         else if (_currentSection == "render-policy")
                         {
                             <TenantRenderPolicySection Model="_model" />
+                        }
+                        else if (_currentSection == "shell")
+                        {
+                            <TenantShellSettingsSection />
                         }
                         else if (_currentSection == "domain")
                         {
@@ -333,7 +341,7 @@
                                         Your platform is currently running in Single-Tenant Mode. If you intend to host multiple organizations with their own dedicated instances, domains, and policies, you can switch to Multi-Tenant Mode. 
                                         <strong>This will enable the full Instance Administration dashboard.</strong>
                                     </MudText>
-                                    <MudButton Elevation="0" Variant="Variant.Outlined" Color="Color.Warning" Href="/admin/instance/settings">
+            <MudButton Elevation="0" Variant="Variant.Outlined" Color="Color.Warning" Href="/settings/instance">
                                         Go to Instance Administration
                                     </MudButton>
                                 </div>
@@ -612,7 +620,7 @@
         };
 
     private bool IsReadOnlySection =>
-        _currentSection is "nav-links" or "support-access-evidence" or "webhooks";
+        _currentSection is "nav-links" or "support-access-evidence" or "webhooks" or "shell";
 
     private async Task RefreshShellExperienceAsync()
     {
