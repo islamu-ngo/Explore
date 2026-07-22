@@ -1,5 +1,0 @@
-{
-  "projectId": "ed3a8e00-373d-4d4d-8ca2-d09cf8d05009",
-  "mode": "tokens-only",
-  "note": "Explore.Blazor.Client is Blazor WebAssembly (.razor + MudBlazor v9), not JS/React. There is no compiled component bundle to sync. This project holds a hand-written design-tokens/style reference only (see .design-sync/conventions.md) so a design agent can approximate the look with generic components. Not a full package/storybook sync — no 'shape' or 'pkg' field is set."
-}
