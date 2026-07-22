@@ -226,8 +226,8 @@ Checks:
     - `POST /bff/setup-secret`
     - `POST /bff/setup-secret/sync`
 3. ensure browser-supplied `X-Setup-Secret` headers are stripped and ignored. The BFF should forward only resolver output from BFF-owned setup handshake/session state, protected setup cookie, or explicit local/development/bootstrap configuration fallback.
-4. auto-generated setup secrets expire after 60 minutes from API startup.
-5. if the setup page reports `Environment`, use the configured `SETUP_SECRET` value; if it reports `Generated`, use the API startup log secret; if it reports `Expired`, restart the API to reopen setup mode.
+4. setup-secret windows expire after 60 minutes from API startup.
+5. if the setup page reports `Environment`, use the configured `SETUP_SECRET` value; if it reports `Generated` or `Expired`, configure `SETUP_SECRET` and restart the API. Raw values are never shown in startup output.
 6. use `GET /api/System/onboarding-preflight` to inspect non-sensitive launch blockers and operational warnings before retrying completion.
 7. for first-run Compose setup, confirm the operator used the service names and ports from [SELF_HOSTING.md](SELF_HOSTING.md), not older `api`/`blazor` examples.
 
@@ -237,7 +237,7 @@ Refresh before every recovery action. The setup UI is a projection of server sta
 
 | Scenario | Detection | Safe action | Operator, rotation, or backup requirement |
 |---|---|---|---|
-| Invalid or expired setup secret | Validation fails, the source is reported as `Expired`, or the API returns the setup-secret failure response before authentication. | Re-enter the configured secret, or restart the API and use the newly generated startup secret. Do not retry blindly or move the value into browser storage. | Rotate a configured/deployment-managed secret at its owning source if disclosure is suspected. No data restore is required. |
+| Invalid or expired setup secret | Validation fails, the source is reported as `Expired`, or the API returns the setup-secret failure response before authentication. | Re-enter the configured secret, or configure `SETUP_SECRET` and restart the API. Do not retry blindly, search output for a raw value, or move the value into browser storage. | Rotate a configured/deployment-managed secret at its owning source if disclosure is suspected. No data restore is required. |
 | Provider verification interrupted | The task overview still reports provider verification incomplete/unknown after a redirect, timeout, or lost response. | Refresh authoritative state, then rerun the same verification. Existing provider resources are located and repaired additively. | Rotate temporary provider admin credentials when their handling is uncertain. Take a provider/database backup before any apply operation that changes shared provider state. |
 | Authorization provider unavailable | Provider status or preflight reports the configured PDP/Admin API unavailable. | For application-managed configuration, restore Cerbos or explicitly save Local. For deployment-managed `cerbos`, fix `AUTHORIZATION_PROVIDER`/Cerbos deployment values and retry; the browser cannot override deployment intent. | Operator intervention is required. Cerbos remains fail-closed. Do not add or use an inventory endpoint or arbitrary policy-decision test as a recovery shortcut. |
 | Blocking preflight check | Preflight classifies an item as blocking. | Fix the named dependency and refresh. Do not bypass completion. Ordinary warnings remain non-blocking; a serious warning may require explicit acknowledgement. | Follow the linked subsystem runbook. Restore from backup only when the blocker identifies corrupted or missing persisted state. |

@@ -198,6 +198,8 @@ The following values must never be persisted in browser storage, returned in bro
 - temporary provider administrator usernames/passwords or service-account credentials;
 - raw provider request or response bodies.
 
+Configure `SETUP_SECRET` in deployment configuration and restart the API before interactive setup. If it is absent, the API uses an internal random fail-closed fallback that is never written to logs or terminal output and has no readback path.
+
 Rerunning verification or completion does not grant permission to read a stored secret back. Application-managed credentials remain write-only and are rotated through the owning server operation. Deployment-managed credentials remain authoritative in their configured environment/secret provider; rotate them there, refresh or restart as required, and confirm only through configured/readiness metadata. Do not overwrite a deployment-managed value from onboarding to repair drift.
 
 See [SELF_HOSTING.md](SELF_HOSTING.md#first-run-setup-secret) for the operator flow and [TROUBLESHOOTING.md](TROUBLESHOOTING.md#onboarding-recovery-matrix) for recovery without disclosing credentials.

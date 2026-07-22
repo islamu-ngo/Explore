@@ -95,9 +95,6 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
         _isBootstrapComplete = true;
     }
 
-    /// <inheritdoc />
-    public string? GetSecretForLogging() => !IsSetupSecretRequired || IsFromEnvironmentVariable ? null : _secret;
-
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         if (_isBootstrapComplete.HasValue)

@@ -7,7 +7,6 @@
     <CarpaNet_LexiconAutoResolve>false</CarpaNet_LexiconAutoResolve>
   </PropertyGroup>
 
-  <!-- Allow API and test projects to access internal startup-only methods (e.g., GetSecretForLogging) -->
   <ItemGroup>
     <InternalsVisibleTo Include="Explore.API" />
     <InternalsVisibleTo Include="Explore.Infrastructure.Tests" />

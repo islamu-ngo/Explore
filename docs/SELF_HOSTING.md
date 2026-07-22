@@ -203,7 +203,7 @@ Enable destructive cleanup only after reviewing dry-run output, confirming backu
 | Key | Host | Purpose |
 |---|---|---|
 | `DEPLOYMENT_MODE` | API | Optional first-run mode; omit for single-tenant, set `multi_tenant` before first launch for multi-tenant. |
-| `SETUP_SECRET` | API | Env-only optional fixed setup secret. If absent, API generates a temporary secret and prints it in API startup logs. |
+| `SETUP_SECRET` | API | Env-only setup secret for interactive first-run onboarding. If absent, the API uses an internal random fallback that is never printed; set this value and restart before using `/setup`. |
 | `SETUP_SECRET_REQUIRED` | API | Optional. Defaults to `true`; `false` only takes effect with trusted managed-provider provisioning keys and never makes setup endpoints anonymous. |
 | `USE_COMMERCIAL_LUCKYPENNY`, `LUCKYPENNY_LICENSE_KEY`, `AUTOMAPPER_COMMERCIAL_VERSION`, `MEDIATR_COMMERCIAL_VERSION` | API | Optional commercial package/license controls. Keep disabled unless intentionally using commercial AutoMapper/MediatR builds. |
 | `API_ENDPOINT` | Blazor | API base URL fallback for BFF proxying outside Aspire. |
@@ -326,7 +326,7 @@ Operational notes:
 
 ## First-Run Setup Secret
 
-If `SETUP_SECRET` is unset and setup mode is active, the API generates a 32-character setup secret, logs it at startup, and accepts it for 60 minutes. Use that secret to complete the setup flow:
+Configure `SETUP_SECRET` before starting the API for interactive first-run onboarding. The API accepts the configured value for 60 minutes and never writes it to logs or terminal output. If the variable is absent, setup validation stays fail-closed behind an internal random fallback; set `SETUP_SECRET` and restart before continuing:
 
 1. Open `/setup` and submit the operator setup secret through the BFF-mediated gateway. The browser must not store it or send a privileged header directly to the API.
 2. Complete authentication-provider verification and administrator authentication. After authentication, the UI renders one task overview derived from the server onboarding status, provider, and preflight endpoints. Authorization is conditional: explicit deployment intent skips its choice page, while blank intent opens a Local-first single-column page with advanced Cerbos configuration.
@@ -335,7 +335,7 @@ If `SETUP_SECRET` is unset and setup mode is active, the API generates a 32-char
 
 The validation endpoint is `POST /api/InstanceOnboarding/validate-secret`. The setup-secret rate-limit policy allows only a small number of attempts per minute; repeated failures should be treated as operator or credential errors, not retried blindly.
 
-If the generated secret expires before launch, restart `islamu-event-api` and use the newly logged secret.
+If the setup window expires before launch, restart `islamu-event-api` with the configured `SETUP_SECRET`; rotate the deployment value first if required by operator policy.
 
 Refresh and retry actions always re-fetch authoritative server state; do not resume from a stale browser step. Completion is idempotent and server-guarded, so a retry after a lost response must return the completed state rather than repeat destructive provisioning. Once launch completes, the pre-authentication setup gate locks and further setup-secret attempts are rejected. Use authenticated instance/tenant administration for later changes.
 

@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for SetupSecretProvider covering secret source, validation, setup mode, and lock behavior.
-// ABOUTME: Verifies bootstrap-state gating and internal logging-secret access through InternalsVisibleTo.
+// ABOUTME: Verifies bootstrap-state gating and secret validation through the configured secure seam.
 
+using System.Security.Cryptography;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Infrastructure.Services;
@@ -12,6 +13,23 @@ namespace Explore.Infrastructure.Tests.Infrastructure;
 
 public class SetupSecretProviderTests
 {
+    [Test]
+    public async Task ConfiguredRandomSecret_UnclaimedInstance_AcceptsSecretThroughConfigurationSeam()
+    {
+        var configuredSecret = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["SETUP_SECRET"] = configuredSecret })
+            .Build();
+        var provider = new SetupSecretProvider(
+            configuration,
+            CreateScopeFactory(new InstanceBootstrapState { IsCompleted = false }));
+
+        await provider.InitializeAsync();
+
+        await Assert.That(provider.IsSetupModeActive).IsEqualTo(true);
+        await Assert.That(provider.ValidateSecret(configuredSecret)).IsEqualTo(true);
+    }
+
     [Test]
     public async Task Constructor_EnvSecretPresent_UsesEnvironmentValue()
     {
@@ -26,13 +44,13 @@ public class SetupSecretProviderTests
     }
 
     [Test]
-    public async Task Constructor_EnvSecretMissing_AutoGenerates32CharSecret()
+    public async Task Constructor_EnvSecretMissing_UsesGeneratedSecretSource()
     {
         var provider = CreateProvider();
 
         await Assert.That(provider.IsSetupSecretRequired).IsEqualTo(true);
         await Assert.That(provider.IsFromEnvironmentVariable).IsEqualTo(false);
-        await Assert.That(provider.GetSecretForLogging().Length).IsEqualTo(32);
+        await Assert.That(provider.ValidateSecret("not-the-generated-secret")).IsEqualTo(false);
     }
 
     [Test]
@@ -41,7 +59,7 @@ public class SetupSecretProviderTests
         var provider = CreateProvider();
 
         await Assert.That(provider.IsSetupSecretRequired).IsEqualTo(true);
-        await Assert.That(provider.ValidateSecret(provider.GetSecretForLogging())).IsEqualTo(true);
+        await Assert.That(provider.IsFromEnvironmentVariable).IsEqualTo(false);
     }
 
     [Test]
@@ -54,8 +72,8 @@ public class SetupSecretProviderTests
 
         await Assert.That(provider.IsSetupSecretRequired).IsEqualTo(true);
         await Assert.That(provider.IsTrustedManagedProvisioningConfigured).IsEqualTo(false);
-        await Assert.That(provider.GetSecretForLogging()).IsNotNullOrEmpty();
-        await Assert.That(provider.ValidateSecret(provider.GetSecretForLogging())).IsEqualTo(true);
+        await Assert.That(provider.IsFromEnvironmentVariable).IsEqualTo(false);
+        await Assert.That(provider.ValidateSecret("unknown-secret")).IsEqualTo(false);
     }
 
     [Test]
@@ -75,7 +93,6 @@ public class SetupSecretProviderTests
 
         await Assert.That(provider.IsSetupSecretRequired).IsEqualTo(false);
         await Assert.That(provider.IsTrustedManagedProvisioningConfigured).IsEqualTo(true);
-        await Assert.That(provider.GetSecretForLogging()).IsNull();
         await Assert.That(provider.ValidateSecret(null)).IsEqualTo(false);
         await Assert.That(provider.ValidateSecret("anything")).IsEqualTo(false);
     }
@@ -83,8 +100,8 @@ public class SetupSecretProviderTests
     [Test]
     public async Task ValidateSecret_CorrectSecret_ReturnsTrue()
     {
-        var provider = CreateProvider();
-        var secret = provider.GetSecretForLogging();
+        var secret = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
+        var provider = CreateProvider(secret);
 
         await Assert.That(provider.ValidateSecret(secret)).IsEqualTo(true);
     }
@@ -109,8 +126,8 @@ public class SetupSecretProviderTests
     [Test]
     public async Task ValidateSecret_AfterLock_ReturnsFalse()
     {
-        var provider = CreateProvider();
-        var secret = provider.GetSecretForLogging();
+        var secret = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
+        var provider = CreateProvider(secret);
 
         provider.Lock();
 
@@ -164,9 +181,9 @@ public class SetupSecretProviderTests
     [Test]
     public async Task Lock_AppliesSetupAndValidationTransitions()
     {
-        var provider = CreateProvider(new InstanceBootstrapState { IsCompleted = false });
+        var secret = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
+        var provider = CreateProvider(secret, new InstanceBootstrapState { IsCompleted = false });
         await provider.InitializeAsync();
-        var secret = provider.GetSecretForLogging();
 
         await Assert.That(provider.IsSetupModeActive).IsEqualTo(true);
 
@@ -176,21 +193,19 @@ public class SetupSecretProviderTests
         await Assert.That(provider.ValidateSecret(secret)).IsEqualTo(false);
     }
 
-    [Test]
-    public async Task GetSecretForLogging_ReturnsSecretValue()
-    {
-        var provider = CreateProvider();
-        var secret = provider.GetSecretForLogging();
-
-        await Assert.That(secret).IsNotNullOrEmpty();
-        await Assert.That(provider.ValidateSecret(secret)).IsEqualTo(true);
-    }
-
     private static SetupSecretProvider CreateProvider(InstanceBootstrapState? state = null)
     {
         var configuration = new ConfigurationBuilder().Build();
         var scopeFactory = CreateScopeFactory(state);
         return new SetupSecretProvider(configuration, scopeFactory);
+    }
+
+    private static SetupSecretProvider CreateProvider(string configuredSecret, InstanceBootstrapState? state = null)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["SETUP_SECRET"] = configuredSecret })
+            .Build();
+        return new SetupSecretProvider(configuration, CreateScopeFactory(state));
     }
 
     private static IServiceScopeFactory CreateScopeFactory(InstanceBootstrapState? bootstrapState)

@@ -605,10 +605,7 @@ if ((!builder.Environment.IsEnvironment("Testing") ||
     await PrivacyErasureStartupGate.RunAsync(app.Services, shutdownCts.Token);
 }
 
-// Setup secret bootstrap logging — resolve provider and log the secret for first-run setup.
-// Console.WriteLine guarantees visibility in all environments (bypasses Serilog log-level filters).
-// Matches established Infisical bootstrap pattern (InfisicalConfigurationProvider.cs).
-string? setupSecretForStartupReminder = null;
+// Setup secret bootstrap status logging must never include the secret value.
 if (!isOpenApiGeneration)
 {
     var setupSecretProvider = app.Services.GetRequiredService<Explore.Application.Contracts.Services.ISetupSecretProvider>();
@@ -626,28 +623,15 @@ if (!isOpenApiGeneration)
         }
         else
         {
-            var secretForLog = setupSecretProvider.GetSecretForLogging();
-            setupSecretForStartupReminder = secretForLog;
             app.Logger.LogWarning(
                 "[SetupMode] Instance is unclaimed. Auto-generated setup secret active. " +
-                "Visit /setup to claim. Secret: {SetupSecret}",
-                secretForLog);
-            // Console output for terminal visibility when SSH'd into a container
-            Console.WriteLine($"[SetupMode] Setup secret: {secretForLog}");
+                "Configure SETUP_SECRET and restart before visiting /setup.");
         }
     }
     else
     {
         app.Logger.LogInformation("[SetupSecret] Instance onboarding already completed. Setup mode inactive.");
     }
-}
-
-if (!string.IsNullOrWhiteSpace(setupSecretForStartupReminder))
-{
-    app.Lifetime.ApplicationStarted.Register(() =>
-    {
-        Console.WriteLine($"[SetupMode] Startup complete. Setup secret: {setupSecretForStartupReminder} — open /setup to continue onboarding.");
-    });
 }
 
 // Configure the HTTP request pipeline.

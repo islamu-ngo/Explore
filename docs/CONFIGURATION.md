@@ -717,7 +717,7 @@ Refresh behavior binds from `SecretRefresh` and runs via hosted `SecretRefreshSe
 
 | Key | Default | Purpose |
 |---|---|---|
-| `SETUP_SECRET` | generated 32-character startup secret | Env-only startup secret for interactive first-run onboarding. It cannot be configured from instance administration because setup needs it before the app is initialized. When omitted and setup mode is active, API generates a temporary secret and logs it for the operator. |
+| `SETUP_SECRET` | internal random fallback | Env-only startup secret for interactive first-run onboarding. It cannot be configured from instance administration because setup needs it before the app is initialized. When omitted, the API keeps validation fail-closed with an internal random value that is never written to logs or terminal output; configure `SETUP_SECRET` and restart to use interactive setup. |
 | `SETUP_SECRET_REQUIRED` | `true` | Controls whether interactive setup endpoints can validate a setup secret. `false` is effective only when trusted managed provisioning is explicitly configured; otherwise the provider fails closed and still requires a setup secret. |
 | `PROVISIONING_TRUSTED` | `false` | Must be `true` before managed-provider provisioning can disable interactive setup-secret validation. |
 | `PROVISIONING_MODE` | unset | Trusted values are managed-provider modes such as `managed-provider`, `managed_provider`, `managed-hosting`, or `managed`. Other values do not disable setup-secret validation. |
@@ -729,7 +729,7 @@ Important safety behavior:
 - Omitted `SETUP_SECRET_REQUIRED` defaults to `true`.
 - `SETUP_SECRET_REQUIRED=false` without all trusted managed-provisioning keys is ignored and the API still requires a setup secret.
 - `SETUP_SECRET_REQUIRED=false` with trusted managed provisioning does **not** make setup-secret-protected endpoints public. `ValidateSecret` returns false and those endpoints reject anonymous/no-secret calls; managed provider automation must use the authorized provisioning endpoint instead.
-- Raw setup secrets are not logged when interactive setup-secret validation is disabled.
+- Raw setup secrets are never written to logs or terminal output.
 
 `/setup` is a separate pre-authentication operator gateway. Browser-provided privileged headers are always removed; the BFF and API accept setup authority only from their trusted server-owned setup-secret sources. Access tokens, setup secrets, provider administrator credentials, and raw provider responses must not enter browser storage, browser-facing DTOs, logs, traces, screenshots, or support artifacts.
 

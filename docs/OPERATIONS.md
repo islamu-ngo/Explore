@@ -835,10 +835,10 @@ Non-local Admin API/PDP endpoints must use safe TLS-capable URLs. Unsafe endpoin
 
 Instance bootstrap uses `ISetupSecretProvider`:
 
-- if setup mode is active and no env secret exists, API auto-generates a setup secret and logs it at startup;
+- if setup mode is active and no env secret exists, API keeps validation fail-closed with an internal random fallback and logs only safe configuration guidance;
 - onboarding endpoints in BFF (`/bff/setup-secret*`) validate and synchronize secret state;
 - setup status returns client-safe state labels (`Environment`, `Generated`, `Expired`, `Locked`, `Unavailable`) and operator guidance without exposing raw secrets;
-- generated setup secrets expire 60 minutes after API startup, and recovery is to restart the API and use the newly logged generated secret;
+- setup-secret windows expire 60 minutes after API startup, and recovery is to configure `SETUP_SECRET` and restart the API;
 - environment-provided setup secrets remain authoritative, but a timed-out setup window still requires an API restart to reopen setup mode.
 
 Setup-secret-gated API onboarding endpoints use the dedicated `SetupSecret` rate-limit policy. Invalid setup secrets return RFC 7807 `403 Forbidden` with code `forbidden`; setup-secret endpoints called after bootstrap completion return RFC 7807 `410 Gone` with code `setup_already_completed`; rate-limit rejection returns RFC 7807 `429 Too Many Requests`.
