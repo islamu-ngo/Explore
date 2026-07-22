@@ -275,7 +275,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.SlidingExpiration = CacheExpiration;
-            var memberships = await _orgMemberRepo.GetMembershipsByUser(userId);
+            var memberships = await _orgMemberRepo.GetMembershipsByUser(userId, cancellationToken);
             var adminOrgIds = memberships
                 .Where(m => IsOrganizationAdminRole(m.RoleId))
                 .Select(m => m.OrganizationId)
@@ -285,6 +285,20 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
 
             return (IReadOnlyList<Guid>)adminOrgIds;
         }) ?? Array.Empty<Guid>();
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetAdminOrganizationIdsAsync(
+        Guid userId,
+        Guid tenantId,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<Guid> allIds = await GetAdminOrganizationIdsAsync(userId, cancellationToken);
+        var memberships = await _orgMemberRepo.GetMembershipsByUser(userId, cancellationToken);
+        HashSet<Guid> tenantIds = memberships
+            .Where(membership => membership.TenantId == tenantId)
+            .Select(membership => membership.OrganizationId)
+            .ToHashSet();
+        return allIds.Where(tenantIds.Contains).ToList();
     }
 
     public async Task<bool> IsGroupAdminAsync(Guid groupId, CancellationToken cancellationToken = default)
@@ -316,7 +330,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.SlidingExpiration = CacheExpiration;
-            var memberships = await _groupMemberRepo.GetMembershipsByUser(userId);
+            var memberships = await _groupMemberRepo.GetMembershipsByUser(userId, cancellationToken);
             var adminGroupIds = memberships
                 .Where(m => IsGroupAdminRole(m.RoleId))
                 .Select(m => m.GroupId)
@@ -326,6 +340,20 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
 
             return (IReadOnlyList<Guid>)adminGroupIds;
         }) ?? Array.Empty<Guid>();
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetAdminGroupIdsAsync(
+        Guid userId,
+        Guid tenantId,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<Guid> allIds = await GetAdminGroupIdsAsync(userId, cancellationToken);
+        var memberships = await _groupMemberRepo.GetMembershipsByUser(userId, cancellationToken);
+        HashSet<Guid> tenantIds = memberships
+            .Where(membership => membership.TenantId == tenantId)
+            .Select(membership => membership.GroupId)
+            .ToHashSet();
+        return allIds.Where(tenantIds.Contains).ToList();
     }
 
     private static bool IsOrganizationAdminRole(int roleId)

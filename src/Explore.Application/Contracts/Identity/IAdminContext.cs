@@ -71,6 +71,11 @@ public interface IAdminContext
     /// </summary>
     Task<IReadOnlyList<Guid>> GetAdminOrganizationIdsAsync(Guid userId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Guid>> GetAdminOrganizationIdsAsync(
+        Guid userId,
+        Guid tenantId,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Gets whether the current user is a Group Administrator for the specified group.
     /// Resolved strictly from the GroupMembers database table (RoleId == GroupAdmin).
@@ -87,4 +92,9 @@ public interface IAdminContext
     /// Use this overload when the caller already knows the userId.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetAdminGroupIdsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Guid>> GetAdminGroupIdsAsync(
+        Guid userId,
+        Guid tenantId,
+        CancellationToken cancellationToken = default);
 }

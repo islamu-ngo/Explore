@@ -526,6 +526,63 @@ public class AdminContextTests
         await Assert.That(result).DoesNotContain(memberGroupId);
     }
 
+    [Test]
+    public async Task TenantFilteredAdminScopeQueries_ExcludeOtherTenantMemberships()
+    {
+        var userId = Guid.CreateVersion7();
+        var tenantId = Guid.CreateVersion7();
+        var otherTenantId = Guid.CreateVersion7();
+        var organizationId = Guid.CreateVersion7();
+        var otherOrganizationId = Guid.CreateVersion7();
+        var groupId = Guid.CreateVersion7();
+        var otherGroupId = Guid.CreateVersion7();
+        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+        organizationMemberRepository.GetMembershipsByUser(userId, Arg.Any<CancellationToken>()).Returns(
+        [
+            new OrganizationMember
+            {
+                Id = Guid.CreateVersion7(), OrganizationId = organizationId, Organization = null!,
+                UserId = userId, User = null!, RoleId = (int)RoleEnum.OrgAdmin, Role = null!,
+                TenantId = tenantId, Tenant = null!
+            },
+            new OrganizationMember
+            {
+                Id = Guid.CreateVersion7(), OrganizationId = otherOrganizationId, Organization = null!,
+                UserId = userId, User = null!, RoleId = (int)RoleEnum.OrgAdmin, Role = null!,
+                TenantId = otherTenantId, Tenant = null!
+            }
+        ]);
+        groupMemberRepository.GetMembershipsByUser(userId, Arg.Any<CancellationToken>()).Returns(
+        [
+            new GroupMember
+            {
+                Id = Guid.CreateVersion7(), GroupId = groupId, Group = null!,
+                UserId = userId, User = null!, RoleId = (int)RoleEnum.GroupAdmin, Role = null!,
+                TenantId = tenantId, Tenant = null!
+            },
+            new GroupMember
+            {
+                Id = Guid.CreateVersion7(), GroupId = otherGroupId, Group = null!,
+                UserId = userId, User = null!, RoleId = (int)RoleEnum.GroupAdmin, Role = null!,
+                TenantId = otherTenantId, Tenant = null!
+            }
+        ]);
+        var sut = CreateSutWithGroupMembers(
+            CreateHttpContextAccessor(userId),
+            Substitute.For<IPlatformUserRoleRepository>(),
+            Substitute.For<IInstanceBootstrapStateRepository>(),
+            Substitute.For<ITenantUserRoleGrantRepository>(),
+            organizationMemberRepository,
+            groupMemberRepository);
+
+        IReadOnlyList<Guid> organizationIds = await sut.GetAdminOrganizationIdsAsync(userId, tenantId);
+        IReadOnlyList<Guid> groupIds = await sut.GetAdminGroupIdsAsync(userId, tenantId);
+
+        await Assert.That(organizationIds).IsEquivalentTo([organizationId]);
+        await Assert.That(groupIds).IsEquivalentTo([groupId]);
+    }
+
     private static AdminContext CreateSutWithGroupMembers(
         IHttpContextAccessor httpContextAccessor,
         IPlatformUserRoleRepository platformUserRoleRepository,
