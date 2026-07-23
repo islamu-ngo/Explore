@@ -925,6 +925,7 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
 1. Core events:
    - `GET /api/event` — list with full specification pattern filtering
    - `GET /api/event/{id}` — detail with HATEOAS links
+   - `GET /api/event/public/{slugCode}/og-image` — anonymous same-origin 1200x630 PNG for eligible published/public events; rechecks eligibility on every request, returns a strong quoted ETag, varies by `Host` and `X-Tenant-Slug`, and returns `304 Not Modified` for a matching `If-None-Match` without shared output caching
    - `GET /api/event/{id}/management-detail` — authenticated management detail, including draft/internal/moderated events visible to the principal through event `view-management`
    - `GET /api/event/{id}/moderation/history` — authenticated safe moderation audit history for authorized management views
    - `GET /api/event/management/by-actor/{actorId}` — authenticated actor-owned management list, including hidden rows authorized by per-event `view-management`
