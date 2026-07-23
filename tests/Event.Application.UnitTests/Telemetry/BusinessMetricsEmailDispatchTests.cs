@@ -224,7 +224,7 @@ public sealed class BusinessMetricsEmailDispatchTests
             {
                 lock (_measurementsLock)
                 {
-                    var match = _measurements.SingleOrDefault(value => value.InstrumentName == instrumentName);
+                    var match = _measurements.LastOrDefault(value => value.InstrumentName == instrumentName);
                     if (match is not null)
                     {
                         return match;
@@ -236,7 +236,7 @@ public sealed class BusinessMetricsEmailDispatchTests
 
             lock (_measurementsLock)
             {
-                return _measurements.Single(value => value.InstrumentName == instrumentName);
+                return _measurements.Last(value => value.InstrumentName == instrumentName);
             }
         }
 

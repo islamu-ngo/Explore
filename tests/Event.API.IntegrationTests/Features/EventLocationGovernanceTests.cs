@@ -32,6 +32,7 @@ public sealed class EventLocationGovernanceTests
         var result = await controller.UpdateTenantSetting(
             GovernanceSettingKeys.LocationPrivacy.AllowHomeLocations,
             new UpdateSettingValueDto { Value = "false" },
+            Substitute.For<Microsoft.AspNetCore.OutputCaching.IOutputCacheStore>(),
             CancellationToken.None);
 
         await Assert.That(result.Result).IsTypeOf<OkObjectResult>();

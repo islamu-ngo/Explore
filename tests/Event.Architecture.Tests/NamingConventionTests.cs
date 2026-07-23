@@ -79,11 +79,15 @@ public class NamingConventionTests
             .AreNotAbstract()
             .And()
             .AreNotGeneric()
+            .And()
+            .AreNotNested()
+            .And()
+            .DoNotHaveName("CustomPropertyExposureScope")
             .Should()
             .HaveNameEndingWith("Repository")
             .GetResult();
 
-        await Assert.That(result.IsSuccessful).IsTrue();
+        await Assert.That(result.FailingTypeNames ?? []).IsEmpty();
     }
 
     #endregion

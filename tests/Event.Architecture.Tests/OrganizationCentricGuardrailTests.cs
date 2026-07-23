@@ -24,7 +24,8 @@ public class OrganizationCentricGuardrailTests
     [DisplayName("Domain must not introduce organization-centric scope entity files")]
     public async Task DomainMustNotIntroduce_OrganizationCentricScopeEntityFiles()
     {
-        var domainDirectory = RepositoryRoot.GetDirectories("Explore.Domain", SearchOption.AllDirectories).Single();
+        var domainDirectory = RepositoryRoot.GetDirectories("Explore.Domain", SearchOption.AllDirectories)
+            .Single(directory => directory.Parent?.Name == "src");
         var forbiddenFiles = ForbiddenScopeConceptNames
             .SelectMany(name => domainDirectory.GetFiles($"{name}.cs", SearchOption.AllDirectories))
             .Select(file => RelativePath(file.FullName))
