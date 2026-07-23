@@ -4738,6 +4738,11 @@ namespace Explore.Blazor.Client.Clients
         System.Threading.Tasks.Task<System.Collections.Generic.ICollection<OrganizationReviewDto>> GetOrganizationReviewsByUserAsync(System.Guid userId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<PrivacyErasureStatusDto> GetPrivacyErasureStatusAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get Public Experience Settings
         /// </summary>
@@ -5555,14 +5560,14 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Update Tenant Storage Settings
+        /// Patch Tenant Storage Settings
         /// </summary>
         /// <remarks>
-        /// Updates current-tenant storage overrides when instance storage delegation allows tenant edits.
+        /// Patches supplied current-tenant storage override leaves when instance storage delegation allows tenant edits.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateTenantStorageSettingsAsync(TenantStorageSettingsDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> PatchTenantStorageSettingsAsync(PatchTenantStorageSettingsDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -5878,9 +5883,9 @@ namespace Explore.Blazor.Client.Clients
         System.Threading.Tasks.Task<UserDto> GetCurrentUserAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>OK</returns>
+        /// <returns>Accepted</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task DeleteCurrentUserAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<PrivacyErasureStartDto> DeleteCurrentUserAsync(string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -59494,6 +59499,96 @@ namespace Explore.Blazor.Client.Clients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<PrivacyErasureStatusDto> GetPrivacyErasureStatusAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/privacy-erasure/status"
+                    urlBuilder_.Append("api/privacy-erasure/status");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<PrivacyErasureStatusDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get Public Experience Settings
         /// </summary>
@@ -67824,14 +67919,14 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Update Tenant Storage Settings
+        /// Patch Tenant Storage Settings
         /// </summary>
         /// <remarks>
-        /// Updates current-tenant storage overrides when instance storage delegation allows tenant edits.
+        /// Patches supplied current-tenant storage override leaves when instance storage delegation allows tenant edits.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateTenantStorageSettingsAsync(TenantStorageSettingsDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> PatchTenantStorageSettingsAsync(PatchTenantStorageSettingsDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (body == null)
                 throw new System.ArgumentNullException("body");
@@ -67849,7 +67944,7 @@ namespace Explore.Blazor.Client.Clients
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
                     request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Method = new System.Net.Http.HttpMethod("PATCH");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
@@ -71005,9 +71100,9 @@ namespace Explore.Blazor.Client.Clients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>OK</returns>
+        /// <returns>Accepted</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task DeleteCurrentUserAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<PrivacyErasureStartDto> DeleteCurrentUserAsync(string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -71016,9 +71111,13 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
 
+                    if (idempotency_Key != null)
+                        request_.Headers.TryAddWithoutValidation("Idempotency-Key", ConvertToString(idempotency_Key, System.Globalization.CultureInfo.InvariantCulture));
+
                     if (x_Api_Version != null)
                         request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
@@ -71054,9 +71153,34 @@ namespace Explore.Blazor.Client.Clients
                         ProcessResponse(client_, response_);
 
                         var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
+                        if (status_ == 202)
                         {
-                            return;
+                            var objectResponse_ = await ReadObjectResponseAsync<PrivacyErasureStartDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
                         {
@@ -102222,6 +102346,27 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class OptionalUpdateOfboolean
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasValue")]
+        public bool? HasValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public bool? Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class OptionalUpdateOfDateTime
     {
 
@@ -102359,6 +102504,49 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("value")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class OptionalUpdateOfListOfStorageRouteSettingsDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasValue")]
+        public bool? HasValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public System.Collections.Generic.ICollection<StorageRouteSettingsDto>? Value { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class OptionalUpdateOflong
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("hasValue")]
+        public bool? HasValue { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? Value { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -103228,6 +103416,93 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PatchTenantStoragePolicyDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("provider")]
+        public OptionalUpdateOfstring? Provider { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxUploadBytes")]
+        public OptionalUpdateOflong? MaxUploadBytes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantQuotaBytes")]
+        public OptionalUpdateOflong? TenantQuotaBytes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("routes")]
+        public OptionalUpdateOfListOfStorageRouteSettingsDto? Routes { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PatchTenantStorageS3Dto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("endpoint")]
+        public OptionalUpdateOfstring? Endpoint { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicEndpoint")]
+        public OptionalUpdateOfstring? PublicEndpoint { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bucketName")]
+        public OptionalUpdateOfstring? BucketName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("accessKeyId")]
+        public OptionalUpdateOfstring? AccessKeyId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("secretAccessKey")]
+        public OptionalUpdateOfstring? SecretAccessKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("region")]
+        public OptionalUpdateOfstring? Region { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("forcePathStyle")]
+        public OptionalUpdateOfboolean? ForcePathStyle { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("uploadUrlExpirationMinutes")]
+        public OptionalUpdateOfint? UploadUrlExpirationMinutes { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PatchTenantStorageSettingsDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("policy")]
+        public PatchTenantStoragePolicyDto? Policy { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("s3")]
+        public PatchTenantStorageS3Dto? S3 { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PauseWebhookEndpointRequestDto
     {
 
@@ -103372,6 +103647,71 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("draft")]
         [System.ComponentModel.DataAnnotations.Required]
         public TenantPlanDraft Draft { get; set; } = new TenantPlanDraft();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PrivacyErasureStartDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("receipt")]
+        public string? Receipt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("receiptExpiresAtUtc")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset ReceiptExpiresAtUtc { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PrivacyErasureStatusDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerWorkCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int ProviderWorkCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedProviderWorkCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int CompletedProviderWorkCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("receiptExpiresAtUtc")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset ReceiptExpiresAtUtc { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("localSettledAtUtc")]
+        public System.DateTimeOffset? LocalSettledAtUtc { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedAtUtc")]
+        public System.DateTimeOffset? CompletedAtUtc { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -107821,54 +108161,6 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class TenantStorageEffectivePolicyDto
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("provider")]
-        public string? Provider { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("maxUploadBytes")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public long? MaxUploadBytes { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("tenantQuotaBytes")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public long? TenantQuotaBytes { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("instanceMaxUploadBytes")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public long? InstanceMaxUploadBytes { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("tenantOverridesAllowed")]
-        public bool? TenantOverridesAllowed { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("tenantStorageLocked")]
-        public bool? TenantStorageLocked { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("providerSource")]
-        public string? ProviderSource { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("maxUploadSource")]
-        public string? MaxUploadSource { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("quotaSource")]
-        public string? QuotaSource { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("routes")]
-        public System.Collections.Generic.ICollection<StorageRouteSettingsDto>? Routes { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class TenantStorageSettingsDto
     {
 
@@ -107896,7 +108188,7 @@ namespace Explore.Blazor.Client.Clients
         public bool? TenantStorageLocked { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("routes")]
-        public System.Collections.Generic.ICollection<StorageRouteSettingsDto>? Routes { get; set; } = default!;
+        public System.Collections.Generic.ICollection<Routes3>? Routes { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("s3Endpoint")]
         public string? S3Endpoint { get; set; } = default!;
@@ -107930,51 +108222,10 @@ namespace Explore.Blazor.Client.Clients
         public int? S3UploadUrlExpirationMinutes { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("effectivePolicy")]
-        public TenantStorageEffectivePolicyDto? EffectivePolicy { get; set; } = default!;
+        public EffectivePolicy3? EffectivePolicy { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("usage")]
-        public TenantStorageUsageDto? Usage { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class TenantStorageUsageDto
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("provider")]
-        public string? Provider { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("usedBytes")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public long? UsedBytes { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("reservedBytes")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public long? ReservedBytes { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("quarantinedBytes")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public long? QuarantinedBytes { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("objectCount")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public long? ObjectCount { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("availableBytes")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public long? AvailableBytes { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("lastRecalculatedAt")]
-        public System.DateTimeOffset? LastRecalculatedAt { get; set; } = default!;
+        public Usage3? Usage { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -116683,7 +116934,7 @@ namespace Explore.Blazor.Client.Clients
         public string? QuotaSource { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("routes")]
-        public System.Collections.Generic.ICollection<Routes3>? Routes { get; set; } = default!;
+        public System.Collections.Generic.ICollection<Routes4>? Routes { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -117495,7 +117746,7 @@ namespace Explore.Blazor.Client.Clients
         public string? QuotaSource { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("routes")]
-        public System.Collections.Generic.ICollection<Routes4>? Routes { get; set; } = default!;
+        public System.Collections.Generic.ICollection<Routes5>? Routes { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -118269,6 +118520,129 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("customCssUrl")]
         public string? CustomCssUrl { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Routes3
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("routeKey")]
+        public string? RouteKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("provider")]
+        public string? Provider { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxUploadBytes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? MaxUploadBytes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSource")]
+        public string? ProviderSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxUploadSource")]
+        public string? MaxUploadSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isReadOnly")]
+        public bool? IsReadOnly { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class EffectivePolicy3
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("provider")]
+        public string? Provider { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxUploadBytes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? MaxUploadBytes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantQuotaBytes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? TenantQuotaBytes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("instanceMaxUploadBytes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? InstanceMaxUploadBytes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantOverridesAllowed")]
+        public bool? TenantOverridesAllowed { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantStorageLocked")]
+        public bool? TenantStorageLocked { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSource")]
+        public string? ProviderSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxUploadSource")]
+        public string? MaxUploadSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("quotaSource")]
+        public string? QuotaSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("routes")]
+        public System.Collections.Generic.ICollection<Routes6>? Routes { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Usage3
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("provider")]
+        public string? Provider { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("usedBytes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? UsedBytes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reservedBytes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? ReservedBytes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("quarantinedBytes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? QuarantinedBytes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("objectCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? ObjectCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("availableBytes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? AvailableBytes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lastRecalculatedAt")]
+        public System.DateTimeOffset? LastRecalculatedAt { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -119212,7 +119586,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Routes3
+    public partial class Routes4
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("routeKey")]
@@ -119283,7 +119657,41 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Routes4
+    public partial class Routes5
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("routeKey")]
+        public string? RouteKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("provider")]
+        public string? Provider { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxUploadBytes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? MaxUploadBytes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSource")]
+        public string? ProviderSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxUploadSource")]
+        public string? MaxUploadSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isReadOnly")]
+        public bool? IsReadOnly { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Routes6
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("routeKey")]

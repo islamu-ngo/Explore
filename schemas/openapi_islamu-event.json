@@ -47194,6 +47194,73 @@
         "x-endpoint-class": "Public"
       }
     },
+    "/api/privacy-erasure/status": {
+      "get": {
+        "tags": [
+          "PrivacyErasure"
+        ],
+        "operationId": "GetPrivacyErasureStatus",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyErasureStatusDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyErasureStatusDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyErasureStatusDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/publicexperience/settings": {
       "get": {
         "tags": [
@@ -54181,13 +54248,13 @@
         },
         "x-endpoint-class": "Authenticated"
       },
-      "put": {
+      "patch": {
         "tags": [
           "TenantStorageSettings"
         ],
-        "summary": "Update Tenant Storage Settings",
-        "description": "Updates current-tenant storage overrides when instance storage delegation allows tenant edits.",
-        "operationId": "UpdateTenantStorageSettings",
+        "summary": "Patch Tenant Storage Settings",
+        "description": "Patches supplied current-tenant storage override leaves when instance storage delegation allows tenant edits.",
+        "operationId": "PatchTenantStorageSettings",
         "parameters": [
           {
             "name": "api-version",
@@ -54208,12 +54275,12 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/TenantStorageSettingsDto"
+                "$ref": "#/components/schemas/PatchTenantStorageSettingsDto"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/TenantStorageSettingsDto"
+                "$ref": "#/components/schemas/PatchTenantStorageSettingsDto"
               }
             }
           },
@@ -56952,6 +57019,13 @@
         "operationId": "DeleteCurrentUser",
         "parameters": [
           {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "api-version",
             "in": "query",
             "schema": {
@@ -56967,8 +57041,65 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyErasureStartDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyErasureStartDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyErasureStartDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "x-endpoint-class": "Authenticated"
@@ -64952,7 +65083,10 @@
                   "type": "string"
                 },
                 "transitionedByUserId": {
-                  "type": "string",
+                  "type": [
+                    "null",
+                    "string"
+                  ],
                   "format": "uuid"
                 },
                 "reason": {
@@ -65224,7 +65358,10 @@
             "format": "date-time"
           },
           "assignedByUserId": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
           }
         }
@@ -82440,7 +82577,10 @@
                   "type": "string"
                 },
                 "transitionedByUserId": {
-                  "type": "string",
+                  "type": [
+                    "null",
+                    "string"
+                  ],
                   "format": "uuid"
                 },
                 "reason": {
@@ -90576,7 +90716,10 @@
             ]
           },
           "userId": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
           },
           "userFullName": {
@@ -91165,7 +91308,10 @@
             "type": "string"
           },
           "actorUserId": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
           },
           "targetTenantId": {
@@ -91263,7 +91409,10 @@
             "format": "uuid"
           },
           "actorUserId": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
           },
           "targetTenantId": {
@@ -97929,6 +98078,17 @@
           }
         }
       },
+      "OptionalUpdateOfboolean": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "type": "boolean"
+          }
+        }
+      },
       "OptionalUpdateOfDateTime": {
         "type": "object",
         "properties": {
@@ -98040,6 +98200,39 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "OptionalUpdateOfListOfStorageRouteSettingsDto": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/StorageRouteSettingsDto"
+            }
+          }
+        }
+      },
+      "OptionalUpdateOflong": {
+        "type": "object",
+        "properties": {
+          "hasValue": {
+            "type": "boolean"
+          },
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           }
         }
       },
@@ -98543,7 +98736,10 @@
             ]
           },
           "userId": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
           },
           "userFullName": {
@@ -99079,6 +99275,77 @@
           }
         }
       },
+      "PatchTenantStoragePolicyDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "maxUploadBytes": {
+            "$ref": "#/components/schemas/OptionalUpdateOflong"
+          },
+          "tenantQuotaBytes": {
+            "$ref": "#/components/schemas/OptionalUpdateOflong"
+          },
+          "routes": {
+            "$ref": "#/components/schemas/OptionalUpdateOfListOfStorageRouteSettingsDto"
+          }
+        }
+      },
+      "PatchTenantStorageS3Dto": {
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "publicEndpoint": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "bucketName": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "accessKeyId": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "secretAccessKey": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "region": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "forcePathStyle": {
+            "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          },
+          "uploadUrlExpirationMinutes": {
+            "$ref": "#/components/schemas/OptionalUpdateOfint"
+          }
+        }
+      },
+      "PatchTenantStorageSettingsDto": {
+        "type": "object",
+        "properties": {
+          "policy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchTenantStoragePolicyDto"
+              }
+            ]
+          },
+          "s3": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchTenantStorageS3Dto"
+              }
+            ]
+          }
+        }
+      },
       "PauseWebhookEndpointRequestDto": {
         "type": "object",
         "properties": {
@@ -99176,6 +99443,79 @@
           },
           "draft": {
             "$ref": "#/components/schemas/TenantPlanDraft"
+          }
+        }
+      },
+      "PrivacyErasureStartDto": {
+        "required": [
+          "status",
+          "receipt",
+          "receiptExpiresAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "receipt": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "receiptExpiresAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PrivacyErasureStatusDto": {
+        "required": [
+          "status",
+          "providerWorkCount",
+          "completedProviderWorkCount",
+          "receiptExpiresAtUtc",
+          "localSettledAtUtc",
+          "completedAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "providerWorkCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "completedProviderWorkCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "receiptExpiresAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "localSettledAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "completedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -102032,7 +102372,10 @@
             "type": "string"
           },
           "actorUserId": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
           },
           "targetTenantId": {
@@ -102123,7 +102466,10 @@
             "format": "uuid"
           },
           "actorUserId": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
           },
           "targetTenantId": {
@@ -103435,59 +103781,6 @@
           }
         }
       },
-      "TenantStorageEffectivePolicyDto": {
-        "type": "object",
-        "properties": {
-          "provider": {
-            "type": "string"
-          },
-          "maxUploadBytes": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int64"
-          },
-          "tenantQuotaBytes": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int64"
-          },
-          "instanceMaxUploadBytes": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int64"
-          },
-          "tenantOverridesAllowed": {
-            "type": "boolean"
-          },
-          "tenantStorageLocked": {
-            "type": "boolean"
-          },
-          "providerSource": {
-            "type": "string"
-          },
-          "maxUploadSource": {
-            "type": "string"
-          },
-          "quotaSource": {
-            "type": "string"
-          },
-          "routes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/StorageRouteSettingsDto"
-            }
-          }
-        }
-      },
       "TenantStorageSettingsDto": {
         "type": "object",
         "properties": {
@@ -103526,7 +103819,32 @@
           "routes": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/StorageRouteSettingsDto"
+              "type": "object",
+              "properties": {
+                "routeKey": {
+                  "type": "string"
+                },
+                "provider": {
+                  "type": "string"
+                },
+                "maxUploadBytes": {
+                  "pattern": "^-?(?:0|[1-9]\\d*)$",
+                  "type": [
+                    "integer",
+                    "string"
+                  ],
+                  "format": "int64"
+                },
+                "providerSource": {
+                  "type": "string"
+                },
+                "maxUploadSource": {
+                  "type": "string"
+                },
+                "isReadOnly": {
+                  "type": "boolean"
+                }
+              }
             }
           },
           "s3Endpoint": {
@@ -103565,65 +103883,137 @@
             "format": "int32"
           },
           "effectivePolicy": {
-            "$ref": "#/components/schemas/TenantStorageEffectivePolicyDto"
+            "type": "object",
+            "properties": {
+              "provider": {
+                "type": "string"
+              },
+              "maxUploadBytes": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              },
+              "tenantQuotaBytes": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              },
+              "instanceMaxUploadBytes": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              },
+              "tenantOverridesAllowed": {
+                "type": "boolean"
+              },
+              "tenantStorageLocked": {
+                "type": "boolean"
+              },
+              "providerSource": {
+                "type": "string"
+              },
+              "maxUploadSource": {
+                "type": "string"
+              },
+              "quotaSource": {
+                "type": "string"
+              },
+              "routes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "routeKey": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "type": "string"
+                    },
+                    "maxUploadBytes": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int64"
+                    },
+                    "providerSource": {
+                      "type": "string"
+                    },
+                    "maxUploadSource": {
+                      "type": "string"
+                    },
+                    "isReadOnly": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
           },
           "usage": {
-            "$ref": "#/components/schemas/TenantStorageUsageDto"
-          }
-        }
-      },
-      "TenantStorageUsageDto": {
-        "type": "object",
-        "properties": {
-          "provider": {
-            "type": "string"
-          },
-          "usedBytes": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int64"
-          },
-          "reservedBytes": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int64"
-          },
-          "quarantinedBytes": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int64"
-          },
-          "objectCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int64"
-          },
-          "availableBytes": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int64"
-          },
-          "lastRecalculatedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
+            "type": "object",
+            "properties": {
+              "provider": {
+                "type": "string"
+              },
+              "usedBytes": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              },
+              "reservedBytes": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              },
+              "quarantinedBytes": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              },
+              "objectCount": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              },
+              "availableBytes": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int64"
+              },
+              "lastRecalculatedAt": {
+                "type": [
+                  "null",
+                  "string"
+                ],
+                "format": "date-time"
+              }
+            }
           }
         }
       },
@@ -110429,6 +110819,9 @@
     },
     {
       "name": "OrganizationReview"
+    },
+    {
+      "name": "PrivacyErasure"
     },
     {
       "name": "PublicExperience"
