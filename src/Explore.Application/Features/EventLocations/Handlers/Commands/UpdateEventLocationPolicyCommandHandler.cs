@@ -83,7 +83,7 @@ public sealed class UpdateEventLocationPolicyCommandHandler(
                 actorUserId,
                 EventLocationDisclosureAuditReasonEnum.OrganizerPolicyChange,
                 timeProvider.GetUtcNow().UtcDateTime,
-                eventLocation.NeedsPrivacyReview || request.NeedsPrivacyReview);
+                request.NeedsPrivacyReview);
             await audits.AppendAsync(audit, token);
             return Success(eventLocation.Id);
         }, cancellationToken);
