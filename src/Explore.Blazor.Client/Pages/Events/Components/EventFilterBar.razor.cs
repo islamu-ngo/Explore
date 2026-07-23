@@ -256,7 +256,7 @@ public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
 
     // ── IBrowserViewportObserver ──
 
-    Guid IBrowserViewportObserver.Id { get; } = Guid.NewGuid();
+    Guid IBrowserViewportObserver.Id { get; } = Guid.CreateVersion7();
 
     ResizeOptions IBrowserViewportObserver.ResizeOptions { get; } = new()
     {

@@ -41,7 +41,7 @@
 </section>
 
 @code {
-    private readonly string _titleElementId = $"control-plane-panel-{Guid.NewGuid():N}";
+    private readonly string _titleElementId = $"control-plane-panel-{Guid.CreateVersion7():N}";
 
     [Parameter] public string? Title { get; set; }
     [Parameter] public string? Description { get; set; }

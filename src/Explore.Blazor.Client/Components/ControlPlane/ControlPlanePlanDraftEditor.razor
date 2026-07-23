@@ -260,7 +260,7 @@
     [Parameter, EditorRequired] public EventCallback OnCancel { get; set; }
 
     private readonly List<string> _localErrors = [];
-    private readonly string _id = Guid.NewGuid().ToString("N");
+    private readonly string _id = Guid.CreateVersion7().ToString("N");
     private string SettingsHeadingId => $"plan-settings-{_id}";
     private string QuotasHeadingId => $"plan-quotas-{_id}";
     private string DiffHeadingId => $"plan-diff-{_id}";

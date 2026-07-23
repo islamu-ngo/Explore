@@ -642,7 +642,7 @@ public partial class EventService : IEventService
             {
                 return await generatedClient.CreateEventWithIdempotencyKeyAsync(
                     request,
-                    idempotencyKey ?? Guid.NewGuid().ToString("N"));
+                    idempotencyKey ?? Guid.CreateVersion7().ToString("N"));
             }
 
             return await _apiClient.CreateEventAsync(request);
@@ -1164,7 +1164,7 @@ public partial class EventService : IEventService
         return registration.EventId
             ?? registration.EventRegistrationIntentId
             ?? registration.Id
-            ?? Guid.NewGuid();
+            ?? Guid.CreateVersion7();
     }
 
     private async Task<EventListDto?> BuildRegistrationEventListItemAsync(

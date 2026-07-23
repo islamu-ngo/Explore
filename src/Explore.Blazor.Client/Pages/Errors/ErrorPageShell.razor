@@ -58,7 +58,7 @@
 </MudContainer>
 
 @code {
-    private readonly string TitleId = $"error-page-title-{Guid.NewGuid():N}";
+    private readonly string TitleId = $"error-page-title-{Guid.CreateVersion7():N}";
     private string _searchTerm = string.Empty;
 
     [Parameter]

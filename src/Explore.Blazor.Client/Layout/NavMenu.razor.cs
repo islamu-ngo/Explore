@@ -364,7 +364,7 @@ public partial class NavMenu : IDisposable
                 .ThenBy(link => link.Label, StringComparer.OrdinalIgnoreCase)
                 .Select(link => new TenantNavigationLinkDto
                 {
-                    Id = Guid.NewGuid(),
+                    Id = Guid.CreateVersion7(),
                     Label = link.Label!,
                     Url = link.Url!,
                     Order = link.SortOrder ?? 0,

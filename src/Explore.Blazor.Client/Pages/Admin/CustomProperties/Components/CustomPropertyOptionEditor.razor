@@ -73,7 +73,7 @@
     {
         var newOption = new Options
         {
-            Id = Guid.NewGuid(), // Client-side generation for tracking
+            Id = Guid.CreateVersion7(), // Client-side generation for tracking
             IsActive = true,
             SortOrder = Options.Count
         };
