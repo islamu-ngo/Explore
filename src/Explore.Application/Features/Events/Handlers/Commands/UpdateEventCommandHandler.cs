@@ -264,8 +264,15 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
             return response;
         }
 
-        await _cache.RemoveAsync($"event:detail:{eventIdForCache}", cancellationToken);
-        await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(tenantIdForCache), cancellationToken);
+        try
+        {
+            await _cache.RemoveAsync($"event:detail:{eventIdForCache}", cancellationToken);
+            await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(tenantIdForCache), cancellationToken);
+        }
+        catch (Exception)
+        {
+            // Best-effort cache invalidation - Redis may be unavailable in local dev
+        }
 
         return response;
     }

@@ -66,7 +66,14 @@ builder.Host.ConfigureHostOptions(options =>
 });
 
 builder.AddServiceDefaults();
-builder.AddRedisDistributedCache(connectionName: "cache");
+if (!string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("cache")))
+{
+    builder.AddRedisDistributedCache(connectionName: "cache");
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+}
 builder.AddDistributedCacheReadinessCheck();
 builder.AddOidcDiscoveryReadinessCheck();
 builder.Configuration.AddInfisicalCompatibility();

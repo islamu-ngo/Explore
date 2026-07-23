@@ -136,8 +136,15 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
             request.Id,
             userId.Value);
 
-        await _cache.RemoveAsync($"event:detail:{request.Id}", cancellationToken);
-        await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), cancellationToken);
+        try
+        {
+            await _cache.RemoveAsync($"event:detail:{request.Id}", cancellationToken);
+            await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Cache invalidation failed after deleting event {EventId}", request.Id);
+        }
 
         return true;
     }

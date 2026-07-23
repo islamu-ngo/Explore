@@ -268,8 +268,15 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             response.Message = "Event created successfully.";
 
             _metrics.RecordEventCreated(_tenantContext.TenantId.ToString());
-            await _cache.RemoveAsync($"event:detail:{eventId}", cancellationToken);
-            await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(_tenantContext.TenantId), cancellationToken);
+            try
+            {
+                await _cache.RemoveAsync($"event:detail:{eventId}", cancellationToken);
+                await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(_tenantContext.TenantId), cancellationToken);
+            }
+            catch (Exception)
+            {
+                // Best-effort cache invalidation - Redis may be unavailable in local dev
+            }
         }
         catch (RoomScheduleConflictException ex)
         {
