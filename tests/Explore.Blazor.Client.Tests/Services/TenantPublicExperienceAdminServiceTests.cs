@@ -320,7 +320,7 @@ public class TenantPublicExperienceAdminServiceTests
     }
 
     [Test]
-    public async Task SaveSingleTenantPolicySettingsAsync_UsesTenantSettingBatches_WhenAiOverrideFlagIsFalse()
+    public async Task SaveSingleTenantPolicySettingsAsync_DoesNotSaveAiAssistantCategory()
     {
         // Arrange
         var model = new TenantPolicySettingsDto
@@ -351,28 +351,27 @@ public class TenantPublicExperienceAdminServiceTests
                 null,
                 null,
                 Arg.Any<CancellationToken>())
-            .Returns(new BatchUpdateResponseDto { Success = true });
+            .Returns(callInfo => callInfo.ArgAt<string>(0) == "AiAssistant"
+                ? new BatchUpdateResponseDto { Success = false, Message = "Locked by instance administrator" }
+                : new BatchUpdateResponseDto { Success = true });
 
         // Act
         PublicExperienceAdminSaveResult result = await _service.SaveSingleTenantPolicySettingsAsync(model);
 
         // Assert
         await Assert.That(result.Success).IsTrue();
-        await Assert.That(categories).IsEquivalentTo(["Events", "Organizations", "Groups", "AiAssistant"]);
-        await Assert.That(batches.Count).IsEqualTo(4);
+        await Assert.That(categories).IsEquivalentTo(["Events", "Organizations", "Groups"]);
+        await Assert.That(batches.Count).IsEqualTo(3);
         await Assert.That(batches.All(batch => batch.Mode == BatchUpdateMode.Strict)).IsTrue();
         await Assert.That(batches[0].Values["events.user_submission_enabled"]).IsEqualTo("true");
         await Assert.That(batches[0].Values["events.group_submission_enabled"]).IsEqualTo("false");
+        await Assert.That(batches[0].Values["events.card_click_opens_detail_page"]).IsEqualTo("true");
         await Assert.That(batches[1].Values["organizations.verification_required"]).IsEqualTo("true");
         await Assert.That(batches[2].Values["groups.self_registration_enabled"]).IsEqualTo("true");
-        await Assert.That(batches[3].Values["ai_assistant.enabled"]).IsEqualTo("true");
-        await Assert.That(batches[3].Values["ai_assistant.provider"]).IsEqualTo("openai-compatible");
-        await Assert.That(batches[3].Values["ai_assistant.endpoint_url"]).IsEqualTo("https://ai.example.test");
-        await Assert.That(batches[3].Values["ai_assistant.model_id"]).IsEqualTo("gpt-test");
     }
 
     [Test]
-    public async Task SaveSingleTenantPolicySettingsAsync_AllowsOpenAiCompatibleProviderWithoutApiKey()
+    public async Task SaveSingleTenantPolicySettingsAsync_IgnoresAiAssistantConfigWithoutApiKey()
     {
         // Arrange
         var model = new TenantPolicySettingsDto
@@ -388,9 +387,10 @@ public class TenantPublicExperienceAdminServiceTests
             AiAssistantModelId = "Gemma-4-E2B-Uncensored-HauhauCS-Aggressive-Q8_K_P"
         };
 
+        var categories = new List<string>();
         var batches = new List<UpdateSettingBatchDto>();
         _apiClient.UpdateTenantSettingsBatchAsync(
-                Arg.Any<string>(),
+                Arg.Do<string>(category => categories.Add(category)),
                 Arg.Do<UpdateSettingBatchDto>(body => batches.Add(body)),
                 null,
                 null,
@@ -402,17 +402,12 @@ public class TenantPublicExperienceAdminServiceTests
 
         // Assert
         await Assert.That(result.Success).IsTrue();
-        await Assert.That(batches.Count).IsEqualTo(4);
-        var aiBatch = batches[3];
-        await Assert.That(aiBatch.Values["ai_assistant.enabled"]).IsEqualTo("true");
-        await Assert.That(aiBatch.Values["ai_assistant.provider"]).IsEqualTo("openai-compatible");
-        await Assert.That(aiBatch.Values["ai_assistant.endpoint_url"]).IsEqualTo("http://127.0.0.1:1337/v1");
-        await Assert.That(aiBatch.Values["ai_assistant.api_key"]).IsEqualTo(string.Empty);
-        await Assert.That(aiBatch.Values["ai_assistant.model_id"]).IsEqualTo("Gemma-4-E2B-Uncensored-HauhauCS-Aggressive-Q8_K_P");
+        await Assert.That(categories).IsEquivalentTo(["Events", "Organizations", "Groups"]);
+        await Assert.That(batches.Count).IsEqualTo(3);
     }
 
     [Test]
-    public async Task SaveSingleTenantPolicySettingsAsync_ReturnsFailure_WhenOpenAiCompatibleConfigIsIncomplete()
+    public async Task SaveSingleTenantPolicySettingsAsync_DoesNotValidateIncompleteAiAssistantConfig()
     {
         // Arrange
         var model = new TenantPolicySettingsDto
@@ -424,22 +419,25 @@ public class TenantPublicExperienceAdminServiceTests
             AiAssistantModelId = string.Empty
         };
 
+        var categories = new List<string>();
+        _apiClient.UpdateTenantSettingsBatchAsync(
+                Arg.Do<string>(category => categories.Add(category)),
+                Arg.Any<UpdateSettingBatchDto>(),
+                null,
+                null,
+                Arg.Any<CancellationToken>())
+            .Returns(new BatchUpdateResponseDto { Success = true });
+
         // Act
         PublicExperienceAdminSaveResult result = await _service.SaveSingleTenantPolicySettingsAsync(model);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Message).Contains("model ID");
-        await _apiClient.DidNotReceiveWithAnyArgs().UpdateTenantSettingsBatchAsync(
-            default!,
-            default!,
-            default,
-            default,
-            default);
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(categories).IsEquivalentTo(["Events", "Organizations", "Groups"]);
     }
 
     [Test]
-    public async Task SaveSingleTenantPolicySettingsAsync_ReturnsFailure_WhenFakeProviderIsSubmitted()
+    public async Task SaveSingleTenantPolicySettingsAsync_DoesNotValidateStaleAiAssistantProvider()
     {
         // Arrange
         var model = new TenantPolicySettingsDto
@@ -452,18 +450,21 @@ public class TenantPublicExperienceAdminServiceTests
             AiAssistantAllowAnonymousAccess = true
         };
 
+        var categories = new List<string>();
+        _apiClient.UpdateTenantSettingsBatchAsync(
+                Arg.Do<string>(category => categories.Add(category)),
+                Arg.Any<UpdateSettingBatchDto>(),
+                null,
+                null,
+                Arg.Any<CancellationToken>())
+            .Returns(new BatchUpdateResponseDto { Success = true });
+
         // Act
         PublicExperienceAdminSaveResult result = await _service.SaveSingleTenantPolicySettingsAsync(model);
 
         // Assert
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Message).Contains("OpenAI-compatible");
-        await _apiClient.DidNotReceiveWithAnyArgs().UpdateTenantSettingsBatchAsync(
-            default!,
-            default!,
-            default,
-            default,
-            default);
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(categories).IsEquivalentTo(["Events", "Organizations", "Groups"]);
     }
 
     [Test]

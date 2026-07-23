@@ -101,6 +101,85 @@ public class TenantOnboardingServiceTests
     }
 
     [Test]
+    public async Task GetManagementSettingsAsync_ReturnsNull_WhenApiThrows()
+    {
+        _api.GetTenantOnboardingPolicySettingsAsync(
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<TenantPolicySettingsDto>>(_ => throw new HttpRequestException("boom"));
+
+        TenantPolicySettingsDto? result = await _service.GetManagementSettingsAsync();
+
+        await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task GetTenantSettingsAsync_ForwardsExactCategory()
+    {
+        _api.GetTenantScopedSettingsAsync(
+                "Events",
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new SettingGroupResponseDto { Category = "Events" });
+
+        var result = await _service.GetTenantSettingsAsync("Events");
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Category).IsEqualTo("Events");
+        await _api.Received(1).GetTenantScopedSettingsAsync(
+            "Events",
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateTenantSettingAsync_ForwardsExactKeyAndValue()
+    {
+        _api.UpdateTenantSettingAsync(
+                "events.user_submission_enabled",
+                Arg.Is<UpdateSettingValueDto>(body => body != null && body.Value == "true"),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
+
+        var result = await _service.UpdateTenantSettingAsync(
+            "events.user_submission_enabled",
+            "true");
+
+        await Assert.That(result.Success).IsTrue();
+        await _api.Received(1).UpdateTenantSettingAsync(
+            "events.user_submission_enabled",
+            Arg.Is<UpdateSettingValueDto>(body => body != null && body.Value == "true"),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateTenantSettingAsync_WhenCancelled_ReturnsFailure()
+    {
+        _api.UpdateTenantSettingAsync(
+                Arg.Any<string>(),
+                Arg.Any<UpdateSettingValueDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<BaseCommandResponseOfGuid>>(_ => throw new OperationCanceledException());
+
+        var result = await _service.UpdateTenantSettingAsync(
+            "events.user_submission_enabled",
+            "true",
+            new CancellationToken(canceled: true));
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).IsEqualTo("Request cancelled.");
+    }
+
+    [Test]
     public async Task CompleteAsync_ForwardsMappedSettingsAndReturnsSuccess()
     {
         _api.CompleteTenantOnboardingAsync(
@@ -145,7 +224,7 @@ public class TenantOnboardingServiceTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Request failed.");
-        await Assert.That(result.Errors).Contains("network failed");
+        await Assert.That(result.Errors).IsNull();
     }
 
     [Test]

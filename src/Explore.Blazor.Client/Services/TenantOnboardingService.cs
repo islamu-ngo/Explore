@@ -10,6 +10,15 @@ public interface ITenantOnboardingService
 {
     Task<TenantOnboardingStatusDto?> GetStatusAsync();
     Task<TenantPolicySettingsDto> GetSettingsAsync();
+    Task<TenantPolicySettingsDto?> GetManagementSettingsAsync(
+        CancellationToken cancellationToken = default);
+    Task<SettingGroupResponseDto?> GetTenantSettingsAsync(
+        string category,
+        CancellationToken cancellationToken = default);
+    Task<BaseCommandResponseOfGuid> UpdateTenantSettingAsync(
+        string key,
+        string value,
+        CancellationToken cancellationToken = default);
     Task<BaseCommandResponseOfGuid> CompleteAsync(TenantPolicySettingsDto settings);
     Task<BaseCommandResponseOfGuid> UpdateSettingsAsync(
         TenantPolicySettingsDto settings,
@@ -57,6 +66,59 @@ public class TenantOnboardingService : ITenantOnboardingService
         }
     }
 
+    public async Task<TenantPolicySettingsDto?> GetManagementSettingsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _api.GetTenantOnboardingPolicySettingsAsync(
+                cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning("Loading tenant management settings was cancelled.");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch tenant management settings.");
+            return null;
+        }
+    }
+
+    public async Task<SettingGroupResponseDto?> GetTenantSettingsAsync(
+        string category,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _api.GetTenantScopedSettingsAsync(
+                category,
+                cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning("Loading tenant setting category {Category} was cancelled.", category);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch tenant setting category {Category}.", category);
+            return null;
+        }
+    }
+
+    public Task<BaseCommandResponseOfGuid> UpdateTenantSettingAsync(
+        string key,
+        string value,
+        CancellationToken cancellationToken = default) =>
+        SendCommandAsync(
+            () => _api.UpdateTenantSettingAsync(
+                key,
+                new UpdateSettingValueDto { Value = value },
+                cancellationToken: cancellationToken),
+            cancellationToken);
+
     public Task<BaseCommandResponseOfGuid> CompleteAsync(TenantPolicySettingsDto settings) =>
         SendCommandAsync(() => _api.CompleteTenantOnboardingAsync(
             ToRequest(settings, false),
@@ -89,11 +151,21 @@ public class TenantOnboardingService : ITenantOnboardingService
     }
 
     private async Task<BaseCommandResponseOfGuid> SendCommandAsync(
-        Func<Task<BaseCommandResponseOfGuid>> sendFunc)
+        Func<Task<BaseCommandResponseOfGuid>> sendFunc,
+        CancellationToken cancellationToken = default)
     {
         try
         {
             return await sendFunc();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning("Tenant onboarding request was cancelled.");
+            return new BaseCommandResponseOfGuid
+            {
+                Success = false,
+                Message = "Request cancelled."
+            };
         }
         catch (ApiException ex)
         {
@@ -110,8 +182,7 @@ public class TenantOnboardingService : ITenantOnboardingService
             return new BaseCommandResponseOfGuid
             {
                 Success = false,
-                Message = "Request failed.",
-                Errors = [ex.Message]
+                Message = "Request failed."
             };
         }
     }

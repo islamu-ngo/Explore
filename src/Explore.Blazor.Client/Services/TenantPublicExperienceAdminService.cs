@@ -54,8 +54,6 @@ public sealed class TenantPublicExperienceAdminService(
     private const string AiAssistantModelIdKey = "ai_assistant.model_id";
     private const string AiAssistantAllowAnonymousAccessKey = "ai_assistant.allow_anonymous_access";
     private const string AiProviderNone = "none";
-    private const string AiProviderOpenAiCompatible = "openai-compatible";
-    private const string AiProviderAnthropicCompatible = "anthropic-compatible";
 
     private const string DefaultMode = "DiscoveryCentric";
     private const string DefaultEventCatalogLabel = "Events";
@@ -271,12 +269,6 @@ public sealed class TenantPublicExperienceAdminService(
         TenantPolicySettingsDto model,
         CancellationToken cancellationToken = default)
     {
-        PublicExperienceAdminSaveResult? validationResult = ValidateAiAssistantSettings(model);
-        if (validationResult is not null)
-        {
-            return validationResult;
-        }
-
         try
         {
             PublicExperienceAdminSaveResult eventsResult = await SaveBatchAsync(
@@ -315,15 +307,7 @@ public sealed class TenantPublicExperienceAdminService(
                     [GroupsSelfRegistrationEnabledKey] = FormatBoolean(model.AllowGroupSelfRegistration ?? true)
                 },
                 cancellationToken);
-            if (!groupsResult.Success)
-            {
-                return groupsResult;
-            }
-
-            return await SaveBatchAsync(
-                AiAssistantCategory,
-                BuildAiAssistantValues(model),
-                cancellationToken);
+            return groupsResult;
         }
         catch (Exception ex)
         {
@@ -440,74 +424,6 @@ public sealed class TenantPublicExperienceAdminService(
     }
 
     private static string FormatBoolean(bool value) => value ? "true" : "false";
-
-    private static PublicExperienceAdminSaveResult? ValidateAiAssistantSettings(TenantPolicySettingsDto model)
-    {
-        if (model.AiAssistantEnabled != true)
-        {
-            return null;
-        }
-
-        var provider = NormalizeAiProvider(model.AiAssistantProvider, model.AiAssistantEnabled == true);
-        if (!IsSupportedAiProvider(provider))
-        {
-            return PublicExperienceAdminSaveResult.Failed("AI Assistant provider must be OpenAI-compatible.");
-        }
-
-        if (!HasAbsoluteHttpUrl(model.AiAssistantEndpointUrl))
-        {
-            return PublicExperienceAdminSaveResult.Failed("AI Assistant endpoint URL must be an absolute HTTP or HTTPS URL.");
-        }
-
-        if (string.IsNullOrWhiteSpace(model.AiAssistantModelId))
-        {
-            return PublicExperienceAdminSaveResult.Failed("AI Assistant requires an endpoint URL and model ID before it can be enabled.");
-        }
-
-        return null;
-    }
-
-    private static Dictionary<string, string> BuildAiAssistantValues(TenantPolicySettingsDto model)
-    {
-        var provider = NormalizeAiProvider(model.AiAssistantProvider, model.AiAssistantEnabled == true);
-        var usesOpenAiCompatible = provider == AiProviderOpenAiCompatible || provider == AiProviderAnthropicCompatible;
-
-        return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            [AiAssistantEnabledKey] = FormatBoolean(model.AiAssistantEnabled == true),
-            [AiAssistantProviderKey] = provider,
-            [AiAssistantEndpointUrlKey] = usesOpenAiCompatible ? model.AiAssistantEndpointUrl?.Trim() ?? string.Empty : string.Empty,
-            [AiAssistantApiKeyKey] = usesOpenAiCompatible ? model.AiAssistantApiKey?.Trim() ?? string.Empty : string.Empty,
-            [AiAssistantModelIdKey] = usesOpenAiCompatible ? model.AiAssistantModelId?.Trim() ?? string.Empty : string.Empty,
-            [AiAssistantAllowAnonymousAccessKey] = FormatBoolean(model.AiAssistantAllowAnonymousAccess == true)
-        };
-    }
-
-    private static string NormalizeAiProvider(string? provider, bool enabled)
-    {
-        var normalized = provider?.Trim().ToLowerInvariant() ?? string.Empty;
-
-        if (string.IsNullOrWhiteSpace(normalized) || (enabled && normalized == AiProviderNone))
-        {
-            return enabled ? AiProviderOpenAiCompatible : AiProviderNone;
-        }
-
-        if (!enabled && !IsSupportedAiProvider(normalized))
-        {
-            return AiProviderNone;
-        }
-
-        return normalized;
-    }
-
-    private static bool IsSupportedAiProvider(string provider) =>
-        provider is AiProviderNone or AiProviderOpenAiCompatible or AiProviderAnthropicCompatible;
-
-    private static bool HasAbsoluteHttpUrl(string? value)
-    {
-        return Uri.TryCreate(value?.Trim(), UriKind.Absolute, out var uri)
-            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
-    }
 
     private static string GetString(
         IReadOnlyDictionary<string, EffectiveSettingDto> settings,

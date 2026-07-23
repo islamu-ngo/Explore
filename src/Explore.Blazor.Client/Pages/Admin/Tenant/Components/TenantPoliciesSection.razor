@@ -1,11 +1,16 @@
 @* ABOUTME: Renders event and organization policy settings for the Tenant Admin Settings sidebar. *@
 @* ABOUTME: Includes user submission, approval, and verification switches with instance-level lock support. *@
 
+@implements IDisposable
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
 @using Explore.Blazor.Client.Contracts.Services.Federation
+@using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Services
 @inject IAtprotoFederationSettingsService AtprotoFederationSettingsService
+@inject ITenantOnboardingService TenantOnboardingService
+@inject IAccessibilityAnnouncerService Announcer
 @inject ILogger<TenantPoliciesSection> Logger
 
 <div class="settings-section">
@@ -16,19 +21,51 @@
         </MudText>
     </div>
     <MudStack Spacing="3">
-        <MudSwitch T="bool?" @bind-Value="Model.AllowUserSubmittedEvents" Color="Color.Primary">
+        <MudSwitch T="bool?"
+                   Value="@PolicyDisplayValue(EventsUserSubmissionEnabledKey)"
+                   ValueChanged="SetAllowUserSubmittedEventsAsync"
+                   Color="Color.Primary"
+                   Disabled="@IsPolicyDisabled(EventsUserSubmissionEnabledKey)">
             Allow users to submit events
         </MudSwitch>
+        @if (IsPolicyDisabled(EventsUserSubmissionEnabledKey))
+        {
+            <MudText Typo="Typo.caption" Color="Color.Warning" role="status">
+                @PolicyDisabledReason(EventsUserSubmissionEnabledKey)
+            </MudText>
+        }
 
-        <MudSwitch T="bool?" @bind-Value="Model.AllowOrganizationSubmittedEvents" Color="Color.Primary">
+        <MudSwitch T="bool?"
+                   Value="@PolicyDisplayValue(EventsOrganizationSubmissionEnabledKey)"
+                   ValueChanged="SetAllowOrganizationSubmittedEventsAsync"
+                   Color="Color.Primary"
+                   Disabled="@IsPolicyDisabled(EventsOrganizationSubmissionEnabledKey)">
             Allow organizations to submit events
         </MudSwitch>
+        @if (IsPolicyDisabled(EventsOrganizationSubmissionEnabledKey))
+        {
+            <MudText Typo="Typo.caption" Color="Color.Warning" role="status">
+                @PolicyDisabledReason(EventsOrganizationSubmissionEnabledKey)
+            </MudText>
+        }
 
-        <MudSwitch T="bool?" @bind-Value="Model.AllowGroupSubmittedEvents" Color="Color.Primary">
+        <MudSwitch T="bool?"
+                   Value="@PolicyDisplayValue(EventsGroupSubmissionEnabledKey)"
+                   ValueChanged="SetAllowGroupSubmittedEventsAsync"
+                   Color="Color.Primary"
+                   Disabled="@IsPolicyDisabled(EventsGroupSubmissionEnabledKey)">
             Allow groups to submit events
         </MudSwitch>
+        @if (IsPolicyDisabled(EventsGroupSubmissionEnabledKey))
+        {
+            <MudText Typo="Typo.caption" Color="Color.Warning" role="status">
+                @PolicyDisabledReason(EventsGroupSubmissionEnabledKey)
+            </MudText>
+        }
 
-        @if (Model.AllowUserSubmittedEvents != true && Model.AllowOrganizationSubmittedEvents != true && Model.AllowGroupSubmittedEvents != true)
+        @if (PolicyDisplayValue(EventsUserSubmissionEnabledKey) != true
+            && PolicyDisplayValue(EventsOrganizationSubmissionEnabledKey) != true
+            && PolicyDisplayValue(EventsGroupSubmissionEnabledKey) != true)
         {
             <MudAlert Severity="Severity.Info" Dense="true">
                 No entity types are allowed to submit events. Only administrators will be able to create events through entities they manage.
@@ -37,48 +74,89 @@
 
         <MudDivider />
 
-        <MudSwitch T="bool?" @bind-Value="Model.AllowOrganizationSelfRegistration" Color="Color.Primary">
+        <MudSwitch T="bool?"
+                   Value="@PolicyDisplayValue(OrganizationsSelfRegistrationEnabledKey)"
+                   ValueChanged="SetAllowOrganizationSelfRegistrationAsync"
+                   Color="Color.Primary"
+                   Disabled="@IsPolicyDisabled(OrganizationsSelfRegistrationEnabledKey)">
             Allow organization self-registration
         </MudSwitch>
-
-        <MudSwitch T="bool?" @bind-Value="Model.AllowGroupSelfRegistration" Color="Color.Primary">
-            Allow group self-registration
-        </MudSwitch>
-
-        <MudDivider />
-
-        <MudSwitch T="bool?" @bind-Value="Model.RequireEventApproval" Color="Color.Primary">
-            Require approval before publication
-        </MudSwitch>
+        @if (IsPolicyDisabled(OrganizationsSelfRegistrationEnabledKey))
+        {
+            <MudText Typo="Typo.caption" Color="Color.Warning" role="status">
+                @PolicyDisabledReason(OrganizationsSelfRegistrationEnabledKey)
+            </MudText>
+        }
 
         <MudSwitch T="bool?"
-                   @bind-Value="Model.RequireOrganizationVerification"
+                   Value="@PolicyDisplayValue(GroupsSelfRegistrationEnabledKey)"
+                   ValueChanged="SetAllowGroupSelfRegistrationAsync"
                    Color="Color.Primary"
-                   Disabled="@(!IsSingleTenant && Model.CanTenantOmitVerification != true)">
-            Require organization verification
+                   Disabled="@IsPolicyDisabled(GroupsSelfRegistrationEnabledKey)">
+            Allow group self-registration
         </MudSwitch>
-
-        @if (!IsSingleTenant && Model.CanTenantOmitVerification != true)
+        @if (IsPolicyDisabled(GroupsSelfRegistrationEnabledKey))
         {
-            <MudText Typo="Typo.caption" Color="Color.Warning">
-                Verification requirement is locked by instance policy.
+            <MudText Typo="Typo.caption" Color="Color.Warning" role="status">
+                @PolicyDisabledReason(GroupsSelfRegistrationEnabledKey)
             </MudText>
         }
 
         <MudDivider />
 
         <MudSwitch T="bool?"
-                   @bind-Value="Model.EventCardClickOpensDetailPage"
+                   Value="@PolicyDisplayValue(EventsRequireApprovalKey)"
+                   ValueChanged="SetRequireEventApprovalAsync"
                    Color="Color.Primary"
-                   Disabled="@(!IsSingleTenant && Model.CanOverrideEventCardClickBehavior != true)">
+                   Disabled="@IsPolicyDisabled(EventsRequireApprovalKey)">
+            Require approval before publication
+        </MudSwitch>
+        @if (IsPolicyDisabled(EventsRequireApprovalKey))
+        {
+            <MudText Typo="Typo.caption" Color="Color.Warning" role="status">
+                @PolicyDisabledReason(EventsRequireApprovalKey)
+            </MudText>
+        }
+
+        <MudSwitch T="bool?"
+                   Value="@PolicyDisplayValue(OrganizationsVerificationRequiredKey)"
+                   ValueChanged="SetRequireOrganizationVerificationAsync"
+                   Color="Color.Primary"
+                   Disabled="@IsPolicyDisabled(OrganizationsVerificationRequiredKey)">
+            Require organization verification
+        </MudSwitch>
+
+        @if (IsPolicyDisabled(OrganizationsVerificationRequiredKey))
+        {
+            <MudText Typo="Typo.caption" Color="Color.Warning" role="status">
+                @PolicyDisabledReason(OrganizationsVerificationRequiredKey)
+            </MudText>
+        }
+
+        <MudDivider />
+
+        <MudSwitch T="bool?"
+                   Value="@PolicyDisplayValue(EventsCardClickOpensDetailPageKey)"
+                   ValueChanged="SetEventCardClickOpensDetailPageAsync"
+                   Color="Color.Primary"
+                   Disabled="@IsPolicyDisabled(EventsCardClickOpensDetailPageKey)">
             Event card click opens detail page
         </MudSwitch>
 
-        @if (!IsSingleTenant && Model.CanOverrideEventCardClickBehavior != true)
+        @if (IsPolicyDisabled(EventsCardClickOpensDetailPageKey))
         {
-            <MudText Typo="Typo.caption" Color="Color.Warning">
-                Event card click behavior is locked by instance policy.
+            <MudText Typo="Typo.caption" Color="Color.Warning" role="status">
+                @PolicyDisabledReason(EventsCardClickOpensDetailPageKey)
             </MudText>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(_policyMessage))
+        {
+            <MudAlert Severity="@(_policySaveSucceeded ? Severity.Success : Severity.Error)"
+                      Dense="true"
+                      role="@(_policySaveSucceeded ? "status" : "alert")">
+                @_policyMessage
+            </MudAlert>
         }
 
         <MudDivider />
@@ -285,6 +363,17 @@
 </div>
 
 @code {
+    private const string EventsCategory = "Events";
+    private const string OrganizationsCategory = "Organizations";
+    private const string GroupsCategory = "Groups";
+    private const string EventsUserSubmissionEnabledKey = "events.user_submission_enabled";
+    private const string EventsOrganizationSubmissionEnabledKey = "events.organization_submission_enabled";
+    private const string EventsGroupSubmissionEnabledKey = "events.group_submission_enabled";
+    private const string EventsRequireApprovalKey = "events.require_approval";
+    private const string EventsCardClickOpensDetailPageKey = "events.card_click_opens_detail_page";
+    private const string OrganizationsVerificationRequiredKey = "organizations.verification_required";
+    private const string OrganizationsSelfRegistrationEnabledKey = "organizations.self_registration_enabled";
+    private const string GroupsSelfRegistrationEnabledKey = "groups.self_registration_enabled";
     private const string AtprotoEventsEnabledKey = "federation.atproto_events_enabled";
     private const string AtprotoValidationProfileKey = "federation.atproto_event_validation_profile";
     private const string AtprotoEventsBackfillEnabledKey = "federation.atproto_events_backfill_enabled";
@@ -294,12 +383,37 @@
     private const string DowntimeOnlyBackfillMode = "downtime_only";
     private const string FullBackfillMode = "full";
 
+    private static readonly string[] EventsPolicyKeys =
+    [
+        EventsUserSubmissionEnabledKey,
+        EventsOrganizationSubmissionEnabledKey,
+        EventsGroupSubmissionEnabledKey,
+        EventsRequireApprovalKey,
+        EventsCardClickOpensDetailPageKey
+    ];
+
+    private static readonly string[] OrganizationsPolicyKeys =
+    [
+        OrganizationsVerificationRequiredKey,
+        OrganizationsSelfRegistrationEnabledKey
+    ];
+
+    private static readonly string[] GroupsPolicyKeys = [GroupsSelfRegistrationEnabledKey];
+
+    private readonly Dictionary<string, EffectiveSettingDto> _policySettings = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, bool> _confirmedPolicyValues = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, bool> _policyDisplayValues = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _pendingPolicyKeys = new(StringComparer.Ordinal);
     private IReadOnlyList<AtprotoSettingView>? _atprotoSettings;
     private IReadOnlyDictionary<string, HalLink> _atprotoLinks = new Dictionary<string, HalLink>();
     private bool _atprotoLoading = true;
     private bool _atprotoSaving;
     private bool _atprotoSaveSucceeded;
     private string? _atprotoMessage;
+    private bool _canManageTenantSettings;
+    private bool _policySaveSucceeded;
+    private string? _policyMessage;
+    private bool _disposed;
 
     [Parameter, EditorRequired]
     public TenantPolicySettingsDto Model { get; set; } = null!;
@@ -309,6 +423,9 @@
 
     [Parameter]
     public bool UseInstanceScope { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> PendingChanged { get; set; }
 
     private bool AtprotoEventsEnabled => ReadBool(FindSetting(AtprotoEventsEnabledKey)?.Value);
 
@@ -325,10 +442,398 @@
             ? FullBackfillMode
             : DowntimeOnlyBackfillMode;
 
-    protected override async Task OnInitializedAsync() => await LoadAtprotoSettingsAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(LoadPolicySettingsAsync(), LoadAtprotoSettingsAsync());
+    }
+
+    private Task SetAllowUserSubmittedEventsAsync(bool? enabled) =>
+        SavePolicySettingAsync(EventsUserSubmissionEnabledKey, enabled);
+
+    private Task SetAllowOrganizationSubmittedEventsAsync(bool? enabled) =>
+        SavePolicySettingAsync(EventsOrganizationSubmissionEnabledKey, enabled);
+
+    private Task SetAllowGroupSubmittedEventsAsync(bool? enabled) =>
+        SavePolicySettingAsync(EventsGroupSubmissionEnabledKey, enabled);
+
+    private Task SetRequireEventApprovalAsync(bool? enabled) =>
+        SavePolicySettingAsync(EventsRequireApprovalKey, enabled);
+
+    private Task SetEventCardClickOpensDetailPageAsync(bool? enabled) =>
+        SavePolicySettingAsync(EventsCardClickOpensDetailPageKey, enabled);
+
+    private Task SetRequireOrganizationVerificationAsync(bool? enabled) =>
+        SavePolicySettingAsync(OrganizationsVerificationRequiredKey, enabled);
+
+    private Task SetAllowOrganizationSelfRegistrationAsync(bool? enabled) =>
+        SavePolicySettingAsync(OrganizationsSelfRegistrationEnabledKey, enabled);
+
+    private Task SetAllowGroupSelfRegistrationAsync(bool? enabled) =>
+        SavePolicySettingAsync(GroupsSelfRegistrationEnabledKey, enabled);
+
+    private async Task LoadPolicySettingsAsync()
+    {
+        SeedConfirmedPolicyValues();
+
+        try
+        {
+            TenantOnboardingStatusDto? status = await TenantOnboardingService.GetStatusAsync();
+            if (_disposed)
+            {
+                return;
+            }
+
+            _canManageTenantSettings = status?.HasHalLink("manage-tenant-settings") == true;
+            if (!_canManageTenantSettings)
+            {
+                return;
+            }
+
+            await LoadPolicyCategoryAsync(EventsCategory);
+            await LoadPolicyCategoryAsync(OrganizationsCategory);
+            await LoadPolicyCategoryAsync(GroupsCategory);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Failed to load tenant policy setting metadata.");
+            if (!_disposed)
+            {
+                _canManageTenantSettings = false;
+                _policySettings.Clear();
+            }
+        }
+    }
+
+    private async Task SavePolicySettingAsync(string key, bool? enabled)
+    {
+        if (_disposed
+            || enabled is not bool requestedValue
+            || !CanEditPolicy(key)
+            || !_pendingPolicyKeys.Add(key))
+        {
+            return;
+        }
+
+        _policyDisplayValues[key] = requestedValue;
+        _policyMessage = null;
+        try
+        {
+            if (_pendingPolicyKeys.Count == 1)
+            {
+                await PendingChanged.InvokeAsync(true);
+            }
+
+            BaseCommandResponseOfGuid response = await TenantOnboardingService.UpdateTenantSettingAsync(
+                key,
+                requestedValue ? "true" : "false");
+            if (response.Success == true)
+            {
+                ApplyPolicyValue(key, requestedValue);
+                if (!_disposed)
+                {
+                    _confirmedPolicyValues[key] = requestedValue;
+                    _policyDisplayValues[key] = requestedValue;
+                    _policySaveSucceeded = true;
+                    _policyMessage = $"{PolicyLabel(key)} saved.";
+                    await Announcer.AnnouncePoliteAsync(_policyMessage);
+                }
+
+                return;
+            }
+
+            await RecoverPolicySettingAsync(key);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Failed to update tenant policy setting {SettingKey}.", key);
+            await RecoverPolicySettingAsync(key);
+        }
+        finally
+        {
+            _pendingPolicyKeys.Remove(key);
+            if (_pendingPolicyKeys.Count == 0)
+            {
+                await PendingChanged.InvokeAsync(false);
+            }
+        }
+    }
+
+    private async Task RecoverPolicySettingAsync(string key)
+    {
+        string? category = PolicyCategory(key);
+        (EffectiveSettingDto Setting, bool Value)? recovery = category is null
+            ? null
+            : await LoadRecoveryValueAsync(category, key);
+        if (recovery is { } authoritative)
+        {
+            ApplyPolicyValue(key, authoritative.Value);
+            if (!_disposed)
+            {
+                _policySettings[key] = authoritative.Setting;
+                _confirmedPolicyValues[key] = authoritative.Value;
+                _policyDisplayValues[key] = authoritative.Value;
+            }
+        }
+        else if (_confirmedPolicyValues.TryGetValue(key, out bool confirmedValue))
+        {
+            ApplyPolicyValue(key, confirmedValue);
+            if (!_disposed)
+            {
+                _policyDisplayValues[key] = confirmedValue;
+            }
+        }
+
+        if (!_disposed)
+        {
+            _policySaveSucceeded = false;
+            _policyMessage = $"{PolicyLabel(key)} could not be saved. The latest setting value was restored.";
+            await Announcer.AnnounceAssertiveAsync(_policyMessage);
+        }
+    }
+
+    private async Task<(EffectiveSettingDto Setting, bool Value)?> LoadRecoveryValueAsync(
+        string category,
+        string key)
+    {
+        try
+        {
+            SettingGroupResponseDto? response = await TenantOnboardingService.GetTenantSettingsAsync(category);
+            if (response is null || !string.Equals(response.Category, category, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            EffectiveSettingDto[] matches = response.Settings
+                .Where(setting => string.Equals(setting.Key, key, StringComparison.Ordinal))
+                .Take(2)
+                .ToArray();
+            return matches.Length == 1 && TryReadBoolean(matches[0].Value, out bool value)
+                ? (matches[0], value)
+                : null;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Failed to reload tenant policy category {Category}.", category);
+            return null;
+        }
+    }
+
+    private async Task LoadPolicyCategoryAsync(string category, string? recoveryKey = null)
+    {
+        try
+        {
+            SettingGroupResponseDto? response = await TenantOnboardingService.GetTenantSettingsAsync(category);
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (response is null || !string.Equals(response.Category, category, StringComparison.OrdinalIgnoreCase))
+            {
+                InvalidatePolicyCategory(category, recoveryKey);
+                return;
+            }
+
+            foreach (string key in PolicyKeysForCategory(category))
+            {
+                if (_pendingPolicyKeys.Contains(key) && !string.Equals(key, recoveryKey, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                EffectiveSettingDto[] matches = response.Settings
+                    .Where(setting => string.Equals(setting.Key, key, StringComparison.Ordinal))
+                    .Take(2)
+                    .ToArray();
+                if (matches.Length != 1 || !TryReadBoolean(matches[0].Value, out bool value))
+                {
+                    _policySettings.Remove(key);
+                    RestoreConfirmedValue(key, recoveryKey);
+                    continue;
+                }
+
+                _policySettings[key] = matches[0];
+                _confirmedPolicyValues[key] = value;
+                ApplyPolicyValue(key, value);
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Failed to reload tenant policy category {Category}.", category);
+            if (!_disposed)
+            {
+                InvalidatePolicyCategory(category, recoveryKey);
+            }
+        }
+    }
+
+    private void InvalidatePolicyCategory(string category, string? recoveryKey)
+    {
+        foreach (string key in PolicyKeysForCategory(category))
+        {
+            if (_pendingPolicyKeys.Contains(key) && !string.Equals(key, recoveryKey, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            _policySettings.Remove(key);
+            RestoreConfirmedValue(key, recoveryKey);
+        }
+    }
+
+    private void RestoreConfirmedValue(string key, string? recoveryKey)
+    {
+        if (string.Equals(key, recoveryKey, StringComparison.Ordinal)
+            && _confirmedPolicyValues.TryGetValue(key, out bool confirmedValue))
+        {
+            ApplyPolicyValue(key, confirmedValue);
+        }
+    }
+
+    private void SeedConfirmedPolicyValues()
+    {
+        SeedConfirmedPolicyValue(EventsUserSubmissionEnabledKey, Model.AllowUserSubmittedEvents);
+        SeedConfirmedPolicyValue(EventsOrganizationSubmissionEnabledKey, Model.AllowOrganizationSubmittedEvents);
+        SeedConfirmedPolicyValue(EventsGroupSubmissionEnabledKey, Model.AllowGroupSubmittedEvents);
+        SeedConfirmedPolicyValue(EventsRequireApprovalKey, Model.RequireEventApproval);
+        SeedConfirmedPolicyValue(EventsCardClickOpensDetailPageKey, Model.EventCardClickOpensDetailPage);
+        SeedConfirmedPolicyValue(OrganizationsVerificationRequiredKey, Model.RequireOrganizationVerification);
+        SeedConfirmedPolicyValue(OrganizationsSelfRegistrationEnabledKey, Model.AllowOrganizationSelfRegistration);
+        SeedConfirmedPolicyValue(GroupsSelfRegistrationEnabledKey, Model.AllowGroupSelfRegistration);
+    }
+
+    private void SeedConfirmedPolicyValue(string key, bool? value)
+    {
+        if (value is bool confirmedValue)
+        {
+            _confirmedPolicyValues[key] = confirmedValue;
+            _policyDisplayValues[key] = confirmedValue;
+        }
+    }
+
+    private bool? PolicyDisplayValue(string key) =>
+        _policyDisplayValues.TryGetValue(key, out bool displayValue)
+            ? displayValue
+            : ReadModelPolicyValue(key);
+
+    private bool? ReadModelPolicyValue(string key) => key switch
+    {
+        EventsUserSubmissionEnabledKey => Model.AllowUserSubmittedEvents,
+        EventsOrganizationSubmissionEnabledKey => Model.AllowOrganizationSubmittedEvents,
+        EventsGroupSubmissionEnabledKey => Model.AllowGroupSubmittedEvents,
+        EventsRequireApprovalKey => Model.RequireEventApproval,
+        EventsCardClickOpensDetailPageKey => Model.EventCardClickOpensDetailPage,
+        OrganizationsVerificationRequiredKey => Model.RequireOrganizationVerification,
+        OrganizationsSelfRegistrationEnabledKey => Model.AllowOrganizationSelfRegistration,
+        GroupsSelfRegistrationEnabledKey => Model.AllowGroupSelfRegistration,
+        _ => null
+    };
+
+    private bool CanEditPolicy(string key) =>
+        _canManageTenantSettings
+        && !_pendingPolicyKeys.Contains(key)
+        && _policySettings.TryGetValue(key, out EffectiveSettingDto? setting)
+        && setting.CanEdit == true;
+
+    private bool IsPolicyDisabled(string key) => !CanEditPolicy(key);
+
+    private string PolicyDisabledReason(string key)
+    {
+        if (_pendingPolicyKeys.Contains(key))
+        {
+            return $"{PolicyLabel(key)} is saving.";
+        }
+
+        if (!_canManageTenantSettings)
+        {
+            return "The server has not granted tenant settings management access.";
+        }
+
+        return _policySettings.TryGetValue(key, out EffectiveSettingDto? setting)
+            ? setting.Reason ?? "This setting is not editable."
+            : "Setting metadata is unavailable.";
+    }
+
+    private void ApplyPolicyValue(string key, bool value)
+    {
+        switch (key)
+        {
+            case EventsUserSubmissionEnabledKey:
+                Model.AllowUserSubmittedEvents = value;
+                break;
+            case EventsOrganizationSubmissionEnabledKey:
+                Model.AllowOrganizationSubmittedEvents = value;
+                break;
+            case EventsGroupSubmissionEnabledKey:
+                Model.AllowGroupSubmittedEvents = value;
+                break;
+            case EventsRequireApprovalKey:
+                Model.RequireEventApproval = value;
+                break;
+            case EventsCardClickOpensDetailPageKey:
+                Model.EventCardClickOpensDetailPage = value;
+                break;
+            case OrganizationsVerificationRequiredKey:
+                Model.RequireOrganizationVerification = value;
+                break;
+            case OrganizationsSelfRegistrationEnabledKey:
+                Model.AllowOrganizationSelfRegistration = value;
+                break;
+            case GroupsSelfRegistrationEnabledKey:
+                Model.AllowGroupSelfRegistration = value;
+                break;
+        }
+    }
+
+    private static IReadOnlyList<string> PolicyKeysForCategory(string category) => category switch
+    {
+        EventsCategory => EventsPolicyKeys,
+        OrganizationsCategory => OrganizationsPolicyKeys,
+        GroupsCategory => GroupsPolicyKeys,
+        _ => []
+    };
+
+    private static string? PolicyCategory(string key) => key switch
+    {
+        EventsUserSubmissionEnabledKey
+            or EventsOrganizationSubmissionEnabledKey
+            or EventsGroupSubmissionEnabledKey
+            or EventsRequireApprovalKey
+            or EventsCardClickOpensDetailPageKey => EventsCategory,
+        OrganizationsVerificationRequiredKey
+            or OrganizationsSelfRegistrationEnabledKey => OrganizationsCategory,
+        GroupsSelfRegistrationEnabledKey => GroupsCategory,
+        _ => null
+    };
+
+    private static string PolicyLabel(string key) => key switch
+    {
+        EventsUserSubmissionEnabledKey => "Allow users to submit events",
+        EventsOrganizationSubmissionEnabledKey => "Allow organizations to submit events",
+        EventsGroupSubmissionEnabledKey => "Allow groups to submit events",
+        EventsRequireApprovalKey => "Require approval before publication",
+        EventsCardClickOpensDetailPageKey => "Event card click opens detail page",
+        OrganizationsVerificationRequiredKey => "Require organization verification",
+        OrganizationsSelfRegistrationEnabledKey => "Allow organization self-registration",
+        GroupsSelfRegistrationEnabledKey => "Allow group self-registration",
+        _ => "Policy setting"
+    };
+
+    private static bool TryReadBoolean(string? value, out bool parsed) =>
+        bool.TryParse(value?.Trim().Trim('"'), out parsed);
+
+    public void Dispose()
+    {
+        _disposed = true;
+    }
 
     private async Task LoadAtprotoSettingsAsync()
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         _atprotoLoading = true;
         _atprotoMessage = null;
         try
@@ -338,20 +843,29 @@
         catch (ApiException exception) when (exception.StatusCode == (int)System.Net.HttpStatusCode.Unauthorized)
         {
             Logger.LogWarning(exception, "Application session expired while loading tenant AT Protocol event settings.");
-            _atprotoSettings = null;
-            _atprotoLinks = new Dictionary<string, HalLink>();
-            _atprotoMessage = "Your application session expired. Sign in again to manage federation settings.";
+            if (!_disposed)
+            {
+                _atprotoSettings = null;
+                _atprotoLinks = new Dictionary<string, HalLink>();
+                _atprotoMessage = "Your application session expired. Sign in again to manage federation settings.";
+            }
         }
         catch (Exception exception)
         {
             Logger.LogWarning(exception, "Failed to load tenant AT Protocol event settings.");
-            _atprotoSettings = null;
-            _atprotoLinks = new Dictionary<string, HalLink>();
-            _atprotoMessage = "AT Protocol event settings are temporarily unavailable.";
+            if (!_disposed)
+            {
+                _atprotoSettings = null;
+                _atprotoLinks = new Dictionary<string, HalLink>();
+                _atprotoMessage = "AT Protocol event settings are temporarily unavailable.";
+            }
         }
         finally
         {
-            _atprotoLoading = false;
+            if (!_disposed)
+            {
+                _atprotoLoading = false;
+            }
         }
     }
 
@@ -373,7 +887,7 @@
 
     private async Task SaveAtprotoSettingAsync(string key, string value)
     {
-        if (_atprotoSaving || !CanEdit(key))
+        if (_disposed || _atprotoSaving || !CanEdit(key))
         {
             return;
         }
@@ -385,10 +899,15 @@
             BaseCommandResponseOfGuid response = UseInstanceScope
                 ? await AtprotoFederationSettingsService.UpdateInstanceAsync(key, value)
                 : await AtprotoFederationSettingsService.UpdateTenantAsync(key, value);
+            if (_disposed)
+            {
+                return;
+            }
+
             _atprotoSaveSucceeded = response.Success == true;
             _atprotoMessage = _atprotoSaveSucceeded
                 ? "AT Protocol event settings saved."
-                : response.Message ?? "AT Protocol event settings could not be saved.";
+                : "AT Protocol event settings could not be saved.";
             if (_atprotoSaveSucceeded)
             {
                 await RefreshAtprotoSettingsAsync();
@@ -397,25 +916,34 @@
         catch (ApiException exception) when (exception.StatusCode == (int)System.Net.HttpStatusCode.Unauthorized)
         {
             Logger.LogWarning(exception, "Application session expired while updating tenant AT Protocol event setting {SettingKey}.", key);
-            _atprotoSaveSucceeded = false;
-            _atprotoMessage = "Your application session expired. Sign in again to manage federation settings.";
+            if (!_disposed)
+            {
+                _atprotoSaveSucceeded = false;
+                _atprotoMessage = "Your application session expired. Sign in again to manage federation settings.";
+            }
         }
         catch (Exception exception)
         {
             Logger.LogWarning(exception, "Failed to update tenant AT Protocol event setting {SettingKey}.", key);
-            _atprotoSaveSucceeded = false;
-            _atprotoMessage = "AT Protocol event settings could not be saved.";
+            if (!_disposed)
+            {
+                _atprotoSaveSucceeded = false;
+                _atprotoMessage = "AT Protocol event settings could not be saved.";
+            }
         }
         finally
         {
-            _atprotoSaving = false;
+            if (!_disposed)
+            {
+                _atprotoSaving = false;
+            }
         }
     }
 
     private async Task SetAtprotoLockAsync(string key, bool shouldLock)
     {
         var relation = shouldLock ? LockRelation(key) : UnlockRelation(key);
-        if (_atprotoSaving || !UseInstanceScope || !HasAtprotoAffordance(relation))
+        if (_disposed || _atprotoSaving || !UseInstanceScope || !HasAtprotoAffordance(relation))
         {
             return;
         }
@@ -425,10 +953,15 @@
         try
         {
             var response = await AtprotoFederationSettingsService.SetInstanceLockAsync(key, shouldLock);
+            if (_disposed)
+            {
+                return;
+            }
+
             _atprotoSaveSucceeded = response.Success == true;
             _atprotoMessage = _atprotoSaveSucceeded
                 ? shouldLock ? "Tenant override locked." : "Tenant override unlocked."
-                : response.Message ?? "The tenant lock could not be changed.";
+                : "The tenant lock could not be changed.";
             if (_atprotoSaveSucceeded)
             {
                 await RefreshAtprotoSettingsAsync();
@@ -437,18 +970,27 @@
         catch (ApiException exception) when (exception.StatusCode == (int)System.Net.HttpStatusCode.Unauthorized)
         {
             Logger.LogWarning(exception, "Application session expired while changing the instance lock for AT Protocol setting {SettingKey}.", key);
-            _atprotoSaveSucceeded = false;
-            _atprotoMessage = "Your application session expired. Sign in again to manage federation settings.";
+            if (!_disposed)
+            {
+                _atprotoSaveSucceeded = false;
+                _atprotoMessage = "Your application session expired. Sign in again to manage federation settings.";
+            }
         }
         catch (Exception exception)
         {
             Logger.LogWarning(exception, "Failed to change the instance lock for AT Protocol setting {SettingKey}.", key);
-            _atprotoSaveSucceeded = false;
-            _atprotoMessage = "The tenant lock could not be changed.";
+            if (!_disposed)
+            {
+                _atprotoSaveSucceeded = false;
+                _atprotoMessage = "The tenant lock could not be changed.";
+            }
         }
         finally
         {
-            _atprotoSaving = false;
+            if (!_disposed)
+            {
+                _atprotoSaving = false;
+            }
         }
     }
 
@@ -457,6 +999,11 @@
         if (UseInstanceScope)
         {
             var resource = await AtprotoFederationSettingsService.GetInstanceAsync();
+            if (_disposed)
+            {
+                return;
+            }
+
             _atprotoSettings = resource.Settings.Select(setting => new AtprotoSettingView(
                 setting.Key,
                 setting.Value,
@@ -473,6 +1020,11 @@
         }
 
         var tenantSettings = await AtprotoFederationSettingsService.GetTenantAsync();
+        if (_disposed)
+        {
+            return;
+        }
+
         _atprotoSettings = tenantSettings.Settings.Select(setting => new AtprotoSettingView(
             setting.Key,
             setting.Value,

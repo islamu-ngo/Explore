@@ -1,8 +1,13 @@
 // ABOUTME: Component tests for tenant AT Protocol event-federation governance controls.
 // ABOUTME: Verifies server-authoritative editability and exact tenant setting writes.
 
+using System.Text.Json;
+using AngleSharp.Dom;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Federation;
 using Explore.Blazor.Client.Pages.Admin.Tenant.Components;
+using Explore.Blazor.Client.Services;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
@@ -12,13 +17,335 @@ public sealed class TenantPoliciesSectionTests : IDisposable
     private readonly BlazorTestContext _ctx = new();
     private readonly IAtprotoFederationSettingsService _settingsService =
         Substitute.For<IAtprotoFederationSettingsService>();
+    private readonly ITenantOnboardingService _tenantOnboardingService =
+        Substitute.For<ITenantOnboardingService>();
+    private readonly IAccessibilityAnnouncerService _announcer =
+        Substitute.For<IAccessibilityAnnouncerService>();
 
     public TenantPoliciesSectionTests()
     {
         _ctx.Services.AddSingleton(_settingsService);
+        _ctx.Services.RemoveAll<IAccessibilityAnnouncerService>();
+        _ctx.Services.AddSingleton(_tenantOnboardingService);
+        _ctx.Services.AddSingleton(_announcer);
+        _announcer.AnnouncePoliteAsync(Arg.Any<string>()).Returns(Task.CompletedTask);
+        _announcer.AnnounceAssertiveAsync(Arg.Any<string>()).Returns(Task.CompletedTask);
+        _tenantOnboardingService.GetStatusAsync().Returns(CreateTenantStatus());
+        _tenantOnboardingService.GetTenantSettingsAsync(
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => CreatePolicyCategory(call.ArgAt<string>(0)));
+        _tenantOnboardingService.UpdateTenantSettingAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true });
     }
 
     public void Dispose() => _ctx.Dispose();
+
+    [Test]
+    public async Task PolicySwitches_WhenEditable_WriteAllEightExactKeysOnce()
+    {
+        var cut = RenderComponent();
+        cut.WaitForState(() => PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled") == false);
+
+        var mappings = new[]
+        {
+            ("Allow users to submit events", "events.user_submission_enabled"),
+            ("Allow organizations to submit events", "events.organization_submission_enabled"),
+            ("Allow groups to submit events", "events.group_submission_enabled"),
+            ("Require approval before publication", "events.require_approval"),
+            ("Event card click opens detail page", "events.card_click_opens_detail_page"),
+            ("Require organization verification", "organizations.verification_required"),
+            ("Allow organization self-registration", "organizations.self_registration_enabled"),
+            ("Allow group self-registration", "groups.self_registration_enabled")
+        };
+
+        foreach ((string label, string key) in mappings)
+        {
+            PolicyInput(cut, label).Change(true);
+            await _tenantOnboardingService.Received(1).UpdateTenantSettingAsync(
+                key,
+                "true",
+                Arg.Any<CancellationToken>());
+        }
+
+        await _tenantOnboardingService.Received(8).UpdateTenantSettingAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task PolicySwitch_WhenPending_DisablesOnlyActiveKeyAndSuppressesRapidRepeat()
+    {
+        var pending = new TaskCompletionSource<BaseCommandResponseOfGuid>();
+        var pendingStates = new List<bool>();
+        _tenantOnboardingService.UpdateTenantSettingAsync(
+                "events.user_submission_enabled",
+                "true",
+                Arg.Any<CancellationToken>())
+            .Returns(pending.Task);
+        var model = new TenantPolicySettingsDto();
+        var cut = RenderComponent(model: model, pendingChanged: pendingStates.Add);
+        cut.WaitForState(() => PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled") == false);
+
+        Task firstChange = cut.InvokeAsync(() => PolicyInput(cut, "Allow users to submit events").Change(true));
+        cut.WaitForState(() => PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled"));
+
+        await Assert.That(model.AllowUserSubmittedEvents).IsFalse();
+        await Assert.That(pendingStates).IsEquivalentTo([true]);
+        await Assert.That(PolicyInput(cut, "Allow organizations to submit events").HasAttribute("disabled")).IsFalse();
+        var activeSwitch = cut.FindComponents<MudSwitch<bool?>>().Single(component =>
+            component.Markup.Contains("Allow users to submit events", StringComparison.Ordinal));
+        await cut.InvokeAsync(() => activeSwitch.Instance.ValueChanged.InvokeAsync(false));
+        await _tenantOnboardingService.Received(1).UpdateTenantSettingAsync(
+            "events.user_submission_enabled",
+            "true",
+            Arg.Any<CancellationToken>());
+
+        pending.SetResult(new BaseCommandResponseOfGuid { Success = true });
+        await firstChange;
+        cut.WaitForState(() => PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled") == false);
+        await Assert.That(model.AllowUserSubmittedEvents).IsTrue();
+        await Assert.That(pendingStates).IsEquivalentTo([true, false]);
+    }
+
+    [Test]
+    public async Task PolicySwitch_WhenSaveSucceeds_ShowsAndAnnouncesConfirmedStatus()
+    {
+        var model = new TenantPolicySettingsDto();
+        var cut = RenderComponent(model: model);
+        cut.WaitForState(() => PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled") == false);
+
+        PolicyInput(cut, "Allow users to submit events").Change(true);
+        cut.WaitForState(() => cut.FindAll("[role='status']").Any(element =>
+            element.TextContent.Contains("Allow users to submit events saved.", StringComparison.Ordinal)));
+
+        await Assert.That(model.AllowUserSubmittedEvents).IsTrue();
+        await _announcer.Received(1).AnnouncePoliteAsync("Allow users to submit events saved.");
+        await _announcer.DidNotReceive().AnnounceAssertiveAsync(Arg.Any<string>());
+    }
+
+    [Test]
+    public async Task PolicySwitch_WhenApiRejects_ReloadsCategoryAndRestoresConfirmedValue()
+    {
+        SettingGroupResponseDto initial = CreatePolicyCategory("Events");
+        SettingGroupResponseDto reloaded = CreatePolicyCategory("Events");
+        _tenantOnboardingService.GetTenantSettingsAsync("Events", Arg.Any<CancellationToken>())
+            .Returns(initial, reloaded);
+        _tenantOnboardingService.UpdateTenantSettingAsync(
+                "events.user_submission_enabled",
+                "true",
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = false, Message = "Saved" });
+        var model = new TenantPolicySettingsDto();
+        var pendingTransitions = new List<(bool Pending, bool? ModelValue)>();
+        var cut = RenderComponent(
+            model: model,
+            pendingChanged: pending => pendingTransitions.Add((pending, model.AllowUserSubmittedEvents)));
+        cut.WaitForState(() => PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled") == false);
+
+        PolicyInput(cut, "Allow users to submit events").Change(true);
+        cut.WaitForState(() => cut.FindAll("[role='alert']").Any(element =>
+            element.TextContent.Contains("could not be saved", StringComparison.OrdinalIgnoreCase)));
+
+        await Assert.That(model.AllowUserSubmittedEvents).IsFalse();
+        (bool Pending, bool? ModelValue)[] expectedTransitions = [(true, false), (false, false)];
+        await Assert.That(pendingTransitions).IsEquivalentTo(expectedTransitions);
+        await _tenantOnboardingService.Received(2).GetTenantSettingsAsync("Events", Arg.Any<CancellationToken>());
+        await _announcer.Received(1).AnnounceAssertiveAsync(
+            "Allow users to submit events could not be saved. The latest setting value was restored.");
+        await _announcer.DidNotReceive().AnnouncePoliteAsync(Arg.Any<string>());
+    }
+
+    [Test]
+    public async Task PolicySwitch_WhenTransportFails_ReloadsCategoryAndRestoresConfirmedValue()
+    {
+        _tenantOnboardingService.GetTenantSettingsAsync("Events", Arg.Any<CancellationToken>())
+            .Returns(CreatePolicyCategory("Events"), (SettingGroupResponseDto?)null);
+        _tenantOnboardingService.UpdateTenantSettingAsync(
+                "events.user_submission_enabled",
+                "true",
+                Arg.Any<CancellationToken>())
+            .Returns<Task<BaseCommandResponseOfGuid>>(_ => throw new HttpRequestException("credential canary"));
+        var model = new TenantPolicySettingsDto();
+        var cut = RenderComponent(model: model);
+        cut.WaitForState(() => PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled") == false);
+
+        PolicyInput(cut, "Allow users to submit events").Change(true);
+        cut.WaitForState(() => cut.FindAll("[role='alert']").Any());
+
+        await Assert.That(model.AllowUserSubmittedEvents).IsFalse();
+        await Assert.That(cut.Markup).DoesNotContain("credential canary", StringComparison.Ordinal);
+        await _tenantOnboardingService.Received(2).GetTenantSettingsAsync("Events", Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task PolicySwitch_WhenSiblingReloadIsStale_DoesNotOverwritePendingKey()
+    {
+        _tenantOnboardingService.GetTenantSettingsAsync("Events", Arg.Any<CancellationToken>())
+            .Returns(CreatePolicyCategory("Events"), CreatePolicyCategory("Events"));
+        var organizationPending = new TaskCompletionSource<BaseCommandResponseOfGuid>();
+        _tenantOnboardingService.UpdateTenantSettingAsync(
+                "events.organization_submission_enabled",
+                "true",
+                Arg.Any<CancellationToken>())
+            .Returns(organizationPending.Task);
+        _tenantOnboardingService.UpdateTenantSettingAsync(
+                "events.user_submission_enabled",
+                "true",
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = false });
+        var pendingCleared = new TaskCompletionSource();
+        var model = new TenantPolicySettingsDto();
+        var cut = RenderComponent(
+            model: model,
+            pendingChanged: pending =>
+            {
+                if (!pending)
+                {
+                    pendingCleared.TrySetResult();
+                }
+            });
+        cut.WaitForState(() => PolicyInput(cut, "Allow organizations to submit events").HasAttribute("disabled") == false);
+
+        _ = cut.InvokeAsync(() =>
+            PolicyInput(cut, "Allow organizations to submit events").Change(true));
+        cut.WaitForState(() => PolicyInput(cut, "Allow organizations to submit events").HasAttribute("disabled"));
+        await Assert.That(model.AllowOrganizationSubmittedEvents).IsFalse();
+        PolicyInput(cut, "Allow users to submit events").Change(true);
+
+        await Assert.That(model.AllowOrganizationSubmittedEvents).IsFalse();
+        organizationPending.SetResult(new BaseCommandResponseOfGuid { Success = true });
+        await pendingCleared.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await Assert.That(model.AllowOrganizationSubmittedEvents).IsTrue();
+    }
+
+    [Test]
+    public async Task PolicySwitch_WhenDisposedWhilePending_SynchronizesParentWithoutStaleAnnouncement()
+    {
+        var pending = new TaskCompletionSource<BaseCommandResponseOfGuid>();
+        var pendingStates = new List<bool>();
+        var pendingCleared = new TaskCompletionSource();
+        _tenantOnboardingService.UpdateTenantSettingAsync(
+                "events.user_submission_enabled",
+                "true",
+                Arg.Any<CancellationToken>())
+            .Returns(pending.Task);
+        var model = new TenantPolicySettingsDto();
+        var cut = RenderComponent(
+            model: model,
+            pendingChanged: state =>
+            {
+                pendingStates.Add(state);
+                if (!state)
+                {
+                    pendingCleared.TrySetResult();
+                }
+            });
+        cut.WaitForState(() => PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled") == false);
+
+        _ = cut.InvokeAsync(() => PolicyInput(cut, "Allow users to submit events").Change(true));
+        cut.WaitForState(() => pendingStates.Contains(true));
+        cut.Instance.Dispose();
+        cut.Dispose();
+        pending.SetResult(new BaseCommandResponseOfGuid { Success = true });
+        await pendingCleared.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        await Assert.That(model.AllowUserSubmittedEvents).IsTrue();
+        await Assert.That(pendingStates).IsEquivalentTo([true, false]);
+        await _announcer.DidNotReceive().AnnouncePoliteAsync(Arg.Any<string>());
+        await _announcer.DidNotReceive().AnnounceAssertiveAsync(Arg.Any<string>());
+    }
+
+    [Test]
+    public async Task PolicySwitch_WithoutManageTenantSettingsAffordance_IsDisabled()
+    {
+        _tenantOnboardingService.GetStatusAsync().Returns(CreateTenantStatus(includeManageAffordance: false));
+
+        var cut = RenderComponent();
+        cut.WaitForState(() => cut.Markup.Contains("Allow users to submit events", StringComparison.Ordinal));
+
+        await Assert.That(PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled")).IsTrue();
+        await Assert.That(cut.Markup).Contains("The server has not granted tenant settings management access.");
+        await _tenantOnboardingService.DidNotReceive().UpdateTenantSettingAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task PolicySwitch_WhenMetadataIsLocked_IsDisabledAndShowsReason()
+    {
+        const string reason = "Locked by instance policy.";
+        SettingGroupResponseDto events = CreatePolicyCategory("Events");
+        EffectiveSettingDto setting = events.Settings.Single(item => item.Key == "events.user_submission_enabled");
+        setting.CanEdit = false;
+        setting.Reason = reason;
+        _tenantOnboardingService.GetTenantSettingsAsync("Events", Arg.Any<CancellationToken>()).Returns(events);
+
+        var cut = RenderComponent();
+        cut.WaitForState(() => cut.Markup.Contains(reason, StringComparison.Ordinal));
+
+        await Assert.That(PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled")).IsTrue();
+        await Assert.That(cut.FindAll("[role='status']").Any(element => element.TextContent.Contains(reason, StringComparison.Ordinal))).IsTrue();
+    }
+
+    [Test]
+    public async Task PolicySwitch_WhenCategoryMetadataIsMissing_FailsClosed()
+    {
+        _tenantOnboardingService.GetTenantSettingsAsync("Events", Arg.Any<CancellationToken>())
+            .Returns(new SettingGroupResponseDto { Category = "Organizations" });
+
+        var cut = RenderComponent();
+        cut.WaitForState(() => cut.Markup.Contains("Allow users to submit events", StringComparison.Ordinal));
+
+        await Assert.That(PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled")).IsTrue();
+    }
+
+    [Test]
+    public async Task PolicySwitch_WhenKeyMetadataIsMissing_FailsClosed()
+    {
+        SettingGroupResponseDto events = CreatePolicyCategory("Events");
+        events.Settings = events.Settings
+            .Where(setting => setting.Key != "events.user_submission_enabled")
+            .ToList();
+        _tenantOnboardingService.GetTenantSettingsAsync("Events", Arg.Any<CancellationToken>()).Returns(events);
+
+        var cut = RenderComponent();
+        cut.WaitForState(() => cut.Markup.Contains("Allow users to submit events", StringComparison.Ordinal));
+
+        await Assert.That(PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled")).IsTrue();
+    }
+
+    [Test]
+    public async Task PolicySwitch_WhenCanEditMetadataIsMissing_FailsClosed()
+    {
+        SettingGroupResponseDto events = CreatePolicyCategory("Events");
+        events.Settings.Single(setting => setting.Key == "events.user_submission_enabled").CanEdit = null;
+        _tenantOnboardingService.GetTenantSettingsAsync("Events", Arg.Any<CancellationToken>()).Returns(events);
+
+        var cut = RenderComponent();
+        cut.WaitForState(() => cut.Markup.Contains("Allow users to submit events", StringComparison.Ordinal));
+
+        await Assert.That(PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled")).IsTrue();
+    }
+
+    [Test]
+    public async Task PolicySwitch_WhenBooleanMetadataIsMalformed_FailsClosed()
+    {
+        SettingGroupResponseDto events = CreatePolicyCategory("Events");
+        events.Settings.Single(setting => setting.Key == "events.user_submission_enabled").Value = "not-a-boolean";
+        _tenantOnboardingService.GetTenantSettingsAsync("Events", Arg.Any<CancellationToken>()).Returns(events);
+
+        var cut = RenderComponent();
+        cut.WaitForState(() => cut.Markup.Contains("Allow users to submit events", StringComparison.Ordinal));
+
+        await Assert.That(PolicyInput(cut, "Allow users to submit events").HasAttribute("disabled")).IsTrue();
+        await Assert.That(cut.Markup).Contains("Setting metadata is unavailable.");
+    }
 
     [Test]
     public async Task AtprotoEvents_WhenEditable_UpdatesCombinedCapabilitySetting()
@@ -296,10 +623,83 @@ public sealed class TenantPoliciesSectionTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    private IRenderedComponent<TenantPoliciesSection> RenderComponent(bool useInstanceScope = false) =>
+    private IRenderedComponent<TenantPoliciesSection> RenderComponent(
+        bool useInstanceScope = false,
+        TenantPolicySettingsDto? model = null,
+        Action<bool>? pendingChanged = null) =>
         _ctx.RenderMudComponent<TenantPoliciesSection>(parameters => parameters
-            .Add(component => component.Model, new TenantPolicySettingsDto())
-            .Add(component => component.UseInstanceScope, useInstanceScope));
+            .Add(component => component.Model, model ?? new TenantPolicySettingsDto())
+            .Add(component => component.UseInstanceScope, useInstanceScope)
+            .Add(component => component.PendingChanged,
+                EventCallback.Factory.Create(this, pendingChanged ?? (_ => { }))));
+
+    private static IElement PolicyInput(IRenderedComponent<TenantPoliciesSection> cut, string label)
+    {
+        var renderedLabel = cut.FindAll("label").Single(element =>
+            element.TextContent.Contains(label, StringComparison.OrdinalIgnoreCase));
+        return renderedLabel.QuerySelector("input")
+            ?? throw new InvalidOperationException($"Policy switch input '{label}' not found.");
+    }
+
+    private static TenantOnboardingStatusDto CreateTenantStatus(bool includeManageAffordance = true)
+    {
+        var status = new TenantOnboardingStatusDto
+        {
+            IsAuthenticated = true,
+            IsCurrentUserTenantAdministrator = true,
+            TenantId = Guid.NewGuid()
+        };
+        if (includeManageAffordance)
+        {
+            status.AdditionalProperties["_links"] = JsonSerializer.SerializeToElement(
+                new Dictionary<string, object>
+                {
+                    ["manage-tenant-settings"] = new { href = "/api/tenant-onboarding/policy-settings" }
+                });
+        }
+
+        return status;
+    }
+
+    private static SettingGroupResponseDto CreatePolicyCategory(string category) => category switch
+    {
+        "Events" => new SettingGroupResponseDto
+        {
+            Category = category,
+            Settings =
+            [
+                EditableBoolean("events.user_submission_enabled"),
+                EditableBoolean("events.organization_submission_enabled"),
+                EditableBoolean("events.group_submission_enabled"),
+                EditableBoolean("events.require_approval"),
+                EditableBoolean("events.card_click_opens_detail_page")
+            ]
+        },
+        "Organizations" => new SettingGroupResponseDto
+        {
+            Category = category,
+            Settings =
+            [
+                EditableBoolean("organizations.verification_required"),
+                EditableBoolean("organizations.self_registration_enabled")
+            ]
+        },
+        "Groups" => new SettingGroupResponseDto
+        {
+            Category = category,
+            Settings = [EditableBoolean("groups.self_registration_enabled")]
+        },
+        _ => new SettingGroupResponseDto { Category = category }
+    };
+
+    private static EffectiveSettingDto EditableBoolean(string key) => new()
+    {
+        Key = key,
+        Value = "false",
+        CanEdit = true,
+        Source = SettingSource.TenantOverride,
+        IsLocked = false
+    };
 
     private static SettingGroupResponseDto CreateSettings(
         bool eventsCanEdit,
