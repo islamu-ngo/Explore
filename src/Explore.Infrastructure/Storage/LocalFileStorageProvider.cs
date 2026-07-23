@@ -65,7 +65,7 @@ public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
             ?? throw new InvalidOperationException("Unable to resolve storage object directory.");
 
         Directory.CreateDirectory(directory);
-        var tempPath = $"{finalPath}.tmp-{Guid.NewGuid():N}";
+        var tempPath = $"{finalPath}.tmp-{Guid.CreateVersion7():N}";
 
         long bytesWritten = 0;
         var buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
@@ -194,7 +194,7 @@ public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
             var root = ResolveRootPath();
             Directory.CreateDirectory(root);
 
-            var probePath = Path.Combine(root, $".health-{Guid.NewGuid():N}");
+            var probePath = Path.Combine(root, $".health-{Guid.CreateVersion7():N}");
             await File.WriteAllTextAsync(probePath, "ok", cancellationToken);
             File.Delete(probePath);
 

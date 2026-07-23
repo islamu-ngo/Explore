@@ -336,7 +336,7 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
         }
 
         // Generate a new one if nothing available
-        return Guid.NewGuid().ToString("N")[..8];
+        return Guid.CreateVersion7().ToString("N")[..8];
     }
 
     /// <summary>

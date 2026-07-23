@@ -24,7 +24,7 @@ public sealed class DistributedCacheHealthCheck(
 
         try
         {
-            var key = $"health:distributed-cache:{Guid.NewGuid():N}";
+            var key = $"health:distributed-cache:{Guid.CreateVersion7():N}";
             var expected = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString(System.Globalization.CultureInfo.InvariantCulture);
 
             await cache.SetStringAsync(

@@ -43,7 +43,7 @@ public class ObjectStorageService : IObjectStorageService
 
         // Generate a unique object key with timestamp to prevent collisions
         var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
-        var uniqueId = Guid.NewGuid().ToString("N")[..8];
+        var uniqueId = Guid.CreateVersion7().ToString("N")[..8];
         var extension = Path.GetExtension(fileName);
         var sanitizedName = Path.GetFileNameWithoutExtension(fileName)
             .Replace(" ", "-")

@@ -19,7 +19,7 @@ public class CorrelationIdDelegatingHandler : DelegatingHandler
     {
         if (!request.Headers.Contains(HeaderName))
         {
-            var correlationId = Activity.Current?.Id ?? Guid.NewGuid().ToString();
+            var correlationId = Activity.Current?.Id ?? Guid.CreateVersion7().ToString();
             request.Headers.TryAddWithoutValidation(HeaderName, correlationId);
         }
 
