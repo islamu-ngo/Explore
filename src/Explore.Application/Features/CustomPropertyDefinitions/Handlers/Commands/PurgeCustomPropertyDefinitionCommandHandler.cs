@@ -69,7 +69,7 @@ public sealed class PurgeCustomPropertyDefinitionCommandHandler : IRequestHandle
             return response;
         }
 
-        var auditLogId = Guid.NewGuid();
+        var auditLogId = Guid.CreateVersion7();
         var result = CustomPropertyPurgeResponseFactory.ToResult(summary, true, auditLogId, reason);
         var audit = CustomPropertyPurgeResponseFactory.CreateAudit(summary, result, _currentUserService.UserId);
 

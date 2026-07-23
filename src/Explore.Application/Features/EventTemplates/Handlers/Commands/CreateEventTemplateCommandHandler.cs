@@ -186,7 +186,7 @@ public class CreateEventTemplateCommandHandler : IRequestHandler<CreateEventTemp
         return optionDtos
             .Select(optionDto => new EventTemplateCustomPropertyOption
             {
-                Id = Guid.NewGuid(),
+                Id = Guid.CreateVersion7(),
                 EventTemplateCustomPropertyDefinitionId = definitionId,
                 Namespace = CustomPropertyIdentity.NormalizeNamespace(optionDto.Namespace),
                 Key = CustomPropertyIdentity.NormalizeKey(optionDto.Key),

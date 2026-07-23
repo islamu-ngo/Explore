@@ -152,7 +152,7 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
         return optionDtos
             .Select(optionDto => new EventSessionCustomPropertyOption
             {
-                Id = Guid.NewGuid(),
+                Id = Guid.CreateVersion7(),
                 EventSessionCustomPropertyDefinitionId = definitionId,
                 Namespace = CustomPropertyIdentity.NormalizeNamespace(optionDto.Namespace),
                 Key = CustomPropertyIdentity.NormalizeKey(optionDto.Key),

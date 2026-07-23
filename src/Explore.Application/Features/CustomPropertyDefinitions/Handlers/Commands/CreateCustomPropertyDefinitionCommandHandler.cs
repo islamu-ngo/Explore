@@ -151,7 +151,7 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
         return optionDtos
             .Select(optionDto => new CustomPropertyOption
             {
-                Id = Guid.NewGuid(),
+                Id = Guid.CreateVersion7(),
                 CustomPropertyDefinitionId = definitionId,
                 Namespace = CustomPropertyIdentity.NormalizeNamespace(optionDto.Namespace),
                 Key = CustomPropertyIdentity.NormalizeKey(optionDto.Key),

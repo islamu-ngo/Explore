@@ -190,7 +190,7 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
         return optionDtos
             .Select(optionDto => new EventTemplateCustomPropertyOption
             {
-                Id = Guid.NewGuid(),
+                Id = Guid.CreateVersion7(),
                 EventTemplateCustomPropertyDefinitionId = definitionId,
                 Namespace = CustomPropertyIdentity.NormalizeNamespace(optionDto.Namespace),
                 Key = CustomPropertyIdentity.NormalizeKey(optionDto.Key),

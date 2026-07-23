@@ -37,7 +37,7 @@ internal static class CustomPropertyPurgeResponseFactory
         Guid? actorId)
         => new()
         {
-            Id = result.AuditLogId ?? Guid.NewGuid(),
+            Id = result.AuditLogId ?? Guid.CreateVersion7(),
             TenantId = summary.TenantId,
             Tenant = null!,
             EntityType = summary.Scope,
