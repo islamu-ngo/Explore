@@ -9,6 +9,7 @@ using Explore.Application.DTOs.Settings;
 using Explore.Application.Features.Settings.Requests.Queries;
 using Explore.Application.Lookups;
 using Explore.Application.Settings;
+using Explore.Domain.Constants;
 using Explore.Domain.Settings;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -67,6 +68,12 @@ public class ResolveSettingGroupQueryHandler
         var resolved = await _resolver.ResolveBatchAsync(keys, context, cancellationToken);
 
         var isAuthorized = await CheckScopeAuthorizationAsync(request.Scope, cancellationToken);
+        var tenantCanOmitVerification = request.Scope == SettingScope.Tenant
+            ? await _resolver.ResolveWithMetadataAsync(
+                GovernanceSettingKeys.Organizations.TenantCanOmitVerification,
+                new SettingContext(),
+                cancellationToken)
+            : null;
 
         var effectiveSettings = new List<EffectiveSettingDto>(definitions.Count);
         for (var i = 0; i < definitions.Count; i++)
@@ -75,7 +82,7 @@ public class ResolveSettingGroupQueryHandler
             var setting = resolved[i];
 
             var (canEdit, reason) = ComputeEditability(
-                setting, definition, request.Scope, isAuthorized);
+                setting, definition, request.Scope, isAuthorized, tenantCanOmitVerification);
 
             effectiveSettings.Add(new EffectiveSettingDto
             {
@@ -105,7 +112,8 @@ public class ResolveSettingGroupQueryHandler
 
     private static (bool CanEdit, string? Reason) ComputeEditability(
         ResolvedSetting resolved, SettingDefinition definition,
-        SettingScope requestedScope, bool isAuthorized)
+        SettingScope requestedScope, bool isAuthorized,
+        ResolvedSetting? tenantCanOmitVerification)
     {
         // Check if locked from a scope above the requested one
         if (resolved.IsLocked)
@@ -118,6 +126,17 @@ public class ResolveSettingGroupQueryHandler
         // Check scope range
         if (requestedScope < definition.MinScope || requestedScope > definition.MaxScope)
             return (false, $"Not configurable at {requestedScope} scope");
+
+        if (requestedScope == SettingScope.Tenant
+            && definition.Key == GovernanceSettingKeys.Organizations.VerificationRequired
+            && (!bool.TryParse(resolved.Value ?? definition.DefaultValue, out var requiresVerification)
+                || requiresVerification)
+            && (tenantCanOmitVerification is null
+                || !bool.TryParse(tenantCanOmitVerification.Value, out var canOmit)
+                || !canOmit))
+        {
+            return (false, SettingCommandHelper.TenantVerificationAuthorityError);
+        }
 
         // Check authorization
         if (!isAuthorized)

@@ -18,7 +18,8 @@ public static class OrganizationSettingDefinitions
         ValueType: SettingValueType.Boolean,
         DefaultValue: "false",
         Category: "Organizations",
-        Description: "Whether tenant administrators may omit organization verification requirements");
+        Description: "Whether tenant administrators may omit organization verification requirements",
+        MaxScope: SettingScope.Instance);
 
     public static readonly SettingDefinition SelfRegistrationEnabled = new(
         Key: "organizations.self_registration_enabled",

@@ -164,6 +164,14 @@ public class UpdateSettingBatchCommandHandler
                 continue;
             }
 
+            var authorityError = await SettingCommandHelper.ValidateTenantVerificationOverrideAsync(
+                key, value, request.Scope, _resolver, cancellationToken);
+            if (authorityError is not null)
+            {
+                validationResults.Add((key, value, definition, null, authorityError, null));
+                continue;
+            }
+
             if (request.Scope == SettingScope.Tenant
                 && _locationPrivacyMutations?.Handles(key) == true)
             {
@@ -180,6 +188,25 @@ public class UpdateSettingBatchCommandHandler
 
             validationResults.Add((key, value, definition, serialized,
                 null, currentResolved.Value));
+        }
+
+        var authorityFailure = validationResults.FirstOrDefault(
+            result => result.SkipReason == SettingCommandHelper.TenantVerificationAuthorityError);
+        if (authorityFailure.SkipReason is not null)
+        {
+            return new BatchUpdateResponseDto
+            {
+                Success = false,
+                Results = validationResults
+                    .Select(result => new SettingUpdateResultDto
+                    {
+                        Key = result.Key,
+                        Applied = false,
+                        SkipReason = result.SkipReason ?? authorityFailure.SkipReason
+                    })
+                    .ToList(),
+                Message = authorityFailure.SkipReason
+            };
         }
 
         // Strict mode: reject all if any invalid

@@ -361,6 +361,55 @@ public class SettingHandlerTests
     }
 
     [Test]
+    public async Task Update_TenantScope_InvalidatesAmbientTenantCacheAfterWrite()
+    {
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        SetupResolverMetadata(TestKey, false);
+        var handler = CreateUpdateHandler();
+
+        var result = await handler.Handle(new UpdateSettingCommand
+        {
+            Key = TestKey,
+            Value = "pagination",
+            Scope = SettingScope.Tenant
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        _resolver.Received(1).InvalidateCache(SettingScope.Tenant, TestTenantId);
+    }
+
+    [Test]
+    public async Task Update_TenantVerificationRequired_CannotDisableWhenInstanceOmissionAuthorityIsFalse()
+    {
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        SetupResolverMetadata(GovernanceSettingKeys.Organizations.VerificationRequired, false);
+        _resolver.ResolveWithMetadataAsync(
+                GovernanceSettingKeys.Organizations.TenantCanOmitVerification,
+                Arg.Is<SettingContext>(context => context.TenantId == null),
+                Arg.Any<CancellationToken>())
+            .Returns(new ResolvedSetting
+            {
+                Key = GovernanceSettingKeys.Organizations.TenantCanOmitVerification,
+                Value = "false",
+                ValueType = SettingValueType.Boolean,
+                Source = SettingSource.SystemDefault
+            });
+        var handler = CreateUpdateHandler();
+
+        var result = await handler.Handle(new UpdateSettingCommand
+        {
+            Key = GovernanceSettingKeys.Organizations.VerificationRequired,
+            Value = "false",
+            Scope = SettingScope.Tenant
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).Contains("instance");
+        await _resolver.DidNotReceiveWithAnyArgs()
+            .SetValueAsync(default!, default!, default, default, default, default);
+    }
+
+    [Test]
     public async Task Update_LocationPrivacySingleKey_InvalidatesCorrectionReceiptAfterMutationCommit()
     {
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
@@ -608,6 +657,156 @@ public class SettingHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Results.All(r => !r.Applied)).IsTrue();
+        await _resolver.DidNotReceiveWithAnyArgs()
+            .SetValueAsync(default!, default!, default, default, default, default);
+        _resolver.DidNotReceiveWithAnyArgs().InvalidateCache(default, default);
+    }
+
+    [Test]
+    public async Task Batch_TenantScope_WritesAmbientTenantAndInvalidatesAfterApplied()
+    {
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        var handler = CreateBatchHandler();
+        SetupResolverBatchForBatchCommand();
+
+        var result = await handler.Handle(new UpdateSettingBatchCommand
+        {
+            Category = "PublicExperience",
+            Values = new Dictionary<string, string>
+            {
+                [GovernanceSettingKeys.PublicExperience.EventCatalogLabel] = "Community events"
+            },
+            Scope = SettingScope.Tenant,
+            Mode = BatchUpdateMode.Strict
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _resolver.Received(1).SetValueAsync(
+            GovernanceSettingKeys.PublicExperience.EventCatalogLabel,
+            Arg.Any<string>(),
+            SettingScope.Tenant,
+            TestTenantId,
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
+        _resolver.Received(1).InvalidateCache(SettingScope.Tenant, TestTenantId);
+    }
+
+    [Test]
+    public async Task Batch_TenantVerificationDisable_RejectsWholeBatchBeforeMutationWhenInstanceOmissionAuthorityIsMissing()
+    {
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        SetupResolverBatchForBatchCommand();
+        _resolver.ResolveWithMetadataAsync(
+                GovernanceSettingKeys.Organizations.TenantCanOmitVerification,
+                Arg.Is<SettingContext>(context => context.TenantId == null),
+                Arg.Any<CancellationToken>())
+            .Returns((ResolvedSetting?)null);
+        var handler = CreateBatchHandler();
+
+        var result = await handler.Handle(new UpdateSettingBatchCommand
+        {
+            Category = "Organizations",
+            Values = new Dictionary<string, string>
+            {
+                [GovernanceSettingKeys.Organizations.VerificationRequired] = "false",
+                [GovernanceSettingKeys.Organizations.SelfRegistrationEnabled] = "false"
+            },
+            Scope = SettingScope.Tenant,
+            Mode = BatchUpdateMode.BestEffort
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Results.All(item => !item.Applied)).IsTrue();
+        await _resolver.DidNotReceiveWithAnyArgs()
+            .SetValueAsync(default!, default!, default, default, default, default);
+        _resolver.DidNotReceiveWithAnyArgs().InvalidateCache(default, default);
+    }
+
+    [Test]
+    public async Task ResolveGroup_OrganizationVerification_FailsClosedWhenInstanceOmissionAuthorityCannotBeResolved()
+    {
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        _resolver.ResolveBatchAsync(
+                Arg.Any<IEnumerable<string>>(),
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo => callInfo.Arg<IEnumerable<string>>()
+                .Select(key =>
+                {
+                    var definition = SettingRegistry.Get(key)!;
+                    return new ResolvedSetting
+                    {
+                        Key = key,
+                        Value = definition.DefaultValue,
+                        ValueType = definition.ValueType,
+                        Source = SettingSource.SystemDefault,
+                        Description = definition.Description,
+                        Category = definition.Category
+                    };
+                })
+                .ToList());
+        _resolver.ResolveWithMetadataAsync(
+                GovernanceSettingKeys.Organizations.TenantCanOmitVerification,
+                Arg.Is<SettingContext>(context => context.TenantId == null),
+                Arg.Any<CancellationToken>())
+            .Returns((ResolvedSetting?)null);
+        var handler = CreateResolveHandler();
+
+        var result = await handler.Handle(new ResolveSettingGroupQuery
+        {
+            Category = "Organizations",
+            Scope = SettingScope.Tenant
+        }, CancellationToken.None);
+
+        var verification = result.Settings.Single(setting =>
+            setting.Key == GovernanceSettingKeys.Organizations.VerificationRequired);
+        await Assert.That(verification.CanEdit).IsFalse();
+        await Assert.That(verification.Reason)
+            .IsEqualTo("Tenant administrators cannot disable organization verification because the instance does not allow omission.");
+    }
+
+    [Test]
+    public async Task ResolveGroup_OrganizationVerification_CurrentFalse_RemainsEditableWhenInstanceOmissionAuthorityCannotBeResolved()
+    {
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        _resolver.ResolveBatchAsync(
+                Arg.Any<IEnumerable<string>>(),
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo => callInfo.Arg<IEnumerable<string>>()
+                .Select(key =>
+                {
+                    var definition = SettingRegistry.Get(key)!;
+                    return new ResolvedSetting
+                    {
+                        Key = key,
+                        Value = key == GovernanceSettingKeys.Organizations.VerificationRequired
+                            ? "false"
+                            : definition.DefaultValue,
+                        ValueType = definition.ValueType,
+                        Source = SettingSource.TenantOverride,
+                        Description = definition.Description,
+                        Category = definition.Category
+                    };
+                })
+                .ToList());
+        _resolver.ResolveWithMetadataAsync(
+                GovernanceSettingKeys.Organizations.TenantCanOmitVerification,
+                Arg.Is<SettingContext>(context => context.TenantId == null),
+                Arg.Any<CancellationToken>())
+            .Returns((ResolvedSetting?)null);
+        var handler = CreateResolveHandler();
+
+        var result = await handler.Handle(new ResolveSettingGroupQuery
+        {
+            Category = "Organizations",
+            Scope = SettingScope.Tenant
+        }, CancellationToken.None);
+
+        var verification = result.Settings.Single(setting =>
+            setting.Key == GovernanceSettingKeys.Organizations.VerificationRequired);
+        await Assert.That(verification.CanEdit).IsTrue();
+        await Assert.That(verification.Reason).IsNull();
     }
 
     [Test]

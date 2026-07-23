@@ -250,6 +250,16 @@ public class SettingRegistryTests
     }
 
     [Test]
+    public async Task Registry_TenantCanOmitVerificationIsInstanceOnly()
+    {
+        var definition = SettingRegistry.Get(GovernanceSettingKeys.Organizations.TenantCanOmitVerification);
+
+        await Assert.That(definition).IsNotNull();
+        await Assert.That(definition!.MinScope).IsEqualTo(SettingScope.Instance);
+        await Assert.That(definition.MaxScope).IsEqualTo(SettingScope.Instance);
+    }
+
+    [Test]
     public async Task Registry_AppearanceThemeModeSupportsUserOverrides()
     {
         var definition = SettingRegistry.Get(GovernanceSettingKeys.Appearance.ThemeMode);

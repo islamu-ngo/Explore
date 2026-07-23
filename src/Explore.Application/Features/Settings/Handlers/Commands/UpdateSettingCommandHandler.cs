@@ -104,6 +104,15 @@ public class UpdateSettingCommandHandler
             return response;
         }
 
+        var authorityError = await SettingCommandHelper.ValidateTenantVerificationOverrideAsync(
+            request.Key, request.Value, request.Scope, _resolver, cancellationToken);
+        if (authorityError is not null)
+        {
+            response.Success = false;
+            response.Message = authorityError;
+            return response;
+        }
+
         // Check lock state
         var context = SettingCommandHelper.BuildSettingContext(
             request.Scope, _tenantContext, resolvedUserId);

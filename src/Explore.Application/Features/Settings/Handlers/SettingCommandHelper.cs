@@ -164,6 +164,36 @@ internal static class SettingCommandHelper
         return currentUserService.UserId ?? await adminContext.ResolveUserIdAsync(ct);
     }
 
+    internal const string TenantVerificationAuthorityError =
+        "Tenant administrators cannot disable organization verification because the instance does not allow omission.";
+
+    internal static async Task<string?> ValidateTenantVerificationOverrideAsync(
+        string key,
+        string plainValue,
+        SettingScope scope,
+        IHierarchicalSettingsResolver resolver,
+        CancellationToken ct)
+    {
+        if (scope != SettingScope.Tenant
+            || key != GovernanceSettingKeys.Organizations.VerificationRequired
+            || !bool.TryParse(plainValue, out var requiresVerification)
+            || requiresVerification)
+        {
+            return null;
+        }
+
+        var authority = await resolver.ResolveWithMetadataAsync(
+            GovernanceSettingKeys.Organizations.TenantCanOmitVerification,
+            new SettingContext(),
+            ct);
+
+        return authority is not null
+            && bool.TryParse(authority.Value, out var canOmit)
+            && canOmit
+            ? null
+            : TenantVerificationAuthorityError;
+    }
+
     /// <summary>
     /// Checks if the current user has authorization to write settings at the given scope.
     /// </summary>
