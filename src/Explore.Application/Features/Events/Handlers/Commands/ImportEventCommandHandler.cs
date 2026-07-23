@@ -40,7 +40,7 @@ public sealed class ImportEventCommandHandler(
         {
             var eventEntity = new Event
             {
-                Id = Guid.NewGuid(),
+                Id = Guid.CreateVersion7(),
                 Title = request.Title,
                 Description = request.Description,
                 TenantId = request.TenantId,

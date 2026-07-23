@@ -21,13 +21,13 @@ public class EventSessionTemplateInstantiationService : IEventSessionTemplateIns
 
         foreach (var templateDef in sessionTemplate.Definitions)
         {
-            var defId = Guid.NewGuid();
+            var defId = Guid.CreateVersion7();
             var optionIdMap = new Dictionary<Guid, Guid>();
 
             var options = new List<EventSessionCustomPropertyOption>();
             foreach (var templateOpt in templateDef.Options)
             {
-                var newOptId = Guid.NewGuid();
+                var newOptId = Guid.CreateVersion7();
                 optionIdMap[templateOpt.Id] = newOptId;
 
                 options.Add(new EventSessionCustomPropertyOption
@@ -178,7 +178,7 @@ public class EventSessionTemplateInstantiationService : IEventSessionTemplateIns
 
         return new EventSessionCustomPropertyValue
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             EventSessionCustomPropertyDefinitionId = definition.Id,
             EventSessionId = eventSessionId,
             TenantId = tenantId,

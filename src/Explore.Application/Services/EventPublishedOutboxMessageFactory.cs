@@ -28,7 +28,7 @@ public static class EventPublishedOutboxMessageFactory
 
         return new OutboxMessage
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             AggregateType = EventAggregateType,
             AggregateId = @event.Id,
             EventType = EventPublishedNotificationFanoutRequestedEventType,

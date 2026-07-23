@@ -90,7 +90,7 @@ public abstract class EventRoleAssignmentCommandHandlerBase
     {
         var audit = new AuditLog
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             TenantId = tenantId,
             Tenant = null!,
             EntityType = nameof(EventRoleAssignment),

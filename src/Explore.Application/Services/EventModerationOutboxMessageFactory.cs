@@ -29,7 +29,7 @@ public static class EventModerationOutboxMessageFactory
 
         return new OutboxMessage
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             AggregateType = EventAggregateType,
             AggregateId = @event.Id,
             EventType = EventLightModeratedNotificationFanoutRequestedEventType,
@@ -53,7 +53,7 @@ public static class EventModerationOutboxMessageFactory
 
         return new OutboxMessage
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             AggregateType = EventAggregateType,
             AggregateId = @event.Id,
             EventType = EventHeavyRedactedNotificationFanoutRequestedEventType,

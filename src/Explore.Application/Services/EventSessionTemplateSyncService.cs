@@ -322,13 +322,13 @@ public class EventSessionTemplateSyncService : IEventSessionTemplateSyncService
                 continue;
             }
 
-            var definitionId = Guid.NewGuid();
+            var definitionId = Guid.CreateVersion7();
             var optionIdMap = new Dictionary<Guid, Guid>();
             var options = new List<EventSessionCustomPropertyOption>();
 
             foreach (var templateOption in templateDefinition.Options.OrderBy(x => x.SortOrder))
             {
-                var optionId = Guid.NewGuid();
+                var optionId = Guid.CreateVersion7();
                 optionIdMap[templateOption.Id] = optionId;
                 options.Add(new EventSessionCustomPropertyOption
                 {
@@ -473,7 +473,7 @@ public class EventSessionTemplateSyncService : IEventSessionTemplateSyncService
             trackedDefinition.LastSyncedFromTemplateAt = now;
             trackedDefinition.UpdatedAt = now.UtcDateTime;
             trackedDefinition.UpdatedBy = _currentUserService.UserId;
-            trackedDefinition.ConcurrencyStamp = Guid.NewGuid();
+            trackedDefinition.ConcurrencyStamp = Guid.CreateVersion7();
 
             await _eventSessionCustomPropertyRepository.Update(trackedDefinition);
             applied.Add(key);
@@ -512,7 +512,7 @@ public class EventSessionTemplateSyncService : IEventSessionTemplateSyncService
             trackedDefinition.LastSyncedFromTemplateAt = now;
             trackedDefinition.UpdatedAt = now.UtcDateTime;
             trackedDefinition.UpdatedBy = _currentUserService.UserId;
-            trackedDefinition.ConcurrencyStamp = Guid.NewGuid();
+            trackedDefinition.ConcurrencyStamp = Guid.CreateVersion7();
             await _eventSessionCustomPropertyRepository.Update(trackedDefinition);
             applied.Add(key);
         }
@@ -554,7 +554,7 @@ public class EventSessionTemplateSyncService : IEventSessionTemplateSyncService
 
             var option = new EventSessionCustomPropertyOption
             {
-                Id = Guid.NewGuid(),
+                Id = Guid.CreateVersion7(),
                 EventSessionCustomPropertyDefinitionId = trackedDefinition.Id,
                 Namespace = templateOption.Namespace,
                 Key = templateOption.Key,
@@ -635,7 +635,7 @@ public class EventSessionTemplateSyncService : IEventSessionTemplateSyncService
             trackedOption.SourceTemplateVersion = targetTemplate.Version;
             trackedOption.UpdatedAt = now.UtcDateTime;
             trackedOption.UpdatedBy = _currentUserService.UserId;
-            trackedOption.ConcurrencyStamp = Guid.NewGuid();
+            trackedOption.ConcurrencyStamp = Guid.CreateVersion7();
             await _eventSessionCustomPropertyRepository.UpdateOption(trackedOption, cancellationToken);
 
             if (templateOption.IsDefault)
@@ -688,7 +688,7 @@ public class EventSessionTemplateSyncService : IEventSessionTemplateSyncService
             trackedOption.IsActive = false;
             trackedOption.UpdatedAt = now.UtcDateTime;
             trackedOption.UpdatedBy = _currentUserService.UserId;
-            trackedOption.ConcurrencyStamp = Guid.NewGuid();
+            trackedOption.ConcurrencyStamp = Guid.CreateVersion7();
             await _eventSessionCustomPropertyRepository.UpdateOption(trackedOption, cancellationToken);
 
             if (trackedDefinition.DefaultOptionId == trackedOption.Id)
@@ -714,7 +714,7 @@ public class EventSessionTemplateSyncService : IEventSessionTemplateSyncService
     {
         var audit = new AuditLog
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             TenantId = eventSession.TenantId,
             Tenant = null!,
             EntityType = nameof(EventSession),

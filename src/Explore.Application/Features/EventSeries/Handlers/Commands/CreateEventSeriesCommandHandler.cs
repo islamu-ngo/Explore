@@ -66,7 +66,7 @@ public class CreateEventSeriesCommandHandler : IRequestHandler<CreateEventSeries
     private static string GenerateSlug(string title)
     {
         if (string.IsNullOrWhiteSpace(title))
-            return $"series-{Guid.NewGuid().ToString("N")[..8]}";
+            return $"series-{Guid.CreateVersion7().ToString("N")[..8]}";
 
         var slug = title.ToLowerInvariant()
             .Replace(" ", "-")

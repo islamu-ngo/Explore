@@ -43,7 +43,7 @@ public sealed class CreateDraftEventSessionCommandHandler(
 
         var session = new EventSession
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             EventId = parentEvent.Id,
             Event = null!,
             TenantId = parentEvent.TenantId,

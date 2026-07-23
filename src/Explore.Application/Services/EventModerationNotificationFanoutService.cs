@@ -292,7 +292,7 @@ public sealed class EventModerationNotificationFanoutService(
 
         return await fanoutRunRepository.Create(new NotificationFanoutRun
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             TenantId = request.TenantId,
             Tenant = null!,
             FanoutKind = LightFanoutKind,
@@ -304,7 +304,7 @@ public sealed class EventModerationNotificationFanoutService(
             Status = StatusProcessing,
             StartedAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
-            ConcurrencyStamp = Guid.NewGuid()
+            ConcurrencyStamp = Guid.CreateVersion7()
         });
     }
 
@@ -315,7 +315,7 @@ public sealed class EventModerationNotificationFanoutService(
     {
         return new Notification
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             TenantId = request.TenantId,
             Tenant = null!,
             UserId = userId,

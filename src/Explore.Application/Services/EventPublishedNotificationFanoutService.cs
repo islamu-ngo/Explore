@@ -209,7 +209,7 @@ public sealed class EventPublishedNotificationFanoutService : IEventPublishedNot
 
         return await fanoutRunRepository.Create(new NotificationFanoutRun
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             TenantId = request.TenantId,
             Tenant = null!,
             FanoutKind = FanoutKind,
@@ -221,7 +221,7 @@ public sealed class EventPublishedNotificationFanoutService : IEventPublishedNot
             Status = StatusProcessing,
             StartedAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
-            ConcurrencyStamp = Guid.NewGuid()
+            ConcurrencyStamp = Guid.CreateVersion7()
         });
     }
 
@@ -232,7 +232,7 @@ public sealed class EventPublishedNotificationFanoutService : IEventPublishedNot
     {
         return new Notification
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             TenantId = request.TenantId,
             Tenant = null!,
             UserId = subscription.SubscriberUserId,

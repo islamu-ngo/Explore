@@ -21,13 +21,13 @@ public class EventTemplateInstantiationService : IEventTemplateInstantiationServ
 
         foreach (var templateDef in template.Definitions)
         {
-            var defId = Guid.NewGuid();
+            var defId = Guid.CreateVersion7();
             var optionIdMap = new Dictionary<Guid, Guid>();
 
             var options = new List<EventCustomPropertyOption>();
             foreach (var templateOpt in templateDef.Options)
             {
-                var newOptId = Guid.NewGuid();
+                var newOptId = Guid.CreateVersion7();
                 optionIdMap[templateOpt.Id] = newOptId;
 
                 options.Add(new EventCustomPropertyOption
@@ -178,7 +178,7 @@ public class EventTemplateInstantiationService : IEventTemplateInstantiationServ
 
         return new EventCustomPropertyValue
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             EventCustomPropertyDefinitionId = definition.Id,
             EventId = eventId,
             TenantId = tenantId,
