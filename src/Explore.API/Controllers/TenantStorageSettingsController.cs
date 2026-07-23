@@ -1,5 +1,5 @@
 // ABOUTME: Focused API controller for current-tenant storage administration settings.
-// ABOUTME: Exposes effective storage policy and tenant override updates through CQRS.
+// ABOUTME: Exposes effective storage policy and presence-aware tenant override patches through CQRS.
 
 using Asp.Versioning;
 using Explore.API.Attributes;
@@ -28,10 +28,10 @@ public sealed class TenantStorageSettingsController(
     IResourceAssembler<TenantStorageSettingsDto, TenantStorageSettingsDto> storageSettingsAssembler)
     : ExploreControllerBase
 {
-    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+    private static readonly ApiValidationProblemDescriptor PatchValidationProblem = new(
         "tenantStorageSettings",
         "Tenant storage settings validation failed",
-        "Tenant storage settings update failed.");
+        "Tenant storage settings patch failed.");
 
     [HttpGet("", Name = RouteNames.GetTenantStorageSettings)]
     [EndpointSummary("Get Tenant Storage Settings")]
@@ -47,16 +47,16 @@ public sealed class TenantStorageSettingsController(
         return Ok(halResource);
     }
 
-    [HttpPut("", Name = RouteNames.UpdateTenantStorageSettings)]
-    [EndpointSummary("Update Tenant Storage Settings")]
-    [EndpointDescription("Updates current-tenant storage overrides when instance storage delegation allows tenant edits.")]
+    [HttpPatch("", Name = RouteNames.PatchTenantStorageSettings)]
+    [EndpointSummary("Patch Tenant Storage Settings")]
+    [EndpointDescription("Patches supplied current-tenant storage override leaves when instance storage delegation allows tenant edits.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateStorageSettings(
-        [FromBody] TenantStorageSettingsDto settings,
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> PatchStorageSettings(
+        [FromBody] PatchTenantStorageSettingsDto settings,
         CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(mediator, cancellationToken);
@@ -67,7 +67,7 @@ public sealed class TenantStorageSettingsController(
         }
 
         var response = await mediator.Send(
-            new UpdateTenantStorageSettingsCommand
+            new PatchTenantStorageSettingsCommand
             {
                 UserId = userId.Value,
                 Settings = settings
@@ -79,10 +79,10 @@ public sealed class TenantStorageSettingsController(
             if (response.Message?.Contains("administrators", StringComparison.OrdinalIgnoreCase) == true)
             {
                 return this.ToForbiddenProblem(
-                    detail: response.Message ?? "Tenant storage settings can only be updated by authorized administrators.");
+                    detail: response.Message ?? "Tenant storage settings can only be patched by authorized administrators.");
             }
 
-            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
+            return this.ToCommandValidationProblem(response, PatchValidationProblem);
         }
 
         return Ok(response);

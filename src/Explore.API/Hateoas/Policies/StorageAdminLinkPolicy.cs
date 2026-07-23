@@ -101,7 +101,13 @@ public sealed class TenantStorageSettingsLinkPolicy : ILinkPolicy<TenantStorageS
             yield break;
         }
 
-        yield return LinkDefinition.Edit(RouteNames.UpdateTenantStorageSettings)
+        yield return new LinkDefinition(
+            LinkRelations.Edit,
+            RouteNames.PatchTenantStorageSettings,
+            null,
+            "PATCH",
+            "Patch tenant storage settings",
+            RequiresAuth: true)
             .RequirePermission(AuthorizationActions.TenantSettings.Update,
                 ResourceKinds.TenantSetting,
                 TenantStorageResourceId(dto),

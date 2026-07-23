@@ -1,6 +1,7 @@
 // ABOUTME: API controller tests for tenant storage settings routes.
 // ABOUTME: Verifies CQRS dispatch and HTTP result mapping for tenant storage administration.
 
+using System.Reflection;
 using System.Security.Claims;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Controllers;
@@ -10,6 +11,7 @@ using Explore.Application.DTOs.Tenant;
 using Explore.Application.Features.TenantStorageSettings.Requests.Commands;
 using Explore.Application.Features.TenantStorageSettings.Requests.Queries;
 using Explore.Application.Hateoas;
+using Explore.Application.Models.Common;
 using Explore.Application.Responses;
 using Explore.Domain;
 using MediatR;
@@ -51,20 +53,35 @@ public sealed class TenantStorageSettingsControllerTests
     }
 
     [Test]
-    public async Task UpdateStorageSettings_WhenMediatorSucceeds_ReturnsOk()
+    public async Task PatchStorageSettings_UsesPatchRouteAndOperationName()
+    {
+        var action = typeof(TenantStorageSettingsController)
+            .GetMethod(nameof(TenantStorageSettingsController.PatchStorageSettings))!;
+        var route = action.GetCustomAttribute<HttpPatchAttribute>();
+
+        await Assert.That(route).IsNotNull();
+        await Assert.That(route!.Template).IsEqualTo(string.Empty);
+        await Assert.That(route.Name).IsEqualTo(RouteNames.PatchTenantStorageSettings);
+        await Assert.That(action.GetCustomAttribute<HttpPutAttribute>()).IsNull();
+        await Assert.That(typeof(TenantStorageSettingsController).GetMethods()
+            .Any(method => method.GetCustomAttribute<HttpPutAttribute>() is not null)).IsFalse();
+    }
+
+    [Test]
+    public async Task PatchStorageSettings_WhenMediatorSucceeds_ReturnsOk()
     {
         var userId = Guid.NewGuid();
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<UpdateTenantStorageSettingsCommand>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<PatchTenantStorageSettingsCommand>(), Arg.Any<CancellationToken>())
             .Returns(new BaseCommandResponse<Guid>
             {
                 Success = true,
                 Id = Guid.NewGuid(),
-                Message = "Tenant storage settings updated successfully."
+                Message = "Tenant storage settings patched successfully."
             });
         var controller = CreateController(mediator, userId);
 
-        var result = await controller.UpdateStorageSettings(CreateSettings(), CancellationToken.None);
+        var result = await controller.PatchStorageSettings(CreatePatch(), CancellationToken.None);
 
         var ok = result.Result as OkObjectResult;
         await Assert.That(ok).IsNotNull();
@@ -72,15 +89,15 @@ public sealed class TenantStorageSettingsControllerTests
         await Assert.That(response).IsNotNull();
         await Assert.That(response!.Success).IsTrue();
         await mediator.Received(1).Send(
-            Arg.Is<UpdateTenantStorageSettingsCommand>(command => command != null && command.UserId == userId),
+            Arg.Is<PatchTenantStorageSettingsCommand>(command => command != null && command.UserId == userId),
             Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task UpdateStorageSettings_WhenMediatorReportsPolicyFailure_ReturnsBadRequest()
+    public async Task PatchStorageSettings_WhenMediatorReportsPolicyFailure_ReturnsBadRequest()
     {
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<UpdateTenantStorageSettingsCommand>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<PatchTenantStorageSettingsCommand>(), Arg.Any<CancellationToken>())
             .Returns(new BaseCommandResponse<Guid>
             {
                 Success = false,
@@ -89,7 +106,7 @@ public sealed class TenantStorageSettingsControllerTests
             });
         var controller = CreateController(mediator, Guid.NewGuid());
 
-        var result = await controller.UpdateStorageSettings(CreateSettings(), CancellationToken.None);
+        var result = await controller.PatchStorageSettings(CreatePatch(), CancellationToken.None);
 
         var objectResult = result.Result as ObjectResult;
         await Assert.That(objectResult).IsNotNull();
@@ -100,10 +117,10 @@ public sealed class TenantStorageSettingsControllerTests
     }
 
     [Test]
-    public async Task UpdateStorageSettings_WhenMediatorReportsAdminFailure_ReturnsForbidden()
+    public async Task PatchStorageSettings_WhenMediatorReportsAdminFailure_ReturnsForbidden()
     {
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<UpdateTenantStorageSettingsCommand>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<PatchTenantStorageSettingsCommand>(), Arg.Any<CancellationToken>())
             .Returns(new BaseCommandResponse<Guid>
             {
                 Success = false,
@@ -111,7 +128,7 @@ public sealed class TenantStorageSettingsControllerTests
             });
         var controller = CreateController(mediator, Guid.NewGuid());
 
-        var result = await controller.UpdateStorageSettings(CreateSettings(), CancellationToken.None);
+        var result = await controller.PatchStorageSettings(CreatePatch(), CancellationToken.None);
 
         var objectResult = result.Result as ObjectResult;
         await Assert.That(objectResult).IsNotNull();
@@ -148,12 +165,12 @@ public sealed class TenantStorageSettingsControllerTests
         };
     }
 
-    private static TenantStorageSettingsDto CreateSettings()
+    private static PatchTenantStorageSettingsDto CreatePatch()
         => new()
         {
-            Provider = StorageProviders.Local,
-            MaxUploadBytes = 4096,
-            TenantQuotaBytes = 8192,
-            S3UploadUrlExpirationMinutes = 60
+            Policy = new PatchTenantStoragePolicyDto
+            {
+                MaxUploadBytes = OptionalUpdate<long>.Set(4096)
+            }
         };
 }

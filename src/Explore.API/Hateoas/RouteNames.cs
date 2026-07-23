@@ -423,7 +423,7 @@ public static class RouteNames
     public const string GetTenantBrandingSettingsDocument = "GetTenantBrandingSettingsDocument";
     public const string ReplaceTenantBrandingSettingsDocument = "ReplaceTenantBrandingSettingsDocument";
     public const string GetTenantStorageSettings = "GetTenantStorageSettings";
-    public const string UpdateTenantStorageSettings = "UpdateTenantStorageSettings";
+    public const string PatchTenantStorageSettings = "PatchTenantStorageSettings";
 
     #endregion
 

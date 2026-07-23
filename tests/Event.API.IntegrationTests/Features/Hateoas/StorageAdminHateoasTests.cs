@@ -135,7 +135,8 @@ public sealed class StorageAdminHateoasTests
         var lockedLinks = policy.GetLinks(locked, user: null).ToArray();
 
         var edit = editableLinks.Single(link => link.Rel == LinkRelations.Edit);
-        await Assert.That(edit.RouteName).IsEqualTo(RouteNames.UpdateTenantStorageSettings);
+        await Assert.That(edit.RouteName).IsEqualTo(RouteNames.PatchTenantStorageSettings);
+        await Assert.That(edit.Method).IsEqualTo("PATCH");
         await Assert.That(edit.PermissionResourceKind).IsEqualTo(ResourceKinds.TenantSetting);
         await Assert.That(edit.PermissionAction).IsEqualTo(AuthorizationActions.TenantSettings.Update);
         await Assert.That(edit.PermissionResourceId).IsEqualTo($"{tenantId}:storage");
