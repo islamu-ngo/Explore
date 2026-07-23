@@ -3,9 +3,9 @@
 
 # Dynamic Event Management UI (Workspace Shell) — Context
 
-Last Updated: 2026-07-22 Europe/Brussels
+Last Updated: 2026-07-23 Europe/Brussels
 
-## SESSION PROGRESS (2026-07-22 Europe/Brussels)
+## SESSION PROGRESS (2026-07-23 Europe/Brussels)
 
 ### ✅ COMPLETED
 - Task 0.1: Documentation re-baseline completed. Plan approved by Oracle directionally (D1–D10 corrections accepted).
@@ -79,17 +79,25 @@ Last Updated: 2026-07-22 Europe/Brussels
 - Task 8.3: Added `WorkspaceShellScenarioMatrixTests`, a nine-row rendered matrix over profile, authentication, capability, workspace, and mobile/desktop semantics. It asserts canonical rail items, contextual Events content, server-authorized Settings links, durable default selection, and revoked-workspace fallback.
 - The matrix exposed alphabetical AI-first rail sorting. `AppWorkspaceRail` now preserves the canonical `WorkspaceRegistry` order (Events, Studio, AI, Settings), keeping Settings last without a second ordering rule. The focused matrix passes 1/1 and `DOCK_LAYOUT`, `ACCESSIBILITY`, and `BLAZOR` match the shipped shell.
 - Phase 8 verification ran once: the canonical Release build passed with 0 errors and 536 existing warnings; the full client suite passed 1,979/1,983 with the same three unrelated failures and one governed skip. Phase 8 implementation is complete, but its suite checkbox remains blocked rather than greenwashed.
+- Task 9.1: Added one explicit `UiShellState.NavigateToPersonalSettings` contract and routed rail, profile, theme, and registration Connected Apps entries through capture-before-navigation. Focused state/navigation/registration lanes pass 18/18, 7/7, and 5/5.
+- Task 9.2: `/settings/personal` now renders searchable View all from one metadata registry, while focused routes render one canonical section. All nine sections have unique section/heading IDs under one page `h1`; invalid slugs fall back without aliases; Personal-only scope selection emits no navigation landmark.
+- Task 9.2 evidence is green: `SettingsLayoutTests` pass 7/7, `SettingsScopeSelectorTests` pass 4/4, changed-file diagnostics are clean, and `git diff --check` is clean.
+- Task 9.3: Personal Settings now uses a token-driven two-column desktop grid with navbar-offset sticky vertical navigation and a non-sticky stacked projection below `59.997em`. The scope selector also stacks authorized links below `37.5em`; logical properties, visible focus, minimum-width protection, separators, and reduced-motion behavior remain explicit.
+- Task 9.3 evidence is green: `SettingsLayoutTests` pass 8/8, `SettingsScopeSelectorTests` pass 4/4, the affected shell entry-contract lane passes 11/11, and `AccessibilityConventionTests` pass 8/8. `docs/BLAZOR.md`, `docs/ACCESSIBILITY.md`, and `docs/DOCK_LAYOUT.md` match the shipped Settings behavior.
+- Task 9.3 follow-up is green: Personal section route changes re-render without refresh; UI-shell dependency calls no longer overlap one scoped `DbContext`; tenant administration uses `/settings/admin` without an alias; the final profile Settings link uses server-authorized instance-before-tenant precedence; compact scope selectors render beside instance, tenant, organization, and group headings. Focused application tests pass 12/12, focused client tests pass 21/21, and the Release build has zero errors. The full client run passes 2,015/2,020; its four failures are unrelated generated-client, tri-state filter, and report-dialog changes.
+- Phase 9 verification ran once: the canonical Release build passed with 0 errors and 544 existing warnings; the full client suite ran 2,016 tests with 2,012 passed, the same 3 unrelated failures, and 1 governed skip. Phase 9 implementation is complete, but its suite checkbox remains blocked rather than greenwashed.
 
-### 🟡 READY TO START
-- Task 9.1: explicit Personal Settings navigation contract and entry-point parity.
+### 🟡 BLOCKED
+- Task 10.1: authenticated final visual/browser scenario matrix. The running `local-lite` environment is anonymous, `/settings/personal` redirects to `/`, and no usable authenticated persona identities or verified authorities are available.
 
 ### ⏭️ NEXT
-1. Add failing-first interaction coverage proving the profile-dropdown Personal Settings entry preserves the same live Events/Studio/AI origin as the rail gear.
-2. Implement the shared capture-before-navigation contract, then build the View all/search/vertical-navigation slice.
-3. Run Phase 9 verification once; resume final browser QA as Task 10.1 only after the revised Settings behavior is complete.
+1. Obtain usable local seeker, organizer, tenant-admin, and instance-admin identities with verified authorities.
+2. Run the Task 10.1 Settings Personal-only/admin-scope browser matrix at 320/375/768/1280/1920, including focus, RTL, sticky/stacked, overflow, and console evidence.
+3. Reconcile the workstream to 30/30 only if that evidence passes.
 
 ### ⚠️ BLOCKERS
-- None hard. Soft coordination points:
+- Task 10.1 is hard-blocked by unavailable authenticated identities/authorities. Fresh browser evidence confirms `isAuthenticated=false` and redirect from `/settings/personal` to `/`; the anonymous root is console-clean and overflow-free at 1760px, but it cannot prove revised Settings behavior.
+- Existing verification/coordination points:
   - Phase 0 architecture verification has four unrelated existing failures: decentralization schema discovery, HATEOAS permission metadata, repository naming, and organization-scope guardrails. The focused UI-shell registry test passes; do not alter unrelated code in this workstream.
   - Phase 1, Phase 4, and Phase 5 Blazor client verification reproduce three unrelated existing failures: generated `HalCollectionEmbeddedOfEventLocationManagementDto` typing and two `ReportEventDialogTests`. The full Phase 5 run discovered 1,947 tests: 1,943 passed, 3 failed, 1 governed skip; focused workspace-shell and AI suites pass.
   - Phase 2 full architecture verification still has four unrelated existing failures recorded in `tasks.md`; the focused Phase 3 architecture lane passes 10/10 with one governed skip.
@@ -101,7 +109,7 @@ Last Updated: 2026-07-22 Europe/Brussels
 ## Quick Resume
 1. Read this context and `dynamic-event-management-ui-tasks.md`.
 2. Read only Phase 9 + referenced decisions D9 and D11 from `dynamic-event-management-ui-plan.md`; do not reread the full plan on every resume.
-3. Start from the first unchecked high-priority task unless the user overrides.
+3. Resume Task 10.1 only when its authenticated identity/authority blocker is resolved; otherwise report 29/30 honestly.
 4. Keep `tasks.md` current during implementation; update context/plan only at their defined triggers.
 5. The report (`dynamic-event-management-ui-report.md`) is product intent, not repository truth — code claims were re-verified in plan §2.1; trust the plan on conflicts.
 
@@ -141,7 +149,7 @@ Last Updated: 2026-07-22 Europe/Brussels
 - **D6:** Delete `SidebarState`; keep `AiAssistantState` (it computes effective AI availability, not just dock mirroring).
 - **D7:** Layout prefs reuse `UserPreference` + `api/settings/user/{category}`; keys `ui_shell_preferences.layout.v1` / `.last_workspace` / `.last_actor`; anonymous storage gains tenant discriminator (`dock_layout:v1:{tenantSlug}:`) with no old-key compatibility read; promote-on-login. Task 7.2 optionally adds `ui.settings.last_scope.v1` for the re-authorized dedicated hub/selector only; Personal origin is never durable.
 - **D8:** Tenant defaults are governance keys `ui_shell.*` (tenant/instance scope, lockable): rail public visibility, Events/Studio/AI default nav mode, user-override allowance, organizer default workspace. Task 7.1 removes the already-registered Settings default-nav key because hybrid Settings has no shell navigation provider.
-- **D9:** Hybrid Settings = one bottom gear whose primary action always opens `/settings/personal`; Personal is contextual over the in-session Explore/Studio/AI origin but direct load/refresh is dedicated Settings. `/settings` is the authorized scope hub; canonical routes are `/settings/personal`, `/settings/personal/:section`, `/settings/organization/:id`, `/settings/group/:id`, `/settings/tenant`, and `/settings/instance`. Delete the placeholder `SettingsWorkspaceNavigation`; Personal owns compact in-page sections and existing admin layouts keep their internal sidebars. Gear menu/profile links/selector use only `SettingsScopeDto`; single-tenant "Site administration" is presentation-only. Old admin routes/directives are removed without aliases.
+- **D9:** Hybrid Settings = one bottom gear whose primary action always opens `/settings/personal`; Personal is contextual over the in-session Explore/Studio/AI origin but direct load/refresh is dedicated Settings. `/settings` is the authorized scope hub; canonical routes are `/settings/personal`, `/settings/personal/:section`, `/settings/organization/:id`, `/settings/group/:id`, `/settings/admin`, and `/settings/instance`. Delete the placeholder `SettingsWorkspaceNavigation`; Personal owns compact in-page sections and existing admin layouts keep their internal sidebars. Gear menu/profile links/selector use only `SettingsScopeDto`; single-tenant "Site administration" is presentation-only. Old admin routes/directives are removed without aliases.
 - **D10:** `/ai` workspace + dock share `AiAssistantConversationState`/`IAiAssistantClientService`; dock header gets "Open in AI workspace"; product name stays "AI Assistant"; `/ai` routes are authenticated-only (`AuthenticatedRouteGuard`).
 - **D11:** every first-party Personal Settings entry uses one explicit `UiShellState` capture-before-navigation contract; `/settings/personal` is searchable View all; section navigation is sticky vertical on desktop and stacked on narrow layouts; Personal-only scope selection is hidden.
 - **Managed actors:** reuse `IAiAssistantActorContextService.ListAuthorizedActorContextsAsync` for organization + group actor list; personal events fallback uses `GetMyEventsRequest`.
@@ -187,6 +195,15 @@ Known baseline note: memory records ~15 shared pre-existing test failures from u
 - NSwag regen collision with webhook workstream → 3.2 (coordinate before landing; dirty-file hunk preservation explicit).
 
 ## Handoff Notes
+
+### Handoff — 2026-07-23 Europe/Brussels (Task 9.3 follow-up complete; Task 10.1 blocked)
+- **Current state:** 29/30 implementation tasks are complete. The responsive Personal Settings implementation, live route updates, sequential UI-shell context loading, canonical `/settings/admin` route, and server-authorized admin navigation are accepted; only the authenticated final browser matrix remains.
+- **Next action:** Provide or configure usable local authenticated persona identities and verified authorities, then execute Task 10.1 at 320/375/768/1280/1920.
+- **Blockers:** `local-lite` is anonymous (`isAuthenticated=false`), and `/settings/personal` redirects to `/`; Personal-only and administrative-scope Settings states cannot be rendered honestly.
+- **Modified files:** Settings layout/scope CSS and tests, shell entry tests, BLAZOR/ACCESSIBILITY/DOCK_LAYOUT docs, and the four workstream ledgers. Preserve all unrelated dirty files and `.debug-journal.md`.
+- **Validation:** Follow-up application lane 12/12 and client lane 21/21 pass; Release build has zero errors; the full client run passes 2,015/2,020 with four unrelated failures and one governed skip. Earlier Settings layout 8/8, scope selector 4/4, shell entry contracts 11/11, and accessibility conventions 8/8 remain recorded.
+- **Documentation impact:** Updated; responsive View all, sticky/stacked navigation, search, scope navigation, and QA boundaries are documented.
+- **Risks:** Do not mark 30/30 or substitute deterministic tests/unchanged anonymous-shell screenshots for authenticated revised Settings browser evidence. Independent agent review remains unavailable because further agent use is prohibited.
 
 ### Handoff — 2026-07-22 Europe/Brussels (Settings information architecture re-baseline)
 - **Current state:** 26/30 implementation tasks are complete. Existing anonymous browser evidence remains partial baseline; no revised Settings runtime code was changed by this re-baseline.

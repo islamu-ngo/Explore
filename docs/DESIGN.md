@@ -148,7 +148,7 @@ Layout rules:
 - Variants: image, image-fallback, and compact empty. A tenant may expose up to ten slides; a single slide omits previous/next controls, while zero slides retain the context control and explain that no featured event matches.
 - States: active, previous/next focus and disabled edges, pointer drag/swipe, and reduced-motion.
 - Accessibility: controls are real labeled buttons; the slide-wide link has an event-specific accessible name and visible focus ring; slide changes are politely announced; title, schedule, and location/online context remain readable without the image.
-- Motion: no autoplay. Slide changes use only tokenized opacity/transform motion and become effectively instant under `prefers-reduced-motion`.
+- Motion: automatically advances to the next event every nine seconds and loops from the final slide to the first. Manual and automatic slide changes use only tokenized opacity/transform motion and become effectively instant under `prefers-reduced-motion`.
 - Geometry: the banner bleeds through the home page gutter to fill the shell's complete main-content width. Its block size is 25.5rem on desktop, 23rem on tablet, and 15.75rem on narrow screens so the composition ends with the inset poster instead of reserving a separate control row; it has no card radius or outer shadow.
 - Backdrop: the active event image fills the banner at 150% of banner block size with `object-fit: cover` and a top-biased focal point so the upper image remains visible as the viewport changes. The backdrop and tokenized readability scrim share a vertical mask that stays opaque through the upper composition and reaches full transparency at the lower edge, revealing the page background without a banner boundary.
 - Poster: the same event image is rendered as meaningful 7:10 cover art inset from the inline edge, capped at 13.5rem wide on tablet/desktop and 7rem on narrow screens. It remains visible at every supported breakpoint.
@@ -163,11 +163,11 @@ Layout rules:
 - Accessibility: Enter and Space activate card-body navigation without activating nested controls; focus remains visible; images have meaningful alternative text; metadata is not color-only.
 - Authorization: edit/delete and other management actions render only when the matching HAL relation is present. Layout mode never changes authority.
 - Schedule: card metadata uses `ddd, MMM dd, h:mm tt` with the month uppercased; the year is omitted for dates in the current year and included for every other year.
-- Fallback artwork: missing or failed event images use a local SVG whose title-stable hash selects a duo-tone linear gradient and radial mesh positions. The artwork contains no duplicate title text; the surrounding image element retains the event title as its accessible alternative.
-- External platform: a non-empty, absolute HTTP(S) `EventUrl` adds an independent “Open” link at the image's block-start/inline-end corner. It opens a new tab with opener isolation. Pointer-capable desktop layouts reveal the theme-aware surface button on card hover or focus-within; narrow or coarse-pointer layouts keep a background-free, high-contrast text action visible without hover.
+- Fallback artwork: missing or failed event images use a local SVG whose title-stable hash selects a duo-tone linear gradient and radial mesh positions. The SVG uses the application's browser-native `color-scheme` to choose a softer light-theme palette or the deeper dark-theme palette and repaints when the active theme changes. The artwork contains no duplicate title text; the surrounding image element retains the event title as its accessible alternative.
+- External platform: a non-empty, absolute HTTP(S) `EventUrl`, or the server-owned HAL `source` redirect for a federated discovery event, adds an independent “Open” link at the image's block-start/inline-end corner. It opens a new tab with opener isolation. Pointer-capable desktop layouts reveal the theme-aware surface button on card hover or focus-within; narrow or coarse-pointer layouts keep a background-free, high-contrast text action visible without hover.
 
 ### EventDetailsSidebar
-- Structure: the event preview keeps the internal “Event Page” action as the primary navigation path and places an external “Open” action at the inline end of the header action group only when the selected event has a safe `EventUrl`.
+- Structure: the event preview keeps the internal “Event Page” action as the primary navigation path and places an external “Open” action at the inline end of the header action group only when the selected event has a safe `EventUrl` or a server-owned federated HAL `source` redirect.
 - States: internal-only, internal plus external platform, image, generated mesh image-fallback, loading, and HAL-provided management or registration affordances.
 - Accessibility: the external action explicitly announces that it opens in a new tab, uses native link semantics, and preserves the ISLAMU Event browser tab.
 
@@ -226,7 +226,7 @@ Do not add another `EventCard` mode for `/home`. `UpcomingEventList` is a separa
 - Verify the complete page at 375px, 768px, and 1280px. Content must not produce viewport-level horizontal overflow.
 - Component CSS uses the existing spacing/type/color tokens and logical properties. Rails, icon placement, control order, and text alignment must remain usable in RTL without physical left/right declarations.
 - Touch targets follow `--isl-target-min`; hero and rail controls never depend on hover.
-- No discovery component autoplays, pulses, or repeatedly animates. Reduced-motion mode removes non-essential transitions while preserving every action and state change.
+- The hero carousel automatically advances every nine seconds; other discovery components do not autoplay, pulse, or repeatedly animate. Reduced-motion mode removes non-essential transitions while preserving every action and state change.
 
 ### Loading, Empty, Failure, And Hydration
 

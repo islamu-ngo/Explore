@@ -259,7 +259,7 @@ The product assistant follows the same BFF and service-layer boundary:
 
 Notification preference UI consumes the generated API client through `INotificationService` and renders the reusable `Components/Notifications/NotificationPreferenceMatrix` component.
 
-1. `/settings?section=notifications` renders the current-user matrix.
+1. `/settings/personal/notifications` renders the focused current-user matrix; `/settings/personal` includes it in searchable View all.
 2. Organization and group profile pages render scoped notification-preference tabs using the same component with organization or group scope ids.
 3. Save and global-mute controls render only when the HAL resource includes `save` and `set-mute` links. Components must not inspect roles or claims to decide whether preference cells are editable.
 4. The matrix sends only generated DTOs through the service layer; Razor components do not call `EventApiClient` directly.
@@ -303,6 +303,8 @@ Keep component lifecycle async and cancellation-aware for long-running loads. UI
 `WorkspaceRegistry` is the compile-time source of canonical rail order: Events, Studio, AI, then Settings. `AppWorkspaceRail` filters that ordered list using authentication and server-returned `WorkspaceAvailabilityDto`; it does not alphabetize destinations or infer capabilities from claims. The same semantic navigation is CSS-projected to the Xs bottom rail, while `WorkspaceNavigationHost` swaps contextual providers without re-registering the shell dock.
 
 `UiShellState` owns route-derived active workspace, session-only Personal Settings origin, last routes, and revocation fallback. `ShellPreferencesService` restores only server-authorized workspace, actor, and Settings-scope values; authenticated dock state uses server-backed user settings, anonymous state uses tenant-discriminated local storage, and viewport/content-floor projection never persists.
+
+Personal Settings has a separate in-page information architecture. `/settings/personal` is searchable View all and `/settings/personal/{section}` is the focused deep link; one local metadata registry owns section order, labels, keywords, and render types. `SettingsLayout` places `Personal settings sections` before content in the DOM, projects it as a sticky vertical column below the fixed app bar on desktop, and returns it to normal document flow above content below `59.997em`. `SettingsScopeSelector` remains a distinct `Settings scopes` navigation and renders only when the server returned at least one administrative scope.
 
 ## Styling, Accessibility, Localization, And Analytics
 

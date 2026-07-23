@@ -343,6 +343,8 @@ Convention tests in `Event.Architecture.Tests/` enforce accessibility rules at b
 
 `WorkspaceShellScenarioMatrixTests` complements these static checks with rendered rows for anonymous, seeker, organizer, tenant-admin, instance-admin, and multi-role shells. Mobile and desktop use the same semantic application-workspace navigation; browser placement, focus order, RTL mirroring, and console checks are verified by the manual matrix in `DOCK_LAYOUT.md`.
 
+Personal Settings uses two deliberately distinct navigation labels when administrative scopes are available: `Settings scopes` changes the governed scope, while `Personal settings sections` changes the focused section. The section navigation precedes content in DOM and focus order, remains sticky below the fixed app bar on desktop, and becomes non-sticky above the content on narrow viewports. View all keeps one page `h1`, gives every rendered section a unique `h2`/`aria-labelledby` pair, announces metadata-search result counts politely, uses logical CSS, and disables section entrance motion when `prefers-reduced-motion` is active.
+
 ### AuthorizationParityTests (4 tests)
 
 | Test | Rule |

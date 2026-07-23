@@ -742,6 +742,8 @@ Visual ownership is split like this:
 
 Mobile and desktop rows intentionally render one semantic `<nav aria-label="Application workspaces">` DOM. The Xs CSS projection changes placement, not links or accessibility semantics. `Settings` remains last and becomes the bottom-pinned gear on desktop.
 
+Personal Settings owns page-local navigation rather than a shell dock panel. `/settings/personal` renders searchable View all; focused paths render one section. At desktop widths, `SettingsLayout` uses a two-column grid whose `Personal settings sections` navigation sticks below the fixed app bar while the content column scrolls normally. Below `59.997em`, the grid becomes one column and navigation returns to document flow above content. The independent `Settings scopes` navigation is omitted for Personal-only users and stacks its authorized links at 320/375px.
+
 ### Responsive visual QA matrix
 
 Use this matrix for focused manual browser verification after changing dock layout or responsive behavior.
@@ -757,7 +759,7 @@ The matrix covers these widths and modes:
 | `desktop-1280-ltr` | 1280 x 900 | LTR | Default | Normal desktop inline dock tracks and split stack behavior. |
 | `wide-1920-ltr` | 1920 x 1080 | LTR | Default | Wide desktop shell + workspace parallel dock layout. |
 
-Run each width for the applicable anonymous, seeker, organizer, tenant-admin, and instance-admin rows above. Verify canonical rail order, bottom-nav reachability at Xs, active provider content, Settings scope links, shell/workspace dock hosts, logical focus order, and zero console errors. Enable the operating system or browser reduced-motion preference for the reduced-motion scenario.
+Run each width for the applicable anonymous, seeker, organizer, tenant-admin, and instance-admin rows above. Verify canonical rail order, bottom-nav reachability at Xs, active provider content, Settings scope links, shell/workspace dock hosts, logical focus order, and zero console errors. For Personal Settings, also verify all nine View all sections, metadata search and its empty state, sticky desktop navigation at 1280/1920px, stacked non-overflowing navigation at 320/375/768px, distinct scope/section landmarks, and reduced-motion suppression. Enable the operating system or browser reduced-motion preference for the reduced-motion scenario.
 
 ## What "Everything Related" Means In Current Code
 

@@ -3,13 +3,13 @@
 
 # Dynamic Event Management UI (Workspace Shell) — Task Checklist
 
-Last Updated: 2026-07-22 Europe/Brussels
+Last Updated: 2026-07-23 Europe/Brussels
 
 ## Status Summary
-- **Overall status:** Approved / Implementation started
-- **Completed:** 27/30 implementation tasks (Phases 0–8 and Task 9.1 complete; phase verification tracked separately)
-- **Current priority:** Task 9.2 View all, section registry, search, and conditional scope selector
-- **Next recommended slice:** Characterize all nine section components together, then implement one metadata registry and the View all/search composition
+- **Overall status:** Implementation 29/30 complete; final authenticated browser QA blocked
+- **Completed:** 29/30 implementation tasks (Phases 0–8 and Tasks 9.1–9.3 complete; phase verification tracked separately)
+- **Current priority:** Task 10.1 final visual/browser scenario matrix — blocked by unavailable authenticated identities/authorities
+- **Next recommended slice:** Resume Task 10.1 when usable local seeker/organizer/tenant-admin/instance-admin identities and verified authorities are available
 
 ## Implementation Maintenance Rules
 - Read the full workstream once at initial implementation start; on resume, read context/tasks first and only relevant plan sections.
@@ -154,7 +154,7 @@ Last Updated: 2026-07-22 Europe/Brussels
   - **Effort:** M | **Dependencies:** —
 - [x] **6.2 Canonical hub/personal/admin routes and page composition**
   - **Files:** modify `Routes.razor`, Personal Settings page/layout/CSS, existing guarded admin settings pages/layouts, and tests; add shared `SettingsScopeSelector`; remove old admin settings rows and `/admin/tenant/navigation` directive
-  - **Acceptance:** `/settings`, `/settings/personal`, `/settings/personal/:section`, `/settings/organization/:id`, `/settings/group/:id`, `/settings/tenant`, `/settings/instance` work with existing guards; selector is server-scope-driven; Personal uses compact path sections; admin layouts retain their own sidebars; stale-route sweep is zero
+- **Acceptance:** `/settings`, `/settings/personal`, `/settings/personal/:section`, `/settings/organization/:id`, `/settings/group/:id`, `/settings/admin`, `/settings/instance` work with existing guards; selector is server-scope-driven; Personal uses compact path sections; admin layouts retain their own sidebars; stale-route sweep is zero
   - **Validation:** failing-first client run had 5 expected Task 6.2 failures plus the 3 known unrelated failures; final client run passes 1,957/1,961 with only those 3 unrelated failures and 1 governed skip; architecture passes 281/286 with the same 4 unrelated blockers and 1 governed skip; Release build 0 errors; diff/stale-route sweeps clean; direct verification disclosure recorded because further agents are prohibited
   - **Effort:** L | **Dependencies:** 6.1
 - [x] **6.3 One-gear/profile entry points and authorized scope presentation**
@@ -213,29 +213,35 @@ Last Updated: 2026-07-22 Europe/Brussels
 - [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
   - **Blocked by the same 3 unrelated failures recorded under Phase 1:** generated EventLocation HAL collection typing and two `ReportEventDialogTests`. Current result: 1,983 total, 1,979 passed, 3 failed, 1 governed skip; the Task 8.3 matrix passes.
 
-## Phase 9: Personal Settings Entry Parity And Information Architecture ⏳ NOT STARTED
+## Phase 9: Personal Settings Entry Parity And Information Architecture 🟡 IMPLEMENTATION COMPLETE / VERIFICATION BLOCKED
 - [x] **9.1 Explicit Personal Settings navigation contract and entry-point parity**
   - **Files:** `UiShellState.cs`, `AppWorkspaceRail.razor(.cs)`, `NavMenu.razor(.cs)`, `ThemeQuickSwitcher.razor`, `EventRegistration.razor`, focused shell/entry tests
   - **Acceptance:** profile, rail, theme, and connected-app entries share one capture-before-navigation contract; live Events/Studio/AI origins persist; direct/new-tab loads remain dedicated; no return URL or durable origin
   - **Validation:** failing profile-vs-rail interaction reproduced the defect; final state 18/18, navigation 7/7, and registration 5/5 focused tests pass; changed-file diagnostics/diff checks are clean
   - **Effort:** M | **Dependencies:** 6.1
-- [ ] **9.2 View all, section registry, search, and conditional scope selector**
+- [x] **9.2 View all, section registry, search, and conditional scope selector**
   - **Files:** `Settings.razor`, `SettingsLayout.razor(.css)`, `SettingsScopeSelector.razor(.css)`, section components as needed, focused Settings tests
   - **Acceptance:** `/settings/personal` defaults to View all; all nine sections share one metadata registry; focused routes render one section; search filters/announces results; Personal-only selector is absent; invalid slugs fall back to View all without aliases; composed render has no duplicate IDs/h1
+  - **Validation:** focused `SettingsLayoutTests` pass 7/7 and `SettingsScopeSelectorTests` pass 4/4; the View all render exposes nine ordered sections with unique IDs and one page `h1`; search and empty-state announcements are covered; changed-file diagnostics and `git diff --check` are clean
   - **Effort:** L | **Dependencies:** 9.1
-- [ ] **9.3 Sticky responsive vertical navigation and documentation sync**
+- [x] **9.3 Sticky responsive vertical navigation and documentation sync**
   - **Files:** Settings scoped CSS/tests plus `docs/BLAZOR.md`, `docs/ACCESSIBILITY.md`, `docs/DOCK_LAYOUT.md`
   - **Acceptance:** desktop sticky vertical nav sits below navbar; narrow layout stacks without overflow; focus/DOM order, logical CSS, reduced motion, distinct nav labels, and docs are correct
+  - **Validation:** token-driven `minmax(11rem, 15rem) minmax(0, 1fr)` desktop grid; navbar-offset stickiness; non-sticky stacked projection below `59.997em`; focused Settings layout 8/8, scope selector 4/4, affected shell entries 11/11, and accessibility conventions 8/8 pass; BLAZOR/ACCESSIBILITY/DOCK_LAYOUT synchronized
+  - **Follow-up validation (2026-07-23):** live Personal section changes now re-render through `RouterStateService.OnRouteChanged`; UI-shell scoped dependencies are awaited sequentially to avoid shared `DbContext` overlap; tenant administration is canonical at `/settings/admin` with no alias; server-authorized profile precedence selects instance before tenant; compact scope selectors sit beside all admin headings. Focused application tests pass 12/12, focused client tests pass 21/21, and the Release build passes with zero errors. The full client run passes 2,015/2,020 with four unrelated failures and one governed skip.
   - **Effort:** M | **Dependencies:** 9.2
 
 ### Phase 9 Verification — RUN ONCE AFTER ALL PHASE TASKS
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+  - **Validation:** passed with 0 errors and 544 existing warnings.
 - [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
+  - **Blocked by the same 3 unrelated failures recorded under Phase 1:** generated EventLocation HAL collection typing and two `ReportEventDialogTests`. Current result: 2,016 total, 2,012 passed, 3 failed, 1 governed skip; all Task 9.1–9.3 focused lanes pass.
 
-## Phase 10: Final Visual/Browser QA Gate ⏳ NOT STARTED
+## Phase 10: Final Visual/Browser QA Gate 🟡 BLOCKED
 - [ ] **10.1 Final visual/browser scenario-matrix walkthrough**
   - **Files:** all shell/Settings surfaces and `docs/DOCK_LAYOUT.md` QA evidence
   - **Acceptance:** remaining authenticated personas plus revised Settings Personal-only/admin-scope states are evidenced at 320/375/768/1280/1920; console, focus, RTL, sticky/stacked, and overflow findings are recorded honestly
+  - **Blocker evidence:** `local-lite` reports `isAuthenticated=false`, and `/settings/personal` redirects to `/`. The anonymous root is console-clean and had no horizontal overflow at 1760px, but no usable authenticated persona identities or verified authorities are available; deterministic tests and unchanged anonymous screenshots are not accepted as revised Settings browser proof.
   - **Effort:** M | **Dependencies:** 9.3
 
 ### Phase 10 Verification
