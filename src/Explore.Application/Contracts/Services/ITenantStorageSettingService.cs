@@ -11,9 +11,9 @@ public interface ITenantStorageSettingService
         Guid tenantId,
         CancellationToken cancellationToken = default);
 
-    Task ApplySettingsAsync(
+    Task ApplyPatchAsync(
         Guid tenantId,
         Guid actorUserId,
-        TenantStorageSettingsDto settings,
+        PatchTenantStorageSettingsDto settings,
         CancellationToken cancellationToken = default);
 }

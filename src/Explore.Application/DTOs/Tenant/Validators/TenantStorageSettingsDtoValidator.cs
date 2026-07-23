@@ -7,6 +7,37 @@ using FluentValidation;
 
 namespace Explore.Application.DTOs.Tenant.Validators;
 
+public sealed class PatchTenantStorageSettingsDtoValidator : AbstractValidator<PatchTenantStorageSettingsDto>
+{
+    public PatchTenantStorageSettingsDtoValidator()
+    {
+        RuleFor(settings => settings)
+            .Must(HasAnyUpdate)
+            .WithMessage("At least one tenant storage setting update must be provided.");
+    }
+
+    private static bool HasAnyUpdate(PatchTenantStorageSettingsDto settings)
+        => HasAnyPolicyUpdate(settings.Policy) || HasAnyS3Update(settings.S3);
+
+    private static bool HasAnyPolicyUpdate(PatchTenantStoragePolicyDto? policy)
+        => policy is not null &&
+           (policy.Provider.HasValue ||
+            policy.MaxUploadBytes.HasValue ||
+            policy.TenantQuotaBytes.HasValue ||
+            policy.Routes.HasValue);
+
+    private static bool HasAnyS3Update(PatchTenantStorageS3Dto? s3)
+        => s3 is not null &&
+           (s3.Endpoint.HasValue ||
+            s3.PublicEndpoint.HasValue ||
+            s3.BucketName.HasValue ||
+            s3.AccessKeyId.HasValue ||
+            s3.SecretAccessKey.HasValue ||
+            s3.Region.HasValue ||
+            s3.ForcePathStyle.HasValue ||
+            s3.UploadUrlExpirationMinutes.HasValue);
+}
+
 public sealed class TenantStorageSettingsDtoValidator : AbstractValidator<TenantStorageSettingsDto>
 {
     private static readonly string[] AllowedProviders =

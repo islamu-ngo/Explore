@@ -30,17 +30,20 @@ public sealed class TenantStorageSettingService : ITenantStorageSettingService
     ];
 
     private readonly IHierarchicalSettingsResolver _settingsResolver;
+    private readonly ITenantSettingRepository _tenantSettingRepository;
     private readonly IStoragePolicyResolver _storagePolicyResolver;
     private readonly IS3ConfigResolver? _s3ConfigResolver;
     private readonly IStorageUsageCounterRepository _usageCounterRepository;
 
     public TenantStorageSettingService(
         IHierarchicalSettingsResolver settingsResolver,
+        ITenantSettingRepository tenantSettingRepository,
         IStoragePolicyResolver storagePolicyResolver,
         IStorageUsageCounterRepository usageCounterRepository,
         IS3ConfigResolver? s3ConfigResolver = null)
     {
         _settingsResolver = settingsResolver;
+        _tenantSettingRepository = tenantSettingRepository;
         _storagePolicyResolver = storagePolicyResolver;
         _s3ConfigResolver = s3ConfigResolver;
         _usageCounterRepository = usageCounterRepository;
@@ -88,95 +91,131 @@ public sealed class TenantStorageSettingService : ITenantStorageSettingService
         };
     }
 
-    public async Task ApplySettingsAsync(
+    public async Task ApplyPatchAsync(
         Guid tenantId,
         Guid actorUserId,
-        TenantStorageSettingsDto settings,
+        PatchTenantStorageSettingsDto settings,
         CancellationToken cancellationToken = default)
     {
-        var provider = NormalizeProvider(settings.Provider);
+        if (settings.Policy?.Provider is { HasValue: true } provider)
+        {
+            await SetTenantValueAsync(
+                GovernanceSettingKeys.Storage.Provider,
+                NormalizeProvider(provider.Value),
+                tenantId,
+                actorUserId,
+                cancellationToken);
+        }
 
-        await SetTenantValueAsync(
-            GovernanceSettingKeys.Storage.Provider,
-            provider,
-            tenantId,
-            actorUserId,
-            cancellationToken);
-        await SetTenantValueAsync(
-            GovernanceSettingKeys.Storage.DefaultMaxUploadBytes,
-            settings.MaxUploadBytes,
-            tenantId,
-            actorUserId,
-            cancellationToken);
-        await SetTenantValueAsync(
-            GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes,
-            settings.TenantQuotaBytes,
-            tenantId,
-            actorUserId,
-            cancellationToken);
-        await SetTenantValueAsync(
-            GovernanceSettingKeys.Storage.RouteMatrix,
-            ToRouteMatrix(settings.Routes),
-            tenantId,
-            actorUserId,
-            cancellationToken);
-        await SetTenantValueAsync(
-            GovernanceSettingKeys.Storage.Endpoint,
-            TrimOrEmpty(settings.S3Endpoint),
-            tenantId,
-            actorUserId,
-            cancellationToken);
-        await SetTenantValueAsync(
-            GovernanceSettingKeys.Storage.PublicEndpoint,
-            TrimOrEmpty(settings.S3PublicEndpoint),
-            tenantId,
-            actorUserId,
-            cancellationToken);
-        await SetTenantValueAsync(
-            GovernanceSettingKeys.Storage.BucketName,
-            TrimOrEmpty(settings.S3BucketName),
-            tenantId,
-            actorUserId,
-            cancellationToken);
+        if (settings.Policy?.MaxUploadBytes is { HasValue: true } maxUploadBytes)
+        {
+            await SetTenantValueAsync(
+                GovernanceSettingKeys.Storage.DefaultMaxUploadBytes,
+                maxUploadBytes.Value,
+                tenantId,
+                actorUserId,
+                cancellationToken);
+        }
 
-        if (!string.IsNullOrWhiteSpace(settings.S3AccessKeyId))
+        if (settings.Policy?.TenantQuotaBytes is { HasValue: true } tenantQuotaBytes)
+        {
+            await SetTenantValueAsync(
+                GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes,
+                tenantQuotaBytes.Value,
+                tenantId,
+                actorUserId,
+                cancellationToken);
+        }
+
+        if (settings.Policy?.Routes is { HasValue: true } routes)
+        {
+            await SetTenantValueAsync(
+                GovernanceSettingKeys.Storage.RouteMatrix,
+                ToRouteMatrix(routes.Value ?? []),
+                tenantId,
+                actorUserId,
+                cancellationToken);
+        }
+
+        if (settings.S3?.Endpoint is { HasValue: true } endpoint)
+        {
+            await SetTenantValueAsync(
+                GovernanceSettingKeys.Storage.Endpoint,
+                TrimOrEmpty(endpoint.Value),
+                tenantId,
+                actorUserId,
+                cancellationToken);
+        }
+
+        if (settings.S3?.PublicEndpoint is { HasValue: true } publicEndpoint)
+        {
+            await SetTenantValueAsync(
+                GovernanceSettingKeys.Storage.PublicEndpoint,
+                TrimOrEmpty(publicEndpoint.Value),
+                tenantId,
+                actorUserId,
+                cancellationToken);
+        }
+
+        if (settings.S3?.BucketName is { HasValue: true } bucketName)
+        {
+            await SetTenantValueAsync(
+                GovernanceSettingKeys.Storage.BucketName,
+                TrimOrEmpty(bucketName.Value),
+                tenantId,
+                actorUserId,
+                cancellationToken);
+        }
+
+        if (settings.S3?.AccessKeyId is { HasValue: true } accessKeyId)
         {
             await SetTenantValueAsync(
                 InfrastructureSecretSettingKeys.Storage.AccessKeyId,
-                settings.S3AccessKeyId.Trim(),
+                TrimOrEmpty(accessKeyId.Value),
                 tenantId,
                 actorUserId,
                 cancellationToken);
         }
 
-        if (!string.IsNullOrWhiteSpace(settings.S3SecretAccessKey))
+        if (settings.S3?.SecretAccessKey is { HasValue: true } secretAccessKey)
         {
             await SetTenantValueAsync(
                 InfrastructureSecretSettingKeys.Storage.SecretAccessKey,
-                settings.S3SecretAccessKey.Trim(),
+                TrimOrEmpty(secretAccessKey.Value),
                 tenantId,
                 actorUserId,
                 cancellationToken);
         }
 
-        await SetTenantValueAsync(
-            GovernanceSettingKeys.Storage.Region,
-            TrimOrEmpty(settings.S3Region),
-            tenantId,
-            actorUserId,
-            cancellationToken);
-        await SetTenantValueAsync(
-            GovernanceSettingKeys.Storage.ForcePathStyle,
-            settings.S3ForcePathStyle,
-            tenantId,
-            actorUserId,
-            cancellationToken);
-        await SetTenantValueAsync(
-            GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes,
-            settings.S3UploadUrlExpirationMinutes,
-            tenantId,
-            actorUserId,
-            cancellationToken);
+        if (settings.S3?.Region is { HasValue: true } region)
+        {
+            await SetTenantValueAsync(
+                GovernanceSettingKeys.Storage.Region,
+                TrimOrEmpty(region.Value),
+                tenantId,
+                actorUserId,
+                cancellationToken);
+        }
+
+        if (settings.S3?.ForcePathStyle is { HasValue: true } forcePathStyle)
+        {
+            await SetTenantValueAsync(
+                GovernanceSettingKeys.Storage.ForcePathStyle,
+                forcePathStyle.Value,
+                tenantId,
+                actorUserId,
+                cancellationToken);
+        }
+
+        if (settings.S3?.UploadUrlExpirationMinutes is { HasValue: true } expirationMinutes)
+        {
+            await SetTenantValueAsync(
+                GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes,
+                expirationMinutes.Value,
+                tenantId,
+                actorUserId,
+                cancellationToken);
+        }
     }
 
     private async Task<Dictionary<string, ResolvedSetting>> ResolveSettingsAsync(
@@ -194,13 +233,12 @@ public sealed class TenantStorageSettingService : ITenantStorageSettingService
         Guid actorUserId,
         CancellationToken cancellationToken)
     {
-        await _settingsResolver.SetValueAsync(
+        await _tenantSettingRepository.SetValueAsync(
+            tenantId,
             key,
             SettingValueSerializer.Serialize(value),
-            SettingScope.Tenant,
-            tenantId,
-            actorUserId,
-            cancellationToken);
+            cancellationToken,
+            actorUserId);
     }
 
     private static TenantStorageEffectivePolicyDto MapPolicy(ResolvedStoragePolicy policy)

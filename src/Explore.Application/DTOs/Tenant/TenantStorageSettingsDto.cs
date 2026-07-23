@@ -2,9 +2,36 @@
 // ABOUTME: Exposes effective policy, read-only lock state, usage, and redacted optional S3 overrides.
 
 using Explore.Application.DTOs.Storage;
+using Explore.Application.Models.Common;
 using Explore.Domain;
 
 namespace Explore.Application.DTOs.Tenant;
+
+public sealed class PatchTenantStorageSettingsDto
+{
+    public PatchTenantStoragePolicyDto? Policy { get; set; }
+    public PatchTenantStorageS3Dto? S3 { get; set; }
+}
+
+public sealed class PatchTenantStoragePolicyDto
+{
+    public OptionalUpdate<string> Provider { get; set; }
+    public OptionalUpdate<long> MaxUploadBytes { get; set; }
+    public OptionalUpdate<long> TenantQuotaBytes { get; set; }
+    public OptionalUpdate<List<StorageRouteSettingsDto>> Routes { get; set; }
+}
+
+public sealed class PatchTenantStorageS3Dto
+{
+    public OptionalUpdate<string> Endpoint { get; set; }
+    public OptionalUpdate<string> PublicEndpoint { get; set; }
+    public OptionalUpdate<string> BucketName { get; set; }
+    public OptionalUpdate<string> AccessKeyId { get; set; }
+    public OptionalUpdate<string> SecretAccessKey { get; set; }
+    public OptionalUpdate<string> Region { get; set; }
+    public OptionalUpdate<bool> ForcePathStyle { get; set; }
+    public OptionalUpdate<int> UploadUrlExpirationMinutes { get; set; }
+}
 
 public class TenantStorageSettingsDto
 {
