@@ -143,7 +143,7 @@ public class EventModerationRecord : ITenantEntity
 
         return new EventModerationRecord
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             TenantId = tenantId,
             EventId = eventId,
             ModeratorUserId = moderatorUserId,

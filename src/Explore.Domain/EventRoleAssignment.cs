@@ -63,7 +63,7 @@ public class EventRoleAssignment : ITenantEntity, IAuditableEntity
 
         return new EventRoleAssignment
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             TenantId = tenantId,
             EventId = eventId,
             UserId = userId,

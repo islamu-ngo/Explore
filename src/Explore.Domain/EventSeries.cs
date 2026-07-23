@@ -53,5 +53,5 @@ public class EventSeries : ITenantEntity, IAuditableEntity, ISoftDeletable, ICon
     public Guid? DeletedBy { get; set; }
 
     // IConcurrencyAware
-    public Guid ConcurrencyStamp { get; set; } = Guid.NewGuid();
+    public Guid ConcurrencyStamp { get; set; } = Guid.CreateVersion7();
 }

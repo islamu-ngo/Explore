@@ -82,7 +82,7 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
         var actorId = entity.ActorId;
         var updatedAt = entity.UpdatedAt;
         var updatedBy = entity.UpdatedBy;
-        var concurrencyStamp = Guid.NewGuid();
+        var concurrencyStamp = Guid.CreateVersion7();
 
         var affectedRows = await _dbContext.AiConversations
             .Where(conversation => conversation.Id == entity.Id)

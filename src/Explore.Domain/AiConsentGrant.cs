@@ -11,7 +11,7 @@ namespace Explore.Domain;
 public class AiConsentGrant : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
     public Guid Id { get; set; }
-    public Guid ConcurrencyStamp { get; set; } = Guid.NewGuid();
+    public Guid ConcurrencyStamp { get; set; } = Guid.CreateVersion7();
 
     [ForeignKey(nameof(Id))]
     public AiConsentGrant Self { get; set; } = null!;
