@@ -52,6 +52,7 @@ public static class RouteNames
     public const string GetEvents = "GetEvents";
     public const string GetEventById = "GetEventById";
     public const string GetEventByPublicCode = "GetEventByPublicCode";
+    public const string GetEventOpenGraphImage = "GetEventOpenGraphImage";
     public const string GetEventManagementDetails = "GetEventManagementDetails";
     public const string GetEventModerationHistory = "GetEventModerationHistory";
     public const string GetManagedEventsByActor = "GetManagedEventsByActor";

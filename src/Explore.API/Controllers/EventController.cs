@@ -27,6 +27,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Net.Http.Headers;
 
 namespace Explore.API.Controllers;
 
@@ -414,6 +415,45 @@ public class EventController : ExploreControllerBase
 
         var halResource = await _resourceAssembler.ToResource(@event, HttpContext);
         return Ok(halResource);
+    }
+
+    /// <summary>
+    /// Render the canonical Open Graph image for a public event.
+    /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet("public/{slugCode}/og-image", Name = RouteNames.GetEventOpenGraphImage)]
+    [EndpointSummary("Get Public Event Open Graph Image")]
+    [EndpointDescription("Returns a deterministic 1200x630 PNG for an eligible public event, or the generic event-not-found response when the event is not publicly renderable.")]
+    [Produces("image/png")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status304NotModified)]
+    public async Task<IActionResult> GetOpenGraphImage(string slugCode, CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(
+            new GetPublicEventOpenGraphImageRequest { SlugCode = slugCode },
+            cancellationToken);
+        if (result is null)
+            return this.ToNotFoundProblem(EventNotFoundProblem);
+
+        var entityTag = EntityTagHeaderValue.Parse(result.ETag);
+        Response.Headers.CacheControl = "public, max-age=0, must-revalidate";
+        Response.Headers.Vary = "Host, X-Tenant-Slug";
+        Response.Headers.ETag = entityTag.ToString();
+
+        if (Request.Headers.IfNoneMatch.Any(value =>
+                value.Split(',').Any(candidate =>
+                    string.Equals(candidate.Trim(), entityTag.ToString(), StringComparison.Ordinal))))
+        {
+            Response.ContentLength = 0;
+            return StatusCode(StatusCodes.Status304NotModified);
+        }
+
+        var fileResult = File(result.PngBytes, "image/png");
+        fileResult.EntityTag = entityTag;
+        return fileResult;
     }
 
     /// <summary>
