@@ -44,8 +44,8 @@ public sealed class TenantStorageSettingsAdminService(
 
         try
         {
-            return await api.UpdateTenantStorageSettingsAsync(
-                settings.ToUpdateRequest(),
+            return await api.PatchTenantStorageSettingsAsync(
+                settings.ToPatchRequest(),
                 cancellationToken: cancellationToken);
         }
         catch (Exception ex)

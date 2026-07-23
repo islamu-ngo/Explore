@@ -47,7 +47,7 @@ public sealed class TenantStorageSettingsAdminServiceTests
                 },
                 _links = new Dictionary<string, HalLink>
                 {
-                    ["edit"] = new() { Href = "/api/tenant/settings/storage", Method = "PUT" }
+                    ["edit"] = new() { Href = "/api/tenant/settings/storage", Method = "PATCH" }
                 }
             });
 
@@ -64,8 +64,8 @@ public sealed class TenantStorageSettingsAdminServiceTests
         var result = await _service.SaveAsync(new HalResourceOfTenantStorageSettingsDto());
 
         await Assert.That(result.Success).IsFalse();
-        await _api.DidNotReceive().UpdateTenantStorageSettingsAsync(
-            Arg.Any<TenantStorageSettingsDto>(),
+        await _api.DidNotReceive().PatchTenantStorageSettingsAsync(
+            Arg.Any<PatchTenantStorageSettingsDto>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
@@ -74,8 +74,8 @@ public sealed class TenantStorageSettingsAdminServiceTests
     [Test]
     public async Task SaveAsync_ForwardsGeneratedTenantStorageDto_WhenEditable()
     {
-        _api.UpdateTenantStorageSettingsAsync(
-                Arg.Any<TenantStorageSettingsDto>(),
+        _api.PatchTenantStorageSettingsAsync(
+                Arg.Any<PatchTenantStorageSettingsDto>(),
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
@@ -89,21 +89,30 @@ public sealed class TenantStorageSettingsAdminServiceTests
             Provider = StorageProviderOptions.Local,
             MaxUploadBytes = 10 * 1024 * 1024,
             TenantQuotaBytes = 1024L * 1024 * 1024,
+            S3AccessKeyConfigured = true,
+            S3SecretAccessKeyConfigured = true,
             _links = new Dictionary<string, HalLink>
             {
-                ["edit"] = new() { Href = "/api/tenant/settings/storage", Method = "PUT" }
+                ["edit"] = new() { Href = "/api/tenant/settings/storage", Method = "PATCH" }
             }
         };
 
         var result = await _service.SaveAsync(model);
 
         await Assert.That(result.Success).IsTrue();
-        await _api.Received(1).UpdateTenantStorageSettingsAsync(
-            Arg.Is<TenantStorageSettingsDto>(request =>
+        await _api.Received(1).PatchTenantStorageSettingsAsync(
+            Arg.Is<PatchTenantStorageSettingsDto>(request =>
                 request != null &&
-                request.TenantId == model.TenantId &&
-                request.Provider == "local" &&
-                request.MaxUploadBytes == 10 * 1024 * 1024),
+                request.Policy != null &&
+                request.Policy.Provider != null &&
+                request.Policy.Provider.HasValue == true &&
+                request.Policy.Provider.Value == "local" &&
+                request.Policy.MaxUploadBytes != null &&
+                request.Policy.MaxUploadBytes.HasValue == true &&
+                request.Policy.MaxUploadBytes.Value == 10 * 1024 * 1024 &&
+                request.S3 != null &&
+                request.S3.AccessKeyId == null &&
+                request.S3.SecretAccessKey == null),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());

@@ -136,27 +136,39 @@ public static class StorageAdminExtensions
             S3UploadUrlExpirationMinutes = settings.S3UploadUrlExpirationMinutes
         };
 
-    public static TenantStorageSettingsDto ToUpdateRequest(
+    public static PatchTenantStorageSettingsDto ToPatchRequest(
         this HalResourceOfTenantStorageSettingsDto settings) => new()
         {
-            TenantId = settings.TenantId,
-            Provider = StorageProviderOptions.Normalize(settings.Provider),
-            MaxUploadBytes = settings.MaxUploadBytes,
-            TenantQuotaBytes = settings.TenantQuotaBytes,
-            IsReadOnly = settings.IsReadOnly,
-            TenantOverridesAllowed = settings.TenantOverridesAllowed,
-            TenantStorageLocked = settings.TenantStorageLocked,
-            Routes = settings.Routes?.Select(route => ToRequestRoute(route)).ToList(),
-            S3Endpoint = NullIfWhiteSpace(settings.S3Endpoint),
-            S3PublicEndpoint = NullIfWhiteSpace(settings.S3PublicEndpoint),
-            S3BucketName = NullIfWhiteSpace(settings.S3BucketName),
-            S3AccessKeyId = NullIfWhiteSpace(settings.S3AccessKeyId),
-            S3SecretAccessKey = NullIfWhiteSpace(settings.S3SecretAccessKey),
-            S3AccessKeyConfigured = settings.S3AccessKeyConfigured,
-            S3SecretAccessKeyConfigured = settings.S3SecretAccessKeyConfigured,
-            S3Region = NullIfWhiteSpace(settings.S3Region),
-            S3ForcePathStyle = settings.S3ForcePathStyle,
-            S3UploadUrlExpirationMinutes = settings.S3UploadUrlExpirationMinutes
+            Policy = new PatchTenantStoragePolicyDto
+            {
+                Provider = OptionalString(StorageProviderOptions.Normalize(settings.Provider)),
+                MaxUploadBytes = OptionalLong(settings.MaxUploadBytes),
+                TenantQuotaBytes = OptionalLong(settings.TenantQuotaBytes),
+                Routes = new OptionalUpdateOfListOfStorageRouteSettingsDto
+                {
+                    HasValue = true,
+                    Value = settings.Routes?.Select(ToRequestRoute).ToList() ?? []
+                }
+            },
+            S3 = new PatchTenantStorageS3Dto
+            {
+                Endpoint = OptionalString(NullIfWhiteSpace(settings.S3Endpoint)),
+                PublicEndpoint = OptionalString(NullIfWhiteSpace(settings.S3PublicEndpoint)),
+                BucketName = OptionalString(NullIfWhiteSpace(settings.S3BucketName)),
+                AccessKeyId = OptionalSecret(settings.S3AccessKeyId, settings.S3AccessKeyConfigured),
+                SecretAccessKey = OptionalSecret(settings.S3SecretAccessKey, settings.S3SecretAccessKeyConfigured),
+                Region = OptionalString(NullIfWhiteSpace(settings.S3Region)),
+                ForcePathStyle = new OptionalUpdateOfboolean
+                {
+                    HasValue = true,
+                    Value = settings.S3ForcePathStyle
+                },
+                UploadUrlExpirationMinutes = new OptionalUpdateOfint
+                {
+                    HasValue = true,
+                    Value = settings.S3UploadUrlExpirationMinutes
+                }
+            }
         };
 
     public static long BytesToMiB(long? bytes) => Math.Max(1, (bytes ?? MiB) / MiB);
@@ -234,6 +246,23 @@ public static class StorageAdminExtensions
         MaxUploadSource = route.MaxUploadSource,
         IsReadOnly = route.IsReadOnly
     };
+
+    private static OptionalUpdateOfstring OptionalString(string? value) => new()
+    {
+        HasValue = true,
+        Value = value
+    };
+
+    private static OptionalUpdateOflong OptionalLong(long? value) => new()
+    {
+        HasValue = true,
+        Value = value
+    };
+
+    private static OptionalUpdateOfstring? OptionalSecret(string? value, bool? isConfigured) =>
+        string.IsNullOrWhiteSpace(value) && isConfigured == true
+            ? null
+            : OptionalString(NullIfWhiteSpace(value));
 
     private static long PositiveOrDefault(long? value, long fallback) => value is > 0 ? value.Value : fallback;
     private static int PositiveOrDefault(int? value, int fallback) => value is > 0 ? value.Value : fallback;
