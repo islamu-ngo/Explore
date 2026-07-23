@@ -19,6 +19,8 @@ public partial class SetupLayout : LayoutComponentBase
     [CascadingParameter(Name = "InitialTheme")]
     public bool? InitialTheme { get; set; }
 
+    private string ActiveColorScheme => _isDarkMode ? "dark" : "light";
+
     protected override void OnInitialized()
     {
         if (InitialTheme.HasValue)

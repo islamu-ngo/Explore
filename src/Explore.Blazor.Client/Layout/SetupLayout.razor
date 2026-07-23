@@ -3,7 +3,7 @@
 
 @inherits LayoutComponentBase
 
-<div class="setup-layout-root">
+<div class="setup-layout-root" style="color-scheme: @ActiveColorScheme;">
     <MudThemeProvider @ref="_mudThemeProvider" Theme="@_theme" @bind-IsDarkMode="@_isDarkMode" />
     <MudPopoverProvider />
     <MudDialogProvider DefaultFocus="DefaultFocus.FirstChild" />

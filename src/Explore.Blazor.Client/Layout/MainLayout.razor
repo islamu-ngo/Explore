@@ -14,7 +14,8 @@
 @* Skip-to-content link — first focusable element on every page (WCAG 2.4.1) *@
 <a href="#main-content" class="skip-link">Skip to main content</a>
 
-<div class="main-layout-root @(_hideChrome ? "main-layout-root--hide-chrome" : "main-layout-root--has-rail")">
+<div class="main-layout-root @(_hideChrome ? "main-layout-root--hide-chrome" : "main-layout-root--has-rail")"
+     style="color-scheme: @ActiveColorScheme;">
 <MudRTLProvider RightToLeft="@_isRtl">
     <MudLayout class="main-layout">
         @if (!_hideChrome)

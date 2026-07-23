@@ -111,6 +111,8 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
     private string MainContentStyle => MainContentAppearanceState.Style;
 
+    private string ActiveColorScheme => _isDarkMode ? "dark" : "light";
+
     private bool ActiveWorkspaceHasNavigation => WorkspaceRegistry.Workspaces.Any(workspace =>
         workspace.Key == UiShellState.ActiveWorkspace && workspace.NavigationProviderType is not null);
 

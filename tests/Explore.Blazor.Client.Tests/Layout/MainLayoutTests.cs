@@ -935,6 +935,20 @@ public class MainLayoutTests : IDisposable
         await Task.CompletedTask;
     }
 
+    [Test]
+    [Arguments(false, "light")]
+    [Arguments(true, "dark")]
+    public async Task Render_ExposesActiveColorSchemeForThemeAwareMedia(bool isDarkMode, string expectedColorScheme)
+    {
+        var cut = _ctx.Render<MainLayout>(parameters => parameters
+            .Add(layout => layout.Body, (RenderFragment)(builder => builder.AddContent(0, "Test body content")))
+            .Add(layout => layout.InitialTheme, isDarkMode));
+
+        var root = cut.Find(".main-layout-root");
+
+        await Assert.That(root.GetAttribute("style")).Contains($"color-scheme: {expectedColorScheme}");
+    }
+
     #endregion
 
     #region Content
