@@ -94,7 +94,7 @@ public sealed class AppWorkspaceRailShellContextTests : IDisposable
             .IsEqualTo("Open Settings menu");
         await Assert.That(cut.Markup).Contains("href=\"/settings\"");
         await Assert.That(cut.Markup).Contains($"href=\"/settings/organization/{organizationId}\"");
-        await Assert.That(cut.Markup).Contains("href=\"/settings/tenant\"");
+        await Assert.That(cut.Markup).Contains("href=\"/settings/admin\"");
         await Assert.That(cut.Markup).DoesNotContain("/settings/instance");
     }
 

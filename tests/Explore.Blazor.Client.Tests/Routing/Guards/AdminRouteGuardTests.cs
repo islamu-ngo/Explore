@@ -91,7 +91,7 @@ public class AdminRouteGuardTests
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
 
         var guard = CreateGuard(authStateProvider);
-        var routeMatch = new RouteMatch { MatchedPath = "/settings/tenant" };
+        var routeMatch = new RouteMatch { MatchedPath = "/settings/admin" };
 
         // Act
         var result = await guard.CanActivateAsync(routeMatch);
@@ -154,13 +154,13 @@ public class AdminRouteGuardTests
         // Arrange
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         var guard = CreateGuard(authStateProvider);
-        var routeMatch = new RouteMatch { MatchedPath = "/settings/tenant" };
+        var routeMatch = new RouteMatch { MatchedPath = "/settings/admin" };
 
         // Act
         var redirectPath = await guard.GetRedirectPathAsync(routeMatch);
 
         // Assert
-        await Assert.That(redirectPath).IsEqualTo("/login?returnUrl=%2Fsettings%2Ftenant");
+        await Assert.That(redirectPath).IsEqualTo("/login?returnUrl=%2Fsettings%2Fadmin");
     }
 
     [Test]

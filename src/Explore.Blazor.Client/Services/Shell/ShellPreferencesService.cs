@@ -130,7 +130,7 @@ public sealed class ShellPreferencesService(
     {
         var suffix = route.IndexOfAny(['?', '#']);
         var path = (suffix >= 0 ? route[..suffix] : route).TrimEnd('/');
-        if (path.Equals("/settings/tenant", StringComparison.OrdinalIgnoreCase))
+        if (path.Equals("/settings/admin", StringComparison.OrdinalIgnoreCase))
         {
             return "tenant";
         }
@@ -160,7 +160,7 @@ public sealed class ShellPreferencesService(
         if (string.Equals(storedScope, "tenant", StringComparison.OrdinalIgnoreCase)
             && authorizedScopes.Any(scope => IsScope(scope, "Tenant")))
         {
-            return "/settings/tenant";
+            return "/settings/admin";
         }
 
         if (string.Equals(storedScope, "instance", StringComparison.OrdinalIgnoreCase)

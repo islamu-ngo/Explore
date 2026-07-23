@@ -99,11 +99,11 @@ public sealed class AppWorkspaceRailTests : IDisposable
     {
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
         var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
-        _ = _ctx.Services.GetRequiredService<UiShellState>();
+        var shellState = _ctx.Services.GetRequiredService<UiShellState>();
         navigation.NavigateTo("/events?q=iftar");
         var cut = _ctx.Render<AppWorkspaceRail>();
 
-        await cut.InvokeAsync(() => navigation.NavigateTo("/settings/personal/appearance"));
+        await cut.InvokeAsync(() => shellState.NavigateToPersonalSettings("/settings/personal/appearance"));
 
         cut.WaitForAssertion(() =>
         {

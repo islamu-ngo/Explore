@@ -32,7 +32,7 @@ public sealed class WorkspaceRouteClassifierTests
     [Arguments("/settings/personal/appearance", "settings")]
     [Arguments("https://example.test/settings/personal/appearance", "settings")]
     [Arguments("/settings/instance", "settings")]
-    [Arguments("/settings/tenant", "settings")]
+    [Arguments("/settings/admin", "settings")]
     [Arguments("/settings/organization/123", "settings")]
     [Arguments("/settings/group/123", "settings")]
     [Arguments("/ai", "ai")]

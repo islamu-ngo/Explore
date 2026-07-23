@@ -93,7 +93,8 @@ public class RoutesConfigurationTests
         await Assert.That(routesContent).Contains("Path = \"/settings/personal/:section\", Component = typeof(Explore.Blazor.Client.Pages.User.Settings), Transition = RouteTransition.Fade, Guards = RequireAuthenticated()");
         await Assert.That(routesContent).Contains("Path = \"/settings/organization/:OrganizationId\", Component = typeof(OrganizationAdminSettings), Transition = RouteTransition.Fade, Guards = RequireOrgAdmin()");
         await Assert.That(routesContent).Contains("Path = \"/settings/group/:GroupId\", Component = typeof(GroupAdminSettings), Transition = RouteTransition.Fade, Guards = RequireGroupAdmin()");
-        await Assert.That(routesContent).Contains("Path = \"/settings/tenant\", Component = typeof(TenantAdminSettings), Transition = RouteTransition.Fade, Guards = RequireTenantAdmin()");
+        await Assert.That(routesContent).Contains("Path = \"/settings/admin\", Component = typeof(TenantAdminSettings), Transition = RouteTransition.Fade, Guards = RequireTenantAdmin()");
+        await Assert.That(routesContent).DoesNotContain("Path = \"/settings/tenant\"");
         await Assert.That(routesContent).Contains("Path = \"/settings/instance\", Component = typeof(InstanceAdminSettings), Transition = RouteTransition.Fade, Guards = RequireAdmin()");
 
         await Assert.That(routesContent).DoesNotContain(string.Concat("/admin/instance", "/settings"));
@@ -216,13 +217,13 @@ public class RoutesConfigurationTests
         var routes = new List<RouteConfig>
         {
             new() { Path = "/", Component = typeof(Routes) },
-            new() { Path = "/settings/tenant", Component = typeof(Routes) }
+            new() { Path = "/settings/admin", Component = typeof(Routes) }
         };
 
         RouteConfigurationPathBase.Apply(routes, "https://event.test/t/acme/");
 
         await Assert.That(routes[0].Path).IsEqualTo("/t/acme");
-        await Assert.That(routes[1].Path).IsEqualTo("/t/acme/settings/tenant");
+        await Assert.That(routes[1].Path).IsEqualTo("/t/acme/settings/admin");
     }
 
     [Test]

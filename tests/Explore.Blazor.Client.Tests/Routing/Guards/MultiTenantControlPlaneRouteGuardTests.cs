@@ -80,6 +80,6 @@ public class MultiTenantControlPlaneRouteGuardTests
 
         var redirectPath = await guard.GetRedirectPathAsync(new RouteMatch { MatchedPath = "/admin/instance" });
 
-        await Assert.That(redirectPath).IsEqualTo("/settings/tenant");
+        await Assert.That(redirectPath).IsEqualTo("/settings/admin");
     }
 }

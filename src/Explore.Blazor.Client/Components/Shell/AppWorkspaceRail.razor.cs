@@ -156,7 +156,7 @@ public partial class AppWorkspaceRail : ComponentBase, IDisposable
         {
             "ORGANIZATION" when scope.ScopeId.HasValue => new($"/settings/organization/{scope.ScopeId}", scope.DisplayName ?? "Organization"),
             "GROUP" when scope.ScopeId.HasValue => new($"/settings/group/{scope.ScopeId}", scope.DisplayName ?? "Group"),
-            "TENANT" => new("/settings/tenant", siteAdministration ? "Tenant settings" : "Tenant administration"),
+            "TENANT" => new("/settings/admin", siteAdministration ? "Tenant settings" : "Tenant administration"),
             "INSTANCE" => new("/settings/instance", siteAdministration ? "Instance settings" : "Instance administration"),
             _ => null
         };

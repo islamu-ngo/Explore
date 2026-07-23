@@ -1,5 +1,5 @@
 // ABOUTME: Route guard for multi-tenant-only embedded control-plane pages.
-// ABOUTME: Keeps completed and onboarding single-tenant deployments on tenant settings instead.
+// ABOUTME: Keeps completed and onboarding single-tenant deployments on admin settings instead.
 
 using Blazouter.Interfaces;
 using Blazouter.Models;
@@ -15,5 +15,5 @@ public sealed class MultiTenantControlPlaneRouteGuard(IInstanceOnboardingService
         return string.Equals(status?.DeploymentMode, "MultiTenant", StringComparison.OrdinalIgnoreCase);
     }
 
-    public Task<string?> GetRedirectPathAsync(RouteMatch match) => Task.FromResult<string?>("/settings/tenant");
+    public Task<string?> GetRedirectPathAsync(RouteMatch match) => Task.FromResult<string?>("/settings/admin");
 }

@@ -250,7 +250,7 @@ public class NavMenuAdminTests : IDisposable
 
         // Assert
         await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/instance\"");
-        await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/tenant\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/admin\"");
     }
 
     [Test]
@@ -270,7 +270,7 @@ public class NavMenuAdminTests : IDisposable
         await Assert.That(cut.Markup).Contains("Instance Console");
         await Assert.That(cut.Markup).Contains("href=\"/admin/instance\"");
         await Assert.That(cut.Markup).Contains("href=\"/settings/instance\"");
-        await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/tenant\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/admin\"");
     }
 
     [Test]
@@ -290,7 +290,7 @@ public class NavMenuAdminTests : IDisposable
 
         // Assert
         await Assert.That(cut.Markup).DoesNotContain("href=\"/admin\"");
-        await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/tenant\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/admin\"");
         await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/instance\"");
     }
 
@@ -311,7 +311,7 @@ public class NavMenuAdminTests : IDisposable
         await Assert.That(cut.Markup).Contains("Administration");
         await Assert.That(cut.Markup).Contains("href=\"/settings/instance\"");
         await Assert.That(cut.Markup).DoesNotContain("Instance Console");
-        await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/tenant\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/admin\"");
         await Assert.That(cut.Markup).DoesNotContain("Custom Property Governance");
     }
 
@@ -326,7 +326,7 @@ public class NavMenuAdminTests : IDisposable
         var cut = RenderNavMenu();
         OpenDropdown(cut);
 
-        await Assert.That(cut.Markup).Contains("href=\"/settings/tenant\"");
+        await Assert.That(cut.Markup).Contains("href=\"/settings/admin\"");
         await Assert.That(cut.Markup).DoesNotContain("href=\"/settings/instance\"");
         await Assert.That(cut.Markup).Contains("Custom Property Governance");
     }
@@ -398,7 +398,7 @@ public class NavMenuAdminTests : IDisposable
 
         // Assert
         await Assert.That(cut.Markup).Contains("href=\"/settings/instance\"");
-        await Assert.That(cut.Markup).Contains("href=\"/settings/tenant\"");
+        await Assert.That(cut.Markup).Contains("href=\"/settings/admin\"");
         await Assert.That(cut.Markup).Contains("Site administration");
         await Assert.That(cut.Markup).DoesNotContain("Tenant administration");
         await Assert.That(cut.Markup).DoesNotContain("Instance administration");
@@ -416,6 +416,41 @@ public class NavMenuAdminTests : IDisposable
 
         await Assert.That(cut.Markup).Contains("href=\"/settings/personal\"");
         await Assert.That(cut.Markup).Contains("href=\"/settings\"");
+    }
+
+    [Test]
+    public async Task NavMenu_SingleTenantInstanceAdmin_ReplacesAllSettingsWithAdminSettings()
+    {
+        _ctx.SetAuthenticatedUser(AuthenticationTestConstants.AdminUserId, "Instance Admin");
+        SetupNavMenuServices(
+            deploymentMode: "SingleTenant",
+            isCurrentUserInstanceAdmin: true,
+            isCurrentUserTenantAdmin: true);
+
+        var cut = RenderNavMenu();
+        OpenDropdown(cut);
+
+        var adminSettings = cut.FindAll("a")
+            .Single(link => link.TextContent.Contains("Admin Settings", StringComparison.Ordinal));
+        await Assert.That(adminSettings.GetAttribute("href")).IsEqualTo("/settings/instance");
+        await Assert.That(cut.Markup).DoesNotContain("All Settings");
+    }
+
+    [Test]
+    public async Task NavMenu_SingleTenantTenantAdmin_ReplacesAllSettingsWithAdminSettings()
+    {
+        _ctx.SetAuthenticatedUser(AuthenticationTestConstants.AdminUserId, "Tenant Admin");
+        SetupNavMenuServices(
+            deploymentMode: "SingleTenant",
+            isCurrentUserTenantAdmin: true);
+
+        var cut = RenderNavMenu();
+        OpenDropdown(cut);
+
+        var adminSettings = cut.FindAll("a")
+            .Single(link => link.TextContent.Contains("Admin Settings", StringComparison.Ordinal));
+        await Assert.That(adminSettings.GetAttribute("href")).IsEqualTo("/settings/admin");
+        await Assert.That(cut.Markup).DoesNotContain("All Settings");
     }
 
     [Test]

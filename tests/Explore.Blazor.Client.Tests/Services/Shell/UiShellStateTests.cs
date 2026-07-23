@@ -139,7 +139,7 @@ public sealed class UiShellStateTests : IDisposable
         await Assert.That(state.IsPersonalSettingsOpen).IsTrue();
         await Assert.That(state.PersonalSettingsReturnRoute).IsEqualTo("/studio/events?q=draft");
 
-        navigation.NavigateTo("/settings/tenant");
+        navigation.NavigateTo("/settings/admin");
 
         await Assert.That(state.ActiveWorkspace).IsEqualTo(WorkspaceKey.Settings);
         await Assert.That(state.IsPersonalSettingsOpen).IsFalse();

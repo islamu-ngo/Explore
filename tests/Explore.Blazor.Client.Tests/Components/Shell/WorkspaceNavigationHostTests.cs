@@ -153,7 +153,8 @@ public sealed class WorkspaceNavigationHostTests : IDisposable
         var cut = _ctx.Render<WorkspaceNavigationHost>();
         await Assert.That(cut.Markup).Contains("events-workspace-navigation");
 
-        await cut.InvokeAsync(() => navigation.NavigateTo("/settings/personal/appearance"));
+        var shellState = _ctx.Services.GetRequiredService<UiShellState>();
+        await cut.InvokeAsync(() => shellState.NavigateToPersonalSettings("/settings/personal/appearance"));
 
         await Assert.That(cut.Markup).Contains("events-workspace-navigation");
         await Assert.That(cut.Markup).DoesNotContain("settings-workspace-navigation");

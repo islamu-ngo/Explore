@@ -4,7 +4,9 @@
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Federation;
 using Explore.Blazor.Client.Contracts.Services.Notifications;
+using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Services.Docking;
+using Explore.Blazor.Client.Services.Shell;
 using MudBlazor;
 using MudBlazor.Interop;
 using MudBlazor.Services;
@@ -189,6 +191,16 @@ public class BlazorTestContext : BunitContext
         userSettingsService.GetSettingsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<SettingGroupResponseDto?>(null));
         Services.AddSingleton(userSettingsService);
+
+        var shellContextService = Substitute.For<IUiShellContextService>();
+        shellContextService.GetCachedContextAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<UiShellContextDto?>(null));
+        Services.AddSingleton(shellContextService);
+
+        var shellPreferencesService = Substitute.For<IShellPreferencesService>();
+        shellPreferencesService.LoadAsync(Arg.Any<UiShellContextDto>(), Arg.Any<CancellationToken>())
+            .Returns(new ShellPreferenceState(WorkspaceKey.Events.Value, null, "/settings/personal"));
+        Services.AddSingleton(shellPreferencesService);
     }
 
     /// <summary>

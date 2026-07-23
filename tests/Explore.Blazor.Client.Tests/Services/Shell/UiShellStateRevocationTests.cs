@@ -79,7 +79,7 @@ public sealed class UiShellStateRevocationTests : IDisposable
         var classifier = _context.Services.GetRequiredService<WorkspaceRouteClassifier>();
         using var state = new UiShellState(navigation, classifier);
         navigation.NavigateTo("/studio/events");
-        navigation.NavigateTo("/settings/personal/appearance");
+        state.NavigateToPersonalSettings("/settings/personal/appearance");
 
         state.ReconcileAvailability(key => key != WorkspaceKey.Studio);
 
@@ -96,7 +96,7 @@ public sealed class UiShellStateRevocationTests : IDisposable
         var classifier = _context.Services.GetRequiredService<WorkspaceRouteClassifier>();
         using var state = new UiShellState(navigation, classifier);
         navigation.NavigateTo("/events?q=iftar");
-        navigation.NavigateTo("/settings/personal/security");
+        state.NavigateToPersonalSettings("/settings/personal/security");
 
         state.ReconcileAvailability(key => key != WorkspaceKey.Settings);
 

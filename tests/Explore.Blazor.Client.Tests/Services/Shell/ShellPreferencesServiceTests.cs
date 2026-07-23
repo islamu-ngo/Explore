@@ -29,7 +29,7 @@ public sealed class ShellPreferencesServiceTests
 
         await Assert.That(result.LastWorkspace).IsEqualTo(WorkspaceKey.Studio.Value);
         await Assert.That(result.LastActorId).IsEqualTo(actorId);
-        await Assert.That(result.LastSettingsScopeHref).IsEqualTo("/settings/tenant");
+        await Assert.That(result.LastSettingsScopeHref).IsEqualTo("/settings/admin");
     }
 
     [Test]
