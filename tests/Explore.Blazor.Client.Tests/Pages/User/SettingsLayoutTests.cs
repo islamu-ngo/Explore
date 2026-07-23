@@ -4,8 +4,11 @@
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Components.Webhooks;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Pages.Admin.Components;
 using Explore.Blazor.Client.Pages.User.Components;
+using Blazouter.Models;
+using Blazouter.Services;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Explore.Blazor.Client.Tests.Pages.User;
@@ -17,6 +20,7 @@ public sealed class SettingsLayoutTests : IDisposable
 
     public SettingsLayoutTests()
     {
+        _ctx.AddShellStateMocks();
         _announcer.AnnouncePoliteAsync(Arg.Any<string>()).Returns(Task.CompletedTask);
         _ctx.Services.RemoveAll<IAccessibilityAnnouncerService>();
         _ctx.Services.AddSingleton(_announcer);
@@ -144,6 +148,49 @@ public sealed class SettingsLayoutTests : IDisposable
         await Assert.That(cut.FindAll("a[href='/settings/personal/personal']").Count).IsEqualTo(0);
     }
 
+    [Test]
+    public async Task LayoutStylesProvideStickyDesktopAndStackedNarrowNavigation()
+    {
+        var markup = await ReadClientSourceAsync("Pages/User/Components/SettingsLayout.razor");
+        var styles = await ReadClientSourceAsync("Pages/User/Components/SettingsLayout.razor.css");
+        var scopeStyles = await ReadClientSourceAsync("Pages/User/Components/SettingsScopeSelector.razor.css");
+
+        await Assert.That(markup).Contains("settings-layout__body");
+        await Assert.That(styles).Contains("grid-template-columns: minmax(11rem, 15rem) minmax(0, 1fr)");
+        await Assert.That(styles).Contains("position: sticky");
+        await Assert.That(styles).Contains("inset-block-start: calc(var(--mud-appbar-height, 4rem) + var(--isl-space-4))");
+        await Assert.That(styles).Contains("@media (max-width: 59.997em)");
+        await Assert.That(styles).Contains("position: static");
+        await Assert.That(styles).Contains("@media (prefers-reduced-motion: reduce)");
+        await Assert.That(scopeStyles).Contains("@media (max-width: 37.5em)");
+        await Assert.That(scopeStyles).Contains("flex-direction: column");
+    }
+
+    [Test]
+    public async Task PersonalSettingsPage_RerendersWhenBlazouterSectionParameterChanges()
+    {
+        _ctx.Services.RemoveAll<RouterStateService>();
+        _ctx.Services.AddSingleton<RouterStateService>();
+        _ctx.AddMockService<IUiShellContextService>()
+            .GetCachedContextAsync(Arg.Any<CancellationToken>())
+            .Returns((UiShellContextDto?)null);
+        _ctx.AddMockService<IShellPreferencesService>();
+
+        var routerState = _ctx.Services.GetRequiredService<RouterStateService>();
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/settings/personal/security");
+        routerState.SetCurrentRoute(CreateSettingsRoute("security"), "/settings/personal/security");
+
+        var cut = RenderSettingsPage();
+        cut.WaitForState(() => cut.Markup.Contains("settings-section-security", StringComparison.Ordinal));
+
+        navigation.NavigateTo("/settings/personal/notifications");
+        routerState.SetCurrentRoute(CreateSettingsRoute("notifications"), "/settings/personal/notifications");
+
+        cut.WaitForState(() => cut.Markup.Contains("settings-section-notifications", StringComparison.Ordinal));
+        await Assert.That(cut.Markup).DoesNotContain("settings-section-security");
+    }
+
     private IRenderedComponent<DynamicComponent> RenderLayout(string? section = null)
     {
         Type componentType = typeof(EventList).Assembly
@@ -160,5 +207,42 @@ public sealed class SettingsLayoutTests : IDisposable
             parameters.Add(component => component.Type, componentType);
             parameters.Add(component => component.Parameters, componentParameters);
         });
+    }
+
+    private IRenderedComponent<DynamicComponent> RenderSettingsPage()
+    {
+        Type componentType = typeof(EventList).Assembly
+            .GetTypes()
+            .Single(type => type.Name == "Settings" && typeof(IComponent).IsAssignableFrom(type));
+
+        return _ctx.RenderMudComponent<DynamicComponent>(parameters =>
+        {
+            parameters.Add(component => component.Type, componentType);
+        });
+    }
+
+    private static RouteMatch CreateSettingsRoute(string section) => new()
+    {
+        Route = new RouteConfig { Path = "/settings/personal/:section" },
+        MatchedPath = $"/settings/personal/{section}",
+        Params = new Dictionary<string, string> { ["section"] = section }
+    };
+
+    private static async Task<string> ReadClientSourceAsync(string relativePath)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (directory is not null)
+        {
+            var candidate = Path.Combine(directory.FullName, "src", "Explore.Blazor.Client", relativePath);
+            if (File.Exists(candidate))
+            {
+                return await File.ReadAllTextAsync(candidate);
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new InvalidOperationException($"Could not locate src/Explore.Blazor.Client/{relativePath} from test base directory.");
     }
 }

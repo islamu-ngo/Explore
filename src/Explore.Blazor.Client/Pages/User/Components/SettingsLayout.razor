@@ -13,60 +13,65 @@
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
         <!-- Header -->
         <div class="settings-header mb-8">
-            <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">Account Settings</MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">Account Settings</MudText>
+                <SettingsScopeSelector Compact="true" />
+            </MudStack>
             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Manage your account settings and preferences</MudText>
         </div>
 
-        <nav class="settings-sections" aria-label="Personal settings sections">
-            <a href="/settings/personal"
-               class="@GetNavItemClass(null)"
-               aria-current="@(CurrentSection is null ? "page" : null)">
-                View all
-            </a>
-            @foreach (var item in Sections)
-            {
-                <a href="@GetSectionHref(item.Key)"
-                   class="@GetNavItemClass(item.Key)"
-                   aria-current="@(item == CurrentSection ? "page" : null)">
-                     @item.Label
+        <div class="settings-layout__body">
+            <nav class="settings-sections" aria-label="Personal settings sections">
+                <a href="/settings/personal"
+                   class="@GetNavItemClass(null)"
+                   aria-current="@(CurrentSection is null ? "page" : null)">
+                    View all
                 </a>
-            }
-        </nav>
-
-        <MudPaper Elevation="0" Class="settings-content pa-6" Style="background-color: transparent;">
-            @if (CurrentSection is null)
-            {
-                <AppTextField T="string"
-                              Value="@_searchTerm"
-                              ValueChanged="OnSearchChangedAsync"
-                              Label="Search settings"
-                              Placeholder="Search personal settings"
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search"
-                              Immediate="true"
-                              DebounceInterval="250"
-                              Clearable="true"
-                              FullWidth="true" />
-
-                @if (FilteredSections.Count == 0)
+                @foreach (var item in Sections)
                 {
-                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-6">
-                        No settings sections match your search.
-                    </MudText>
+                    <a href="@GetSectionHref(item.Key)"
+                       class="@GetNavItemClass(item.Key)"
+                       aria-current="@(item == CurrentSection ? "page" : null)">
+                         @item.Label
+                    </a>
+                }
+            </nav>
+
+            <MudPaper Elevation="0" Class="settings-content pa-6" Style="background-color: transparent;">
+                @if (CurrentSection is null)
+                {
+                    <AppTextField T="string"
+                                  Value="@_searchTerm"
+                                  ValueChanged="OnSearchChangedAsync"
+                                  Label="Search settings"
+                                  Placeholder="Search personal settings"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Immediate="true"
+                                  DebounceInterval="250"
+                                  Clearable="true"
+                                  FullWidth="true" />
+
+                    @if (FilteredSections.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-6">
+                            No settings sections match your search.
+                        </MudText>
+                    }
+                    else
+                    {
+                        @foreach (var item in FilteredSections)
+                        {
+                            @RenderSection(item)
+                        }
+                    }
                 }
                 else
                 {
-                    @foreach (var item in FilteredSections)
-                    {
-                        @RenderSection(item)
-                    }
+                    @RenderSection(CurrentSection)
                 }
-            }
-            else
-            {
-                @RenderSection(CurrentSection)
-            }
-        </MudPaper>
+            </MudPaper>
+        </div>
     </MudContainer>
 </div>
 

@@ -7,7 +7,20 @@
 @inject IShellPreferencesService ShellPreferencesService
 @inject NavigationManager Navigation
 
-@if (_scopeLinks.Count > 0)
+@if (_scopeLinks.Count > 0 && Compact)
+{
+    <select class="settings-scope-selector__compact"
+            aria-label="Settings scope"
+            value="@CurrentScopeHref"
+            @onchange="OnScopeChanged">
+        <option value="/settings/personal">Personal Settings</option>
+        @foreach (var item in _scopeLinks)
+        {
+            <option value="@item.Href">@item.Label</option>
+        }
+    </select>
+}
+else if (_scopeLinks.Count > 0)
 {
     <nav class="settings-scope-selector" aria-label="Settings scopes">
         <a href="/settings/personal"
@@ -15,19 +28,7 @@
            aria-current="@(IsCurrent("/settings/personal") ? "page" : null)">
             Personal
         </a>
-        @foreach (var item in _scopeLinks.Where(item => !item.IsSiteScope))
-        {
-            <a href="@item.Href"
-               class="@GetLinkClass(item.Href)"
-               aria-current="@(IsCurrent(item.Href) ? "page" : null)">
-                @item.Label
-            </a>
-        }
-        @if (_showSiteAdministration)
-        {
-            <span class="settings-scope-selector__group-label">Site administration</span>
-        }
-        @foreach (var item in _scopeLinks.Where(item => item.IsSiteScope))
+        @foreach (var item in _scopeLinks)
         {
             <a href="@item.Href"
                class="@GetLinkClass(item.Href)"
@@ -40,7 +41,9 @@
 
 @code {
     private IReadOnlyList<ScopeLink> _scopeLinks = [];
-    private bool _showSiteAdministration;
+
+    [Parameter]
+    public bool Compact { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -48,44 +51,39 @@
         var scopes = context?.SettingsScopes ?? [];
         var isSingleTenant = string.IsNullOrWhiteSpace(context?.DeploymentMode)
             || string.Equals(context.DeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase);
-        _showSiteAdministration = isSingleTenant
-            && scopes.Any(scope => IsScope(scope, "Tenant"))
-            && scopes.Any(scope => IsScope(scope, "Instance"));
+        var hasInstanceScope = scopes.Any(scope => IsScope(scope, "Instance"));
         var preferences = context is null
             ? null
             : await ShellPreferencesService.LoadAsync(context);
         _scopeLinks = scopes
-            .Select(scope => CreateLink(scope, _showSiteAdministration))
+            .Where(scope => !(isSingleTenant && hasInstanceScope && IsScope(scope, "Tenant")))
+            .Select(scope => CreateLink(scope, isSingleTenant))
             .Where(link => link is not null)
             .Select(link => link!)
             .OrderBy(link => link.Href == preferences?.LastSettingsScopeHref ? 0 : 1)
             .ToList();
     }
 
-    private static ScopeLink? CreateLink(SettingsScopeDto scope, bool siteAdministration)
+    private static ScopeLink? CreateLink(SettingsScopeDto scope, bool isSingleTenant)
     {
         var kind = scope.Scope?.Trim();
         var href = kind?.ToUpperInvariant() switch
         {
             "ORGANIZATION" when scope.ScopeId.HasValue => $"/settings/organization/{scope.ScopeId}",
             "GROUP" when scope.ScopeId.HasValue => $"/settings/group/{scope.ScopeId}",
-            "TENANT" => "/settings/tenant",
+            "TENANT" => "/settings/admin",
             "INSTANCE" => "/settings/instance",
             _ => null
         };
 
         var label = kind?.ToUpperInvariant() switch
         {
-            "TENANT" => siteAdministration ? "Tenant settings" : "Tenant administration",
-            "INSTANCE" => siteAdministration ? "Instance settings" : "Instance administration",
+            "TENANT" => isSingleTenant ? "Admin Settings" : "Tenant administration",
+            "INSTANCE" => isSingleTenant ? "Admin Settings" : "Instance administration",
             _ => scope.DisplayName ?? kind!
         };
 
-        return href is null ? null : new ScopeLink(
-            href,
-            label,
-            kind is not null && (kind.Equals("Tenant", StringComparison.OrdinalIgnoreCase)
-                || kind.Equals("Instance", StringComparison.OrdinalIgnoreCase)));
+        return href is null ? null : new ScopeLink(href, label);
     }
 
     private bool IsCurrent(string href)
@@ -100,8 +98,24 @@
         ? "settings-scope-selector__link settings-scope-selector__link--active"
         : "settings-scope-selector__link";
 
+    private string CurrentScopeHref => _scopeLinks
+        .Prepend(new ScopeLink("/settings/personal", "Personal Settings"))
+        .FirstOrDefault(link => IsCurrent(link.Href))?.Href
+        ?? "/settings/personal";
+
+    private void OnScopeChanged(ChangeEventArgs args)
+    {
+        var href = args.Value?.ToString();
+        if (href is not null
+            && _scopeLinks.Prepend(new ScopeLink("/settings/personal", "Personal Settings"))
+                .Any(link => string.Equals(link.Href, href, StringComparison.OrdinalIgnoreCase)))
+        {
+            Navigation.NavigateTo(href);
+        }
+    }
+
     private static bool IsScope(SettingsScopeDto scope, string kind) =>
         string.Equals(scope.Scope, kind, StringComparison.OrdinalIgnoreCase);
 
-    private sealed record ScopeLink(string Href, string Label, bool IsSiteScope);
+    private sealed record ScopeLink(string Href, string Label);
 }

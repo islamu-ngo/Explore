@@ -11,19 +11,36 @@
     padding-bottom: 1.5rem;
 }
 
+.settings-layout__body {
+    display: grid;
+    grid-template-columns: minmax(11rem, 15rem) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--isl-space-6);
+    min-inline-size: 0;
+}
+
 .settings-sections {
+    position: sticky;
+    inset-block-start: calc(var(--mud-appbar-height, 4rem) + var(--isl-space-4));
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: var(--isl-space-2);
-    margin-block-end: var(--isl-space-6);
+    max-block-size: calc(100vh - var(--mud-appbar-height, 4rem) - (2 * var(--isl-space-4)));
+    min-inline-size: 0;
+    overflow-block: auto;
 }
 
 .settings-sections__link {
+    display: flex;
+    align-items: center;
+    inline-size: 100%;
     min-height: var(--isl-target-min);
+    min-inline-size: 0;
     padding: var(--isl-space-2) var(--isl-space-3);
     border-radius: var(--isl-radius-button);
     color: var(--mud-palette-text-secondary);
     text-decoration: none;
+    overflow-wrap: anywhere;
 }
 
 .settings-sections__link:hover,
@@ -36,10 +53,27 @@
     font-weight: 600;
 }
 
+.settings-sections__link:focus-visible {
+    outline: var(--isl-focus-ring-width) solid var(--mud-palette-primary);
+    outline-offset: var(--isl-focus-ring-offset);
+}
+
 /* Content Area */
 .settings-content {
     min-height: 31.25rem;
+    min-inline-size: 0;
     background-color: transparent;
+}
+
+.settings-content__section {
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+
+    & + & {
+        margin-block-start: var(--isl-space-8);
+        padding-block-start: var(--isl-space-8);
+        border-block-start: 1px solid var(--mud-palette-lines-default);
+    }
 }
 
 /* Section Styles */
@@ -95,7 +129,7 @@
 
 /* Paper/Card Styles */
 .settings-content ::deep .mud-paper {
-    transition: all 0.2s ease;
+    transition: box-shadow 0.2s ease;
 }
 
 .settings-content ::deep .mud-paper:hover {
@@ -121,3 +155,29 @@
     padding: 0.75rem;
 }
 
+@media (max-width: 59.997em) {
+    .settings-layout__body {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .settings-sections {
+        position: static;
+        max-block-size: none;
+        overflow: visible;
+        margin-block-end: var(--isl-space-4);
+    }
+
+    .settings-content {
+        min-height: auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-content ::deep .settings-section {
+        animation: none;
+    }
+
+    .settings-content ::deep .mud-paper {
+        transition: none;
+    }
+}

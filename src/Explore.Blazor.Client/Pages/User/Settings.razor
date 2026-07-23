@@ -2,11 +2,13 @@
 @* ABOUTME: Uses Blazouter path state while administrative scopes remain server-authoritative. *@
 
 @using MudBlazor
+@using Blazouter.Models
 @using Explore.Blazor.Client.Pages.User.Components
 @using Blazouter.Services
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @rendermode InteractiveServer
+@implements IDisposable
 @inject NavigationManager Navigation
 @inject RouterStateService RouterState
 
@@ -14,7 +16,6 @@
 
 @if (IsPersonalRoute)
 {
-    <SettingsScopeSelector />
     <SettingsLayout Section="@PersonalSection" />
 }
 else
@@ -29,8 +30,21 @@ else
 }
 
 @code {
+    protected override void OnInitialized()
+    {
+        RouterState.OnRouteChanged += HandleRouteChanged;
+    }
+
     private bool IsPersonalRoute => Navigation.ToBaseRelativePath(Navigation.Uri)
         .StartsWith("settings/personal", StringComparison.OrdinalIgnoreCase);
 
     private string? PersonalSection => RouterState.GetParam("section");
+
+    private void HandleRouteChanged(RouteMatch? route) => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        RouterState.OnRouteChanged -= HandleRouteChanged;
+        GC.SuppressFinalize(this);
+    }
 }

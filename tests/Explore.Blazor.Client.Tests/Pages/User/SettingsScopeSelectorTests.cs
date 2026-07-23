@@ -47,7 +47,7 @@ public sealed class SettingsScopeSelectorTests : IDisposable
         cut.WaitForState(() => cut.Markup.Contains("Community", StringComparison.Ordinal));
         await Assert.That(cut.Markup).Contains("href=\"/settings/personal\"");
         await Assert.That(cut.Markup).Contains($"href=\"/settings/organization/{organizationId}\"");
-        await Assert.That(cut.Markup).Contains("href=\"/settings/tenant\"");
+        await Assert.That(cut.Markup).Contains("href=\"/settings/admin\"");
         await Assert.That(cut.Markup).DoesNotContain("/settings/instance");
         await _shellContextService.Received(1).GetCachedContextAsync(Arg.Any<CancellationToken>());
     }
@@ -66,7 +66,7 @@ public sealed class SettingsScopeSelectorTests : IDisposable
     }
 
     [Test]
-    public async Task Selector_SingleTenantDualAuthority_GroupsSiteAdministrationAndKeepsBothRoutes()
+    public async Task Selector_SingleTenantDualAuthority_UsesOneInstanceAdminDestination()
     {
         _shellContextService.GetCachedContextAsync(Arg.Any<CancellationToken>())
             .Returns(new UiShellContextDto
@@ -81,11 +81,31 @@ public sealed class SettingsScopeSelectorTests : IDisposable
 
         var cut = RenderSelector();
 
-        cut.WaitForState(() => cut.Markup.Contains("Site administration", StringComparison.Ordinal));
-        await Assert.That(cut.Markup).Contains("href=\"/settings/tenant\"");
+        cut.WaitForState(() => cut.Markup.Contains("Admin Settings", StringComparison.Ordinal));
         await Assert.That(cut.Markup).Contains("href=\"/settings/instance\"");
-        await Assert.That(cut.Markup).DoesNotContain("Tenant administration");
-        await Assert.That(cut.Markup).DoesNotContain("Instance administration");
+        await Assert.That(cut.Markup).DoesNotContain("/settings/admin");
+    }
+
+    [Test]
+    public async Task CompactSelector_TenantAdmin_UsesCurrentAdminRoute()
+    {
+        _ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("/settings/admin");
+        _shellContextService.GetCachedContextAsync(Arg.Any<CancellationToken>())
+            .Returns(new UiShellContextDto
+            {
+                DeploymentMode = "SingleTenant",
+                SettingsScopes =
+                [
+                    new SettingsScopeDto { Scope = "Tenant", DisplayName = "Tenant" }
+                ]
+            });
+
+        var cut = RenderSelector(compact: true);
+
+        cut.WaitForState(() => cut.FindAll("select[aria-label='Settings scope']").Count == 1);
+        var select = cut.Find("select[aria-label='Settings scope']");
+        await Assert.That(select.GetAttribute("value")).IsEqualTo("/settings/admin");
+        await Assert.That(cut.Markup).Contains("Admin Settings");
     }
 
     [Test]
@@ -112,13 +132,22 @@ public sealed class SettingsScopeSelectorTests : IDisposable
             .IsLessThan(cut.Markup.IndexOf($"/settings/organization/{organizationId}", StringComparison.Ordinal));
     }
 
-    private IRenderedComponent<DynamicComponent> RenderSelector()
+    private IRenderedComponent<DynamicComponent> RenderSelector(bool compact = false)
     {
         Type componentType = typeof(EventList).Assembly
             .GetTypes()
             .Single(type => type.Name == "SettingsScopeSelector" && typeof(IComponent).IsAssignableFrom(type));
 
         return _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, componentType));
+        {
+            parameters.Add(component => component.Type, componentType);
+            if (compact)
+            {
+                parameters.Add(component => component.Parameters, new Dictionary<string, object>
+                {
+                    ["Compact"] = true
+                });
+            }
+        });
     }
 }
