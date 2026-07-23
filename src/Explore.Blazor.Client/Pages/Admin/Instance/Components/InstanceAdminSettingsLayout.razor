@@ -8,6 +8,7 @@
 @using Explore.Blazor.Client.Components.Forms
 @using Explore.Blazor.Client.Constants
 @using Explore.Blazor.Client.Contracts.Services.Webhooks
+@using Explore.Blazor.Client.Pages.User.Components
 
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject IUserService UserService
@@ -21,9 +22,12 @@
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
         <!-- Header -->
         <div class="settings-header mb-8">
-            <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">
-                @(IsSingleTenantMode ? "Administration" : "Instance Administration")
-            </MudText>
+            <div class="settings-header__title-row">
+                <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">
+                    @(IsSingleTenantMode ? "Administration" : "Instance Administration")
+                </MudText>
+                <SettingsScopeSelector Compact="true" />
+            </div>
         </div>
 
         @if (!string.IsNullOrWhiteSpace(_errorMessage))

@@ -5,14 +5,12 @@
 @using Blazouter.Services
 @using Microsoft.AspNetCore.Authorization
 @using Explore.Blazor.Client.Pages.Admin.Organization.Components
-@using Explore.Blazor.Client.Pages.User.Components
 @attribute [Authorize]
 @rendermode InteractiveServer
 @inject RouterStateService RouterState
 
 <PageTitle>Organization Settings</PageTitle>
 
-<SettingsScopeSelector />
 <OrganizationAdminSettingsLayout OrganizationId="OrganizationId" />
 
 @code {

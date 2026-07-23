@@ -4,6 +4,7 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Contracts.Services.Webhooks
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Pages.User.Components
 
 @inject IOrganizationService OrganizationService
 
@@ -24,7 +25,10 @@
         {
             <!-- Header -->
             <div class="settings-header mb-8">
-                <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">@_organization.FullName</MudText>
+                <div class="settings-header__title-row">
+                    <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">@_organization.FullName</MudText>
+                    <SettingsScopeSelector Compact="true" />
+                </div>
                 <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Organization settings and management</MudText>
             </div>
 

@@ -3,7 +3,6 @@
 
 @using Blazouter.Services
 @using Explore.Blazor.Client.Pages.Admin.Group.Components
-@using Explore.Blazor.Client.Pages.User.Components
 @using Microsoft.AspNetCore.Authorization
 
 @attribute [Authorize]
@@ -12,7 +11,6 @@
 
 <PageTitle>Group Settings</PageTitle>
 
-<SettingsScopeSelector />
 <GroupAdminSettingsLayout GroupId="GroupId" />
 
 @code {

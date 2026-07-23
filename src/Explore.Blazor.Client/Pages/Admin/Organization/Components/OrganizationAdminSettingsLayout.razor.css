@@ -11,6 +11,14 @@
     padding-bottom: 1.5rem;
 }
 
+.settings-header__title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--isl-space-3);
+}
+
 /* Sidebar Navigation */
 .settings-sidebar {
     position: sticky;
@@ -151,5 +159,4 @@
 .settings-content ::deep .mud-grid > .mud-item {
     padding: 0.75rem;
 }
-
 

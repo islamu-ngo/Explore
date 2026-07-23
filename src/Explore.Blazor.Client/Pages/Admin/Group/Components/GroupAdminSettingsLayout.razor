@@ -7,6 +7,7 @@
 @using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Components.Forms
+@using Explore.Blazor.Client.Pages.User.Components
 
 @inject IGroupService GroupService
 @inject ISnackbar Snackbar
@@ -41,7 +42,10 @@
                         </MudAvatar>
                     }
                     <div>
-                        <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">@_group.FullName</MudText>
+                        <div class="settings-header__title-row">
+                            <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">@_group.FullName</MudText>
+                            <SettingsScopeSelector Compact="true" />
+                        </div>
                         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">Manage group members, profile details, and white-label branding.</MudText>
                     </div>
                 </MudStack>
