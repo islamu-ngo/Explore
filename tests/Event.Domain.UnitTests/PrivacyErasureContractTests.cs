@@ -1,6 +1,7 @@
 // ABOUTME: Specifies the platform-wide typed privacy-erasure fact, counter, and replay checkpoint invariants.
 // ABOUTME: Rejects malformed identities, kinds, reasons, versions, timestamps, checkpoint chains, and instruction fields.
 
+using System.Security.Cryptography;
 using System.Text.Json;
 using Explore.Domain;
 
@@ -217,6 +218,101 @@ public sealed class PrivacyErasureContractTests
                 0,
                 fencedAtUtc))
             .Throws<ArgumentOutOfRangeException>();
+    }
+
+    [Test]
+    public async Task PrivacyErasureSaga_EnforcesReceiptExpiryConcurrencyAndSettlement()
+    {
+        DateTime now = new(2026, 7, 23, 8, 0, 0, DateTimeKind.Utc);
+        PrivacyErasureIntent intent = CreateIntent(1, recordedAtUtc: now);
+        byte[] receiptHash = SHA256.HashData("receipt"u8);
+        Guid concurrencyToken = Guid.CreateVersion7();
+        PrivacyErasureSaga saga = PrivacyErasureSaga.Start(
+            intent,
+            intent.AuthoritySequence,
+            receiptHash,
+            now.AddHours(1),
+            now,
+            concurrencyToken);
+
+        await Assert.That(saga.Status).IsEqualTo(PrivacyErasureSagaStatus.Fenced);
+        await Assert.That(saga.Authenticates(receiptHash, now.AddMinutes(59))).IsTrue();
+        await Assert.That(saga.Authenticates(SHA256.HashData("wrong"u8), now.AddMinutes(1))).IsFalse();
+        await Assert.That(saga.Authenticates(receiptHash, now.AddHours(1))).IsFalse();
+        await Assert.That(() => saga.MarkLocalSettled(
+                now.AddMinutes(1),
+                1,
+                Guid.CreateVersion7()))
+            .Throws<InvalidOperationException>();
+
+        saga.MarkLocalSettled(now.AddMinutes(1), 1, concurrencyToken);
+        await Assert.That(saga.Status).IsEqualTo(PrivacyErasureSagaStatus.ProviderPending);
+        await Assert.That(saga.LocalSettledAtUtc).IsEqualTo(now.AddMinutes(1));
+    }
+
+    [Test]
+    public async Task PrivacyErasureProviderWork_FencesUnknownOutcomesAndReconciliation()
+    {
+        DateTime now = new(2026, 7, 23, 8, 0, 0, DateTimeKind.Utc);
+        PrivacyErasureIntent intent = CreateIntent(1, recordedAtUtc: now);
+        Guid leaseToken = Guid.CreateVersion7();
+        PrivacyErasureProviderWork work = PrivacyErasureProviderWork.Create(
+            Guid.CreateVersion7(),
+            intent,
+            PrivacyErasureProviderKind.Keycloak,
+            PrivacyErasureProviderAction.DeletePlatformManagedIdentity,
+            null,
+            null,
+            PrivacyErasureProviderLocatorKind.AccountIdentifier,
+            "protected-provider-key",
+            1,
+            now.AddDays(7),
+            now);
+
+        await Assert.That(work.ProtectedLocator).IsEqualTo("protected-provider-key");
+
+        PrivacyErasureProviderClaim claim = work.Claim("worker", leaseToken, now, now.AddMinutes(1));
+        work.MarkUnknown(claim.FenceToken, leaseToken, now.AddSeconds(1), "ambiguous_acknowledgement");
+
+        await Assert.That(work.Status).IsEqualTo(PrivacyErasureProviderWorkStatus.Unknown);
+        await Assert.That(() => work.MarkSucceeded(
+                claim.FenceToken - 1,
+                leaseToken,
+                now.AddSeconds(2)))
+            .Throws<InvalidOperationException>();
+
+        work.Reconcile(PrivacyErasureProviderReconciliation.Completed, now.AddMinutes(2));
+        await Assert.That(work.Status).IsEqualTo(PrivacyErasureProviderWorkStatus.Completed);
+        await Assert.That(work.CompletedAtUtc).IsEqualTo(now.AddMinutes(2));
+        await Assert.That(work.ProtectedLocator).IsNull();
+    }
+
+    [Test]
+    public async Task PrivacyErasureProviderWork_ExpiresLocatorIntoBoundedDeadLetterState()
+    {
+        DateTime now = new(2026, 7, 23, 8, 0, 0, DateTimeKind.Utc);
+        PrivacyErasureProviderWork work = PrivacyErasureProviderWork.Create(
+            Guid.CreateVersion7(),
+            CreateIntent(1, recordedAtUtc: now),
+            PrivacyErasureProviderKind.WebPush,
+            PrivacyErasureProviderAction.InvalidateSubscription,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            PrivacyErasureProviderLocatorKind.WebPushEndpoint,
+            "protected-endpoint",
+            1,
+            now.AddDays(7),
+            now);
+
+        await Assert.That(() => work.ExpireLocator(now.AddDays(7).AddTicks(-1)))
+            .Throws<InvalidOperationException>();
+
+        work.ExpireLocator(now.AddDays(7));
+
+        await Assert.That(work.ProtectedLocator).IsNull();
+        await Assert.That(work.Status).IsEqualTo(PrivacyErasureProviderWorkStatus.DeadLettered);
+        await Assert.That(work.LastFailureCode).IsEqualTo("locator_expired");
+        await Assert.That(work.DeadLetteredAtUtc).IsEqualTo(now.AddDays(7));
     }
 
     private static PrivacyErasureIntent CreateIntent(
