@@ -13,6 +13,8 @@
         </MudText>
     </TitleContent>
     <DialogContent>
+        @if (_erasure is null)
+        {
         <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4">
             <MudText Typo="Typo.body2">
                 <strong>This action is irreversible.</strong>
@@ -40,8 +42,26 @@
                        Adornment="Adornment.Start"
                        AdornmentIcon="@Icons.Material.Filled.DeleteForever"
                        AdornmentColor="Color.Error" />
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Success" Dense="true" Class="mb-4">
+                Your account erasure has started. Save this receipt before signing out; it is shown only once.
+            </MudAlert>
+            <MudTextField T="string"
+                          Value="@_erasure.Receipt"
+                          Label="Status receipt"
+                          Variant="Variant.Outlined"
+                          ReadOnly="true"
+                          Lines="2" />
+            <MudText Typo="Typo.caption" Class="mt-2">
+                Receipt expires @_erasure.ReceiptExpiresAtUtc.ToLocalTime().ToString("g").
+            </MudText>
+        }
     </DialogContent>
     <DialogActions>
+        @if (_erasure is null)
+        {
         <MudButton Elevation="0" Color="Color.Primary" OnClick="Cancel" Variant="Variant.Text" Disabled="@_isDeleting">Cancel</MudButton>
         <MudButton Elevation="0" Variant="Variant.Filled" Color="Color.Error"
                    OnClick="ConfirmDelete"
@@ -49,6 +69,13 @@
                    StartIcon="@(_isDeleting ? Icons.Material.Filled.HourglassBottom : Icons.Material.Filled.DeleteForever)">
             @(_isDeleting ? "Deleting..." : "Permanently Delete Account")
         </MudButton>
+        }
+        else
+        {
+            <MudButton Elevation="0" Variant="Variant.Filled" Color="Color.Primary" OnClick="SignOut">
+                Sign out
+            </MudButton>
+        }
     </DialogActions>
 </MudDialog>
 
@@ -70,6 +97,7 @@
 
     private string _confirmationInput = string.Empty;
     private bool _isDeleting = false;
+    private PrivacyErasureStartDto? _erasure;
 
     private bool _canDelete =>
         string.Equals(_confirmationInput?.Trim(), "DELETE", StringComparison.Ordinal) && !_isDeleting;
@@ -90,14 +118,14 @@
         {
             Logger.LogInformation("User confirmed account deletion");
 
-            var success = await UserService.DeleteUserAsync();
+            PrivacyErasureStartDto? erasure = await UserService.DeleteUserAsync();
 
-            if (success)
+            if (erasure?.Receipt is not null)
             {
-                Logger.LogInformation("Account deleted successfully, redirecting to sign-out");
-                Snackbar.Add("Account deleted. Signing you out...", Severity.Success);
-                MudDialog.Close(DialogResult.Ok(true));
-                Navigation.NavigateTo("/logout", forceLoad: true);
+                Logger.LogInformation("Account erasure accepted");
+                _erasure = erasure;
+                _isDeleting = false;
+                Snackbar.Add("Account erasure started. Save your status receipt.", Severity.Success);
             }
             else
             {
@@ -114,5 +142,11 @@
             _isDeleting = false;
             StateHasChanged();
         }
+    }
+
+    private void SignOut()
+    {
+        MudDialog.Close(DialogResult.Ok(true));
+        Navigation.NavigateTo("/logout", forceLoad: true);
     }
 }

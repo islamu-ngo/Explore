@@ -331,31 +331,45 @@ public class UserServiceTests
     #region DeleteUserAsync Tests
 
     [Test]
-    public async Task DeleteUserAsync_ReturnsTrue_WhenApiSucceeds()
+    public async Task DeleteUserAsync_ReturnsReceipt_WhenApiSucceeds()
     {
         // Arrange
-        _apiClient.DeleteCurrentUserAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask);
+        var expected = new PrivacyErasureStartDto
+        {
+            Status = "completed",
+            Receipt = "receipt",
+            ReceiptExpiresAtUtc = DateTime.UtcNow.AddDays(7)
+        };
+        _apiClient.DeleteCurrentUserAsync(
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expected);
 
         // Act
         var result = await _service.DeleteUserAsync();
 
         // Assert
-        await Assert.That(result).IsTrue();
+        await Assert.That(result).IsSameReferenceAs(expected);
     }
 
     [Test]
-    public async Task DeleteUserAsync_ReturnsFalse_WhenApiThrows()
+    public async Task DeleteUserAsync_ReturnsNull_WhenApiThrows()
     {
         // Arrange
-        _apiClient.DeleteCurrentUserAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.DeleteCurrentUserAsync(
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Forbidden", 403));
 
         // Act
         var result = await _service.DeleteUserAsync();
 
         // Assert
-        await Assert.That(result).IsFalse();
+        await Assert.That(result).IsNull();
     }
 
     #endregion

@@ -35,7 +35,7 @@ public interface IUserService
     /// <summary>
     /// Deletes the current user's account.
     /// </summary>
-    Task<bool> DeleteUserAsync();
+    Task<PrivacyErasureStartDto?> DeleteUserAsync();
 
     /// <summary>
     /// Resolves the appropriate tenant redirection target for the current authenticated user.
@@ -203,23 +203,22 @@ public class UserService : IUserService
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteUserAsync()
+    public async Task<PrivacyErasureStartDto?> DeleteUserAsync()
     {
         try
         {
             _logger.LogInformation("Deleting user");
-            await _apiClient.DeleteCurrentUserAsync();
-            return true;
+            return await _apiClient.DeleteCurrentUserAsync(Guid.CreateVersion7().ToString("D"));
         }
         catch (ApiException ex)
         {
             _logger.LogError(ex, "API error deleting user: {StatusCode}", ex.StatusCode);
-            return false;
+            return null;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting user");
-            return false;
+            return null;
         }
     }
 
