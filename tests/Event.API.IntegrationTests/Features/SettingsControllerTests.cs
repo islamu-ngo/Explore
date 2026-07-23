@@ -4,7 +4,17 @@
 using System.Net;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.API.Controllers;
+using Explore.API.Hateoas;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.DTOs.Settings;
+using Explore.Application.Features.Settings.Requests.Commands;
+using Explore.Application.Responses;
+using MediatR;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
+using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -247,6 +257,194 @@ public class SettingsControllerAuthenticatedTests
         var statusCode = response.StatusCode;
         await Assert.That(statusCode == HttpStatusCode.Forbidden || statusCode == HttpStatusCode.BadRequest).IsTrue();
     }
+
+    [Test]
+    public async Task UpdateTenantSetting_Success_EvictsShellAfterMediatorSuccess()
+    {
+        var calls = new List<string>();
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<UpdateSettingCommand>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                calls.Add("mediator");
+                return new BaseCommandResponse<Guid> { Success = true };
+            });
+        var store = Substitute.For<IOutputCacheStore>();
+        store.EvictByTagAsync("public-experience-shell", Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                calls.Add("evict");
+                return ValueTask.CompletedTask;
+            });
+        var controller = CreateSettingsController(mediator);
+
+        await controller.UpdateTenantSetting(
+            "event_list.page_size",
+            new UpdateSettingValueDto { Value = "24" },
+            store,
+            CancellationToken.None);
+
+        await Assert.That(calls.SequenceEqual(["mediator", "evict"])).IsTrue();
+        await store.Received(1).EvictByTagAsync("public-experience-shell", Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateTenantSetting_Failure_DoesNotEvictShell()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<UpdateSettingCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid> { Success = false, Message = "failed" });
+        var store = Substitute.For<IOutputCacheStore>();
+        var controller = CreateSettingsController(mediator);
+
+        await controller.UpdateTenantSetting(
+            "event_list.page_size",
+            new UpdateSettingValueDto { Value = "24" },
+            store,
+            CancellationToken.None);
+
+        await store.DidNotReceiveWithAnyArgs().EvictByTagAsync(default!, default);
+    }
+
+    [Test]
+    public async Task UpdateTenantSettingsBatch_AppliedResult_EvictsShell()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<UpdateSettingBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new BatchUpdateResponseDto
+            {
+                Success = true,
+                Results = [new SettingUpdateResultDto { Key = "event_list.page_size", Applied = true }]
+            });
+        var store = Substitute.For<IOutputCacheStore>();
+        var controller = CreateSettingsController(mediator);
+
+        await controller.UpdateTenantSettingsBatch(
+            "EventList",
+            new UpdateSettingBatchDto { Values = new Dictionary<string, string> { ["event_list.page_size"] = "24" } },
+            store,
+            CancellationToken.None);
+
+        await store.Received(1).EvictByTagAsync("public-experience-shell", Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateTenantSettingsBatch_Failure_DoesNotEvictShell()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<UpdateSettingBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new BatchUpdateResponseDto
+            {
+                Success = false,
+                Message = "failed",
+                Results = [new SettingUpdateResultDto { Key = "event_list.page_size", Applied = false }]
+            });
+        var store = Substitute.For<IOutputCacheStore>();
+        var controller = CreateSettingsController(mediator);
+
+        await controller.UpdateTenantSettingsBatch(
+            "EventList",
+            new UpdateSettingBatchDto { Values = new Dictionary<string, string> { ["event_list.page_size"] = "24" } },
+            store,
+            CancellationToken.None);
+
+        await store.DidNotReceiveWithAnyArgs().EvictByTagAsync(default!, default);
+    }
+
+    [Test]
+    public async Task UpdateTenantSettingsBatch_EmptyOrUnapplied_DoesNotEvictShell()
+    {
+        foreach (var batchResponse in new[]
+        {
+            new BatchUpdateResponseDto { Success = true, Results = [] },
+            new BatchUpdateResponseDto
+            {
+                Success = true,
+                Results = [new SettingUpdateResultDto { Key = "event_list.page_size", Applied = false }]
+            }
+        })
+        {
+            var mediator = Substitute.For<IMediator>();
+            mediator.Send(Arg.Any<UpdateSettingBatchCommand>(), Arg.Any<CancellationToken>())
+                .Returns(batchResponse);
+            var store = Substitute.For<IOutputCacheStore>();
+            var controller = CreateSettingsController(mediator);
+
+            await controller.UpdateTenantSettingsBatch(
+                "EventList",
+                new UpdateSettingBatchDto { Values = new Dictionary<string, string>() },
+                store,
+                CancellationToken.None);
+
+            await store.DidNotReceiveWithAnyArgs().EvictByTagAsync(default!, default);
+        }
+    }
+
+    [Test]
+    public async Task UpdateTenantSetting_CancellationBeforeMediatorCompletion_DoesNotEvictShell()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<UpdateSettingCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<BaseCommandResponse<Guid>>(new OperationCanceledException()));
+        var store = Substitute.For<IOutputCacheStore>();
+        var controller = CreateSettingsController(mediator);
+
+        var cancelled = false;
+        try
+        {
+            await controller.UpdateTenantSetting(
+                "event_list.page_size",
+                new UpdateSettingValueDto { Value = "24" },
+                store,
+                CancellationToken.None);
+        }
+        catch (OperationCanceledException)
+        {
+            cancelled = true;
+        }
+
+        await Assert.That(cancelled).IsTrue();
+        await store.DidNotReceiveWithAnyArgs().EvictByTagAsync(default!, default);
+    }
+
+    [Test]
+    public async Task UpdateTenantSettingsBatch_CancellationBeforeMediatorCompletion_DoesNotEvictShell()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<UpdateSettingBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<BatchUpdateResponseDto>(new OperationCanceledException()));
+        var store = Substitute.For<IOutputCacheStore>();
+        var controller = CreateSettingsController(mediator);
+
+        var cancelled = false;
+        try
+        {
+            await controller.UpdateTenantSettingsBatch(
+                "EventList",
+                new UpdateSettingBatchDto { Values = new Dictionary<string, string> { ["event_list.page_size"] = "24" } },
+                store,
+                CancellationToken.None);
+        }
+        catch (OperationCanceledException)
+        {
+            cancelled = true;
+        }
+
+        await Assert.That(cancelled).IsTrue();
+        await store.DidNotReceiveWithAnyArgs().EvictByTagAsync(default!, default);
+    }
+
+    private static SettingsController CreateSettingsController(IMediator mediator) =>
+        new SettingsController(
+            mediator,
+            Substitute.For<IAdminContext>(),
+            Substitute.For<IResourceAssembler<SettingGroupResponseDto, SettingGroupResponseDto>>())
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            }
+        };
 
     #endregion
 }

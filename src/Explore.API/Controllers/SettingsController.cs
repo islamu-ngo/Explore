@@ -17,6 +17,7 @@ using Explore.Domain.Settings.Definitions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace Explore.API.Controllers;
@@ -186,6 +187,7 @@ public class SettingsController : ControllerBase
     public async Task<ActionResult<BatchUpdateResponseDto>> UpdateTenantSettingsBatch(
         string category,
         [FromBody] UpdateSettingBatchDto body,
+        [FromServices] IOutputCacheStore outputCacheStore,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new UpdateSettingBatchCommand
@@ -202,6 +204,11 @@ public class SettingsController : ControllerBase
                 SettingsValidationProblem,
                 result.Message ?? "Tenant settings batch update failed.");
         }
+
+        if (result.Success && result.Results.Any(result => result.Applied))
+        {
+            await outputCacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
+        }
         return Ok(result);
     }
 
@@ -215,6 +222,7 @@ public class SettingsController : ControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateTenantSetting(
         string key,
         [FromBody] UpdateSettingValueDto body,
+        [FromServices] IOutputCacheStore outputCacheStore,
         CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(new UpdateSettingCommand
@@ -223,6 +231,11 @@ public class SettingsController : ControllerBase
             Value = body.Value,
             Scope = SettingScope.Tenant
         }, cancellationToken);
+
+        if (response.Success)
+        {
+            await outputCacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
+        }
 
         return HandleCommandResponse(response);
     }
