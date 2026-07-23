@@ -34,7 +34,7 @@ public class TenantLifecycleLog : IAuditableEntity
     /// <summary>
     /// User who triggered the status transition.
     /// </summary>
-    public Guid TransitionedByUserId { get; set; }
+    public Guid? TransitionedByUserId { get; set; }
 
     /// <summary>
     /// Optional reason for the transition (required for Suspend/Archive).

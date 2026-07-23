@@ -54,7 +54,7 @@ public class TenantInvitation : ITenantEntity, IAuditableEntity
     /// <summary>
     /// User who created the invitation.
     /// </summary>
-    public Guid InvitedByUserId { get; set; }
+    public Guid? InvitedByUserId { get; set; }
 
     /// <summary>
     /// Optional email domain constraint. When set, only users with a matching

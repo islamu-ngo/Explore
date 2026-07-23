@@ -2,6 +2,7 @@
 // ABOUTME: Pins lookup ordering, privacy guards, exact moderation linkage, rollback safety, and authority ACLs.
 
 using Event.Persistence.IntegrationTests.Fixtures;
+using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Persistence;
 using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Persistence.Schema;
@@ -10,6 +11,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace Event.Persistence.IntegrationTests.Migrations;
@@ -260,6 +264,86 @@ public sealed class GeneratedInitMigrationBehaviorTests(
             await Assert.That(await ScalarIntAsync(
                 "SELECT count(*)::integer FROM privacy_erasure_authority.erasure_intents"))
                 .IsEqualTo(1);
+        }
+        finally
+        {
+            await ResetDatabaseAsync();
+        }
+    }
+
+    [Test]
+    public async Task CancelledDedicatedMigration_LeavesNoAuthoritySchemaOrHistory()
+    {
+        await ResetDatabaseAsync();
+        try
+        {
+            await using PrivacyErasureAuthorityDbContext context = CreateAuthorityContext();
+            IMigrator migrator = context.GetService<IMigrator>();
+            using var cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+
+            await Assert.ThrowsAsync<OperationCanceledException>(() =>
+                migrator.MigrateAsync(MigrationIds(context).Single(), cancellation.Token));
+
+            await Assert.That(await ScalarIntAsync(
+                "SELECT count(*)::integer FROM pg_catalog.pg_namespace WHERE nspname = 'privacy_erasure_authority'"))
+                .IsEqualTo(0);
+            await Assert.That(await ScalarIntAsync(
+                "SELECT count(*)::integer FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '__EFMigrationsHistory'"))
+                .IsEqualTo(0);
+        }
+        finally
+        {
+            await ResetDatabaseAsync();
+        }
+    }
+
+    [Test]
+    public async Task SuccessfulApplicationMigration_DoesNotAuthorizeDedicatedMigrationOnSameTarget()
+    {
+        await ResetDatabaseAsync();
+        try
+        {
+            await using ExploreDbContext context = CreateExploreContext();
+            await context.GetService<IMigrator>().MigrateAsync(MigrationIds(context).Single());
+            await Assert.That(await ScalarIntAsync(
+                "SELECT count(*)::integer FROM information_schema.tables WHERE table_schema = 'privacy_erasure_authority'"))
+                .IsEqualTo(2);
+            await Assert.That(await ScalarIntAsync(
+                """
+                SELECT count(*)::integer
+                FROM pg_catalog.pg_proc AS function_entry
+                JOIN pg_catalog.pg_namespace AS schema_entry
+                  ON schema_entry.oid = function_entry.pronamespace
+                WHERE schema_entry.nspname = 'privacy_erasure_authority'
+                  AND function_entry.proname IN ('append_erasure_intent', 'read_erasure_intents_after')
+                """))
+                .IsEqualTo(0);
+
+            var authorityTarget = new NpgsqlConnectionStringBuilder(fixture.ConnectionString)
+            {
+                ApplicationName = "authority-migrator-canary"
+            };
+            IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["PrivacyErasure:Authority:Topology"] = "ExternalDatabase",
+                    ["ConnectionStrings:DefaultConnection"] = fixture.ConnectionString,
+                    ["ConnectionStrings:PrivacyErasureAuthority"] = authorityTarget.ConnectionString
+                }).Build();
+            var services = new ServiceCollection();
+
+            OptionsValidationException? exception = await Assert.That(() =>
+                    services.ConfigurePersistenceServices(
+                        configuration,
+                        skipDbContextRegistration: true,
+                        skipLookupCacheInitializer: true))
+                .Throws<OptionsValidationException>();
+
+            await Assert.That(exception!.Message)
+                .Contains("different physical PostgreSQL database", StringComparison.OrdinalIgnoreCase);
+            await Assert.That(services.Any(descriptor =>
+                descriptor.ServiceType == typeof(IPrivacyErasureAuthority))).IsFalse();
         }
         finally
         {

@@ -14,8 +14,8 @@ public class SupportAccessSession : IAuditableEntity, IConcurrencyAware
     public const int MaxEndReasonTextLength = 200;
 
     public Guid Id { get; private set; }
-    public Guid ActorUserId { get; private set; }
-    public User ActorUser { get; private set; } = null!;
+    public Guid? ActorUserId { get; private set; }
+    public User? ActorUser { get; private set; }
     public Guid TargetTenantId { get; private set; }
     public Tenant TargetTenant { get; private set; } = null!;
     public Guid? TargetTenantUserId { get; private set; }
@@ -43,7 +43,8 @@ public class SupportAccessSession : IAuditableEntity, IConcurrencyAware
 
     public bool IsActiveAt(DateTimeOffset nowUtc)
     {
-        return StatusId == (int)SupportAccessSessionStatusEnum.Active
+        return ActorUserId.HasValue
+            && StatusId == (int)SupportAccessSessionStatusEnum.Active
             && EndedAtUtc is null
             && StartedAtUtc <= nowUtc
             && nowUtc < ExpiresAtUtc;

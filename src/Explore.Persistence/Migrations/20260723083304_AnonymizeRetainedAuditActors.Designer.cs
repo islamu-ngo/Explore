@@ -3,6 +3,7 @@ using System;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    partial class ExploreDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260723083304_AnonymizeRetainedAuditActors")]
+    partial class AnonymizeRetainedAuditActors
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -14534,26 +14537,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("lease_token");
 
-                    b.Property<DateTime>("LocatorExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("locator_expires_at_utc");
-
-                    b.Property<short>("LocatorKind")
-                        .HasColumnType("smallint")
-                        .HasColumnName("locator_kind");
-
-                    b.Property<int>("LocatorProtectionVersion")
-                        .HasColumnType("integer")
-                        .HasColumnName("locator_protection_version");
-
                     b.Property<DateTime?>("NextAttemptAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("next_attempt_at_utc");
-
-                    b.Property<string>("ProtectedLocator")
-                        .HasMaxLength(8192)
-                        .HasColumnType("character varying(8192)")
-                        .HasColumnName("protected_locator");
 
                     b.Property<short>("ProviderKind")
                         .HasColumnType("smallint")
@@ -14602,14 +14588,6 @@ namespace Explore.Persistence.Migrations
                             t.HasCheckConstraint("ck_privacy_erasure_provider_work_attempt_count", "attempt_count >= 0");
 
                             t.HasCheckConstraint("ck_privacy_erasure_provider_work_lease_fence", "lease_fence >= 0");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_provider_work_locator_expiry", "locator_expires_at_utc > created_at_utc");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_provider_work_locator_kind", "locator_kind BETWEEN 1 AND 7");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_provider_work_locator_lifecycle", "(status = 5 AND protected_locator IS NULL) OR status = 6 OR (status NOT IN (5, 6) AND protected_locator IS NOT NULL)");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_provider_work_locator_version", "locator_protection_version >= 1");
 
                             t.HasCheckConstraint("ck_privacy_erasure_provider_work_subject_kind", "subject_kind = 1");
                         });

@@ -13,7 +13,7 @@ public class ConfigurationChangeLog : IAuditableEntity
     /// <summary>
     /// The user who made the change.
     /// </summary>
-    public Guid UserId { get; set; }
+    public Guid? UserId { get; set; }
 
     /// <summary>
     /// When the change occurred.

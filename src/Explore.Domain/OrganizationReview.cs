@@ -1,3 +1,6 @@
+// ABOUTME: Shared organization review content with a nullable reviewer identity for privacy erasure.
+// ABOUTME: Preserves ratings and comments while allowing the author link and display name to be anonymized.
+
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
@@ -17,8 +20,8 @@ public class OrganizationReview : ITenantEntity, IAuditableEntity, ISoftDeletabl
     public required Event Event { get; set; }
 
     [ForeignKey("User")]
-    public Guid UserId { get; set; }
-    public required User User { get; set; }
+    public Guid? UserId { get; set; }
+    public User? User { get; set; }
 
     public required string ReviewerName { get; set; }
     public int Rating { get; set; }

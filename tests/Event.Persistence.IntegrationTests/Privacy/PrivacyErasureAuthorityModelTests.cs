@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -214,6 +216,59 @@ public sealed class PrivacyErasureAuthorityModelTests
             .Select(method => method.Name)
             .Distinct())
             .IsEquivalentTo(["AppendAsync", "ReadAfterAsync"]);
+    }
+
+    [Test]
+    public async Task MigrationCatalogs_HaveExactNonOverlappingAuthorityOwnership()
+    {
+        await using ExploreDbContext application = CreateExploreContext();
+        await using var authority = new PrivacyErasureAuthorityDbContext(
+            new DbContextOptionsBuilder<PrivacyErasureAuthorityDbContext>()
+                .UseNpgsql("Host=localhost;Database=model_only;Username=unused;Password=unused")
+                .UseSnakeCaseNamingConvention()
+                .Options);
+
+        Migration applicationInit = ReadOnlyInitMigration(application);
+        Migration authorityInit = ReadOnlyInitMigration(authority);
+        string[] applicationAuthorityTables = applicationInit.UpOperations
+            .OfType<CreateTableOperation>()
+            .Where(operation => operation.Schema == "privacy_erasure_authority")
+            .Select(operation => operation.Name)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        string[] dedicatedAuthorityTables = authorityInit.UpOperations
+            .OfType<CreateTableOperation>()
+            .Where(operation => operation.Schema == "privacy_erasure_authority")
+            .Select(operation => operation.Name)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        string applicationSql = string.Join('\n', applicationInit.UpOperations
+            .OfType<SqlOperation>()
+            .Select(operation => operation.Sql));
+        string authoritySql = string.Join('\n', authorityInit.UpOperations
+            .OfType<SqlOperation>()
+            .Select(operation => operation.Sql));
+
+        await Assert.That(applicationAuthorityTables)
+            .IsEquivalentTo(["authority_counter", "erasure_intents"]);
+        await Assert.That(dedicatedAuthorityTables)
+            .IsEquivalentTo(["authority_counter", "erasure_intents"]);
+        await Assert.That(applicationSql).DoesNotContain("privacy_erasure_authority_runtime");
+        await Assert.That(applicationSql).DoesNotContain("append_erasure_intent");
+        await Assert.That(authoritySql).Contains("privacy_erasure_authority_runtime");
+        await Assert.That(authoritySql).Contains("append_erasure_intent");
+        await Assert.That(string.Join('\n', applicationInit.UpOperations.Select(operation => operation.ToString())))
+            .DoesNotContain("location_privacy_authority");
+        await Assert.That(string.Join('\n', authorityInit.UpOperations.Select(operation => operation.ToString())))
+            .DoesNotContain("location_privacy_authority");
+    }
+
+    private static Migration ReadOnlyInitMigration(DbContext context)
+    {
+        IMigrationsAssembly assembly = context.GetService<IMigrationsAssembly>();
+        KeyValuePair<string, System.Reflection.TypeInfo> migration = assembly.Migrations.Single(item =>
+            item.Key.EndsWith("_init", StringComparison.OrdinalIgnoreCase));
+        return assembly.CreateMigration(migration.Value, context.Database.ProviderName!);
     }
 
     private static ExploreDbContext CreateExploreContext()

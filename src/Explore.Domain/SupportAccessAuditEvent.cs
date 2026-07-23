@@ -24,8 +24,8 @@ public class SupportAccessAuditEvent
     public DateTimeOffset OccurredAtUtc { get; private set; }
     public int EventTypeId { get; private set; }
     public SupportAccessAuditEventType EventType { get; private set; } = null!;
-    public Guid ActorUserId { get; private set; }
-    public User ActorUser { get; private set; } = null!;
+    public Guid? ActorUserId { get; private set; }
+    public User? ActorUser { get; private set; }
     public Guid TargetTenantId { get; private set; }
     public Tenant TargetTenant { get; private set; } = null!;
     public Guid? TargetTenantUserId { get; private set; }
@@ -104,7 +104,7 @@ public class SupportAccessAuditEvent
         return Create(
             session.Id,
             eventType,
-            session.ActorUserId,
+            session.ActorUserId ?? throw new InvalidOperationException("Support-access actor identity is unavailable."),
             session.TargetTenantId,
             outcome,
             occurredAtUtc,

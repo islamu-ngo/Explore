@@ -109,7 +109,7 @@ public class SupportAccessSessionTests
         var auditEvent = SupportAccessAuditEvent.Create(
             session.Id,
             SupportAccessAuditEventTypeEnum.RequestObserved,
-            session.ActorUserId,
+            session.ActorUserId ?? throw new InvalidOperationException(),
             session.TargetTenantId,
             "allowed",
             DateTimeOffset.UtcNow,
@@ -135,7 +135,7 @@ public class SupportAccessSessionTests
             _ = SupportAccessAuditEvent.Create(
                 session.Id,
                 SupportAccessAuditEventTypeEnum.Denied,
-                session.ActorUserId,
+                session.ActorUserId ?? throw new InvalidOperationException(),
                 session.TargetTenantId,
                 "denied",
                 DateTimeOffset.UtcNow,

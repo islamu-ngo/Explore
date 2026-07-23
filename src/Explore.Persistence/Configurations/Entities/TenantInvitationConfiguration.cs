@@ -32,9 +32,6 @@ public class TenantInvitationConfiguration : IEntityTypeConfiguration<TenantInvi
             .IsRequired()
             .HasDefaultValue(false);
 
-        builder.Property(e => e.InvitedByUserId)
-            .IsRequired();
-
         builder.Property(e => e.AllowedDomain)
             .HasMaxLength(255);
 

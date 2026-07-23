@@ -3,6 +3,7 @@ using System;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    partial class ExploreDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260723084842_ProtectPrivacyErasureProviderLocators")]
+    partial class ProtectPrivacyErasureProviderLocators
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -14607,7 +14610,7 @@ namespace Explore.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_privacy_erasure_provider_work_locator_kind", "locator_kind BETWEEN 1 AND 7");
 
-                            t.HasCheckConstraint("ck_privacy_erasure_provider_work_locator_lifecycle", "(status = 5 AND protected_locator IS NULL) OR status = 6 OR (status NOT IN (5, 6) AND protected_locator IS NOT NULL)");
+                            t.HasCheckConstraint("ck_privacy_erasure_provider_work_locator_lifecycle", "(status = 5 AND protected_locator IS NULL) OR (status <> 5 AND protected_locator IS NOT NULL)");
 
                             t.HasCheckConstraint("ck_privacy_erasure_provider_work_locator_version", "locator_protection_version >= 1");
 

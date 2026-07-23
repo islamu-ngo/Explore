@@ -26,7 +26,7 @@ public class EventContactShareExport : ITenantEntity
     public Event? Event { get; set; }
 
     [ForeignKey("ExportedByUser")]
-    public Guid ExportedByUserId { get; set; }
+    public Guid? ExportedByUserId { get; set; }
     public User? ExportedByUser { get; set; }
 
     /// <summary>

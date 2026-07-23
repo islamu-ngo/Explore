@@ -17,9 +17,6 @@ public class TenantLifecycleLogConfiguration : IEntityTypeConfiguration<TenantLi
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();
 
-        builder.Property(e => e.TransitionedByUserId)
-            .IsRequired();
-
         builder.Property(e => e.Reason)
             .HasMaxLength(1000);
 

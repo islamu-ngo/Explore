@@ -16,7 +16,7 @@ public class TenantPlanAssignment : IAuditableEntity
     public TenantPlanVersion TenantPlanVersion { get; set; } = null!;
     public int TenantPlanAssignmentStatusId { get; set; }
     public TenantPlanAssignmentStatus TenantPlanAssignmentStatus { get; set; } = null!;
-    public Guid AssignedByUserId { get; set; }
+    public Guid? AssignedByUserId { get; set; }
     public DateTime AssignedAt { get; set; }
     public DateTime? EndedAt { get; set; }
     public DateTime CreatedAt { get; set; }

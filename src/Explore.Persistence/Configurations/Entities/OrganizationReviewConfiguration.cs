@@ -1,3 +1,6 @@
+// ABOUTME: EF Core mapping for shared organization reviews and nullable reviewer identity.
+// ABOUTME: Keeps review content while allowing privacy erasure to sever the User relationship.
+
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -24,5 +27,11 @@ public class OrganizationReviewConfiguration : IEntityTypeConfiguration<Organiza
         builder.Property(e => e.Comment).HasColumnName("comment").HasMaxLength(2000);
         builder.Property(e => e.CreatedAt).HasColumnName("created_at");
         builder.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+        builder.HasOne(e => e.User)
+            .WithMany()
+            .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
     }
 }

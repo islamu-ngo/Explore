@@ -12,7 +12,7 @@ public static class TenantFilterBypassReasons
         "Repository enumerates all tenant memberships for one global user using an explicit user predicate.";
 
     public const string UserPrivacyErasure =
-        "User privacy erasure enumerates only Private Homes owned by one exact subject across tenants.";
+        "User privacy erasure applies compiled dispositions using one exact subject predicate across tenants.";
 
     public const string InstanceLocationPrivacyGovernance =
         "Instance location-privacy governance versions active EventLocations across tenants after an authorized ceiling change.";

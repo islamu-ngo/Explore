@@ -190,6 +190,7 @@ public partial class ExploreDbContext
     public DbSet<PrivacyErasureCounter> PrivacyErasureCounters { get; set; }
     public DbSet<PrivacyErasureSaga> PrivacyErasureSagas { get; set; }
     public DbSet<PrivacyErasurePolicyCoverage> PrivacyErasurePolicyCoverage { get; set; }
+    public DbSet<PrivacyErasureProviderWork> PrivacyErasureProviderWork { get; set; }
 
     // ===== Storage =====
     public DbSet<StorageObject> StorageObjects { get; set; }

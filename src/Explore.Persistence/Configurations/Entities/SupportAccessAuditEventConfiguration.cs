@@ -37,7 +37,8 @@ public class SupportAccessAuditEventConfiguration : IEntityTypeConfiguration<Sup
         builder.HasOne(e => e.ActorUser)
             .WithMany()
             .HasForeignKey(e => e.ActorUserId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
 
         builder.HasOne(e => e.TargetTenant)
             .WithMany()

@@ -28,7 +28,7 @@ public sealed class EventLocationExactReadAudit : ITenantEntity
     }
 
     public Guid EventLocationId { get; private set; }
-    public Guid RequesterUserId { get; private set; }
+    public Guid? RequesterUserId { get; private set; }
     public EventLocationExactReadPurposeEnum Purpose { get; private set; }
     public bool WasAuthorized { get; private set; }
     public DateTime OccurredAtUtc { get; private set; }

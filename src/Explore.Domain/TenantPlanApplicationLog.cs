@@ -18,7 +18,7 @@ public class TenantPlanApplicationLog : IAuditableEntity
     public TenantPlanAssignment? TenantPlanAssignment { get; set; }
     public int TenantPlanApplicationStatusId { get; set; }
     public TenantPlanApplicationStatus TenantPlanApplicationStatus { get; set; } = null!;
-    public Guid AppliedByUserId { get; set; }
+    public Guid? AppliedByUserId { get; set; }
     public DateTime AppliedAt { get; set; }
     public Guid? PreviousTenantPlanVersionId { get; set; }
     public TenantPlanVersion? PreviousTenantPlanVersion { get; set; }

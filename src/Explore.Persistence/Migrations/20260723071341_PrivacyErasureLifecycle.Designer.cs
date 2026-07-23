@@ -3,6 +3,7 @@ using System;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    partial class ExploreDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260723071341_PrivacyErasureLifecycle")]
+    partial class PrivacyErasureLifecycle
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1883,7 +1886,7 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
-                    b.Property<Guid?>("UserId")
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
@@ -3716,7 +3719,7 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("event_id");
 
-                    b.Property<Guid?>("ExportedByUserId")
+                    b.Property<Guid>("ExportedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("exported_by_user_id");
 
@@ -4685,7 +4688,7 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid?>("ActorUserId")
+                    b.Property<Guid>("ActorUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("actor_user_id");
 
@@ -4788,7 +4791,7 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("purpose");
 
-                    b.Property<Guid?>("RequesterUserId")
+                    b.Property<Guid>("RequesterUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("requester_user_id");
 
@@ -13844,7 +13847,7 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
-                    b.Property<Guid?>("UserId")
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
@@ -14534,26 +14537,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("lease_token");
 
-                    b.Property<DateTime>("LocatorExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("locator_expires_at_utc");
-
-                    b.Property<short>("LocatorKind")
-                        .HasColumnType("smallint")
-                        .HasColumnName("locator_kind");
-
-                    b.Property<int>("LocatorProtectionVersion")
-                        .HasColumnType("integer")
-                        .HasColumnName("locator_protection_version");
-
                     b.Property<DateTime?>("NextAttemptAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("next_attempt_at_utc");
-
-                    b.Property<string>("ProtectedLocator")
-                        .HasMaxLength(8192)
-                        .HasColumnType("character varying(8192)")
-                        .HasColumnName("protected_locator");
 
                     b.Property<short>("ProviderKind")
                         .HasColumnType("smallint")
@@ -14602,14 +14588,6 @@ namespace Explore.Persistence.Migrations
                             t.HasCheckConstraint("ck_privacy_erasure_provider_work_attempt_count", "attempt_count >= 0");
 
                             t.HasCheckConstraint("ck_privacy_erasure_provider_work_lease_fence", "lease_fence >= 0");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_provider_work_locator_expiry", "locator_expires_at_utc > created_at_utc");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_provider_work_locator_kind", "locator_kind BETWEEN 1 AND 7");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_provider_work_locator_lifecycle", "(status = 5 AND protected_locator IS NULL) OR status = 6 OR (status NOT IN (5, 6) AND protected_locator IS NOT NULL)");
-
-                            t.HasCheckConstraint("ck_privacy_erasure_provider_work_locator_version", "locator_protection_version >= 1");
 
                             t.HasCheckConstraint("ck_privacy_erasure_provider_work_subject_kind", "subject_kind = 1");
                         });
@@ -15795,7 +15773,7 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("action");
 
-                    b.Property<Guid?>("ActorUserId")
+                    b.Property<Guid>("ActorUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("actor_user_id");
 
@@ -16001,7 +15979,7 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid?>("ActorUserId")
+                    b.Property<Guid>("ActorUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("actor_user_id");
 
@@ -16602,7 +16580,7 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
-                    b.Property<Guid?>("InvitedByUserId")
+                    b.Property<Guid>("InvitedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("invited_by_user_id");
 
@@ -16690,7 +16668,7 @@ namespace Explore.Persistence.Migrations
                         .HasColumnName("transitioned_at")
                         .HasDefaultValueSql("NOW()");
 
-                    b.Property<Guid?>("TransitionedByUserId")
+                    b.Property<Guid>("TransitionedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("transitioned_by_user_id");
 
@@ -16924,7 +16902,7 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("applied_at");
 
-                    b.Property<Guid?>("AppliedByUserId")
+                    b.Property<Guid>("AppliedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("applied_by_user_id");
 
@@ -17059,7 +17037,7 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("assigned_at");
 
-                    b.Property<Guid?>("AssignedByUserId")
+                    b.Property<Guid>("AssignedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("assigned_by_user_id");
 
@@ -22447,6 +22425,7 @@ namespace Explore.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("ExportedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
                         .HasConstraintName("fk_event_contact_share_exports_users_exported_by_user_id");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
@@ -25286,7 +25265,8 @@ namespace Explore.Persistence.Migrations
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
                         .HasConstraintName("fk_organization_reviews_users_user_id");
 
                     b.Navigation("Event");
@@ -27770,6 +27750,7 @@ namespace Explore.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("ActorUserId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
                         .HasConstraintName("fk_support_access_audit_events_users_actor_user_id");
 
                     b.HasOne("Explore.Domain.SupportAccessAuditEventType", "EventType")
@@ -27816,6 +27797,7 @@ namespace Explore.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("ActorUserId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
                         .HasConstraintName("fk_support_access_sessions_users_actor_user_id");
 
                     b.HasOne("Explore.Domain.User", "ApprovedByUser")

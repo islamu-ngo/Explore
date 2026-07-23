@@ -61,11 +61,7 @@ public partial class ExploreDbContext
                 (entry.State == EntityState.Added || entry.State == EntityState.Modified) &&
                 (entry.State == EntityState.Modified || concurrencyAware.ConcurrencyStamp == Guid.Empty))
             {
-                concurrencyAware.ConcurrencyStamp = entry.Entity is Explore.Domain.EventLocation
-                    or Explore.Domain.Location
-                    or Explore.Domain.LocationRoom
-                    ? Guid.CreateVersion7()
-                    : Guid.NewGuid();
+                concurrencyAware.ConcurrencyStamp = Guid.CreateVersion7();
             }
 
             if (entry.Entity is IAuditableEntity auditable)
@@ -73,7 +69,10 @@ public partial class ExploreDbContext
                 switch (entry.State)
                 {
                     case EntityState.Added:
-                        auditable.CreatedAt = now;
+                        if (auditable.CreatedAt == default)
+                        {
+                            auditable.CreatedAt = now;
+                        }
                         auditable.CreatedBy = userId ?? auditable.CreatedBy;
                         break;
 
@@ -264,6 +263,6 @@ public partial class ExploreDbContext
 
     private static string GeneratePublicCode()
     {
-        return Guid.NewGuid().ToString("N")[..12];
+        return Guid.CreateVersion7().ToString("N")[..12];
     }
 }

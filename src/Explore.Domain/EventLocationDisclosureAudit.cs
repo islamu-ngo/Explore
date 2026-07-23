@@ -28,7 +28,7 @@ public sealed class EventLocationDisclosureAudit : ITenantEntity
     }
 
     public Guid EventLocationId { get; private set; }
-    public Guid ActorUserId { get; private set; }
+    public Guid? ActorUserId { get; private set; }
     public EventLocationDisclosureFields PreviousFields { get; private set; }
     public EventLocationDisclosureFields NewFields { get; private set; }
     public int PreviousAudienceId { get; private set; }

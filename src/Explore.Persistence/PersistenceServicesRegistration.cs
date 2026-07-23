@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Text;
 using Explore.Application.Configuration;
 using Explore.Application.Contracts.Infrastructure;
@@ -47,13 +48,15 @@ public static class PersistenceServicesRegistration
     {
         PrivacyErasureDurabilityOptions erasureDurability =
             PrivacyErasureDurabilityOptions.FromConfiguration(configuration);
+        string? applicationConnectionString =
+            configuration.GetConnectionString("DefaultConnection");
 
         // Skip DbContext registration when running integration tests (they register their own)
         if (!skipDbContextRegistration)
         {
             // Precedence: explicit ConnectionStrings:DefaultConnection (tests / overrides)
             // -> BootstrapSecretLoader (Infisical -> POSTGRESQL_* env -> Postgresql:* config). No URL form.
-            var connectionString = configuration["ConnectionStrings:DefaultConnection"];
+            var connectionString = applicationConnectionString;
             if (string.IsNullOrEmpty(connectionString))
             {
                 using var bootstrapLoggerFactory = LoggerFactory.Create(static builder =>
@@ -70,6 +73,8 @@ public static class PersistenceServicesRegistration
                 var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(configuration, bootstrapLogger);
                 connectionString = credentials.ConnectionString;
             }
+
+            applicationConnectionString = connectionString;
 
             // Use pooled DbContext factory for performance (EF Core recommended pattern)
             // The scoped ExploreDbContext registration below handles scoped dependency injection
@@ -260,7 +265,10 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IEventLocationDisclosureAuditRepository, EventLocationDisclosureAuditRepository>();
         services.AddScoped<IEventLocationExactReadAuditRepository, EventLocationExactReadAuditRepository>();
         services.AddScoped<IPrivacyErasureReplayCheckpointRepository, PrivacyErasureReplayCheckpointRepository>();
+        services.AddScoped<IPrivacyErasureStateRepository, PrivacyErasureStateRepository>();
+        services.AddScoped<IPrivacyErasureProviderWorkRepository, PrivacyErasureProviderWorkRepository>();
         services.AddScoped<IUserLocationPrivacyErasureRepository, UserLocationPrivacyErasureRepository>();
+        services.AddScoped<IUserPrivacyErasureRepository, UserLocationPrivacyErasureRepository>();
         services.AddScoped<IPrivacyErasureLedgerRepository, ApplicationDatabasePrivacyErasureLedgerRepository>();
         if (erasureDurability.Topology == PrivacyErasureAuthorityTopology.ExternalDatabase)
         {
@@ -279,6 +287,15 @@ public static class PersistenceServicesRegistration
             catch (ArgumentException)
             {
                 throw InvalidExternalAuthorityConnection();
+            }
+
+            if (!string.IsNullOrWhiteSpace(applicationConnectionString)
+                && TargetsSamePhysicalDatabase(applicationConnectionString, connectionString))
+            {
+                throw new OptionsValidationException(
+                    nameof(PrivacyErasureDurabilityOptions),
+                    typeof(PrivacyErasureDurabilityOptions),
+                    ["ExternalDatabase requires the privacy-erasure authority and application migrations to target a different physical PostgreSQL database."]);
             }
 
             services.AddDbContext<PrivacyErasureAuthorityDbContext>(options =>
@@ -404,4 +421,41 @@ public static class PersistenceServicesRegistration
             nameof(PrivacyErasureDurabilityOptions),
             typeof(PrivacyErasureDurabilityOptions),
             [$"ConnectionStrings:{PrivacyErasureDurabilityOptions.ConnectionStringName} must be a valid Npgsql Host/Database/Username connection string when {PrivacyErasureDurabilityOptions.SectionName}:Topology is ExternalDatabase."]);
+
+    private static bool TargetsSamePhysicalDatabase(
+        string applicationConnectionString,
+        string authorityConnectionString)
+    {
+        try
+        {
+            var application = new NpgsqlConnectionStringBuilder(applicationConnectionString);
+            var authority = new NpgsqlConnectionStringBuilder(authorityConnectionString);
+            return application.Port == authority.Port
+                && string.Equals(
+                    NormalizeHost(application.Host),
+                    NormalizeHost(authority.Host),
+                    StringComparison.OrdinalIgnoreCase)
+                && string.Equals(
+                    application.Database,
+                    authority.Database,
+                    StringComparison.Ordinal);
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    private static string NormalizeHost(string host)
+    {
+        string normalized = host.Trim().TrimEnd('.');
+        if (string.Equals(normalized, "localhost", StringComparison.OrdinalIgnoreCase)
+            || (IPAddress.TryParse(normalized, out IPAddress? address)
+                && IPAddress.IsLoopback(address)))
+        {
+            return "loopback";
+        }
+
+        return normalized;
+    }
 }

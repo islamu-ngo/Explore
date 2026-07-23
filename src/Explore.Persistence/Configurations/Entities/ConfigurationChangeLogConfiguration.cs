@@ -16,9 +16,6 @@ public class ConfigurationChangeLogConfiguration : IEntityTypeConfiguration<Conf
         builder.Property(e => e.Id)
             .HasDefaultValueSql("uuidv7()");
 
-        builder.Property(e => e.UserId)
-            .IsRequired();
-
         builder.Property(e => e.Timestamp)
             .IsRequired()
             .HasDefaultValueSql("NOW()");
