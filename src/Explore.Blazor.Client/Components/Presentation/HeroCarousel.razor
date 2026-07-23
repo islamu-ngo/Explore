@@ -1,5 +1,6 @@
-@* ABOUTME: Renders a bounded, manual featured-event hero for the public home experience. *@
+@* ABOUTME: Renders a bounded, auto-advancing featured-event hero for the public home experience. *@
 @* ABOUTME: Supports keyboard controls, pointer swipes, responsive images, RTL, and reduced motion. *@
+@implements IAsyncDisposable
 
 @if (_slides.Count > 0 || HeaderContent is not null)
 {
@@ -27,13 +28,28 @@
             {
                 var slide = _slides[index];
                 var isActive = index == _selectedIndex;
+                var isLeaving = _leavingIndex == index;
+                var isIncoming = _incomingIndex == index;
+                var isVisible = isActive || isLeaving || isIncoming;
+                var transitionDirection = _transitionDirection > 0
+                    ? "hero-carousel__slide--forward"
+                    : "hero-carousel__slide--backward";
+                var slideClasses = "hero-carousel__slide " +
+                    (isLeaving
+                        ? $"hero-carousel__slide--leaving {transitionDirection}"
+                        : isIncoming
+                            ? $"hero-carousel__slide--incoming {transitionDirection}"
+                            : isActive
+                                ? "hero-carousel__slide--active"
+                                : string.Empty);
 
-                <article class="hero-carousel__slide"
-                             data-testid="hero-slide"
-                             role="group"
-                             aria-roledescription="slide"
-                             aria-label="@(index + 1) of @_slides.Count"
-                             hidden="@(!isActive)">
+                <article class="@slideClasses"
+                              data-testid="hero-slide"
+                              role="group"
+                              aria-roledescription="slide"
+                              aria-label="@(index + 1) of @_slides.Count"
+                              aria-hidden="@(!isActive)"
+                              hidden="@(!isVisible)">
                         <div class="hero-carousel__visual" aria-hidden="true">
                             <img class="hero-carousel__backdrop"
                                  src="@GetImageSource(slide, index)"
@@ -100,13 +116,15 @@
                 <button class="hero-carousel__control"
                         type="button"
                         aria-label="@PreviousLabel"
-                        @onclick="ShowPrevious">
+                        disabled="@_isTransitioning"
+                        @onclick="ShowPreviousAsync">
                     <span aria-hidden="true">‹</span>
                 </button>
                 <button class="hero-carousel__control"
                         type="button"
                         aria-label="@NextLabel"
-                        @onclick="ShowNext">
+                        disabled="@_isTransitioning"
+                        @onclick="ShowNextAsync">
                     <span aria-hidden="true">›</span>
                 </button>
             </div>
@@ -115,12 +133,19 @@
 }
 
 @code {
-    private const string FallbackImage = "/image/landing_image_nonuser.png";
     private const string DefaultPlaceholderImage = "https://placeholder.islamu.org/event-default.jpg";
+    private const int SlideTransitionMilliseconds = 300;
     private const double SwipeThreshold = 48;
+    private static readonly TimeSpan AutoplayInterval = TimeSpan.FromSeconds(9);
     private IReadOnlyList<EventListDto> _slides = [];
+    private readonly CancellationTokenSource _autoplayCancellation = new();
     private readonly HashSet<int> _failedImages = [];
+    private Task? _autoplayTask;
     private int _selectedIndex;
+    private int? _leavingIndex;
+    private int? _incomingIndex;
+    private int _transitionDirection = 1;
+    private bool _isTransitioning;
     private double? _pointerStartX;
 
     [Parameter] public IEnumerable<EventListDto> Events { get; set; } = [];
@@ -138,11 +163,60 @@
         _failedImages.RemoveWhere(index => index >= _slides.Count);
     }
 
-    private void ShowPrevious() =>
-        _selectedIndex = (_selectedIndex - 1 + _slides.Count) % _slides.Count;
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_autoplayTask is null && _slides.Count > 1)
+            _autoplayTask = AutoplayAsync(_autoplayCancellation.Token);
 
-    private void ShowNext() =>
-        _selectedIndex = (_selectedIndex + 1) % _slides.Count;
+        return Task.CompletedTask;
+    }
+
+    private Task ShowPreviousAsync() => TransitionToAsync(-1);
+
+    private Task ShowNextAsync() => TransitionToAsync(1);
+
+    private async Task AutoplayAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(AutoplayInterval);
+
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+                await InvokeAsync(ShowNextAsync);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task TransitionToAsync(int direction)
+    {
+        if (_isTransitioning || _slides.Count < 2)
+            return;
+
+        var nextIndex = (_selectedIndex + direction + _slides.Count) % _slides.Count;
+        _leavingIndex = _selectedIndex;
+        _incomingIndex = nextIndex;
+        _selectedIndex = nextIndex;
+        _transitionDirection = direction;
+        _isTransitioning = true;
+
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            await Task.Delay(SlideTransitionMilliseconds, _autoplayCancellation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        _leavingIndex = null;
+        _incomingIndex = null;
+        _isTransitioning = false;
+        await InvokeAsync(StateHasChanged);
+    }
 
     private void HandlePointerDown(PointerEventArgs args)
     {
@@ -150,7 +224,7 @@
             _pointerStartX = args.ClientX;
     }
 
-    private void HandlePointerUp(PointerEventArgs args)
+    private async Task HandlePointerUp(PointerEventArgs args)
     {
         if (!_pointerStartX.HasValue || !args.IsPrimary)
             return;
@@ -163,9 +237,9 @@
 
         var swipedForward = RightToLeft ? distance > 0 : distance < 0;
         if (swipedForward)
-            ShowNext();
+            await ShowNextAsync();
         else
-            ShowPrevious();
+            await ShowPreviousAsync();
     }
 
     private void ClearPointer() => _pointerStartX = null;
@@ -176,8 +250,16 @@
         _failedImages.Contains(index) ||
         string.IsNullOrWhiteSpace(slide.FeaturedImageUri) ||
         string.Equals(slide.FeaturedImageUri, DefaultPlaceholderImage, StringComparison.OrdinalIgnoreCase)
-            ? FallbackImage
+            ? ImageHelper.GetEventImageUrl(null, slide.Title, GetEventColor(slide), width: 300, height: 400)
             : slide.FeaturedImageUri;
+
+    private static string GetEventColor(EventListDto slide)
+    {
+        var color = EventColorHelper.GetColorByTypeId(slide.EventTypeId);
+        return color == EventColorHelper.DefaultColor
+            ? EventColorHelper.GetColorByHash(slide.Title)
+            : color;
+    }
 
     private static string GetMetadata(EventListDto slide)
     {
@@ -198,4 +280,11 @@
     private static string? GetEventUrl(EventListDto slide) => slide.IsFederatedDiscoveryEvent()
         ? slide.GetHalHref("source")
         : EventUrlHelper.BuildPublicPath(slide.Slug, slide.PublicCode) ?? "/events";
+
+    public ValueTask DisposeAsync()
+    {
+        _autoplayCancellation.Cancel();
+        _autoplayCancellation.Dispose();
+        return ValueTask.CompletedTask;
+    }
 }

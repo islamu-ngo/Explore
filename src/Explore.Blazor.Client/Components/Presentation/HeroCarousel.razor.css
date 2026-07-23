@@ -2,6 +2,8 @@
 /* ABOUTME: Uses design tokens and disables decorative transitions for reduced-motion users. */
 
 .hero-carousel {
+    --hero-carousel-slide-duration: 300ms;
+    --hero-carousel-slide-easing: ease-in-out;
     position: relative;
     overflow: hidden;
     background: var(--isl-color-background, var(--mud-palette-background));
@@ -14,20 +16,71 @@
 }
 
 .hero-carousel__viewport {
+    position: relative;
     block-size: 25.5rem;
 }
 
 .hero-carousel__slide {
+    position: absolute;
+    inset: 0;
     block-size: 100%;
-}
-
-.hero-carousel__slide {
-    position: relative;
+    visibility: hidden;
     isolation: isolate;
 }
 
 .hero-carousel__slide[hidden] {
     display: none;
+}
+
+.hero-carousel__slide--active,
+.hero-carousel__slide--leaving,
+.hero-carousel__slide--incoming {
+    visibility: visible;
+}
+
+.hero-carousel__slide--active,
+.hero-carousel__slide--incoming {
+    z-index: 2;
+}
+
+.hero-carousel__slide--leaving {
+    z-index: 1;
+}
+
+.hero-carousel__slide--incoming.hero-carousel__slide--forward {
+    animation: hero-carousel-slide-in-forward var(--hero-carousel-slide-duration) var(--hero-carousel-slide-easing) forwards;
+}
+
+.hero-carousel__slide--leaving.hero-carousel__slide--forward {
+    animation: hero-carousel-slide-out-forward var(--hero-carousel-slide-duration) var(--hero-carousel-slide-easing) forwards;
+}
+
+.hero-carousel__slide--incoming.hero-carousel__slide--backward {
+    animation: hero-carousel-slide-in-backward var(--hero-carousel-slide-duration) var(--hero-carousel-slide-easing) forwards;
+}
+
+.hero-carousel__slide--leaving.hero-carousel__slide--backward {
+    animation: hero-carousel-slide-out-backward var(--hero-carousel-slide-duration) var(--hero-carousel-slide-easing) forwards;
+}
+
+@keyframes hero-carousel-slide-in-forward {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+
+@keyframes hero-carousel-slide-out-forward {
+    from { transform: translateX(0); }
+    to { transform: translateX(-100%); }
+}
+
+@keyframes hero-carousel-slide-in-backward {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+}
+
+@keyframes hero-carousel-slide-out-backward {
+    from { transform: translateX(0); }
+    to { transform: translateX(100%); }
 }
 
 .hero-carousel__visual {

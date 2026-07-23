@@ -1,5 +1,5 @@
-// ABOUTME: Focused bUnit coverage for the manual public-home featured event hero.
-// ABOUTME: Verifies bounded slides, MangaDex-style image anatomy, controls, swipe behavior, and loading priority.
+// ABOUTME: Focused bUnit coverage for the auto-advancing public-home featured event hero.
+// ABOUTME: Verifies bounded slides, image anatomy, controls, swipe behavior, and ImageHelper fallbacks.
 
 using Explore.Blazor.Client.Components.Presentation;
 
@@ -10,13 +10,11 @@ public sealed class HeroCarouselTests : IDisposable
     private readonly BlazorTestContext _ctx = new();
 
     [Test]
-    public async Task HeroCarouselCapsSlidesAtTenAndHasNoAutoplayContract()
+    public async Task HeroCarouselCapsSlidesAtTen()
     {
         var cut = Render(12);
 
         await Assert.That(cut.FindAll("[data-testid='hero-slide']").Count).IsEqualTo(10);
-        await Assert.That(cut.Markup).DoesNotContain("autoplay");
-        await Assert.That(cut.Markup).DoesNotContain("autocycle");
     }
 
     [Test]
@@ -26,12 +24,27 @@ public sealed class HeroCarouselTests : IDisposable
 
         await Assert.That(cut.Find("[data-testid='hero-counter']").TextContent.Trim()).IsEqualTo("NO. 1");
 
-        cut.Find("button[aria-label='Next featured event']").Click();
+        await cut.Find("button[aria-label='Next featured event']")
+            .TriggerEventAsync("onclick", new MouseEventArgs());
         await Assert.That(cut.Find("[data-testid='hero-counter']").TextContent.Trim()).IsEqualTo("NO. 2");
 
-        cut.Find("button[aria-label='Previous featured event']").Click();
-        cut.Find("button[aria-label='Previous featured event']").Click();
+        await cut.Find("button[aria-label='Previous featured event']")
+            .TriggerEventAsync("onclick", new MouseEventArgs());
+        await cut.Find("button[aria-label='Previous featured event']")
+            .TriggerEventAsync("onclick", new MouseEventArgs());
         await Assert.That(cut.Find("[data-testid='hero-counter']").TextContent.Trim()).IsEqualTo("NO. 3");
+    }
+
+    [Test]
+    public async Task HeroCarouselAutomaticallyAdvancesAfterNineSeconds()
+    {
+        var cut = Render(2);
+
+        cut.WaitForState(
+            () => cut.Find("[data-testid='hero-counter']").TextContent.Trim() == "NO. 2",
+            TimeSpan.FromSeconds(10));
+
+        await Assert.That(cut.Find("[data-testid='hero-counter']").TextContent.Trim()).IsEqualTo("NO. 2");
     }
 
     [Test]
@@ -81,7 +94,21 @@ public sealed class HeroCarouselTests : IDisposable
     }
 
     [Test]
-    public async Task HeroCarouselUsesLocalImageForCanonicalPlaceholder()
+    public async Task HeroCarouselUsesImageHelperFallbackForMissingImage()
+    {
+        var events = CreateEvents(1);
+        events[0].FeaturedImageUri = null;
+
+        var cut = _ctx.RenderMudComponent<HeroCarousel>(parameters => parameters
+            .Add(component => component.Events, events));
+
+        await Assert.That(cut.FindAll("img").All(image =>
+                image.GetAttribute("src")?.StartsWith("data:image/svg+xml;utf8,", StringComparison.Ordinal) == true))
+            .IsTrue();
+    }
+
+    [Test]
+    public async Task HeroCarouselUsesImageHelperFallbackForCanonicalPlaceholder()
     {
         var events = CreateEvents(1);
         events[0].FeaturedImageUri = "https://placeholder.islamu.org/event-default.jpg";
@@ -90,7 +117,7 @@ public sealed class HeroCarouselTests : IDisposable
             .Add(component => component.Events, events));
 
         await Assert.That(cut.FindAll("img").All(image =>
-                image.GetAttribute("src") == "/image/landing_image_nonuser.png"))
+                image.GetAttribute("src")?.StartsWith("data:image/svg+xml;utf8,", StringComparison.Ordinal) == true))
             .IsTrue();
     }
 

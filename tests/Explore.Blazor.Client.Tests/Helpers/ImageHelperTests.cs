@@ -26,6 +26,9 @@ public class ImageHelperTests
         await Assert.That(result).StartsWith("data:image/svg+xml;utf8,");
         await Assert.That(svg).Contains("linearGradient");
         await Assert.That(svg).Contains("radialGradient");
+        await Assert.That(svg).Contains("@media (prefers-color-scheme: dark)");
+        await Assert.That(svg).Contains("event-gradient-light");
+        await Assert.That(svg).Contains("event-gradient-dark");
         await Assert.That(svg).DoesNotContain("Annual Summit");
         await Assert.That(result).DoesNotContain("placehold.co");
     }
