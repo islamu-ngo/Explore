@@ -103,6 +103,26 @@ public sealed class AspireLocalInfrastructureArchitectureTests
         await Assert.That(profiles.TryGetProperty("https", out _)).IsFalse();
     }
 
+    [Test]
+    public async Task ExternalPrivacyErasureDatabase_IsManagedWheneverAspireUsesLocalData()
+    {
+        string appHost = await File.ReadAllTextAsync(
+            Path.Combine(RepoRoot, "src", "Explore.AppHost", "AppHost.cs"));
+
+        await Assert.That(appHost).Contains("if (usesExternalPrivacyErasureAuthority)");
+        await Assert.That(appHost).DoesNotContain(
+            "usesExternalPrivacyErasureAuthority && runMode == AspireRunMode.FullLocal");
+        await Assert.That(appHost).Contains(
+            ".WithReference(privacyErasureDatabase, connectionName: \"PrivacyErasureAuthorityMigrator\")");
+        await Assert.That(appHost).Contains(
+            ".WithReference(privacyErasureDatabase, connectionName: \"PrivacyErasureAuthority\")");
+
+        int blazorIndex = appHost.IndexOf("var exploreBlazor =", StringComparison.Ordinal);
+        string blazorComposition = appHost[blazorIndex..];
+        await Assert.That(blazorComposition).DoesNotContain("privacyErasureDatabase");
+        await Assert.That(blazorComposition).DoesNotContain("PrivacyErasureAuthorityMigrator");
+    }
+
     private static string ResolveRepoRoot()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

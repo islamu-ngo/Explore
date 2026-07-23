@@ -22,6 +22,14 @@ var builder = DistributedApplication.CreateBuilder(args);
 var runMode = AspireRunModeExtensions.Parse(builder.Configuration["ISLAMU_ASPIRE_MODE"]);
 var eventLocationPrivacyMigrationStage =
     builder.Configuration["Database:Migrations:EventLocationPrivacyStage"];
+var privacyErasureTopology = ConfiguredValue(
+    builder.Configuration,
+    "PRIVACY_ERASURE_AUTHORITY_TOPOLOGY",
+    "CoLocated");
+var usesExternalPrivacyErasureAuthority = string.Equals(
+    privacyErasureTopology,
+    "ExternalDatabase",
+    StringComparison.OrdinalIgnoreCase);
 var webhookProvider = ConfiguredValue(
     builder.Configuration,
     "WEBHOOKS_PROVIDER",
@@ -54,6 +62,7 @@ builder.Services.AddHealthChecks().AddCheck("startup-delay", () =>
     DateTime.Now > startAfter ? HealthCheckResult.Healthy() : HealthCheckResult.Unhealthy());
 
 IResourceBuilder<PostgresDatabaseResource>? database = null;
+IResourceBuilder<PostgresDatabaseResource>? privacyErasureDatabase = null;
 IResourceBuilder<RedisResource>? cache = null;
 IResourceBuilder<RabbitMQServerResource>? messaging = null;
 LocalPlatformResources? localPlatformResources = null;
@@ -65,6 +74,14 @@ if (runMode.UsesLocalData())
         .WithImageTag("18-alpine")
         .WithDataVolume("islamu-event-postgres-data")
         .AddDatabase("islamu-event-db", "islamu_event_db");
+
+    if (usesExternalPrivacyErasureAuthority)
+    {
+        privacyErasureDatabase = builder.AddPostgres("privacy-erasure-postgres")
+            .WithImageTag("18-alpine")
+            .WithDataVolume("islamu-event-privacy-erasure-postgres-data")
+            .AddDatabase("privacy-erasure-authority", "islamu_event_privacy_erasure");
+    }
 
     cache = builder.AddRedis("cache")
         .WithDataVolume("islamu-event-redis-data");
@@ -100,7 +117,8 @@ var migrations = WithProfileSecretMode(
             "event-migrationservice",
             ExcludeProjectLaunchProfile),
         runMode,
-        builder.Configuration);
+        builder.Configuration)
+    .WithEnvironment("PrivacyErasure__Authority__Topology", privacyErasureTopology);
 
 if (!string.IsNullOrWhiteSpace(eventLocationPrivacyMigrationStage))
 {
@@ -113,6 +131,13 @@ if (database is not null)
         .WithReference(database, connectionName: "EventMigrationService")
         .WithReference(database, connectionName: "DefaultConnection")
         .WaitFor(database);
+}
+
+if (privacyErasureDatabase is not null)
+{
+    migrations = migrations
+        .WithReference(privacyErasureDatabase, connectionName: "PrivacyErasureAuthorityMigrator")
+        .WaitFor(privacyErasureDatabase);
 }
 
 migrations = ConfigureLocalMailpitSmtp(migrations, mailpit, builder.Configuration);
@@ -132,6 +157,7 @@ var exploreAPI = WithProfileSecretMode(
     .WithEnvironment("Storage__Local__CreateRootIfMissing", "true")
     .WithEnvironment("StorageReconciliation__Enabled", "true")
     .WithEnvironment("StorageReconciliation__DryRun", "true")
+    .WithEnvironment("PrivacyErasure__Authority__Topology", privacyErasureTopology)
     .WaitFor(mailpit);
 
 exploreAPI = ConfigureLocalMailpitSmtp(exploreAPI, mailpit, builder.Configuration);
@@ -166,6 +192,13 @@ if (database is not null)
     exploreAPI = exploreAPI
         .WithReference(database, connectionName: "DefaultConnection")
         .WaitFor(database);
+}
+
+if (privacyErasureDatabase is not null)
+{
+    exploreAPI = exploreAPI
+        .WithReference(privacyErasureDatabase, connectionName: "PrivacyErasureAuthority")
+        .WaitFor(privacyErasureDatabase);
 }
 
 if (cache is not null)

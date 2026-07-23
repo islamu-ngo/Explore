@@ -18,18 +18,37 @@ public sealed class PrivacyErasureDurabilityOptions
     public const string SectionName = "PrivacyErasure:Authority";
     public const string LegacyModeKey = "PrivacyErasure:Durability:Mode";
     public const string ConnectionStringName = "PrivacyErasureAuthority";
+    public const string MigratorConnectionStringName = "PrivacyErasureAuthorityMigrator";
 
     public PrivacyErasureAuthorityTopology Topology { get; set; } =
         PrivacyErasureAuthorityTopology.CoLocated;
+
+    public bool RestoreReplayProtection =>
+        Topology == PrivacyErasureAuthorityTopology.ExternalDatabase;
 
     public static PrivacyErasureDurabilityOptions FromConfiguration(
         IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
+        PrivacyErasureAuthorityTopology topology = GetTopology(configuration);
+        if (topology == PrivacyErasureAuthorityTopology.ExternalDatabase)
+        {
+            _ = GetExternalDatabaseConnectionString(configuration);
+        }
+
+        return new PrivacyErasureDurabilityOptions
+        {
+            Topology = topology
+        };
+    }
+
+    public static PrivacyErasureAuthorityTopology GetTopology(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
         if (HasLegacyModeKey(configuration))
         {
             throw InvalidConfiguration(
-                $"{LegacyModeKey} is no longer supported. Remove it, reset this pre-v1 development deployment, and configure {SectionName}:Topology as CoLocated or ExternalDatabase.");
+                $"{LegacyModeKey} is no longer supported. Confirm this pre-v1 development deployment is reset-eligible, create and verify a backup or export for every value the operator must retain, then perform an operator-managed reset, remove the legacy key, and configure {SectionName}:Topology as CoLocated or ExternalDatabase.");
         }
 
         string? configuredTopology = configuration[$"{SectionName}:Topology"];
@@ -55,25 +74,23 @@ public sealed class PrivacyErasureDurabilityOptions
                 $"{SectionName}:Topology must be CoLocated or ExternalDatabase.");
         }
 
-        if (topology == PrivacyErasureAuthorityTopology.ExternalDatabase)
-        {
-            _ = GetExternalDatabaseConnectionString(configuration);
-        }
-
-        return new PrivacyErasureDurabilityOptions
-        {
-            Topology = topology
-        };
+        return topology;
     }
 
     public static string GetExternalDatabaseConnectionString(IConfiguration configuration)
+        => GetConnectionString(configuration, ConnectionStringName);
+
+    public static string GetExternalDatabaseMigratorConnectionString(IConfiguration configuration)
+        => GetConnectionString(configuration, MigratorConnectionStringName);
+
+    private static string GetConnectionString(IConfiguration configuration, string name)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        string? connectionString = configuration.GetConnectionString(ConnectionStringName);
+        string? connectionString = configuration.GetConnectionString(name);
         if (string.IsNullOrWhiteSpace(connectionString) || !HasRequiredNpgsqlShape(connectionString))
         {
             throw InvalidConfiguration(
-                $"ConnectionStrings:{ConnectionStringName} must be a valid Npgsql Host/Database/Username connection string when {SectionName}:Topology is ExternalDatabase.");
+                $"ConnectionStrings:{name} must be a valid Npgsql Host/Database/Username connection string when {SectionName}:Topology is ExternalDatabase.");
         }
 
         return connectionString;

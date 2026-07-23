@@ -1,14 +1,17 @@
 // ABOUTME: Hosted worker that applies Explore database migrations, model-owned PostgreSQL constraints, and seed data.
 // ABOUTME: Runs once in the migration service process before stopping the host.
 
+using Explore.Application.Configuration;
 using Explore.Persistence;
+using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Event.MigrationService;
 
-public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLifetime lifetime, IHostEnvironment environment, IConfiguration configuration, ILogger<Worker> logger) : BackgroundService
+public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLifetime lifetime, IHostEnvironment environment, IConfiguration configuration, IOptions<PrivacyErasureDurabilityOptions> erasureOptions, ILogger<Worker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -43,6 +46,14 @@ public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLif
         logger.LogInformation("Applying Data Protection key-ring migrations...");
         await dataProtectionDb.Database.MigrateAsync(stoppingToken);
         logger.LogInformation("Data Protection key-ring migrations applied successfully.");
+
+        if (erasureOptions.Value.Topology == PrivacyErasureAuthorityTopology.ExternalDatabase)
+        {
+            logger.LogInformation("Applying external privacy-erasure authority migrations...");
+            var authorityDb = scope.ServiceProvider.GetRequiredService<PrivacyErasureAuthorityDbContext>();
+            await authorityDb.Database.MigrateAsync(stoppingToken);
+            logger.LogInformation("External privacy-erasure authority migrations applied successfully.");
+        }
 
         // Run async seeding for data that requires conditional logic
         logger.LogInformation("Running database seeding...");

@@ -3,7 +3,9 @@
 
 using Aspire.Npgsql.EntityFrameworkCore.PostgreSQL;
 using Event.MigrationService.Extensions;
+using Explore.Application.Configuration;
 using Explore.Persistence;
+using Explore.Persistence.Privacy.ErasureAuthority;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
@@ -39,6 +41,20 @@ public class Program
         builder.AddNpgsqlDbContext<DataProtectionKeyContext>(
             "EventMigrationService", configureDbContextOptions: options =>
                 options.UseSnakeCaseNamingConvention());
+
+        PrivacyErasureAuthorityTopology erasureTopology =
+            PrivacyErasureDurabilityOptions.GetTopology(builder.Configuration);
+        builder.Services.AddOptions<PrivacyErasureDurabilityOptions>()
+            .Configure(options => options.Topology = erasureTopology);
+        if (erasureTopology == PrivacyErasureAuthorityTopology.ExternalDatabase)
+        {
+            string connectionString = PrivacyErasureDurabilityOptions
+                .GetExternalDatabaseMigratorConnectionString(builder.Configuration);
+            builder.Services.AddDbContext<PrivacyErasureAuthorityDbContext>(options =>
+                options.UseNpgsql(connectionString, npgsql =>
+                        npgsql.MigrationsAssembly(typeof(PrivacyErasureAuthorityDbContext).Assembly.FullName))
+                    .UseSnakeCaseNamingConvention());
+        }
 
         var host = builder.Build();
         host.Run();

@@ -79,6 +79,14 @@ public sealed class PrivacyErasureDurabilityOptionsTests
             .Contains("PrivacyErasure:Authority:Topology", StringComparison.Ordinal);
         await Assert.That(exception.Failures.Single())
             .Contains("reset", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(exception.Failures.Single())
+            .Contains("eligible", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(exception.Failures.Single())
+            .Contains("backup", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(exception.Failures.Single())
+            .Contains("export", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(exception.Failures.Single())
+            .Contains("operator", StringComparison.OrdinalIgnoreCase);
         if (!string.IsNullOrWhiteSpace(legacyMode))
         {
             await Assert.That(exception.Failures.Single()).DoesNotContain(legacyMode);
@@ -113,6 +121,45 @@ public sealed class PrivacyErasureDurabilityOptionsTests
 
         await Assert.That(options.Topology)
             .IsEqualTo(PrivacyErasureAuthorityTopology.CoLocated);
+    }
+
+    [Test]
+    public async Task Topology_DerivesRestoreReplayProtectionCapability()
+    {
+        PrivacyErasureDurabilityOptions coLocated = Resolve(new Dictionary<string, string?>
+        {
+            ["PrivacyErasure:Authority:Topology"] = "CoLocated"
+        });
+        PrivacyErasureDurabilityOptions external = Resolve(new Dictionary<string, string?>
+        {
+            ["PrivacyErasure:Authority:Topology"] = "ExternalDatabase",
+            ["ConnectionStrings:PrivacyErasureAuthority"] =
+                "Host=unused;Database=authority;Username=runtime"
+        });
+
+        await Assert.That(coLocated.RestoreReplayProtection).IsFalse();
+        await Assert.That(external.RestoreReplayProtection).IsTrue();
+    }
+
+    [Test]
+    public async Task MigrationTopology_UsesOnlyMigratorConnection()
+    {
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["PrivacyErasure:Authority:Topology"] = "ExternalDatabase",
+                ["ConnectionStrings:PrivacyErasureAuthorityMigrator"] =
+                    "Host=unused;Database=authority;Username=migrator"
+            }).Build();
+
+        PrivacyErasureAuthorityTopology topology = PrivacyErasureDurabilityOptions.GetTopology(configuration);
+        string connection = PrivacyErasureDurabilityOptions
+            .GetExternalDatabaseMigratorConnectionString(configuration);
+
+        await Assert.That(topology).IsEqualTo(PrivacyErasureAuthorityTopology.ExternalDatabase);
+        await Assert.That(connection).Contains("Username=migrator");
+        await Assert.ThrowsAsync<OptionsValidationException>(() =>
+            Task.FromResult(PrivacyErasureDurabilityOptions.GetExternalDatabaseConnectionString(configuration)));
     }
 
     private static PrivacyErasureDurabilityOptions Resolve(

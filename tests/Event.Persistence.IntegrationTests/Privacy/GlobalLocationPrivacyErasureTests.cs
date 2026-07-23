@@ -5,10 +5,13 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.PrivacyErasure;
+using Explore.Application.Contracts.Services;
+using Explore.Application.Configuration;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Infrastructure.Services.Privacy;
+using Explore.Infrastructure.Services;
 using Explore.Persistence;
 using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Persistence.Privacy.ErasureAuthority.Repositories;
@@ -16,11 +19,14 @@ using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
 using Explore.Persistence.Seed;
 using Event.Persistence.IntegrationTests.Fixtures;
+using DotNet.Testcontainers.Containers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Npgsql;
 using Testcontainers.PostgreSql;
 using TUnit.Core;
@@ -29,9 +35,9 @@ using TUnit.Core.Interfaces;
 namespace Event.Persistence.IntegrationTests.Privacy;
 
 [Category("EventLocationPrivacy")]
-[ClassDataSource<GlobalLocationPrivacyPostgreSqlFixture>(Shared = SharedType.PerClass)]
+[ClassDataSource<ExternalDatabasePrivacyErasurePostgreSqlFixture>(Shared = SharedType.PerClass)]
 [NotInParallel("PersistenceDb")]
-public sealed class GlobalLocationPrivacyErasureTests(GlobalLocationPrivacyPostgreSqlFixture fixture)
+public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyErasurePostgreSqlFixture fixture)
 {
     [Test]
     public async Task OwnerPrivateHomeQuery_ReturnsExactCrossTenantSetWithoutEnumeratingOtherRows()
@@ -123,6 +129,68 @@ public sealed class GlobalLocationPrivacyErasureTests(GlobalLocationPrivacyPostg
     }
 
     [Test]
+    public async Task MembershipAndPreferenceErasure_RemovesExactSubjectAcrossTenantsOnly()
+    {
+        await using var seedContext = fixture.CreateDbContext();
+        var tenantA = CreateTenant("preference-erasure-a");
+        var tenantB = CreateTenant("preference-erasure-b");
+        var subject = CreateUser("preference-erasure-subject");
+        var unrelated = CreateUser("preference-erasure-unrelated");
+        seedContext.AddRange(tenantA, tenantB, subject, unrelated);
+        seedContext.UserPreferences.AddRange(
+            CreatePreference(tenantA, subject.Id, "subject-a"),
+            CreatePreference(tenantB, subject.Id, "subject-b"),
+            CreatePreference(tenantA, unrelated.Id, "unrelated"));
+        await seedContext.SaveChangesAsync();
+
+        await using var erasureContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantA.Id));
+        var repository = new UserLocationPrivacyErasureRepository(erasureContext);
+
+        await repository.EraseMembershipsAndPreferencesAsync(subject.Id, CancellationToken.None);
+
+        Guid[] remainingUsers = await erasureContext.UserPreferences
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .Where(value => value.UserId == subject.Id || value.UserId == unrelated.Id)
+            .Select(value => value.UserId)
+            .ToArrayAsync();
+        await Assert.That(remainingUsers).IsEquivalentTo([unrelated.Id]);
+    }
+
+    [Test]
+    public async Task RetainedAuditErasure_AnonymizesExactSubjectAndPreservesUnrelatedEvidence()
+    {
+        await using var seedContext = fixture.CreateDbContext();
+        var tenantA = CreateTenant("audit-erasure-a");
+        var tenantB = CreateTenant("audit-erasure-b");
+        var subject = CreateUser("audit-erasure-subject");
+        var unrelated = CreateUser("audit-erasure-unrelated");
+        seedContext.AddRange(tenantA, tenantB, subject, unrelated);
+        AuditLog subjectA = CreateAudit(tenantA, subject.Id, "subject-a");
+        AuditLog subjectB = CreateAudit(tenantB, subject.Id, "subject-b");
+        AuditLog unrelatedA = CreateAudit(tenantA, unrelated.Id, "unrelated");
+        seedContext.AuditLogs.AddRange(subjectA, subjectB, unrelatedA);
+        await seedContext.SaveChangesAsync();
+
+        await using var erasureContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantA.Id));
+        var repository = new UserLocationPrivacyErasureRepository(erasureContext);
+
+        await repository.AnonymizeRetainedAuditEvidenceAsync(subject.Id, CancellationToken.None);
+
+        AuditLog[] subjectRows = await erasureContext.AuditLogs
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .Where(value => value.Id == subjectA.Id || value.Id == subjectB.Id)
+            .ToArrayAsync();
+        AuditLog unrelatedRow = await erasureContext.AuditLogs
+            .IgnoreAllFilters(TenantFilterBypassReasons.UserPrivacyErasure)
+            .SingleAsync(value => value.Id == unrelatedA.Id);
+        await Assert.That(subjectRows.All(value =>
+            value.ActorId is null && value.OldValues is null && value.NewValues is null)).IsTrue();
+        await Assert.That(unrelatedRow.ActorId).IsEqualTo(unrelated.Id);
+        await Assert.That(unrelatedRow.OldValues).IsNotNull();
+        await Assert.That(unrelatedRow.NewValues).IsNotNull();
+    }
+
+    [Test]
     [Timeout(240_000)]
     public async Task AuthorityFirstRollback_SequenceZeroAndRestoredBehindReplay_AreIdempotent()
     {
@@ -141,7 +209,10 @@ public sealed class GlobalLocationPrivacyErasureTests(GlobalLocationPrivacyPostg
             await using ErasureRuntime failingRuntime = CreateRuntime(failingContext, authority);
 
             await Assert.ThrowsAsync<DbUpdateException>(() =>
-                failingRuntime.Service.EraseUserAsync(graph.OwnerUserId, CancellationToken.None));
+                failingRuntime.Service.EraseUserAsync(
+                    graph.OwnerUserId,
+                    Guid.CreateVersion7(),
+                    CancellationToken.None));
         }
         finally
         {
@@ -271,7 +342,7 @@ public sealed class GlobalLocationPrivacyErasureTests(GlobalLocationPrivacyPostg
                 .AnyAsync(user => user.Id == graph.OwnerUserId && user.IsDeleted)).IsTrue();
             await Assert.That(await committedContext.UserPii
                 .AnyAsync(pii => pii.UserId == graph.OwnerUserId)).IsFalse();
-            await Assert.That(ownerActorPii.DisplayName).StartsWith("DeletedUser");
+            await Assert.That(ownerActorPii.DisplayName).IsEqualTo("Deleted user");
             await Assert.That(ownerActorPii.Did).IsNull();
             await Assert.That(ownerActorPii.Handle).IsNull();
             await Assert.That(ownerActorPii.ProfilePictureUri).IsNull();
@@ -377,7 +448,7 @@ public sealed class GlobalLocationPrivacyErasureTests(GlobalLocationPrivacyPostg
             .IsEqualTo(outboxCountAfterRestore);
     }
 
-    private static ErasureRuntime CreateRuntime(
+    internal static ErasureRuntime CreateRuntime(
         ExploreDbContext context,
         IPrivacyErasureAuthority authority)
     {
@@ -392,24 +463,33 @@ public sealed class GlobalLocationPrivacyErasureTests(GlobalLocationPrivacyPostg
         var outboxRepository = new OutboxRepository(context);
         IPrivacyErasureLedgerRepository ledgerRepository =
             new ApplicationDatabasePrivacyErasureLedgerRepository(context, TimeProvider.System);
+        var stateRepository = new PrivacyErasureStateRepository(context);
         HybridCache cache = cacheProvider.GetRequiredService<HybridCache>();
         var applier = new PrivacyErasureApplier(
             userRepository,
             userPiiRepository,
             tokenRepository,
             erasureRepository,
+            erasureRepository,
+            new PrivacyErasureProviderWorkRepository(context),
+            new PrivacyErasureProviderLocatorProtector(new EphemeralDataProtectionProvider()),
             checkpointRepository,
             ledgerRepository,
+            stateRepository,
             outboxRepository,
             cache,
             TimeProvider.System,
-            NullLogger<PrivacyErasureApplier>.Instance);
+            NullLogger<PrivacyErasureApplier>.Instance,
+            Options.Create(new PrivacyErasureOptions()));
         var service = new RetainedAuthorityPrivacyErasureWorkflow(
-            userRepository,
             checkpointRepository,
+            ledgerRepository,
+            stateRepository,
             authority,
             new EfCoreUnitOfWork(context),
-            applier);
+            applier,
+            Options.Create(new PrivacyErasureOptions()),
+            TimeProvider.System);
         return new ErasureRuntime(
             service,
             new PrivacyErasureReplayService(service),
@@ -593,6 +673,31 @@ public sealed class GlobalLocationPrivacyErasureTests(GlobalLocationPrivacyPostg
         };
     }
 
+    private static UserPreference CreatePreference(Tenant tenant, Guid userId, string value) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        TenantId = tenant.Id,
+        Tenant = tenant,
+        UserId = userId,
+        SettingKey = $"privacy-erasure:{value}",
+        Value = value,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    private static AuditLog CreateAudit(Tenant tenant, Guid actorId, string value) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        TenantId = tenant.Id,
+        Tenant = tenant,
+        EntityType = "PrivacyErasureCanary",
+        EntityId = Guid.CreateVersion7().ToString(),
+        Action = "Updated",
+        OldValues = $"{{\"value\":\"{value}-old\"}}",
+        NewValues = $"{{\"value\":\"{value}-new\"}}",
+        ActorId = actorId,
+        Timestamp = DateTime.UtcNow
+    };
+
     private static Location CreatePrivateHome(Guid tenantId, Guid ownerUserId, string name)
     {
         var location = CreateLocation(tenantId, name);
@@ -627,7 +732,7 @@ public sealed class GlobalLocationPrivacyErasureTests(GlobalLocationPrivacyPostg
         };
     }
 
-    private sealed record ErasureRuntime(
+    internal sealed record ErasureRuntime(
         RetainedAuthorityPrivacyErasureWorkflow Service,
         PrivacyErasureReplayService ReplayService,
         ServiceProvider CacheProvider) : IAsyncDisposable
@@ -657,6 +762,12 @@ public sealed class CoLocatedPrivacyErasureAuthorityTests(
     [Timeout(240_000)]
     public async Task AuthorityAppend_SurvivesApplicationRollback_AndReplayConvergesExactlyOnce()
     {
+        var options = new PrivacyErasureDurabilityOptions
+        {
+            Topology = PrivacyErasureAuthorityTopology.CoLocated,
+        };
+        await Assert.That(options.RestoreReplayProtection).IsFalse();
+
         GlobalLocationPrivacyErasureTests.ErasureGraph graph;
         int ledgerBefore;
         int counterBefore;
@@ -677,7 +788,10 @@ public sealed class CoLocatedPrivacyErasureAuthorityTests(
             await using var failingContext = fixture.CreateDbContext();
             await using CoLocatedErasureRuntime failingRuntime = CreateRuntime(failingContext);
             await Assert.ThrowsAsync<DbUpdateException>(() =>
-                failingRuntime.Service.EraseUserAsync(graph.OwnerUserId, CancellationToken.None));
+                failingRuntime.Service.EraseUserAsync(
+                    graph.OwnerUserId,
+                    Guid.CreateVersion7(),
+                    CancellationToken.None));
         }
         finally
         {
@@ -771,7 +885,11 @@ public sealed class CoLocatedPrivacyErasureAuthorityTests(
             .Select(_ => CreateIntentRequest())
             .ToArray();
         PrivacyErasureIntent[] concurrent = await Task.WhenAll(
-            concurrentRequests.Select(request => authority.AppendAsync(request)));
+            concurrentRequests.Select(request =>
+                new CoLocatedPrivacyErasureAuthorityRepository(
+                        new FixtureExploreDbContextFactory(fixture),
+                        TimeProvider.System)
+                    .AppendAsync(request)));
         await Assert.That(concurrent.Select(item => item.AuthoritySequence))
             .IsEquivalentTo(Enumerable.Range(1, concurrentRequests.Length)
                 .Select(offset => first.AuthoritySequence + offset));
@@ -799,25 +917,34 @@ public sealed class CoLocatedPrivacyErasureAuthorityTests(
         var erasureRepository = new UserLocationPrivacyErasureRepository(context);
         IPrivacyErasureLedgerRepository ledgerRepository =
             new ApplicationDatabasePrivacyErasureLedgerRepository(context, TimeProvider.System);
+        var stateRepository = new PrivacyErasureStateRepository(context);
         var applier = new PrivacyErasureApplier(
             userRepository,
             new GenericRepository<UserPii, Guid>(context),
             new UserAuthenticationTokenRepository(context),
             erasureRepository,
+            erasureRepository,
+            new PrivacyErasureProviderWorkRepository(context),
+            new PrivacyErasureProviderLocatorProtector(new EphemeralDataProtectionProvider()),
             new PrivacyErasureReplayCheckpointRepository(context),
             ledgerRepository,
+            stateRepository,
             new OutboxRepository(context),
             cacheProvider.GetRequiredService<HybridCache>(),
             TimeProvider.System,
-            NullLogger<PrivacyErasureApplier>.Instance);
+            NullLogger<PrivacyErasureApplier>.Instance,
+            Options.Create(new PrivacyErasureOptions()));
         var service = new RetainedAuthorityPrivacyErasureWorkflow(
-                userRepository,
                 new PrivacyErasureReplayCheckpointRepository(context),
+                ledgerRepository,
+                stateRepository,
                 new CoLocatedPrivacyErasureAuthorityRepository(
                     new FixtureExploreDbContextFactory(fixture),
                     TimeProvider.System),
                 new EfCoreUnitOfWork(context),
-                applier);
+                applier,
+                Options.Create(new PrivacyErasureOptions()),
+                TimeProvider.System);
         return new CoLocatedErasureRuntime(
             service,
             new PrivacyErasureReplayService(service),
@@ -888,14 +1015,14 @@ public sealed class CoLocatedPrivacyErasureAuthorityTests(
 }
 
 [Category("EventLocationPrivacy")]
-[ClassDataSource<GlobalLocationPrivacyPostgreSqlFixture>(Shared = SharedType.PerClass)]
+[ClassDataSource<ExternalDatabasePrivacyErasurePostgreSqlFixture>(Shared = SharedType.PerClass)]
 [NotInParallel("PersistenceDb")]
-public sealed class EfCoreRetainedPrivacyErasureAuthorityTests(
-    GlobalLocationPrivacyPostgreSqlFixture fixture)
+public sealed class ExternalDatabasePrivacyErasureAuthorityTests(
+    ExternalDatabasePrivacyErasurePostgreSqlFixture fixture)
 {
     [Test]
     [Timeout(240_000)]
-    public async Task RuntimeRole_AppendsAndReadsThroughFunctionsButCannotReadAuthorityTables()
+    public async Task RuntimeRole_AppendsAndReadsThroughFunctionsButCannotAccessAuthorityTables()
     {
         await using PrivacyErasureAuthorityDbContext context = fixture.CreateAuthorityDbContext();
         var repository = new EfCorePrivacyErasureAuthorityRepository(context);
@@ -919,31 +1046,271 @@ public sealed class EfCoreRetainedPrivacyErasureAuthorityTests(
         try
         {
             var connection = (NpgsqlConnection)context.Database.GetDbConnection();
-            await using var command = new NpgsqlCommand(
-                "SELECT count(*) FROM location_privacy_authority.erasure_intents",
-                connection);
-            PostgresException? exception = await Assert.ThrowsAsync<PostgresException>(() =>
-                command.ExecuteScalarAsync());
-            await Assert.That(exception!.SqlState).IsEqualTo(PostgresErrorCodes.InsufficientPrivilege);
+            string[] blockedStatements =
+            [
+                "SELECT count(*) FROM privacy_erasure_authority.erasure_intents",
+                "INSERT INTO privacy_erasure_authority.authority_counter (singleton, last_sequence) VALUES (true, 0)",
+                "UPDATE privacy_erasure_authority.erasure_intents SET policy_version = policy_version",
+                "DELETE FROM privacy_erasure_authority.erasure_intents",
+                "TRUNCATE TABLE privacy_erasure_authority.erasure_intents"
+            ];
+            foreach (string statement in blockedStatements)
+            {
+                await using var command = new NpgsqlCommand(statement, connection);
+                PostgresException? exception = await Assert.ThrowsAsync<PostgresException>(() =>
+                    command.ExecuteNonQueryAsync());
+                await Assert.That(exception!.SqlState)
+                    .IsEqualTo(PostgresErrorCodes.InsufficientPrivilege);
+            }
         }
         finally
         {
             await context.Database.CloseConnectionAsync();
         }
+
+        var options = new PrivacyErasureDurabilityOptions
+        {
+            Topology = PrivacyErasureAuthorityTopology.ExternalDatabase,
+        };
+        await Assert.That(options.RestoreReplayProtection).IsTrue();
+    }
+
+    [Test]
+    [Timeout(240_000)]
+    public async Task ConcurrentAppends_UseFreshContextsAndAllocateOneContiguousRange()
+    {
+        PrivacyErasureIntent[] before = await ReadAuthorityFactsAsync();
+        long previousWatermark = before.LastOrDefault()?.AuthoritySequence ?? 0;
+        PrivacyErasureRequest[] requests = Enumerable.Range(0, 8)
+            .Select(_ => new PrivacyErasureRequest(
+                Guid.CreateVersion7(),
+                PrivacyErasureSubjectKind.User,
+                Guid.CreateVersion7(),
+                PrivacyErasureReasonCode.AccountDeletion,
+                1))
+            .ToArray();
+
+        PrivacyErasureIntent[] appended = await Task.WhenAll(requests.Select(async request =>
+        {
+            await using PrivacyErasureAuthorityDbContext context = fixture.CreateAuthorityDbContext();
+            return await new EfCorePrivacyErasureAuthorityRepository(context).AppendAsync(request);
+        }));
+
+        await Assert.That(appended.Select(fact => fact.AuthoritySequence))
+            .IsEquivalentTo(Enumerable.Range(1, requests.Length)
+                .Select(offset => previousWatermark + offset));
+        await Assert.That(appended.Select(fact => fact.AuthoritySequence).Distinct().Count())
+            .IsEqualTo(requests.Length);
+
+        PrivacyErasureIntent[] after = await ReadAuthorityFactsAsync();
+        await Assert.That(after.Select(fact => fact.AuthoritySequence))
+            .IsEquivalentTo(Enumerable.Range(1, after.Length).Select(value => (long)value));
+    }
+
+    private async Task<PrivacyErasureIntent[]> ReadAuthorityFactsAsync()
+    {
+        await using PrivacyErasureAuthorityDbContext context = fixture.CreateAuthorityDbContext();
+        IReadOnlyList<PrivacyErasureIntent> facts =
+            await new EfCorePrivacyErasureAuthorityRepository(context).ReadAfterAsync(0, 500);
+        return facts.ToArray();
     }
 }
 
-public sealed class GlobalLocationPrivacyPostgreSqlFixture : IAsyncInitializer, IAsyncDisposable
+[Category("EventLocationPrivacy")]
+[ClassDataSource<ExternalDatabasePrivacyErasurePostgreSqlFixture>(Shared = SharedType.PerClass)]
+[NotInParallel("PersistenceDb")]
+public sealed class ExternalDatabasePrivacyErasureRestoreTests(
+    ExternalDatabasePrivacyErasurePostgreSqlFixture fixture)
 {
+    [Test]
+    [Timeout(300_000)]
+    public async Task PreErasureApplicationBackup_RestoresAndReplaysFromUntouchedAuthorityExactlyOnce()
+    {
+        GlobalLocationPrivacyErasureTests.ErasureGraph graph;
+        await using (var seedContext = fixture.CreateDbContext())
+        {
+            graph = await GlobalLocationPrivacyErasureTests.SeedErasureGraphAsync(seedContext);
+        }
+
+        var backup = await fixture.CaptureApplicationBackupAsync();
+        PrivacyErasureIntent retained;
+        await using (PrivacyErasureAuthorityDbContext authorityContext = fixture.CreateAuthorityDbContext())
+        {
+            retained = await new EfCorePrivacyErasureAuthorityRepository(authorityContext).AppendAsync(
+                new PrivacyErasureRequest(
+                    Guid.CreateVersion7(),
+                    PrivacyErasureSubjectKind.User,
+                    graph.OwnerUserId,
+                    PrivacyErasureReasonCode.AccountDeletion,
+                    1));
+        }
+
+        AuthorityFactSnapshot[] authorityBeforeRestore = await ReadAuthoritySnapshotAsync();
+        await using (var applicationContext = fixture.CreateDbContext())
+        await using (PrivacyErasureAuthorityDbContext replayAuthorityContext =
+            fixture.CreateAuthorityDbContext())
+        await using (GlobalLocationPrivacyErasureTests.ErasureRuntime runtime =
+            GlobalLocationPrivacyErasureTests.CreateRuntime(
+                applicationContext,
+                new EfCorePrivacyErasureAuthorityRepository(replayAuthorityContext)))
+        {
+            await runtime.ReplayService.ReplayAsync(CancellationToken.None);
+        }
+
+        await using (var erasedContext = fixture.CreateDbContext())
+        {
+            await AssertErasedAsync(erasedContext, graph);
+        }
+
+        string restoredDatabase = await fixture.RestoreApplicationBackupAsync(backup);
+        await using (var restoredContext = fixture.CreateDbContext(restoredDatabase))
+        {
+            await Assert.That(await restoredContext.UserPii
+                .AnyAsync(pii => pii.UserId == graph.OwnerUserId)).IsTrue();
+            await Assert.That(await restoredContext.Locations
+                .IgnoreQueryFilters()
+                .Where(location => graph.LocationIds.Contains(location.Id))
+                .Select(location => location.FullName)
+                .ToArrayAsync()).IsEquivalentTo(graph.HomeNames);
+        }
+
+        int checkpointBeforeReplay;
+        int mirrorBeforeReplay;
+        int outboxBeforeReplay;
+        await using (var beforeReplayContext = fixture.CreateDbContext(restoredDatabase))
+        {
+            checkpointBeforeReplay = await beforeReplayContext.PrivacyErasureReplayCheckpoints.CountAsync();
+            mirrorBeforeReplay = await beforeReplayContext.PrivacyErasureIntents.CountAsync();
+            outboxBeforeReplay = await CountPrivacyOutboxAsync(beforeReplayContext);
+        }
+
+        await using (var replayContext = fixture.CreateDbContext(restoredDatabase))
+        await using (PrivacyErasureAuthorityDbContext replayAuthorityContext =
+            fixture.CreateAuthorityDbContext())
+        await using (GlobalLocationPrivacyErasureTests.ErasureRuntime runtime =
+            GlobalLocationPrivacyErasureTests.CreateRuntime(
+                replayContext,
+                new EfCorePrivacyErasureAuthorityRepository(replayAuthorityContext)))
+        {
+            await runtime.ReplayService.ReplayAsync(CancellationToken.None);
+        }
+
+        int checkpointAfterReplay;
+        int mirrorAfterReplay;
+        int outboxAfterReplay;
+        await using (var verifiedContext = fixture.CreateDbContext(restoredDatabase))
+        {
+            await AssertErasedAsync(verifiedContext, graph);
+            checkpointAfterReplay = await verifiedContext.PrivacyErasureReplayCheckpoints.CountAsync();
+            mirrorAfterReplay = await verifiedContext.PrivacyErasureIntents.CountAsync();
+            outboxAfterReplay = await CountPrivacyOutboxAsync(verifiedContext);
+            await Assert.That(checkpointAfterReplay).IsEqualTo(checkpointBeforeReplay + 1);
+            await Assert.That(mirrorAfterReplay).IsEqualTo(mirrorBeforeReplay + 1);
+            await Assert.That(outboxAfterReplay).IsEqualTo(outboxBeforeReplay + 4);
+            PrivacyErasureReplayCheckpoint checkpoint = await verifiedContext
+                .PrivacyErasureReplayCheckpoints.SingleAsync();
+            await Assert.That(checkpoint.AuthoritySequence).IsEqualTo(retained.AuthoritySequence);
+            await Assert.That(checkpoint.IntentId).IsEqualTo(retained.IntentId);
+        }
+
+        await using (var repeatedContext = fixture.CreateDbContext(restoredDatabase))
+        await using (PrivacyErasureAuthorityDbContext repeatedAuthorityContext =
+            fixture.CreateAuthorityDbContext())
+        await using (GlobalLocationPrivacyErasureTests.ErasureRuntime runtime =
+            GlobalLocationPrivacyErasureTests.CreateRuntime(
+                repeatedContext,
+                new EfCorePrivacyErasureAuthorityRepository(repeatedAuthorityContext)))
+        {
+            await runtime.ReplayService.ReplayAsync(CancellationToken.None);
+        }
+
+        await using (var finalContext = fixture.CreateDbContext(restoredDatabase))
+        {
+            await AssertErasedAsync(finalContext, graph);
+            await Assert.That(await finalContext.PrivacyErasureReplayCheckpoints.CountAsync())
+                .IsEqualTo(checkpointAfterReplay);
+            await Assert.That(await finalContext.PrivacyErasureIntents.CountAsync())
+                .IsEqualTo(mirrorAfterReplay);
+            await Assert.That(await CountPrivacyOutboxAsync(finalContext)).IsEqualTo(outboxAfterReplay);
+        }
+
+        AuthorityFactSnapshot[] authorityAfterRestore = await ReadAuthoritySnapshotAsync();
+        await Assert.That(authorityAfterRestore).IsEquivalentTo(authorityBeforeRestore);
+        await Assert.That(authorityAfterRestore.Single().AuthoritySequence)
+            .IsEqualTo(retained.AuthoritySequence);
+
+        var options = new PrivacyErasureDurabilityOptions
+        {
+            Topology = PrivacyErasureAuthorityTopology.ExternalDatabase,
+        };
+        await Assert.That(options.RestoreReplayProtection).IsTrue();
+    }
+
+    private async Task<AuthorityFactSnapshot[]> ReadAuthoritySnapshotAsync()
+    {
+        await using PrivacyErasureAuthorityDbContext context = fixture.CreateAuthorityDbContext();
+        IReadOnlyList<PrivacyErasureIntent> facts =
+            await new EfCorePrivacyErasureAuthorityRepository(context).ReadAfterAsync(0, 500);
+        return facts.Select(fact => new AuthorityFactSnapshot(
+            fact.AuthoritySequence,
+            fact.IntentId,
+            fact.SubjectKind,
+            fact.SubjectId,
+            fact.ReasonCode,
+            fact.PolicyVersion,
+            fact.RequestedAtUtc,
+            fact.RecordedAtUtc,
+            fact.RetentionExpiresAtUtc)).ToArray();
+    }
+
+    private static async Task AssertErasedAsync(
+        ExploreDbContext context,
+        GlobalLocationPrivacyErasureTests.ErasureGraph graph)
+    {
+        await Assert.That(await context.UserPii
+            .AnyAsync(pii => pii.UserId == graph.OwnerUserId)).IsFalse();
+        Location[] homes = await context.Locations
+            .IgnoreQueryFilters()
+            .Include(location => location.Pii)
+            .Where(location => graph.LocationIds.Contains(location.Id))
+            .ToArrayAsync();
+        await Assert.That(homes.All(home =>
+            home.OwnerUserId is null
+            && home.Pii is null
+            && home.LocationPrivacyStateId == (int)LocationPrivacyStateEnum.Erased)).IsTrue();
+    }
+
+    private static Task<int> CountPrivacyOutboxAsync(ExploreDbContext context) =>
+        context.OutboxMessages.CountAsync(message =>
+            message.EventType == LocationPrivacyOutboxMessageFactory.LocationPiiErasedEventType
+            || message.EventType == LocationPrivacyOutboxMessageFactory.LocationPrivacyCorrectionRequestedEventType);
+
+    private sealed record AuthorityFactSnapshot(
+        long AuthoritySequence,
+        Guid IntentId,
+        PrivacyErasureSubjectKind SubjectKind,
+        Guid SubjectId,
+        PrivacyErasureReasonCode ReasonCode,
+        int PolicyVersion,
+        DateTime RequestedAtUtc,
+        DateTime RecordedAtUtc,
+        DateTime RetentionExpiresAtUtc);
+}
+
+public sealed class ExternalDatabasePrivacyErasurePostgreSqlFixture : IAsyncInitializer, IAsyncDisposable
+{
+    private const string ApplicationDatabaseName = "global_location_privacy_test";
     private const string AuthorityRuntimeUsername = "global_erasure_runtime";
     private const string AuthorityRuntimePassword = "global-erasure-runtime-password";
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:18-alpine")
-        .WithDatabase("global_location_privacy_test")
+    private readonly Guid _fixtureId = Guid.NewGuid();
+    private readonly HashSet<string> _restoredDatabases = new(StringComparer.Ordinal);
+    private readonly PostgreSqlContainer _applicationContainer = new PostgreSqlBuilder("postgres:18-alpine")
+        .WithDatabase(ApplicationDatabaseName)
         .WithUsername("postgres")
         .WithPassword("postgres")
         .Build();
     private readonly PostgreSqlContainer _authorityContainer = new PostgreSqlBuilder("postgres:18-alpine")
-        .WithDatabase("global_location_privacy_authority_test")
+        .WithDatabase("privacy_erasure_authority_test")
         .WithUsername("postgres")
         .WithPassword("postgres")
         .Build();
@@ -951,7 +1318,7 @@ public sealed class GlobalLocationPrivacyPostgreSqlFixture : IAsyncInitializer, 
 
     public async Task InitializeAsync()
     {
-        await Task.WhenAll(_container.StartAsync(), _authorityContainer.StartAsync());
+        await Task.WhenAll(_applicationContainer.StartAsync(), _authorityContainer.StartAsync());
         await using (PrivacyErasureAuthorityDbContext authorityContext = CreateAuthorityAdminDbContext())
         {
             await authorityContext.Database.MigrateAsync();
@@ -963,7 +1330,7 @@ public sealed class GlobalLocationPrivacyPostgreSqlFixture : IAsyncInitializer, 
             roleCommand.CommandText =
                 $"""
                 CREATE ROLE {AuthorityRuntimeUsername} LOGIN PASSWORD '{AuthorityRuntimePassword}';
-                GRANT location_privacy_authority_runtime TO {AuthorityRuntimeUsername};
+                GRANT privacy_erasure_authority_runtime TO {AuthorityRuntimeUsername};
                 """;
             await roleCommand.ExecuteNonQueryAsync();
         }
@@ -975,7 +1342,7 @@ public sealed class GlobalLocationPrivacyPostgreSqlFixture : IAsyncInitializer, 
         }.ConnectionString;
 
         await using var context = CreateDbContext();
-        await context.Database.EnsureCreatedAsync();
+        await context.Database.MigrateAsync();
         context.Set<TenantStatus>().Add(new TenantStatus
         {
             Id = (int)TenantStatusEnum.Active,
@@ -1020,8 +1387,8 @@ public sealed class GlobalLocationPrivacyPostgreSqlFixture : IAsyncInitializer, 
 
     public async ValueTask DisposeAsync()
     {
-        await _container.StopAsync();
-        await _container.DisposeAsync();
+        await _applicationContainer.StopAsync();
+        await _applicationContainer.DisposeAsync();
         await _authorityContainer.StopAsync();
         await _authorityContainer.DisposeAsync();
         GC.SuppressFinalize(this);
@@ -1046,15 +1413,99 @@ public sealed class GlobalLocationPrivacyPostgreSqlFixture : IAsyncInitializer, 
     }
 
     public ExploreDbContext CreateDbContext()
-        => CreateDbContext(enableRetryOnFailure: false);
+        => CreateDbContext(ApplicationDatabaseName, enableRetryOnFailure: false);
+
+    public ExploreDbContext CreateDbContext(string restoredDatabase)
+    {
+        if (!_restoredDatabases.Contains(restoredDatabase))
+        {
+            throw new InvalidOperationException("The requested restored database is not owned by this fixture.");
+        }
+
+        return CreateDbContext(restoredDatabase, enableRetryOnFailure: false);
+    }
 
     public ExploreDbContext CreateRetryingDbContext()
-        => CreateDbContext(enableRetryOnFailure: true);
+        => CreateDbContext(ApplicationDatabaseName, enableRetryOnFailure: true);
 
-    private ExploreDbContext CreateDbContext(bool enableRetryOnFailure)
+    internal async Task<ApplicationBackup> CaptureApplicationBackupAsync(
+        CancellationToken cancellationToken = default)
     {
+        string archivePath = $"/tmp/orea-{_fixtureId:N}.dump";
+        ExecResult dump = await _applicationContainer.ExecAsync(
+            [
+                "pg_dump",
+                "--format=custom",
+                "--no-owner",
+                "--no-privileges",
+                $"--file={archivePath}",
+                "--username=postgres",
+                $"--dbname={ApplicationDatabaseName}",
+            ],
+            cancellationToken);
+        EnsureSuccessful(dump, "capture the application backup");
+
+        ExecResult inspect = await _applicationContainer.ExecAsync(
+            ["pg_restore", "--list", archivePath],
+            cancellationToken);
+        EnsureSuccessful(inspect, "inspect the application backup");
+        if (string.IsNullOrWhiteSpace(inspect.Stdout))
+        {
+            throw new InvalidOperationException("The application backup archive is empty.");
+        }
+
+        return new ApplicationBackup(_fixtureId, archivePath);
+    }
+
+    internal async Task<string> RestoreApplicationBackupAsync(
+        ApplicationBackup backup,
+        CancellationToken cancellationToken = default)
+    {
+        if (backup.FixtureId != _fixtureId)
+        {
+            throw new InvalidOperationException("The application backup is not owned by this fixture.");
+        }
+
+        string restoredDatabase = $"orea_restore_{Guid.NewGuid():N}";
+        var adminConnectionString = new NpgsqlConnectionStringBuilder(
+            _applicationContainer.GetConnectionString())
+        {
+            Database = "postgres",
+        }.ConnectionString;
+        await using (var connection = new NpgsqlConnection(adminConnectionString))
+        {
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                $"CREATE DATABASE {new NpgsqlCommandBuilder().QuoteIdentifier(restoredDatabase)} TEMPLATE template0";
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        ExecResult restore = await _applicationContainer.ExecAsync(
+            [
+                "pg_restore",
+                "--exit-on-error",
+                "--no-owner",
+                "--no-privileges",
+                $"--dbname={restoredDatabase}",
+                "--username=postgres",
+                backup.ArchivePath,
+            ],
+            cancellationToken);
+        EnsureSuccessful(restore, "restore the application backup");
+        _restoredDatabases.Add(restoredDatabase);
+        return restoredDatabase;
+    }
+
+    private ExploreDbContext CreateDbContext(string database, bool enableRetryOnFailure)
+    {
+        var connectionString = new NpgsqlConnectionStringBuilder(
+            _applicationContainer.GetConnectionString())
+        {
+            Database = database,
+        }.ConnectionString;
         var options = new DbContextOptionsBuilder<ExploreDbContext>()
-            .UseNpgsql(_container.GetConnectionString(), npgsql =>
+            .UseNpgsql(connectionString, npgsql =>
             {
                 if (enableRetryOnFailure)
                 {
@@ -1069,6 +1520,14 @@ public sealed class GlobalLocationPrivacyPostgreSqlFixture : IAsyncInitializer, 
         return context;
     }
 
+    private static void EnsureSuccessful(ExecResult result, string operation)
+    {
+        if (result.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"Failed to {operation}. ExitCode={result.ExitCode}.");
+        }
+    }
+
     public ExploreDbContext CreateTenantFilteredDbContext(ITenantContext? tenantContext = null)
     {
         var context = CreateDbContext();
@@ -1076,5 +1535,7 @@ public sealed class GlobalLocationPrivacyPostgreSqlFixture : IAsyncInitializer, 
         context.TenantContext = tenantContext;
         return context;
     }
+
+    internal sealed record ApplicationBackup(Guid FixtureId, string ArchivePath);
 
 }

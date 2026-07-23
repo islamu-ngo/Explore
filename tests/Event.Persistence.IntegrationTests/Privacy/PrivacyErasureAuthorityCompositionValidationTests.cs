@@ -62,17 +62,102 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests
                 ["ConnectionStrings:PrivacyErasureAuthority"] = connectionString
             }).Build();
 
-        OptionsValidationException exception = await Assert.That(() =>
+        OptionsValidationException? exception = await Assert.That(() =>
                 services.ConfigurePersistenceServices(
                     configuration,
                     skipDbContextRegistration: true,
                     skipLookupCacheInitializer: true))
             .Throws<OptionsValidationException>();
 
-        await Assert.That(exception.Message).DoesNotContain(connectionString);
+        await Assert.That(exception!.Message).DoesNotContain(connectionString);
         await Assert.That(services.Any(descriptor =>
             descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
         await Assert.That(services.Any(descriptor =>
             descriptor.ServiceType == typeof(IPrivacyErasureAuthority))).IsFalse();
+    }
+
+    [Test]
+    public async Task ExternalComposition_SamePhysicalApplicationDatabase_FailsBeforeRegistration()
+    {
+        const string applicationTarget =
+            "Host=localhost;Database=event;Username=application;Password=application-canary";
+        const string authorityTarget =
+            "Application Name=authority;Username=runtime;Database=event;Port=5432;Host=127.0.0.1;Password=authority-canary";
+        var services = new ServiceCollection();
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["PrivacyErasure:Authority:Topology"] = "ExternalDatabase",
+                ["ConnectionStrings:DefaultConnection"] = applicationTarget,
+                ["ConnectionStrings:PrivacyErasureAuthority"] = authorityTarget
+            }).Build();
+
+        OptionsValidationException? exception = await Assert.That(() =>
+                services.ConfigurePersistenceServices(
+                    configuration,
+                    skipDbContextRegistration: true,
+                    skipLookupCacheInitializer: true))
+            .Throws<OptionsValidationException>();
+
+        await Assert.That(exception!.Message)
+            .Contains("different physical PostgreSQL database", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(exception.Message).DoesNotContain(applicationTarget);
+        await Assert.That(exception.Message).DoesNotContain(authorityTarget);
+        await Assert.That(exception.Message).DoesNotContain("application-canary");
+        await Assert.That(exception.Message).DoesNotContain("authority-canary");
+        await Assert.That(services.Any(descriptor =>
+            descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
+        await Assert.That(services.Any(descriptor =>
+            descriptor.ServiceType == typeof(IPrivacyErasureAuthority))).IsFalse();
+    }
+
+    [Test]
+    public async Task PersistenceComposition_RegistersExactlyOneStableMirrorAndOneTopologyAdapter()
+    {
+        ServiceCollection coLocated = Compose(
+            "CoLocated",
+            "Host=localhost;Database=event;Username=application");
+        ServiceCollection external = Compose(
+            "ExternalDatabase",
+            "Host=localhost;Database=authority;Username=runtime");
+
+        await Assert.That(coLocated.Count(descriptor =>
+            descriptor.ServiceType == typeof(IPrivacyErasureAuthority))).IsEqualTo(1);
+        await Assert.That(external.Count(descriptor =>
+            descriptor.ServiceType == typeof(IPrivacyErasureAuthority))).IsEqualTo(1);
+        await Assert.That(coLocated.Single(descriptor =>
+            descriptor.ServiceType == typeof(IPrivacyErasureAuthority)).ImplementationType)
+            .IsEqualTo(typeof(CoLocatedPrivacyErasureAuthorityRepository));
+        await Assert.That(external.Single(descriptor =>
+            descriptor.ServiceType == typeof(IPrivacyErasureAuthority)).ImplementationType)
+            .IsEqualTo(typeof(EfCorePrivacyErasureAuthorityRepository));
+        await Assert.That(coLocated.Count(descriptor =>
+            descriptor.ServiceType == typeof(Explore.Application.Contracts.Persistence.IPrivacyErasureLedgerRepository)))
+            .IsEqualTo(1);
+        await Assert.That(external.Count(descriptor =>
+            descriptor.ServiceType == typeof(Explore.Application.Contracts.Persistence.IPrivacyErasureLedgerRepository)))
+            .IsEqualTo(1);
+        await Assert.That(coLocated.Any(descriptor =>
+            descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsFalse();
+        await Assert.That(external.Count(descriptor =>
+            descriptor.ServiceType == typeof(PrivacyErasureAuthorityDbContext))).IsEqualTo(1);
+    }
+
+    private static ServiceCollection Compose(string topology, string authorityConnection)
+    {
+        var services = new ServiceCollection();
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["PrivacyErasure:Authority:Topology"] = topology,
+                ["ConnectionStrings:DefaultConnection"] =
+                    "Host=localhost;Database=event;Username=application",
+                ["ConnectionStrings:PrivacyErasureAuthority"] = authorityConnection
+            }).Build();
+        services.ConfigurePersistenceServices(
+            configuration,
+            skipDbContextRegistration: true,
+            skipLookupCacheInitializer: true);
+        return services;
     }
 }
