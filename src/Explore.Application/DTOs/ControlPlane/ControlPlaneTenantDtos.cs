@@ -44,7 +44,7 @@ public sealed class ControlPlaneTenantLifecycleEntryDto
     public int NewStatusId { get; set; }
     public string NewStatusCode { get; set; } = string.Empty;
     public string NewStatusName { get; set; } = string.Empty;
-    public Guid TransitionedByUserId { get; set; }
+    public Guid? TransitionedByUserId { get; set; }
     public string? Reason { get; set; }
     public DateTime TransitionedAt { get; set; }
 }

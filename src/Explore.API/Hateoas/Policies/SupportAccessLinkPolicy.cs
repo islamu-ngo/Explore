@@ -56,14 +56,14 @@ public sealed class SupportAccessSessionDetailLinkPolicy : ILinkPolicy<SupportAc
             .RequirePermission(AuthorizationActions.SupportAccessSessions.ForceStop, ResourceDescriptors.SupportAccessSession, dto);
     }
 
-    private static bool IsActor(ClaimsPrincipal? user, Guid actorUserId)
+    private static bool IsActor(ClaimsPrincipal? user, Guid? actorUserId)
     {
         var value = user?.FindFirst("internal_user_id")?.Value
             ?? user?.FindFirst("sub")?.Value
             ?? user?.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? user?.FindFirst("sid")?.Value;
 
-        return Guid.TryParse(value, out var userId) && userId == actorUserId;
+        return actorUserId.HasValue && Guid.TryParse(value, out var userId) && userId == actorUserId;
     }
 }
 

@@ -206,7 +206,7 @@ public sealed class SupportAccessSessionServiceTests
     {
         _sessionRepository.GetActiveOwnedSessionAsync(
                 session.Id,
-                session.ActorUserId,
+                session.ActorUserId ?? throw new InvalidOperationException(),
                 resolvedTenantId,
                 Arg.Any<DateTimeOffset>(),
                 Arg.Any<CancellationToken>())

@@ -30,7 +30,7 @@ public sealed class ForceStopSupportAccessSessionRequestDto
 public sealed class SupportAccessSessionDto
 {
     public Guid Id { get; set; }
-    public Guid ActorUserId { get; set; }
+    public Guid? ActorUserId { get; set; }
     public Guid TargetTenantId { get; set; }
     public Guid? TargetTenantUserId { get; set; }
     public int StatusId { get; set; }
@@ -67,7 +67,7 @@ public sealed class SupportAccessAuditEventDto
     public DateTimeOffset OccurredAtUtc { get; set; }
     public int EventTypeId { get; set; }
     public string EventTypeName { get; set; } = string.Empty;
-    public Guid ActorUserId { get; set; }
+    public Guid? ActorUserId { get; set; }
     public Guid TargetTenantId { get; set; }
     public Guid? TargetTenantUserId { get; set; }
     public string? RouteName { get; set; }

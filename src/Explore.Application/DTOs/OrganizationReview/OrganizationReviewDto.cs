@@ -1,3 +1,6 @@
+// ABOUTME: API projection for organization reviews, including anonymized historical authors.
+// ABOUTME: Keeps shared review content readable after the nullable User link is erased.
+
 namespace Explore.Application.DTOs.OrganizationReview;
 
 public class OrganizationReviewDto
@@ -9,7 +12,7 @@ public class OrganizationReviewDto
     public string? OrganizationFullName { get; set; }
 
     // User
-    public Guid UserId { get; set; }
+    public Guid? UserId { get; set; }
     public string? UserFullName { get; set; }
 
     // Review

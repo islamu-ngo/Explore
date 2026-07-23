@@ -71,5 +71,5 @@ public sealed class ControlPlaneTenantPlanAssignmentDto
     public int StatusId { get; set; }
     public string StatusCode { get; set; } = string.Empty;
     public DateTime AssignedAt { get; set; }
-    public Guid AssignedByUserId { get; set; }
+    public Guid? AssignedByUserId { get; set; }
 }
