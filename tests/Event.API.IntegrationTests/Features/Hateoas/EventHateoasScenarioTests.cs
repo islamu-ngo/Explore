@@ -1,9 +1,11 @@
 // ABOUTME: Scenario-based HATEOAS tests for EventController using RealRuntimeApiFixture with seeded data.
 // ABOUTME: Validates event-specific item links (sessions, actor) and pagination with actual data present.
 
+using System.Buffers.Binary;
 using System.Net;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Event.Api.IntegrationTests.Helpers;
 using Event.Api.IntegrationTests.Seeds;
 using Explore.Persistence;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +21,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 [NotInParallel("RealRuntimeDb")]
 public class EventHateoasScenarioTests(RealRuntimeApiFixture fixture)
 {
+    private static readonly byte[] PngSignature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
     private readonly RealRuntimeApiFixture _fixture = fixture;
 
     [Test]
@@ -68,6 +71,83 @@ public class EventHateoasScenarioTests(RealRuntimeApiFixture fixture)
         var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         await Assert.That(json.RootElement.GetProperty("title").GetString()).IsEqualTo(seededEvent.Title);
         await Assert.That(json.RootElement.GetProperty("publicCode").GetString()).IsEqualTo(seededEvent.PublicCode);
+    }
+
+    [Test]
+    public async Task GetOpenGraphImage_WithSeededPublishedEvent_ReturnsPngAndStrongEtag()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var tenant = await TenantScenarioSeed.SeedActiveTenantWithUserAsync(db);
+        var seededEvent = await EventScenarioSeed.SeedPublishedEventAsync(
+            db,
+            tenant.ActorId,
+            tenant.TenantId,
+            "Public Open Graph Image Test");
+        var slugCode = $"public-open-graph-image-test-{seededEvent.PublicCode}";
+
+        using var response = await _fixture.Client.GetAsync($"/api/event/public/{slugCode}/og-image");
+        var pngBytes = await response.Content.ReadAsByteArrayAsync();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("image/png");
+        await Assert.That(response.Headers.CacheControl?.ToString())
+            .IsEqualTo("public, max-age=0, must-revalidate");
+        await Assert.That(response.Headers.Vary.ToString()).IsEqualTo("Host, X-Tenant-Slug");
+        await Assert.That(response.Headers.ETag).IsNotNull();
+        await Assert.That(response.Headers.ETag!.IsWeak).IsFalse();
+        await Assert.That(pngBytes.AsSpan(0, PngSignature.Length).SequenceEqual(PngSignature)).IsTrue();
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(pngBytes.AsSpan(16, 4))).IsEqualTo(1200);
+        await Assert.That(BinaryPrimitives.ReadInt32BigEndian(pngBytes.AsSpan(20, 4))).IsEqualTo(630);
+    }
+
+    [Test]
+    public async Task GetOpenGraphImage_WithMatchingEtag_ReturnsNotModified()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var tenant = await TenantScenarioSeed.SeedActiveTenantWithUserAsync(db);
+        var seededEvent = await EventScenarioSeed.SeedPublishedEventAsync(
+            db,
+            tenant.ActorId,
+            tenant.TenantId,
+            "Conditional Open Graph Image Test");
+        var slugCode = $"conditional-open-graph-image-test-{seededEvent.PublicCode}";
+        var path = $"/api/event/public/{slugCode}/og-image";
+
+        using var firstResponse = await _fixture.Client.GetAsync(path);
+        var etag = firstResponse.Headers.ETag?.ToString();
+        ArgumentNullException.ThrowIfNull(etag);
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.TryAddWithoutValidation("If-None-Match", etag);
+
+        using var secondResponse = await _fixture.Client.SendAsync(request);
+        var secondBody = await secondResponse.Content.ReadAsByteArrayAsync();
+
+        await Assert.That(secondResponse.StatusCode).IsEqualTo(HttpStatusCode.NotModified);
+        await Assert.That(secondResponse.Headers.ETag?.ToString()).IsEqualTo(etag);
+        await Assert.That(secondResponse.Headers.CacheControl?.ToString())
+            .IsEqualTo("public, max-age=0, must-revalidate");
+        await Assert.That(secondResponse.Headers.Vary.ToString()).IsEqualTo("Host, X-Tenant-Slug");
+        await Assert.That(secondBody).IsEmpty();
+    }
+
+    [Test]
+    public async Task GetOpenGraphImage_WithUnknownSlug_ReturnsGenericNotFound()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        using var response = await _fixture.Client.GetAsync(
+            "/api/event/public/missing-open-graph-image-test/og-image");
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(
+            response,
+            HttpStatusCode.NotFound,
+            "Event not found");
     }
 
     [Test]

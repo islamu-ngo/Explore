@@ -62,6 +62,31 @@ public class EventsControllerTests
     }
 
     [Test]
+    public async Task GetOpenGraphImageRoute_UsesExplicitAnonymousPngContract()
+    {
+        var action = typeof(EventController).GetMethod(nameof(EventController.GetOpenGraphImage))!;
+        var route = action.GetCustomAttribute<HttpGetAttribute>()!;
+        var classification = action.GetCustomAttribute<EndpointClassificationAttribute>()!;
+        var produces = action.GetCustomAttribute<ProducesAttribute>()!;
+        var responseTypes = action.GetCustomAttributes<ProducesResponseTypeAttribute>().ToArray();
+
+        await Assert.That(route.Template).IsEqualTo("public/{slugCode}/og-image");
+        await Assert.That(route.Name).IsEqualTo(RouteNames.GetEventOpenGraphImage);
+        await Assert.That(classification.Class).IsEqualTo(EndpointClass.Public);
+        await Assert.That(action.GetCustomAttribute<AllowAnonymousAttribute>()).IsNotNull();
+        await Assert.That(action.GetCustomAttribute<AuthorizeAttribute>()).IsNull();
+        await Assert.That(action.GetCustomAttribute<OutputCacheAttribute>()).IsNull();
+        await Assert.That(produces.ContentTypes.Contains("image/png")).IsTrue();
+        await Assert.That(responseTypes.Any(attribute =>
+            attribute.StatusCode == StatusCodes.Status200OK && attribute.Type == typeof(FileContentResult))).IsTrue();
+        await Assert.That(responseTypes.Any(attribute =>
+            attribute.StatusCode == StatusCodes.Status400BadRequest && attribute.Type == typeof(ProblemDetails))).IsTrue();
+        await Assert.That(responseTypes.Any(attribute =>
+            attribute.StatusCode == StatusCodes.Status404NotFound && attribute.Type == typeof(ProblemDetails))).IsTrue();
+        await Assert.That(responseTypes.Any(attribute => attribute.StatusCode == StatusCodes.Status304NotModified)).IsTrue();
+    }
+
+    [Test]
     public async Task GetManagementDetailsRoute_UsesExplicitAuthenticatedContract()
     {
         var action = typeof(EventController).GetMethod(nameof(EventController.GetManagementDetails))!;
