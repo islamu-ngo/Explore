@@ -47,29 +47,22 @@ public sealed class GetUiShellContextRequestHandler(
         Guid tenantId = tenantContext.TenantId;
         var settingContext = new SettingContext(TenantId: tenantId);
 
-        Task<bool> instanceAdminTask = adminContext.IsInstanceAdminAsync(userId, cancellationToken);
-        Task<IReadOnlyList<Guid>> tenantAdminTask = adminContext.GetAdminTenantIdsAsync(userId, cancellationToken);
-        Task<IReadOnlyList<Guid>> organizationAdminTask =
-            adminContext.GetAdminOrganizationIdsAsync(userId, tenantId, cancellationToken);
-        Task<IReadOnlyList<Guid>> groupAdminTask =
-            adminContext.GetAdminGroupIdsAsync(userId, tenantId, cancellationToken);
-        Task<IReadOnlyList<AiAssistantActorContextDto>> actorsTask =
-            actorContextService.ListAuthorizedActorContextsAsync(tenantId, userId, cancellationToken);
-        Task<IReadOnlyList<ResolvedSetting>> settingsTask =
-            settingsResolver.ResolveBatchAsync(SettingKeys, settingContext, cancellationToken);
-        Task<AiAssistantSettingGroup> aiSettingsTask =
-            settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(settingContext, cancellationToken);
-        Task<DeploymentMode> deploymentModeTask = deploymentModeProvider.GetCurrentModeAsync(cancellationToken);
-
-        bool isInstanceAdmin = await instanceAdminTask;
-        IReadOnlyList<Guid> tenantAdminIds = await tenantAdminTask;
-        IReadOnlyList<Guid> organizationAdminIds = await organizationAdminTask;
-        IReadOnlyList<Guid> groupAdminIds = await groupAdminTask;
-        IReadOnlyList<AiAssistantActorContextDto> actorContexts = await actorsTask;
-        Dictionary<string, ResolvedSetting> settings = (await settingsTask)
+        bool isInstanceAdmin = await adminContext.IsInstanceAdminAsync(userId, cancellationToken);
+        IReadOnlyList<Guid> tenantAdminIds = await adminContext.GetAdminTenantIdsAsync(userId, cancellationToken);
+        IReadOnlyList<Guid> organizationAdminIds =
+            await adminContext.GetAdminOrganizationIdsAsync(userId, tenantId, cancellationToken);
+        IReadOnlyList<Guid> groupAdminIds =
+            await adminContext.GetAdminGroupIdsAsync(userId, tenantId, cancellationToken);
+        IReadOnlyList<AiAssistantActorContextDto> actorContexts =
+            await actorContextService.ListAuthorizedActorContextsAsync(tenantId, userId, cancellationToken);
+        Dictionary<string, ResolvedSetting> settings = (await settingsResolver.ResolveBatchAsync(
+                SettingKeys,
+                settingContext,
+                cancellationToken))
             .ToDictionary(setting => setting.Key, StringComparer.Ordinal);
-        AiAssistantSettingGroup aiSettings = await aiSettingsTask;
-        DeploymentMode deploymentMode = await deploymentModeTask;
+        AiAssistantSettingGroup aiSettings =
+            await settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(settingContext, cancellationToken);
+        DeploymentMode deploymentMode = await deploymentModeProvider.GetCurrentModeAsync(cancellationToken);
 
         List<ManagedActorDto> managedActors = actorContexts
             .Where(actor => actor.ScopeId.HasValue

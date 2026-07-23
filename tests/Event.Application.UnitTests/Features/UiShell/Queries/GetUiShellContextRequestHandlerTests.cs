@@ -218,6 +218,58 @@ public sealed class GetUiShellContextRequestHandlerTests
         await Assert.That(result.NavigationDefaults.Studio).IsEqualTo("Collapsed");
     }
 
+    [Test]
+    public async Task Handle_AwaitsScopedDependenciesSequentially()
+    {
+        var activeCalls = 0;
+
+        async Task<T> GuardedAsync<T>(T result)
+        {
+            if (Interlocked.Increment(ref activeCalls) != 1)
+            {
+                Interlocked.Decrement(ref activeCalls);
+                throw new InvalidOperationException("Scoped dependency calls overlapped.");
+            }
+
+            try
+            {
+                await Task.Yield();
+                return result;
+            }
+            finally
+            {
+                Interlocked.Decrement(ref activeCalls);
+            }
+        }
+
+        _adminContext.IsInstanceAdminAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(_ => GuardedAsync(false));
+        _adminContext.GetAdminTenantIdsAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(_ => GuardedAsync<IReadOnlyList<Guid>>([]));
+        _adminContext.GetAdminOrganizationIdsAsync(_userId, _tenantId, Arg.Any<CancellationToken>())
+            .Returns(_ => GuardedAsync<IReadOnlyList<Guid>>([]));
+        _adminContext.GetAdminGroupIdsAsync(_userId, _tenantId, Arg.Any<CancellationToken>())
+            .Returns(_ => GuardedAsync<IReadOnlyList<Guid>>([]));
+        _actorContextService.ListAuthorizedActorContextsAsync(_tenantId, _userId, Arg.Any<CancellationToken>())
+            .Returns(_ => GuardedAsync<IReadOnlyList<AiAssistantActorContextDto>>([]));
+        _settingsResolver.ResolveBatchAsync(
+                Arg.Any<IEnumerable<string>>(),
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => GuardedAsync<IReadOnlyList<ResolvedSetting>>(
+                [Setting(GovernanceSettingKeys.Events.UserSubmissionEnabled, false)]));
+        _settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(
+                Arg.Any<SettingContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => GuardedAsync(new AiAssistantSettingGroup()));
+        _deploymentModeProvider.GetCurrentModeAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => GuardedAsync(DeploymentMode.MultiTenant));
+
+        var result = await CreateHandler().Handle(new GetUiShellContextRequest(), CancellationToken.None);
+
+        await Assert.That(result.SettingsScopes.Select(scope => scope.Scope)).IsEquivalentTo(["Personal"]);
+    }
+
     private GetUiShellContextRequestHandler CreateHandler() => new(
         _userContext,
         _tenantContext,
