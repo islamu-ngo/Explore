@@ -6,13 +6,11 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Domain.Enums;
 using MediatR;
-using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Explore.Application.Features.Events.Handlers.Queries;
 
 public sealed class GetPublicEventDetailsRequestHandler(
-    IEventDetailsProjectionService detailsProjectionService,
-    HybridCache cache)
+    IEventDetailsProjectionService detailsProjectionService)
     : IRequestHandler<GetPublicEventDetailsRequest, EventDto?>
 {
     public async Task<EventDto?> Handle(GetPublicEventDetailsRequest request, CancellationToken cancellationToken)
@@ -21,20 +19,13 @@ public sealed class GetPublicEventDetailsRequestHandler(
         if (publicCode is null)
             return null;
 
-        var eventDto = await cache.GetOrCreateAsync(
-            $"event:public-detail:{publicCode}",
-            async token => await detailsProjectionService.BuildByPublicCodeAsync(publicCode, token),
-            new HybridCacheEntryOptions
-            {
-                Expiration = TimeSpan.FromMinutes(5),
-                LocalCacheExpiration = TimeSpan.FromMinutes(1)
-            },
-            cancellationToken: cancellationToken);
+        var eventDto = await detailsProjectionService.BuildByPublicCodeAsync(publicCode, cancellationToken);
 
         if (eventDto is null)
             return null;
 
-        if (eventDto.EventStatusId is not (int)EventStatusEnum.Published)
+        if (eventDto.EventStatusId is not (int)EventStatusEnum.Published ||
+            eventDto.VisibilityTypeId is not (int)VisibilityTypeEnum.Public)
             return null;
 
         await detailsProjectionService.ResolveImageUrlsAsync(eventDto, cancellationToken);
