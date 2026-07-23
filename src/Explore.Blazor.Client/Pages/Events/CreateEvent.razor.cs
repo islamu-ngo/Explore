@@ -970,6 +970,12 @@ public partial class CreateEvent : IDisposable
     {
         _submitState.Reset();
 
+        if (string.IsNullOrWhiteSpace(createDto.Title))
+        {
+            _submitState.Fail("Event name is required.");
+            return false;
+        }
+
         if (_creationContext is not null && _creationContext.CanCreate != true)
         {
             _submitState.Fail(_creationContext.UnavailableReason ?? "You do not have access to create events.");
@@ -1407,8 +1413,19 @@ public partial class CreateEvent : IDisposable
 
     private void PopulateCreateRequest()
     {
+        createDto.Title = createDto.Title?.Trim() ?? string.Empty;
+        createDto.Subtitle = string.IsNullOrWhiteSpace(createDto.Subtitle) ? null : createDto.Subtitle.Trim();
+        createDto.Description = string.IsNullOrWhiteSpace(createDto.Description) ? null : createDto.Description.Trim();
+        createDto.Content = string.IsNullOrWhiteSpace(createDto.Content) ? null : createDto.Content.Trim();
+        createDto.Slug = string.IsNullOrWhiteSpace(createDto.Slug) ? null : createDto.Slug.Trim();
         createDto.CategoryIds = selectedCategoryIds.ToList();
         createDto.TagIds = selectedTagIds.ToList();
+        createDto.Locations ??= new List<CreateEventLocationRequest>();
+        createDto.Sessions ??= new List<CreateEventSessionRequest>();
+        createDto.Days ??= new List<CreateEventDayRequest>();
+        createDto.Rooms ??= new List<CreateEventRoomRequest>();
+        createDto.AgendaItems ??= new List<CreateEventAgendaItemRequest>();
+
         if (createDto.Price is > 0)
         {
             createDto.CurrencyCode = string.IsNullOrWhiteSpace(createDto.CurrencyCode)
