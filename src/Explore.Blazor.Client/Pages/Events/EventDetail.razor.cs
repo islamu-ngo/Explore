@@ -955,7 +955,10 @@ public partial class EventDetail : ComponentBase, IDisposable
 
     private string GetOgImageUrl()
     {
-        return GetFeaturedImagePublicUrl() ?? string.Empty;
+        var slugCode = EventUrlHelper.BuildPublicSlugCode(_eventDetails?.Slug, _eventDetails?.PublicCode);
+        return slugCode is null
+            ? string.Empty
+            : CanonicalUrlHelper.Build(Navigation, $"/api/event/public/{slugCode}/og-image");
     }
 
     private bool ShouldNoIndexEvent()

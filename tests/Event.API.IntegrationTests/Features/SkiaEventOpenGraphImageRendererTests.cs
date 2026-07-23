@@ -54,10 +54,12 @@ public sealed class SkiaEventOpenGraphImageRendererTests
     public async Task FallbackGradientDependsOnTrimmedTitleAndBlankUsesEventSeed()
     {
         var alpha = await RenderAsync(title: "  Alpha Gathering  ");
+        var trimmedAlpha = await RenderAsync(title: "Alpha Gathering");
         var beta = await RenderAsync(title: "Beta Gathering");
         var blank = await RenderAsync(title: "   ");
         var eventSeed = await RenderAsync(title: "event");
 
+        HashArtworkPanel(alpha.PngBytes).Should().Be(HashArtworkPanel(trimmedAlpha.PngBytes));
         HashArtworkPanel(alpha.PngBytes).Should().NotBe(HashArtworkPanel(beta.PngBytes));
         HashArtworkPanel(blank.PngBytes).Should().Be(HashArtworkPanel(eventSeed.PngBytes));
     }

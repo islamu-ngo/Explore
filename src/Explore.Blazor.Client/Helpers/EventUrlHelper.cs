@@ -18,6 +18,12 @@ public static class EventUrlHelper
 
     public static string? BuildPublicPath(string? slug, string? publicCode)
     {
+        var slugCode = BuildPublicSlugCode(slug, publicCode);
+        return slugCode is null ? null : $"/events/{slugCode}";
+    }
+
+    public static string? BuildPublicSlugCode(string? slug, string? publicCode)
+    {
         if (string.IsNullOrWhiteSpace(publicCode))
             return null;
 
@@ -25,7 +31,7 @@ public static class EventUrlHelper
         if (string.IsNullOrWhiteSpace(cleanSlug))
             cleanSlug = "event";
 
-        return $"/events/{cleanSlug}-{publicCode}";
+        return $"{cleanSlug}-{publicCode}";
     }
 
     public static string FormatSlug(string? value)
