@@ -1,5 +1,5 @@
-// ABOUTME: Handler for the intent-first registration flow - creates an EventRegistrationIntent parent and its EventRegistration child access rows atomically.
-// ABOUTME: Enforces organizer policy via RegistrationPolicyRules, derives child sessions from scope, writes inside a serializable transaction.
+// ABOUTME: Creates registration intent and child access rows atomically for unfenced Users.
+// ABOUTME: Enforces privacy fencing, organizer policy, capacity, and durable lifecycle side effects.
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Notifications;
@@ -28,6 +28,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
     private readonly IEventRegistrationIntentRepository _intentRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository;
     private readonly IEventDayRepository _eventDayRepository;
     private readonly IEventSessionRepository _eventSessionRepository;
     private readonly IApprovalStatusRepository _approvalStatusRepository;
@@ -47,6 +48,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         IEventRegistrationIntentRepository intentRepository,
         IEventRepository eventRepository,
         IUserRepository userRepository,
+        IPrivacyErasureStateRepository privacyErasureStateRepository,
         IEventDayRepository eventDayRepository,
         IEventSessionRepository eventSessionRepository,
         IApprovalStatusRepository approvalStatusRepository,
@@ -65,6 +67,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         _intentRepository = intentRepository;
         _eventRepository = eventRepository;
         _userRepository = userRepository;
+        _privacyErasureStateRepository = privacyErasureStateRepository;
         _eventDayRepository = eventDayRepository;
         _eventSessionRepository = eventSessionRepository;
         _approvalStatusRepository = approvalStatusRepository;
@@ -84,6 +87,12 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventRegistrationCommand request, CancellationToken cancellationToken)
     {
         var response = new BaseCommandResponse<Guid>();
+        var dto = request.EventRegistrationDto;
+
+        if (await _privacyErasureStateRepository.GetBySubjectAsync(dto.UserId, cancellationToken) is not null)
+        {
+            return FencedResponse();
+        }
 
         var validator = new CreateEventRegistrationDtoValidator(
             _eventRepository,
@@ -98,16 +107,15 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             response.Success = false;
             response.Message = "Event Registration failed.";
             response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
+            return await MaskIfFencedAsync(dto.UserId, response, cancellationToken);
         }
 
-        var dto = request.EventRegistrationDto;
         var parentEvent = await _eventRepository.GetById(dto.EventId);
         if (parentEvent is null)
         {
             response.Success = false;
             response.Message = "Event not found in the current tenant.";
-            return response;
+            return await MaskIfFencedAsync(dto.UserId, response, cancellationToken);
         }
 
         var user = await _userRepository.GetById(dto.UserId);
@@ -115,7 +123,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         {
             response.Success = false;
             response.Message = "User not found.";
-            return response;
+            return await MaskIfFencedAsync(dto.UserId, response, cancellationToken);
         }
 
         // Short-circuit idempotency: if the user already has the same intent, return its id.
@@ -130,7 +138,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             response.Success = true;
             response.Id = existing.Id;
             response.Message = "Event Registration already exists.";
-            return response;
+            return await MaskIfFencedAsync(dto.UserId, response, cancellationToken);
         }
 
         // Derive child session access rows from the scope.
@@ -143,7 +151,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             {
                 "Cannot create a registration with zero session access rows - the event has no sessions matching the requested scope."
             };
-            return response;
+            return await MaskIfFencedAsync(dto.UserId, response, cancellationToken);
         }
 
         var initialApprovalStatus = RegistrationPolicyRules.ResolveInitialApprovalStatus(
@@ -153,7 +161,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             response.Success = false;
             response.Message = "Event Registration failed.";
             response.Errors = ["Registration is not currently available for every selected session."];
-            return response;
+            return await MaskIfFencedAsync(dto.UserId, response, cancellationToken);
         }
 
         var initialApprovalStatusId = (int)initialApprovalStatus.Value;
@@ -212,6 +220,11 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             creationResult = await _unitOfWork.ExecuteSerializableAsync(
                 async ct =>
                 {
+                    if (await _privacyErasureStateRepository.GetBySubjectAsync(dto.UserId, ct) is not null)
+                    {
+                        throw new PrivacyErasureFenceException();
+                    }
+
                     EventRegistrationIntentCreationResult createdResult =
                         await _intentRepository.CreateWithChildrenAndCapacityAsync(
                             intent,
@@ -263,6 +276,10 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
                     }
                     return createdResult;
                 }, cancellationToken);
+        }
+        catch (PrivacyErasureFenceException)
+        {
+            return FencedResponse();
         }
         catch (EventRegistrationIntentConflictException)
         {
@@ -352,6 +369,22 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
 
         return response;
     }
+
+    private async Task<BaseCommandResponse<Guid>> MaskIfFencedAsync(
+        Guid userId,
+        BaseCommandResponse<Guid> response,
+        CancellationToken cancellationToken) =>
+        await _privacyErasureStateRepository.GetBySubjectAsync(userId, cancellationToken) is null
+            ? response
+            : FencedResponse();
+
+    private static BaseCommandResponse<Guid> FencedResponse() => new()
+    {
+        Success = false,
+        Message = "Event Registration failed."
+    };
+
+    private sealed class PrivacyErasureFenceException : Exception;
 
     private async Task PublishRegistrationCreatedWebhookAsync(
         Guid tenantId,

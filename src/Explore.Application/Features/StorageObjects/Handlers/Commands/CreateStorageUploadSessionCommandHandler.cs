@@ -1,5 +1,5 @@
-// ABOUTME: Handler for reserving tenant storage quota before bytes are uploaded.
-// ABOUTME: Resolves route-aware storage policy, enforces aggregate quota, creates idempotent sessions, and persists counters atomically.
+// ABOUTME: Reserves tenant storage quota for privacy-unfenced Users before bytes are uploaded.
+// ABOUTME: Resolves route policy and atomically creates idempotent sessions with quota counters.
 
 using System.Globalization;
 using Explore.Application.Contracts.Infrastructure;
@@ -25,6 +25,7 @@ public class CreateStorageUploadSessionCommandHandler
     private readonly IStoragePolicyResolver _storagePolicyResolver;
     private readonly IStorageUploadSessionRepository _uploadSessionRepository;
     private readonly IStorageUsageCounterRepository _usageCounterRepository;
+    private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
@@ -34,6 +35,7 @@ public class CreateStorageUploadSessionCommandHandler
         IStoragePolicyResolver storagePolicyResolver,
         IStorageUploadSessionRepository uploadSessionRepository,
         IStorageUsageCounterRepository usageCounterRepository,
+        IPrivacyErasureStateRepository privacyErasureStateRepository,
         ITenantContext tenantContext,
         ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork,
@@ -42,6 +44,7 @@ public class CreateStorageUploadSessionCommandHandler
         _storagePolicyResolver = storagePolicyResolver;
         _uploadSessionRepository = uploadSessionRepository;
         _usageCounterRepository = usageCounterRepository;
+        _privacyErasureStateRepository = privacyErasureStateRepository;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
@@ -52,6 +55,12 @@ public class CreateStorageUploadSessionCommandHandler
         CreateStorageUploadSessionCommand request,
         CancellationToken cancellationToken)
     {
+        Guid? userId = _currentUserService.UserId;
+        if (await IsFencedAsync(userId, cancellationToken))
+        {
+            return FencedFailure();
+        }
+
         var validator = new CreateStorageUploadSessionDtoValidator();
         var validationResult = await validator.ValidateAsync(request.UploadSessionDto, cancellationToken);
 
@@ -59,9 +68,12 @@ public class CreateStorageUploadSessionCommandHandler
         {
             _metrics.RecordStorageUploadSession(null, "create", "failed", "validation_failed");
 
-            return Failure(
-                "Upload session reservation failed.",
-                validationResult.Errors.Select(error => error.ErrorMessage));
+            return await MaskIfFencedAsync(
+                userId,
+                Failure(
+                    "Upload session reservation failed.",
+                    validationResult.Errors.Select(error => error.ErrorMessage)),
+                cancellationToken);
         }
 
         var tenantId = _tenantContext.TenantId;
@@ -78,16 +90,19 @@ public class CreateStorageUploadSessionCommandHandler
                 "failed",
                 FailureCodes.StorageUploadTooLarge);
 
-            return Failure(
-                "Upload exceeds the configured per-file limit.",
-                [
-                    $"ExpectedSizeBytes must be less than or equal to {policy.MaxUploadBytes} bytes."
-                ],
-                FailureCodes.StorageUploadTooLarge);
+            return await MaskIfFencedAsync(
+                userId,
+                Failure(
+                    "Upload exceeds the configured per-file limit.",
+                    [
+                        $"ExpectedSizeBytes must be less than or equal to {policy.MaxUploadBytes} bytes."
+                    ],
+                    FailureCodes.StorageUploadTooLarge),
+                cancellationToken);
         }
 
-        var response = await _unitOfWork.ExecuteInTransactionAsync(
-            async ct => await ReserveSessionAsync(request.UploadSessionDto, tenantId, policy, ct),
+        var response = await _unitOfWork.ExecuteSerializableAsync(
+            async ct => await ReserveSessionAsync(request.UploadSessionDto, tenantId, userId, policy, ct),
             cancellationToken);
 
         RecordCreateMetrics(response, policy.Provider, request.UploadSessionDto.ExpectedSizeBytes);
@@ -123,9 +138,15 @@ public class CreateStorageUploadSessionCommandHandler
     private async Task<BaseCommandResponse<StorageUploadSessionDto>> ReserveSessionAsync(
         CreateStorageUploadSessionDto dto,
         Guid tenantId,
+        Guid? userId,
         ResolvedStoragePolicy policy,
         CancellationToken cancellationToken)
     {
+        if (await IsFencedAsync(userId, cancellationToken))
+        {
+            return FencedFailure();
+        }
+
         var idempotencyKey = dto.IdempotencyKey.Trim();
         var existing = await _uploadSessionRepository.GetByTenantAndIdempotencyKeyForUpdateAsync(
             tenantId,
@@ -174,7 +195,7 @@ public class CreateStorageUploadSessionCommandHandler
         var session = new StorageUploadSession
         {
             TenantId = tenantId,
-            UserId = _currentUserService.UserId,
+            UserId = userId,
             Provider = policy.Provider,
             RouteKey = policy.RouteKey,
             PolicyMaxUploadBytes = policy.MaxUploadBytes,
@@ -196,6 +217,16 @@ public class CreateStorageUploadSessionCommandHandler
 
         return Success(session, policy, usageCounter, "Upload session reserved successfully.", usageAfterReserve);
     }
+
+    private async Task<bool> IsFencedAsync(Guid? userId, CancellationToken cancellationToken) =>
+        userId is Guid subjectId &&
+        await _privacyErasureStateRepository.GetBySubjectAsync(subjectId, cancellationToken) is not null;
+
+    private async Task<BaseCommandResponse<StorageUploadSessionDto>> MaskIfFencedAsync(
+        Guid? userId,
+        BaseCommandResponse<StorageUploadSessionDto> response,
+        CancellationToken cancellationToken) =>
+        await IsFencedAsync(userId, cancellationToken) ? FencedFailure() : response;
 
     private async Task<(long UsedBytes, long ReservedBytes)> GetTenantUsageSnapshotAsync(
         Guid tenantId,
@@ -242,6 +273,9 @@ public class CreateStorageUploadSessionCommandHandler
             Errors = errors.ToList(),
             FailureCode = failureCode
         };
+
+    private static BaseCommandResponse<StorageUploadSessionDto> FencedFailure() =>
+        Failure("Upload session reservation failed.", []);
 
     internal static StorageUploadSessionDto Map(
         StorageUploadSession session,

@@ -1,5 +1,5 @@
 // ABOUTME: Handler for updating user profile fields with validation.
-// ABOUTME: Validates input, updates user entity and linked actor profile picture if changed.
+// ABOUTME: Rejects fenced Users, then updates profile data and linked actor storage atomically.
 
 using System.Linq;
 using AutoMapper;
@@ -18,6 +18,7 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
     private readonly IUserRepository _userRepository;
     private readonly IActorRepository _actorRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
     private readonly HybridCache _cache;
@@ -26,6 +27,7 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
         IUserRepository userRepository,
         IActorRepository actorRepository,
         IStorageObjectRepository storageObjectRepository,
+        IPrivacyErasureStateRepository privacyErasureStateRepository,
         IUnitOfWork unitOfWork,
         IMapper mapper,
         HybridCache cache)
@@ -33,6 +35,7 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
         _userRepository = userRepository;
         _actorRepository = actorRepository;
         _storageObjectRepository = storageObjectRepository;
+        _privacyErasureStateRepository = privacyErasureStateRepository;
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _cache = cache;
@@ -54,6 +57,13 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
 
         var transactionResponse = await _unitOfWork.ExecuteInTransactionAsync(async token =>
         {
+            if (await _privacyErasureStateRepository.GetBySubjectAsync(request.UserId, token) is not null)
+            {
+                response.Success = false;
+                response.Message = "User not found";
+                return response;
+            }
+
             var user = await _userRepository.GetById(request.UserId);
 
             if (user == null)

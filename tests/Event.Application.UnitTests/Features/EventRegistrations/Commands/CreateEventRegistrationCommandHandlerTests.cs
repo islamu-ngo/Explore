@@ -1,5 +1,5 @@
-// ABOUTME: Unit tests for event registration creation capacity and waitlist behavior.
-// ABOUTME: Verifies handlers call the capacity-aware repository contract and surface waitlist outcomes.
+// ABOUTME: Unit tests for privacy-fenced, capacity-aware event registration creation.
+// ABOUTME: Verifies atomic registration writes, waitlist outcomes, and durable side effects.
 
 using System.Diagnostics.Metrics;
 using Event.Application.UnitTests.Common;
@@ -13,6 +13,7 @@ using Explore.Application.Features.EventRegistrations.Handlers.Commands;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
 using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Notifications;
+using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Application.Services.Federation;
 using Explore.Application.Settings;
@@ -34,6 +35,8 @@ public sealed class CreateEventRegistrationCommandHandlerTests
     private readonly IEventRegistrationIntentRepository _intentRepository = Substitute.For<IEventRegistrationIntentRepository>();
     private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
     private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
+    private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository =
+        Substitute.For<IPrivacyErasureStateRepository>();
     private readonly IEventDayRepository _eventDayRepository = Substitute.For<IEventDayRepository>();
     private readonly IEventSessionRepository _eventSessionRepository = Substitute.For<IEventSessionRepository>();
     private readonly IApprovalStatusRepository _approvalStatusRepository = Substitute.For<IApprovalStatusRepository>();
@@ -119,6 +122,7 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             _intentRepository,
             _eventRepository,
             _userRepository,
+            _privacyErasureStateRepository,
             _eventDayRepository,
             _eventSessionRepository,
             _approvalStatusRepository,
@@ -133,6 +137,91 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             _webhookPublisher,
             Substitute.For<ILogger<CreateEventRegistrationCommandHandler>>(),
             planner);
+
+    [Test]
+    public async Task HandleWhenFenceAppearsBeforeTransactionRejectsWithoutRegistrationWrites()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        Guid userId = Guid.CreateVersion7();
+        Guid sessionId = Guid.CreateVersion7();
+        SetupValidRegistration(tenantId, eventId, userId, sessionId);
+        DateTime nowUtc = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            1,
+            PrivacyErasureSubjectKind.User,
+            userId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
+            nowUtc,
+            nowUtc);
+        PrivacyErasureSaga saga = PrivacyErasureSaga.Start(
+            intent,
+            1,
+            new byte[32],
+            nowUtc.AddMinutes(5),
+            nowUtc);
+        _privacyErasureStateRepository
+            .GetBySubjectAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null, saga);
+
+        BaseCommandResponse<Guid> result = await _handler.Handle(
+            CreateSessionRegistrationCommand(eventId, userId, sessionId),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).IsEqualTo("Event Registration failed.");
+        await _privacyErasureStateRepository.Received(2)
+            .GetBySubjectAsync(userId, Arg.Any<CancellationToken>());
+        await _intentRepository.DidNotReceiveWithAnyArgs().CreateWithChildrenAndCapacityAsync(
+            default!, default!, default, default, default, default, default, default, default, default);
+        await _recipientNotificationMaterializer.DidNotReceiveWithAnyArgs()
+            .MaterializeInCurrentTransactionAsync(default!, default);
+        await _webhookPublisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default);
+    }
+
+    [Test]
+    public async Task HandleWhenFenceAppearsDuringValidationMasksDetailedErrors()
+    {
+        Guid tenantId = Guid.CreateVersion7();
+        Guid eventId = Guid.CreateVersion7();
+        Guid userId = Guid.CreateVersion7();
+        Guid sessionId = Guid.CreateVersion7();
+        SetupValidRegistration(tenantId, eventId, userId, sessionId);
+        _eventRepository.Exists(eventId).Returns(false);
+        DateTime nowUtc = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            1,
+            PrivacyErasureSubjectKind.User,
+            userId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
+            nowUtc,
+            nowUtc);
+        PrivacyErasureSaga saga = PrivacyErasureSaga.Start(
+            intent,
+            1,
+            new byte[32],
+            nowUtc.AddMinutes(5),
+            nowUtc);
+        _privacyErasureStateRepository
+            .GetBySubjectAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null, saga);
+
+        BaseCommandResponse<Guid> result = await _handler.Handle(
+            CreateSessionRegistrationCommand(eventId, userId, sessionId),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).IsEqualTo("Event Registration failed.");
+        await Assert.That(result.Errors).IsNull();
+        await _privacyErasureStateRepository.Received(2)
+            .GetBySubjectAsync(userId, Arg.Any<CancellationToken>());
+        await _intentRepository.DidNotReceiveWithAnyArgs().CreateWithChildrenAndCapacityAsync(
+            default!, default!, default, default, default, default, default, default, default, default);
+    }
 
     [Test]
     public async Task HandleWithEnabledAtprotoStagesRsvpInsideLocalTransactionWithoutPdsCall()

@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for the grouped user update command handler.
-// ABOUTME: Verifies If-Match concurrency, single-save multi-repository updates, and cache invalidation.
+// ABOUTME: Verifies privacy fencing, concurrency, transactional updates, and cache invalidation.
 
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
@@ -21,6 +21,8 @@ public sealed class UpdateUserCommandHandlerTests
     private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
     private readonly IActorRepository _actorRepository = Substitute.For<IActorRepository>();
     private readonly IStorageObjectRepository _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
+    private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository =
+        Substitute.For<IPrivacyErasureStateRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly HybridCache _cache = Substitute.For<HybridCache>();
     private readonly UpdateUserCommandHandler _handler;
@@ -47,9 +49,58 @@ public sealed class UpdateUserCommandHandlerTests
             _userRepository,
             _actorRepository,
             _storageObjectRepository,
+            _privacyErasureStateRepository,
             _unitOfWork,
             mapper,
             _cache);
+    }
+
+    [Test]
+    public async Task Handle_WhenUserIsPrivacyFenced_ReturnsNotFoundWithoutWritingPii()
+    {
+        var user = CreateUser(actorId: Guid.CreateVersion7());
+        Guid profilePictureId = Guid.CreateVersion7();
+        DateTime nowUtc = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            1,
+            PrivacyErasureSubjectKind.User,
+            user.Id,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
+            nowUtc,
+            nowUtc);
+        _privacyErasureStateRepository
+            .GetBySubjectAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(PrivacyErasureSaga.Start(intent, 1, new byte[32], nowUtc.AddMinutes(5), nowUtc));
+
+        BaseCommandResponse<Guid> result = await _handler.Handle(new UpdateUserCommand
+        {
+            UserId = user.Id,
+            ExpectedConcurrencyStamp = user.ConcurrencyStamp,
+            UpdateUserDto = new UpdateUserDto
+            {
+                Names = new UpdateUserNamesDto
+                {
+                    FirstName = "Recreated",
+                    LastName = "Profile"
+                },
+                ProfileImage = new UpdateUserProfileImageDto
+                {
+                    ProfilePictureId = profilePictureId
+                }
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).IsEqualTo("User not found");
+        await _userRepository.DidNotReceive().GetById(user.Id);
+        await _userRepository.DidNotReceive().Update(Arg.Any<User>());
+        await _actorRepository.DidNotReceive().GetById(user.ActorId!.Value);
+        await _actorRepository.DidNotReceive().Update(Arg.Any<Actor>());
+        await _storageObjectRepository.DidNotReceive().GetById(profilePictureId);
+        await _storageObjectRepository.DidNotReceive().Update(Arg.Any<StorageObject>());
+        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

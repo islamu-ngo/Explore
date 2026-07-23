@@ -1,4 +1,4 @@
-// ABOUTME: Unit tests for local-first storage upload session command handlers.
+// ABOUTME: Unit tests for privacy-fenced local-first storage upload session command handlers.
 // ABOUTME: Verifies quota reservation, idempotency, validation, cancellation, and expiry behavior.
 
 using System.Diagnostics.Metrics;
@@ -25,6 +25,8 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
     private readonly IFileStorageProvider _provider = Substitute.For<IFileStorageProvider>();
     private readonly IStorageUploadSessionRepository _uploadSessionRepository = Substitute.For<IStorageUploadSessionRepository>();
     private readonly IStorageUsageCounterRepository _usageCounterRepository = Substitute.For<IStorageUsageCounterRepository>();
+    private readonly IPrivacyErasureStateRepository _privacyErasureStateRepository =
+        Substitute.For<IPrivacyErasureStateRepository>();
     private readonly IStorageObjectRepository _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
@@ -48,6 +50,11 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
 
         _unitOfWork
             .ExecuteInTransactionAsync(
+                Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<StorageUploadSessionDto>>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task<BaseCommandResponse<StorageUploadSessionDto>>>>()(CancellationToken.None));
+        _unitOfWork
+            .ExecuteSerializableAsync(
                 Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<StorageUploadSessionDto>>>>(),
                 Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<Func<CancellationToken, Task<BaseCommandResponse<StorageUploadSessionDto>>>>()(CancellationToken.None));
@@ -94,6 +101,85 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             session.SafeDisplayName == "Report.PDF" &&
             session.ExpectedSizeBytes == 42 &&
             session.ReservedBytes == 42));
+    }
+
+    [Test]
+    public async Task CreateHandle_WhenFenceAppearsBeforeReservationDoesNotReserveQuotaOrCreateSession()
+    {
+        DateTime nowUtc = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            1,
+            PrivacyErasureSubjectKind.User,
+            _userId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
+            nowUtc,
+            nowUtc);
+        PrivacyErasureSaga saga = PrivacyErasureSaga.Start(
+            intent,
+            1,
+            new byte[32],
+            nowUtc.AddMinutes(5),
+            nowUtc);
+        _privacyErasureStateRepository
+            .GetBySubjectAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null, saga);
+
+        BaseCommandResponse<StorageUploadSessionDto> result = await CreateCreateHandler().Handle(
+            new CreateStorageUploadSessionCommand
+            {
+                UploadSessionDto = CreateUploadDto(expectedSizeBytes: 42, originalFileName: "Report.PDF")
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).IsEqualTo("Upload session reservation failed.");
+        await Assert.That(result.Errors).IsEmpty();
+        await _privacyErasureStateRepository.Received(2)
+            .GetBySubjectAsync(_userId, Arg.Any<CancellationToken>());
+        await _usageCounterRepository.DidNotReceive().Update(Arg.Any<StorageUsageCounter>());
+        await _uploadSessionRepository.DidNotReceive().Create(Arg.Any<StorageUploadSession>());
+    }
+
+    [Test]
+    public async Task CreateHandle_WhenFenceAppearsDuringValidationMasksDetailedErrors()
+    {
+        DateTime nowUtc = DateTime.UtcNow;
+        PrivacyErasureIntent intent = PrivacyErasureIntent.Record(
+            Guid.CreateVersion7(),
+            1,
+            PrivacyErasureSubjectKind.User,
+            _userId,
+            PrivacyErasureReasonCode.AccountDeletion,
+            1,
+            nowUtc,
+            nowUtc);
+        PrivacyErasureSaga saga = PrivacyErasureSaga.Start(
+            intent,
+            1,
+            new byte[32],
+            nowUtc.AddMinutes(5),
+            nowUtc);
+        _privacyErasureStateRepository
+            .GetBySubjectAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns((PrivacyErasureSaga?)null, saga);
+
+        BaseCommandResponse<StorageUploadSessionDto> result = await CreateCreateHandler().Handle(
+            new CreateStorageUploadSessionCommand
+            {
+                UploadSessionDto = CreateUploadDto(idempotencyKey: "")
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).IsEqualTo("Upload session reservation failed.");
+        await Assert.That(result.Errors).IsEmpty();
+        await _privacyErasureStateRepository.Received(2)
+            .GetBySubjectAsync(_userId, Arg.Any<CancellationToken>());
+        await _unitOfWork.DidNotReceive().ExecuteSerializableAsync(
+            Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<StorageUploadSessionDto>>>>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -856,6 +942,7 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             _storagePolicyResolver,
             _uploadSessionRepository,
             _usageCounterRepository,
+            _privacyErasureStateRepository,
             _tenantContext,
             _currentUserService,
             _unitOfWork,
