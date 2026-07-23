@@ -29,6 +29,20 @@ For task-first integration guidance, use [API_COOKBOOK.md](API_COOKBOOK.md). Gen
 
 `/alive`, `/health`, and `/metrics` are runtime operational endpoints, not generated OpenAPI controller operations. Storage local-first readiness is reported through the `storage` health check, and the dry-run-first reconciliation worker posture is reported through `storage-reconciliation`. These health payloads use bounded status/failure fields and must not expose filesystem paths, object keys, bucket names, endpoints, access keys, or secrets.
 
+### Account Erasure
+
+`DELETE /api/user` requires normal login authorization plus a UUIDv7
+`Idempotency-Key` header. It returns `202 Accepted`, a `Location` header for
+`/api/privacy-erasure/status`, `Retry-After`, and a short-lived receipt exactly
+once. `202` means the authority fact and local workflow were accepted; it does
+not claim that post-commit provider work has finished.
+
+After login removal, query status with
+`Authorization: ErasureReceipt <receipt>`. The status route uses a dedicated
+authentication scheme and returns only bounded state codes, aggregate provider
+counts, and timestamps. Responses are `private, no-store`. Missing, invalid,
+wrong, and expired receipts all return `401` without revealing subject state.
+
 The optional MCP adapter is not an OpenAPI controller group. It is mapped at the startup `Mcp:EndpointPath` only when `Mcp:Enabled=true`, then gated at runtime by hierarchical `mcp.enabled` settings after tenant/auth resolution. The endpoint is mapped anonymously so MCP SDK authorization filters can expose anonymous-safe registry discovery and public event list/detail/program/session read tools, while protected reads such as `list_my_events`, `get_event_creation_context`, `get_event_publish_readiness`, the `event_management_context` resource template, program/custom-property/registration/team/template/sync context tools, and other scoped tools/resources/prompts still require a valid bearer or API-key principal. API keys need `mcp:read` plus event read-equivalent scope authority for those protected event-management reads. Runtime MCP governance never changes endpoint path or stateless transport mode.
 
 ---

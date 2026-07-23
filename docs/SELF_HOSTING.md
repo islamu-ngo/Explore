@@ -406,7 +406,14 @@ There are two migration paths:
 | `Event.MigrationService` | Aspire/local-dev orchestration | Applies `ExploreDbContext` and data-protection migrations, seeds, then exits before API/Blazor start. |
 | `Explore.API` startup | Docker Compose and direct API hosting | Runs EF migrations and database seeding on startup outside `Testing`. |
 
-The production Compose file does not currently start `Event.MigrationService` as a separate container. Do not document Compose as if the migration service runs there unless the Compose file is changed with it.
+The optional Compose profile `privacy-erasure-external` starts a distinct
+authority PostgreSQL service and one-shot `Event.MigrationService`. The
+migration service waits for both databases, applies application and external
+authority migrations with the migrator connection, and must complete before
+API startup. API receives only the runtime authority connection. Blazor
+receives neither authority connection. Supply separate runtime and migrator
+roles before enabling this profile; the blank `.env.example` placeholders are
+intentionally not runnable credentials.
 
 ### Creating Initial Migrations From Scratch
 

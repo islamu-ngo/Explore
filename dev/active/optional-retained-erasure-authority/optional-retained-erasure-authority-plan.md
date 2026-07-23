@@ -11,10 +11,10 @@ Last Updated: 2026-07-22 Europe/Brussels
 |---|---|
 | Task ID | `optional-retained-erasure-authority` |
 | Canonical intent | `platform-privacy-erasure` |
-| Status | Active — Phase 1 and `OREA-200` accepted; Phase 2 schema/migration ownership in progress |
+| Status | Active — Phases 1 and 2 accepted; Phase 3 User fence, saga, and complete local settlement in progress |
 | Owner | Unassigned |
 | Change type | Cross-layer privacy policy, erasure orchestration, infrastructure, API, persistence, hosting, tests, and operator documentation |
-| Execution boundary | Phase-ordered implementation; current next dependency is topology-safe schema ownership and reset policy in `OREA-210` |
+| Execution boundary | Phase-ordered implementation; current next dependency is the pre-enumeration User fence and policy-versioned saga in `OREA-300` |
 
 ### Scope
 
@@ -54,7 +54,7 @@ Out of scope:
 
 This plan is the sole implementation authority for platform User erasure, authority storage, startup replay, provider settlement, receipt/status, retention, and restore behavior. The `.omo` plan remains historical evidence only after its verified facts and unfinished requirements are represented here.
 
-The current intent now describes one authority-first workflow with `CoLocated` as the default topology, `ExternalDatabase` as the explicit alternative, separate runtime/migrator credentials, and no Blazor authority secret. The governance correction is complete; product implementation remains gated by the unchecked `OREA-100` inventory reconciliation and every `OREA-110` runtime/product task.
+The current intent describes one authority-first workflow with `CoLocated` as the default topology, `ExternalDatabase` as the explicit alternative, separate runtime/migrator credentials, and no Blazor authority secret. Phase 1 governance, inventory, topology, and ownership gates are complete; product implementation is proceeding through Phase 2 in dependency order.
 
 ## 1. Current-State Evidence
 

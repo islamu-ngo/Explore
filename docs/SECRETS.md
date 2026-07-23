@@ -70,6 +70,20 @@ The repository root `.env.example` mirrors the supported Infisical folder layout
 
 Docker Compose uses `.env` for interpolation before starting containers. The Compose file then passes explicit `environment:` entries into each service. Do not rely on a broad `env_file: .env` import because it would place unrelated secrets into containers that do not need them.
 
+### Privacy-erasure authority credentials
+
+| Compose key | Direct .NET key | Consumer |
+|---|---|---|
+| `PRIVACY_ERASURE_AUTHORITY_RUNTIME_CONNECTION_STRING` | `ConnectionStrings:PrivacyErasureAuthority` | API only, and only for `ExternalDatabase` |
+| `PRIVACY_ERASURE_AUTHORITY_MIGRATOR_CONNECTION_STRING` | `ConnectionStrings:PrivacyErasureAuthorityMigrator` | `Event.MigrationService` only |
+
+Keep both values blank for `CoLocated`. For `ExternalDatabase`, use separate
+PostgreSQL roles: the runtime role receives only authority append/read function
+execution, while the migrator owns schema and grants. Never pass either
+authority connection to `Explore.Blazor` or `Explore.Blazor.Client`. Rotate the
+migrator credential after migration completion independently of the runtime
+credential.
+
 There are two Infisical paths through the application:
 
 - `SecretProvider:Provider=Infisical` controls the `ISecretResolver` provider used by settings/secret-binding resolution.

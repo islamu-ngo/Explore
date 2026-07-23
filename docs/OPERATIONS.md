@@ -230,7 +230,7 @@ Event/session lifecycle migration notes:
 
 ### ELP-525 retained location-erasure startup gate
 
-`Explore.API` resolves `ILocationErasureReplayService` after application migrations and seeding but before `app.Run()`. The gate reads the newest immutable application checkpoint, verifies it against the separately retained PostgreSQL authority, and replays every later intent in sequence. A fresh application database starts at sequence zero. Each intent atomically commits Home tombstones, user/actor erasure, the next checkpoint, and PII-free `LocationPiiErased` / `LocationPrivacyCorrectionRequested` outbox rows; post-commit cache tags are then invalidated. There is no separate exact-location search index today. If one is introduced, its purge must consume the same correction intent and become a readiness prerequisite.
+`Explore.API` resolves `IPrivacyErasureReplayService` after application migrations and seeding but before `app.Run()` in both authority topologies. The gate reads the newest immutable application checkpoint, verifies it against the retained PostgreSQL authority, and reapplies every intent not covered by the current compiled policy version. A fresh application database starts at sequence zero. Sequence gaps, checkpoint mismatch, authority unavailability, or replay failure block startup. Each intent atomically commits current local dispositions, policy coverage, the monotonic checkpoint when required, and PII-free correction outbox rows; post-commit cache tags are then invalidated.
 
 Startup is closed when the authority is unavailable, the local checkpoint cannot be found at the same authority sequence and intent ID, the next sequence is missing, replay is cancelled, the application transaction fails, or synchronous cache invalidation fails. On every restart with an existing checkpoint, replay verifies that checkpoint against the authority and re-invalidates its user and location/event cache surface before reading later facts. This makes a post-commit cache outage retryable instead of letting a durable checkpoint hide stale distributed-cache state. The API never reaches host start in those cases, so Kestrel, MCP, readiness, outbox processing, PDS/federation workers, and every other hosted service remain unavailable. The Blazor BFF therefore has no live API proxy target. This ordering relies on the Generic Host boundary: `Build()` creates the host, while `Run`/`Start` starts its hosted services, including the HTTP server. See the official [ASP.NET Core Generic Host lifecycle](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/host/generic-host?view=aspnetcore-10.0) and [hosted-service startup ordering](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/host/hosted-services?view=aspnetcore-10.0).
 
@@ -244,10 +244,10 @@ SELECT COUNT(*) AS retained_count,
        COALESCE(MIN(authority_sequence), 0) AS first_sequence,
        COALESCE(MAX(authority_sequence), 0) AS authority_watermark,
        COUNT(*) = COALESCE(MAX(authority_sequence), 0) AS contiguous_from_one
-FROM location_privacy_authority.erasure_intents;
+FROM privacy_erasure_authority.erasure_intents;
 
 SELECT last_sequence AS counter_watermark
-FROM location_privacy_authority.authority_counter
+FROM privacy_erasure_authority.authority_counter
 WHERE singleton;
 ```
 
@@ -308,10 +308,13 @@ Readiness interpretation:
 | `ai-provider` | API | AI provider integration is disabled, deterministic fake provider is enabled, or OpenAI Responses/OpenAI-compatible/Anthropic/Anthropic-compatible/Azure OpenAI settings are valid | Not used | AI provider is enabled but no runnable provider is configured, or provider endpoint/settings fail egress validation |
 | `cerbos` | API | Local provider mode is selected, or configured Cerbos PDP passes gRPC health | Not used | Instance `authorization.provider` is `cerbos` and the PDP is missing or unreachable |
 | `atproto-jetstream` | API | Ingestion is dormant because no tenant capability is enabled, or capability plus public/curated exact-collection subscription is ready | Not used | Capability readiness cannot be resolved |
+| `privacy-erasure` | API | Authority is caught up and no provider work is `Unknown` or dead-lettered | Replay lag or provider reconciliation/dead-letter attention is present | Authority/checkpoint diagnostics cannot be read |
 | `islamu-event-api` | Blazor, Control Plane BFF | BFF can reach API readiness endpoint | Not used | API readiness endpoint is unavailable or unhealthy |
 | `secret_provider` | API, Blazor, Control Plane BFF | Secret backend path is healthy | Secret backend has transient failures within the configured threshold | Secret backend crossed the unhealthy threshold |
 
 Operational rules:
+
+- Privacy-erasure readiness exposes only topology, restore capability, replay-caught-up state, and aggregate due/unknown/dead-letter counts. It never exposes intent IDs, subject IDs, provider targets, endpoints, payloads, credentials, connection details, or exception text.
 
 - Point load balancer readiness checks at `/health` and liveness checks at `/alive`.
 - Treat `Degraded` as deployable only when the affected dependency is optional for the deployment mode and the response body clearly identifies the dependency.

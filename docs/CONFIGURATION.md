@@ -101,6 +101,41 @@ Commonly consumed sections in code:
 |---|---:|---|
 | `Persistence:EnableRlsTenantSession` | `false` | Registers the PostgreSQL tenant-session interceptor that sets `app.current_tenant_id` when EF Core opens a connection. This does not enable RLS policies by itself; keep disabled outside prototype environments until runtime app-role, migration-role, admin/system-path, and table-policy rollout work is complete. |
 
+### Privacy-erasure authority topology
+
+`PrivacyErasure:Authority:Topology` accepts only `CoLocated` (the default) or
+`ExternalDatabase`. `CoLocated` uses the application migration's
+`privacy_erasure_authority` tables. `ExternalDatabase` uses the dedicated
+authority migration against a different physical PostgreSQL database; startup
+rejects an authority target that resolves to the application database even when
+the two connection strings differ in key order or credentials. The application
+mirror remains in the application database in both topologies.
+
+| Key | Default | Description |
+|---|---:|---|
+| `PrivacyErasure:CurrentPolicyVersion` | `1` | Compiled local disposition policy version used for replay coverage. Increment only with corresponding disposition code and replay tests. |
+| `PrivacyErasure:ReceiptLifetime` | `7.00:00:00` | Short-lived status-receipt lifetime; must be greater than zero and no more than 30 days. |
+| `PrivacyErasure:MaximumBackupHorizon` | `365.00:00:00` | Longest supported application-backup horizon used to derive retained-authority lifecycle requirements. |
+| `PrivacyErasure:AuthorityRetentionSafetyMargin` | `30.00:00:00` | Additional authority-retention margin beyond the maximum backup horizon. |
+| `ConnectionStrings:PrivacyErasureAuthority` | none | External authority runtime credential. Required only by API when topology is `ExternalDatabase`; it must have function-only access. |
+| `ConnectionStrings:PrivacyErasureAuthorityMigrator` | none | External authority migrator credential. Required only by `Event.MigrationService` for `ExternalDatabase`; never pass it to API or Blazor. |
+
+Compose maps `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY`,
+`PRIVACY_ERASURE_AUTHORITY_RUNTIME_CONNECTION_STRING`, and
+`PRIVACY_ERASURE_AUTHORITY_MIGRATOR_CONNECTION_STRING` to these .NET keys.
+Aspire creates a distinct local authority PostgreSQL resource whenever
+`ExternalDatabase` is selected in a profile that uses local data. Profiles
+without local data use operator-provided external infrastructure.
+
+`PrivacyErasure:Durability:Mode` is removed and is never translated. If that
+legacy key is present, startup fails with reset-only guidance. A reset is
+eligible only for a pre-v1 development deployment whose operator explicitly
+accepts rebuilding its database. Before resetting, the operator must create and
+verify a backup or export for every value that must be retained. If either
+condition is not met, keep the database and backups intact and stop for a
+forward-migration decision. Application code and implementation agents never
+delete databases, containers, volumes, or backups.
+
 ### Localization Configuration
 
 Localization runtime settings are governance-backed, not static appsettings. The

@@ -6,8 +6,8 @@ ABOUTME: Focuses on enforced behavior in code (BFF, MediatR authorization, and f
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Mixed
 > **Owner:** Security
-> **Last Verified:** 2026-07-04
-> **Source Anchors:** `Explore.API/Extensions/AuthenticationExtensions.cs`, `Explore.API/Extensions/CorsExtensions.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Explore.Blazor/Components/ControlPlane/`, `Event.Web.BffHosting/Authentication/EventBffAuthenticationExtensions.cs`, `Event.Web.BffHosting/Proxy/EventApiProxyExtensions.cs`, `Explore.Application/Services/ApiKeyHashing.cs`, `Explore.Application/Telemetry/BusinessMetrics.cs`, `Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs`, `Explore.Infrastructure/Services/FallbackAuthorizationService.cs`, `docs/AUTHORIZATION.md`
+> **Last Verified:** 2026-07-23
+> **Source Anchors:** `Explore.API/Extensions/AuthenticationExtensions.cs`, `Explore.API/Extensions/CorsExtensions.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Explore.Blazor/Components/ControlPlane/`, `Event.Web.BffHosting/Authentication/EventBffAuthenticationExtensions.cs`, `Event.Web.BffHosting/Proxy/EventApiProxyExtensions.cs`, `Explore.Application/Services/ApiKeyHashing.cs`, `Explore.Application/Telemetry/BusinessMetrics.cs`, `Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs`, `Explore.Infrastructure/Services/FallbackAuthorizationService.cs`, `Explore.Persistence/Privacy/ErasureAuthority/`, `docs/AUTHORIZATION.md`
 
 ## Security Model
 
@@ -17,6 +17,45 @@ The platform uses a BFF model:
 - Dedicated admin hosts use the embedded control-plane shell inside `Explore.Blazor` and the same server-owned OIDC session boundary.
 - `Explore.Blazor.Client` (WASM) does not directly manage access tokens.
 - `Explore.API` authorizes bearer-token requests and applies resource-level checks in Application layer.
+
+## Privacy-erasure Authority Boundary
+
+The platform runs one authority-first User-erasure workflow with two storage
+topologies. `CoLocated` stores the authority ledger in the application
+database and reports `restoreReplayProtection=false`: its separately committed
+append survives an application-mutation rollback, but restoring the whole
+database to a pre-erasure backup can restore both PII and the authority state
+needed to remove it. `ExternalDatabase` reports the capability as true only
+when the authority database is operated outside the application restore set;
+restoring both databases together provides no replay protection.
+
+The external PostgreSQL runtime role has schema usage and `EXECUTE` only on
+`privacy_erasure_authority.append_erasure_intent(...)` and
+`privacy_erasure_authority.read_erasure_intents_after(...)`. It has no direct
+`SELECT`, `INSERT`, `UPDATE`, `DELETE`, or `TRUNCATE` authority-table access.
+Dedicated migrator credentials own schema and grant management; the API
+runtime credential does not migrate. Authority facts are typed, immutable,
+monotonic User facts containing opaque identifiers and bounded policy/reason
+codes, never email, names, addresses, arbitrary JSON, SQL, or executable
+selectors. Opaque subject and intent identifiers remain linkable personal data
+and must be protected accordingly.
+
+The User fence and SHA-256 receipt hash are persisted before any PII
+enumeration. Local dispositions, policy-version coverage, checkpoint advance,
+and receipt status execute in one serializable application transaction. Remote
+provider calls never run in that transaction. Account deletion returns `202`
+with a short-lived receipt only after local commit; subsequent status access
+uses the dedicated `PrivacyErasureReceipt` authentication scheme and
+`private, no-store` responses. Receipt verification uses fixed-time hash
+comparison, and invalid, mismatched, or expired receipts fail without exposing
+whether a subject or intent exists.
+
+The PostgreSQL 18 restore proof takes a real pre-erasure custom-format
+application dump, restores it into a fresh database created from `template0`,
+and leaves the external authority untouched. Replay removes the restored PII
+and converges the local mirror, checkpoint, and outbox once; a repeated replay
+is a no-op. This proves the implementation mechanism, not that any configured
+deployment has an independent backup lifecycle.
 
 ## Security CI Gates
 

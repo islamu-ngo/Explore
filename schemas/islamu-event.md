@@ -2771,43 +2771,50 @@ Table "event_location_exact_read_audits" {
   Note: 'PII-free append-only security evidence for exceptional exact reads. Checks require a typed purpose, correlation or trace identity, and UUIDv7 identity.'
 }
 
-Table "location_privacy_erasure_replay_checkpoints" {
+Table "privacy_erasure_replay_checkpoints" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
   "authority_sequence" bigint [not null]
   "intent_id" uuid [not null, note: 'uuidv7 authority intent']
+  "subject_kind" smallint [not null, note: '1 = User; only executable subject kind']
+  "subject_id" uuid [not null, note: 'opaque linkable identifier']
+  "reason_code" smallint [not null]
+  "policy_version" int [not null]
   "previous_checkpoint_id" uuid
   "applied_at_utc" timestamptz [not null]
 
   indexes {
-    authority_sequence [unique, name: 'ux_location_privacy_erasure_checkpoints_sequence']
-    intent_id [unique, name: 'ux_location_privacy_erasure_checkpoints_intent']
-    previous_checkpoint_id [unique, name: 'ux_location_privacy_erasure_checkpoints_previous']
+    authority_sequence [unique, name: 'ux_privacy_erasure_checkpoints_sequence']
+    intent_id [unique, name: 'ux_privacy_erasure_checkpoints_intent']
+    previous_checkpoint_id [unique, name: 'ux_privacy_erasure_checkpoints_previous']
   }
 
-  Note: 'PII-free append-only local replay chain for the separately retained erasure authority. Checks enforce positive monotonic sequence, a non-forking predecessor, and UUIDv7 identities.'
+  Note: 'Application-local append-only replay chain and fact mirror. Checks enforce typed User facts, positive monotonic sequence, a non-forking predecessor, policy version, and UUIDv7 identities.'
 }
 
-Table "location_privacy_authority"."authority_counter" {
+Table "privacy_erasure_authority"."authority_counter" {
   "singleton" boolean [pk, not null]
   "last_sequence" bigint [not null]
 
-  Note: 'Singleton PII-free sequence allocator for the application location-erasure ledger. Checks require singleton=true and a non-negative last sequence.'
+  Note: 'Singleton sequence allocator for typed platform privacy-erasure facts. Application migrations own this table for CoLocated/application-mirror storage; dedicated authority migrations own it only in an external database.'
 }
 
-Table "location_privacy_authority"."erasure_intents" {
+Table "privacy_erasure_authority"."erasure_intents" {
   "authority_sequence" bigint [pk, not null]
   "intent_id" uuid [not null, note: 'uuidv7 idempotency key']
-  "owner_user_id" uuid [not null, note: 'opaque identifier; no user FK by design']
-  "location_ids" uuid[] [not null, note: 'normalized opaque identifiers; no location FK by design']
-  "reason" smallint [not null]
+  "subject_kind" smallint [not null, note: '1 = User; only executable subject kind']
+  "subject_id" uuid [not null, note: 'opaque linkable identifier; no user FK by design']
+  "reason_code" smallint [not null]
+  "policy_version" int [not null]
   "requested_at_utc" timestamptz [not null]
   "recorded_at_utc" timestamptz [not null]
+  "retention_expires_at_utc" timestamptz [not null]
 
   indexes {
-    intent_id [unique, name: 'ix_erasure_intents_intent_id']
+    intent_id [unique, name: 'ak_privacy_erasure_intents_intent_id']
+    (intent_id, subject_kind, policy_version) [unique, name: 'ix_erasure_intents_intent_id_subject_kind_policy_version']
   }
 
-  Note: 'PII-free immutable location-erasure facts for ApplicationDatabase mode and the retained-authority mirror. Checks enforce positive sequence, UUIDv7/RFC variant intent identity, non-empty opaque IDs, closed reasons, and server recording time order.'
+  Note: 'Immutable typed User-erasure facts for CoLocated authority/application-mirror storage and ExternalDatabase authority storage. Checks enforce positive sequence, UUIDv7/RFC variant identity, non-empty opaque subject, closed reasons, positive policy version, recording order, and bounded retention. External runtime access is only through approved append/read functions; direct table SELECT and DML are denied.'
 }
 
 // ============================================================
@@ -4767,7 +4774,7 @@ Ref: "event_location_disclosure_audits"."previous_audience_id" > "location_discl
 Ref: "event_location_disclosure_audits"."new_audience_id" > "location_disclosure_audiences"."id" [delete: restrict]
 Ref: "event_location_exact_read_audits"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "event_location_exact_read_audits".("tenant_id", "event_location_id") > "event_locations".("tenant_id", "id") [delete: restrict]
-Ref: "location_privacy_erasure_replay_checkpoints"."previous_checkpoint_id" > "location_privacy_erasure_replay_checkpoints"."id" [delete: restrict]
+Ref: "privacy_erasure_replay_checkpoints"."previous_checkpoint_id" > "privacy_erasure_replay_checkpoints"."id" [delete: restrict]
 
 // Federation / AT Protocol
 Ref: "atproto_record_tenant_presentations"."tenant_id" > "tenants"."id" [delete: cascade]

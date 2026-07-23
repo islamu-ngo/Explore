@@ -117,6 +117,35 @@ dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.
 dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category=Email]" --minimum-expected-tests 1
 ```
 
+### Privacy-erasure PostgreSQL topology and restore lane
+
+`CoLocatedPrivacyErasureAuthorityTests` uses the existing single PostgreSQL 18
+container fixture. It proves the authority append commits outside the failing
+application transaction, replay converges once, concurrent appends allocate a
+contiguous sequence from fresh contexts, and
+`RestoreReplayProtection == false`.
+
+`ExternalDatabasePrivacyErasureAuthorityTests` and
+`ExternalDatabasePrivacyErasureRestoreTests` use an explicit application
+container plus a distinct authority container. They prove function-only
+runtime ACLs, fresh-context concurrent allocation, and the real restore path.
+The restore fixture applies application migrations, seeds PII, executes
+`pg_dump --format=custom` inside the application container, creates a unique
+fixture-owned database from `template0`, and runs `pg_restore --exit-on-error`
+without `--clean`. The test observes PII in the restored database before
+replay, then verifies re-erasure, one local mirror/checkpoint/outbox convergence,
+repeat idempotency, and an exact-field-equivalent authority fact snapshot.
+The fixture disposes only its own Testcontainers; it never drops an operator or
+user database, volume, container, or backup.
+
+Run the three nonzero selectors explicitly:
+
+```bash
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/CoLocatedPrivacyErasureAuthorityTests/*" --minimum-expected-tests 2 --maximum-parallel-tests 1
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/ExternalDatabasePrivacyErasureAuthorityTests/*" --minimum-expected-tests 2 --maximum-parallel-tests 1
+dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/ExternalDatabasePrivacyErasureRestoreTests/*" --minimum-expected-tests 1 --maximum-parallel-tests 1
+```
+
 `Explore.Infrastructure.Tests` intentionally has both fast no-infrastructure tests and Docker-backed runtime tests. Docker-backed classes are `[Explicit]`, so an unfiltered developer run stays fast; a positive `Runtime`, `Email`, or `RabbitMQ` category filter opts into the matching container lane. Use `Category!=Runtime` for the fast local/PR lane. Use the `Email` category when changing SMTP or EmailDispatch behavior; it includes no-container configuration failure tests, Mailpit-backed SMTP/drain tests, and RabbitMQ consumer tests that deliver to Mailpit. Use the `RabbitMQ` category when changing optional broker transport, topology, publish-confirm, consumer settlement, DLQ replay, or parking behavior.
 
 ### Disabled Test Governance

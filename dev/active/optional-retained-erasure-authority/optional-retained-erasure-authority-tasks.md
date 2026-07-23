@@ -3,16 +3,16 @@
 
 # Platform Privacy Erasure Authority — Tasks
 
-Last Updated: 2026-07-22 Europe/Brussels
+Last Updated: 2026-07-23 Europe/Brussels
 
 ## Status
 
 - Overall: implementation in progress; Phase 1 governance, inventory, and topology contract accepted with attributed baseline failures.
-- Completed: 4 of 21 consolidated tasks (`OREA-100`, `OREA-110`, `OREA-120`, `OREA-200`).
-- Current phase: Phase 2 — Persistence adapters and migration ownership.
-- Current blocker: none; governance now authorizes the topology and inventory implementation work.
+- Completed: 10 of 21 consolidated tasks (`OREA-100`, `OREA-110`, `OREA-120`, `OREA-200`, `OREA-210`, `OREA-220`, `OREA-300`, `OREA-500`, `OREA-510`, `OREA-600`).
+- Current phase: Phase 3 PostgreSQL acceptance and Phase 4 specialized provider settlement remain the critical path; provider-backed local clearing is implemented.
+- Current blocker: Docker is unavailable at `/var/run/docker.sock`, so Phase 3 PostgreSQL rollback, replay, tenant-isolation, unrelated-user, retained-audit, and provider-metadata canaries cannot start.
 - Ownership blocker: resolved by `OREA-120`; the historical `.omo` plan is no longer active.
-- Runtime verification: Phase 1 Release build and all focused selectors passed; full Architecture reproduced only three documented unrelated failures.
+- Runtime verification: the current root Release build passes with 0 errors; protected provider-work materialization, capture-before-clear ordering, provider-backed local clearing, and all fast Phase 3 focused selectors pass. PostgreSQL execution remains blocked by Docker.
 - Planning verification: governance, inventory, topology, scoped diff, and independent Phase 1 evidence passed.
 
 ## Maintenance Rules
@@ -56,8 +56,8 @@ Implementation baseline, 2026-07-22:
 ### OREA-100 — Governance and complete User-PII inventory
 
 - [x] Amend `.claude/contract/intents.yaml` so `platform-privacy-erasure` owns complete User erasure, provider settlement, receipt/status, one authority-first workflow, both topologies, retention, and restore.
-- [ ] Add every required config/hosting/active-plan path to intent scope before editing it.
-- [ ] Preserve all privacy, migration, transaction, logging, and destructive-operation prohibitions.
+- [x] Add every required config/hosting/active-plan path to intent scope before editing it.
+- [x] Preserve all privacy, migration, transaction, logging, and destructive-operation prohibitions.
 - [x] Reconcile the machine User-PII inventory with the current EF model and provider registries; require one disposition, producer/fence owner, retention rule, provider action, and policy version per copy.
 - [x] Reject arbitrary executable instructions in the inventory.
 
@@ -123,47 +123,67 @@ Phase 1 integrated gate:
 
 ### OREA-210 — Schema ownership and pre-v1 reset policy
 
-- [ ] Retain the dedicated authority context/repository and function-only runtime access.
-- [ ] Make only `IPrivacyErasureAuthority` topology-dependent in persistence DI.
-- [ ] Ensure application migrations alone own co-located tables/application mirror.
-- [ ] Ensure dedicated authority migrations run only against the external database.
-- [ ] Add a composition test preventing both migration sets from targeting one physical database.
-- [ ] Correct characterized stale `location_privacy_authority` test/schema names to `privacy_erasure_authority`.
-- [ ] Implement and document reset-only handling for the removed pre-v1 mode contract; add no compatibility shim or silent translation.
-- [ ] Require explicit reset eligibility and backup/export prerequisites; implementation agents never delete databases, containers, volumes, or backups.
+- [x] Retain the dedicated authority context/repository and function-only runtime access.
+- [x] Make only `IPrivacyErasureAuthority` topology-dependent in persistence DI.
+- [x] Ensure application migrations alone own co-located tables/application mirror.
+- [x] Ensure dedicated authority migrations run only against the external database.
+- [x] Add a composition test preventing both migration sets from targeting one physical database.
+- [x] Correct characterized stale `location_privacy_authority` test/schema names to `privacy_erasure_authority`.
+- [x] Implement and document reset-only handling for the removed pre-v1 mode contract; add no compatibility shim or silent translation.
+- [x] Require explicit reset eligibility and backup/export prerequisites; implementation agents never delete databases, containers, volumes, or backups.
 
 ### OREA-220 — PostgreSQL topology and restore proof
 
-- [ ] Refactor/extend the existing fixture to make one-container and two-independent-container setups explicit.
-- [ ] Cover monotonic concurrent appends in both applicable paths.
-- [ ] Cover external runtime ACLs and approved append/read functions.
-- [ ] Seed PII and capture a real pre-erasure application-database backup.
-- [ ] Commit the authority fact, complete erasure, then restore only the application database while leaving authority untouched.
-- [ ] Restart/reinvoke replay and prove restored PII is erased again and repeated replay is idempotent.
-- [ ] Cover co-located rollback/replay while asserting `restoreReplayProtection=false`; do not claim full-backup protection.
-- [ ] Do not simulate restore by merely deleting rows.
-- [ ] Keep fixtures isolated, deterministic, and free of secret-bearing output.
-- [ ] Update `schemas/islamu-event.md`, `docs/SECURITY-MODEL.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, and `docs/TESTING.md` with the implemented persistence/restore behavior.
+- [x] Refactor/extend the existing fixture to make one-container and two-independent-container setups explicit.
+- [x] Cover monotonic concurrent appends in both applicable paths.
+- [x] Cover external runtime ACLs and approved append/read functions.
+- [x] Seed PII and capture a real pre-erasure application-database backup.
+- [x] Commit the authority fact, complete erasure, then restore only the application database while leaving authority untouched.
+- [x] Restart/reinvoke replay and prove restored PII is erased again and repeated replay is idempotent.
+- [x] Cover co-located rollback/replay while asserting `restoreReplayProtection=false`; do not claim full-backup protection.
+- [x] Do not simulate restore by merely deleting rows.
+- [x] Keep fixtures isolated, deterministic, and free of secret-bearing output.
+- [x] Update `schemas/islamu-event.md`, `docs/SECURITY-MODEL.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, and `docs/TESTING.md` with the implemented persistence/restore behavior.
 
 ### Phase 2 gate
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
-- [ ] Record results and update plan/context if evidence changed a decision.
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- [x] Record results and update plan/context if evidence changed a decision.
 
 Evidence:
 
 ```text
-Pending.
+OREA-200:
+- Real PostgreSQL co-located rollback/replay and concurrency lane: 2/2.
+- Composition/secret-isolation 8/8; replay workflow 4/4; architecture/naming 15/15.
+- Independent verdict confirmed; evidence `.omo/evidence/optional-retained-erasure-authority/phase-2-colocated/verification.md`.
+
+OREA-210:
+- Options 23/23; composition 5/5; model 9/9; SQL contract/factory 5/5.
+- Real PostgreSQL generated-init 6/6 and function-only runtime ACL 1/1.
+- All three EF contexts have no pending model changes; Release builds green for root, MigrationService, and AppHost.
+- Full persistence baseline comparison: working tree 578/628 passed versus pinned baseline 569/649; isolated OREA lanes green and no OREA-caused regression identified.
+- Independent verdict confirmed; evidence `.omo/evidence/optional-retained-erasure-authority/phase-2-schema/verification.md`.
+
+OREA-220:
+- Real application-only custom-format backup/restore and untouched-authority replay: 1/1; independent rerun 1/1 in 14.162s.
+- External function-only ACL/concurrency 2/2; CoLocated rollback/replay/concurrency 2/2.
+- Restored PII reappears before replay, is erased afterward, mirror/checkpoint/outbox converge +1/+1/+4 once, and the exact authority snapshot remains unchanged.
+- Full persistence report: 579/630 passed; all changed-file classes green and 51 failures attributed outside OREA-220 against the OREA-210 baseline.
+- Release build 26 projects/0 errors; documentation/stale-term/diff checks green; independent verdict confirmed high confidence.
+- Evidence `.omo/evidence/optional-retained-erasure-authority/phase-2-restore/verification.md`.
+
+Phase 2 gate accepted with the documented unrelated full-project baseline failures.
 ```
 
 ## Phase 3 — User Fence, Saga, and Complete Local Dispositions
 
 ### OREA-300 — Fence, saga, policy version, and receipt state
 
-- [ ] Append/reuse one typed authority fact and establish the User fence before PII enumeration.
-- [ ] Complete saga concurrency, policy-version coverage, stable idempotency, receipt hash, once-only reveal, and expiry behavior.
-- [ ] Reject mismatched duplicate requests without exposing subject state.
+- [x] Append/reuse one typed authority fact and establish the User fence before PII enumeration.
+- [x] Complete saga concurrency, policy-version coverage, stable idempotency, receipt hash, once-only reveal, and expiry behavior.
+- [x] Reject mismatched duplicate requests without exposing subject state.
 
 ### OREA-310 — Complete local disposition families
 
@@ -175,8 +195,8 @@ Pending.
 ### OREA-320 — Atomic application settlement and EventLocation adapter
 
 - [ ] Keep every local disposition, mirror/checkpoint, provider work, cache authority, EventLocation correction intent, and receipt status in one serializable application transaction.
-- [ ] Consume the Event Location typed adapter for exact subject/tenant predicates, owned Home/room tombstones, affected `EventLocation` corrections, and stable idempotency.
-- [ ] Keep provider/external authority calls outside the application transaction.
+- [x] Consume the Event Location typed adapter for exact subject/tenant predicates, owned Home/room tombstones, affected `EventLocation` corrections, and stable idempotency.
+- [x] Keep provider/external authority calls outside the application transaction.
 - [ ] Prove rollback, crash, duplicate replay, tenant substitution, unrelated-user preservation, and two-tenant/former-membership behavior.
 
 ### Phase 3 gate
@@ -188,14 +208,40 @@ Pending.
 Evidence:
 
 ```text
-Pending.
+OREA-300 focused evidence:
+- Domain privacy-erasure lifecycle contract: 19/19 passed.
+- Application deletion/replay characterization selectors passed, including ambiguous authority acknowledgement and older-intent policy upgrade without checkpoint regression.
+- Application and root Release builds reached 0 OREA compile errors; unrelated concurrent Blazor work prevents claiming the full root gate.
+
+OREA-310 partial evidence:
+- One exact-subject Persistence adapter now removes cross-tenant memberships, role assignments, actor subscriptions, user/notification/appearance preferences, registrations, contact-share consent snapshots, local notifications, fanout cursors, idempotency responses, actor key stores, AI consent grants, and user-owned external API keys inside the application transaction.
+- Nullable report, moderation, and audit identities are anonymized; reporter-owned evidence is erased while unrelated evidence is preserved.
+- Corrective migration `20260723083304_AnonymizeRetainedAuditActors` makes retained actor links nullable for invitations, configuration history, contact exports, organization reviews, location audits, support access, tenant lifecycle, and tenant plan history. Active support sessions are revoked atomically before their actor link is cleared; unsafe downgrade after anonymization fails closed instead of inventing a User ID.
+- Organization contact PII/settings are organization-owned, not User-owned. The inventory no longer treats `Organization.ActorId` as a User ownership edge or infers ownership from ordinary membership.
+- Shared author actors retain shared content but sever `UserId`, PDS host, DID custody, DID, handle, and profile URI; the tombstone label no longer embeds the linkable erasure intent ID.
+- Focused evidence: disposition characterization/replay selector 7/7, compiled User-PII inventory and retained-actor schema contract 10/10, and privacy authority model 9/9.
+- Persistence, persistence-test, Application, and root Release builds compile with 0 errors. `ExploreDbContext` has no pending model changes.
+- Full Application suite: 2,942/2,944 passed with no OREA failure; the two failures remain unrelated EventLocation policy-state and email-metric isolation baselines.
+- PostgreSQL exact-subject, unrelated-user, and retained-audit canaries compile but are blocked before execution because Docker is unavailable at `/var/run/docker.sock`.
+- Remaining OREA-310 work is typed provider work for AI, webhook, storage, federation, email/web-push, external-login, and provider reconciliation.
+- Provider-work materialization now enumerates exact-subject Keycloak login, ATProto DID, Web Push endpoint, actor-owned object key, SMTP provider-message, user-owned webhook endpoint, and Osprey/Coop report-link candidates before destructive clearing. `PrivacyErasureApplier` purpose-protects each locator, persists typed work through `AddMissingAsync` in the serializable application transaction, and records the actual work count in the saga.
+- Stable local source UUIDv7 values remain `TargetId` for semantic idempotency; non-GUID remote locators use time-limited Data Protection ciphertext with a protection version and seven-day configurable expiry. Candidate and repository deduplication use the persisted semantic uniqueness tuple, and the saga records the repository's total semantic work count rather than generated work IDs.
+- AI and Listmonk remain intentionally unmaterialized because current rows do not expose a trustworthy provider context/subscriber locator. Specialized post-commit execution remains open.
+- Expired locator credentials cannot be claimed: `ExpireLocator` clears ciphertext into bounded `locator_expired` dead-letter state before claims. Generated migration `20260723091627_ExpirePrivacyErasureProviderLocators` permits null ciphertext for dead-letter rows without weakening pending/processing constraints.
+- Application provider-materialization characterization: 8/8 passed. Replay cache regression: 2/2. Provider candidate contract: 2/2. Domain provider-work lifecycle: 10/10. Infrastructure locator protection: 1/1. User-PII inventory architecture: 10/10. Root Release build: 0 errors. `ExploreDbContext` reports no pending model changes.
+- Full Application suite: 2,943/2,945 passed; only the same two unrelated EventLocation policy-state and email-metric isolation failures remain.
+- Phase 3 PostgreSQL selector attempted five rollback/replay/isolation/audit tests; all five were blocked during fixture construction by `DockerUnavailableException` before database access (`unix:///var/run/docker.sock`).
+- Provider-backed local clearing now flushes protected provider work before immediate local SQL mutations in the same serializable transaction. It hard-deletes exact-subject external-login, Web Push, notification-delivery, and email-dispatch rows; tombstones all actor-owned storage rows whether or not they have a remote key; archives and scrubs user-owned webhook targets/consumers without retaining the User ownership edge; and clears reporter-owned Osprey/Coop link metadata.
+- Actor ownership/provider links are cleared even when an `ActorPii` row is absent. Local clearing is never conditional on a usable remote locator; only provider-work materialization is.
+- Final fast verification: root Release build 0 errors; Application ordering/contract selector 9/9; User-PII inventory and Clean Architecture selector 10/10. The exact two-test provider-metadata PostgreSQL selector compiled, then both tests failed during fixture construction with `DockerUnavailableException` before database access.
+- Five-lane review boundary: goal compliance passed. QA found and drove repair of the ordering characterization so the rebuilt selector is 9/9. Code/security findings about durable post-commit cache convergence remain assigned to `OREA-420`; ownership-aware Keycloak delete-versus-unlink and specialized provider execution remain assigned to `OREA-410`. The Docker-backed provider canary still needs explicit ATProto, Osprey/Coop, and `WebhookLocalTargetSnapshot` rows before `OREA-310` can close.
 ```
 
 ## Phase 4 — Provider Settlement and Anti-Resurrection Enforcement
 
 ### OREA-400 — Specialized provider-work outboxes
 
-- [ ] Persist typed provider targets and stable idempotency keys atomically with local erasure.
+- [x] Persist typed provider targets and stable idempotency keys atomically with local erasure.
 - [ ] Implement lease fencing, bounded retry/backoff, explicit `Unknown`, dead-letter visibility, and reconciliation.
 - [ ] Prove ambiguous acknowledgement is never treated as success or blindly retried.
 
@@ -210,7 +256,7 @@ Pending.
 
 - [ ] Enforce the fence at shared PII-producing handler, worker, cache-rematerialization, and remote-dispatch boundaries.
 - [ ] Open a fresh scope and reload persisted tenant/subject ownership for every delivery/reconciliation.
-- [ ] Ensure invalidation failure cannot serve stale subject PII; persist convergence work, degrade readiness, and alert.
+- [x] Ensure invalidation failure cannot serve stale subject PII; persist convergence work, degrade readiness, and alert.
 
 ### Phase 4 gate
 
@@ -221,29 +267,45 @@ Pending.
 Evidence:
 
 ```text
-Pending.
+OREA-420 cache-convergence slice:
+- Every local erasure transaction now persists one payload-free `PrivacyErasureCacheInvalidationRequested` generic-outbox row keyed by the erased User aggregate. Existing outbox leases, retries, dead-letter state, and reconciliation provide durable convergence without a new table or provider coupling.
+- `PrivacyErasureCacheInvalidationDispatcher` validates the closed envelope, removes the `user:detail:{id}` key, and invalidates broad event/list/detail/location tags. Immediate post-commit and retained-checkpoint replay clear the same global set plus available exact tags; immediate failure is best-effort because durable work remains authoritative.
+- `GetUserRequestHandler` checks the persisted privacy-erasure saga before and after HybridCache access, removes a raced cache entry, and returns no profile for a fenced subject. Cache convergence therefore does not create a stale-PII serving window.
+- Privacy-erasure readiness reports only bounded aggregate cache-convergence counts and degrades while work is incomplete or dead-lettered; no User ids, keys, payloads, or errors are emitted.
+- Independent review repaired the stale startup-replay expectation: immediate cache failure now continues to the durable outbox path instead of aborting authority replay. Direct tests also cover a fence established during cache access and dead-letter invalidation replay.
+- Verification: durable Application outbox characterization 9/9, User read fence 2/2, replay cache convergence 2/2, Infrastructure dispatcher 18/18, API readiness 4/4, and Clean Architecture 15/15. `git diff --check` and focused diagnostics are clean. Five independent review lanes pass after repair.
+- Remaining OREA-420 work: propagate the fence through every PII producer, worker, and remote-dispatch boundary, and require fresh-scope persisted ownership reload for delivery/reconciliation.
+
+OREA-420 local producer-fence slice:
+- `UpdateUserCommandHandler` now reloads the persisted privacy-erasure state inside its existing transaction before loading the User. A fenced subject receives the same `User not found` response and cannot recreate `UserPii` names, relink actor profile storage, write the User, or invalidate a newly materialized cache entry.
+- The primary `SyncUserCommandHandler` producer remains intentionally untouched because concurrent ATProto work currently owns that file.
+- Verification: focused `UpdateUserCommandHandlerTests` 3/3, `Explore.Application` Release build 0 warnings/0 errors, Clean Architecture 15/15, canonical root Release build 0 errors, clean diff/diagnostics, and independent scoped review PASS.
+- `CreateEventRegistrationCommandHandler` checks persisted state before validation, masks every pre-transaction response through another persisted check, and checks again inside its existing serializable transaction. The transaction-race test proves no registration, notification materialization, or webhook work starts; the validation-race test proves detailed errors are suppressed after a concurrent fence.
+- `CreateStorageUploadSessionCommandHandler` checks the authenticated User before validation and policy disclosure, then checks again inside a serializable quota-reservation transaction before idempotent replay, quota mutation, or session creation. The handler captures one request User id so the fence subject and persisted `StorageUploadSession.UserId` cannot diverge.
+- Producer verification: registration handler tests 21/21, storage handler tests 28/28, `Explore.Application` Release build 0 warnings/0 errors, Clean Architecture 15/15, canonical root Release build 0 errors, focused diagnostics and `git diff --check` clean. A transient concurrent compile failure in `GetPublicEventOpenGraphImageRequestHandlerTests.cs` cleared before the final rerun and did not affect OREA files. Independent blocking-only reviews pass for both registration and storage producer fences.
+- This is partial progress only; the first OREA-420 checkbox remains open until every inventory-listed local producer and worker is fenced.
 ```
 
 ## Phase 5 — Receipt/Status API, Replay, and Readiness
 
 ### OREA-500 — Truthful asynchronous API
 
-- [ ] Replace the location-specific deletion boundary with the platform policy orchestrator.
-- [ ] Return `202 Accepted`, `Location`, `Retry-After`, and the receipt exactly once after local commit.
-- [ ] Add a `private, no-store` status route using dedicated receipt authorization after login removal.
-- [ ] Return only bounded local/provider outcome codes; invalid, wrong, replayed, and expired receipts fail indistinguishably.
+- [x] Replace the location-specific deletion boundary with the platform policy orchestrator.
+- [x] Return `202 Accepted`, `Location`, `Retry-After`, and the receipt exactly once after local commit.
+- [x] Add a `private, no-store` status route using dedicated receipt authorization after login removal.
+- [x] Return only bounded local/provider outcome codes; invalid, wrong, replayed, and expired receipts fail indistinguishably.
 
 ### OREA-510 — Universal startup replay
 
-- [ ] Remove the old application-database early return and replay before API/BFF/MCP/ordinary workers in both topologies.
-- [ ] Fail closed for external authority unavailability, corruption, sequence gaps, or lag.
-- [ ] Reapply every fact not covered by the current policy version before readiness.
+- [x] Remove the old application-database early return and replay before API/BFF/MCP/ordinary workers in both topologies.
+- [x] Fail closed for external authority unavailability, corruption, sequence gaps, or lag.
+- [x] Reapply every fact not covered by the current policy version before readiness.
 
 ### OREA-520 — Bounded diagnostics
 
-- [ ] Expose topology, restore capability, replay lag, provider backlog, dead letters, and last success through existing health/metrics conventions.
-- [ ] Exclude identifiers, endpoints, connection details, payloads, credentials, and free-text errors.
-- [ ] Update API tests plus privacy/replay/health sections of `docs/SECURITY-MODEL.md` and `docs/OPERATIONS.md`.
+- [ ] Expose topology, restore capability, replay lag, provider backlog, dead letters, and last success through existing health/metrics conventions. Bounded readiness is implemented; last-success telemetry remains part of provider-worker completion.
+- [x] Exclude identifiers, endpoints, connection details, payloads, credentials, and free-text errors.
+- [x] Update API tests plus privacy/replay/health sections of `docs/SECURITY-MODEL.md` and `docs/OPERATIONS.md`.
 
 ### Phase 5 gate
 
@@ -254,31 +316,33 @@ Pending.
 Evidence:
 
 ```text
-Pending.
+Focused evidence:
+- Receipt API 3/3, deletion `202` contract 1/1, startup gate 3/3, bounded readiness 2/2.
+- `Explore.API` Release build passed with 0 errors.
 ```
 
 ## Phase 6 — Self-Hosting, Secrets, Retention, and Disaster Recovery
 
 ### OREA-600 — Migration service and orchestration
 
-- [ ] Configure `PrivacyErasureAuthorityDbContext` in `Event.MigrationService` only for `ExternalDatabase`.
-- [ ] Apply external authority migrations with migrator credentials before API readiness.
-- [ ] Ensure API runtime never migrates the external authority database.
-- [ ] Wire Compose migration ordering and health dependencies.
-- [ ] Wire Aspire/AppHost for application-database reuse or an explicit distinct authority database resource.
+- [x] Configure `PrivacyErasureAuthorityDbContext` in `Event.MigrationService` only for `ExternalDatabase`.
+- [x] Apply external authority migrations with migrator credentials before API readiness.
+- [x] Ensure API runtime never migrates the external authority database.
+- [x] Wire Compose migration ordering and health dependencies.
+- [x] Wire Aspire/AppHost for application-database reuse or an explicit distinct authority database resource; every local-data profile manages the distinct resource when `ExternalDatabase` is selected.
 
 ### OREA-610 — Environment, secrets, and bounded retention
 
-- [ ] Add `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=CoLocated` to `.env` without overwriting unrelated user values.
-- [ ] Add blank runtime/migrator authority secret placeholders to `.env`.
-- [ ] Add documented, copyable equivalents to `.env.example` with no real secrets.
-- [ ] Map runtime secret only into API and migrator secret only into migration service.
-- [ ] Pass no authority connection secret to Blazor.
-- [ ] Document direct .NET keys for non-Compose/self-host secret providers.
-- [ ] Add validation/redaction tests for missing/misrouted authority secrets.
+- [x] Add `PRIVACY_ERASURE_AUTHORITY_TOPOLOGY=CoLocated` to `.env` without overwriting unrelated user values.
+- [x] Add blank runtime/migrator authority secret placeholders to `.env`.
+- [x] Add documented, copyable equivalents to `.env.example` with no real secrets.
+- [x] Map runtime secret only into API and migrator secret only into migration service.
+- [x] Pass no authority connection secret to Blazor.
+- [x] Document direct .NET keys for non-Compose/self-host secret providers.
+- [x] Add validation/redaction tests for missing/misrouted authority secrets.
 - [ ] Implement backup-horizon configuration, receipt/provider credential expiry, dry-run cleanup, and legal-hold pseudonymization.
 - [ ] Update `docs/CONFIGURATION.md`, `docs/SECRETS.md`, `docs/SELF_HOSTING.md`, `docs/DEPLOYMENT_MODES.md`, and `docs/DEPLOYMENT_TIERS.md` alongside the hosting/env behavior.
-- [ ] State clearly that two databases restored together do not provide replay protection.
+- [x] State clearly that two databases restored together do not provide replay protection.
 
 ### OREA-620 — Enterprise disaster recovery
 
@@ -296,7 +360,11 @@ Pending.
 Evidence:
 
 ```text
-Pending.
+Focused evidence:
+- MigrationService and AppHost Release builds passed with 0 errors.
+- `docker compose config --quiet` passed.
+- Local-data Aspire authority resource architecture test 1/1 and migrator/runtime isolation option test 1/1 passed.
+- Main EF model reports no pending model changes after `PrivacyErasureLifecycle` migration.
 ```
 
 ## Phase 7 — Contract, Documentation, and Completeness Convergence

@@ -7,12 +7,12 @@ Last Updated: 2026-07-23 Europe/Brussels
 
 ## Progress Snapshot
 
-- Status: Phase 1 accepted; `OREA-100`, `OREA-110`, `OREA-120`, and `OREA-200` are complete, and Phase 2 schema/migration ownership is next.
+- Status: Phases 1 and 2 remain accepted. OREA-300 and the Phase 5 API/replay/readiness slice are implemented with focused green evidence; OREA-600 hosting/migration orchestration is implemented. OREA-310 covers provider-independent and provider-backed local dispositions, OREA-400 atomically materializes protected typed provider work, and OREA-420 now covers durable cache convergence plus local profile, registration, and storage-upload producer fences. PostgreSQL acceptance, specialized execution, remaining producer/worker fences, fresh-scope ownership reload, AI/Listmonk locator gaps, retention, DR, and full phase gates remain open.
 - Active intent: `platform-privacy-erasure` now requires one authority-first workflow, `CoLocated` / `ExternalDatabase`, separate runtime/migrator credentials, and no Blazor authority secret.
 - Workstream: canonical owner of complete platform User erasure, authority topology, receipt/status, provider settlement, replay, retention, and restore behavior.
 - Supersedes: privacy-erasure implementation ownership in `.omo/plans/platform-wide-privacy-erasure-authority.md` and `dev/active/event-location-privacy/`.
 - Runtime changes: configuration exposes only `CoLocated` / `ExternalDatabase`, rejects the legacy mode key, isolates the external connection, and registers one authority-first workflow. `CoLocatedPrivacyErasureAuthorityRepository` now appends through a short-lived `ExploreDbContext` and independently committed transaction while the application ledger remains the replay mirror/checkpoint.
-- Verification: OREA-200 passed a real PostgreSQL rollback/replay proof (2/2), composition/poison-provider tests (8/8), replay workflow tests (4/4), architecture/naming tests (15/15), clean LSP diagnostics, and a Release build with 26 projects and 0 errors. Its independent verifier confirmed the result.
+- Verification: Phase 2 is independently confirmed. Current Phase 3 evidence includes provider-materialization characterization 8/8, capture-before-clear ordering and repository contracts 9/9, replay cache convergence 2/2, provider-work Domain lifecycle 10/10, locator protection 1/1, User-PII inventory/Clean Architecture 10/10, and no pending `ExploreDbContext` model changes. The OREA-420 review additionally passes durable outbox characterization 9/9, User read fence 2/2, dispatcher 18/18, readiness 4/4, UpdateUser producer fence 3/3, and Clean Architecture 15/15; five cache-convergence review lanes pass after repair. The canonical root Release build passes with 0 errors. The full Application suite passes 2,943/2,945; its two failures are the documented unrelated EventLocation policy-state and email-metric isolation baselines. The exact provider-metadata PostgreSQL selector and five broader Phase 3 canaries compile but fail during fixture construction because Docker is unavailable.
 
 ## Quick Resume
 
@@ -21,8 +21,8 @@ Start here:
 1. Read `optional-retained-erasure-authority-plan.md` Sections 1–5 and 13.
 2. Read the current `platform-privacy-erasure` intent in `.claude/contract/intents.yaml`.
 3. Treat the recorded baseline and Phase 1 gate as complete.
-4. Treat `OREA-200` and `.omo/evidence/optional-retained-erasure-authority/phase-2-colocated/verification.md` as complete.
-5. Implement `OREA-210`: make schema/migration ownership topology-safe, preserve the function-only external runtime boundary, and enforce the documented reset-only transition without deleting operator data.
+4. Treat Phase 2 and its co-located, schema, and restore evidence records as complete.
+5. Rerun the provider-metadata and broader Phase 3 PostgreSQL canaries when Docker is available, then implement specialized provider execution under OREA-400/410. Do not invent AI or Listmonk locators until their schemas expose trustworthy remote identifiers.
 
 The target is not “two durability modes.” It is one authority-first workflow with two authority-storage topologies:
 
@@ -105,6 +105,52 @@ Topology is only one part of this workstream. The same plan owns the User fence,
 14. Generalized authority, applier, startup-gate, saga/policy-coverage, and inventory pieces exist, but code presence is not consolidated-plan acceptance evidence.
 15. Event Location contributes only a typed disposition adapter: exact subject/tenant predicates, owned Home/room tombstoning, affected `EventLocation` correction intents, stable idempotency, and integration tests. This workstream owns the platform orchestration.
 
+## OREA-310 Remaining Disposition Matrix
+
+Provider-independent dispositions implemented in the application transaction now cover `UserPii`, authentication tokens, actor identity links and key stores, owned Home/location data, memberships and roles, preferences, registrations, contact-share snapshots, local notifications, fanout cursors, idempotency responses, AI consent grants, user-owned external API keys, nullable report/moderation/audit references, and reporter-owned report evidence.
+
+Remaining local/provider gaps:
+
+| Family | Exact gap | Required next change |
+|---|---|---|
+| Provider-backed local copies | Implemented for exact-subject external login, ATProto ownership, Web Push, SMTP outbox, actor-owned storage, user-owned webhook metadata, and reporter-owned Osprey/Coop links | Rerun PostgreSQL exact-subject, restrictive-FK, two-tenant, and unrelated-user proof when Docker is available |
+| AI/Listmonk copies | Current schemas lack trustworthy provider context/subscriber identifiers | Add typed source fields only when provider contracts define authoritative remote locators; do not infer them |
+
+Resolved ownership/schema decisions:
+
+- `OrganizationPii`, `Organization.WebsiteUrl`, and `OrganizationSetting.Value` are organization-owned data. `Organization.ActorId` is a publishing identity association, not User ownership, and ordinary organization membership never transfers organization data into a User erasure.
+- Migration `20260723083304_AnonymizeRetainedAuditActors` permits exact-subject unlinking across retained audit families. Active support sessions are revoked before unlinking, shared review content uses the `Deleted user` label, and downgrade refuses to invent replacement User IDs after anonymization.
+
+External locator gaps:
+
+| Provider family | Current locator source | Why `PrivacyErasureProviderWork.TargetId` is insufficient |
+|---|---|---|
+| Keycloak | `UserExternalLogin.ProviderKey` | Provider key is a bounded string, not necessarily a GUID |
+| ATProto | `ActorPii.Did` plus actor/user ownership | DID is a string and is cleared during local anonymization |
+| Listmonk / SMTP | email-dispatch subscriber/delivery metadata | Subscriber address and provider message IDs are not GUID targets; SMTP recall is explicitly unsupported |
+| Web Push | subscription endpoint | Endpoint is a secret-bearing URL string |
+| Object storage | object key/provider URI | Remote delete requires the object key after local metadata is removed |
+| Svix / webhook | provider event/application/endpoint identifiers | Provider identifiers and credential references are bounded strings |
+| AI providers | provider conversation/response context | Current work row has no typed provider context reference |
+| Osprey / Coop | event-report provider identifiers | Report GUID can remain the local target, but provider reconciliation identifiers are strings |
+
+The minimal safe follow-up is an encrypted, short-lived typed locator owned by specialized provider work and destroyed after terminal settlement or expiry. Retaining ordinary source PII until remote completion would violate atomic local settlement.
+
+Current materialization boundary:
+
+- `UserLocationPrivacyErasureRepository.GetProviderCandidatesAsync` enumerates only sources with an exact User ownership path and a usable remote locator: Keycloak external logins, ATProto actors, Web Push subscriptions, actor-owned storage objects, SMTP provider messages, user-owned webhook endpoints, and Osprey/Coop report links.
+- `PrivacyErasureApplier` captures those candidates before local disposition methods run, protects locators with purpose-bound ASP.NET Core Data Protection, persists work in the caller's serializable transaction, and passes the real work count to `MarkLocalSettled`.
+- `TargetId` remains the stable local source UUIDv7. Remote string/URL identifiers live only in versioned, cryptographically time-limited ciphertext with configurable `ProviderLocatorLifetime`; success, reconciliation, or expiry clears ciphertext.
+- `PrivacyErasureProviderWorkRepository.AddMissingAsync` deduplicates the same semantic tuple enforced by the database unique index and returns the total represented work count to the saga, so replay does not depend on newly generated work IDs.
+- Expired rows transition to bounded `locator_expired` dead-letter state before claiming. Migration `20260723091627_ExpirePrivacyErasureProviderLocators` updates the lifecycle constraint to allow dead-letter evidence without retained ciphertext.
+- `PrivacyErasureApplier` flushes provider work before the dedicated adapter executes immediate local SQL. Local rows without usable remote locators are still erased: locator presence gates only provider-work creation, never local disposition.
+- Provider-backed local dispositions hard-delete external logins, Web Push rows, notification-delivery links, and email snapshots; tombstone actor-owned storage; archive/scrub webhook endpoint, target, and consumer metadata while severing User ownership; and clear reporter-owned external report-link metadata. Actors without an `ActorPii` row still lose User/PDS/custody links.
+- Final review kept phase boundaries explicit: the durable post-commit cache-convergence finding is now resolved, while Keycloak platform-managed delete versus external unlink classification and provider adapters remain unresolved `OREA-410`. PostgreSQL acceptance must add ATProto, Osprey/Coop, and webhook target-snapshot fixtures; compilation alone is not acceptance.
+- OREA-420 cache convergence now uses a payload-free generic outbox row committed with local erasure. Its dispatcher retries user and broad event cache invalidation, readiness degrades on incomplete/dead-lettered convergence, and `GetUserRequestHandler` checks the persisted fence before and after cache access so a failed invalidation cannot serve stale profile PII. Independent review corrected the old fail-closed replay test to the durable-convergence contract and added direct cache-race and dead-letter replay coverage. Other producer/worker/remote-dispatch fences and fresh-scope ownership reload remain open.
+- The first conflict-free local producer fence is implemented in `UpdateUserCommandHandler`: its transaction checks `IPrivacyErasureStateRepository` before loading or mutating the User, so fenced subjects cannot recreate names or profile-storage ownership and receive the existing non-disclosing not-found response. The regression test attempts both name recreation and actor/profile-storage relinking and proves all repositories remain untouched. Focused handler tests pass 3/3, the Application build is clean, Clean Architecture passes 15/15, the canonical root Release build passes with 0 errors, and independent scoped review passes. `SyncUserCommandHandler` remains untouched while the concurrent ATProto agent owns it.
+- Registration creation now checks persisted erasure state before validation, before returning any pre-transaction result, and inside the serializable registration transaction. This prevents fenced Users from receiving detailed validation/state responses or recreating registration, notification, provider-outbox, consent, and webhook state through the covered pre-write races. Focused tests pass 21/21 after repairing the first review's validation-disclosure finding; the final independent review passes with no blocking findings.
+- Storage upload-session creation now checks the captured authenticated User before validation/policy disclosure and again inside a serializable quota-reservation transaction. A fenced User cannot receive detailed early failures, replay an existing session, reserve quota, or persist filename/object metadata. Focused tests pass 28/28; `Explore.Application` builds with 0 warnings/0 errors, Clean Architecture passes 15/15, the canonical root Release build passes with 0 errors, and independent review passes with no blocking findings.
+
 ## Decisions
 
 ### Accepted
@@ -126,6 +172,7 @@ Topology is only one part of this workstream. The same plan owns the User fence,
 - Use a separately committed, short-lived application context for the co-located authority append.
 - Keep dedicated authority migrations out of the application database.
 - Use different public runtime/migrator secret variables, each mapped to `ConnectionStrings__PrivacyErasureAuthority` only in its owning process.
+- In Aspire, create the distinct authority PostgreSQL resource in every local-data profile when `ExternalDatabase` is selected; profiles without local data use operator-provided infrastructure.
 - Test external restore safety with two independent PostgreSQL containers and a real pre-erasure application backup restore.
 - Report `restoreReplayProtection=false` for co-located storage.
 - Use a pre-v1 reset-only policy for the removed behavior-mode contract. Breaking compatibility is accepted; silent data loss and agent-driven deletion of operator resources are not.
@@ -233,13 +280,9 @@ The Senior CTO planning hook is a known non-green baseline: 286 architecture tes
 
 ## Handoff
 
-The next action is the unchecked `OREA-100` live EF/provider PII inventory reconciliation, followed by every still-unchecked `OREA-110` runtime/product task. The intent amendment and workstream ownership convergence are complete. Do not implement topology adapters or more erasure families before the Phase 1 contract gate is green.
+The narrow OREA-420 durable cache-convergence criterion is independently reviewed and fast-verified. Continue its still-open producer/worker/remote-dispatch fence propagation and fresh-scope persisted ownership reload without entering provider-family implementation owned by the concurrent agent. Provider-backed local clearing remains implemented; rerun its exact PostgreSQL canary and the broader Phase 3 rollback/replay/isolation lane when Docker is available. Protected typed materialization uses stable local source IDs and seven-day locator expiry. AI/Listmonk remain blocked on trustworthy remote identifiers; do not infer or hash substitute locators. Do not reintroduce the removed AppHost `FullLocal` condition: every local-data Aspire profile manages the distinct authority resource when `usesExternalPrivacyErasureAuthority` is true.
 
-After Phase 1, update:
-
-- this file with new evidence/decisions;
-- the plan if the architecture changes;
-- `optional-retained-erasure-authority-tasks.md` with checked items and exact verification output.
+Docker is currently unavailable. The two-test provider-metadata selector and five-test `GlobalLocationPrivacyErasureTests` Phase 3 selector failed during fixture construction before database access; rerun both when `/var/run/docker.sock` is usable. Keep `OREA-310` and `OREA-320` unchecked until every inventory family and tenant-isolation canary is proven.
 
 ## Maintenance Contract
 

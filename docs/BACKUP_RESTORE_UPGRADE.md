@@ -6,17 +6,42 @@ ABOUTME: Grounds release operations in Docker Compose, PostgreSQL, Keycloak, obj
 > **Audience:** Operators
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-07-19
-> **Source Anchors:** `docker-compose.yml`, `Event.MigrationService/Worker.cs`, `Explore.API/Program.cs`, `LocationPrivacyStartupGate.cs`, `LocationErasureReplayService.cs`, `docs/SELF_HOSTING.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
+> **Last Verified:** 2026-07-23
+> **Source Anchors:** `docker-compose.yml`, `Event.MigrationService/Worker.cs`, `Explore.API/Program.cs`, `PrivacyErasureStartupGate.cs`, `PrivacyErasureReplayService.cs`, `GlobalLocationPrivacyErasureTests.cs`, `docs/SELF_HOSTING.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
 This runbook covers self-hosted deployments using the repository Docker Compose topology. Treat every upgrade as a data operation first and an image rollout second.
+
+## Pre-v1 Privacy-erasure Reset Policy
+
+The removed `PrivacyErasure:Durability:Mode` contract has no compatibility
+shim or silent translation. Its presence blocks startup. The only supported
+transition for this pre-v1 development contract is an operator-managed reset,
+and only when all of the following are true:
+
+1. The deployment is explicitly confirmed to be pre-v1 and reset-eligible.
+2. The operator accepts rebuilding the application database from the current
+   generated application migration and, for `ExternalDatabase`, the dedicated
+   authority migration in a different physical PostgreSQL database.
+3. A backup or export exists for every value the operator must retain, and the
+   operator has verified that the retained artifacts are readable or restorable.
+4. The legacy key is removed and
+   `PrivacyErasure:Authority:Topology=CoLocated|ExternalDatabase` is selected
+   explicitly.
+
+If any prerequisite is false or unknown, stop and preserve the database,
+containers, volumes, and backups for a separately reviewed forward-migration
+or fact-copy plan. Application code and implementation agents never perform
+the reset or delete operator resources. A successful EF migration message is
+not reset evidence: verify the target database identity, migration history,
+`privacy_erasure_authority` tables, and, for an external authority, the approved
+functions and function-only runtime grants before starting the API.
 
 ## What Must Be Backed Up
 
 | Asset | Compose Anchor | Why It Matters |
 |---|---|---|
 | Application PostgreSQL data | `postgres` volume `postgres_data` | Tenants, events, users, settings, outbox, and data-protection keys when stored through EF contexts. |
-| Retained location-erasure authority PostgreSQL data | Independently operated database configured by `LocationPrivacy:ErasureAuthority:ConnectionString` | Immutable PII-free erasure intents and the monotonic authority counter prevent an older application restore from resurrecting erased Home PII. It must not share the application database restore set or failure domain. |
+| Privacy-erasure authority PostgreSQL data | `CoLocated`: application database; `ExternalDatabase`: independently operated database configured by `ConnectionStrings:PrivacyErasureAuthority` | Typed immutable erasure facts and the monotonic authority counter drive replay. Only an external authority excluded from the application restore operation protects against an older application restore. |
 | Keycloak PostgreSQL data | `keycloak-db` volume `keycloak_data` | Realms, clients, roles, users, and login configuration. |
 | Object storage | API volume `local_storage_data`; optional `minio` volume `minio_data` or external S3 bucket when selected | Uploaded files, images, and storage-backed assets. |
 | Secrets and environment | `.env`, secret-provider project, Keycloak client secrets | Required to recreate the same runtime identity and storage bindings. |
@@ -42,7 +67,7 @@ Do not treat Docker image tags alone as a backup. Database schema and secret-pro
 4. Back up the retained erasure authority independently, preferably from a separate physical cluster and into a separate backup repository. Use its backup role, not the function-only runtime role, and use a custom-format dump so restore can be rehearsed:
 
    ```bash
-   pg_dump --format=custom --file=backup-location-erasure-authority.dump "$REDACTED_AUTHORITY_ADMIN_DSN"
+   pg_dump --format=custom --file=backup-privacy-erasure-authority.dump "$REDACTED_AUTHORITY_ADMIN_DSN"
    ```
 
    Record the authority watermark, application watermark, backup timestamp, dump SHA-256, and restore drill identifier in the release manifest. Never record the DSN or opaque owner/location/intent IDs.
@@ -57,6 +82,18 @@ Do not treat Docker image tags alone as a backup. Database schema and secret-pro
 8. Verify both restores and the authority-over-application replay in a non-production environment before relying on the backups for an upgrade.
 
 ## Restore Procedure
+
+Choose the contract before restoring:
+
+- `CoLocated` has `restoreReplayProtection=false`. Back up and restore the
+  application and co-located authority together. Its authority-first commit
+  protects application-transaction rollback, not a whole-database restore to
+  pre-erasure state. Do not claim that replay can recover authority facts that
+  the same restore removed.
+- `ExternalDatabase` has `restoreReplayProtection=true` as a capability flag,
+  conditional on the authority database being outside the application restore
+  operation. If both databases or their shared storage snapshot are restored
+  together, the guarantee does not apply.
 
 1. Stop application traffic before restoring:
 
@@ -76,12 +113,12 @@ Do not treat Docker image tags alone as a backup. Database schema and secret-pro
    docker compose up -d islamu-event-api
    ```
 
-8. Compare authority and application evidence using the SQL in `OPERATIONS.md` under “ELP-525 retained location-erasure startup gate.” A fresh database must replay from zero; an older database must advance from its latest valid checkpoint. Confirm restored Home canaries are tombstoned, `location_pii` rows are absent, cache invalidation completed, and PII-free correction rows exist before the first successful `/health` response.
+8. Compare the privacy-erasure authority watermark with the application replay checkpoint. A fresh database must replay from zero; an older database must advance from its latest valid checkpoint. Confirm restored PII canaries are erased, local mirror/checkpoint rows converge once, cache invalidation completed, and PII-free outbox work exists before the first successful `/health` response.
 9. Start the BFF only after the API is ready, then check `/alive` and `/health` on both hosts.
 10. Let the normal idempotent outbox processor drain `LocationPiiErased` and `LocationPrivacyCorrectionRequested`. Inspect failed/dead-letter rows and verify downstream cache/search/index projections before reopening general traffic. No exact-location search index exists in the current release; do not invent an ad hoc rebuild path.
 11. Validate login, tenant resolution, event browsing, and file access.
 
-### ELP-525 retention and incident recovery
+### Privacy-erasure retention and incident recovery
 
 The authority currently has no update, delete, or pruning surface. Retain its immutable intents and counter indefinitely; at minimum, they must outlive every application backup, replica snapshot, object-store backup, and disaster-recovery artifact that could reintroduce pre-erasure state. Application checkpoints are also append-only evidence. General correction outbox retention follows the outbox runbook, but failed and dead-lettered corrections remain until operators reconcile them.
 
@@ -159,7 +196,8 @@ If release notes do not explicitly state that a rollback is image-only safe, ass
 - [ ] Backups exist for application DB, Keycloak DB, object storage, and secrets.
 - [ ] Restore was tested in non-production.
 - [ ] The retained erasure authority was backed up and restored independently, and its watermark/hash are recorded without identifiers or connection details.
-- [ ] API startup replay advanced the application checkpoint to the authority watermark; restored Home PII canaries are absent and correction outbox evidence is present before BFF startup.
+- [ ] For `ExternalDatabase`, API startup replay advanced the application checkpoint to the untouched authority watermark; restored PII canaries are absent and outbox evidence is present once before BFF startup.
+- [ ] For `CoLocated`, the restore record states `restoreReplayProtection=false` and makes no old-backup replay claim.
 - [ ] `docker compose ps` shows required services running.
 - [ ] API `/alive` and `/health` return expected status.
 - [ ] Blazor loads and can proxy API requests.
